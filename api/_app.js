@@ -1123,10 +1123,13 @@ Retorne estritamente um JSON:
 var openAIProvider = new OpenAIProvider();
 function getActiveProviderType() {
   const envProvider = (process.env.AI_PROVIDER || "").toLowerCase();
-  if (envProvider === "openai") {
+  if (envProvider === "openai" || process.env.OPENAI_API_KEY && !process.env.GEMINI_API_KEY) {
     return "openai";
   }
-  return "gemini";
+  if (envProvider === "gemini") {
+    return "gemini";
+  }
+  return process.env.OPENAI_API_KEY ? "openai" : "gemini";
 }
 
 // src/ania/aniaPrompts.ts
