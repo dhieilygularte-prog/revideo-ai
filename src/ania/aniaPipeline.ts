@@ -579,20 +579,14 @@ export async function regenerateAniaSingleImage(params: {
         category: result.planning.categoria,
       });
 
-  const effectivePrompt = customCorrection
-    ? `🚨 INSTRUÇÃO OBRIGATÓRIA DE ALTERAÇÃO: ${customCorrection.trim()}\n\n${prompt}`
-    : prompt;
-
   const res = await fetch('/api/generate-scene-image', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      prompt: effectivePrompt,
+      prompt,
       productPhotoBase64: effectivePhoto,
       productPhotosBase64: effectivePhoto ? [effectivePhoto] : [],
-      modelReferenceBase64: isImage1
-        ? (customCorrection && targetImg.imageUrl ? targetImg.imageUrl : undefined)
-        : (result.images[0]?.imageUrl || targetImg.imageUrl),
+      modelReferenceBase64: isImage1 ? undefined : result.images[0]?.imageUrl,
       variationName: col.name,
       productType: form.productName,
       targetAngle: 'front',

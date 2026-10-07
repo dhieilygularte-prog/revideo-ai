@@ -494,52 +494,6 @@ Retorne estritamente um JSON estruturado:
   }
 
   /**
-   * Extração microscópica de características físicas do produto real via Vision AI
-   */
-  private async extractVisualProductDescription(
-    client: OpenAI,
-    photoDataUrl: string,
-    productType: string,
-    variationName: string
-  ): Promise<string> {
-    const url = photoDataUrl.startsWith('data:') ? photoDataUrl : `data:image/jpeg;base64,${photoDataUrl}`;
-    const candidateModels = ['gpt-4o-mini', 'gpt-4o', 'gpt-5.6-luna'];
-
-    for (const model of candidateModels) {
-      try {
-        const vis = await client.chat.completions.create({
-          model,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                { type: 'image_url', image_url: { url } },
-                {
-                  type: 'text',
-                  text: `Analyze this real reference photo of "${productType}" (${variationName}) with extreme physical precision.
-Describe in English in 3 dense, detailed sentences:
-1. Exact product model, cut, silhouette, toe box/collar shape, and proportion.
-2. Exact primary base color, secondary trim/accent colors, lace color, midsole and outsole colors and color blocking.
-3. Physical materials (mesh, leather, suede, rubber, knit) and exact constructive details (stitching lines, sole thickness, tread patterns, eyelets, heel overlays, pull tabs, visible logos/branding).
-IMPORTANT: Completely IGNORE backgrounds, floor, mannequins, people, bonus gift socks, floating shoe insoles, plants, or boxes. Focus 100% EXCLUSIVELY on the physical product itself so an image generator can create an exact 1:1 replica of this real item.`,
-                },
-              ],
-            },
-          ],
-          max_completion_tokens: 350,
-        });
-        const content = vis.choices[0]?.message?.content?.trim();
-        if (content && content.length > 20) {
-          return content;
-        }
-      } catch (err: any) {
-        console.warn(`[OpenAI Provider] Falha na extração de visão com ${model}:`, err?.message);
-      }
-    }
-    return '';
-  }
-
-  /**
    * 3. Geração das Imagens com Múltiplas Fotos Reais de Referência
    * Modelo: gpt-image-2.5-sunburst
    * Parâmetros: quality: 'high', input_fidelity: 'high', size: '1024x1792' (vertical 9:16)
@@ -581,14 +535,10 @@ IMPORTANT: Completely IGNORE backgrounds, floor, mannequins, people, bonus gift 
       ? `CRITICAL ANTI-VIOLATION DIRECTIVE: Do NOT copy or clone the face of the actor from the reference video. Generate an original commercial model with a DIFFERENT FACE and distinct facial features (similar demographic style like a cousin, but strictly a different person) to prevent TikTok copyright/impersonation strikes.`
       : '';
 
-    const userCorrectionDirective = correctionPrompt && correctionPrompt.trim()
-      ? `🚨 INSTRUÇÃO OBRIGATÓRIA DE ALTERAÇÃO DO USUÁRIO (APLICAR ESTE ELEMENTO/MUDANÇA DE FORMA DESTACADA): "${correctionPrompt.trim()}"`
-      : '';
-
-    // Prioriza correções do usuário, auditoria e instruções adicionais sobre o prompt formatado
+    // Prioriza correções de auditoria e instruções adicionais sobre o prompt universal já formatado
     const overrides = [
-      userCorrectionDirective,
       modelAntiViolationDirective,
+      correctionPrompt && `CRITICAL QUALITY OVERRIDE: ${correctionPrompt.trim()}`,
       additionalInstructions && `USER DIRECTIVE: ${additionalInstructions.trim()}`,
     ].filter(Boolean).join('\n');
 
@@ -612,18 +562,18 @@ IMPORTANT: Completely IGNORE backgrounds, floor, mannequins, people, bonus gift 
       let swatchFile: File | null = null;
       let effectivePrompt = cleanPrompt;
 
-      const toFile = (dataUrl: string, name: string): File => {
-        const mimeMatch = dataUrl.match(/^data:(image\/(?:jpeg|png|webp));base64,/);
-        const mime = mimeMatch ? mimeMatch[1] : 'image/png';
-        const ext = mime.split('/')[1] === 'jpeg' ? 'jpg' : mime.split('/')[1];
-        const b64 = dataUrl.replace(/^data:image\/[a-zA-Z+]+;base64,/, '');
-        return new File([Buffer.from(b64, 'base64')], `${name}.${ext}`, { type: mime });
-      };
-
-      // Se temos referência de modelo mestre (Imagem 1 base para clonagem ou edição de imagem existente):
+      // Se temos referência de modelo mestre (Imagem 1 base para clonagem):
       if (modelReferenceBase64) {
-        // 1ª imagem = IMAGEM BASE (base visual enviada)
-        baseImageFile = toFile(modelReferenceBase64, 'imagem_base');
+        const toFile = (dataUrl: string, name: string): File => {
+          const mimeMatch = dataUrl.match(/^data:(image\/(?:jpeg|png|webp));base64,/);
+          const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+          const ext = mime.split('/')[1] === 'jpeg' ? 'jpg' : mime.split('/')[1];
+          const b64 = dataUrl.replace(/^data:image\/[a-zA-Z+]+;base64,/, '');
+          return new File([Buffer.from(b64, 'base64')], `${name}.${ext}`, { type: mime });
+        };
+
+        // 1ª imagem = IMAGEM 1 GERADA (base absoluta)
+        baseImageFile = toFile(modelReferenceBase64, 'imagem_1_base');
 
         // 2ª imagem = amostra COR 2 / COR 3 (somente referência do produto)
         const swatchStr = productPhotoBase64 || productPhotosBase64[0];
@@ -637,86 +587,78 @@ IMPORTANT: Completely IGNORE backgrounds, floor, mannequins, people, bonus gift 
 
         let garmentSpec = '';
         if (swatchStr) {
-          garmentSpec = await this.extractVisualProductDescription(client, swatchStr, productType, variationName);
-        }
-
-        const userInstructions = additionalInstructions && additionalInstructions.trim()
-          ? `\nINSTRUÇÕES ADICIONAIS: ${additionalInstructions.trim()}`
-          : '';
-
-        if (correctionPrompt && correctionPrompt.trim()) {
-          // Edição solicitada pelo usuário (Refazer com correção): preserva a base e aplica a alteração pedida
-          effectivePrompt = `Esta é uma EDIÇÃO da imagem enviada. A imagem enviada é a base de referência e deve preservar a pessoa, pose, ângulo e cenário geral, aplicando com fidelidade as seguintes alterações:
-
-1. ALTERAÇÃO SOLICITADA PELO USUÁRIO (MÁXIMA PRIORIDADE): ${correctionPrompt.trim()}
-2. PRODUTO (${productType}): apresente o produto com as características da variante "${variationName}": ${garmentSpec || `cor ${variationName}`}.${userInstructions}
-IGNORE e NÃO desenhe nenhum brinde, palmilha flutuando ou objeto extra de catálogo. Sem textos, logos ou marcas d'água.`;
-        } else {
-          // Geração normal das Imagens 2 e 3 (comportamento original das 09:57): edição localizada estrita da Imagem 1
-          effectivePrompt = `Esta é uma EDIÇÃO LOCALIZADA da imagem enviada. A imagem enviada é a base absoluta e deve permanecer IDÊNTICA: mesma pessoa (pele, corpo, pernas, pés), mesma pose, mesmo quarto/cenário, mesmo piso/chão, mesma iluminação, mesmo ângulo, mesmo enquadramento e mesma composição. NÃO recrie a cena, NÃO gere outra pessoa, NÃO mude o fundo. Zero tatuagens.
-
-ÚNICA ALTERAÇÃO: substitua exclusivamente o produto (${productType}) por uma peça com exatamente estas características (variante "${variationName}"): ${garmentSpec || `cor ${variationName}`}.${userInstructions}
-IGNORE e NÃO desenhe nenhum brinde, palmilha flutuando ou objeto extra da foto de catálogo.
-Mantenha o mesmo modelo/corte e caimento do produto; troque somente cores e detalhes do produto conforme descrito. Tudo que não for o produto permanece pixel a pixel igual à imagem enviada. Sem textos, logos ou marcas d'água.`;
-        }
-      } else if (imageFiles.length > 0) {
-        // Geração da Imagem 1 (comportamento original das 09:57):
-        // a foto real "Cor 1 — Foto Principal" é enviada como imagem base do images.edit
-        // junto com o prompt da memória (buildAniaImage1Prompt) sem alterações.
-        baseImageFile = imageFiles[0];
-        effectivePrompt = cleanPrompt;
-      }
-
-      // Se temos arquivo de imagem de base válido para edição (seja Imagem Mestre ou Foto do Produto), usamos client.images.edit
-      if (baseImageFile) {
-        let lastEditError = '';
-        // Tenta até 2 vezes com a imagem de referência. NUNCA cai para geração sem referência,
-        // pois isso gera um produto aleatório que não corresponde à foto enviada.
-        for (let attempt = 0; attempt < 2; attempt++) {
           try {
-            const editResponse = await client.images.edit({
-              model: OPENAI_IMAGE_MODEL,
-              image: baseImageFile,
-              prompt: effectivePrompt,
-              quality: OPENAI_IMAGE_QUALITY,
-              size: OPENAI_IMAGE_SIZE,
+            const vis = await client.chat.completions.create({
+              model: OPENAI_BRAIN_MODEL,
+              messages: [
+                {
+                  role: 'user',
+                  content: [
+                    { type: 'image_url', image_url: { url: swatchStr.startsWith('data:') ? swatchStr : `data:image/jpeg;base64,${swatchStr}` } },
+                    {
+                      type: 'text',
+                      text: `Describe in English, in one dense paragraph, ONLY the main product (${productType}) in this photo, strictly ignoring the person, background, mannequin, and completely ignoring any secondary bonus items, floating shoe insoles/palmilhas, gift socks, boxes, plants or accessories: describe the exact main color, texture, material, sole/outsole, laces, stitching, trims, and details of ONLY the main product itself. Do not mention or include any floating accessories or bonus gifts.`,
+                    },
+                  ],
+                },
+              ],
             });
-
-            const b64 = editResponse.data?.[0]?.b64_json;
-            if (b64) {
-              const imgCost = globalCostTracker.calculateImageCost(OPENAI_IMAGE_QUALITY);
-              globalCostTracker.recordCall({
-                step: stepName,
-                model: OPENAI_IMAGE_MODEL,
-                costUSD: imgCost.costUSD,
-                costBRL: imgCost.costBRL,
-                details: `Geração com ${imageFiles.length} foto(s) de referência real em qualidade ${OPENAI_IMAGE_QUALITY}`,
-              });
-
-              return {
-                success: true,
-                imageUrl: `data:image/png;base64,${b64}`,
-                costBRL: imgCost.costBRL,
-              };
-            }
-            lastEditError = 'O modelo não retornou imagem.';
-          } catch (editErr: any) {
-            lastEditError = editErr?.message || String(editErr);
-            console.warn(`[OpenAI Provider] images.edit tentativa ${attempt + 1} falhou: ${lastEditError}`);
+            garmentSpec = vis.choices[0]?.message?.content || '';
+          } catch {
+            garmentSpec = '';
           }
         }
 
-        return {
-          success: false,
-          error: `Falha ao gerar a imagem usando a foto de referência: ${lastEditError}. Use "Refazer".`,
-          fallbackRequired: false,
-        };
+        effectivePrompt = `Esta é uma EDIÇÃO LOCALIZADA da imagem enviada. A imagem enviada é a base absoluta e deve permanecer IDÊNTICA: mesma pessoa (pele, corpo, pernas, pés), mesma pose, mesmo quarto/cenário, mesmo piso/chão, mesma iluminação, mesmo ângulo, mesmo enquadramento e mesma composição. NÃO recrie a cena, NÃO gere outra pessoa, NÃO mude o fundo. Zero tatuagens.
+
+ÚNICA ALTERAÇÃO: substitua exclusivamente o produto (${productType}) por uma peça com exatamente estas características (variante "${variationName}"): ${garmentSpec || `cor ${variationName}`}.
+IGNORE e NÃO desenhe nenhum brinde, palmilha flutuando ou objeto extra da foto de catálogo.
+Mantenha o mesmo modelo/corte e caimento do produto; troque somente cores e detalhes do produto conforme descrito. Tudo que não for o produto permanece pixel a pixel igual à imagem enviada. Sem textos, logos ou marcas d'água.`;
+      } else if (imageFiles.length > 0) {
+        baseImageFile = imageFiles[0];
       }
 
-      // Geração direta com prompt enriquecido por visão
+      // Se temos arquivo de imagem de base válido para edição, usamos client.images.edit
+      if (baseImageFile) {
+        const editResponse = await client.images.edit({
+          model: OPENAI_IMAGE_MODEL,
+          image: baseImageFile,
+          prompt: effectivePrompt,
+          quality: OPENAI_IMAGE_QUALITY,
+          size: OPENAI_IMAGE_SIZE,
+        });
+
+        const b64 = editResponse.data?.[0]?.b64_json;
+        if (b64) {
+          const imgCost = globalCostTracker.calculateImageCost(OPENAI_IMAGE_QUALITY);
+          globalCostTracker.recordCall({
+            step: stepName,
+            model: OPENAI_IMAGE_MODEL,
+            costUSD: imgCost.costUSD,
+            costBRL: imgCost.costBRL,
+            details: `GeraÃ§Ã£o com ${imageFiles.length} foto(s) de referÃªncia real em qualidade ${OPENAI_IMAGE_QUALITY}`,
+          });
+
+          return {
+            success: true,
+            imageUrl: `data:image/png;base64,${b64}`,
+            costBRL: imgCost.costBRL,
+          };
+        }
+
+        if (modelReferenceBase64) {
+          return {
+            success: false,
+            error: 'A edição da Imagem 1 não retornou imagem. Use "Refazer".',
+            fallbackRequired: false,
+          };
+        }
+      }
+
+      // Caso nÃ£o haja arquivos de referÃªncia vÃ¡lidos, geraÃ§Ã£o direta
       const genResponse = await client.images.generate({
         model: OPENAI_IMAGE_MODEL,
-        prompt: effectivePrompt,
+        prompt: cleanPrompt,
         quality: OPENAI_IMAGE_QUALITY,
         size: OPENAI_IMAGE_SIZE,
       });
@@ -729,7 +671,7 @@ Mantenha o mesmo modelo/corte e caimento do produto; troque somente cores e deta
           model: OPENAI_IMAGE_MODEL,
           costUSD: imgCost.costUSD,
           costBRL: imgCost.costBRL,
-          details: `Geração direta em qualidade ${OPENAI_IMAGE_QUALITY}`,
+          details: `GeraÃ§Ã£o direta em qualidade ${OPENAI_IMAGE_QUALITY}`,
         });
 
         return {
