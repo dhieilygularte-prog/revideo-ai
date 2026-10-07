@@ -566,16 +566,16 @@ Retorne estritamente um JSON estruturado:
       let swatchFile: File | null = null;
       let effectivePrompt = cleanPrompt;
 
+      const toFile = (dataUrl: string, name: string): File => {
+        const mimeMatch = dataUrl.match(/^data:(image\/(?:jpeg|png|webp));base64,/);
+        const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+        const ext = mime.split('/')[1] === 'jpeg' ? 'jpg' : mime.split('/')[1];
+        const b64 = dataUrl.replace(/^data:image\/[a-zA-Z+]+;base64,/, '');
+        return new File([Buffer.from(b64, 'base64')], `${name}.${ext}`, { type: mime });
+      };
+
       // Se temos referência de modelo mestre (Imagem 1 base para clonagem ou edição de imagem existente):
       if (modelReferenceBase64) {
-        const toFile = (dataUrl: string, name: string): File => {
-          const mimeMatch = dataUrl.match(/^data:(image\/(?:jpeg|png|webp));base64,/);
-          const mime = mimeMatch ? mimeMatch[1] : 'image/png';
-          const ext = mime.split('/')[1] === 'jpeg' ? 'jpg' : mime.split('/')[1];
-          const b64 = dataUrl.replace(/^data:image\/[a-zA-Z+]+;base64,/, '');
-          return new File([Buffer.from(b64, 'base64')], `${name}.${ext}`, { type: mime });
-        };
-
         // 1ª imagem = IMAGEM BASE (base visual enviada)
         baseImageFile = toFile(modelReferenceBase64, 'imagem_base');
 
@@ -624,34 +624,78 @@ Retorne estritamente um JSON estruturado:
 
 ${correctionDirective ? `1. ALTERAÇÃO SOLICITADA PELO USUÁRIO (MÁXIMA PRIORIDADE): ${correctionPrompt?.trim()}\n` : ''}2. PRODUTO (${productType}): apresente o produto com as características da variante "${variationName}": ${garmentSpec || `cor ${variationName}`}.${userInstructions}
 IGNORE e NÃO desenhe nenhum brinde, palmilha flutuando ou objeto extra de catálogo. Sem textos, logos ou marcas d'água.`;
+      } else if (allPhotos.length > 0) {
+        // Geração da Imagem 1: usando a foto real do produto como referência mandatória
+        const primaryStr = productPhotoBase64 || productPhotosBase64[0] || allPhotos[0];
+        if (primaryStr) {
+          try {
+            baseImageFile = toFile(primaryStr, 'produto_referencia');
+          } catch {
+            baseImageFile = imageFiles[0] || null;
+          }
+
+          // Extrai especificação física de alta precisão via Vision AI
+          let productSpec = '';
+          try {
+            const vis = await client.chat.completions.create({
+              model: OPENAI_BRAIN_MODEL,
+              messages: [
+                {
+                  role: 'user',
+                  content: [
+                    { type: 'image_url', image_url: { url: primaryStr.startsWith('data:') ? primaryStr : `data:image/jpeg;base64,${primaryStr}` } },
+                    {
+                      type: 'text',
+                      text: `Analyze this real product reference photo for "${productType}" (${variationName}). Describe in English with extreme physical accuracy in 2 dense sentences: exact shape, silhouette, main color, secondary accents, material texture, sole/midsole/outsole lines (if footwear), collar/waistband/cut (if apparel), stitching, logos, patterns and closures. Ignore backgrounds, mannequins, floating shoe insoles, or gift boxes.`,
+                    },
+                  ],
+                },
+              ],
+              max_tokens: 150,
+            });
+            productSpec = vis.choices[0]?.message?.content || '';
+          } catch {
+            productSpec = '';
+          }
+
+          const productLockDirective = productSpec
+            ? `\n\n[MANDATORY 1:1 PHYSICAL FIDELITY TO REFERENCE PRODUCT PHOTO]:\nExact physical details of the real item: ${productSpec}\nThe generated image MUST reproduce these exact physical product characteristics, materials, and colors.`
+            : '';
+
+          effectivePrompt = `${cleanPrompt}${productLockDirective}`;
+        }
       }
 
-      // Se temos arquivo de imagem de base válido para edição, usamos client.images.edit
+      // Se temos arquivo de imagem de base válido para edição (seja Imagem Mestre ou Foto do Produto), usamos client.images.edit
       if (baseImageFile) {
-        const editResponse = await client.images.edit({
-          model: OPENAI_IMAGE_MODEL,
-          image: baseImageFile,
-          prompt: effectivePrompt,
-          quality: OPENAI_IMAGE_QUALITY,
-          size: OPENAI_IMAGE_SIZE,
-        });
-
-        const b64 = editResponse.data?.[0]?.b64_json;
-        if (b64) {
-          const imgCost = globalCostTracker.calculateImageCost(OPENAI_IMAGE_QUALITY);
-          globalCostTracker.recordCall({
-            step: stepName,
+        try {
+          const editResponse = await client.images.edit({
             model: OPENAI_IMAGE_MODEL,
-            costUSD: imgCost.costUSD,
-            costBRL: imgCost.costBRL,
-            details: `GeraÃ§Ã£o com ${imageFiles.length} foto(s) de referÃªncia real em qualidade ${OPENAI_IMAGE_QUALITY}`,
+            image: baseImageFile,
+            prompt: effectivePrompt,
+            quality: OPENAI_IMAGE_QUALITY,
+            size: OPENAI_IMAGE_SIZE,
           });
 
-          return {
-            success: true,
-            imageUrl: `data:image/png;base64,${b64}`,
-            costBRL: imgCost.costBRL,
-          };
+          const b64 = editResponse.data?.[0]?.b64_json;
+          if (b64) {
+            const imgCost = globalCostTracker.calculateImageCost(OPENAI_IMAGE_QUALITY);
+            globalCostTracker.recordCall({
+              step: stepName,
+              model: OPENAI_IMAGE_MODEL,
+              costUSD: imgCost.costUSD,
+              costBRL: imgCost.costBRL,
+              details: `Geração com ${imageFiles.length} foto(s) de referência real em qualidade ${OPENAI_IMAGE_QUALITY}`,
+            });
+
+            return {
+              success: true,
+              imageUrl: `data:image/png;base64,${b64}`,
+              costBRL: imgCost.costBRL,
+            };
+          }
+        } catch (editErr: any) {
+          console.warn(`[OpenAI Provider] Falha no images.edit (${editErr?.message}), tentando images.generate com prompt enriquecido por visão...`);
         }
 
         if (modelReferenceBase64) {
@@ -663,10 +707,10 @@ IGNORE e NÃO desenhe nenhum brinde, palmilha flutuando ou objeto extra de catá
         }
       }
 
-      // Caso nÃ£o haja arquivos de referÃªncia vÃ¡lidos, geraÃ§Ã£o direta
+      // Geração direta com prompt enriquecido por visão
       const genResponse = await client.images.generate({
         model: OPENAI_IMAGE_MODEL,
-        prompt: cleanPrompt,
+        prompt: effectivePrompt,
         quality: OPENAI_IMAGE_QUALITY,
         size: OPENAI_IMAGE_SIZE,
       });
@@ -679,7 +723,7 @@ IGNORE e NÃO desenhe nenhum brinde, palmilha flutuando ou objeto extra de catá
           model: OPENAI_IMAGE_MODEL,
           costUSD: imgCost.costUSD,
           costBRL: imgCost.costBRL,
-          details: `GeraÃ§Ã£o direta em qualidade ${OPENAI_IMAGE_QUALITY}`,
+          details: `Geração direta em qualidade ${OPENAI_IMAGE_QUALITY}`,
         });
 
         return {

@@ -239,31 +239,33 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
         {/* 1. Informações do Produto (Descrição da Loja - Topo para Auto-Preenchimento) */}
         <div
-          className={`md:col-span-12 p-3.5 rounded-2xl border transition-all space-y-1.5 ${
+          className={`md:col-span-12 p-4 rounded-2xl transition-all duration-300 space-y-1.5 ${
             hasProductInfo
-              ? 'bg-zinc-800/80 border-emerald-500/50 shadow-sm shadow-emerald-950/20'
-              : 'bg-zinc-900/70 border-zinc-800/90'
+              ? 'bg-gradient-to-br from-sky-900/80 via-blue-900/75 to-slate-800/90 border-2 border-sky-400 shadow-lg shadow-sky-900/50 ring-2 ring-sky-400/40'
+              : 'bg-zinc-900/70 border border-zinc-800/90'
           }`}
         >
-          <label className="text-xs font-bold text-zinc-200 flex items-center justify-between">
+          <label className="text-xs font-bold flex items-center justify-between">
             <span className="flex items-center gap-1.5">
-              <span>1. Informações do Produto (Cole aqui a descrição da loja)</span>
+              <span className={hasProductInfo ? 'text-white' : 'text-zinc-200'}>1. Informações do Produto (Cole aqui a descrição da loja)</span>
               {hasProductInfo && (
-                <span className="text-[10px] text-emerald-300 font-semibold bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-500/30 flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Preenchido (Auto-extração ativa)
+                <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2.5 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1 shadow-sm">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-sky-300" /> Preenchido ✓
                 </span>
               )}
             </span>
-            <span className="text-[11px] text-zinc-400 font-normal">Preenche nome, categoria, faixa etária e elasticidade automaticamente</span>
+            <span className={`text-[11px] font-normal ${hasProductInfo ? 'text-sky-200/90' : 'text-zinc-400'}`}>
+              Preenche nome, categoria, faixa etária e elasticidade automaticamente
+            </span>
           </label>
           <textarea
             value={form.productInfo}
             onChange={(e) => handleProductInfoChange(e.target.value)}
             rows={3}
             placeholder="Cole aqui a descrição do produto (ex: 'Tênis Esportivo Masculino Confortável...', 'Vestido infantil floral...', 'Calça pantalona duna com elastano')..."
-            className={`w-full p-2.5 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-purple-500 resize-y font-sans leading-relaxed transition-colors ${
+            className={`w-full p-2.5 rounded-xl text-xs text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-sky-400 resize-y font-sans leading-relaxed transition-colors ${
               hasProductInfo
-                ? 'bg-zinc-900 border border-emerald-500/30 focus:border-emerald-500'
+                ? 'bg-slate-950/80 border border-sky-400/60 focus:border-sky-300'
                 : 'bg-zinc-950 border border-zinc-700/80 focus:border-purple-500'
             }`}
           />
@@ -271,36 +273,38 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
 
         {/* 2. Nome do Produto */}
         <div
-          className={`md:col-span-8 p-3 rounded-2xl border transition-all space-y-1.5 ${
+          className={`md:col-span-8 p-3.5 rounded-2xl transition-all duration-300 space-y-1.5 ${
             hasProductName
-              ? 'bg-zinc-800/80 border-emerald-500/50'
-              : 'bg-zinc-900/70 border-zinc-800/90'
+              ? 'bg-gradient-to-br from-sky-900/80 via-blue-900/75 to-slate-800/90 border-2 border-sky-400 shadow-lg shadow-sky-900/50 ring-2 ring-sky-400/40'
+              : 'bg-zinc-900/70 border border-zinc-800/90'
           }`}
         >
-          <label className="text-xs font-bold text-zinc-200 flex items-center justify-between">
+          <label className="text-xs font-bold flex items-center justify-between">
             <span className="flex items-center gap-1.5">
-              <span>2. Nome do Produto <strong className="text-rose-400">*</strong></span>
+              <span className={hasProductName ? 'text-white' : 'text-zinc-200'}>2. Nome do Produto <strong className="text-rose-400">*</strong></span>
               {hasProductName && (
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-sky-300" /> Preenchido ✓
+                </span>
               )}
             </span>
-            <span className="text-[11px] text-zinc-400 font-normal">Nome curto (editável)</span>
+            <span className={`text-[11px] font-normal ${hasProductName ? 'text-sky-200/90' : 'text-zinc-400'}`}>Nome curto (editável)</span>
           </label>
           <input
             type="text"
             value={form.productName}
             onChange={(e) => handleProductNameChange(e.target.value)}
             placeholder="Digite ou confira o nome do produto..."
-            className={`w-full px-3.5 py-2 rounded-xl text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-colors ${
+            className={`w-full px-3.5 py-2 rounded-xl text-sm text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-sky-400 transition-colors ${
               hasProductName
-                ? 'bg-zinc-900 border border-emerald-500/30 focus:border-emerald-500'
+                ? 'bg-slate-950/80 border border-sky-400/60 focus:border-sky-300'
                 : 'bg-zinc-950 border border-zinc-700/80 focus:border-purple-500'
             }`}
           />
         </div>
 
         {/* 3. Tipo de Produto (Roupas vs Calçados) */}
-        <div className="md:col-span-4 p-3 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-1.5">
+        <div className="md:col-span-4 p-3.5 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-1.5">
           <label className="text-xs font-bold text-zinc-200 flex items-center justify-between">
             <span>3. Tipo de Produto</span>
             <span className="text-[11px] text-zinc-400 font-normal">Modo</span>
@@ -344,7 +348,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
 
         {/* 4. Categoria de Roupa (quando roupas) */}
         {form.productMode === 'apparel' && (
-          <div className="md:col-span-4 p-3 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-1.5">
+          <div className="md:col-span-4 p-3.5 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-1.5">
             <label className="text-xs font-bold text-zinc-200 flex items-center justify-between">
               <span>4. Categoria</span>
               <span className="text-[11px] text-zinc-400 font-normal">Tipo da peça</span>
@@ -369,7 +373,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
         )}
 
         {/* 5. Faixa Etária (Adulto / Infantil / Idoso) */}
-        <div className={`${form.productMode === 'apparel' ? 'md:col-span-4' : 'md:col-span-6'} p-3 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-1.5`}>
+        <div className={`${form.productMode === 'apparel' ? 'md:col-span-4' : 'md:col-span-6'} p-3.5 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-1.5`}>
           <label className="text-xs font-bold text-zinc-200 flex items-center justify-between">
             <span>5. Faixa Etária</span>
             {form.ageMode === 'child' && (
@@ -417,7 +421,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
         </div>
 
         {/* 6. Gênero (Mulher / Homem) */}
-        <div className={`${form.productMode === 'apparel' ? 'md:col-span-4' : 'md:col-span-6'} p-3 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-1.5`}>
+        <div className={`${form.productMode === 'apparel' ? 'md:col-span-4' : 'md:col-span-6'} p-3.5 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-1.5`}>
           <label className="text-xs font-bold text-zinc-200">6. Gênero</label>
           <div className="grid grid-cols-2 gap-2 bg-zinc-950 p-1 rounded-xl border border-zinc-800">
             <button
@@ -447,7 +451,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
 
         {/* 7. Tipo de Corpo (Plus size / Normal / Magro) */}
         {form.ageMode !== 'child' && (
-          <div className="md:col-span-6 p-3 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-1.5">
+          <div className="md:col-span-6 p-3.5 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-1.5">
             <label className="text-xs font-bold text-zinc-200">7. Tipo de Corpo do Modelo</label>
             <div className="grid grid-cols-3 gap-1.5 bg-zinc-950 p-1 rounded-xl border border-zinc-800">
               <button
@@ -488,7 +492,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
         )}
 
         {/* 8. Controle de Ambiente Natural (Toggle / Checkbox com Destaque Visual) */}
-        <div className={`${form.ageMode === 'child' ? 'md:col-span-12' : 'md:col-span-6'} p-3 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-1.5`}>
+        <div className={`${form.ageMode === 'child' ? 'md:col-span-12' : 'md:col-span-6'} p-3.5 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-1.5`}>
           <label className="text-xs font-bold text-zinc-200 flex items-center justify-between">
             <span className="flex items-center gap-1.5">
               <TreePine className="w-3.5 h-3.5 text-emerald-400" />
@@ -529,22 +533,26 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
 
         {/* 9. Cores do Produto (1 a 3 cores) */}
         <div
-          className={`md:col-span-12 p-3.5 rounded-2xl border transition-all space-y-2.5 ${
+          className={`md:col-span-12 p-4 rounded-2xl transition-all duration-300 space-y-2.5 ${
             hasCor1Photo
-              ? 'bg-zinc-800/80 border-emerald-500/50 shadow-sm shadow-emerald-950/20'
-              : 'bg-zinc-900/70 border-zinc-800/90'
+              ? 'bg-gradient-to-br from-sky-900/80 via-blue-900/75 to-slate-800/90 border-2 border-sky-400 shadow-lg shadow-sky-900/50 ring-2 ring-sky-400/40'
+              : 'bg-zinc-900/70 border border-zinc-800/90'
           }`}
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
-              <label className="text-xs font-bold text-zinc-200 flex items-center gap-1.5">
-                <Layers className="w-4 h-4 text-purple-400" />
-                <span>9. Cores do Produto (1 a 3 cores) <strong className="text-rose-400">*</strong></span>
+              <label className="text-xs font-bold flex items-center gap-1.5">
+                <Layers className={`w-4 h-4 ${hasCor1Photo ? 'text-sky-300' : 'text-purple-400'}`} />
+                <span className={hasCor1Photo ? 'text-white' : 'text-zinc-200'}>
+                  9. Cores do Produto (1 a 3 cores) <strong className="text-rose-400">*</strong>
+                </span>
                 {hasCor1Photo && (
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-sky-300" /> Foto Anexada ✓
+                  </span>
                 )}
               </label>
-              <p className="text-[11px] text-zinc-400 mt-0.5">
+              <p className={`text-[11px] mt-0.5 ${hasCor1Photo ? 'text-sky-200/90' : 'text-zinc-400'}`}>
                 As 3 imagens manterão a <strong>mesma modelo</strong> no mesmo enquadramento sem rosto, mudando exclusivamente a cor.
               </p>
             </div>
@@ -567,16 +575,18 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
               return (
                 <div
                   key={colorItem.id}
-                  className={`p-3 rounded-xl border space-y-2.5 relative group transition-colors ${
+                  className={`p-3 rounded-xl border space-y-2.5 relative group transition-all duration-200 ${
                     isColorFilled
-                      ? 'bg-zinc-900 border-emerald-500/40'
+                      ? 'bg-slate-900/90 border-2 border-sky-400/80 shadow-md shadow-sky-950/40 ring-1 ring-sky-400/30'
                       : 'bg-zinc-950/90 border-zinc-800'
                   }`}
                 >
                   <div className="flex items-center justify-between text-xs font-bold text-zinc-300">
                     <span className="flex items-center gap-1.5">
-                      <span>Cor {idx + 1} {isCor1 ? '— Foto Principal *' : '— Amostra / Foto'}</span>
-                      {isColorFilled && <CheckCircle2 className="w-3 h-3 text-emerald-400" />}
+                      <span className={isColorFilled ? 'text-white' : ''}>
+                        Cor {idx + 1} {isCor1 ? '— Foto Principal *' : '— Amostra / Foto'}
+                      </span>
+                      {isColorFilled && <CheckCircle2 className="w-3.5 h-3.5 text-sky-400" />}
                     </span>
                     {!isCor1 && (
                       <button
@@ -595,9 +605,9 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
                     onClick={() => fileInputRefs.current[colorItem.id]?.click()}
                     className={`h-24 rounded-lg border-2 border-dashed flex flex-col items-center justify-center p-2 text-center transition-colors cursor-pointer relative overflow-hidden ${
                       colorItem.photoBase64
-                        ? 'border-emerald-500/50 bg-zinc-950'
+                        ? 'border-sky-400/70 bg-zinc-950'
                         : isCor1
-                        ? 'border-purple-500/50 hover:border-purple-400 bg-purple-500/5'
+                        ? 'border-sky-400/70 hover:border-sky-300 bg-sky-500/10'
                         : 'border-zinc-700 hover:border-zinc-600 bg-zinc-950/50'
                     }`}
                   >
@@ -646,16 +656,16 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
                           ? 'Detectando cor...'
                           : `Nome da cor ${idx + 1}...`
                       }
-                      className={`w-full px-2 py-1.5 bg-zinc-950 border rounded-lg text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 font-sans transition-all ${
+                      className={`w-full px-2 py-1.5 bg-zinc-950 border rounded-lg text-xs text-white placeholder-zinc-400 focus:outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-400 font-sans transition-all ${
                         detectingColorIds[colorItem.id]
-                          ? 'border-purple-500/80 pr-7 text-purple-200 animate-pulse bg-purple-950/20'
+                          ? 'border-sky-400/80 pr-7 text-sky-200 animate-pulse bg-sky-950/30'
                           : colorItem.name.trim()
-                          ? 'border-emerald-500/40'
+                          ? 'border-sky-400/60'
                           : 'border-zinc-700/80'
                       }`}
                     />
                     {detectingColorIds[colorItem.id] && (
-                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-purple-400">
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-sky-400">
                         <Sparkles className="w-3.5 h-3.5 animate-spin" />
                       </div>
                     )}
@@ -668,22 +678,24 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
 
         {/* 10. Tecido estica? (Controle Compacto e Claro) */}
         <div
-          className={`md:col-span-6 p-3 rounded-2xl border transition-all space-y-1.5 ${
+          className={`md:col-span-6 p-3.5 rounded-2xl transition-all duration-300 space-y-1.5 ${
             isStretchSelected
-              ? 'bg-zinc-800/80 border-emerald-500/50 shadow-sm shadow-emerald-950/20'
-              : 'bg-zinc-900/70 border-zinc-800/90'
+              ? 'bg-gradient-to-br from-sky-900/80 via-blue-900/75 to-slate-800/90 border-2 border-sky-400 shadow-lg shadow-sky-900/50 ring-2 ring-sky-400/40'
+              : 'bg-zinc-900/70 border border-zinc-800/90'
           }`}
         >
-          <label className="text-xs font-bold text-zinc-200 flex items-center justify-between">
+          <label className="text-xs font-bold flex items-center justify-between">
             <span className="flex items-center gap-1.5">
-              <span>10. Tecido/Material estica?</span>
+              <span className={isStretchSelected ? 'text-white' : 'text-zinc-200'}>10. Tecido/Material estica?</span>
               <strong className="text-rose-400">*</strong>
               {isStretchSelected && (
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-sky-300" /> Definido ✓
+                </span>
               )}
             </span>
             {form.stretch !== null && (
-              <span className="text-[11px] text-emerald-300 font-semibold bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-500/30">
+              <span className="text-[11px] text-sky-100 font-semibold bg-sky-950/80 px-2 py-0.5 rounded-md border border-sky-400/40">
                 {form.stretch ? 'Sim (com elasticidade)' : 'Não (sem elastano / rígido)'}
               </span>
             )}
