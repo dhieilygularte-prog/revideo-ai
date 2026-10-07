@@ -53,7 +53,7 @@ export function buildAniaImage1Prompt(params: {
   } else {
     if (gender === 'Mulher') {
       if (body === 'Plus size') {
-        pessoaDesc = 'mulher adulta brasileira plus size, corpo real e natural de mulher gordinha do dia a dia: barriga, quadril, coxas e braços mais cheios, sem idealização e sem exagero, anatomia realista';
+        pessoaDesc = 'mulher adulta brasileira com corpo Plus Size autêntico, encorpado e curvilíneo real (tamanho 48 a 52 / G1 a G3 / biotipo gordinha real): quadris largos e volumosos, coxas bem grossas e volumosas, pernas encorpadas, cintura e tronco largos com curvas cheias e naturais, braços macios e encorpados, proporções autênticas de mulher plus size brasileira real com curvas generosas. PROIBIDO gerar modelo magra, esbelta ou apenas levemente curvilínea: o corpo deve ser verdadeiramente plus size / curvy encorpado e com volume corporal realista e proporcional';
       } else if (body === 'Magro') {
         pessoaDesc = 'mulher adulta brasileira de porte magro/esguio e natural do dia a dia, anatomia realista e sem exageros';
       } else {
@@ -61,7 +61,7 @@ export function buildAniaImage1Prompt(params: {
       }
     } else {
       if (body === 'Plus size') {
-        pessoaDesc = 'homem adulto brasileiro plus size, corpo real e natural de homem gordinho do dia a dia, barriga e quadril mais largos, anatomia realista';
+        pessoaDesc = 'homem adulto brasileiro com corpo Plus Size autêntico, encorpado e porte físico largo/cheio (tamanho G1 a G3 / manequim grande): tronco e abdômen volumosos, braços e pernas encorpados e largos, proporções realistas de homem plus size brasileiro real. PROIBIDO gerar modelo magro ou atlético';
       } else if (body === 'Magro') {
         pessoaDesc = 'homem adulto brasileiro de porte magro/esguio e natural do dia a dia, anatomia realista';
       } else {
@@ -85,8 +85,8 @@ export function buildAniaImage1Prompt(params: {
   const parteSuperior =
     !isChild && !isFootwear && tipo === 'INFERIOR'
       ? gender === 'Mulher'
-        ? '\nPARTE SUPERIOR: blusa básica lisa, discreta, sem estampa, por dentro da peça quando favorecer a visualização do cós, simples, para toda a atenção ficar na peça principal.'
-        : '\nPARTE SUPERIOR: camiseta básica lisa, discreta, sem estampa, simples, para toda a atenção ficar na peça principal.'
+        ? '\nPARTE SUPERIOR OBRIGATÓRIA: blusa básica lisa elegante e discreta (ex: branca, off-white ou preta neutra) usada POR DENTRO do cós do shorts/calça/saia ou cobrindo totalmente a cintura. REGRA INVIOLÁVEL: NUNCA DEIXAR BARRIGA DE FORA (zero barriga/umbigo expostos, estritamente proibido cropped curto que deixe a barriga à mostra). A blusa deve cobrir 100% o abdômen e a linha da cintura.'
+        : '\nPARTE SUPERIOR OBRIGATÓRIA: camiseta básica lisa discreta e neutra cobrindo totalmente a cintura e o abdômen, sem barriga de fora.'
       : '';
 
   const detalhesList =
@@ -120,6 +120,7 @@ ESTILO: fotografia real de celular moderno, alta definição, textura verdadeira
 PROIBIÇÕES ABSOLUTAS:
 - NUNCA MOSTRAR O ROSTO (estritamente do pescoço para baixo ou pés).
 - PROIBIDO GERAR CRIANÇAS (em modo infantil, apenas mãos de adultos em POV apresentando a peça).
+- NUNCA DEIXAR BARRIGA DE FORA (ZERO EXPOSED MIDRIFF): Mesmo que a foto de referência original mostre a modelo com barriga ou umbigo de fora, na imagem gerada o abdômen DEVE estar sempre 100% coberto por uma blusa combinando (por dentro do cós ou cobrindo a cintura). Nunca gerar barriga à mostra.
 - ZERO TATUAGENS em homem ou mulher.
 - Sem textos, logos digitais, marcas d'água ou banners promocionais.`;
 }

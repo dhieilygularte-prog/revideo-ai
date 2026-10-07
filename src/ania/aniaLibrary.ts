@@ -571,6 +571,14 @@ export function detectBody(name?: string, info?: string): AniaBody | null {
     return 'Normal';
   }
 
+  // Roupas: por padrão do Método Ania, é sempre Plus size
+  if (detectProductMode(name, info) === 'apparel') {
+    if (['magro', 'magra', 'esbelta', 'slim', 'fitness'].some((kw) => new RegExp(`\\b${kw}`, 'i').test(combined))) {
+      return 'Magro';
+    }
+    return 'Plus size';
+  }
+
   if (['plus size', 'plussize', 'plus-size', 'gordinha', 'gordinho', 'curvy', 'tamanhos grandes', 'g1', 'g2', 'g3', 'g4'].some((kw) => combined.includes(kw))) {
     return 'Plus size';
   }

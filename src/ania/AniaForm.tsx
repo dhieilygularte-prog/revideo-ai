@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Sparkles,
   Plus,
@@ -11,6 +11,8 @@ import {
   Shirt,
   User,
   Users,
+  Mic,
+  MicOff,
 } from 'lucide-react';
 import {
   AniaFormState,
@@ -44,6 +46,93 @@ interface AniaFormProps {
 export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormProps) {
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
   const [detectingColorIds, setDetectingColorIds] = useState<{ [key: string]: boolean }>({});
+  const [activeSpeechField, setActiveSpeechField] = useState<'instructions' | 'speech' | null>(null);
+  const recognitionRef = useRef<any>(null);
+  const instructionsTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const speechTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // Auto-expansão dinâmica das caixas de texto conforme o conteúdo cresce
+  useEffect(() => {
+    if (instructionsTextareaRef.current) {
+      instructionsTextareaRef.current.style.height = 'auto';
+      instructionsTextareaRef.current.style.height = `${Math.max(64, instructionsTextareaRef.current.scrollHeight)}px`;
+    }
+  }, [form.additionalInstructions]);
+
+  useEffect(() => {
+    if (speechTextareaRef.current) {
+      speechTextareaRef.current.style.height = 'auto';
+      speechTextareaRef.current.style.height = `${Math.max(64, speechTextareaRef.current.scrollHeight)}px`;
+    }
+  }, [form.customSpeech]);
+
+  // Função para alternar gravação de voz (Ditado)
+  const toggleSpeechRecognition = (field: 'instructions' | 'speech') => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert('O recurso de reconhecimento de voz não é suportado pelo seu navegador.');
+      return;
+    }
+
+    if (activeSpeechField === field) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        recognitionRef.current = null;
+      }
+      setActiveSpeechField(null);
+      return;
+    }
+
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'pt-BR';
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      recognition.onresult = (event: any) => {
+        let finalTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript + ' ';
+          }
+        }
+
+        if (finalTranscript) {
+          if (field === 'instructions') {
+            onChange((prev) => ({
+              ...prev,
+              additionalInstructions: (prev.additionalInstructions ? prev.additionalInstructions.trim() + ' ' : '') + finalTranscript.trim(),
+            }));
+          } else {
+            onChange((prev) => ({
+              ...prev,
+              customSpeech: (prev.customSpeech ? prev.customSpeech.trim() + ' ' : '') + finalTranscript.trim(),
+            }));
+          }
+        }
+      };
+
+      recognition.onerror = (event: any) => {
+        console.warn('Speech recognition error:', event.error);
+        setActiveSpeechField(null);
+      };
+
+      recognition.onend = () => {
+        setActiveSpeechField((current) => (current === field ? null : current));
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+      setActiveSpeechField(field);
+    } catch (err) {
+      console.error('Erro ao iniciar reconhecimento de voz:', err);
+      setActiveSpeechField(null);
+    }
+  };
 
   const handleProductNameChange = (val: string) => {
     onChange((prev) => {
@@ -81,8 +170,8 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
         genderSource: prev.genderSource === 'manual' ? 'manual' : (detectedGen ? 'local_detect' : undefined),
         ageMode: prev.ageModeSource === 'manual' ? prev.ageMode : (detectedAge || prev.ageMode),
         ageModeSource: prev.ageModeSource === 'manual' ? 'manual' : (detectedAge ? 'local_detect' : undefined),
-        body: prev.bodySource === 'manual' ? prev.body : (isFootwear ? 'Normal' : (detectedBodyVal || prev.body)),
-        bodySource: prev.bodySource === 'manual' ? 'manual' : (isFootwear || detectedBodyVal ? 'local_detect' : undefined),
+        body: prev.bodySource === 'manual' ? prev.body : (isFootwear ? 'Normal' : (detectedBodyVal || 'Plus size')),
+        bodySource: prev.bodySource === 'manual' ? 'manual' : (isFootwear || detectedProdMode || detectedBodyVal ? 'local_detect' : undefined),
         naturalEnvironment: isFootwear && prev.naturalEnvSource !== 'manual' ? true : prev.naturalEnvironment,
         naturalEnvSource: isFootwear && prev.naturalEnvSource !== 'manual' ? 'local_detect' : prev.naturalEnvSource,
         stretch: prev.stretchSource === 'manual' ? prev.stretch : (isFootwear ? false : (detectedAutoStretch !== null ? detectedAutoStretch : prev.stretch)),
@@ -163,17 +252,17 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
 
       // 6. Detecta Tipo de Corpo
       const detectedBodyVal = detectBody(autoProductName, val);
-      let newBody = isFootwear ? 'Normal' : prev.body;
+      let newBody = isFootwear ? 'Normal' : 'Plus size';
       let newBodySource = prev.bodySource;
       if (prev.bodySource !== 'manual') {
         if (isFootwear) {
           newBody = 'Normal';
           newBodySource = 'local_detect';
-        } else if (detectedBodyVal !== null) {
-          newBody = detectedBodyVal;
+        } else if (detectedProdMode === 'apparel' || detectedBodyVal !== null) {
+          newBody = detectedBodyVal || 'Plus size';
           newBodySource = 'local_detect';
         } else {
-          newBody = 'Normal';
+          newBody = 'Plus size';
           newBodySource = undefined;
         }
       }
@@ -1028,32 +1117,86 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
         </div>
 
         {/* 12. Instruções Adicionais (Opcional) */}
-        <div className="md:col-span-6 p-3 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-1.5">
-          <label className="text-xs font-bold text-zinc-200 flex items-center justify-between">
-            <span>12. Instruções adicionais (Opcional)</span>
-            <span className="text-[11px] text-zinc-500 font-normal">Ajustes específicos</span>
-          </label>
+        <div className="md:col-span-6 p-3.5 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-zinc-200 flex items-center gap-1.5">
+              <span>12. Instruções adicionais (Opcional)</span>
+            </label>
+            <button
+              type="button"
+              onClick={() => toggleSpeechRecognition('instructions')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm ${
+                activeSpeechField === 'instructions'
+                  ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
+                  : 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 border border-zinc-700'
+              }`}
+              title={activeSpeechField === 'instructions' ? 'Parar gravação' : 'Ditar instruções por voz'}
+            >
+              {activeSpeechField === 'instructions' ? (
+                <>
+                  <MicOff className="w-3.5 h-3.5 text-white" />
+                  <span>Ouvindo... (clique p/ parar)</span>
+                </>
+              ) : (
+                <>
+                  <Mic className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Ditar</span>
+                </>
+              )}
+            </button>
+          </div>
           <textarea
+            ref={instructionsTextareaRef}
             value={form.additionalInstructions}
-            onChange={(e) => onChange((prev) => ({ ...prev, additionalInstructions: e.target.value }))}
+            onChange={(e) => {
+              onChange((prev) => ({ ...prev, additionalInstructions: e.target.value }));
+            }}
             rows={2}
             placeholder="Instruções específicas que deseja (detalhe visual, ajuste de cenário, idade exata, etc.)..."
-            className="w-full p-2 bg-zinc-950 border border-zinc-700/80 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 resize-y font-sans leading-relaxed"
+            className="w-full p-2.5 bg-zinc-950 border border-zinc-700/80 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 font-sans leading-relaxed transition-all resize-none overflow-hidden"
+            style={{ minHeight: '64px' }}
           />
         </div>
 
-        {/* 13. Personalizar Falas (Compacto) */}
-        <div className="md:col-span-6 p-3 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-1.5">
-          <label className="text-xs font-bold text-zinc-200 flex items-center justify-between">
-            <span>13. Personalizar falas (Opcional)</span>
-            <span className="text-[11px] text-zinc-500 font-normal">Se vazio, usa acervo validado</span>
-          </label>
+        {/* 13. Personalizar ROTEIRO (opcional) */}
+        <div className="md:col-span-6 p-3.5 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-2">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-zinc-200 flex items-center gap-1.5">
+              <span>13. Personalizar ROTEIRO (opcional)</span>
+            </label>
+            <button
+              type="button"
+              onClick={() => toggleSpeechRecognition('speech')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm ${
+                activeSpeechField === 'speech'
+                  ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
+                  : 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 border border-zinc-700'
+              }`}
+              title={activeSpeechField === 'speech' ? 'Parar gravação' : 'Ditar roteiro por voz'}
+            >
+              {activeSpeechField === 'speech' ? (
+                <>
+                  <MicOff className="w-3.5 h-3.5 text-white" />
+                  <span>Ouvindo... (clique p/ parar)</span>
+                </>
+              ) : (
+                <>
+                  <Mic className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Ditar</span>
+                </>
+              )}
+            </button>
+          </div>
           <textarea
+            ref={speechTextareaRef}
             value={form.customSpeech}
-            onChange={(e) => onChange((prev) => ({ ...prev, customSpeech: e.target.value }))}
+            onChange={(e) => {
+              onChange((prev) => ({ ...prev, customSpeech: e.target.value }));
+            }}
             rows={2}
-            placeholder="Deixe vazio para usar automaticamente a fala campeã do acervo, ou digite seu texto..."
-            className="w-full p-2 bg-zinc-950 border border-zinc-700/80 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 resize-y font-sans leading-relaxed"
+            placeholder="Deixe vazio para usar automaticamente a fala campeã do acervo, ou dite/digite seu roteiro..."
+            className="w-full p-2.5 bg-zinc-950 border border-zinc-700/80 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 font-sans leading-relaxed transition-all resize-none overflow-hidden"
+            style={{ minHeight: '64px' }}
           />
         </div>
 
