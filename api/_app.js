@@ -1,3 +1,5 @@
+import { createRequire as __createRequire } from 'module'; const require = __createRequire(import.meta.url);
+
 // server.ts
 import express from "express";
 import dotenv from "dotenv";
@@ -1153,6 +1155,12 @@ var __filename = fileURLToPath(import.meta.url);
 var __dirname = path.dirname(__filename);
 var app = express();
 var PORT = Number(process.env.PORT) || 3e3;
+app.use((req, _res, next) => {
+  if (req.body && typeof req.body === "object") {
+    req._body = true;
+  }
+  next();
+});
 app.use(express.json({ limit: "60mb" }));
 app.use(express.urlencoded({ extended: true, limit: "60mb" }));
 app.use((req, res, next) => {

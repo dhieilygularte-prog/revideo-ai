@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build && esbuild server.ts --bundle --platform=node --format=esm --packages=external --outfile=api/_app.js",
+    "build": "vite build && esbuild server.ts --bundle --platform=node --format=esm --packages=external --banner:js=\"import { createRequire as __createRequire } from 'module'; const require = __createRequire(import.meta.url);\" --outfile=api/_app.js",
     "start": "NODE_ENV=production tsx server.ts",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit"
