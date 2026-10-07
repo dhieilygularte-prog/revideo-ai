@@ -494,6 +494,52 @@ Retorne estritamente um JSON estruturado:
   }
 
   /**
+   * Extração microscópica de características físicas do produto real via Vision AI
+   */
+  private async extractVisualProductDescription(
+    client: OpenAI,
+    photoDataUrl: string,
+    productType: string,
+    variationName: string
+  ): Promise<string> {
+    const url = photoDataUrl.startsWith('data:') ? photoDataUrl : `data:image/jpeg;base64,${photoDataUrl}`;
+    const candidateModels = ['gpt-4o-mini', 'gpt-4o', 'gpt-5.6-luna'];
+
+    for (const model of candidateModels) {
+      try {
+        const vis = await client.chat.completions.create({
+          model,
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'image_url', image_url: { url } },
+                {
+                  type: 'text',
+                  text: `Analyze this real reference photo of "${productType}" (${variationName}) with extreme physical precision.
+Describe in English in 3 dense, detailed sentences:
+1. Exact product model, cut, silhouette, toe box/collar shape, and proportion.
+2. Exact primary base color, secondary trim/accent colors, lace color, midsole and outsole colors and color blocking.
+3. Physical materials (mesh, leather, suede, rubber, knit) and exact constructive details (stitching lines, sole thickness, tread patterns, eyelets, heel overlays, pull tabs, visible logos/branding).
+IMPORTANT: Completely IGNORE backgrounds, floor, mannequins, people, bonus gift socks, floating shoe insoles, plants, or boxes. Focus 100% EXCLUSIVELY on the physical product itself so an image generator can create an exact 1:1 replica of this real item.`,
+                },
+              ],
+            },
+          ],
+          max_completion_tokens: 350,
+        });
+        const content = vis.choices[0]?.message?.content?.trim();
+        if (content && content.length > 20) {
+          return content;
+        }
+      } catch (err: any) {
+        console.warn(`[OpenAI Provider] Falha na extração de visão com ${model}:`, err?.message);
+      }
+    }
+    return '';
+  }
+
+  /**
    * 3. Geração das Imagens com Múltiplas Fotos Reais de Referência
    * Modelo: gpt-image-2.5-sunburst
    * Parâmetros: quality: 'high', input_fidelity: 'high', size: '1024x1792' (vertical 9:16)
@@ -591,26 +637,7 @@ Retorne estritamente um JSON estruturado:
 
         let garmentSpec = '';
         if (swatchStr) {
-          try {
-            const vis = await client.chat.completions.create({
-              model: OPENAI_BRAIN_MODEL,
-              messages: [
-                {
-                  role: 'user',
-                  content: [
-                    { type: 'image_url', image_url: { url: swatchStr.startsWith('data:') ? swatchStr : `data:image/jpeg;base64,${swatchStr}` } },
-                    {
-                      type: 'text',
-                      text: `Describe in English, in one dense paragraph, ONLY the main product (${productType}) in this photo, strictly ignoring the person, background, mannequin, and completely ignoring any secondary bonus items, floating shoe insoles/palmilhas, gift socks, boxes, plants or accessories: describe the exact main color, texture, material, sole/outsole, laces, stitching, trims, and details of ONLY the main product itself. Do not mention or include any floating accessories or bonus gifts.`,
-                    },
-                  ],
-                },
-              ],
-            });
-            garmentSpec = vis.choices[0]?.message?.content || '';
-          } catch {
-            garmentSpec = '';
-          }
+          garmentSpec = await this.extractVisualProductDescription(client, swatchStr, productType, variationName);
         }
 
         const correctionDirective = correctionPrompt && correctionPrompt.trim()
@@ -635,32 +662,11 @@ IGNORE e NÃO desenhe nenhum brinde, palmilha flutuando ou objeto extra de catá
           }
 
           // Extrai especificação física de alta precisão via Vision AI
-          let productSpec = '';
-          try {
-            const vis = await client.chat.completions.create({
-              model: OPENAI_BRAIN_MODEL,
-              messages: [
-                {
-                  role: 'user',
-                  content: [
-                    { type: 'image_url', image_url: { url: primaryStr.startsWith('data:') ? primaryStr : `data:image/jpeg;base64,${primaryStr}` } },
-                    {
-                      type: 'text',
-                      text: `Analyze this real product reference photo for "${productType}" (${variationName}). Describe in English with extreme physical accuracy in 2 dense sentences: exact shape, silhouette, main color, secondary accents, material texture, sole/midsole/outsole lines (if footwear), collar/waistband/cut (if apparel), stitching, logos, patterns and closures. Ignore backgrounds, mannequins, floating shoe insoles, or gift boxes.`,
-                    },
-                  ],
-                },
-              ],
-              max_tokens: 150,
-            });
-            productSpec = vis.choices[0]?.message?.content || '';
-          } catch {
-            productSpec = '';
-          }
+          const productSpec = await this.extractVisualProductDescription(client, primaryStr, productType, variationName);
 
           const productLockDirective = productSpec
-            ? `\n\n[MANDATORY 1:1 PHYSICAL FIDELITY TO REFERENCE PRODUCT PHOTO]:\nExact physical details of the real item: ${productSpec}\nThe generated image MUST reproduce these exact physical product characteristics, materials, and colors.`
-            : '';
+            ? `\n\n[MANDATORY 1:1 PHYSICAL FIDELITY TO REFERENCE PRODUCT PHOTO]:\nExact physical details of the real item in reference photo: ${productSpec}\nThe generated image MUST faithfully reproduce these exact physical product characteristics, materials, sole pattern, and colors.`
+            : `\n\n[MANDATORY 1:1 PHYSICAL FIDELITY TO REFERENCE PRODUCT PHOTO]:\nFaithfully replicate the exact ${productType} shown in the uploaded reference photo, including materials, shape, silhouette, and colors of "${variationName}".`;
 
           effectivePrompt = `${cleanPrompt}${productLockDirective}`;
         }
