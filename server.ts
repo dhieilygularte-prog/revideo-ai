@@ -1478,29 +1478,39 @@ Responda ESTRITAMENTE em UMA ÚNICA PALAVRA da cor básica em português, sem po
     // 1. Provedor OpenAI
     const activeProfile = aiProfile || getRequestAIProfile(req);
     if (activeProfile === 'openai' && openAIProvider.isConfigured()) {
-      try {
-        const client = (openAIProvider as any).getClient();
-        const completion = await client.chat.completions.create({
-          model: OPENAI_BRAIN_MODEL,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                { type: 'image_url', image_url: { url: cleanB64 } },
-                { type: 'text', text: promptText },
-              ],
-            },
-          ],
-          max_tokens: 60,
-        });
+      const client = (openAIProvider as any).getClient();
+      for (const visionModel of ['gpt-4o-mini', 'gpt-4o', 'gpt-5.6-luna', OPENAI_BRAIN_MODEL]) {
+        try {
+          const params: any = {
+            model: visionModel,
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  { type: 'image_url', image_url: { url: cleanB64 } },
+                  { type: 'text', text: promptText },
+                ],
+              },
+            ],
+          };
 
-        const rawColor = completion.choices[0]?.message?.content?.trim();
-        if (rawColor) {
-          const cleanColor = simplifyToSingleColorWord(rawColor);
-          return res.json({ success: true, color: cleanColor });
+          if (visionModel.startsWith('gpt-5')) {
+            params.max_completion_tokens = 60;
+          } else {
+            params.max_tokens = 60;
+          }
+
+          const completion = await client.chat.completions.create(params);
+          const rawColor = completion.choices[0]?.message?.content?.trim();
+          if (rawColor) {
+            const cleanColor = simplifyToSingleColorWord(rawColor);
+            if (cleanColor) {
+              return res.json({ success: true, color: cleanColor });
+            }
+          }
+        } catch (err: any) {
+          console.warn(`Erro ao detectar cor via OpenAI (${visionModel}):`, err?.message || err);
         }
-      } catch (err: any) {
-        console.warn('Erro ao detectar cor via OpenAI:', err?.message || err);
       }
     }
 

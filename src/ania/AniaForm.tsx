@@ -304,18 +304,23 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
         </div>
 
         {/* 3. Tipo de Produto (Roupas vs Calçados) */}
-        <div className="md:col-span-4 p-3.5 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-1.5">
-          <label className="text-xs font-bold text-zinc-200 flex items-center justify-between">
-            <span>3. Tipo de Produto</span>
-            <span className="text-[11px] text-zinc-400 font-normal">Modo</span>
+        <div className="md:col-span-4 p-3.5 rounded-2xl bg-gradient-to-br from-sky-900/80 via-blue-900/75 to-slate-800/90 border-2 border-sky-400 shadow-lg shadow-sky-900/50 ring-2 ring-sky-400/40 text-white space-y-1.5 transition-all duration-300">
+          <label className="text-xs font-bold text-white flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+              <span>3. Tipo de Produto</span>
+              <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5 text-sky-300" /> Ativo ✓
+              </span>
+            </span>
+            <span className="text-[11px] text-sky-200/90 font-normal">Modo</span>
           </label>
-          <div className="grid grid-cols-2 gap-2 bg-zinc-950 p-1 rounded-xl border border-zinc-800">
+          <div className="grid grid-cols-2 gap-2 bg-slate-950/80 p-1 rounded-xl border border-sky-400/40">
             <button
               type="button"
               onClick={() => onChange((prev) => ({ ...prev, productMode: 'apparel' }))}
               className={`py-2 px-1 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                 form.productMode === 'apparel'
-                  ? 'bg-purple-600 text-white shadow-md'
+                  ? 'bg-sky-500 text-white shadow-md'
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
@@ -336,7 +341,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
               }
               className={`py-2 px-1 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                 form.productMode === 'footwear'
-                  ? 'bg-purple-600 text-white shadow-md'
+                  ? 'bg-sky-500 text-white shadow-md'
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
@@ -348,15 +353,20 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
 
         {/* 4. Categoria de Roupa (quando roupas) */}
         {form.productMode === 'apparel' && (
-          <div className="md:col-span-4 p-3.5 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-1.5">
-            <label className="text-xs font-bold text-zinc-200 flex items-center justify-between">
-              <span>4. Categoria</span>
-              <span className="text-[11px] text-zinc-400 font-normal">Tipo da peça</span>
+          <div className="md:col-span-4 p-3.5 rounded-2xl bg-gradient-to-br from-sky-900/80 via-blue-900/75 to-slate-800/90 border-2 border-sky-400 shadow-lg shadow-sky-900/50 ring-2 ring-sky-400/40 text-white space-y-1.5 transition-all duration-300">
+            <label className="text-xs font-bold text-white flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <span>4. Categoria</span>
+                <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-sky-300" /> Ativo ✓
+                </span>
+              </span>
+              <span className="text-[11px] text-sky-200/90 font-normal">Tipo da peça</span>
             </label>
             <select
               value={form.category}
               onChange={(e) => onChange((prev) => ({ ...prev, category: e.target.value as AniaCategory }))}
-              className="w-full px-3 py-2 bg-zinc-950 border border-zinc-700/80 rounded-xl text-xs text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 cursor-pointer"
+              className="w-full px-3 py-2 bg-slate-950/80 border border-sky-400/60 rounded-xl text-xs text-white focus:outline-none focus:border-sky-300 focus:ring-1 focus:ring-sky-400 cursor-pointer"
             >
               <option value="AUTO">✨ Automático (IA detecta)</option>
               <option value="SHORT_SAIA">Short saia</option>
@@ -373,22 +383,29 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
         )}
 
         {/* 5. Faixa Etária (Adulto / Infantil / Idoso) */}
-        <div className={`${form.productMode === 'apparel' ? 'md:col-span-4' : 'md:col-span-6'} p-3.5 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-1.5`}>
-          <label className="text-xs font-bold text-zinc-200 flex items-center justify-between">
-            <span>5. Faixa Etária</span>
-            {form.ageMode === 'child' && (
-              <span className="text-[10px] text-amber-400 font-medium">
+        <div className={`${form.productMode === 'apparel' ? 'md:col-span-4' : 'md:col-span-6'} p-3.5 rounded-2xl bg-gradient-to-br from-sky-900/80 via-blue-900/75 to-slate-800/90 border-2 border-sky-400 shadow-lg shadow-sky-900/50 ring-2 ring-sky-400/40 text-white space-y-1.5 transition-all duration-300`}>
+          <label className="text-xs font-bold text-white flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+              <span>5. Faixa Etária</span>
+              <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5 text-sky-300" /> Definido ✓
+              </span>
+            </span>
+            {form.ageMode === 'child' ? (
+              <span className="text-[10px] text-amber-300 font-bold">
                 {form.productMode === 'footwear' ? 'Pés e pernas infantis (sem rosto)' : 'Modo POV Adulto'}
               </span>
+            ) : (
+              <span className="text-[11px] text-sky-200/90 font-normal">Público</span>
             )}
           </label>
-          <div className="grid grid-cols-3 gap-1.5 bg-zinc-950 p-1 rounded-xl border border-zinc-800">
+          <div className="grid grid-cols-3 gap-1.5 bg-slate-950/80 p-1 rounded-xl border border-sky-400/40">
             <button
               type="button"
               onClick={() => onChange((prev) => ({ ...prev, ageMode: 'adult' }))}
               className={`py-2 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
                 form.ageMode === 'adult'
-                  ? 'bg-purple-600 text-white shadow-md'
+                  ? 'bg-sky-500 text-white shadow-md'
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
@@ -399,7 +416,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
               onClick={() => onChange((prev) => ({ ...prev, ageMode: 'child' }))}
               className={`py-2 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
                 form.ageMode === 'child'
-                  ? 'bg-purple-600 text-white shadow-md'
+                  ? 'bg-sky-500 text-white shadow-md'
                   : 'text-zinc-400 hover:text-white'
               }`}
               title={form.productMode === 'footwear' ? 'Pés e pernas infantis sem mostrar rosto' : 'Apresentação em primeira pessoa (POV) com mãos de adulto'}
@@ -411,7 +428,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
               onClick={() => onChange((prev) => ({ ...prev, ageMode: 'senior' }))}
               className={`py-2 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
                 form.ageMode === 'senior'
-                  ? 'bg-purple-600 text-white shadow-md'
+                  ? 'bg-sky-500 text-white shadow-md'
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
@@ -421,15 +438,23 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
         </div>
 
         {/* 6. Gênero (Mulher / Homem) */}
-        <div className={`${form.productMode === 'apparel' ? 'md:col-span-4' : 'md:col-span-6'} p-3.5 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-1.5`}>
-          <label className="text-xs font-bold text-zinc-200">6. Gênero</label>
-          <div className="grid grid-cols-2 gap-2 bg-zinc-950 p-1 rounded-xl border border-zinc-800">
+        <div className={`${form.productMode === 'apparel' ? 'md:col-span-4' : 'md:col-span-6'} p-3.5 rounded-2xl bg-gradient-to-br from-sky-900/80 via-blue-900/75 to-slate-800/90 border-2 border-sky-400 shadow-lg shadow-sky-900/50 ring-2 ring-sky-400/40 text-white space-y-1.5 transition-all duration-300`}>
+          <label className="text-xs font-bold text-white flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+              <span>6. Gênero</span>
+              <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5 text-sky-300" /> Definido ✓
+              </span>
+            </span>
+            <span className="text-[11px] text-sky-200/90 font-normal">{form.gender === 'Homem' ? 'Masculino' : 'Feminino'}</span>
+          </label>
+          <div className="grid grid-cols-2 gap-2 bg-slate-950/80 p-1 rounded-xl border border-sky-400/40">
             <button
               type="button"
               onClick={() => onChange((prev) => ({ ...prev, gender: 'Mulher' }))}
               className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                 form.gender === 'Mulher'
-                  ? 'bg-purple-600 text-white shadow-md'
+                  ? 'bg-sky-500 text-white shadow-md'
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
@@ -440,7 +465,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
               onClick={() => onChange((prev) => ({ ...prev, gender: 'Homem' }))}
               className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                 form.gender === 'Homem'
-                  ? 'bg-purple-600 text-white shadow-md'
+                  ? 'bg-sky-500 text-white shadow-md'
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
@@ -451,9 +476,17 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
 
         {/* 7. Tipo de Corpo (Plus size / Normal / Magro) */}
         {form.ageMode !== 'child' && (
-          <div className="md:col-span-6 p-3.5 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-1.5">
-            <label className="text-xs font-bold text-zinc-200">7. Tipo de Corpo do Modelo</label>
-            <div className="grid grid-cols-3 gap-1.5 bg-zinc-950 p-1 rounded-xl border border-zinc-800">
+          <div className="md:col-span-6 p-3.5 rounded-2xl bg-gradient-to-br from-sky-900/80 via-blue-900/75 to-slate-800/90 border-2 border-sky-400 shadow-lg shadow-sky-900/50 ring-2 ring-sky-400/40 text-white space-y-1.5 transition-all duration-300">
+            <label className="text-xs font-bold text-white flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <span>7. Tipo de Corpo do Modelo</span>
+                <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-sky-300" /> Definido ✓
+                </span>
+              </span>
+              <span className="text-[11px] text-sky-200/90 font-normal">{form.body}</span>
+            </label>
+            <div className="grid grid-cols-3 gap-1.5 bg-slate-950/80 p-1 rounded-xl border border-sky-400/40">
               <button
                 type="button"
                 onClick={() => onChange((prev) => ({ ...prev, body: 'Plus size' }))}
@@ -492,11 +525,14 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
         )}
 
         {/* 8. Controle de Ambiente Natural (Toggle / Checkbox com Destaque Visual) */}
-        <div className={`${form.ageMode === 'child' ? 'md:col-span-12' : 'md:col-span-6'} p-3.5 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-1.5`}>
-          <label className="text-xs font-bold text-zinc-200 flex items-center justify-between">
+        <div className={`${form.ageMode === 'child' ? 'md:col-span-12' : 'md:col-span-6'} p-3.5 rounded-2xl bg-gradient-to-br from-sky-900/80 via-blue-900/75 to-slate-800/90 border-2 border-sky-400 shadow-lg shadow-sky-900/50 ring-2 ring-sky-400/40 text-white space-y-1.5 transition-all duration-300`}>
+          <label className="text-xs font-bold text-white flex items-center justify-between">
             <span className="flex items-center gap-1.5">
               <TreePine className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="text-emerald-300 font-bold">8. Ambiente Natural (Cenário Nativo)</span>
+              <span className="text-white font-bold">8. Ambiente Natural (Cenário Nativo)</span>
+              <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5 text-sky-300" /> Definido ✓
+              </span>
             </span>
             <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border transition-colors ${
               form.naturalEnvironment
@@ -511,7 +547,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
             className={`p-2.5 rounded-xl border-2 flex items-center justify-between cursor-pointer transition-all shadow-sm ${
               form.naturalEnvironment
                 ? 'bg-emerald-950/40 border-emerald-500/60 text-emerald-100 shadow-emerald-950/40 scale-[1.01]'
-                : 'bg-zinc-950 border-zinc-700/80 text-zinc-300 hover:border-emerald-500/40 hover:text-white'
+                : 'bg-slate-950/80 border-sky-400/60 text-white hover:border-emerald-500/40'
             }`}
           >
             <div className="flex items-center gap-2.5">
