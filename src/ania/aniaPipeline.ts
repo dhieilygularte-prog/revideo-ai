@@ -33,6 +33,43 @@ export interface AniaPipelineCallbacks {
   onPartialResult?: (partialResult: AniaResultState) => void;
 }
 
+async function postJson<T = any>(url: string, body: any): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch (netErr: any) {
+    throw new Error(`Falha de conexão com o servidor: ${netErr?.message || netErr}`);
+  }
+
+  const rawText = await res.text();
+  let data: any;
+  try {
+    data = JSON.parse(rawText);
+  } catch (parseErr) {
+    if (!res.ok) {
+      if (res.status === 413) {
+        throw new Error('A foto anexada é muito pesada para o servidor. Tente usar uma imagem mais leve.');
+      }
+      if (res.status === 504 || res.status === 524) {
+        throw new Error('Tempo limite de geração esgotado no servidor. Clique em gerar novamente.');
+      }
+      const cleanMsg = rawText.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 140);
+      throw new Error(`Erro do servidor (${res.status}): ${cleanMsg || res.statusText}`);
+    }
+    throw new Error(`Resposta inválida do servidor: ${rawText.slice(0, 80)}`);
+  }
+
+  if (!res.ok || (data && data.success === false)) {
+    throw new Error(data?.error || `Erro HTTP ${res.status}`);
+  }
+
+  return data as T;
+}
+
 export async function runAniaPipeline(
   form: AniaFormState,
   callbacks?: AniaPipelineCallbacks,
@@ -119,20 +156,15 @@ export async function runAniaPipeline(
     });
 
     try {
-      const planRes = await fetch('/api/ania-planning', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          primaryPhotoBase64: cor1.photoBase64,
-          userPrompt: planningUserMsg,
-          productName: form.productName,
-          category,
-          estica,
-          aiProfile,
-        }),
+      const planJson = await postJson('/api/ania-planning', {
+        primaryPhotoBase64: cor1.photoBase64,
+        userPrompt: planningUserMsg,
+        productName: form.productName,
+        category,
+        estica,
+        aiProfile,
       });
 
-      const planJson = await planRes.json();
       if (planJson.success && planJson.data) {
         const rawFala = planJson.data.fala || falasSelection.selected.t;
         const adaptedFala = ensureProductNameInSpeech(rawFala, form.productName, normalizedColors, form.gender);
@@ -188,46 +220,36 @@ export async function runAniaPipeline(
   });
 
   const img1Promise = (async (): Promise<{ url: string; audit: any }> => {
-    const img1Res = await fetch('/api/generate-scene-image', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        prompt: img1Prompt,
-        productPhotoBase64: normalizedColors[0].photoBase64,
-        productPhotosBase64: [normalizedColors[0].photoBase64].filter(Boolean),
-        variationName: normalizedColors[0].name,
-        productType: form.productName,
-        targetAngle: 'front',
-        location: scenarioDesc,
-        actionDescription: ageMode === 'child'
-          ? 'Mãos adultas em POV segurando e apresentando a peça'
-          : productMode === 'footwear'
-          ? 'Pés calçando o produto em ângulo frontal'
-          : 'Em pé de frente, postura natural sem rosto',
-        additionalInstructions: form.additionalInstructions,
-        aiProfile,
-      }),
+    const img1Json = await postJson('/api/generate-scene-image', {
+      prompt: img1Prompt,
+      productPhotoBase64: normalizedColors[0].photoBase64,
+      productPhotosBase64: [normalizedColors[0].photoBase64].filter(Boolean),
+      variationName: normalizedColors[0].name,
+      productType: form.productName,
+      targetAngle: 'front',
+      location: scenarioDesc,
+      actionDescription: ageMode === 'child'
+        ? 'Mãos adultas em POV segurando e apresentando a peça'
+        : productMode === 'footwear'
+        ? 'Pés calçando o produto em ângulo frontal'
+        : 'Em pé de frente, postura natural sem rosto',
+      additionalInstructions: form.additionalInstructions,
+      aiProfile,
     });
 
-    const img1Json = await img1Res.json();
     if (!img1Json.success || !img1Json.imageUrl) {
       throw new Error(img1Json.error || 'Falha ao gerar Imagem 1');
     }
 
     let img1Audit: any = null;
     try {
-      const auditRes = await fetch('/api/audit-image-fidelity', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          generatedImageBase64: img1Json.imageUrl,
-          referencePhotos: [normalizedColors[0].photoBase64].filter(Boolean),
-          variationName: normalizedColors[0].name,
-          role: `Imagem 1: ${normalizedColors[0].name}`,
-          aiProfile,
-        }),
+      const auditJson = await postJson('/api/audit-image-fidelity', {
+        generatedImageBase64: img1Json.imageUrl,
+        referencePhotos: [normalizedColors[0].photoBase64].filter(Boolean),
+        variationName: normalizedColors[0].name,
+        role: `Imagem 1: ${normalizedColors[0].name}`,
+        aiProfile,
       });
-      const auditJson = await auditRes.json();
       if (auditJson.success && auditJson.audit) {
         img1Audit = auditJson.audit;
       }
@@ -416,45 +438,35 @@ export async function runAniaPipeline(
     });
 
     try {
-      const res = await fetch('/api/generate-scene-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: colorSwapPrompt,
-          modelReferenceBase64: img1Url, // 1ª imagem = Imagem 1 gerada (BASE OBRIGATÓRIA)
-          productPhotoBase64: col.photoBase64 || undefined, // 2ª imagem = amostra da cor (SÓ REFERÊNCIA DE COR)
-          productPhotosBase64: [col.photoBase64].filter(Boolean),
-          variationName: col.name,
-          productType: form.productName,
-          targetAngle: 'front',
-          location: scenarioDesc,
-          actionDescription: `Mesma pessoa, mesma pose, mesmo quarto e mesmo enquadramento da Imagem 1, alterando exclusivamente a cor do ${form.productName} para ${col.name}`,
-          additionalInstructions: form.additionalInstructions,
-          aiProfile,
-        }),
+      const json = await postJson<{ success: boolean; imageUrl: string; error?: string }>('/api/generate-scene-image', {
+        prompt: colorSwapPrompt,
+        modelReferenceBase64: img1Url, // 1ª imagem = Imagem 1 gerada (BASE OBRIGATÓRIA)
+        productPhotoBase64: col.photoBase64 || undefined, // 2ª imagem = amostra da cor (SÓ REFERÊNCIA DE COR)
+        productPhotosBase64: [col.photoBase64].filter(Boolean),
+        variationName: col.name,
+        productType: form.productName,
+        targetAngle: 'front',
+        location: scenarioDesc,
+        actionDescription: `Mesma pessoa, mesma pose, mesmo quarto e mesmo enquadramento da Imagem 1, alterando exclusivamente a cor do ${form.productName} para ${col.name}`,
+        additionalInstructions: form.additionalInstructions,
+        aiProfile,
       });
 
-      const json = await res.json();
-      if (!json.success || !json.imageUrl) {
+      if (!json.imageUrl) {
         throw new Error(json.error || `Falha ao gerar Imagem ${colorIdx + 1}`);
       }
 
       // Verificação de fidelidade: comparar com a Imagem 1 (tudo igual, exceto a cor)
       let audit: any = null;
       try {
-        const auditRes = await fetch('/api/audit-image-fidelity', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            generatedImageBase64: json.imageUrl,
-            referencePhotos: [img1Url], // Comparar com a Imagem 1 gerada!
-            variationName: col.name,
-            role: `Imagem ${colorIdx + 1}: ${col.name}`,
-            aiProfile,
-          }),
+        const auditJson = await postJson<{ success: boolean; audit?: any }>('/api/audit-image-fidelity', {
+          generatedImageBase64: json.imageUrl,
+          referencePhotos: [img1Url], // Comparar com a Imagem 1 gerada!
+          variationName: col.name,
+          role: `Imagem ${colorIdx + 1}: ${col.name}`,
+          aiProfile,
         });
-        const auditJson = await auditRes.json();
-        if (auditJson.success && auditJson.audit) {
+        if (auditJson.audit) {
           audit = auditJson.audit;
         }
       } catch (auditErr) {
@@ -579,50 +591,40 @@ export async function regenerateAniaSingleImage(params: {
         category: result.planning.categoria,
       });
 
-  const res = await fetch('/api/generate-scene-image', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      prompt,
-      productPhotoBase64: effectivePhoto,
-      productPhotosBase64: effectivePhoto ? [effectivePhoto] : [],
-      modelReferenceBase64: isImage1 ? undefined : result.images[0]?.imageUrl,
-      variationName: col.name,
-      productType: form.productName,
-      targetAngle: 'front',
-      location: scenarioDesc,
-      actionDescription: isImage1
-        ? (ageMode === 'child' ? 'Mãos adultas em POV segurando e apresentando a peça' : productMode === 'footwear' ? 'Pés calçando o produto em ângulo frontal' : 'Em pé de frente, postura natural sem rosto')
-        : (ageMode === 'child' ? `Mesmas mãos em POV da Imagem 1, apresentando o produto infantil na cor ${col.name}` : productMode === 'footwear' ? `Mesma pessoa e pés da Imagem 1, alterando somente o calçado para a cor ${col.name}` : `Mesma modelo e pose da Imagem 1 sem rosto, vestindo a ${result.planning.peca || form.productName} na cor ${col.name}`),
-      correctionPrompt: customCorrection,
-      additionalInstructions: form.additionalInstructions,
-      aiProfile,
-    }),
+  const data = await postJson<{ success: boolean; imageUrl: string; error?: string }>('/api/generate-scene-image', {
+    prompt,
+    productPhotoBase64: effectivePhoto,
+    productPhotosBase64: effectivePhoto ? [effectivePhoto] : [],
+    modelReferenceBase64: isImage1 ? undefined : result.images[0]?.imageUrl,
+    variationName: col.name,
+    productType: form.productName,
+    targetAngle: 'front',
+    location: scenarioDesc,
+    actionDescription: isImage1
+      ? (ageMode === 'child' ? 'Mãos adultas em POV segurando e apresentando a peça' : productMode === 'footwear' ? 'Pés calçando o produto em ângulo frontal' : 'Em pé de frente, postura natural sem rosto')
+      : (ageMode === 'child' ? `Mesmas mãos em POV da Imagem 1, apresentando o produto infantil na cor ${col.name}` : productMode === 'footwear' ? `Mesma pessoa e pés da Imagem 1, alterando somente o calçado para a cor ${col.name}` : `Mesma modelo e pose da Imagem 1 sem rosto, vestindo a ${result.planning.peca || form.productName} na cor ${col.name}`),
+    correctionPrompt: customCorrection,
+    additionalInstructions: form.additionalInstructions,
+    aiProfile,
   });
 
-  const data = await res.json();
-  if (!data.success || !data.imageUrl) {
+  if (!data.imageUrl) {
     throw new Error(data.error || 'Falha ao refazer imagem.');
   }
 
   // Audit: Se for Imagem 2 ou 3, compara com a Imagem 1 gerada mestre
   let audit: any = null;
   try {
-    const auditRes = await fetch('/api/audit-image-fidelity', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        generatedImageBase64: data.imageUrl,
-        referencePhotos: isImage1
-          ? [col.photoBase64 || form.colors[0]?.photoBase64].filter(Boolean)
-          : [result.images[0]?.imageUrl].filter(Boolean),
-        variationName: col.name,
-        role: `Imagem ${imageIndex + 1}: ${col.name}`,
-        aiProfile,
-      }),
+    const auditJson = await postJson<{ success: boolean; audit?: any }>('/api/audit-image-fidelity', {
+      generatedImageBase64: data.imageUrl,
+      referencePhotos: isImage1
+        ? [col.photoBase64 || form.colors[0]?.photoBase64].filter(Boolean)
+        : [result.images[0]?.imageUrl].filter(Boolean),
+      variationName: col.name,
+      role: `Imagem ${imageIndex + 1}: ${col.name}`,
+      aiProfile,
     });
-    const auditJson = await auditRes.json();
-    if (auditJson.success && auditJson.audit) {
+    if (auditJson.audit) {
       audit = auditJson.audit;
     }
   } catch (err) {

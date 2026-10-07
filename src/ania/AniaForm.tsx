@@ -28,6 +28,7 @@ import {
   detectGender,
   detectAgeMode,
   extractDominantColorFromImage,
+  compressAndResizeImage,
 } from './aniaLibrary';
 import { VeoModelMode } from '../types';
 
@@ -142,59 +143,61 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
     }));
   };
 
-  const handleColorPhotoUpload = (id: string, file: File) => {
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const base64 = e.target?.result as string;
-      if (base64) {
-        // 1. Atualiza a foto imediatamente no estado
-        onChange((prev) => ({
-          ...prev,
-          colors: prev.colors.map((c) =>
-            c.id === id
-              ? {
-                  ...c,
-                  photoBase64: base64,
-                  fileName: file.name,
-                }
-              : c
-          ),
-        }));
+  const handleColorPhotoUpload = async (id: string, file: File) => {
+    try {
+      const base64 = await compressAndResizeImage(file, 1536, 0.88);
+      if (!base64) return;
 
-        // 2. Extração instantânea de cor no navegador (fallback garantido em 50ms)
-        try {
-          const instantColor = await extractDominantColorFromImage(base64);
-          if (instantColor) {
-            onChange((prev) => ({
-              ...prev,
-              colors: prev.colors.map((c) =>
-                c.id === id
-                  ? {
-                      ...c,
-                      name: c.name.trim() ? c.name : instantColor,
-                    }
-                  : c
-              ),
-            }));
-          }
-        } catch (colorErr) {
-          console.warn('Falha na extração de cor local:', colorErr);
+      // 1. Atualiza a foto imediatamente no estado
+      onChange((prev) => ({
+        ...prev,
+        colors: prev.colors.map((c) =>
+          c.id === id
+            ? {
+                ...c,
+                photoBase64: base64,
+                fileName: file.name,
+              }
+            : c
+        ),
+      }));
+
+      // 2. Extração instantânea de cor no navegador (fallback garantido em 50ms)
+      try {
+        const instantColor = await extractDominantColorFromImage(base64);
+        if (instantColor) {
+          onChange((prev) => ({
+            ...prev,
+            colors: prev.colors.map((c) =>
+              c.id === id
+                ? {
+                    ...c,
+                    name: c.name.trim() ? c.name : instantColor,
+                  }
+                : c
+            ),
+          }));
         }
+      } catch (colorErr) {
+        console.warn('Falha na extração de cor local:', colorErr);
+      }
 
-        // 3. Refinamento via IA de visão em background
-        setDetectingColorIds((prev) => ({ ...prev, [id]: true }));
-        try {
-          const res = await fetch('/api/detect-dominant-color', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              photoBase64: base64,
-              productName: form.productName,
-              productMode: form.productMode,
-            }),
-          });
-          if (res.ok) {
-            const data = await res.json();
+      // 3. Refinamento via IA de visão em background
+      setDetectingColorIds((prev) => ({ ...prev, [id]: true }));
+      try {
+        const res = await fetch('/api/detect-dominant-color', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            photoBase64: base64,
+            productName: form.productName,
+            productMode: form.productMode,
+          }),
+        });
+        if (res.ok) {
+          const raw = await res.text();
+          try {
+            const data = JSON.parse(raw);
             if (data.success && data.color) {
               onChange((prev) => ({
                 ...prev,
@@ -208,15 +211,18 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
                 ),
               }));
             }
+          } catch (jsonErr) {
+            console.warn('Resposta não-JSON na detecção de cor:', raw);
           }
-        } catch (err) {
-          console.warn('Detecção de cor via IA finalizada com fallback local:', err);
-        } finally {
-          setDetectingColorIds((prev) => ({ ...prev, [id]: false }));
         }
+      } catch (err) {
+        console.warn('Detecção de cor via IA finalizada com fallback local:', err);
+      } finally {
+        setDetectingColorIds((prev) => ({ ...prev, [id]: false }));
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('Erro ao processar imagem de cor:', err);
+    }
   };
 
   const handleColorNameChange = (id: string, name: string) => {

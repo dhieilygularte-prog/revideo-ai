@@ -113,6 +113,53 @@ export function detectStretch(text: string): boolean | null {
 }
 
 /**
+ * Redimensiona e comprime imagens no navegador antes do upload para evitar 413 Payload Too Large
+ * e timeouts em ambientes de produção/Vercel/Cloudflare.
+ */
+export async function compressAndResizeImage(file: File, maxDimension = 1536, quality = 0.88): Promise<string> {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const rawBase64 = e.target?.result as string;
+      if (!rawBase64) return resolve('');
+
+      const img = new Image();
+      img.onload = () => {
+        let { width, height } = img;
+        if (width <= maxDimension && height <= maxDimension && file.size < 800 * 1024) {
+          return resolve(rawBase64);
+        }
+
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return resolve(rawBase64);
+
+        ctx.drawImage(img, 0, 0, width, height);
+        const mimeType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
+        const resizedBase64 = canvas.toDataURL(mimeType, quality);
+        resolve(resizedBase64);
+      };
+      img.onerror = () => resolve(rawBase64);
+      img.src = rawBase64;
+    };
+    reader.onerror = () => resolve('');
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
  * Extrai a cor dominante básica da imagem no navegador como fallback instantâneo
  */
 export async function extractDominantColorFromImage(base64: string): Promise<string | null> {

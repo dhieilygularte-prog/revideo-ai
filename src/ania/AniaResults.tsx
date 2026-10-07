@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { AniaResultState } from './types';
 import { exportAniaAssetsZip } from './aniaZipExporter';
+import { compressAndResizeImage } from './aniaLibrary';
 
 interface AniaResultsProps {
   result: AniaResultState;
@@ -384,20 +385,20 @@ export function AniaResults({
     }
   };
 
-  const handlePhotoUpload = (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64 = event.target?.result as string;
+    try {
+      const base64 = await compressAndResizeImage(file, 1536, 0.88);
       if (base64) {
         setOverrideProductPhotos((prev) => ({
           ...prev,
           [idx]: base64,
         }));
       }
-    };
-    reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('Erro ao redimensionar foto de edição:', err);
+    }
   };
 
   const handleRemovePhoto = (idx: number) => {
