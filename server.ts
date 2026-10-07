@@ -1419,6 +1419,87 @@ Reescreva o prompt completo aplicando esta correção com máxima qualidade.`;
   }
 });
 
+app.post('/api/detect-dominant-color', async (req, res) => {
+  try {
+    const { photoBase64, productName, productMode, aiProfile } = req.body;
+    if (!photoBase64) {
+      return res.status(400).json({ success: false, error: 'Foto não fornecida' });
+    }
+
+    const cleanB64 = photoBase64.startsWith('data:')
+      ? photoBase64
+      : `data:image/jpeg;base64,${photoBase64}`;
+
+    const promptText = `Analise esta foto e identifique EXCLUSIVAMENTE a cor predominante/principal do produto ${productName ? `(${productName})` : ''}.
+REGRAS OBRIGATÓRIAS:
+1. Ignore o fundo, piso, mesa, sombras, manequim ou modelos.
+2. Ignore pequenos detalhes, costuras, sola ou cadarços de outras cores se houver uma cor principal dominante (ex: se for tênis preto com detalhes amarelos, a cor é Preto; se for tênis marrom com cadarço bege, a cor é Marrom).
+3. Responda com APENAS a cor simples em português, com inicial maiúscula (Exemplos: Preto, Branco, Marrom, Azul, Vermelho, Verde, Rosa, Cinza, Bege, Amarelo, Vinho, Roxo, Laranja, Dourado, Prateado, Caramelo, Mostarda, Terracota, Nude, Off-White, Grafite, Verde Oliva, Azul Marinho).
+4. Se o produto for nitidamente bicolor em proporções iguais, responda no máximo duas cores (Ex: Preto e Branco).
+5. NÃO escreva frases, NÃO use pontuação, NÃO use aspas, responda ESTRITAMENTE o nome da cor.`;
+
+    // 1. Provedor OpenAI
+    const activeProfile = aiProfile || getRequestAIProfile(req);
+    if (activeProfile === 'openai' && openAIProvider.isConfigured()) {
+      try {
+        const client = (openAIProvider as any).getClient();
+        const completion = await client.chat.completions.create({
+          model: OPENAI_BRAIN_MODEL,
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'image_url', image_url: { url: cleanB64 } },
+                { type: 'text', text: promptText },
+              ],
+            },
+          ],
+          max_tokens: 15,
+          temperature: 0.1,
+        });
+
+        const rawColor = completion.choices[0]?.message?.content?.trim();
+        if (rawColor) {
+          const cleanColor = rawColor.replace(/[.\n\r"']/g, '').trim();
+          return res.json({ success: true, color: cleanColor });
+        }
+      } catch (err: any) {
+        console.warn('Erro ao detectar cor via OpenAI:', err?.message || err);
+      }
+    }
+
+    // 2. Provedor Gemini
+    if (process.env.GEMINI_API_KEY) {
+      try {
+        const parsed = parseInlineImage(photoBase64);
+        if (parsed) {
+          const geminiRes = await getGenAI().models.generateContent({
+            model: GEMINI_VISION_FAST_MODEL || 'gemini-3.8-flash-lite',
+            contents: {
+              parts: [
+                { inlineData: parsed },
+                { text: promptText },
+              ],
+            },
+          });
+          const rawColor = geminiRes.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+          if (rawColor) {
+            const cleanColor = rawColor.replace(/[.\n\r"']/g, '').trim();
+            return res.json({ success: true, color: cleanColor });
+          }
+        }
+      } catch (gemErr: any) {
+        console.warn('Erro ao detectar cor via Gemini:', gemErr?.message || gemErr);
+      }
+    }
+
+    return res.status(500).json({ success: false, error: 'Não foi possível detectar a cor' });
+  } catch (err: any) {
+    console.error('Erro na rota detect-dominant-color:', err);
+    return res.status(500).json({ success: false, error: err?.message || 'Erro interno' });
+  }
+});
+
 app.post('/api/generate-scene-image', async (req, res) => {
   try {
     const {

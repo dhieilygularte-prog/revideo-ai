@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Sparkles,
   Plus,
@@ -32,6 +32,7 @@ interface AniaFormProps {
 
 export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormProps) {
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+  const [detectingColorIds, setDetectingColorIds] = useState<{ [key: string]: boolean }>({});
 
   const handleProductNameChange = (val: string) => {
     onChange((prev) => {
@@ -131,20 +132,53 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
 
   const handleColorPhotoUpload = (id: string, file: File) => {
     const reader = new FileReader();
-    reader.onload = (e) => {
-      if (e.target?.result) {
+    reader.onload = async (e) => {
+      const base64 = e.target?.result as string;
+      if (base64) {
         onChange((prev) => ({
           ...prev,
           colors: prev.colors.map((c) =>
             c.id === id
               ? {
                   ...c,
-                  photoBase64: e.target?.result as string,
+                  photoBase64: base64,
                   fileName: file.name,
                 }
               : c
           ),
         }));
+
+        // Dispara detecção inteligente da cor predominante
+        setDetectingColorIds((prev) => ({ ...prev, [id]: true }));
+        try {
+          const res = await fetch('/api/detect-dominant-color', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              photoBase64: base64,
+              productName: form.productName,
+              productMode: form.productMode,
+            }),
+          });
+          const data = await res.json();
+          if (data.success && data.color) {
+            onChange((prev) => ({
+              ...prev,
+              colors: prev.colors.map((c) =>
+                c.id === id
+                  ? {
+                      ...c,
+                      name: data.color,
+                    }
+                  : c
+              ),
+            }));
+          }
+        } catch (err) {
+          console.warn('Erro ao detectar cor predominante da foto:', err);
+        } finally {
+          setDetectingColorIds((prev) => ({ ...prev, [id]: false }));
+        }
       }
     };
     reader.readAsDataURL(file);
@@ -499,14 +533,29 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
                     )}
                   </div>
 
-                  {/* Color name input (compact width) */}
-                  <input
-                    type="text"
-                    value={colorItem.name}
-                    onChange={(e) => handleColorNameChange(colorItem.id, e.target.value)}
-                    placeholder={`Nome da cor ${idx + 1}...`}
-                    className="w-full px-2 py-1.5 bg-zinc-950 border border-zinc-700/80 rounded-lg text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 font-sans"
-                  />
+                  {/* Color name input with auto-detection feedback */}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={colorItem.name}
+                      onChange={(e) => handleColorNameChange(colorItem.id, e.target.value)}
+                      placeholder={
+                        detectingColorIds[colorItem.id]
+                          ? 'Detectando cor...'
+                          : `Nome da cor ${idx + 1}...`
+                      }
+                      className={`w-full px-2 py-1.5 bg-zinc-950 border rounded-lg text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 font-sans transition-all ${
+                        detectingColorIds[colorItem.id]
+                          ? 'border-purple-500/80 pr-7 text-purple-200 animate-pulse bg-purple-950/20'
+                          : 'border-zinc-700/80'
+                      }`}
+                    />
+                    {detectingColorIds[colorItem.id] && (
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-purple-400">
+                        <Sparkles className="w-3.5 h-3.5 animate-spin" />
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })}
