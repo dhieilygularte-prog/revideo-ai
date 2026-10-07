@@ -406,8 +406,11 @@ function buildFallbackVideoAnalysis(
 
 // Endpoint: Health check
 app.get('/api/health', (req, res) => {
-  const currentKey = process.env.GEMINI_API_KEY || '';
-  const hasOpenAi = Boolean(process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim().length > 0);
+  const currentKey = process.env.GEMINI_API_KEY || process.env.GEMINIAPI || '';
+  const hasOpenAi = Boolean(
+    (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim().length > 0) ||
+    (process.env.APIOPENAI && process.env.APIOPENAI.trim().length > 0)
+  );
   const activeProvider = getActiveProviderType();
   res.json({
     status: 'ok',

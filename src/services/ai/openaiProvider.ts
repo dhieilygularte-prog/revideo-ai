@@ -30,21 +30,22 @@ export class OpenAIProvider implements IAIProvider {
   private client: OpenAI | null = null;
 
   constructor() {
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.OPENAI_API_KEY || process.env.APIOPENAI || process.env.OPENAI_KEY;
     if (apiKey) {
       this.client = new OpenAI({ apiKey });
     }
   }
 
   isConfigured(): boolean {
-    return Boolean(process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim().length > 0);
+    const apiKey = process.env.OPENAI_API_KEY || process.env.APIOPENAI || process.env.OPENAI_KEY;
+    return Boolean(apiKey && apiKey.trim().length > 0);
   }
 
   private getClient(): OpenAI {
     if (!this.client) {
-      const apiKey = process.env.OPENAI_API_KEY;
+      const apiKey = process.env.OPENAI_API_KEY || process.env.APIOPENAI || process.env.OPENAI_KEY;
       if (!apiKey) {
-        throw new Error('OPENAI_API_KEY nÃ£o configurada no ambiente.');
+        throw new Error('OPENAI_API_KEY não configurada no ambiente.');
       }
       this.client = new OpenAI({ apiKey });
     }

@@ -440,19 +440,20 @@ var OpenAIProvider = class {
   constructor() {
     this.name = "openai";
     this.client = null;
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.OPENAI_API_KEY || process.env.APIOPENAI || process.env.OPENAI_KEY;
     if (apiKey) {
       this.client = new OpenAI({ apiKey });
     }
   }
   isConfigured() {
-    return Boolean(process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim().length > 0);
+    const apiKey = process.env.OPENAI_API_KEY || process.env.APIOPENAI || process.env.OPENAI_KEY;
+    return Boolean(apiKey && apiKey.trim().length > 0);
   }
   getClient() {
     if (!this.client) {
-      const apiKey = process.env.OPENAI_API_KEY;
+      const apiKey = process.env.OPENAI_API_KEY || process.env.APIOPENAI || process.env.OPENAI_KEY;
       if (!apiKey) {
-        throw new Error("OPENAI_API_KEY n\xC3\xA3o configurada no ambiente.");
+        throw new Error("OPENAI_API_KEY n\xE3o configurada no ambiente.");
       }
       this.client = new OpenAI({ apiKey });
     }
@@ -1464,8 +1465,10 @@ function buildFallbackVideoAnalysis(durationSeconds, variations, customSpeech) {
   };
 }
 app.get("/api/health", (req, res) => {
-  const currentKey = process.env.GEMINI_API_KEY || "";
-  const hasOpenAi = Boolean(process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim().length > 0);
+  const currentKey = process.env.GEMINI_API_KEY || process.env.GEMINIAPI || "";
+  const hasOpenAi = Boolean(
+    process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim().length > 0 || process.env.APIOPENAI && process.env.APIOPENAI.trim().length > 0
+  );
   const activeProvider = getActiveProviderType();
   res.json({
     status: "ok",
