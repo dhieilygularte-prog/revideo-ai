@@ -20,7 +20,14 @@ import {
   ProductMode,
   AgeMode,
 } from './types';
-import { detectStretch, detectFabric, detectProductMode, extractShortProductName, detectGender } from './aniaLibrary';
+import {
+  detectStretch,
+  detectFabric,
+  detectProductMode,
+  extractShortProductName,
+  detectGender,
+  extractDominantColorFromImage,
+} from './aniaLibrary';
 import { VeoModelMode } from '../types';
 
 interface AniaFormProps {
@@ -37,11 +44,11 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
   const handleProductNameChange = (val: string) => {
     onChange((prev) => {
       const detectedProdMode = prev.productMode === 'apparel' ? detectProductMode(val, prev.productInfo) : prev.productMode;
-      const detectedAutoStretch = prev.stretchSource !== 'manual' ? detectStretch(`${val} ${prev.productInfo}`) : prev.stretch;
-      const detectedFabricObj = prev.fabricSource !== 'manual' ? detectFabric(val, undefined, prev.productInfo) : null;
-      const defaultBody = detectedProdMode === 'footwear' && prev.body === 'Plus size' ? 'Normal' : prev.body;
-      const detectedGen = detectGender(val, prev.productInfo);
       const isFootwear = detectedProdMode === 'footwear';
+      const defaultBody = isFootwear && prev.body === 'Plus size' ? 'Normal' : prev.body;
+      const detectedGen = detectGender(val, prev.productInfo);
+      const detectedAutoStretch = isFootwear ? false : (prev.stretchSource !== 'manual' ? detectStretch(`${val} ${prev.productInfo}`) : prev.stretch);
+      const detectedFabricObj = prev.fabricSource !== 'manual' ? detectFabric(val, undefined, prev.productInfo) : null;
 
       return {
         ...prev,
@@ -50,8 +57,8 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
         gender: detectedGen || prev.gender,
         body: defaultBody,
         naturalEnvironment: isFootwear ? true : prev.naturalEnvironment,
-        stretch: prev.stretchSource === 'manual' ? prev.stretch : (detectedAutoStretch !== null ? detectedAutoStretch : prev.stretch),
-        stretchSource: prev.stretchSource === 'manual' ? 'manual' : (detectedAutoStretch !== null ? 'local_detect' : prev.stretchSource),
+        stretch: isFootwear ? false : (prev.stretchSource === 'manual' ? prev.stretch : (detectedAutoStretch !== null ? detectedAutoStretch : prev.stretch)),
+        stretchSource: isFootwear ? 'local_detect' : (prev.stretchSource === 'manual' ? 'manual' : (detectedAutoStretch !== null ? 'local_detect' : prev.stretchSource)),
         fabric: prev.fabricSource === 'manual' ? prev.fabric : (detectedFabricObj?.key !== 'padrao' ? detectedFabricObj?.key || prev.fabric : prev.fabric),
         fabricSource: prev.fabricSource === 'manual' ? 'manual' : (detectedFabricObj?.key !== 'padrao' ? 'product_info' : prev.fabricSource),
       };
@@ -60,12 +67,12 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
 
   const handleProductInfoChange = (val: string) => {
     onChange((prev) => {
-      const detectedAutoStretch = prev.stretchSource !== 'manual' ? detectStretch(`${prev.productName} ${val}`) : prev.stretch;
-      const detectedFabricObj = prev.fabricSource !== 'manual' ? detectFabric(prev.productName, undefined, val) : null;
       const detectedProdMode = prev.productMode === 'apparel' ? detectProductMode(prev.productName, val) : prev.productMode;
-      const defaultBody = detectedProdMode === 'footwear' && prev.body === 'Plus size' ? 'Normal' : prev.body;
-      const detectedGen = detectGender(prev.productName, val);
       const isFootwear = detectedProdMode === 'footwear';
+      const defaultBody = isFootwear && prev.body === 'Plus size' ? 'Normal' : prev.body;
+      const detectedGen = detectGender(prev.productName, val);
+      const detectedAutoStretch = isFootwear ? false : (prev.stretchSource !== 'manual' ? detectStretch(`${prev.productName} ${val}`) : prev.stretch);
+      const detectedFabricObj = prev.fabricSource !== 'manual' ? detectFabric(prev.productName, undefined, val) : null;
 
       // Se o usuário ainda não digitou um nome de produto ou se veio vazio, extrai o nome curto automaticamente da descrição
       let autoProductName = prev.productName;
@@ -84,8 +91,8 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
         gender: detectedGen || prev.gender,
         body: defaultBody,
         naturalEnvironment: isFootwear ? true : prev.naturalEnvironment,
-        stretch: prev.stretchSource === 'manual' ? prev.stretch : (detectedAutoStretch !== null ? detectedAutoStretch : prev.stretch),
-        stretchSource: prev.stretchSource === 'manual' ? 'manual' : (detectedAutoStretch !== null ? 'product_info' : prev.stretchSource),
+        stretch: isFootwear ? false : (prev.stretchSource === 'manual' ? prev.stretch : (detectedAutoStretch !== null ? detectedAutoStretch : prev.stretch)),
+        stretchSource: isFootwear ? 'local_detect' : (prev.stretchSource === 'manual' ? 'manual' : (detectedAutoStretch !== null ? 'product_info' : prev.stretchSource)),
         fabric: prev.fabricSource === 'manual' ? prev.fabric : (detectedFabricObj?.key !== 'padrao' ? detectedFabricObj?.key || prev.fabric : prev.fabric),
         fabricSource: prev.fabricSource === 'manual' ? 'manual' : (detectedFabricObj?.key !== 'padrao' ? 'product_info' : prev.fabricSource),
       };
@@ -135,6 +142,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
     reader.onload = async (e) => {
       const base64 = e.target?.result as string;
       if (base64) {
+        // 1. Atualiza a foto imediatamente no estado
         onChange((prev) => ({
           ...prev,
           colors: prev.colors.map((c) =>
@@ -148,7 +156,27 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
           ),
         }));
 
-        // Dispara detecção inteligente da cor predominante
+        // 2. Extração instantânea de cor no navegador (fallback garantido em 50ms)
+        try {
+          const instantColor = await extractDominantColorFromImage(base64);
+          if (instantColor) {
+            onChange((prev) => ({
+              ...prev,
+              colors: prev.colors.map((c) =>
+                c.id === id
+                  ? {
+                      ...c,
+                      name: c.name.trim() ? c.name : instantColor,
+                    }
+                  : c
+              ),
+            }));
+          }
+        } catch (colorErr) {
+          console.warn('Falha na extração de cor local:', colorErr);
+        }
+
+        // 3. Refinamento via IA de visão em background
         setDetectingColorIds((prev) => ({ ...prev, [id]: true }));
         try {
           const res = await fetch('/api/detect-dominant-color', {
@@ -160,22 +188,24 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
               productMode: form.productMode,
             }),
           });
-          const data = await res.json();
-          if (data.success && data.color) {
-            onChange((prev) => ({
-              ...prev,
-              colors: prev.colors.map((c) =>
-                c.id === id
-                  ? {
-                      ...c,
-                      name: data.color,
-                    }
-                  : c
-              ),
-            }));
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success && data.color) {
+              onChange((prev) => ({
+                ...prev,
+                colors: prev.colors.map((c) =>
+                  c.id === id
+                    ? {
+                        ...c,
+                        name: data.color,
+                      }
+                    : c
+                ),
+              }));
+            }
           }
         } catch (err) {
-          console.warn('Erro ao detectar cor predominante da foto:', err);
+          console.warn('Detecção de cor via IA finalizada com fallback local:', err);
         } finally {
           setDetectingColorIds((prev) => ({ ...prev, [id]: false }));
         }
@@ -243,6 +273,8 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
                   productMode: 'footwear',
                   body: prev.body === 'Plus size' ? 'Normal' : prev.body,
                   naturalEnvironment: true,
+                  stretch: false,
+                  stretchSource: 'local_detect',
                 }))
               }
               className={`py-2 px-1 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${

@@ -67,6 +67,11 @@ export function detectStretch(text: string): boolean | null {
   const norm = removeAccents(text || '');
   if (!norm.trim()) return null;
 
+  // Calçados por definição não esticam (marcar NÃO por padrão)
+  if (FOOTWEAR_KEYWORDS.some((kw) => norm.includes(kw))) {
+    return false;
+  }
+
   // Check explicit non-stretch phrases first (e.g. "sem elastano", "100% algodao", "nao estica")
   const naoTerms = [
     'sem elastano',
@@ -105,6 +110,118 @@ export function detectStretch(text: string): boolean | null {
   }
 
   return null;
+}
+
+/**
+ * Extrai a cor dominante básica da imagem no navegador como fallback instantâneo
+ */
+export async function extractDominantColorFromImage(base64: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return resolve(null);
+
+          const width = 64;
+          const height = 64;
+          canvas.width = width;
+          canvas.height = height;
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const imgData = ctx.getImageData(0, 0, width, height).data;
+          let rTotal = 0, gTotal = 0, bTotal = 0, count = 0;
+
+          // Amostra do centro da imagem (onde o produto geralmente está)
+          const startX = Math.floor(width * 0.2);
+          const endX = Math.floor(width * 0.8);
+          const startY = Math.floor(height * 0.2);
+          const endY = Math.floor(height * 0.8);
+
+          for (let y = startY; y < endY; y++) {
+            for (let x = startX; x < endX; x++) {
+              const idx = (y * width + x) * 4;
+              const r = imgData[idx];
+              const g = imgData[idx + 1];
+              const b = imgData[idx + 2];
+              const a = imgData[idx + 3];
+
+              // Ignora transparência e brancos puros de fundo de estúdio
+              if (a > 128) {
+                const isPureWhite = r > 245 && g > 245 && b > 245;
+                if (!isPureWhite) {
+                  rTotal += r;
+                  gTotal += g;
+                  bTotal += b;
+                  count++;
+                }
+              }
+            }
+          }
+
+          if (count === 0) return resolve('Branco');
+
+          const r = rTotal / count;
+          const g = gTotal / count;
+          const b = bTotal / count;
+
+          // Converter RGB para HSL
+          const rNorm = r / 255, gNorm = g / 255, bNorm = b / 255;
+          const max = Math.max(rNorm, gNorm, bNorm), min = Math.min(rNorm, gNorm, bNorm);
+          let h = 0, s = 0, l = (max + min) / 2;
+
+          if (max !== min) {
+            const d = max - min;
+            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            switch (max) {
+              case rNorm: h = (gNorm - bNorm) / d + (gNorm < bNorm ? 6 : 0); break;
+              case gNorm: h = (bNorm - rNorm) / d + 2; break;
+              case bNorm: h = (rNorm - gNorm) / d + 4; break;
+            }
+            h *= 60;
+          }
+
+          // Classificar cor simples em português
+          if (l < 0.22) return resolve('Preto');
+          if (l > 0.85 && s < 0.2) return resolve('Branco');
+          if (s < 0.15) {
+            return l > 0.5 ? resolve('Cinza Claro') : resolve('Cinza');
+          }
+
+          if (h >= 0 && h < 20) {
+            if (s > 0.2 && l < 0.4 && r > g && r > b) return resolve('Marrom');
+            return l < 0.35 ? resolve('Vinho') : resolve('Vermelho');
+          } else if (h >= 20 && h < 45) {
+            if (l < 0.4) return resolve('Marrom');
+            if (l > 0.7) return resolve('Bege');
+            return resolve('Laranja');
+          } else if (h >= 45 && h < 70) {
+            if (l > 0.7) return resolve('Bege');
+            return resolve('Amarelo');
+          } else if (h >= 70 && h < 165) {
+            if (l < 0.35) return resolve('Verde Escuro');
+            return resolve('Verde');
+          } else if (h >= 165 && h < 260) {
+            if (l < 0.3) return resolve('Azul Marinho');
+            return resolve('Azul');
+          } else if (h >= 260 && h < 320) {
+            return resolve('Roxo');
+          } else {
+            return l > 0.6 ? resolve('Rosa') : resolve('Vinho');
+          }
+        } catch {
+          resolve(null);
+        }
+      };
+      img.onerror = () => resolve(null);
+      img.src = base64;
+    } catch {
+      resolve(null);
+    }
+  });
 }
 
 // ─── 2.1. DETECÇÃO DE TIPO DE PRODUTO (CALÇADOS VS ROUPAS) E NOME CURTO ──
