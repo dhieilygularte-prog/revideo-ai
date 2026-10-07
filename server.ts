@@ -1419,6 +1419,33 @@ Reescreva o prompt completo aplicando esta correção com máxima qualidade.`;
   }
 });
 
+function simplifyToSingleColorWord(raw: string): string {
+  if (!raw) return '';
+  const clean = raw.replace(/[.\n\r"']/g, '').trim();
+  const lower = clean.toLowerCase();
+
+  // Mapeamento estrito para UMA ÚNICA PALAVRA de cor básica
+  if (lower.includes('preto') || lower.includes('black') || lower.includes('grafite')) return 'Preto';
+  if (lower.includes('branco') || lower.includes('white') || lower.includes('off-white') || lower.includes('off white')) return 'Branco';
+  if (lower.includes('marrom') || lower.includes('brown') || lower.includes('caramelo') || lower.includes('cafe')) return 'Marrom';
+  if (lower.includes('azul') || lower.includes('blue') || lower.includes('jeans')) return 'Azul';
+  if (lower.includes('verde') || lower.includes('green') || lower.includes('oliva') || lower.includes('militar')) return 'Verde';
+  if (lower.includes('vermelho') || lower.includes('red') || lower.includes('rubi')) return 'Vermelho';
+  if (lower.includes('rosa') || lower.includes('pink') || lower.includes('rose')) return 'Rosa';
+  if (lower.includes('cinza') || lower.includes('grey') || lower.includes('gray') || lower.includes('chumbo')) return 'Cinza';
+  if (lower.includes('bege') || lower.includes('nude') || lower.includes('creme') || lower.includes('areia')) return 'Bege';
+  if (lower.includes('amarelo') || lower.includes('yellow') || lower.includes('mostarda')) return 'Amarelo';
+  if (lower.includes('laranja') || lower.includes('orange') || lower.includes('terracota') || lower.includes('coral')) return 'Laranja';
+  if (lower.includes('vinho') || lower.includes('bordo') || lower.includes('marsala') || lower.includes('burgundy')) return 'Vinho';
+  if (lower.includes('roxo') || lower.includes('purple') || lower.includes('violeta') || lower.includes('lilas')) return 'Roxo';
+  if (lower.includes('dourado') || lower.includes('gold')) return 'Dourado';
+  if (lower.includes('prateado') || lower.includes('prata') || lower.includes('silver')) return 'Prateado';
+
+  // Se não bater nas regras acima, pega estritamente a primeira palavra limpa e capitaliza
+  const firstWord = clean.split(/\s+/)[0] || clean;
+  return firstWord.charAt(0).toUpperCase() + firstWord.slice(1).toLowerCase();
+}
+
 app.post('/api/detect-dominant-color', async (req, res) => {
   try {
     const { photoBase64, productName, productMode, aiProfile } = req.body;
@@ -1433,10 +1460,9 @@ app.post('/api/detect-dominant-color', async (req, res) => {
     const promptText = `Analise esta foto e identifique EXCLUSIVAMENTE a cor predominante/principal do produto ${productName ? `(${productName})` : ''}.
 REGRAS OBRIGATÓRIAS:
 1. Ignore o fundo, piso, mesa, sombras, manequim ou modelos.
-2. Ignore pequenos detalhes, costuras, sola ou cadarços de outras cores se houver uma cor principal dominante (ex: se for tênis preto com detalhes amarelos, a cor é Preto; se for tênis marrom com cadarço bege, a cor é Marrom).
-3. Responda com APENAS a cor simples em português, com inicial maiúscula (Exemplos: Preto, Branco, Marrom, Azul, Vermelho, Verde, Rosa, Cinza, Bege, Amarelo, Vinho, Roxo, Laranja, Dourado, Prateado, Caramelo, Mostarda, Terracota, Nude, Off-White, Grafite, Verde Oliva, Azul Marinho).
-4. Se o produto for nitidamente bicolor em proporções iguais, responda no máximo duas cores (Ex: Preto e Branco).
-5. NÃO escreva frases, NÃO use pontuação, NÃO use aspas, responda ESTRITAMENTE o nome da cor.`;
+2. Ignore pequenos detalhes, costuras, sola ou cadarços de outras cores se houver uma cor principal dominante.
+3. Responda em ESTRITAMENTE UMA ÚNICA PALAVRA da cor básica em português (Exemplos: Preto, Branco, Marrom, Azul, Vermelho, Verde, Rosa, Cinza, Bege, Amarelo, Vinho, Roxo, Laranja, Dourado, Prateado). NUNCA adicione adjetivos como 'oliva', 'marinho', 'claro', 'escuro', 'militar', 'bebê'.
+4. NÃO escreva frases, NÃO use pontuação, NÃO use aspas, responda ESTRITAMENTE a única palavra da cor.`;
 
     // 1. Provedor OpenAI
     const activeProfile = aiProfile || getRequestAIProfile(req);
@@ -1454,13 +1480,13 @@ REGRAS OBRIGATÓRIAS:
               ],
             },
           ],
-          max_tokens: 15,
+          max_tokens: 10,
           temperature: 0.1,
         });
 
         const rawColor = completion.choices[0]?.message?.content?.trim();
         if (rawColor) {
-          const cleanColor = rawColor.replace(/[.\n\r"']/g, '').trim();
+          const cleanColor = simplifyToSingleColorWord(rawColor);
           return res.json({ success: true, color: cleanColor });
         }
       } catch (err: any) {
@@ -1484,7 +1510,7 @@ REGRAS OBRIGATÓRIAS:
           });
           const rawColor = geminiRes.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
           if (rawColor) {
-            const cleanColor = rawColor.replace(/[.\n\r"']/g, '').trim();
+            const cleanColor = simplifyToSingleColorWord(rawColor);
             return res.json({ success: true, color: cleanColor });
           }
         }

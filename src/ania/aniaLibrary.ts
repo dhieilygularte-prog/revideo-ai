@@ -184,11 +184,11 @@ export async function extractDominantColorFromImage(base64: string): Promise<str
             h *= 60;
           }
 
-          // Classificar cor simples em português
+          // Classificar cor simples em português (estritamente uma palavra)
           if (l < 0.22) return resolve('Preto');
           if (l > 0.85 && s < 0.2) return resolve('Branco');
           if (s < 0.15) {
-            return l > 0.5 ? resolve('Cinza Claro') : resolve('Cinza');
+            return resolve('Cinza');
           }
 
           if (h >= 0 && h < 20) {
@@ -202,10 +202,8 @@ export async function extractDominantColorFromImage(base64: string): Promise<str
             if (l > 0.7) return resolve('Bege');
             return resolve('Amarelo');
           } else if (h >= 70 && h < 165) {
-            if (l < 0.35) return resolve('Verde Escuro');
             return resolve('Verde');
           } else if (h >= 165 && h < 260) {
-            if (l < 0.3) return resolve('Azul Marinho');
             return resolve('Azul');
           } else if (h >= 260 && h < 320) {
             return resolve('Roxo');
@@ -283,6 +281,43 @@ export function detectGender(name?: string, info?: string): AniaGender | null {
     return 'Mulher';
   }
   return null;
+}
+
+export const CHILD_KEYWORDS = [
+  'infantil',
+  'crianca',
+  'kids',
+  'bebe',
+  'baby',
+  'menino',
+  'menina',
+  'juvenil',
+  'toddler',
+  'recem nascido',
+  'primeiros passos',
+  'escolar',
+];
+
+export const ELDERLY_KEYWORDS = [
+  'idoso',
+  'terceira idade',
+  'senhor',
+  'senhora',
+  'ortopedico',
+];
+
+/**
+ * Detecta a faixa etária a partir do nome ou informações do produto
+ */
+export function detectAgeMode(name?: string, info?: string): AgeMode {
+  const combined = removeAccents(`${name || ''} ${info || ''}`);
+  if (CHILD_KEYWORDS.some((kw) => combined.includes(kw))) {
+    return 'child';
+  }
+  if (ELDERLY_KEYWORDS.some((kw) => combined.includes(kw))) {
+    return 'senior';
+  }
+  return 'adult';
 }
 
 /**

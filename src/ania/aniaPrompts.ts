@@ -43,7 +43,11 @@ export function buildAniaImage1Prompt(params: {
   // 1. Descrição do Modelo / Sujeito
   let pessoaDesc = '';
   if (isChild) {
-    pessoaDesc = 'mãos de adulto responsável apresentando o produto infantil em primeira pessoa (visão POV). PROIBIDO GERAR CRIANÇA: nunca retratar criança vestindo ou usando a peça; apenas mãos adultas segurando e demonstrando o produto';
+    if (isFootwear) {
+      pessoaDesc = `criança/modelo infantil (${gender === 'Homem' ? 'menino' : 'menina'}) calçando o calçado infantil, enquadramento estritamente do joelho para baixo (pernas e pezinhos no chão), pele limpa, sem mostrar o rosto`;
+    } else {
+      pessoaDesc = 'mãos de adulto responsável apresentando o produto infantil em primeira pessoa (visão POV). PROIBIDO GERAR ROSTO: apenas mãos adultas segurando e demonstrando o produto';
+    }
   } else if (isSenior) {
     if (gender === 'Mulher') {
       pessoaDesc = `senhora brasileira idosa de terceira idade (${body === 'Plus size' ? 'corpo plus size cheinho' : body === 'Magro' ? 'porte magro' : 'porte médio natural'}), postura natural e elegante, pele madura realista`;
@@ -72,10 +76,12 @@ export function buildAniaImage1Prompt(params: {
 
   // 2. Enquadramento
   let enquadramento = '';
-  if (isChild) {
-    enquadramento = 'visão em primeira pessoa (POV adulto), câmera posicionada de cima para baixo ou frontal na altura da cintura/mesa, mostrando as mãos adultas segurando e demonstrando o produto infantil aberto sobre uma superfície limpa. NUNCA MOSTRAR O ROSTO E NUNCA MOSTRAR CRIANÇA.';
+  if (isChild && !isFootwear) {
+    enquadramento = 'visão em primeira pessoa (POV adulto), câmera posicionada de cima para baixo ou frontal na altura da cintura/mesa, mostrando as mãos adultas segurando e demonstrando o produto infantil aberto sobre uma superfície limpa. NUNCA MOSTRAR O ROSTO.';
   } else if (isFootwear) {
-    enquadramento = 'enquadramento vertical 9:16 do joelho para baixo (joelhos, canelas, tornozelos e pés), câmera próxima, com foco total e nítido no calçado nos pés no chão; o cenário aparece sem ocupar área excessiva. NUNCA MOSTRAR O ROSTO.';
+    enquadramento = isChild
+      ? 'enquadramento vertical 9:16 do joelho para baixo mostrando pernas e pés da criança calçando o produto no chão, câmera próxima focada no calçado. NUNCA MOSTRAR O ROSTO.'
+      : 'enquadramento vertical 9:16 do joelho para baixo (joelhos, canelas, tornozelos e pés), câmera próxima, com foco total e nítido no calçado nos pés no chão; o cenário aparece sem ocupar área excessiva. NUNCA MOSTRAR O ROSTO.';
   } else if (tipo === 'INFERIOR') {
     enquadramento = 'enquadramento vertical 9:16 da linha logo abaixo do busto para baixo (aparece só a barra da blusa e o cós; nunca o busto inteiro). Se for calça, mostrar até os pés. Se for short, bermuda ou saia, mostrar todo o comprimento da peça e as pernas. NUNCA MOSTRAR O ROSTO.';
   } else {

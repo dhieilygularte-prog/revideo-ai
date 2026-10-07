@@ -26,6 +26,7 @@ import {
   detectProductMode,
   extractShortProductName,
   detectGender,
+  detectAgeMode,
   extractDominantColorFromImage,
 } from './aniaLibrary';
 import { VeoModelMode } from '../types';
@@ -47,6 +48,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
       const isFootwear = detectedProdMode === 'footwear';
       const defaultBody = isFootwear && prev.body === 'Plus size' ? 'Normal' : prev.body;
       const detectedGen = detectGender(val, prev.productInfo);
+      const detectedAge = detectAgeMode(val, prev.productInfo);
       const detectedAutoStretch = isFootwear ? false : (prev.stretchSource !== 'manual' ? detectStretch(`${val} ${prev.productInfo}`) : prev.stretch);
       const detectedFabricObj = prev.fabricSource !== 'manual' ? detectFabric(val, undefined, prev.productInfo) : null;
 
@@ -55,6 +57,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
         productName: val,
         productMode: detectedProdMode,
         gender: detectedGen || prev.gender,
+        ageMode: detectedAge !== 'adult' ? detectedAge : prev.ageMode,
         body: defaultBody,
         naturalEnvironment: isFootwear ? true : prev.naturalEnvironment,
         stretch: isFootwear ? false : (prev.stretchSource === 'manual' ? prev.stretch : (detectedAutoStretch !== null ? detectedAutoStretch : prev.stretch)),
@@ -71,6 +74,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
       const isFootwear = detectedProdMode === 'footwear';
       const defaultBody = isFootwear && prev.body === 'Plus size' ? 'Normal' : prev.body;
       const detectedGen = detectGender(prev.productName, val);
+      const detectedAge = detectAgeMode(prev.productName, val);
       const detectedAutoStretch = isFootwear ? false : (prev.stretchSource !== 'manual' ? detectStretch(`${prev.productName} ${val}`) : prev.stretch);
       const detectedFabricObj = prev.fabricSource !== 'manual' ? detectFabric(prev.productName, undefined, val) : null;
 
@@ -89,6 +93,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
         productInfo: val,
         productMode: detectedProdMode,
         gender: detectedGen || prev.gender,
+        ageMode: detectedAge !== 'adult' ? detectedAge : prev.ageMode,
         body: defaultBody,
         naturalEnvironment: isFootwear ? true : prev.naturalEnvironment,
         stretch: isFootwear ? false : (prev.stretchSource === 'manual' ? prev.stretch : (detectedAutoStretch !== null ? detectedAutoStretch : prev.stretch)),
@@ -222,6 +227,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
   };
 
   // Validation
+  const hasProductInfo = form.productInfo.trim().length > 0;
   const hasProductName = form.productName.trim().length > 0;
   const hasCor1Photo = Boolean(form.colors[0]?.photoBase64);
   const isStretchSelected = form.stretch !== null;
@@ -229,30 +235,77 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
   const canSubmit = hasProductName && hasCor1Photo && isStretchSelected && areColorNamesFilled && !isProcessing;
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
-        {/* 1. Nome do Produto (~65-70% largura da linha) */}
-        <div className="md:col-span-8 space-y-1.5">
+    <div className="space-y-5">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+        {/* 1. Informações do Produto (Descrição da Loja - Topo para Auto-Preenchimento) */}
+        <div
+          className={`md:col-span-12 p-3.5 rounded-2xl border transition-all space-y-1.5 ${
+            hasProductInfo
+              ? 'bg-zinc-800/80 border-emerald-500/50 shadow-sm shadow-emerald-950/20'
+              : 'bg-zinc-900/70 border-zinc-800/90'
+          }`}
+        >
           <label className="text-xs font-bold text-zinc-200 flex items-center justify-between">
-            <span>1. Nome do Produto <strong className="text-rose-400">*</strong></span>
-            <span className="text-[11px] text-zinc-500 font-normal">Ex.: calça pantalona duna, tênis esportivo</span>
+            <span className="flex items-center gap-1.5">
+              <span>1. Informações do Produto (Cole aqui a descrição da loja)</span>
+              {hasProductInfo && (
+                <span className="text-[10px] text-emerald-300 font-semibold bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-500/30 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-400" /> Preenchido (Auto-extração ativa)
+                </span>
+              )}
+            </span>
+            <span className="text-[11px] text-zinc-400 font-normal">Preenche nome, categoria, faixa etária e elasticidade automaticamente</span>
+          </label>
+          <textarea
+            value={form.productInfo}
+            onChange={(e) => handleProductInfoChange(e.target.value)}
+            rows={3}
+            placeholder="Cole aqui a descrição do produto (ex: 'Tênis Esportivo Masculino Confortável...', 'Vestido infantil floral...', 'Calça pantalona duna com elastano')..."
+            className={`w-full p-2.5 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-purple-500 resize-y font-sans leading-relaxed transition-colors ${
+              hasProductInfo
+                ? 'bg-zinc-900 border border-emerald-500/30 focus:border-emerald-500'
+                : 'bg-zinc-950 border border-zinc-700/80 focus:border-purple-500'
+            }`}
+          />
+        </div>
+
+        {/* 2. Nome do Produto */}
+        <div
+          className={`md:col-span-8 p-3 rounded-2xl border transition-all space-y-1.5 ${
+            hasProductName
+              ? 'bg-zinc-800/80 border-emerald-500/50'
+              : 'bg-zinc-900/70 border-zinc-800/90'
+          }`}
+        >
+          <label className="text-xs font-bold text-zinc-200 flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+              <span>2. Nome do Produto <strong className="text-rose-400">*</strong></span>
+              {hasProductName && (
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              )}
+            </span>
+            <span className="text-[11px] text-zinc-400 font-normal">Nome curto (editável)</span>
           </label>
           <input
             type="text"
             value={form.productName}
             onChange={(e) => handleProductNameChange(e.target.value)}
-            placeholder="Digite o nome do produto..."
-            className="w-full max-w-2xl px-3.5 py-2.5 bg-zinc-900 border border-zinc-700/80 rounded-xl text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors"
+            placeholder="Digite ou confira o nome do produto..."
+            className={`w-full px-3.5 py-2 rounded-xl text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-purple-500 transition-colors ${
+              hasProductName
+                ? 'bg-zinc-900 border border-emerald-500/30 focus:border-emerald-500'
+                : 'bg-zinc-950 border border-zinc-700/80 focus:border-purple-500'
+            }`}
           />
         </div>
 
-        {/* 2. Tipo de Produto (Roupas vs Calçados) */}
-        <div className="md:col-span-4 space-y-1.5">
+        {/* 3. Tipo de Produto (Roupas vs Calçados) */}
+        <div className="md:col-span-4 p-3 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-1.5">
           <label className="text-xs font-bold text-zinc-200 flex items-center justify-between">
-            <span>2. Tipo de Produto</span>
-            <span className="text-[11px] text-zinc-500 font-normal">Modo</span>
+            <span>3. Tipo de Produto</span>
+            <span className="text-[11px] text-zinc-400 font-normal">Modo</span>
           </label>
-          <div className="grid grid-cols-2 gap-2 bg-zinc-900 p-1 rounded-xl border border-zinc-800">
+          <div className="grid grid-cols-2 gap-2 bg-zinc-950 p-1 rounded-xl border border-zinc-800">
             <button
               type="button"
               onClick={() => onChange((prev) => ({ ...prev, productMode: 'apparel' }))}
@@ -289,17 +342,17 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
           </div>
         </div>
 
-        {/* 3. Categoria de Roupa (quando roupas) */}
+        {/* 4. Categoria de Roupa (quando roupas) */}
         {form.productMode === 'apparel' && (
-          <div className="md:col-span-4 space-y-1.5">
+          <div className="md:col-span-4 p-3 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-1.5">
             <label className="text-xs font-bold text-zinc-200 flex items-center justify-between">
-              <span>Categoria</span>
-              <span className="text-[11px] text-zinc-500 font-normal">Tipo da peça</span>
+              <span>4. Categoria</span>
+              <span className="text-[11px] text-zinc-400 font-normal">Tipo da peça</span>
             </label>
             <select
               value={form.category}
               onChange={(e) => onChange((prev) => ({ ...prev, category: e.target.value as AniaCategory }))}
-              className="w-full px-3 py-2.5 bg-zinc-900 border border-zinc-700/80 rounded-xl text-xs text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 cursor-pointer"
+              className="w-full px-3 py-2 bg-zinc-950 border border-zinc-700/80 rounded-xl text-xs text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 cursor-pointer"
             >
               <option value="AUTO">✨ Automático (IA detecta)</option>
               <option value="SHORT_SAIA">Short saia</option>
@@ -315,15 +368,17 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
           </div>
         )}
 
-        {/* 4. Faixa Etária (Adulto / Infantil / Idoso) */}
-        <div className={form.productMode === 'apparel' ? 'md:col-span-4 space-y-1.5' : 'md:col-span-6 space-y-1.5'}>
+        {/* 5. Faixa Etária (Adulto / Infantil / Idoso) */}
+        <div className={`${form.productMode === 'apparel' ? 'md:col-span-4' : 'md:col-span-6'} p-3 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-1.5`}>
           <label className="text-xs font-bold text-zinc-200 flex items-center justify-between">
-            <span>Faixa Etária</span>
+            <span>5. Faixa Etária</span>
             {form.ageMode === 'child' && (
-              <span className="text-[10px] text-amber-400 font-medium">Modo POV Adulto</span>
+              <span className="text-[10px] text-amber-400 font-medium">
+                {form.productMode === 'footwear' ? 'Pés e pernas infantis (sem rosto)' : 'Modo POV Adulto'}
+              </span>
             )}
           </label>
-          <div className="grid grid-cols-3 gap-1.5 bg-zinc-900 p-1 rounded-xl border border-zinc-800">
+          <div className="grid grid-cols-3 gap-1.5 bg-zinc-950 p-1 rounded-xl border border-zinc-800">
             <button
               type="button"
               onClick={() => onChange((prev) => ({ ...prev, ageMode: 'adult' }))}
@@ -333,7 +388,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
-              Adulto (Padrão)
+              Adulto
             </button>
             <button
               type="button"
@@ -343,7 +398,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
                   ? 'bg-purple-600 text-white shadow-md'
                   : 'text-zinc-400 hover:text-white'
               }`}
-              title="Apresentação em primeira pessoa (POV) com mãos de adulto, sem retratar crianças"
+              title={form.productMode === 'footwear' ? 'Pés e pernas infantis sem mostrar rosto' : 'Apresentação em primeira pessoa (POV) com mãos de adulto'}
             >
               Infantil
             </button>
@@ -361,10 +416,10 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
           </div>
         </div>
 
-        {/* 5. Gênero (Mulher / Homem) */}
-        <div className={form.productMode === 'apparel' ? 'md:col-span-4 space-y-1.5' : 'md:col-span-6 space-y-1.5'}>
-          <label className="text-xs font-bold text-zinc-200">Gênero</label>
-          <div className="grid grid-cols-2 gap-2 bg-zinc-900 p-1 rounded-xl border border-zinc-800">
+        {/* 6. Gênero (Mulher / Homem) */}
+        <div className={`${form.productMode === 'apparel' ? 'md:col-span-4' : 'md:col-span-6'} p-3 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-1.5`}>
+          <label className="text-xs font-bold text-zinc-200">6. Gênero</label>
+          <div className="grid grid-cols-2 gap-2 bg-zinc-950 p-1 rounded-xl border border-zinc-800">
             <button
               type="button"
               onClick={() => onChange((prev) => ({ ...prev, gender: 'Mulher' }))}
@@ -390,11 +445,11 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
           </div>
         </div>
 
-        {/* 6. Tipo de Corpo (Plus size / Normal / Magro) */}
+        {/* 7. Tipo de Corpo (Plus size / Normal / Magro) */}
         {form.ageMode !== 'child' && (
-          <div className="md:col-span-6 space-y-1.5">
-            <label className="text-xs font-bold text-zinc-200">Tipo de Corpo do Modelo</label>
-            <div className="grid grid-cols-3 gap-1.5 bg-zinc-900 p-1 rounded-xl border border-zinc-800">
+          <div className="md:col-span-6 p-3 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-1.5">
+            <label className="text-xs font-bold text-zinc-200">7. Tipo de Corpo do Modelo</label>
+            <div className="grid grid-cols-3 gap-1.5 bg-zinc-950 p-1 rounded-xl border border-zinc-800">
               <button
                 type="button"
                 onClick={() => onChange((prev) => ({ ...prev, body: 'Plus size' }))}
@@ -432,12 +487,12 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
           </div>
         )}
 
-        {/* 7. Controle de Ambiente Natural (Toggle / Checkbox com Destaque Visual) */}
-        <div className={form.ageMode === 'child' ? 'md:col-span-12 space-y-1.5' : 'md:col-span-6 space-y-1.5'}>
+        {/* 8. Controle de Ambiente Natural (Toggle / Checkbox com Destaque Visual) */}
+        <div className={`${form.ageMode === 'child' ? 'md:col-span-12' : 'md:col-span-6'} p-3 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-1.5`}>
           <label className="text-xs font-bold text-zinc-200 flex items-center justify-between">
             <span className="flex items-center gap-1.5">
               <TreePine className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="text-emerald-300 font-bold">Ambiente Natural (Cenário Nativo)</span>
+              <span className="text-emerald-300 font-bold">8. Ambiente Natural (Cenário Nativo)</span>
             </span>
             <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border transition-colors ${
               form.naturalEnvironment
@@ -452,7 +507,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
             className={`p-2.5 rounded-xl border-2 flex items-center justify-between cursor-pointer transition-all shadow-sm ${
               form.naturalEnvironment
                 ? 'bg-emerald-950/40 border-emerald-500/60 text-emerald-100 shadow-emerald-950/40 scale-[1.01]'
-                : 'bg-zinc-900/90 border-zinc-700/80 text-zinc-300 hover:border-emerald-500/40 hover:text-white'
+                : 'bg-zinc-950 border-zinc-700/80 text-zinc-300 hover:border-emerald-500/40 hover:text-white'
             }`}
           >
             <div className="flex items-center gap-2.5">
@@ -472,13 +527,22 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
           </div>
         </div>
 
-        {/* 8. Cores do Produto (1 a 3 cores) */}
-        <div className="md:col-span-12 space-y-2.5">
+        {/* 9. Cores do Produto (1 a 3 cores) */}
+        <div
+          className={`md:col-span-12 p-3.5 rounded-2xl border transition-all space-y-2.5 ${
+            hasCor1Photo
+              ? 'bg-zinc-800/80 border-emerald-500/50 shadow-sm shadow-emerald-950/20'
+              : 'bg-zinc-900/70 border-zinc-800/90'
+          }`}
+        >
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <label className="text-xs font-bold text-zinc-200 flex items-center gap-1.5">
                 <Layers className="w-4 h-4 text-purple-400" />
-                <span>Cores do Produto (1 a 3 cores) <strong className="text-rose-400">*</strong></span>
+                <span>9. Cores do Produto (1 a 3 cores) <strong className="text-rose-400">*</strong></span>
+                {hasCor1Photo && (
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                )}
               </label>
               <p className="text-[11px] text-zinc-400 mt-0.5">
                 As 3 imagens manterão a <strong>mesma modelo</strong> no mesmo enquadramento sem rosto, mudando exclusivamente a cor.
@@ -499,14 +563,20 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {form.colors.map((colorItem, idx) => {
               const isCor1 = idx === 0;
+              const isColorFilled = Boolean(colorItem.photoBase64 && colorItem.name.trim());
               return (
                 <div
                   key={colorItem.id}
-                  className="p-3 bg-zinc-900/90 rounded-xl border border-zinc-800 space-y-2.5 relative group"
+                  className={`p-3 rounded-xl border space-y-2.5 relative group transition-colors ${
+                    isColorFilled
+                      ? 'bg-zinc-900 border-emerald-500/40'
+                      : 'bg-zinc-950/90 border-zinc-800'
+                  }`}
                 >
                   <div className="flex items-center justify-between text-xs font-bold text-zinc-300">
-                    <span>
-                      Cor {idx + 1} {isCor1 ? '— Foto Principal *' : '— Amostra / Foto'}
+                    <span className="flex items-center gap-1.5">
+                      <span>Cor {idx + 1} {isCor1 ? '— Foto Principal *' : '— Amostra / Foto'}</span>
+                      {isColorFilled && <CheckCircle2 className="w-3 h-3 text-emerald-400" />}
                     </span>
                     {!isCor1 && (
                       <button
@@ -525,7 +595,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
                     onClick={() => fileInputRefs.current[colorItem.id]?.click()}
                     className={`h-24 rounded-lg border-2 border-dashed flex flex-col items-center justify-center p-2 text-center transition-colors cursor-pointer relative overflow-hidden ${
                       colorItem.photoBase64
-                        ? 'border-purple-500/40 bg-zinc-950'
+                        ? 'border-emerald-500/50 bg-zinc-950'
                         : isCor1
                         ? 'border-purple-500/50 hover:border-purple-400 bg-purple-500/5'
                         : 'border-zinc-700 hover:border-zinc-600 bg-zinc-950/50'
@@ -579,6 +649,8 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
                       className={`w-full px-2 py-1.5 bg-zinc-950 border rounded-lg text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 font-sans transition-all ${
                         detectingColorIds[colorItem.id]
                           ? 'border-purple-500/80 pr-7 text-purple-200 animate-pulse bg-purple-950/20'
+                          : colorItem.name.trim()
+                          ? 'border-emerald-500/40'
                           : 'border-zinc-700/80'
                       }`}
                     />
@@ -594,77 +666,83 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
           </div>
         </div>
 
-        {/* 9. Tecido estica? (Controle com Cores e Rádio-Bolinha) */}
-        <div className="md:col-span-6 space-y-2">
+        {/* 10. Tecido estica? (Controle Compacto e Claro) */}
+        <div
+          className={`md:col-span-6 p-3 rounded-2xl border transition-all space-y-1.5 ${
+            isStretchSelected
+              ? 'bg-zinc-800/80 border-emerald-500/50 shadow-sm shadow-emerald-950/20'
+              : 'bg-zinc-900/70 border-zinc-800/90'
+          }`}
+        >
           <label className="text-xs font-bold text-zinc-200 flex items-center justify-between">
             <span className="flex items-center gap-1.5">
-              <span>⚡ Tecido/Material estica?</span>
+              <span>10. Tecido/Material estica?</span>
               <strong className="text-rose-400">*</strong>
+              {isStretchSelected && (
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              )}
             </span>
             {form.stretch !== null && (
               <span className="text-[11px] text-emerald-300 font-semibold bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-500/30">
-                {form.stretchSource === 'product_info' ? '(Detectado da descrição) ' : form.stretchSource === 'local_detect' ? '(Detectado do nome) ' : ''}
                 {form.stretch ? 'Sim (com elasticidade)' : 'Não (sem elastano / rígido)'}
               </span>
             )}
           </label>
-          <div className="grid grid-cols-2 gap-3 p-1.5 bg-zinc-950 rounded-2xl border-2 border-amber-500/40 shadow-lg">
-            {/* Botão SIM (Estica) - Verde / Esmeralda Destacado */}
+          <div className="grid grid-cols-2 gap-2 bg-zinc-950 p-1 rounded-xl border border-zinc-700/80">
+            {/* Botão SIM (Estica) */}
             <button
               type="button"
               onClick={() => handleManualStretchClick(true)}
-              className={`py-3 px-3 text-xs font-extrabold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2.5 border-2 ${
+              className={`py-2 px-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-2 ${
                 form.stretch === true
-                  ? 'bg-gradient-to-r from-emerald-600 to-green-600 text-white border-emerald-300 shadow-lg shadow-emerald-900/50 scale-[1.02]'
-                  : 'bg-zinc-900/90 text-zinc-300 border-zinc-700 hover:border-emerald-500/60 hover:text-white'
+                  ? 'bg-emerald-600 text-white shadow-md'
+                  : 'text-zinc-400 hover:text-white'
               }`}
             >
-              {/* Rádio-Bolinha Indicadora */}
               <span
-                className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${
+                className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-all ${
                   form.stretch === true
                     ? 'border-white bg-white'
                     : 'border-zinc-500 bg-zinc-800'
                 }`}
               >
                 {form.stretch === true && (
-                  <span className="w-2 h-2 rounded-full bg-emerald-600 block" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 block" />
                 )}
               </span>
-              <span className="tracking-wide">SIM (Estica)</span>
+              <span>SIM (Estica)</span>
             </button>
 
-            {/* Botão NÃO (Não Estica) - Violeta / Rosa Destacado */}
+            {/* Botão NÃO (Não Estica) */}
             <button
               type="button"
               onClick={() => handleManualStretchClick(false)}
-              className={`py-3 px-3 text-xs font-extrabold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2.5 border-2 ${
+              className={`py-2 px-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-2 ${
                 form.stretch === false
-                  ? 'bg-gradient-to-r from-purple-600 to-rose-600 text-white border-purple-300 shadow-lg shadow-purple-900/50 scale-[1.02]'
-                  : 'bg-zinc-900/90 text-zinc-300 border-zinc-700 hover:border-purple-500/60 hover:text-white'
+                  ? 'bg-purple-600 text-white shadow-md'
+                  : 'text-zinc-400 hover:text-white'
               }`}
             >
-              {/* Rádio-Bolinha Indicadora */}
               <span
-                className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${
+                className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center transition-all ${
                   form.stretch === false
                     ? 'border-white bg-white'
                     : 'border-zinc-500 bg-zinc-800'
                 }`}
               >
                 {form.stretch === false && (
-                  <span className="w-2 h-2 rounded-full bg-purple-600 block" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-purple-600 block" />
                 )}
               </span>
-              <span className="tracking-wide">NÃO (Não estica)</span>
+              <span>NÃO (Não estica)</span>
             </button>
           </div>
         </div>
 
-        {/* 10. Tipo de Tecido / Material (Texto Opcional) */}
-        <div className="md:col-span-6 space-y-1.5">
+        {/* 11. Tipo de Tecido / Material (Texto Opcional) */}
+        <div className="md:col-span-6 p-3 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-1.5">
           <label className="text-xs font-bold text-zinc-200 flex items-center justify-between">
-            <span>Tipo de Tecido / Material (Opcional)</span>
+            <span>11. Tipo de Tecido / Material (Opcional)</span>
             {form.fabric && (
               <span className="text-[11px] text-emerald-400 font-medium">
                 {form.fabricSource === 'product_info' ? 'Detectado' : 'Definido'}
@@ -676,44 +754,29 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
             value={form.fabric}
             onChange={(e) => handleManualFabricChange(e.target.value)}
             placeholder="Ex.: duna, viscolinho, bengaline, suplex, couro, lona..."
-            className="w-full px-3.5 py-2 bg-zinc-900 border border-zinc-700/80 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 font-sans"
-          />
-        </div>
-
-        {/* 11. Informações do Produto (Textarea Opcional) */}
-        <div className="md:col-span-6 space-y-1.5">
-          <label className="text-xs font-bold text-zinc-200 flex items-center justify-between">
-            <span>Informações do Produto (Opcional)</span>
-            <span className="text-[11px] text-zinc-500 font-normal">Extração automática</span>
-          </label>
-          <textarea
-            value={form.productInfo}
-            onChange={(e) => handleProductInfoChange(e.target.value)}
-            rows={3}
-            placeholder="Cole aqui a descrição completa da loja (tecido, composição, elasticidade, bolsos, detalhes)..."
-            className="w-full p-2.5 bg-zinc-900 border border-zinc-700/80 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 resize-y font-sans leading-relaxed"
+            className="w-full px-3.5 py-2 bg-zinc-950 border border-zinc-700/80 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 font-sans"
           />
         </div>
 
         {/* 12. Instruções Adicionais (Opcional) */}
-        <div className="md:col-span-6 space-y-1.5">
+        <div className="md:col-span-6 p-3 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-1.5">
           <label className="text-xs font-bold text-zinc-200 flex items-center justify-between">
-            <span>Instruções adicionais (opcional)</span>
-            <span className="text-[11px] text-zinc-500 font-normal">Instruções específicas que deseja.</span>
+            <span>12. Instruções adicionais (Opcional)</span>
+            <span className="text-[11px] text-zinc-500 font-normal">Ajustes específicos</span>
           </label>
           <textarea
             value={form.additionalInstructions}
             onChange={(e) => onChange((prev) => ({ ...prev, additionalInstructions: e.target.value }))}
-            rows={3}
+            rows={2}
             placeholder="Instruções específicas que deseja (detalhe visual, ajuste de cenário, idade exata, etc.)..."
-            className="w-full p-2.5 bg-zinc-900 border border-zinc-700/80 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 resize-y font-sans leading-relaxed"
+            className="w-full p-2 bg-zinc-950 border border-zinc-700/80 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 resize-y font-sans leading-relaxed"
           />
         </div>
 
         {/* 13. Personalizar Falas (Compacto) */}
-        <div className="md:col-span-6 space-y-1.5">
+        <div className="md:col-span-6 p-3 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-1.5">
           <label className="text-xs font-bold text-zinc-200 flex items-center justify-between">
-            <span>Personalizar falas (Opcional)</span>
+            <span>13. Personalizar falas (Opcional)</span>
             <span className="text-[11px] text-zinc-500 font-normal">Se vazio, usa acervo validado</span>
           </label>
           <textarea
@@ -721,17 +784,17 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
             onChange={(e) => onChange((prev) => ({ ...prev, customSpeech: e.target.value }))}
             rows={2}
             placeholder="Deixe vazio para usar automaticamente a fala campeã do acervo, ou digite seu texto..."
-            className="w-full p-2 bg-zinc-900 border border-zinc-700/80 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 resize-y font-sans leading-relaxed"
+            className="w-full p-2 bg-zinc-950 border border-zinc-700/80 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 resize-y font-sans leading-relaxed"
           />
         </div>
 
-        {/* 14. Modelo do Veo (Botões de Opção Lado a Lado - Padrão Omni Flash 10s) */}
-        <div className="md:col-span-6 space-y-1.5">
+        {/* 14. Modelo do Veo (Duração por cena) */}
+        <div className="md:col-span-12 p-3 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-1.5">
           <label className="text-xs font-bold text-zinc-200 flex items-center justify-between">
-            <span>Modelo do Veo</span>
+            <span>14. Modelo do Veo</span>
             <span className="text-[11px] text-zinc-500 font-normal">Duração por cena</span>
           </label>
-          <div className="grid grid-cols-2 gap-2 bg-zinc-900 p-1 rounded-xl border border-zinc-800">
+          <div className="grid grid-cols-2 gap-2 bg-zinc-950 p-1 rounded-xl border border-zinc-800">
             <button
               type="button"
               onClick={() => onChange((prev) => ({ ...prev, veoModelMode: 'veo3_basic_8s' }))}
