@@ -5,6 +5,14 @@ export * from './types';
 export * from './openaiProvider';
 export * from './costTracker';
 
+// Normalização de chaves caso cadastradas como APIOPENAI ou GEMINIAPI
+if (!process.env.OPENAI_API_KEY) {
+  process.env.OPENAI_API_KEY = process.env.APIOPENAI || process.env.OPENAI_KEY || process.env.VITE_OPENAI_API_KEY || '';
+}
+if (!process.env.GEMINI_API_KEY) {
+  process.env.GEMINI_API_KEY = process.env.GEMINIAPI || process.env.GEMINI_KEY || process.env.VITE_GEMINI_API_KEY || '';
+}
+
 // Instância singleton do provedor OpenAI
 export const openAIProvider = new OpenAIProvider();
 

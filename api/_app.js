@@ -1120,6 +1120,12 @@ Retorne estritamente um JSON:
 };
 
 // src/services/ai/index.ts
+if (!process.env.OPENAI_API_KEY) {
+  process.env.OPENAI_API_KEY = process.env.APIOPENAI || process.env.OPENAI_KEY || process.env.VITE_OPENAI_API_KEY || "";
+}
+if (!process.env.GEMINI_API_KEY) {
+  process.env.GEMINI_API_KEY = process.env.GEMINIAPI || process.env.GEMINI_KEY || process.env.VITE_GEMINI_API_KEY || "";
+}
 var openAIProvider = new OpenAIProvider();
 function getActiveProviderType() {
   const envProvider = (process.env.AI_PROVIDER || "").toLowerCase();
@@ -1154,6 +1160,12 @@ REGRAS CR\xCDTICAS:
 
 // server.ts
 dotenv.config();
+if (!process.env.OPENAI_API_KEY) {
+  process.env.OPENAI_API_KEY = process.env.APIOPENAI || process.env.OPENAI_KEY || process.env.VITE_OPENAI_API_KEY || "";
+}
+if (!process.env.GEMINI_API_KEY) {
+  process.env.GEMINI_API_KEY = process.env.GEMINIAPI || process.env.GEMINI_KEY || process.env.VITE_GEMINI_API_KEY || "";
+}
 var __filename = fileURLToPath(import.meta.url);
 var __dirname = path.dirname(__filename);
 var app = express();
