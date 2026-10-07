@@ -640,77 +640,77 @@ IMPORTANT: Completely IGNORE backgrounds, floor, mannequins, people, bonus gift 
           garmentSpec = await this.extractVisualProductDescription(client, swatchStr, productType, variationName);
         }
 
-        const correctionDirective = correctionPrompt && correctionPrompt.trim()
-          ? `\n🚨 INSTRUÇÃO OBRIGATÓRIA DE ALTERAÇÃO/ADIÇÃO DO USUÁRIO (APLICAR RIGOROSAMENTE NA CENA): "${correctionPrompt.trim()}"\n`
-          : '';
         const userInstructions = additionalInstructions && additionalInstructions.trim()
-          ? `\nINSTRUÇÕES ADICIONAIS: ${additionalInstructions.trim()}\n`
+          ? `\nINSTRUÇÕES ADICIONAIS: ${additionalInstructions.trim()}`
           : '';
 
-        effectivePrompt = `Esta é uma EDIÇÃO da imagem enviada. A imagem enviada é a base de referência e deve preservar a pessoa, pose, ângulo e cenário geral, aplicando com fidelidade as seguintes alterações:
+        if (correctionPrompt && correctionPrompt.trim()) {
+          // Edição solicitada pelo usuário (Refazer com correção): preserva a base e aplica a alteração pedida
+          effectivePrompt = `Esta é uma EDIÇÃO da imagem enviada. A imagem enviada é a base de referência e deve preservar a pessoa, pose, ângulo e cenário geral, aplicando com fidelidade as seguintes alterações:
 
-${correctionDirective ? `1. ALTERAÇÃO SOLICITADA PELO USUÁRIO (MÁXIMA PRIORIDADE): ${correctionPrompt?.trim()}\n` : ''}2. PRODUTO (${productType}): apresente o produto com as características da variante "${variationName}": ${garmentSpec || `cor ${variationName}`}.${userInstructions}
+1. ALTERAÇÃO SOLICITADA PELO USUÁRIO (MÁXIMA PRIORIDADE): ${correctionPrompt.trim()}
+2. PRODUTO (${productType}): apresente o produto com as características da variante "${variationName}": ${garmentSpec || `cor ${variationName}`}.${userInstructions}
 IGNORE e NÃO desenhe nenhum brinde, palmilha flutuando ou objeto extra de catálogo. Sem textos, logos ou marcas d'água.`;
-      } else if (allPhotos.length > 0) {
-        // Geração da Imagem 1: usando a foto real do produto como referência mandatória
-        const primaryStr = productPhotoBase64 || productPhotosBase64[0] || allPhotos[0];
-        if (primaryStr) {
-          try {
-            baseImageFile = toFile(primaryStr, 'produto_referencia');
-          } catch {
-            baseImageFile = imageFiles[0] || null;
-          }
+        } else {
+          // Geração normal das Imagens 2 e 3 (comportamento original das 09:57): edição localizada estrita da Imagem 1
+          effectivePrompt = `Esta é uma EDIÇÃO LOCALIZADA da imagem enviada. A imagem enviada é a base absoluta e deve permanecer IDÊNTICA: mesma pessoa (pele, corpo, pernas, pés), mesma pose, mesmo quarto/cenário, mesmo piso/chão, mesma iluminação, mesmo ângulo, mesmo enquadramento e mesma composição. NÃO recrie a cena, NÃO gere outra pessoa, NÃO mude o fundo. Zero tatuagens.
 
-          // Extrai especificação física de alta precisão via Vision AI
-          const productSpec = await this.extractVisualProductDescription(client, primaryStr, productType, variationName);
-
-          const productLockDirective = productSpec
-            ? `\n\n[MANDATORY 1:1 PHYSICAL FIDELITY TO REFERENCE PRODUCT PHOTO]:\nExact physical details of the real item in reference photo: ${productSpec}\nThe generated image MUST faithfully reproduce these exact physical product characteristics, materials, sole pattern, and colors.`
-            : `\n\n[MANDATORY 1:1 PHYSICAL FIDELITY TO REFERENCE PRODUCT PHOTO]:\nFaithfully replicate the exact ${productType} shown in the uploaded reference photo, including materials, shape, silhouette, and colors of "${variationName}".`;
-
-          effectivePrompt = `${cleanPrompt}${productLockDirective}`;
+ÚNICA ALTERAÇÃO: substitua exclusivamente o produto (${productType}) por uma peça com exatamente estas características (variante "${variationName}"): ${garmentSpec || `cor ${variationName}`}.${userInstructions}
+IGNORE e NÃO desenhe nenhum brinde, palmilha flutuando ou objeto extra da foto de catálogo.
+Mantenha o mesmo modelo/corte e caimento do produto; troque somente cores e detalhes do produto conforme descrito. Tudo que não for o produto permanece pixel a pixel igual à imagem enviada. Sem textos, logos ou marcas d'água.`;
         }
+      } else if (imageFiles.length > 0) {
+        // Geração da Imagem 1 (comportamento original das 09:57):
+        // a foto real "Cor 1 — Foto Principal" é enviada como imagem base do images.edit
+        // junto com o prompt da memória (buildAniaImage1Prompt) sem alterações.
+        baseImageFile = imageFiles[0];
+        effectivePrompt = cleanPrompt;
       }
 
       // Se temos arquivo de imagem de base válido para edição (seja Imagem Mestre ou Foto do Produto), usamos client.images.edit
       if (baseImageFile) {
-        try {
-          const editResponse = await client.images.edit({
-            model: OPENAI_IMAGE_MODEL,
-            image: baseImageFile,
-            prompt: effectivePrompt,
-            quality: OPENAI_IMAGE_QUALITY,
-            size: OPENAI_IMAGE_SIZE,
-          });
-
-          const b64 = editResponse.data?.[0]?.b64_json;
-          if (b64) {
-            const imgCost = globalCostTracker.calculateImageCost(OPENAI_IMAGE_QUALITY);
-            globalCostTracker.recordCall({
-              step: stepName,
+        let lastEditError = '';
+        // Tenta até 2 vezes com a imagem de referência. NUNCA cai para geração sem referência,
+        // pois isso gera um produto aleatório que não corresponde à foto enviada.
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            const editResponse = await client.images.edit({
               model: OPENAI_IMAGE_MODEL,
-              costUSD: imgCost.costUSD,
-              costBRL: imgCost.costBRL,
-              details: `Geração com ${imageFiles.length} foto(s) de referência real em qualidade ${OPENAI_IMAGE_QUALITY}`,
+              image: baseImageFile,
+              prompt: effectivePrompt,
+              quality: OPENAI_IMAGE_QUALITY,
+              size: OPENAI_IMAGE_SIZE,
             });
 
-            return {
-              success: true,
-              imageUrl: `data:image/png;base64,${b64}`,
-              costBRL: imgCost.costBRL,
-            };
+            const b64 = editResponse.data?.[0]?.b64_json;
+            if (b64) {
+              const imgCost = globalCostTracker.calculateImageCost(OPENAI_IMAGE_QUALITY);
+              globalCostTracker.recordCall({
+                step: stepName,
+                model: OPENAI_IMAGE_MODEL,
+                costUSD: imgCost.costUSD,
+                costBRL: imgCost.costBRL,
+                details: `Geração com ${imageFiles.length} foto(s) de referência real em qualidade ${OPENAI_IMAGE_QUALITY}`,
+              });
+
+              return {
+                success: true,
+                imageUrl: `data:image/png;base64,${b64}`,
+                costBRL: imgCost.costBRL,
+              };
+            }
+            lastEditError = 'O modelo não retornou imagem.';
+          } catch (editErr: any) {
+            lastEditError = editErr?.message || String(editErr);
+            console.warn(`[OpenAI Provider] images.edit tentativa ${attempt + 1} falhou: ${lastEditError}`);
           }
-        } catch (editErr: any) {
-          console.warn(`[OpenAI Provider] Falha no images.edit (${editErr?.message}), tentando images.generate com prompt enriquecido por visão...`);
         }
 
-        if (modelReferenceBase64) {
-          return {
-            success: false,
-            error: 'A edição da Imagem 1 não retornou imagem. Use "Refazer".',
-            fallbackRequired: false,
-          };
-        }
+        return {
+          success: false,
+          error: `Falha ao gerar a imagem usando a foto de referência: ${lastEditError}. Use "Refazer".`,
+          fallbackRequired: false,
+        };
       }
 
       // Geração direta com prompt enriquecido por visão
