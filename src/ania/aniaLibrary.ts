@@ -107,27 +107,96 @@ export function detectStretch(text: string): boolean | null {
   return null;
 }
 
-// ─── 2.1. DETECÇÃO DE TIPO DE PRODUTO (CALÇADOS VS ROUPAS) ────────────────
+// ─── 2.1. DETECÇÃO DE TIPO DE PRODUTO (CALÇADOS VS ROUPAS) E NOME CURTO ──
+export const FOOTWEAR_KEYWORDS = [
+  'tenis',
+  'sapato',
+  'sandalia',
+  'chinelo',
+  'slide',
+  'rasteirinha',
+  'salto',
+  'bota',
+  'coturno',
+  'mocassim',
+  'sapatilha',
+  'papete',
+  'tamanco',
+  'scarpin',
+  'chuteira',
+];
+
 export function detectProductMode(name: string, info?: string): ProductMode {
   const norm = removeAccents(`${name || ''} ${info || ''}`);
-  const footwearKeywords = [
-    'tenis',
-    'sapato',
-    'sandalia',
-    'chinelo',
-    'slide',
-    'rasteirinha',
-    'salto',
-    'bota',
-    'coturno',
-    'mocassim',
-    'sapatilha',
-    'papete',
-    'tamanco',
-    'scarpin',
-    'chuteira',
+  return FOOTWEAR_KEYWORDS.some((kw) => norm.includes(kw)) ? 'footwear' : 'apparel';
+}
+
+/**
+ * Extrai apenas a palavra-chave principal e curta do produto (ex: "Tênis", "Vestido", "Calça", "Pijama", "Short saia", "Conjunto")
+ */
+export function extractShortProductName(text: string): string {
+  if (!text || !text.trim()) return '';
+  const norm = removeAccents(text);
+
+  // Lista ordenada por especificidade composta primeiro
+  const shortKeywords: [string, string][] = [
+    ['short saia', 'Short Saia'],
+    ['shorts saia', 'Short Saia'],
+    ['baby doll', 'Baby Doll'],
+    ['babydoll', 'Baby Doll'],
+    ['short doll', 'Baby Doll'],
+    ['wide leg', 'Calça Wide Leg'],
+    ['tenis', 'Tênis'],
+    ['sapato', 'Sapato'],
+    ['sandalia', 'Sandália'],
+    ['chinelo', 'Chinelo'],
+    ['slide', 'Chinelo Slide'],
+    ['rasteirinha', 'Rasteirinha'],
+    ['bota', 'Bota'],
+    ['coturno', 'Coturno'],
+    ['mocassim', 'Mocassim'],
+    ['sapatilha', 'Sapatilha'],
+    ['papete', 'Papete'],
+    ['tamanco', 'Tamanco'],
+    ['scarpin', 'Scarpin'],
+    ['chuteira', 'Chuteira'],
+    ['pijama', 'Pijama'],
+    ['camisola', 'Camisola'],
+    ['vestido', 'Vestido'],
+    ['calca', 'Calça'],
+    ['legging', 'Legging'],
+    ['pantalona', 'Pantalona'],
+    ['bermuda', 'Bermuda'],
+    ['short', 'Short'],
+    ['shorts', 'Shorts'],
+    ['saia', 'Saia'],
+    ['macacao', 'Macacão'],
+    ['macaquinho', 'Macaquinho'],
+    ['conjunto', 'Conjunto'],
+    ['blusa', 'Blusa'],
+    ['cropped', 'Cropped'],
+    ['camisa', 'Camisa'],
+    ['camiseta', 'Camiseta'],
+    ['regata', 'Regata'],
+    ['body', 'Body'],
+    ['cardigan', 'Cardigan'],
+    ['jaqueta', 'Jaqueta'],
+    ['casaco', 'Casaco'],
+    ['moletom', 'Moletom'],
   ];
-  return footwearKeywords.some((kw) => norm.includes(kw)) ? 'footwear' : 'apparel';
+
+  for (const [kw, formatted] of shortKeywords) {
+    if (new RegExp(`\\b${kw}\\b`, 'i').test(norm)) {
+      return formatted;
+    }
+  }
+
+  // Fallback: primeira palavra limpa com primeira letra maiúscula
+  const firstWord = text.trim().split(/\s+/)[0].replace(/[^a-zA-ZÀ-ÿ]/g, '');
+  if (firstWord.length > 0) {
+    return firstWord.charAt(0).toUpperCase() + firstWord.slice(1).toLowerCase();
+  }
+  return '';
 }
 
 // ─── 2.2. DETECÇÃO DE CENÁRIO NATIVO (AMBIENTE NATURAL) ───────────────────

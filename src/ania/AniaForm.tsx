@@ -20,7 +20,7 @@ import {
   ProductMode,
   AgeMode,
 } from './types';
-import { detectStretch, detectFabric, detectProductMode } from './aniaLibrary';
+import { detectStretch, detectFabric, detectProductMode, extractShortProductName } from './aniaLibrary';
 import { VeoModelMode } from '../types';
 
 interface AniaFormProps {
@@ -38,11 +38,13 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
       const detectedProdMode = prev.productMode === 'apparel' ? detectProductMode(val, prev.productInfo) : prev.productMode;
       const detectedAutoStretch = prev.stretchSource !== 'manual' ? detectStretch(`${val} ${prev.productInfo}`) : prev.stretch;
       const detectedFabricObj = prev.fabricSource !== 'manual' ? detectFabric(val, undefined, prev.productInfo) : null;
+      const defaultBody = detectedProdMode === 'footwear' && prev.body === 'Plus size' ? 'Normal' : prev.body;
 
       return {
         ...prev,
         productName: val,
         productMode: detectedProdMode,
+        body: defaultBody,
         stretch: prev.stretchSource === 'manual' ? prev.stretch : (detectedAutoStretch !== null ? detectedAutoStretch : prev.stretch),
         stretchSource: prev.stretchSource === 'manual' ? 'manual' : (detectedAutoStretch !== null ? 'local_detect' : prev.stretchSource),
         fabric: prev.fabricSource === 'manual' ? prev.fabric : (detectedFabricObj?.key !== 'padrao' ? detectedFabricObj?.key || prev.fabric : prev.fabric),
@@ -56,11 +58,23 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
       const detectedAutoStretch = prev.stretchSource !== 'manual' ? detectStretch(`${prev.productName} ${val}`) : prev.stretch;
       const detectedFabricObj = prev.fabricSource !== 'manual' ? detectFabric(prev.productName, undefined, val) : null;
       const detectedProdMode = prev.productMode === 'apparel' ? detectProductMode(prev.productName, val) : prev.productMode;
+      const defaultBody = detectedProdMode === 'footwear' && prev.body === 'Plus size' ? 'Normal' : prev.body;
+
+      // Se o usuário ainda não digitou um nome de produto ou se veio vazio, extrai o nome curto automaticamente da descrição
+      let autoProductName = prev.productName;
+      if (!prev.productName.trim()) {
+        const extracted = extractShortProductName(val);
+        if (extracted) {
+          autoProductName = extracted;
+        }
+      }
 
       return {
         ...prev,
+        productName: autoProductName,
         productInfo: val,
         productMode: detectedProdMode,
+        body: defaultBody,
         stretch: prev.stretchSource === 'manual' ? prev.stretch : (detectedAutoStretch !== null ? detectedAutoStretch : prev.stretch),
         stretchSource: prev.stretchSource === 'manual' ? 'manual' : (detectedAutoStretch !== null ? 'product_info' : prev.stretchSource),
         fabric: prev.fabricSource === 'manual' ? prev.fabric : (detectedFabricObj?.key !== 'padrao' ? detectedFabricObj?.key || prev.fabric : prev.fabric),
@@ -201,7 +215,13 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
             </button>
             <button
               type="button"
-              onClick={() => onChange((prev) => ({ ...prev, productMode: 'footwear' }))}
+              onClick={() =>
+                onChange((prev) => ({
+                  ...prev,
+                  productMode: 'footwear',
+                  body: prev.body === 'Plus size' ? 'Normal' : prev.body,
+                }))
+              }
               className={`py-2 px-1 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                 form.productMode === 'footwear'
                   ? 'bg-purple-600 text-white shadow-md'
@@ -497,41 +517,69 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
           </div>
         </div>
 
-        {/* 9. Tecido estica? (Rádio Obrigatório) */}
-        <div className="md:col-span-6 space-y-1.5">
-          <label className="text-xs font-bold text-zinc-200 flex items-center justify-between">
-            <span>Tecido/Material estica? <strong className="text-rose-400">*</strong></span>
+        {/* 9. Tecido estica? (Controle Ultra-Destacado com Cores e Rádio-Bolinha) */}
+        <div className="md:col-span-6 space-y-2">
+          <label className="text-xs font-bold text-white flex items-center justify-between">
+            <span className="flex items-center gap-1.5 text-amber-300 font-extrabold text-sm">
+              <span>⚡ Tecido/Material estica?</span>
+              <strong className="text-rose-400">*</strong>
+            </span>
             {form.stretch !== null && (
-              <span className="text-[11px] text-emerald-400 font-medium">
+              <span className="text-[11px] text-emerald-300 font-semibold bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-500/30">
                 {form.stretchSource === 'product_info' ? '(Detectado da descrição) ' : form.stretchSource === 'local_detect' ? '(Detectado do nome) ' : ''}
                 {form.stretch ? 'Sim (com elasticidade)' : 'Não (sem elastano / rígido)'}
               </span>
             )}
           </label>
-          <div className="grid grid-cols-2 gap-2 bg-zinc-900 p-1 rounded-xl border border-zinc-800">
+          <div className="grid grid-cols-2 gap-3 p-1.5 bg-zinc-950 rounded-2xl border-2 border-amber-500/40 shadow-lg">
+            {/* Botão SIM (Estica) - Verde / Esmeralda Destacado */}
             <button
               type="button"
               onClick={() => handleManualStretchClick(true)}
-              className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              className={`py-3 px-3 text-xs font-extrabold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2.5 border-2 ${
                 form.stretch === true
-                  ? 'bg-purple-600 text-white shadow-md'
-                  : 'text-zinc-400 hover:text-white'
+                  ? 'bg-gradient-to-r from-emerald-600 to-green-600 text-white border-emerald-300 shadow-lg shadow-emerald-900/50 scale-[1.02]'
+                  : 'bg-zinc-900/90 text-zinc-300 border-zinc-700 hover:border-emerald-500/60 hover:text-white'
               }`}
             >
-              {form.stretch === true && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
-              <span>Sim (estica)</span>
+              {/* Rádio-Bolinha Indicadora */}
+              <span
+                className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${
+                  form.stretch === true
+                    ? 'border-white bg-white'
+                    : 'border-zinc-500 bg-zinc-800'
+                }`}
+              >
+                {form.stretch === true && (
+                  <span className="w-2 h-2 rounded-full bg-emerald-600 block" />
+                )}
+              </span>
+              <span className="tracking-wide">SIM (Estica)</span>
             </button>
+
+            {/* Botão NÃO (Não Estica) - Violeta / Rosa Destacado */}
             <button
               type="button"
               onClick={() => handleManualStretchClick(false)}
-              className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              className={`py-3 px-3 text-xs font-extrabold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2.5 border-2 ${
                 form.stretch === false
-                  ? 'bg-purple-600 text-white shadow-md'
-                  : 'text-zinc-400 hover:text-white'
+                  ? 'bg-gradient-to-r from-purple-600 to-rose-600 text-white border-purple-300 shadow-lg shadow-purple-900/50 scale-[1.02]'
+                  : 'bg-zinc-900/90 text-zinc-300 border-zinc-700 hover:border-purple-500/60 hover:text-white'
               }`}
             >
-              {form.stretch === false && <CheckCircle2 className="w-3.5 h-3.5 text-white" />}
-              <span>Não (não estica)</span>
+              {/* Rádio-Bolinha Indicadora */}
+              <span
+                className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${
+                  form.stretch === false
+                    ? 'border-white bg-white'
+                    : 'border-zinc-500 bg-zinc-800'
+                }`}
+              >
+                {form.stretch === false && (
+                  <span className="w-2 h-2 rounded-full bg-purple-600 block" />
+                )}
+              </span>
+              <span className="tracking-wide">NÃO (Não estica)</span>
             </button>
           </div>
         </div>

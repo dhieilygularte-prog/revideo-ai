@@ -728,124 +728,148 @@ export function AniaResults({
                     </button>
                   )}
 
-                  {/* Dictated Correction Banner / Feedback */}
-                  {(activeImageRecordingIndex === idx || customCorrections[idx]) && (
-                    <div className="p-2.5 bg-purple-950/40 border border-purple-500/30 rounded-xl text-xs space-y-1">
-                      <div className="flex items-center justify-between text-[11px] font-semibold text-purple-300">
-                        <span className="flex items-center gap-1.5">
-                          {activeImageRecordingIndex === idx ? (
-                            <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-                          ) : (
-                            <Mic className="w-3.5 h-3.5 text-purple-400" />
-                          )}
-                          {activeImageRecordingIndex === idx ? 'Ouvindo instruções por voz...' : 'Instruções para refazer:'}
-                        </span>
-                        {customCorrections[idx] && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setCustomCorrections((prev) => {
-                                const next = { ...prev };
-                                delete next[idx];
-                                return next;
-                              })
-                            }
-                            className="text-zinc-400 hover:text-rose-400 text-[10px] cursor-pointer"
-                            title="Limpar instrução"
-                          >
-                            Limpar
-                          </button>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-zinc-200 break-words">
-                        {customCorrections[idx] || ''}
-                        {activeImageRecordingIndex === idx && interimImageCorrection && (
-                          <span className="italic text-purple-300 opacity-70"> {interimImageCorrection}</span>
-                        )}
-                      </p>
-                    </div>
-                  )}
+                  {/* Anexar Nova Foto de Referência para Esta Imagem Específica */}
+                  <div className="p-2.5 bg-zinc-950/90 rounded-xl border border-zinc-800 space-y-2">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      ref={(el) => {
+                        fileInputRefs.current[idx] = el;
+                      }}
+                      onChange={(e) => handlePhotoUpload(idx, e)}
+                      className="hidden"
+                      id={`custom-file-input-${idx}`}
+                    />
 
-                  {/* Actions under image */}
-                  <div className="flex flex-col gap-2">
-                    {editingImageIndex === idx ? (
-                      <div className="p-3 bg-zinc-950 rounded-xl border border-purple-500/40 space-y-2">
-                        <label className="text-[11px] font-bold text-zinc-300 flex items-center justify-between">
-                          <span>Instruções para corrigir esta imagem:</span>
-                          <button
-                            onClick={() => setEditingImageIndex(null)}
-                            className="text-zinc-500 hover:text-zinc-300 text-[10px]"
-                          >
-                            Cancelar
-                          </button>
-                        </label>
-                        <textarea
-                          value={instructionText}
-                          onChange={(e) => setInstructionText(e.target.value)}
-                          rows={2}
-                          placeholder="Ex: Deixar a cor mais bordô, ajustar o cós, mudar a blusa..."
-                          className="w-full p-2 bg-zinc-900 border border-zinc-700 rounded-lg text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500"
-                        />
+                    {overrideProductPhotos[idx] ? (
+                      <div className="flex items-center justify-between p-2 bg-purple-950/40 border border-purple-500/40 rounded-xl text-left">
+                        <div className="flex items-center gap-2 overflow-hidden">
+                          <img
+                            src={overrideProductPhotos[idx]}
+                            alt={`Nova referência Cor ${idx + 1}`}
+                            className="w-8 h-8 rounded-lg object-cover border border-purple-400/50 shrink-0"
+                          />
+                          <div className="truncate">
+                            <span className="text-[11px] font-bold text-purple-200 block truncate">
+                              Nova referência anexada (Cor {idx + 1})
+                            </span>
+                            <span className="text-[9px] text-emerald-400">Pronta para gerar</span>
+                          </div>
+                        </div>
                         <button
                           type="button"
-                          onClick={() => handleExecuteImageEdit(idx)}
-                          className="w-full py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-lg text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                          onClick={() => handleRemovePhoto(idx)}
+                          className="p-1 text-zinc-400 hover:text-rose-400 cursor-pointer"
+                          title="Remover foto anexada"
                         >
-                          <Sparkles className="w-3.5 h-3.5" />
-                          <span>Aplicar Correção e Refazer</span>
+                          <X className="w-4 h-4" />
                         </button>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-12 gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            onRegenerateImage(idx, customCorrections[idx], overrideProductPhotos[idx])
-                          }
-                          disabled={imageObj.isRegenerating}
-                          className="col-span-5 px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-zinc-700 disabled:opacity-50"
-                        >
-                          <RotateCcw className="w-3.5 h-3.5 text-zinc-400" />
-                          <span>{overrideProductPhotos[idx] ? 'Refazer (Nova Foto)' : 'Refazer'}</span>
-                        </button>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRefs.current[idx]?.click()}
+                        className="w-full py-1.5 px-2 bg-zinc-900 hover:bg-zinc-800 text-purple-300 hover:text-purple-200 text-[11px] font-bold rounded-xl border border-dashed border-purple-500/40 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <Upload className="w-3.5 h-3.5 text-purple-400" />
+                        <span>Anexar Nova Imagem de Referência</span>
+                      </button>
+                    )}
+                  </div>
 
-                        {/* Botão de Microfone para Ditar ao Refazer */}
+                  {/* Barra Direta: Ajustar ou Corrigir esta Imagem (Texto + Microfone + Botão Aplicar) */}
+                  <div className="p-3 bg-zinc-950/90 rounded-xl border border-zinc-800/90 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[11px] font-bold text-zinc-300 flex items-center gap-1.5">
+                        <Edit3 className="w-3.5 h-3.5 text-purple-400" />
+                        <span>Ajustar ou Corrigir esta Imagem:</span>
+                      </label>
+                      {activeImageRecordingIndex === idx && (
+                        <span className="text-[10px] font-semibold text-rose-400 flex items-center gap-1 animate-pulse">
+                          <span className="w-2 h-2 rounded-full bg-rose-500" />
+                          Ouvindo...
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-stretch gap-1.5">
+                      {/* Botão Refazer Compacto (Canto) */}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onRegenerateImage(idx, undefined, overrideProductPhotos[idx])
+                        }
+                        disabled={imageObj.isRegenerating}
+                        className="px-2.5 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition-colors cursor-pointer border border-zinc-700 disabled:opacity-50 shrink-0"
+                        title="Refazer imagem idêntica automaticamente"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5 text-zinc-400" />
+                        <span className="hidden sm:inline text-[11px]">Refazer</span>
+                      </button>
+
+                      {/* Campo de Texto com Microfone Embutido */}
+                      <div className="relative flex-1">
+                        <input
+                          type="text"
+                          value={customCorrections[idx] || ''}
+                          onChange={(e) =>
+                            setCustomCorrections((prev) => ({
+                              ...prev,
+                              [idx]: e.target.value,
+                            }))
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              onRegenerateImage(idx, customCorrections[idx], overrideProductPhotos[idx]);
+                            }
+                          }}
+                          placeholder="Ex: Deixar o tênis marrom mais escuro, mudar cadarço..."
+                          className="w-full pl-2.5 pr-8 py-2 bg-zinc-900 border border-zinc-700/90 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 transition-colors"
+                        />
+
+                        {/* Botão Microfone Embutido */}
                         <button
                           type="button"
                           onClick={() => toggleImageVoiceRecording(idx)}
-                          disabled={imageObj.isRegenerating}
-                          className={`col-span-2 p-2 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                          className={`absolute right-1 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-all cursor-pointer ${
                             activeImageRecordingIndex === idx
-                              ? 'bg-rose-500/20 border-rose-500 text-rose-300 animate-pulse'
-                              : customCorrections[idx]
-                              ? 'bg-purple-500/20 border-purple-500 text-purple-300'
-                              : 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:text-white hover:bg-zinc-700'
+                              ? 'bg-rose-500/20 text-rose-400 animate-pulse'
+                              : 'text-zinc-400 hover:text-purple-300 hover:bg-zinc-800'
                           }`}
                           title={
                             activeImageRecordingIndex === idx
                               ? 'Parar gravação'
-                              : 'Ditar alterações para esta imagem por voz'
+                              : 'Ditar correção da imagem por voz'
                           }
                         >
                           {activeImageRecordingIndex === idx ? (
                             <Square className="w-3.5 h-3.5 text-rose-400 fill-rose-400" />
                           ) : (
-                            <Mic className="w-3.5 h-3.5 text-purple-400" />
+                            <Mic className="w-3.5 h-3.5" />
                           )}
                         </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditingImageIndex(idx);
-                            setInstructionText(customCorrections[idx] || '');
-                          }}
-                          className="col-span-5 px-3 py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-purple-500/30"
-                        >
-                          <Sliders className="w-3.5 h-3.5" />
-                          <span>Instrução</span>
-                        </button>
                       </div>
+
+                      {/* Botão Aplicar Correção e Refazer */}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          onRegenerateImage(idx, customCorrections[idx], overrideProductPhotos[idx])
+                        }
+                        disabled={imageObj.isRegenerating || !(customCorrections[idx]?.trim() || interimImageCorrection.trim() || overrideProductPhotos[idx])}
+                        className="px-3 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition-all cursor-pointer shadow-md shrink-0"
+                        title="Aplicar correção e refazer a imagem"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Aplicar</span>
+                      </button>
+                    </div>
+
+                    {activeImageRecordingIndex === idx && interimImageCorrection && (
+                      <p className="text-[10px] text-purple-300 italic opacity-80 pl-1">
+                        "{interimImageCorrection}"
+                      </p>
                     )}
                   </div>
                 </div>
