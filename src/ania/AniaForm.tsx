@@ -373,6 +373,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
 
   // Validation & Identification Booleans
   const hasProductInfo = form.productInfo.trim().length > 0;
+  const hasProductName = form.productName.trim().length > 0;
   const isProductNameIdentified = form.productName.trim().length > 0 && (form.productNameSource === 'manual' || form.productNameSource === 'local_detect' || form.productNameSource === 'product_info');
   const isProductModeIdentified = form.productModeSource === 'manual' || (form.productModeSource === 'local_detect' && detectProductMode(form.productName, form.productInfo) !== null);
   const isCategoryIdentified = form.categorySource === 'manual' || (form.categorySource === 'local_detect' && form.category !== 'AUTO');
@@ -394,7 +395,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
           className={`md:col-span-12 p-4 rounded-2xl transition-all duration-300 space-y-1.5 ${
             hasProductInfo
               ? 'bg-gradient-to-br from-sky-900/80 via-blue-900/75 to-slate-800/90 border-2 border-sky-400 shadow-lg shadow-sky-900/50 ring-2 ring-sky-400/40'
-              : 'bg-zinc-800/80 border-2 border-zinc-600/90 shadow-md'
+              : 'bg-zinc-800/90 border-2 border-zinc-500/70 shadow-md'
           }`}
         >
           <label className="text-xs font-bold flex items-center justify-between">
@@ -418,7 +419,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
             className={`w-full p-2.5 rounded-xl text-xs text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-sky-400 resize-y font-sans leading-relaxed transition-colors ${
               hasProductInfo
                 ? 'bg-slate-950/80 border border-sky-400/60 focus:border-sky-300'
-                : 'bg-zinc-950/90 border border-zinc-500/80 focus:border-sky-400'
+                : 'bg-zinc-900/90 border border-zinc-500/80 focus:border-sky-400'
             }`}
           />
         </div>

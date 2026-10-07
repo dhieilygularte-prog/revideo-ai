@@ -116,7 +116,7 @@ export function detectStretch(text: string): boolean | null {
  * Redimensiona e comprime imagens no navegador antes do upload para evitar 413 Payload Too Large
  * e timeouts em ambientes de produção/Vercel/Cloudflare.
  */
-export async function compressAndResizeImage(file: File, maxDimension = 1536, quality = 0.88): Promise<string> {
+export async function compressAndResizeImage(file: File, maxDimension = 1280, quality = 0.84): Promise<string> {
   return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -126,10 +126,6 @@ export async function compressAndResizeImage(file: File, maxDimension = 1536, qu
       const img = new Image();
       img.onload = () => {
         let { width, height } = img;
-        if (width <= maxDimension && height <= maxDimension && file.size < 800 * 1024) {
-          return resolve(rawBase64);
-        }
-
         if (width > maxDimension || height > maxDimension) {
           if (width > height) {
             height = Math.round((height * maxDimension) / width);
@@ -147,8 +143,8 @@ export async function compressAndResizeImage(file: File, maxDimension = 1536, qu
         if (!ctx) return resolve(rawBase64);
 
         ctx.drawImage(img, 0, 0, width, height);
-        const mimeType = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
-        const resizedBase64 = canvas.toDataURL(mimeType, quality);
+        // Sempre converte para image/jpeg para manter alta qualidade e peso levíssimo (< 300KB)
+        const resizedBase64 = canvas.toDataURL('image/jpeg', quality);
         resolve(resizedBase64);
       };
       img.onerror = () => resolve(rawBase64);
@@ -156,6 +152,52 @@ export async function compressAndResizeImage(file: File, maxDimension = 1536, qu
     };
     reader.onerror = () => resolve('');
     reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * Comprime uma string base64 existente (ou imagem gerada da IA) para garantir que
+ * payloads com múltiplas imagens nunca ultrapassem o limite de 4.5 MB do Vercel/servidor.
+ */
+export async function compressBase64Image(base64: string, maxDimension = 1024, quality = 0.82): Promise<string> {
+  if (!base64 || typeof base64 !== 'string') return '';
+  if (!base64.startsWith('data:image')) return base64;
+
+  return new Promise((resolve) => {
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        let { width, height } = img;
+        if (width <= maxDimension && height <= maxDimension && base64.length < 400 * 1024) {
+          return resolve(base64);
+        }
+
+        if (width > maxDimension || height > maxDimension) {
+          if (width > height) {
+            height = Math.round((height * maxDimension) / width);
+            width = maxDimension;
+          } else {
+            width = Math.round((width * maxDimension) / height);
+            height = maxDimension;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return resolve(base64);
+
+        ctx.drawImage(img, 0, 0, width, height);
+        const compressed = canvas.toDataURL('image/jpeg', quality);
+        resolve(compressed);
+      };
+      img.onerror = () => resolve(base64);
+      img.src = base64;
+    } catch {
+      resolve(base64);
+    }
   });
 }
 

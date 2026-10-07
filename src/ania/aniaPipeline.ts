@@ -18,6 +18,7 @@ import {
   ensureProductNameInSpeech,
   generateDescriptionHashtags,
   removeAccents,
+  compressBase64Image,
 } from './aniaLibrary';
 import {
   buildAniaImage1Prompt,
@@ -438,11 +439,15 @@ export async function runAniaPipeline(
     });
 
     try {
+      // Otimização crucial: Comprime a Imagem 1 e a foto de cor para não estourar o limite de 4.5MB do servidor
+      const compressedImg1 = await compressBase64Image(img1Url, 1024, 0.82);
+      const compressedColorPhoto = col.photoBase64 ? await compressBase64Image(col.photoBase64, 1024, 0.82) : undefined;
+
       const json = await postJson<{ success: boolean; imageUrl: string; error?: string }>('/api/generate-scene-image', {
         prompt: colorSwapPrompt,
-        modelReferenceBase64: img1Url, // 1ª imagem = Imagem 1 gerada (BASE OBRIGATÓRIA)
-        productPhotoBase64: col.photoBase64 || undefined, // 2ª imagem = amostra da cor (SÓ REFERÊNCIA DE COR)
-        productPhotosBase64: [col.photoBase64].filter(Boolean),
+        modelReferenceBase64: compressedImg1, // 1ª imagem = Imagem 1 gerada (BASE OBRIGATÓRIA)
+        productPhotoBase64: compressedColorPhoto, // 2ª imagem = amostra da cor (SÓ REFERÊNCIA DE COR)
+        productPhotosBase64: compressedColorPhoto ? [compressedColorPhoto] : [],
         variationName: col.name,
         productType: form.productName,
         targetAngle: 'front',
@@ -461,7 +466,7 @@ export async function runAniaPipeline(
       try {
         const auditJson = await postJson<{ success: boolean; audit?: any }>('/api/audit-image-fidelity', {
           generatedImageBase64: json.imageUrl,
-          referencePhotos: [img1Url], // Comparar com a Imagem 1 gerada!
+          referencePhotos: [compressedImg1], // Comparar com a Imagem 1 gerada!
           variationName: col.name,
           role: `Imagem ${colorIdx + 1}: ${col.name}`,
           aiProfile,
@@ -562,7 +567,10 @@ export async function regenerateAniaSingleImage(params: {
   const scenarioKey = result.planning.scenarioKey || detectScenarioKey(form.productName, form.productInfo, result.planning.categoria);
   const scenarioDesc = getScenarioDescription(scenarioKey, Boolean(form.naturalEnvironment));
 
-  const effectivePhoto = overrideProductPhotoBase64 || col.photoBase64 || (isImage1 ? form.colors[0]?.photoBase64 : undefined);
+  const rawEffectivePhoto = overrideProductPhotoBase64 || col.photoBase64 || (isImage1 ? form.colors[0]?.photoBase64 : undefined);
+  const effectivePhoto = rawEffectivePhoto ? await compressBase64Image(rawEffectivePhoto, 1024, 0.82) : undefined;
+  const rawModelRef = !isImage1 ? result.images[0]?.imageUrl : undefined;
+  const modelReferenceBase64 = rawModelRef ? await compressBase64Image(rawModelRef, 1024, 0.82) : undefined;
 
   const prompt = isImage1
     ? buildAniaImage1Prompt({
@@ -595,7 +603,7 @@ export async function regenerateAniaSingleImage(params: {
     prompt,
     productPhotoBase64: effectivePhoto,
     productPhotosBase64: effectivePhoto ? [effectivePhoto] : [],
-    modelReferenceBase64: isImage1 ? undefined : result.images[0]?.imageUrl,
+    modelReferenceBase64,
     variationName: col.name,
     productType: form.productName,
     targetAngle: 'front',
@@ -618,8 +626,8 @@ export async function regenerateAniaSingleImage(params: {
     const auditJson = await postJson<{ success: boolean; audit?: any }>('/api/audit-image-fidelity', {
       generatedImageBase64: data.imageUrl,
       referencePhotos: isImage1
-        ? [col.photoBase64 || form.colors[0]?.photoBase64].filter(Boolean)
-        : [result.images[0]?.imageUrl].filter(Boolean),
+        ? [effectivePhoto].filter(Boolean)
+        : [modelReferenceBase64 || result.images[0]?.imageUrl].filter(Boolean),
       variationName: col.name,
       role: `Imagem ${imageIndex + 1}: ${col.name}`,
       aiProfile,
