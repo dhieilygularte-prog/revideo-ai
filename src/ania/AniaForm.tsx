@@ -20,7 +20,7 @@ import {
   ProductMode,
   AgeMode,
 } from './types';
-import { detectStretch, detectFabric, detectProductMode, extractShortProductName } from './aniaLibrary';
+import { detectStretch, detectFabric, detectProductMode, extractShortProductName, detectGender } from './aniaLibrary';
 import { VeoModelMode } from '../types';
 
 interface AniaFormProps {
@@ -39,11 +39,13 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
       const detectedAutoStretch = prev.stretchSource !== 'manual' ? detectStretch(`${val} ${prev.productInfo}`) : prev.stretch;
       const detectedFabricObj = prev.fabricSource !== 'manual' ? detectFabric(val, undefined, prev.productInfo) : null;
       const defaultBody = detectedProdMode === 'footwear' && prev.body === 'Plus size' ? 'Normal' : prev.body;
+      const detectedGen = detectGender(val, prev.productInfo);
 
       return {
         ...prev,
         productName: val,
         productMode: detectedProdMode,
+        gender: detectedGen || prev.gender,
         body: defaultBody,
         stretch: prev.stretchSource === 'manual' ? prev.stretch : (detectedAutoStretch !== null ? detectedAutoStretch : prev.stretch),
         stretchSource: prev.stretchSource === 'manual' ? 'manual' : (detectedAutoStretch !== null ? 'local_detect' : prev.stretchSource),
@@ -59,6 +61,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
       const detectedFabricObj = prev.fabricSource !== 'manual' ? detectFabric(prev.productName, undefined, val) : null;
       const detectedProdMode = prev.productMode === 'apparel' ? detectProductMode(prev.productName, val) : prev.productMode;
       const defaultBody = detectedProdMode === 'footwear' && prev.body === 'Plus size' ? 'Normal' : prev.body;
+      const detectedGen = detectGender(prev.productName, val);
 
       // Se o usuário ainda não digitou um nome de produto ou se veio vazio, extrai o nome curto automaticamente da descrição
       let autoProductName = prev.productName;
@@ -74,6 +77,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
         productName: autoProductName,
         productInfo: val,
         productMode: detectedProdMode,
+        gender: detectedGen || prev.gender,
         body: defaultBody,
         stretch: prev.stretchSource === 'manual' ? prev.stretch : (detectedAutoStretch !== null ? detectedAutoStretch : prev.stretch),
         stretchSource: prev.stretchSource === 'manual' ? 'manual' : (detectedAutoStretch !== null ? 'product_info' : prev.stretchSource),
@@ -158,26 +162,6 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
 
   return (
     <div className="space-y-6">
-      {/* Top Banner */}
-      <div className="p-4 bg-gradient-to-r from-purple-950/40 via-zinc-900 to-zinc-900 rounded-2xl border border-purple-500/20 shadow-lg">
-        <div className="flex items-start gap-3">
-          <div className="p-2 bg-purple-500/10 rounded-xl text-purple-400 shrink-0 mt-0.5">
-            <Sparkles className="w-5 h-5" />
-          </div>
-          <div className="space-y-1">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <span>Método Ania — Criação Direta Sem Vídeo Concorrente</span>
-              <span className="text-[10px] bg-purple-500/20 text-purple-300 px-2 py-0.5 rounded-full border border-purple-500/30 uppercase font-semibold">
-                Fórmula Validada TikTok Shop
-              </span>
-            </h3>
-            <p className="text-xs text-zinc-300 leading-relaxed">
-              Gere automaticamente <strong>3 imagens</strong> (mesma modelo sem rosto em cores diferentes) + <strong>3 prompts de vídeo</strong> do Google Veo + <strong>fala campeã</strong> + <strong>descrição com hashtags</strong>.
-            </p>
-          </div>
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-start">
         {/* 1. Nome do Produto (~65-70% largura da linha) */}
         <div className="md:col-span-8 space-y-1.5">

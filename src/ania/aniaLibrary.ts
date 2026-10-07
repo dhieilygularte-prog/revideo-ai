@@ -132,6 +132,43 @@ export function detectProductMode(name: string, info?: string): ProductMode {
 }
 
 /**
+ * Detecta o gênero do produto a partir do nome ou informações (ex: "masculino", "homem", "para ele", etc.)
+ */
+export function detectGender(name?: string, info?: string): AniaGender | null {
+  const combined = removeAccents(`${name || ''} ${info || ''}`);
+  const mascTerms = [
+    'masculin',
+    'masculino',
+    'masculina',
+    'homem',
+    'homens',
+    'para homem',
+    'para homens',
+    'para ele',
+    'unissex',
+    'unisex',
+  ];
+  const femTerms = [
+    'feminin',
+    'feminino',
+    'feminina',
+    'mulher',
+    'mulheres',
+    'para mulher',
+    'para mulheres',
+    'para ela',
+  ];
+
+  if (mascTerms.some((t) => new RegExp(`\\b${t}`, 'i').test(combined))) {
+    return 'Homem';
+  }
+  if (femTerms.some((t) => new RegExp(`\\b${t}`, 'i').test(combined))) {
+    return 'Mulher';
+  }
+  return null;
+}
+
+/**
  * Extrai apenas a palavra-chave principal e curta do produto (ex: "Tênis", "Vestido", "Calça", "Pijama", "Short saia", "Conjunto")
  */
 export function extractShortProductName(text: string): string {
@@ -731,7 +768,7 @@ export const HASHTAG_TIPO: Record<AniaCategory, string> = {
   CONJUNTO: 'conjunto',
   BLUSA: 'blusa',
   MACACAO: 'macacão',
-  CALCADO: 'calcado',
+  CALCADO: 'tenis',
   AUTO: 'moda',
 };
 
@@ -748,7 +785,13 @@ export function generateDescriptionHashtags(params: {
   const normName = removeAccents(productName || '');
 
   let baseType = HASHTAG_TIPO[category] || 'look';
-  if (category === 'BERMUDA_SHORT' && normName.includes('short')) {
+  if (category === 'CALCADO' || normName.includes('tenis') || normName.includes('sapato')) {
+    if (normName.includes('sapato')) baseType = 'sapato';
+    else if (normName.includes('sandalia')) baseType = 'sandalia';
+    else if (normName.includes('bota')) baseType = 'bota';
+    else if (normName.includes('chinelo')) baseType = 'chinelo';
+    else baseType = 'tenis';
+  } else if (category === 'BERMUDA_SHORT' && normName.includes('short')) {
     baseType = 'short';
   } else if (category === 'PIJAMA_CAMISOLA' && normName.includes('camisola')) {
     baseType = 'camisola';
@@ -760,13 +803,13 @@ export function generateDescriptionHashtags(params: {
 
   const tags: string[] = [];
 
-  // Tag 1: #{tipo}{feminina/feminino} or #{tipo}{masculina/masculino}
+  // Tag 1: #{tipo}{feminina/feminino} ou #{tipo}{masculina/masculino}
   const isHomem = gender === 'Homem';
   const genderSuffix = isHomem
-    ? ['calça', 'bermuda', 'saia', 'shortsaia', 'camisola', 'camisa', 'blusa'].includes(baseType)
+    ? ['calça', 'bermuda', 'saia', 'shortsaia', 'camisola', 'camisa', 'blusa', 'bota', 'sandalia', 'rasteirinha'].includes(baseType)
       ? 'masculina'
       : 'masculino'
-    : ['pijama', 'vestido', 'conjunto', 'macacão', 'short', 'cropped'].includes(baseType)
+    : ['pijama', 'vestido', 'conjunto', 'macacão', 'short', 'cropped', 'tenis', 'sapato', 'chinelo', 'look'].includes(baseType)
     ? 'feminino'
     : 'feminina';
 
@@ -777,7 +820,7 @@ export function generateDescriptionHashtags(params: {
 
   // Plus size tags
   if (body === 'Plus size') {
-    tags.push('#modaplussize');
+    tags.push(isHomem ? '#modamasculinaplussize' : '#modaplussize');
     tags.push('#plussize');
   }
 
@@ -791,6 +834,8 @@ export function generateDescriptionHashtags(params: {
   } else if (category === 'BERMUDA_SHORT') {
     if (normName.includes('bengaline')) tags.push('#bermudabengaline');
     else if (normName.includes('linho')) tags.push('#shortlinho');
+  } else if (category === 'CALCADO' || normName.includes('tenis')) {
+    tags.push(isHomem ? '#calcadosmasculinos' : '#calcadosfemininos');
   }
 
   const cleanTitle = (titulo || `${productName}`).trim().replace(/[!.]+$/, '');
