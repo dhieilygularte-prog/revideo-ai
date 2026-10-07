@@ -339,9 +339,63 @@ export const FOOTWEAR_KEYWORDS = [
   'chuteira',
 ];
 
-export function detectProductMode(name: string, info?: string): ProductMode {
+export const APPAREL_KEYWORDS = [
+  'calca',
+  'calcas',
+  'vestido',
+  'vestidos',
+  'saia',
+  'saias',
+  'short',
+  'shorts',
+  'bermuda',
+  'bermudas',
+  'camisa',
+  'camisas',
+  'camiseta',
+  'camisetas',
+  'blusa',
+  'blusas',
+  'cropped',
+  'regata',
+  'regatas',
+  'macacao',
+  'macaquinho',
+  'conjunto',
+  'conjuntos',
+  'pijama',
+  'pijamas',
+  'camisola',
+  'baby doll',
+  'babydoll',
+  'body',
+  'jaqueta',
+  'jaquetas',
+  'casaco',
+  'casacos',
+  'moletom',
+  'moletinho',
+  'cardigan',
+  'blazer',
+  'biquini',
+  'maio',
+  'sunga',
+  'legging',
+  'pantalona',
+  'roupa',
+  'roupas',
+];
+
+export function detectProductMode(name?: string, info?: string): ProductMode | null {
   const norm = removeAccents(`${name || ''} ${info || ''}`);
-  return FOOTWEAR_KEYWORDS.some((kw) => norm.includes(kw)) ? 'footwear' : 'apparel';
+  if (!norm.trim()) return null;
+  if (FOOTWEAR_KEYWORDS.some((kw) => new RegExp(`\\b${kw}`, 'i').test(norm))) {
+    return 'footwear';
+  }
+  if (APPAREL_KEYWORDS.some((kw) => new RegExp(`\\b${kw}`, 'i').test(norm))) {
+    return 'apparel';
+  }
+  return null;
 }
 
 /**
@@ -349,6 +403,7 @@ export function detectProductMode(name: string, info?: string): ProductMode {
  */
 export function detectGender(name?: string, info?: string): AniaGender | null {
   const combined = removeAccents(`${name || ''} ${info || ''}`);
+  if (!combined.trim()) return null;
   const mascTerms = [
     'masculin',
     'masculino',
@@ -358,8 +413,8 @@ export function detectGender(name?: string, info?: string): AniaGender | null {
     'para homem',
     'para homens',
     'para ele',
-    'unissex',
-    'unisex',
+    'menino',
+    'garoto',
   ];
   const femTerms = [
     'feminin',
@@ -370,6 +425,9 @@ export function detectGender(name?: string, info?: string): AniaGender | null {
     'para mulher',
     'para mulheres',
     'para ela',
+    'menina',
+    'garota',
+    'dama',
   ];
 
   if (mascTerms.some((t) => new RegExp(`\\b${t}`, 'i').test(combined))) {
@@ -398,6 +456,7 @@ export const CHILD_KEYWORDS = [
 
 export const ELDERLY_KEYWORDS = [
   'idoso',
+  'idosa',
   'terceira idade',
   'senhor',
   'senhora',
@@ -407,19 +466,35 @@ export const ELDERLY_KEYWORDS = [
 /**
  * Detecta a faixa etária a partir do nome ou informações do produto
  */
-export function detectAgeMode(name?: string, info?: string): AgeMode {
+export function detectAgeMode(name?: string, info?: string): AgeMode | null {
   const combined = removeAccents(`${name || ''} ${info || ''}`);
-  if (CHILD_KEYWORDS.some((kw) => combined.includes(kw))) {
+  if (!combined.trim()) return null;
+  if (CHILD_KEYWORDS.some((kw) => new RegExp(`\\b${kw}`, 'i').test(combined))) {
     return 'child';
   }
-  if (ELDERLY_KEYWORDS.some((kw) => combined.includes(kw))) {
+  if (ELDERLY_KEYWORDS.some((kw) => new RegExp(`\\b${kw}`, 'i').test(combined))) {
     return 'senior';
   }
-  return 'adult';
+  if (['adulto', 'adulta'].some((kw) => new RegExp(`\\b${kw}`, 'i').test(combined))) {
+    return 'adult';
+  }
+  return null;
 }
 
 /**
- * Extrai apenas a palavra-chave principal e curta do produto (ex: "Tênis", "Vestido", "Calça", "Pijama", "Short saia", "Conjunto")
+ * Detecta o tipo de corpo a partir do nome ou informações do produto
+ */
+export function detectBody(name?: string, info?: string): AniaBody | null {
+  const combined = removeAccents(`${name || ''} ${info || ''}`);
+  if (!combined.trim()) return null;
+  if (['plus size', 'plussize', 'plus-size', 'gordinha', 'gordinho', 'curvy', 'tamanhos grandes', 'g1', 'g2', 'g3', 'g4'].some((kw) => combined.includes(kw))) {
+    return 'Plus size';
+  }
+  return null;
+}
+
+/**
+ * Extrai apenas a palavra-chave principal e curta do produto reconhecido
  */
 export function extractShortProductName(text: string): string {
   if (!text || !text.trim()) return '';
@@ -470,6 +545,10 @@ export function extractShortProductName(text: string): string {
     ['jaqueta', 'Jaqueta'],
     ['casaco', 'Casaco'],
     ['moletom', 'Moletom'],
+    ['blazer', 'Blazer'],
+    ['biquini', 'Biquíni'],
+    ['maio', 'Maiô'],
+    ['sunga', 'Sunga'],
   ];
 
   for (const [kw, formatted] of shortKeywords) {
@@ -478,11 +557,7 @@ export function extractShortProductName(text: string): string {
     }
   }
 
-  // Fallback: primeira palavra limpa com primeira letra maiúscula
-  const firstWord = text.trim().split(/\s+/)[0].replace(/[^a-zA-ZÀ-ÿ]/g, '');
-  if (firstWord.length > 0) {
-    return firstWord.charAt(0).toUpperCase() + firstWord.slice(1).toLowerCase();
-  }
+  // Não usa fallback genérico de palavras avulsas para evitar textos aleatórios
   return '';
 }
 

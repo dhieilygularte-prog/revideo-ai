@@ -27,6 +27,8 @@ import {
   extractShortProductName,
   detectGender,
   detectAgeMode,
+  detectBody,
+  detectCategory,
   extractDominantColorFromImage,
   compressAndResizeImage,
 } from './aniaLibrary';
@@ -45,62 +47,199 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
 
   const handleProductNameChange = (val: string) => {
     onChange((prev) => {
-      const detectedProdMode = prev.productMode === 'apparel' ? detectProductMode(val, prev.productInfo) : prev.productMode;
-      const isFootwear = detectedProdMode === 'footwear';
+      const detectedProdMode = detectProductMode(val, prev.productInfo);
+      const isFootwear = (prev.productModeSource === 'manual' ? prev.productMode : (detectedProdMode || prev.productMode)) === 'footwear';
       const defaultBody = isFootwear && prev.body === 'Plus size' ? 'Normal' : prev.body;
       const detectedGen = detectGender(val, prev.productInfo);
       const detectedAge = detectAgeMode(val, prev.productInfo);
-      const detectedAutoStretch = isFootwear ? false : (prev.stretchSource !== 'manual' ? detectStretch(`${val} ${prev.productInfo}`) : prev.stretch);
-      const detectedFabricObj = prev.fabricSource !== 'manual' ? detectFabric(val, undefined, prev.productInfo) : null;
+      const detectedBodyVal = detectBody(val, prev.productInfo);
+      const detectedAutoStretch = isFootwear ? false : detectStretch(`${val} ${prev.productInfo}`);
+      const detectedFabricObj = detectFabric(val, undefined, prev.productInfo);
+      const detectedCatResult = detectCategory(val, prev.productInfo);
+
+      let newCategory = prev.category;
+      let newCategorySource = prev.categorySource;
+      if (prev.categorySource !== 'manual') {
+        if (detectedCatResult.category !== 'AUTO' && detectedCatResult.category !== 'CALCADO') {
+          newCategory = detectedCatResult.category;
+          newCategorySource = 'local_detect';
+        } else {
+          newCategory = 'AUTO';
+          newCategorySource = undefined;
+        }
+      }
 
       return {
         ...prev,
         productName: val,
-        productMode: detectedProdMode,
-        gender: detectedGen || prev.gender,
-        ageMode: detectedAge !== 'adult' ? detectedAge : prev.ageMode,
-        body: defaultBody,
-        naturalEnvironment: isFootwear ? true : prev.naturalEnvironment,
-        stretch: isFootwear ? false : (prev.stretchSource === 'manual' ? prev.stretch : (detectedAutoStretch !== null ? detectedAutoStretch : prev.stretch)),
-        stretchSource: isFootwear ? 'local_detect' : (prev.stretchSource === 'manual' ? 'manual' : (detectedAutoStretch !== null ? 'local_detect' : prev.stretchSource)),
-        fabric: prev.fabricSource === 'manual' ? prev.fabric : (detectedFabricObj?.key !== 'padrao' ? detectedFabricObj?.key || prev.fabric : prev.fabric),
-        fabricSource: prev.fabricSource === 'manual' ? 'manual' : (detectedFabricObj?.key !== 'padrao' ? 'product_info' : prev.fabricSource),
+        productNameSource: val.trim() ? 'manual' : undefined,
+        category: newCategory,
+        categorySource: newCategorySource,
+        productMode: prev.productModeSource === 'manual' ? prev.productMode : (detectedProdMode || prev.productMode),
+        productModeSource: prev.productModeSource === 'manual' ? 'manual' : (detectedProdMode ? 'local_detect' : undefined),
+        gender: prev.genderSource === 'manual' ? prev.gender : (detectedGen || prev.gender),
+        genderSource: prev.genderSource === 'manual' ? 'manual' : (detectedGen ? 'local_detect' : undefined),
+        ageMode: prev.ageModeSource === 'manual' ? prev.ageMode : (detectedAge || prev.ageMode),
+        ageModeSource: prev.ageModeSource === 'manual' ? 'manual' : (detectedAge ? 'local_detect' : undefined),
+        body: prev.bodySource === 'manual' ? prev.body : (detectedBodyVal || defaultBody),
+        bodySource: prev.bodySource === 'manual' ? 'manual' : (detectedBodyVal ? 'local_detect' : undefined),
+        naturalEnvironment: isFootwear && prev.naturalEnvSource !== 'manual' ? true : prev.naturalEnvironment,
+        naturalEnvSource: isFootwear && prev.naturalEnvSource !== 'manual' ? 'local_detect' : prev.naturalEnvSource,
+        stretch: prev.stretchSource === 'manual' ? prev.stretch : (isFootwear ? false : (detectedAutoStretch !== null ? detectedAutoStretch : prev.stretch)),
+        stretchSource: prev.stretchSource === 'manual' ? 'manual' : (isFootwear ? 'local_detect' : (detectedAutoStretch !== null ? 'local_detect' : undefined)),
+        fabric: prev.fabricSource === 'manual' ? prev.fabric : (detectedFabricObj.detected ? detectedFabricObj.key : prev.fabric),
+        fabricSource: prev.fabricSource === 'manual' ? 'manual' : (detectedFabricObj.detected ? 'product_info' : undefined),
       };
     });
   };
 
   const handleProductInfoChange = (val: string) => {
     onChange((prev) => {
-      const detectedProdMode = prev.productMode === 'apparel' ? detectProductMode(prev.productName, val) : prev.productMode;
-      const isFootwear = detectedProdMode === 'footwear';
-      const defaultBody = isFootwear && prev.body === 'Plus size' ? 'Normal' : prev.body;
-      const detectedGen = detectGender(prev.productName, val);
-      const detectedAge = detectAgeMode(prev.productName, val);
-      const detectedAutoStretch = isFootwear ? false : (prev.stretchSource !== 'manual' ? detectStretch(`${prev.productName} ${val}`) : prev.stretch);
-      const detectedFabricObj = prev.fabricSource !== 'manual' ? detectFabric(prev.productName, undefined, val) : null;
-
-      // Se o usuário ainda não digitou um nome de produto ou se veio vazio, extrai o nome curto automaticamente da descrição
+      // 1. Extrai o nome curto APENAS se for um produto reconhecido
+      const extractedProdName = extractShortProductName(val);
       let autoProductName = prev.productName;
-      if (!prev.productName.trim()) {
-        const extracted = extractShortProductName(val);
-        if (extracted) {
-          autoProductName = extracted;
+      let newProductNameSource = prev.productNameSource;
+      if (prev.productNameSource !== 'manual') {
+        autoProductName = extractedProdName;
+        newProductNameSource = extractedProdName ? 'local_detect' : undefined;
+      }
+
+      // 2. Detecta Tipo de Produto (Calçados vs Roupas)
+      const detectedProdMode = detectProductMode(autoProductName, val);
+      let newProductMode = prev.productMode;
+      let newProductModeSource = prev.productModeSource;
+      if (prev.productModeSource !== 'manual') {
+        if (detectedProdMode !== null) {
+          newProductMode = detectedProdMode;
+          newProductModeSource = 'local_detect';
+        } else {
+          newProductMode = 'apparel';
+          newProductModeSource = undefined;
+        }
+      }
+      const isFootwear = newProductMode === 'footwear';
+
+      // 3. Detecta Categoria
+      const detectedCatResult = detectCategory(autoProductName, val);
+      let newCategory = prev.category;
+      let newCategorySource = prev.categorySource;
+      if (prev.categorySource !== 'manual') {
+        if (detectedCatResult.category !== 'AUTO' && detectedCatResult.category !== 'CALCADO') {
+          newCategory = detectedCatResult.category;
+          newCategorySource = 'local_detect';
+        } else {
+          newCategory = 'AUTO';
+          newCategorySource = undefined;
+        }
+      }
+
+      // 4. Detecta Gênero
+      const detectedGen = detectGender(autoProductName, val);
+      let newGender = prev.gender;
+      let newGenderSource = prev.genderSource;
+      if (prev.genderSource !== 'manual') {
+        if (detectedGen !== null) {
+          newGender = detectedGen;
+          newGenderSource = 'local_detect';
+        } else {
+          newGender = 'Mulher';
+          newGenderSource = undefined;
+        }
+      }
+
+      // 5. Detecta Faixa Etária
+      const detectedAge = detectAgeMode(autoProductName, val);
+      let newAgeMode = prev.ageMode;
+      let newAgeModeSource = prev.ageModeSource;
+      if (prev.ageModeSource !== 'manual') {
+        if (detectedAge !== null) {
+          newAgeMode = detectedAge;
+          newAgeModeSource = 'local_detect';
+        } else {
+          newAgeMode = 'adult';
+          newAgeModeSource = undefined;
+        }
+      }
+
+      // 6. Detecta Tipo de Corpo
+      const detectedBodyVal = detectBody(autoProductName, val);
+      let newBody = isFootwear && prev.body === 'Plus size' ? 'Normal' : prev.body;
+      let newBodySource = prev.bodySource;
+      if (prev.bodySource !== 'manual') {
+        if (detectedBodyVal !== null) {
+          newBody = detectedBodyVal;
+          newBodySource = 'local_detect';
+        } else {
+          newBody = 'Normal';
+          newBodySource = undefined;
+        }
+      }
+
+      // 7. Detecta Cenário Natural
+      let newNaturalEnv = prev.naturalEnvironment;
+      let newNaturalEnvSource = prev.naturalEnvSource;
+      if (prev.naturalEnvSource !== 'manual') {
+        if (isFootwear && detectedProdMode === 'footwear') {
+          newNaturalEnv = true;
+          newNaturalEnvSource = 'local_detect';
+        } else {
+          newNaturalEnv = false;
+          newNaturalEnvSource = undefined;
+        }
+      }
+
+      // 8. Detecta Elasticidade
+      const detectedAutoStretch = isFootwear ? false : detectStretch(`${autoProductName} ${val}`);
+      let newStretch = prev.stretch;
+      let newStretchSource = prev.stretchSource;
+      if (prev.stretchSource !== 'manual') {
+        if (isFootwear && detectedProdMode === 'footwear') {
+          newStretch = false;
+          newStretchSource = 'local_detect';
+        } else if (detectedAutoStretch !== null) {
+          newStretch = detectedAutoStretch;
+          newStretchSource = 'local_detect';
+        } else {
+          newStretch = null;
+          newStretchSource = undefined;
+        }
+      }
+
+      // 9. Detecta Tecido
+      const detectedFabricObj = detectFabric(autoProductName, undefined, val);
+      let newFabric = prev.fabric;
+      let newFabricSource = prev.fabricSource;
+      if (prev.fabricSource !== 'manual') {
+        if (detectedFabricObj.detected && detectedFabricObj.key !== 'padrao') {
+          newFabric = detectedFabricObj.key;
+          newFabricSource = 'product_info';
+        } else {
+          newFabric = '';
+          newFabricSource = undefined;
         }
       }
 
       return {
         ...prev,
         productName: autoProductName,
+        productNameSource: newProductNameSource,
         productInfo: val,
-        productMode: detectedProdMode,
-        gender: detectedGen || prev.gender,
-        ageMode: detectedAge !== 'adult' ? detectedAge : prev.ageMode,
-        body: defaultBody,
-        naturalEnvironment: isFootwear ? true : prev.naturalEnvironment,
-        stretch: isFootwear ? false : (prev.stretchSource === 'manual' ? prev.stretch : (detectedAutoStretch !== null ? detectedAutoStretch : prev.stretch)),
-        stretchSource: isFootwear ? 'local_detect' : (prev.stretchSource === 'manual' ? 'manual' : (detectedAutoStretch !== null ? 'product_info' : prev.stretchSource)),
-        fabric: prev.fabricSource === 'manual' ? prev.fabric : (detectedFabricObj?.key !== 'padrao' ? detectedFabricObj?.key || prev.fabric : prev.fabric),
-        fabricSource: prev.fabricSource === 'manual' ? 'manual' : (detectedFabricObj?.key !== 'padrao' ? 'product_info' : prev.fabricSource),
+        category: newCategory,
+        categorySource: newCategorySource,
+        productMode: newProductMode,
+        productModeSource: newProductModeSource,
+        gender: newGender,
+        genderSource: newGenderSource,
+        ageMode: newAgeMode,
+        ageModeSource: newAgeModeSource,
+        body: newBody,
+        bodySource: newBodySource,
+        naturalEnvironment: newNaturalEnv,
+        naturalEnvSource: newNaturalEnvSource,
+        stretch: newStretch,
+        stretchSource: newStretchSource,
+        fabric: newFabric,
+        fabricSource: newFabricSource,
       };
     });
   };
@@ -232,14 +371,20 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
     }));
   };
 
-  // Validation
+  // Validation & Identification Booleans
   const hasProductInfo = form.productInfo.trim().length > 0;
-  const isAutoConfigured = hasProductInfo;
-  const hasProductName = form.productName.trim().length > 0;
+  const isProductNameIdentified = form.productName.trim().length > 0 && (form.productNameSource === 'manual' || form.productNameSource === 'local_detect' || form.productNameSource === 'product_info');
+  const isProductModeIdentified = form.productModeSource === 'manual' || (form.productModeSource === 'local_detect' && detectProductMode(form.productName, form.productInfo) !== null);
+  const isCategoryIdentified = form.categorySource === 'manual' || (form.categorySource === 'local_detect' && form.category !== 'AUTO');
+  const isAgeModeIdentified = form.ageModeSource === 'manual' || (form.ageModeSource === 'local_detect' && detectAgeMode(form.productName, form.productInfo) !== null);
+  const isGenderIdentified = form.genderSource === 'manual' || (form.genderSource === 'local_detect' && detectGender(form.productName, form.productInfo) !== null);
+  const isBodyIdentified = form.bodySource === 'manual' || (form.bodySource === 'local_detect' && detectBody(form.productName, form.productInfo) !== null);
+  const isNaturalEnvIdentified = form.naturalEnvSource === 'manual' || (form.naturalEnvSource === 'local_detect' && form.naturalEnvironment);
+  const isStretchIdentified = form.stretch !== null && (form.stretchSource === 'manual' || form.stretchSource === 'local_detect' || form.stretchSource === 'product_info');
   const hasCor1Photo = Boolean(form.colors[0]?.photoBase64);
   const isStretchSelected = form.stretch !== null;
   const areColorNamesFilled = form.colors.every((c) => !c.photoBase64 || c.name.trim().length > 0);
-  const canSubmit = hasProductName && hasCor1Photo && isStretchSelected && areColorNamesFilled && !isProcessing;
+  const canSubmit = form.productName.trim().length > 0 && hasCor1Photo && isStretchSelected && areColorNamesFilled && !isProcessing;
 
   return (
     <div className="space-y-5">
@@ -249,19 +394,19 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
           className={`md:col-span-12 p-4 rounded-2xl transition-all duration-300 space-y-1.5 ${
             hasProductInfo
               ? 'bg-gradient-to-br from-sky-900/80 via-blue-900/75 to-slate-800/90 border-2 border-sky-400 shadow-lg shadow-sky-900/50 ring-2 ring-sky-400/40'
-              : 'bg-zinc-900/70 border border-zinc-800/90'
+              : 'bg-zinc-800/80 border-2 border-zinc-600/90 shadow-md'
           }`}
         >
           <label className="text-xs font-bold flex items-center justify-between">
             <span className="flex items-center gap-1.5">
-              <span className={hasProductInfo ? 'text-white' : 'text-zinc-200'}>1. Informações do Produto (Cole aqui a descrição da loja)</span>
+              <span className={hasProductInfo ? 'text-white font-extrabold' : 'text-zinc-100 font-bold'}>1. Informações do Produto (Cole aqui a descrição da loja)</span>
               {hasProductInfo && (
                 <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2.5 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1 shadow-sm">
                   <CheckCircle2 className="w-3.5 h-3.5 text-sky-300" /> Preenchido ✓
                 </span>
               )}
             </span>
-            <span className={`text-[11px] font-normal ${hasProductInfo ? 'text-sky-200/90' : 'text-zinc-400'}`}>
+            <span className={`text-[11px] font-normal ${hasProductInfo ? 'text-sky-200/90' : 'text-zinc-300'}`}>
               Preenche nome, categoria, faixa etária e elasticidade automaticamente
             </span>
           </label>
@@ -273,7 +418,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
             className={`w-full p-2.5 rounded-xl text-xs text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-sky-400 resize-y font-sans leading-relaxed transition-colors ${
               hasProductInfo
                 ? 'bg-slate-950/80 border border-sky-400/60 focus:border-sky-300'
-                : 'bg-zinc-950 border border-zinc-700/80 focus:border-purple-500'
+                : 'bg-zinc-950/90 border border-zinc-500/80 focus:border-sky-400'
             }`}
           />
         </div>
@@ -281,21 +426,21 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
         {/* 2. Nome do Produto */}
         <div
           className={`md:col-span-8 p-3.5 rounded-2xl transition-all duration-300 space-y-1.5 ${
-            hasProductName
+            isProductNameIdentified
               ? 'bg-gradient-to-br from-sky-900/80 via-blue-900/75 to-slate-800/90 border-2 border-sky-400 shadow-lg shadow-sky-900/50 ring-2 ring-sky-400/40'
               : 'bg-zinc-900/70 border border-zinc-800/90'
           }`}
         >
           <label className="text-xs font-bold flex items-center justify-between">
             <span className="flex items-center gap-1.5">
-              <span className={hasProductName ? 'text-white' : 'text-zinc-200'}>2. Nome do Produto <strong className="text-rose-400">*</strong></span>
-              {hasProductName && (
+              <span className={isProductNameIdentified ? 'text-white' : 'text-zinc-200'}>2. Nome do Produto <strong className="text-rose-400">*</strong></span>
+              {isProductNameIdentified && (
                 <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
                   <CheckCircle2 className="w-3.5 h-3.5 text-sky-300" /> Preenchido ✓
                 </span>
               )}
             </span>
-            <span className={`text-[11px] font-normal ${hasProductName ? 'text-sky-200/90' : 'text-zinc-400'}`}>Nome curto (editável)</span>
+            <span className={`text-[11px] font-normal ${isProductNameIdentified ? 'text-sky-200/90' : 'text-zinc-400'}`}>Nome curto (editável)</span>
           </label>
           <input
             type="text"
@@ -303,7 +448,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
             onChange={(e) => handleProductNameChange(e.target.value)}
             placeholder="Digite ou confira o nome do produto..."
             className={`w-full px-3.5 py-2 rounded-xl text-sm text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-sky-400 transition-colors ${
-              hasProductName
+              isProductNameIdentified
                 ? 'bg-slate-950/80 border border-sky-400/60 focus:border-sky-300'
                 : 'bg-zinc-950 border border-zinc-700/80 focus:border-purple-500'
             }`}
@@ -313,31 +458,31 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
         {/* 3. Tipo de Produto (Roupas vs Calçados) */}
         <div
           className={`md:col-span-4 p-3.5 rounded-2xl transition-all duration-300 space-y-1.5 ${
-            isAutoConfigured
+            isProductModeIdentified
               ? 'bg-gradient-to-br from-sky-900/80 via-blue-900/75 to-slate-800/90 border-2 border-sky-400 shadow-lg shadow-sky-900/50 ring-2 ring-sky-400/40 text-white'
               : 'bg-zinc-900/70 border border-zinc-800/90 text-zinc-200'
           }`}
         >
           <label className="text-xs font-bold flex items-center justify-between">
             <span className="flex items-center gap-1.5">
-              <span className={isAutoConfigured ? 'text-white' : 'text-zinc-200'}>3. Tipo de Produto</span>
-              {isAutoConfigured && (
+              <span className={isProductModeIdentified ? 'text-white' : 'text-zinc-200'}>3. Tipo de Produto</span>
+              {isProductModeIdentified && (
                 <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
                   <CheckCircle2 className="w-3.5 h-3.5 text-sky-300" /> Ativo ✓
                 </span>
               )}
             </span>
-            <span className={`text-[11px] font-normal ${isAutoConfigured ? 'text-sky-200/90' : 'text-zinc-400'}`}>Modo</span>
+            <span className={`text-[11px] font-normal ${isProductModeIdentified ? 'text-sky-200/90' : 'text-zinc-400'}`}>Modo</span>
           </label>
           <div className={`grid grid-cols-2 gap-2 p-1 rounded-xl border ${
-            isAutoConfigured ? 'bg-slate-950/80 border-sky-400/40' : 'bg-zinc-950 border-zinc-800'
+            isProductModeIdentified ? 'bg-slate-950/80 border-sky-400/40' : 'bg-zinc-950 border-zinc-800'
           }`}>
             <button
               type="button"
-              onClick={() => onChange((prev) => ({ ...prev, productMode: 'apparel' }))}
+              onClick={() => onChange((prev) => ({ ...prev, productMode: 'apparel', productModeSource: 'manual' }))}
               className={`py-2 px-1 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                 form.productMode === 'apparel'
-                  ? (isAutoConfigured ? 'bg-sky-500 text-white shadow-md' : 'bg-purple-600 text-white shadow-md')
+                  ? (isProductModeIdentified ? 'bg-sky-500 text-white shadow-md' : 'bg-purple-600 text-white shadow-md')
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
@@ -350,15 +495,18 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
                 onChange((prev) => ({
                   ...prev,
                   productMode: 'footwear',
+                  productModeSource: 'manual',
                   body: prev.body === 'Plus size' ? 'Normal' : prev.body,
+                  bodySource: prev.body === 'Plus size' ? 'manual' : prev.bodySource,
                   naturalEnvironment: true,
+                  naturalEnvSource: 'manual',
                   stretch: false,
-                  stretchSource: 'local_detect',
+                  stretchSource: 'manual',
                 }))
               }
               className={`py-2 px-1 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                 form.productMode === 'footwear'
-                  ? (isAutoConfigured ? 'bg-sky-500 text-white shadow-md' : 'bg-purple-600 text-white shadow-md')
+                  ? (isProductModeIdentified ? 'bg-sky-500 text-white shadow-md' : 'bg-purple-600 text-white shadow-md')
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
@@ -372,27 +520,27 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
         {form.productMode === 'apparel' && (
           <div
             className={`md:col-span-4 p-3.5 rounded-2xl transition-all duration-300 space-y-1.5 ${
-              isAutoConfigured
+              isCategoryIdentified
                 ? 'bg-gradient-to-br from-sky-900/80 via-blue-900/75 to-slate-800/90 border-2 border-sky-400 shadow-lg shadow-sky-900/50 ring-2 ring-sky-400/40 text-white'
                 : 'bg-zinc-900/70 border border-zinc-800/90 text-zinc-200'
             }`}
           >
             <label className="text-xs font-bold flex items-center justify-between">
               <span className="flex items-center gap-1.5">
-                <span className={isAutoConfigured ? 'text-white' : 'text-zinc-200'}>4. Categoria</span>
-                {isAutoConfigured && (
+                <span className={isCategoryIdentified ? 'text-white' : 'text-zinc-200'}>4. Categoria</span>
+                {isCategoryIdentified && (
                   <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5 text-sky-300" /> Ativo ✓
                   </span>
                 )}
               </span>
-              <span className={`text-[11px] font-normal ${isAutoConfigured ? 'text-sky-200/90' : 'text-zinc-400'}`}>Tipo da peça</span>
+              <span className={`text-[11px] font-normal ${isCategoryIdentified ? 'text-sky-200/90' : 'text-zinc-400'}`}>Tipo da peça</span>
             </label>
             <select
               value={form.category}
-              onChange={(e) => onChange((prev) => ({ ...prev, category: e.target.value as AniaCategory }))}
+              onChange={(e) => onChange((prev) => ({ ...prev, category: e.target.value as AniaCategory, categorySource: 'manual' }))}
               className={`w-full px-3 py-2 rounded-xl text-xs text-white focus:outline-none cursor-pointer border ${
-                isAutoConfigured
+                isCategoryIdentified
                   ? 'bg-slate-950/80 border-sky-400/60 focus:border-sky-300 focus:ring-1 focus:ring-sky-400'
                   : 'bg-zinc-950 border-zinc-700/80 focus:border-purple-500'
               }`}
@@ -414,15 +562,15 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
         {/* 5. Faixa Etária (Adulto / Infantil / Idoso) */}
         <div
           className={`${form.productMode === 'apparel' ? 'md:col-span-4' : 'md:col-span-6'} p-3.5 rounded-2xl transition-all duration-300 space-y-1.5 ${
-            isAutoConfigured
+            isAgeModeIdentified
               ? 'bg-gradient-to-br from-sky-900/80 via-blue-900/75 to-slate-800/90 border-2 border-sky-400 shadow-lg shadow-sky-900/50 ring-2 ring-sky-400/40 text-white'
               : 'bg-zinc-900/70 border border-zinc-800/90 text-zinc-200'
           }`}
         >
           <label className="text-xs font-bold flex items-center justify-between">
             <span className="flex items-center gap-1.5">
-              <span className={isAutoConfigured ? 'text-white' : 'text-zinc-200'}>5. Faixa Etária</span>
-              {isAutoConfigured && (
+              <span className={isAgeModeIdentified ? 'text-white' : 'text-zinc-200'}>5. Faixa Etária</span>
+              {isAgeModeIdentified && (
                 <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
                   <CheckCircle2 className="w-3.5 h-3.5 text-sky-300" /> Definido ✓
                 </span>
@@ -433,18 +581,18 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
                 {form.productMode === 'footwear' ? 'Pés e pernas infantis (sem rosto)' : 'Modo POV Adulto'}
               </span>
             ) : (
-              <span className={`text-[11px] font-normal ${isAutoConfigured ? 'text-sky-200/90' : 'text-zinc-400'}`}>Público</span>
+              <span className={`text-[11px] font-normal ${isAgeModeIdentified ? 'text-sky-200/90' : 'text-zinc-400'}`}>Público</span>
             )}
           </label>
           <div className={`grid grid-cols-3 gap-1.5 p-1 rounded-xl border ${
-            isAutoConfigured ? 'bg-slate-950/80 border-sky-400/40' : 'bg-zinc-950 border-zinc-800'
+            isAgeModeIdentified ? 'bg-slate-950/80 border-sky-400/40' : 'bg-zinc-950 border-zinc-800'
           }`}>
             <button
               type="button"
-              onClick={() => onChange((prev) => ({ ...prev, ageMode: 'adult' }))}
+              onClick={() => onChange((prev) => ({ ...prev, ageMode: 'adult', ageModeSource: 'manual' }))}
               className={`py-2 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
                 form.ageMode === 'adult'
-                  ? (isAutoConfigured ? 'bg-sky-500 text-white shadow-md' : 'bg-purple-600 text-white shadow-md')
+                  ? (isAgeModeIdentified ? 'bg-sky-500 text-white shadow-md' : 'bg-purple-600 text-white shadow-md')
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
@@ -452,10 +600,10 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
             </button>
             <button
               type="button"
-              onClick={() => onChange((prev) => ({ ...prev, ageMode: 'child' }))}
+              onClick={() => onChange((prev) => ({ ...prev, ageMode: 'child', ageModeSource: 'manual' }))}
               className={`py-2 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
                 form.ageMode === 'child'
-                  ? (isAutoConfigured ? 'bg-sky-500 text-white shadow-md' : 'bg-purple-600 text-white shadow-md')
+                  ? (isAgeModeIdentified ? 'bg-sky-500 text-white shadow-md' : 'bg-purple-600 text-white shadow-md')
                   : 'text-zinc-400 hover:text-white'
               }`}
               title={form.productMode === 'footwear' ? 'Pés e pernas infantis sem mostrar rosto' : 'Apresentação em primeira pessoa (POV) com mãos de adulto'}
@@ -464,10 +612,10 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
             </button>
             <button
               type="button"
-              onClick={() => onChange((prev) => ({ ...prev, ageMode: 'senior' }))}
+              onClick={() => onChange((prev) => ({ ...prev, ageMode: 'senior', ageModeSource: 'manual' }))}
               className={`py-2 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
                 form.ageMode === 'senior'
-                  ? (isAutoConfigured ? 'bg-sky-500 text-white shadow-md' : 'bg-purple-600 text-white shadow-md')
+                  ? (isAgeModeIdentified ? 'bg-sky-500 text-white shadow-md' : 'bg-purple-600 text-white shadow-md')
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
@@ -479,31 +627,31 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
         {/* 6. Gênero (Mulher / Homem) */}
         <div
           className={`${form.productMode === 'apparel' ? 'md:col-span-4' : 'md:col-span-6'} p-3.5 rounded-2xl transition-all duration-300 space-y-1.5 ${
-            isAutoConfigured
+            isGenderIdentified
               ? 'bg-gradient-to-br from-sky-900/80 via-blue-900/75 to-slate-800/90 border-2 border-sky-400 shadow-lg shadow-sky-900/50 ring-2 ring-sky-400/40 text-white'
               : 'bg-zinc-900/70 border border-zinc-800/90 text-zinc-200'
           }`}
         >
           <label className="text-xs font-bold flex items-center justify-between">
             <span className="flex items-center gap-1.5">
-              <span className={isAutoConfigured ? 'text-white' : 'text-zinc-200'}>6. Gênero</span>
-              {isAutoConfigured && (
+              <span className={isGenderIdentified ? 'text-white' : 'text-zinc-200'}>6. Gênero</span>
+              {isGenderIdentified && (
                 <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
                   <CheckCircle2 className="w-3.5 h-3.5 text-sky-300" /> Definido ✓
                 </span>
               )}
             </span>
-            <span className={`text-[11px] font-normal ${isAutoConfigured ? 'text-sky-200/90' : 'text-zinc-400'}`}>{form.gender === 'Homem' ? 'Masculino' : 'Feminino'}</span>
+            <span className={`text-[11px] font-normal ${isGenderIdentified ? 'text-sky-200/90' : 'text-zinc-400'}`}>{form.gender === 'Homem' ? 'Masculino' : 'Feminino'}</span>
           </label>
           <div className={`grid grid-cols-2 gap-2 p-1 rounded-xl border ${
-            isAutoConfigured ? 'bg-slate-950/80 border-sky-400/40' : 'bg-zinc-950 border-zinc-800'
+            isGenderIdentified ? 'bg-slate-950/80 border-sky-400/40' : 'bg-zinc-950 border-zinc-800'
           }`}>
             <button
               type="button"
-              onClick={() => onChange((prev) => ({ ...prev, gender: 'Mulher' }))}
+              onClick={() => onChange((prev) => ({ ...prev, gender: 'Mulher', genderSource: 'manual' }))}
               className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                 form.gender === 'Mulher'
-                  ? (isAutoConfigured ? 'bg-sky-500 text-white shadow-md' : 'bg-purple-600 text-white shadow-md')
+                  ? (isGenderIdentified ? 'bg-sky-500 text-white shadow-md' : 'bg-purple-600 text-white shadow-md')
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
@@ -511,10 +659,10 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
             </button>
             <button
               type="button"
-              onClick={() => onChange((prev) => ({ ...prev, gender: 'Homem' }))}
+              onClick={() => onChange((prev) => ({ ...prev, gender: 'Homem', genderSource: 'manual' }))}
               className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                 form.gender === 'Homem'
-                  ? (isAutoConfigured ? 'bg-sky-500 text-white shadow-md' : 'bg-purple-600 text-white shadow-md')
+                  ? (isGenderIdentified ? 'bg-sky-500 text-white shadow-md' : 'bg-purple-600 text-white shadow-md')
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
@@ -527,31 +675,31 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
         {form.ageMode !== 'child' && (
           <div
             className={`md:col-span-6 p-3.5 rounded-2xl transition-all duration-300 space-y-1.5 ${
-              isAutoConfigured
+              isBodyIdentified
                 ? 'bg-gradient-to-br from-sky-900/80 via-blue-900/75 to-slate-800/90 border-2 border-sky-400 shadow-lg shadow-sky-900/50 ring-2 ring-sky-400/40 text-white'
                 : 'bg-zinc-900/70 border border-zinc-800/90 text-zinc-200'
             }`}
           >
             <label className="text-xs font-bold flex items-center justify-between">
               <span className="flex items-center gap-1.5">
-                <span className={isAutoConfigured ? 'text-white' : 'text-zinc-200'}>7. Tipo de Corpo do Modelo</span>
-                {isAutoConfigured && (
+                <span className={isBodyIdentified ? 'text-white' : 'text-zinc-200'}>7. Tipo de Corpo do Modelo</span>
+                {isBodyIdentified && (
                   <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5 text-sky-300" /> Definido ✓
                   </span>
                 )}
               </span>
-              <span className={`text-[11px] font-normal ${isAutoConfigured ? 'text-sky-200/90' : 'text-zinc-400'}`}>{form.body}</span>
+              <span className={`text-[11px] font-normal ${isBodyIdentified ? 'text-sky-200/90' : 'text-zinc-400'}`}>{form.body}</span>
             </label>
             <div className={`grid grid-cols-3 gap-1.5 p-1 rounded-xl border ${
-              isAutoConfigured ? 'bg-slate-950/80 border-sky-400/40' : 'bg-zinc-950 border-zinc-800'
+              isBodyIdentified ? 'bg-slate-950/80 border-sky-400/40' : 'bg-zinc-950 border-zinc-800'
             }`}>
               <button
                 type="button"
-                onClick={() => onChange((prev) => ({ ...prev, body: 'Plus size' }))}
+                onClick={() => onChange((prev) => ({ ...prev, body: 'Plus size', bodySource: 'manual' }))}
                 className={`py-2 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
                   form.body === 'Plus size'
-                    ? 'bg-emerald-600 text-white shadow-md'
+                    ? (isBodyIdentified ? 'bg-emerald-600 text-white shadow-md' : 'bg-purple-600 text-white shadow-md')
                     : 'text-zinc-400 hover:text-white'
                 }`}
               >
@@ -559,10 +707,10 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
               </button>
               <button
                 type="button"
-                onClick={() => onChange((prev) => ({ ...prev, body: 'Normal' }))}
+                onClick={() => onChange((prev) => ({ ...prev, body: 'Normal', bodySource: 'manual' }))}
                 className={`py-2 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
                   form.body === 'Normal'
-                    ? 'bg-emerald-600 text-white shadow-md'
+                    ? (isBodyIdentified ? 'bg-emerald-600 text-white shadow-md' : 'bg-purple-600 text-white shadow-md')
                     : 'text-zinc-400 hover:text-white'
                 }`}
               >
@@ -570,10 +718,10 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
               </button>
               <button
                 type="button"
-                onClick={() => onChange((prev) => ({ ...prev, body: 'Magro' }))}
+                onClick={() => onChange((prev) => ({ ...prev, body: 'Magro', bodySource: 'manual' }))}
                 className={`py-2 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${
                   form.body === 'Magro'
-                    ? 'bg-emerald-600 text-white shadow-md'
+                    ? (isBodyIdentified ? 'bg-emerald-600 text-white shadow-md' : 'bg-purple-600 text-white shadow-md')
                     : 'text-zinc-400 hover:text-white'
                 }`}
               >
@@ -586,7 +734,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
         {/* 8. Controle de Ambiente Natural (Toggle / Checkbox com Destaque Visual) */}
         <div
           className={`${form.ageMode === 'child' ? 'md:col-span-12' : 'md:col-span-6'} p-3.5 rounded-2xl transition-all duration-300 space-y-1.5 ${
-            isAutoConfigured
+            isNaturalEnvIdentified
               ? 'bg-gradient-to-br from-sky-900/80 via-blue-900/75 to-slate-800/90 border-2 border-sky-400 shadow-lg shadow-sky-900/50 ring-2 ring-sky-400/40 text-white'
               : 'bg-zinc-900/70 border border-zinc-800/90 text-zinc-200'
           }`}
@@ -594,8 +742,8 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
           <label className="text-xs font-bold flex items-center justify-between">
             <span className="flex items-center gap-1.5">
               <TreePine className="w-3.5 h-3.5 text-emerald-400" />
-              <span className={isAutoConfigured ? 'text-white font-bold' : 'text-zinc-200 font-bold'}>8. Ambiente Natural (Cenário Nativo)</span>
-              {isAutoConfigured && (
+              <span className={isNaturalEnvIdentified ? 'text-white font-bold' : 'text-zinc-200 font-bold'}>8. Ambiente Natural (Cenário Nativo)</span>
+              {isNaturalEnvIdentified && (
                 <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
                   <CheckCircle2 className="w-3.5 h-3.5 text-sky-300" /> Definido ✓
                 </span>
@@ -610,11 +758,11 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
             </span>
           </label>
           <div
-            onClick={() => onChange((prev) => ({ ...prev, naturalEnvironment: !prev.naturalEnvironment }))}
+            onClick={() => onChange((prev) => ({ ...prev, naturalEnvironment: !prev.naturalEnvironment, naturalEnvSource: 'manual' }))}
             className={`p-2.5 rounded-xl border-2 flex items-center justify-between cursor-pointer transition-all shadow-sm ${
               form.naturalEnvironment
                 ? 'bg-emerald-950/40 border-emerald-500/60 text-emerald-100 shadow-emerald-950/40 scale-[1.01]'
-                : isAutoConfigured
+                : isNaturalEnvIdentified
                 ? 'bg-slate-950/80 border-sky-400/60 text-white hover:border-emerald-500/40'
                 : 'bg-zinc-950 border-zinc-700/80 text-zinc-300 hover:border-zinc-600'
             }`}

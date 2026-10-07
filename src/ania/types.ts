@@ -49,6 +49,7 @@ export interface AniaColorItem {
 
 export interface AniaFormState {
   productName: string;
+  productNameSource?: ValueSource;
   category: AniaCategory;
   productMode: ProductMode;
   ageMode: AgeMode;
@@ -59,6 +60,12 @@ export interface AniaFormState {
   stretchSource?: ValueSource;
   fabric: string;
   fabricSource?: ValueSource;
+  genderSource?: ValueSource;
+  ageModeSource?: ValueSource;
+  bodySource?: ValueSource;
+  categorySource?: ValueSource;
+  productModeSource?: ValueSource;
+  naturalEnvSource?: ValueSource;
   naturalEnvironment: boolean; // false = home_default, true = native
   productInfo: string;
   additionalInstructions: string;
