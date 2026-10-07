@@ -1990,14 +1990,15 @@ Retorne estritamente um JSON no seguinte formato:
 
 // Setup Vite middleware in dev or static serve in prod
 async function startServer() {
-  if (process.env.NODE_ENV !== 'production') {
-    const { createServer: createViteServer } = await import('vite');
+  if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+    const pkgName = 'vite';
+    const { createServer: createViteServer } = await import(/* @vite-ignore */ pkgName);
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
     });
     app.use(vite.middlewares);
-  } else {
+  } else if (!process.env.VERCEL) {
     app.use(express.static(path.join(__dirname, 'dist')));
     app.get('*', (req, res) => {
       res.sendFile(path.join(__dirname, 'dist', 'index.html'));
