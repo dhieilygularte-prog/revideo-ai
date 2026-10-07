@@ -446,6 +446,15 @@ export function detectProductMode(name?: string, info?: string): ProductMode | n
 export function detectGender(name?: string, info?: string): AniaGender | null {
   const combined = removeAccents(`${name || ''} ${info || ''}`);
   if (!combined.trim()) return null;
+
+  const isChild = CHILD_KEYWORDS.some((kw) => new RegExp(`\\b${kw}`, 'i').test(combined));
+  // Se for produto infantil e NÃO for explicitamente "menino" ou "menina", o gênero fica desmarcado (null) para o usuário escolher
+  if (isChild) {
+    if (new RegExp(`\\bmenino\\b`, 'i').test(combined)) return 'Homem';
+    if (new RegExp(`\\bmenina\\b`, 'i').test(combined)) return 'Mulher';
+    return null;
+  }
+
   const mascTerms = [
     'masculin',
     'masculino',
@@ -511,15 +520,42 @@ export const ELDERLY_KEYWORDS = [
 export function detectAgeMode(name?: string, info?: string): AgeMode | null {
   const combined = removeAccents(`${name || ''} ${info || ''}`);
   if (!combined.trim()) return null;
+
   if (CHILD_KEYWORDS.some((kw) => new RegExp(`\\b${kw}`, 'i').test(combined))) {
     return 'child';
   }
   if (ELDERLY_KEYWORDS.some((kw) => new RegExp(`\\b${kw}`, 'i').test(combined))) {
     return 'senior';
   }
-  if (['adulto', 'adulta'].some((kw) => new RegExp(`\\b${kw}`, 'i').test(combined))) {
+
+  // Quando falar masculino ou feminino, ou adulto, automaticamente a faixa etária é Adulto
+  const adultTerms = [
+    'adulto',
+    'adulta',
+    'masculin',
+    'masculino',
+    'masculina',
+    'feminin',
+    'feminino',
+    'feminina',
+    'homem',
+    'homens',
+    'mulher',
+    'mulheres',
+    'para homem',
+    'para mulher',
+    'para ele',
+    'para ela',
+  ];
+  if (adultTerms.some((kw) => new RegExp(`\\b${kw}`, 'i').test(combined))) {
     return 'adult';
   }
+
+  // Se identificou como calçado e não é infantil, faixa etária padrão é Adulto
+  if (detectProductMode(name, info) === 'footwear') {
+    return 'adult';
+  }
+
   return null;
 }
 
@@ -529,6 +565,12 @@ export function detectAgeMode(name?: string, info?: string): AgeMode | null {
 export function detectBody(name?: string, info?: string): AniaBody | null {
   const combined = removeAccents(`${name || ''} ${info || ''}`);
   if (!combined.trim()) return null;
+
+  // Calçados: tipo de corpo do modelo é sempre Normal por padrão e fica identificado em azul
+  if (detectProductMode(name, info) === 'footwear') {
+    return 'Normal';
+  }
+
   if (['plus size', 'plussize', 'plus-size', 'gordinha', 'gordinho', 'curvy', 'tamanhos grandes', 'g1', 'g2', 'g3', 'g4'].some((kw) => combined.includes(kw))) {
     return 'Plus size';
   }

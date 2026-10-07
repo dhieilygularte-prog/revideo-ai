@@ -81,8 +81,8 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
         genderSource: prev.genderSource === 'manual' ? 'manual' : (detectedGen ? 'local_detect' : undefined),
         ageMode: prev.ageModeSource === 'manual' ? prev.ageMode : (detectedAge || prev.ageMode),
         ageModeSource: prev.ageModeSource === 'manual' ? 'manual' : (detectedAge ? 'local_detect' : undefined),
-        body: prev.bodySource === 'manual' ? prev.body : (detectedBodyVal || defaultBody),
-        bodySource: prev.bodySource === 'manual' ? 'manual' : (detectedBodyVal ? 'local_detect' : undefined),
+        body: prev.bodySource === 'manual' ? prev.body : (isFootwear ? 'Normal' : (detectedBodyVal || prev.body)),
+        bodySource: prev.bodySource === 'manual' ? 'manual' : (isFootwear || detectedBodyVal ? 'local_detect' : undefined),
         naturalEnvironment: isFootwear && prev.naturalEnvSource !== 'manual' ? true : prev.naturalEnvironment,
         naturalEnvSource: isFootwear && prev.naturalEnvSource !== 'manual' ? 'local_detect' : prev.naturalEnvSource,
         stretch: prev.stretchSource === 'manual' ? prev.stretch : (isFootwear ? false : (detectedAutoStretch !== null ? detectedAutoStretch : prev.stretch)),
@@ -163,10 +163,13 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
 
       // 6. Detecta Tipo de Corpo
       const detectedBodyVal = detectBody(autoProductName, val);
-      let newBody = isFootwear && prev.body === 'Plus size' ? 'Normal' : prev.body;
+      let newBody = isFootwear ? 'Normal' : prev.body;
       let newBodySource = prev.bodySource;
       if (prev.bodySource !== 'manual') {
-        if (detectedBodyVal !== null) {
+        if (isFootwear) {
+          newBody = 'Normal';
+          newBodySource = 'local_detect';
+        } else if (detectedBodyVal !== null) {
           newBody = detectedBodyVal;
           newBodySource = 'local_detect';
         } else {
@@ -379,7 +382,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
   const isCategoryIdentified = form.categorySource === 'manual' || (form.categorySource === 'local_detect' && form.category !== 'AUTO');
   const isAgeModeIdentified = form.ageModeSource === 'manual' || (form.ageModeSource === 'local_detect' && detectAgeMode(form.productName, form.productInfo) !== null);
   const isGenderIdentified = form.genderSource === 'manual' || (form.genderSource === 'local_detect' && detectGender(form.productName, form.productInfo) !== null);
-  const isBodyIdentified = form.bodySource === 'manual' || (form.bodySource === 'local_detect' && detectBody(form.productName, form.productInfo) !== null);
+  const isBodyIdentified = form.bodySource === 'manual' || (form.bodySource === 'local_detect' && (form.productMode === 'footwear' || detectBody(form.productName, form.productInfo) !== null));
   const isNaturalEnvIdentified = form.naturalEnvSource === 'manual' || (form.naturalEnvSource === 'local_detect' && form.naturalEnvironment);
   const isStretchIdentified = form.stretch !== null && (form.stretchSource === 'manual' || form.stretchSource === 'local_detect' || form.stretchSource === 'product_info');
   const hasCor1Photo = Boolean(form.colors[0]?.photoBase64);
@@ -395,19 +398,19 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
           className={`md:col-span-12 p-4 rounded-2xl transition-all duration-300 space-y-1.5 ${
             hasProductInfo
               ? 'bg-gradient-to-br from-sky-900/80 via-blue-900/75 to-slate-800/90 border-2 border-sky-400 shadow-lg shadow-sky-900/50 ring-2 ring-sky-400/40'
-              : 'bg-zinc-800/90 border-2 border-zinc-500/70 shadow-md'
+              : 'bg-zinc-700/80 border-2 border-zinc-400/90 shadow-lg shadow-zinc-950/20'
           }`}
         >
           <label className="text-xs font-bold flex items-center justify-between">
             <span className="flex items-center gap-1.5">
-              <span className={hasProductInfo ? 'text-white font-extrabold' : 'text-zinc-100 font-bold'}>1. Informações do Produto (Cole aqui a descrição da loja)</span>
+              <span className={hasProductInfo ? 'text-white font-extrabold' : 'text-zinc-100 font-extrabold'}>1. Informações do Produto (Cole aqui a descrição da loja)</span>
               {hasProductInfo && (
                 <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2.5 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1 shadow-sm">
                   <CheckCircle2 className="w-3.5 h-3.5 text-sky-300" /> Preenchido ✓
                 </span>
               )}
             </span>
-            <span className={`text-[11px] font-normal ${hasProductInfo ? 'text-sky-200/90' : 'text-zinc-300'}`}>
+            <span className={`text-[11px] font-medium ${hasProductInfo ? 'text-sky-200/90' : 'text-zinc-200'}`}>
               Preenche nome, categoria, faixa etária e elasticidade automaticamente
             </span>
           </label>
@@ -416,10 +419,10 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
             onChange={(e) => handleProductInfoChange(e.target.value)}
             rows={3}
             placeholder="Cole aqui a descrição do produto (ex: 'Tênis Esportivo Masculino Confortável...', 'Vestido infantil floral...', 'Calça pantalona duna com elastano')..."
-            className={`w-full p-2.5 rounded-xl text-xs text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-sky-400 resize-y font-sans leading-relaxed transition-colors ${
+            className={`w-full p-2.5 rounded-xl text-xs text-white placeholder-zinc-300 focus:outline-none focus:ring-2 focus:ring-sky-400 resize-y font-sans leading-relaxed transition-colors ${
               hasProductInfo
                 ? 'bg-slate-950/80 border border-sky-400/60 focus:border-sky-300'
-                : 'bg-zinc-900/90 border border-zinc-500/80 focus:border-sky-400'
+                : 'bg-zinc-800/90 border border-zinc-400 focus:border-sky-300'
             }`}
           />
         </div>
