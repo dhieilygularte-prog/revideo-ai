@@ -1149,31 +1149,40 @@ app.post('/api/ania-planning', async (req, res) => {
     // ─── ROTEAMENTO BASEADO NO PERFIL DE IA SELECIONADO ────────────────────
     const activeProfile = getRequestAIProfile(req);
     if (activeProfile === 'openai') {
-      try {
-        const client = (openAIProvider as any).getClient();
-        const contentBlocks: any[] = [];
-        if (primaryPhotoBase64) {
-          contentBlocks.push({
-            type: 'image_url',
-            image_url: { url: primaryPhotoBase64, detail: 'high' },
-          });
-        }
-        contentBlocks.push({ type: 'text', text: userPrompt });
-
-        const completion = await client.chat.completions.create({
-          model: OPENAI_BRAIN_MODEL,
-          messages: [
-            { role: 'system', content: systemInstruction },
-            { role: 'user', content: contentBlocks },
-          ],
-          response_format: { type: 'json_object' },
-          temperature: 0.4,
+      const client = (openAIProvider as any).getClient();
+      const contentBlocks: any[] = [];
+      if (primaryPhotoBase64) {
+        contentBlocks.push({
+          type: 'image_url',
+          image_url: { url: primaryPhotoBase64.startsWith('data:') ? primaryPhotoBase64 : `data:image/jpeg;base64,${primaryPhotoBase64}`, detail: 'high' },
         });
+      }
+      contentBlocks.push({ type: 'text', text: userPrompt });
 
-        const parsed = JSON.parse(completion.choices[0]?.message?.content || '{}');
-        return res.json({ success: true, data: parsed });
-      } catch (oiErr: any) {
-        console.warn('Erro OpenAI no planejamento Ania:', oiErr);
+      const modelsToTry = [OPENAI_BRAIN_MODEL, 'gpt-4o-mini', 'gpt-4o', 'gpt-5.6-luna'];
+      for (const modelCandidate of modelsToTry) {
+        try {
+          const params: any = {
+            model: modelCandidate,
+            messages: [
+              { role: 'system', content: systemInstruction },
+              { role: 'user', content: contentBlocks },
+            ],
+            response_format: { type: 'json_object' },
+          };
+
+          if (!modelCandidate.startsWith('gpt-5') && !modelCandidate.startsWith('o')) {
+            params.temperature = 0.4;
+          }
+
+          const completion = await client.chat.completions.create(params);
+          const parsed = JSON.parse(completion.choices[0]?.message?.content || '{}');
+          if (parsed && Object.keys(parsed).length > 0) {
+            return res.json({ success: true, data: parsed });
+          }
+        } catch (oiErr: any) {
+          console.warn(`Erro OpenAI no planejamento Ania com ${modelCandidate}:`, oiErr?.message || oiErr);
+        }
       }
     }
 
