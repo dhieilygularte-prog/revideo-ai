@@ -1,18 +1,14 @@
 {
   "version": 2,
   "functions": {
-    "api/**/*": {
+    "api/*.js": {
       "maxDuration": 60,
       "memory": 1024
     }
   },
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "/api/[...path].js"
-    },
-    {
-      "source": "/((?!api|assets|favicon.png).*)",
+      "source": "/((?!api/|assets/|favicon.png).*)",
       "destination": "/index.html"
     }
   ]

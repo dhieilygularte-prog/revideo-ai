@@ -43636,9 +43636,9 @@ var require_event_target = __commonJS({
        *     the listener would be automatically removed when invoked.
        * @public
        */
-      addEventListener(type, handler2, options = {}) {
+      addEventListener(type, handler, options = {}) {
         for (const listener of this.listeners(type)) {
-          if (!options[kForOnEventAttribute] && listener[kListener] === handler2 && !listener[kForOnEventAttribute]) {
+          if (!options[kForOnEventAttribute] && listener[kListener] === handler && !listener[kForOnEventAttribute]) {
             return;
           }
         }
@@ -43649,7 +43649,7 @@ var require_event_target = __commonJS({
               data: isBinary ? data : data.toString()
             });
             event[kTarget] = this;
-            callListener(handler2, this, event);
+            callListener(handler, this, event);
           };
         } else if (type === "close") {
           wrapper = function onClose(code, message) {
@@ -43659,7 +43659,7 @@ var require_event_target = __commonJS({
               wasClean: this._closeFrameReceived && this._closeFrameSent
             });
             event[kTarget] = this;
-            callListener(handler2, this, event);
+            callListener(handler, this, event);
           };
         } else if (type === "error") {
           wrapper = function onError(error) {
@@ -43668,19 +43668,19 @@ var require_event_target = __commonJS({
               message: error.message
             });
             event[kTarget] = this;
-            callListener(handler2, this, event);
+            callListener(handler, this, event);
           };
         } else if (type === "open") {
           wrapper = function onOpen() {
             const event = new Event("open");
             event[kTarget] = this;
-            callListener(handler2, this, event);
+            callListener(handler, this, event);
           };
         } else {
           return;
         }
         wrapper[kForOnEventAttribute] = !!options[kForOnEventAttribute];
-        wrapper[kListener] = handler2;
+        wrapper[kListener] = handler;
         if (options.once) {
           this.once(type, wrapper);
         } else {
@@ -43694,9 +43694,9 @@ var require_event_target = __commonJS({
        * @param {(Function|Object)} handler The listener to remove
        * @public
        */
-      removeEventListener(type, handler2) {
+      removeEventListener(type, handler) {
         for (const listener of this.listeners(type)) {
-          if (listener[kListener] === handler2 && !listener[kForOnEventAttribute]) {
+          if (listener[kListener] === handler && !listener[kForOnEventAttribute]) {
             this.removeListener(type, listener);
             break;
           }
@@ -44349,15 +44349,15 @@ var require_websocket = __commonJS({
           }
           return null;
         },
-        set(handler2) {
+        set(handler) {
           for (const listener of this.listeners(method)) {
             if (listener[kForOnEventAttribute]) {
               this.removeListener(method, listener);
               break;
             }
           }
-          if (typeof handler2 !== "function") return;
-          this.addEventListener(method, handler2, {
+          if (typeof handler !== "function") return;
+          this.addEventListener(method, handler, {
             [kForOnEventAttribute]: true
           });
         }
@@ -81669,8 +81669,8 @@ _AgentSessionStream_iterate = async function* _AgentSessionStream_iterate2() {
       }
       const terminal = state2.terminal(event);
       const pendingCall = state2.call(event);
-      const handler2 = pendingCall && __classPrivateFieldGet(this, _AgentSessionStream_handlers, "f").get(pendingCall.name);
-      const call = pendingCall && handler2 ? structuredClone(pendingCall) : void 0;
+      const handler = pendingCall && __classPrivateFieldGet(this, _AgentSessionStream_handlers, "f").get(pendingCall.name);
+      const call = pendingCall && handler ? structuredClone(pendingCall) : void 0;
       if (terminal) {
         __classPrivateFieldGet(this, _AgentSessionStream_stream, "f").controller.abort();
       }
@@ -81679,10 +81679,10 @@ _AgentSessionStream_iterate = async function* _AgentSessionStream_iterate2() {
         return;
       }
       __classPrivateFieldGet(this, _AgentSessionStream_instances, "m", _AgentSessionStream_checkAbort).call(this);
-      if (!call || !handler2) {
+      if (!call || !handler) {
         continue;
       }
-      const result = await __classPrivateFieldGet(this, _AgentSessionStream_instances, "m", _AgentSessionStream_result).call(this, call, handler2);
+      const result = await __classPrivateFieldGet(this, _AgentSessionStream_instances, "m", _AgentSessionStream_result).call(this, call, handler);
       __classPrivateFieldGet(this, _AgentSessionStream_instances, "m", _AgentSessionStream_checkAbort).call(this);
       await __classPrivateFieldGet(this, _AgentSessionStream_instances, "m", _AgentSessionStream_submit).call(this, result, options);
     }
@@ -81693,13 +81693,13 @@ _AgentSessionStream_iterate = async function* _AgentSessionStream_iterate2() {
     this.controller.signal.removeEventListener("abort", abort);
     this.abort();
   }
-}, _AgentSessionStream_result = async function _AgentSessionStream_result2(call, handler2) {
+}, _AgentSessionStream_result = async function _AgentSessionStream_result2(call, handler) {
   try {
     const args = typeof call.arguments === "string" ? JSON.parse(call.arguments) : call.arguments;
     if (!isObj(args)) {
       throw new OpenAIError("Function arguments must be a JSON object");
     }
-    return toolResult(call, await __classPrivateFieldGet(this, _AgentSessionStream_instances, "m", _AgentSessionStream_wait).call(this, () => handler2(args)));
+    return toolResult(call, await __classPrivateFieldGet(this, _AgentSessionStream_instances, "m", _AgentSessionStream_wait).call(this, () => handler(args)));
   } catch {
     __classPrivateFieldGet(this, _AgentSessionStream_instances, "m", _AgentSessionStream_checkAbort).call(this);
     return {
@@ -93805,16 +93805,8 @@ if (isDirectRun && !process.env.VERCEL) {
   startServer();
 }
 var server_default = app;
-
-// api/index.ts
-function handler(req, res) {
-  if (req.url && !req.url.startsWith("/api")) {
-    req.url = `/api${req.url.startsWith("/") ? "" : "/"}${req.url}`;
-  }
-  return server_default(req, res);
-}
 export {
-  handler as default
+  server_default as default
 };
 /*! Bundled license information:
 
