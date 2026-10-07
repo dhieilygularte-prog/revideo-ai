@@ -204,24 +204,31 @@ export async function extractDominantColorFromImage(base64: string): Promise<str
                   } else {
                     colorVotes['Vermelho'] += 2.5;
                   }
-                } else if (h >= 18 && h < 45) {
+                } else if (h >= 18 && h < 48) {
                   if (l < 0.45 && s < 0.75) {
                     colorVotes['Marrom'] += 4;
-                  } else if (l > 0.65 && s < 0.5) {
+                  } else if (l > 0.65 && s < 0.45) {
                     colorVotes['Bege'] += 2.5;
                   } else {
                     colorVotes['Laranja'] += 2.5;
                   }
-                } else if (h >= 45 && h < 70) {
-                  if (l > 0.68 && s < 0.55) {
+                } else if (h >= 48 && h < 75) {
+                  // Faixa de transição entre Mostarda, Bege e Verde Militar/Oliva
+                  if (g >= r * 0.82 && l < 0.58) {
+                    colorVotes['Verde'] += 4.5; // Verde Oliva / Militar / Musgo / Cáqui
+                  } else if (l > 0.65 && s < 0.45) {
                     colorVotes['Bege'] += 2.5;
+                  } else if (r > g * 1.15 && s > 0.45) {
+                    colorVotes['Amarelo'] += 3;
+                  } else if (g >= r) {
+                    colorVotes['Verde'] += 4;
                   } else {
-                    colorVotes['Amarelo'] += 2.5;
+                    colorVotes['Amarelo'] += 2;
                   }
-                } else if (h >= 70 && h < 165) {
-                  colorVotes['Verde'] += 4; // Alta prioridade para tons verdes (oliva, militar, musgo, etc.)
+                } else if (h >= 75 && h < 165) {
+                  colorVotes['Verde'] += 4.5; // Tons verdes puros (esmeralda, folha, menta, etc.)
                 } else if (h >= 165 && h < 260) {
-                  colorVotes['Azul'] += 4; // Alta prioridade para tons azuis (marinho, jeans, royal, etc.)
+                  colorVotes['Azul'] += 4.5; // Tons azuis (marinho, jeans, royal, turquesa, etc.)
                 } else if (h >= 260 && h < 315) {
                   colorVotes['Roxo'] += 3;
                 } else {
