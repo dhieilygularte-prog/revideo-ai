@@ -2021,7 +2021,12 @@ async function startServer() {
   });
 }
 
-if (!process.env.VERCEL) {
+const isDirectRun = Boolean(
+  process.argv[1] &&
+  (process.argv[1].endsWith('server.ts') || process.argv[1].endsWith('server.js') || process.argv[1].includes('tsx'))
+);
+
+if (isDirectRun && !process.env.VERCEL) {
   startServer();
 }
 

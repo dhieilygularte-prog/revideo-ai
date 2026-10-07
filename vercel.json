@@ -1,12 +1,16 @@
 {
   "version": 2,
   "functions": {
-    "api/**/*.ts": {
+    "api/**/*": {
       "maxDuration": 60,
       "memory": 1024
     }
   },
   "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/[...path].js"
+    },
     {
       "source": "/((?!api|assets|favicon.png).*)",
       "destination": "/index.html"
