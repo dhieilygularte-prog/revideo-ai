@@ -93,6 +93,12 @@ export function AniaResults({
         streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
       }
+      if (interimImageCorrection.trim()) {
+        setCustomCorrections((prev) => ({
+          ...prev,
+          [idx]: (prev[idx] ? `${prev[idx]} ${interimImageCorrection}` : interimImageCorrection).trim(),
+        }));
+      }
       setActiveImageRecordingIndex(null);
       setInterimImageCorrection('');
       return;
@@ -252,6 +258,12 @@ export function AniaResults({
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
+      }
+      if (interimPromptCorrection.trim()) {
+        setPromptCorrections((prev) => ({
+          ...prev,
+          [idx]: (prev[idx] ? `${prev[idx]} ${interimPromptCorrection}` : interimPromptCorrection).trim(),
+        }));
       }
       setActivePromptRecordingIndex(null);
       setInterimPromptCorrection('');
@@ -787,31 +799,21 @@ export function AniaResults({
                       {activeImageRecordingIndex === idx && (
                         <span className="text-[10px] font-semibold text-rose-400 flex items-center gap-1 animate-pulse">
                           <span className="w-2 h-2 rounded-full bg-rose-500" />
-                          Ouvindo...
+                          Ouvindo sua correção... (clique no quadrado vermelho para parar)
                         </span>
                       )}
                     </div>
 
-                    <div className="flex items-stretch gap-1.5">
-                      {/* Botão Refazer Compacto (Canto) */}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          onRegenerateImage(idx, undefined, overrideProductPhotos[idx])
-                        }
-                        disabled={imageObj.isRegenerating}
-                        className="px-2.5 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition-colors cursor-pointer border border-zinc-700 disabled:opacity-50 shrink-0"
-                        title="Refazer imagem idêntica automaticamente"
-                      >
-                        <RotateCcw className="w-3.5 h-3.5 text-zinc-400" />
-                        <span className="hidden sm:inline text-[11px]">Refazer</span>
-                      </button>
-
-                      {/* Campo de Texto com Microfone Embutido */}
-                      <div className="relative flex-1">
-                        <input
-                          type="text"
-                          value={customCorrections[idx] || ''}
+                    <div className="flex flex-col gap-2">
+                      {/* Campo de Texto com Microfone Embutido (Textarea Expansível em Branco) */}
+                      <div className="relative">
+                        <textarea
+                          rows={2}
+                          value={
+                            activeImageRecordingIndex === idx && interimImageCorrection
+                              ? (customCorrections[idx] ? `${customCorrections[idx]} ${interimImageCorrection}` : interimImageCorrection)
+                              : (customCorrections[idx] || '')
+                          }
                           onChange={(e) =>
                             setCustomCorrections((prev) => ({
                               ...prev,
@@ -819,58 +821,82 @@ export function AniaResults({
                             }))
                           }
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
+                            if (e.key === 'Enter' && !e.shiftKey) {
                               e.preventDefault();
-                              onRegenerateImage(idx, customCorrections[idx], overrideProductPhotos[idx]);
+                              if (activeImageRecordingIndex !== idx) {
+                                onRegenerateImage(idx, customCorrections[idx], overrideProductPhotos[idx]);
+                              }
                             }
                           }}
-                          placeholder="Ex: Deixar o tênis marrom mais escuro, mudar cadarço..."
-                          className="w-full pl-2.5 pr-8 py-2 bg-zinc-900 border border-zinc-700/90 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 transition-colors"
+                          placeholder="Ex: Deixar o tênis marrom mais escuro, adicionar uma aranha no chão, mudar cadarço..."
+                          className="w-full pl-3 pr-10 py-2.5 bg-zinc-900 border border-zinc-700/90 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 transition-colors shadow-inner resize-y min-h-[56px] font-sans"
                         />
 
                         {/* Botão Microfone Embutido */}
                         <button
                           type="button"
                           onClick={() => toggleImageVoiceRecording(idx)}
-                          className={`absolute right-1 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-all cursor-pointer ${
+                          className={`absolute right-2 top-2.5 p-1.5 rounded-lg transition-all cursor-pointer ${
                             activeImageRecordingIndex === idx
-                              ? 'bg-rose-500/20 text-rose-400 animate-pulse'
+                              ? 'bg-rose-500/30 text-rose-400 animate-pulse border border-rose-500/50 shadow-md shadow-rose-950/50'
                               : 'text-zinc-400 hover:text-purple-300 hover:bg-zinc-800'
                           }`}
                           title={
                             activeImageRecordingIndex === idx
-                              ? 'Parar gravação'
+                              ? 'Parar gravação (Clique para liberar o botão Aplicar)'
                               : 'Ditar correção da imagem por voz'
                           }
                         >
                           {activeImageRecordingIndex === idx ? (
-                            <Square className="w-3.5 h-3.5 text-rose-400 fill-rose-400" />
+                            <Square className="w-4 h-4 text-rose-400 fill-rose-400" />
                           ) : (
-                            <Mic className="w-3.5 h-3.5" />
+                            <Mic className="w-4 h-4" />
                           )}
                         </button>
                       </div>
 
-                      {/* Botão Aplicar Correção e Refazer */}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          onRegenerateImage(idx, customCorrections[idx], overrideProductPhotos[idx])
-                        }
-                        disabled={imageObj.isRegenerating || !(customCorrections[idx]?.trim() || interimImageCorrection.trim() || overrideProductPhotos[idx])}
-                        className="px-3 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1 transition-all cursor-pointer shadow-md shrink-0"
-                        title="Aplicar correção e refazer a imagem"
-                      >
-                        <Sparkles className="w-3.5 h-3.5" />
-                        <span>Aplicar</span>
-                      </button>
-                    </div>
+                      <div className="flex items-center justify-between gap-2">
+                        {/* Botão Refazer Imagem Idêntica */}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onRegenerateImage(idx, undefined, overrideProductPhotos[idx])
+                          }
+                          disabled={imageObj.isRegenerating || activeImageRecordingIndex === idx}
+                          className="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-zinc-700 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                          title="Refazer imagem idêntica automaticamente"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5 text-zinc-400" />
+                          <span>Refazer</span>
+                        </button>
 
-                    {activeImageRecordingIndex === idx && interimImageCorrection && (
-                      <p className="text-[10px] text-purple-300 italic opacity-80 pl-1">
-                        "{interimImageCorrection}"
-                      </p>
-                    )}
+                        {/* Botão Aplicar Correção (Bloqueado durante gravação) */}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            onRegenerateImage(idx, customCorrections[idx], overrideProductPhotos[idx])
+                          }
+                          disabled={
+                            activeImageRecordingIndex === idx ||
+                            imageObj.isRegenerating ||
+                            !(customCorrections[idx]?.trim() || overrideProductPhotos[idx])
+                          }
+                          className={`flex-1 py-2 px-3 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md ${
+                            activeImageRecordingIndex === idx
+                              ? 'bg-zinc-800 text-zinc-500 opacity-50 cursor-not-allowed border border-zinc-700'
+                              : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white cursor-pointer'
+                          }`}
+                          title={
+                            activeImageRecordingIndex === idx
+                              ? 'Clique no quadrado vermelho para parar a gravação antes de aplicar'
+                              : 'Aplicar correção e refazer a imagem'
+                          }
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>{activeImageRecordingIndex === idx ? 'Parar Gravação para Aplicar' : 'Aplicar Correção e Refazer'}</span>
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -939,16 +965,20 @@ export function AniaResults({
                       {activePromptRecordingIndex === idx && (
                         <span className="text-[10px] font-semibold text-rose-400 flex items-center gap-1 animate-pulse">
                           <span className="w-2 h-2 rounded-full bg-rose-500" />
-                          Ouvindo sua correção...
+                          Ouvindo sua correção... (clique no quadrado vermelho para parar)
                         </span>
                       )}
                     </div>
 
                     <div className="flex flex-col sm:flex-row items-stretch gap-2">
                       <div className="relative flex-1">
-                        <input
-                          type="text"
-                          value={promptCorrections[idx] || ''}
+                        <textarea
+                          rows={2}
+                          value={
+                            activePromptRecordingIndex === idx && interimPromptCorrection
+                              ? (promptCorrections[idx] ? `${promptCorrections[idx]} ${interimPromptCorrection}` : interimPromptCorrection)
+                              : (promptCorrections[idx] || '')
+                          }
                           onChange={(e) =>
                             setPromptCorrections((prev) => ({
                               ...prev,
@@ -956,34 +986,36 @@ export function AniaResults({
                             }))
                           }
                           onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
+                            if (e.key === 'Enter' && !e.shiftKey) {
                               e.preventDefault();
-                              handleRefinePrompt(idx);
+                              if (activePromptRecordingIndex !== idx) {
+                                handleRefinePrompt(idx);
+                              }
                             }
                           }}
                           placeholder='Ex: "Edite o prompt porque não passou por conteúdo impróprio", "Deixe a câmera mais perto"...'
-                          className="w-full pl-3 pr-9 py-2 bg-zinc-900 border border-zinc-700/90 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 transition-colors shadow-inner"
+                          className="w-full pl-3 pr-10 py-2.5 bg-zinc-900 border border-zinc-700/90 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 transition-colors shadow-inner resize-y min-h-[56px] font-sans"
                         />
 
                         {/* Botão de Microfone embutido no input */}
                         <button
                           type="button"
                           onClick={() => togglePromptVoiceRecording(idx)}
-                          className={`absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-all cursor-pointer ${
+                          className={`absolute right-2 top-2.5 p-1.5 rounded-lg transition-all cursor-pointer ${
                             activePromptRecordingIndex === idx
-                              ? 'bg-rose-500/20 text-rose-400 animate-pulse'
+                              ? 'bg-rose-500/30 text-rose-400 animate-pulse border border-rose-500/50 shadow-md shadow-rose-950/50'
                               : 'text-zinc-400 hover:text-purple-300 hover:bg-zinc-800'
                           }`}
                           title={
                             activePromptRecordingIndex === idx
-                              ? 'Parar gravação'
+                              ? 'Parar gravação (Clique para liberar o botão Refazer Prompt)'
                               : 'Ditar correção do prompt por voz'
                           }
                         >
                           {activePromptRecordingIndex === idx ? (
-                            <Square className="w-3.5 h-3.5 text-rose-400 fill-rose-400" />
+                            <Square className="w-4 h-4 text-rose-400 fill-rose-400" />
                           ) : (
-                            <Mic className="w-3.5 h-3.5" />
+                            <Mic className="w-4 h-4" />
                           )}
                         </button>
                       </div>
@@ -991,8 +1023,21 @@ export function AniaResults({
                       <button
                         type="button"
                         onClick={() => handleRefinePrompt(idx)}
-                        disabled={refiningPromptIndex === idx || !(promptCorrections[idx]?.trim() || interimPromptCorrection.trim())}
-                        className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md shrink-0"
+                        disabled={
+                          activePromptRecordingIndex === idx ||
+                          refiningPromptIndex === idx ||
+                          !promptCorrections[idx]?.trim()
+                        }
+                        className={`px-4 py-2 text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md shrink-0 ${
+                          activePromptRecordingIndex === idx
+                            ? 'bg-zinc-800 text-zinc-500 opacity-50 cursor-not-allowed border border-zinc-700'
+                            : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer'
+                        }`}
+                        title={
+                          activePromptRecordingIndex === idx
+                            ? 'Clique no quadrado vermelho para parar a gravação antes de refazer o prompt'
+                            : 'Refazer prompt com IA'
+                        }
                       >
                         {refiningPromptIndex === idx ? (
                           <>
@@ -1002,17 +1047,11 @@ export function AniaResults({
                         ) : (
                           <>
                             <Wand2 className="w-3.5 h-3.5" />
-                            <span>Refazer Prompt</span>
+                            <span>{activePromptRecordingIndex === idx ? 'Parar para Refazer' : 'Refazer Prompt'}</span>
                           </>
                         )}
                       </button>
                     </div>
-
-                    {activePromptRecordingIndex === idx && interimPromptCorrection && (
-                      <p className="text-[11px] text-purple-300 italic opacity-80 pl-1">
-                        "{interimPromptCorrection}"
-                      </p>
-                    )}
                   </div>
 
                   {/* DEDICATED INDIVIDUAL SPEECH CARD FOR THIS VIDEO */}

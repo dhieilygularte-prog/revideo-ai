@@ -40,6 +40,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
       const detectedFabricObj = prev.fabricSource !== 'manual' ? detectFabric(val, undefined, prev.productInfo) : null;
       const defaultBody = detectedProdMode === 'footwear' && prev.body === 'Plus size' ? 'Normal' : prev.body;
       const detectedGen = detectGender(val, prev.productInfo);
+      const isFootwear = detectedProdMode === 'footwear';
 
       return {
         ...prev,
@@ -47,6 +48,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
         productMode: detectedProdMode,
         gender: detectedGen || prev.gender,
         body: defaultBody,
+        naturalEnvironment: isFootwear ? true : prev.naturalEnvironment,
         stretch: prev.stretchSource === 'manual' ? prev.stretch : (detectedAutoStretch !== null ? detectedAutoStretch : prev.stretch),
         stretchSource: prev.stretchSource === 'manual' ? 'manual' : (detectedAutoStretch !== null ? 'local_detect' : prev.stretchSource),
         fabric: prev.fabricSource === 'manual' ? prev.fabric : (detectedFabricObj?.key !== 'padrao' ? detectedFabricObj?.key || prev.fabric : prev.fabric),
@@ -62,6 +64,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
       const detectedProdMode = prev.productMode === 'apparel' ? detectProductMode(prev.productName, val) : prev.productMode;
       const defaultBody = detectedProdMode === 'footwear' && prev.body === 'Plus size' ? 'Normal' : prev.body;
       const detectedGen = detectGender(prev.productName, val);
+      const isFootwear = detectedProdMode === 'footwear';
 
       // Se o usuário ainda não digitou um nome de produto ou se veio vazio, extrai o nome curto automaticamente da descrição
       let autoProductName = prev.productName;
@@ -79,6 +82,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
         productMode: detectedProdMode,
         gender: detectedGen || prev.gender,
         body: defaultBody,
+        naturalEnvironment: isFootwear ? true : prev.naturalEnvironment,
         stretch: prev.stretchSource === 'manual' ? prev.stretch : (detectedAutoStretch !== null ? detectedAutoStretch : prev.stretch),
         stretchSource: prev.stretchSource === 'manual' ? 'manual' : (detectedAutoStretch !== null ? 'product_info' : prev.stretchSource),
         fabric: prev.fabricSource === 'manual' ? prev.fabric : (detectedFabricObj?.key !== 'padrao' ? detectedFabricObj?.key || prev.fabric : prev.fabric),
@@ -204,6 +208,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
                   ...prev,
                   productMode: 'footwear',
                   body: prev.body === 'Plus size' ? 'Normal' : prev.body,
+                  naturalEnvironment: true,
                 }))
               }
               className={`py-2 px-1 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
@@ -361,32 +366,39 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
           </div>
         )}
 
-        {/* 7. Controle de Ambiente Natural (Toggle / Checkbox) */}
+        {/* 7. Controle de Ambiente Natural (Toggle / Checkbox com Destaque Visual) */}
         <div className={form.ageMode === 'child' ? 'md:col-span-12 space-y-1.5' : 'md:col-span-6 space-y-1.5'}>
           <label className="text-xs font-bold text-zinc-200 flex items-center justify-between">
             <span className="flex items-center gap-1.5">
               <TreePine className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Ambiente Natural (Cenário Nativo)</span>
+              <span className="text-emerald-300 font-bold">Ambiente Natural (Cenário Nativo)</span>
             </span>
-            <span className="text-[10px] text-zinc-400">
-              {form.naturalEnvironment ? 'Ativo: cenário de uso' : 'Padrão: casa brasileira'}
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold border transition-colors ${
+              form.naturalEnvironment
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                : 'bg-zinc-800 text-zinc-400 border-zinc-700'
+            }`}>
+              {form.naturalEnvironment ? '🌿 Cenário de Uso Ativo' : '🏠 Casa Brasileira (Padrão)'}
             </span>
           </label>
           <div
             onClick={() => onChange((prev) => ({ ...prev, naturalEnvironment: !prev.naturalEnvironment }))}
-            className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+            className={`p-2.5 rounded-xl border-2 flex items-center justify-between cursor-pointer transition-all shadow-sm ${
               form.naturalEnvironment
-                ? 'bg-emerald-950/40 border-emerald-500/50 text-emerald-200'
-                : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                ? 'bg-emerald-950/40 border-emerald-500/60 text-emerald-100 shadow-emerald-950/40 scale-[1.01]'
+                : 'bg-zinc-900/90 border-zinc-700/80 text-zinc-300 hover:border-emerald-500/40 hover:text-white'
             }`}
           >
             <div className="flex items-center gap-2.5">
-              <input
-                type="checkbox"
-                checked={form.naturalEnvironment}
-                onChange={() => {}} // handled by parent div
-                className="w-4 h-4 text-emerald-600 rounded bg-zinc-800 border-zinc-700 cursor-pointer"
-              />
+              <div
+                className={`w-4 h-4 rounded flex items-center justify-center border transition-all ${
+                  form.naturalEnvironment
+                    ? 'border-emerald-400 bg-emerald-500 text-white'
+                    : 'border-zinc-500 bg-zinc-800'
+                }`}
+              >
+                {form.naturalEnvironment && <CheckCircle2 className="w-3.5 h-3.5 text-zinc-950 stroke-[3]" />}
+              </div>
               <span className="text-xs font-semibold">
                 Usar local natural de uso do produto (academia, praia, praça, oficina, etc.)
               </span>
@@ -501,10 +513,10 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
           </div>
         </div>
 
-        {/* 9. Tecido estica? (Controle Ultra-Destacado com Cores e Rádio-Bolinha) */}
+        {/* 9. Tecido estica? (Controle com Cores e Rádio-Bolinha) */}
         <div className="md:col-span-6 space-y-2">
-          <label className="text-xs font-bold text-white flex items-center justify-between">
-            <span className="flex items-center gap-1.5 text-amber-300 font-extrabold text-sm">
+          <label className="text-xs font-bold text-zinc-200 flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
               <span>⚡ Tecido/Material estica?</span>
               <strong className="text-rose-400">*</strong>
             </span>

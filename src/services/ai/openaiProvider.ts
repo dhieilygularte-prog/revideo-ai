@@ -535,10 +535,14 @@ Retorne estritamente um JSON estruturado:
       ? `CRITICAL ANTI-VIOLATION DIRECTIVE: Do NOT copy or clone the face of the actor from the reference video. Generate an original commercial model with a DIFFERENT FACE and distinct facial features (similar demographic style like a cousin, but strictly a different person) to prevent TikTok copyright/impersonation strikes.`
       : '';
 
-    // Prioriza correções de auditoria e instruções adicionais sobre o prompt universal já formatado
+    const userCorrectionDirective = correctionPrompt && correctionPrompt.trim()
+      ? `🚨 INSTRUÇÃO OBRIGATÓRIA DE ALTERAÇÃO DO USUÁRIO (APLICAR ESTE ELEMENTO/MUDANÇA DE FORMA DESTACADA): "${correctionPrompt.trim()}"`
+      : '';
+
+    // Prioriza correções do usuário, auditoria e instruções adicionais sobre o prompt formatado
     const overrides = [
+      userCorrectionDirective,
       modelAntiViolationDirective,
-      correctionPrompt && `CRITICAL QUALITY OVERRIDE: ${correctionPrompt.trim()}`,
       additionalInstructions && `USER DIRECTIVE: ${additionalInstructions.trim()}`,
     ].filter(Boolean).join('\n');
 
@@ -562,7 +566,7 @@ Retorne estritamente um JSON estruturado:
       let swatchFile: File | null = null;
       let effectivePrompt = cleanPrompt;
 
-      // Se temos referência de modelo mestre (Imagem 1 base para clonagem):
+      // Se temos referência de modelo mestre (Imagem 1 base para clonagem ou edição de imagem existente):
       if (modelReferenceBase64) {
         const toFile = (dataUrl: string, name: string): File => {
           const mimeMatch = dataUrl.match(/^data:(image\/(?:jpeg|png|webp));base64,/);
@@ -572,8 +576,8 @@ Retorne estritamente um JSON estruturado:
           return new File([Buffer.from(b64, 'base64')], `${name}.${ext}`, { type: mime });
         };
 
-        // 1ª imagem = IMAGEM 1 GERADA (base absoluta)
-        baseImageFile = toFile(modelReferenceBase64, 'imagem_1_base');
+        // 1ª imagem = IMAGEM BASE (base visual enviada)
+        baseImageFile = toFile(modelReferenceBase64, 'imagem_base');
 
         // 2ª imagem = amostra COR 2 / COR 3 (somente referência do produto)
         const swatchStr = productPhotoBase64 || productPhotosBase64[0];
@@ -609,13 +613,17 @@ Retorne estritamente um JSON estruturado:
           }
         }
 
-        effectivePrompt = `Esta é uma EDIÇÃO LOCALIZADA da imagem enviada. A imagem enviada é a base absoluta e deve permanecer IDÊNTICA: mesma pessoa (pele, corpo, pernas, pés), mesma pose, mesmo quarto/cenário, mesmo piso/chão, mesma iluminação, mesmo ângulo, mesmo enquadramento e mesma composição. NÃO recrie a cena, NÃO gere outra pessoa, NÃO mude o fundo. Zero tatuagens.
+        const correctionDirective = correctionPrompt && correctionPrompt.trim()
+          ? `\n🚨 INSTRUÇÃO OBRIGATÓRIA DE ALTERAÇÃO/ADIÇÃO DO USUÁRIO (APLICAR RIGOROSAMENTE NA CENA): "${correctionPrompt.trim()}"\n`
+          : '';
+        const userInstructions = additionalInstructions && additionalInstructions.trim()
+          ? `\nINSTRUÇÕES ADICIONAIS: ${additionalInstructions.trim()}\n`
+          : '';
 
-ÚNICA ALTERAÇÃO: substitua exclusivamente o produto (${productType}) por uma peça com exatamente estas características (variante "${variationName}"): ${garmentSpec || `cor ${variationName}`}.
-IGNORE e NÃO desenhe nenhum brinde, palmilha flutuando ou objeto extra da foto de catálogo.
-Mantenha o mesmo modelo/corte e caimento do produto; troque somente cores e detalhes do produto conforme descrito. Tudo que não for o produto permanece pixel a pixel igual à imagem enviada. Sem textos, logos ou marcas d'água.`;
-      } else if (imageFiles.length > 0) {
-        baseImageFile = imageFiles[0];
+        effectivePrompt = `Esta é uma EDIÇÃO da imagem enviada. A imagem enviada é a base de referência e deve preservar a pessoa, pose, ângulo e cenário geral, aplicando com fidelidade as seguintes alterações:
+
+${correctionDirective ? `1. ALTERAÇÃO SOLICITADA PELO USUÁRIO (MÁXIMA PRIORIDADE): ${correctionPrompt?.trim()}\n` : ''}2. PRODUTO (${productType}): apresente o produto com as características da variante "${variationName}": ${garmentSpec || `cor ${variationName}`}.${userInstructions}
+IGNORE e NÃO desenhe nenhum brinde, palmilha flutuando ou objeto extra de catálogo. Sem textos, logos ou marcas d'água.`;
       }
 
       // Se temos arquivo de imagem de base válido para edição, usamos client.images.edit
