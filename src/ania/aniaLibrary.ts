@@ -126,90 +126,134 @@ export async function extractDominantColorFromImage(base64: string): Promise<str
           const ctx = canvas.getContext('2d');
           if (!ctx) return resolve(null);
 
-          const width = 64;
-          const height = 64;
+          const width = 80;
+          const height = 80;
           canvas.width = width;
           canvas.height = height;
           ctx.drawImage(img, 0, 0, width, height);
 
           const imgData = ctx.getImageData(0, 0, width, height).data;
-          let rTotal = 0, gTotal = 0, bTotal = 0, count = 0;
 
-          // Amostra do centro da imagem (onde o produto geralmente está)
-          const startX = Math.floor(width * 0.2);
-          const endX = Math.floor(width * 0.8);
-          const startY = Math.floor(height * 0.2);
-          const endY = Math.floor(height * 0.8);
+          // Histograma de votos de cores
+          const colorVotes: Record<string, number> = {
+            'Verde': 0,
+            'Azul': 0,
+            'Marrom': 0,
+            'Vermelho': 0,
+            'Rosa': 0,
+            'Amarelo': 0,
+            'Laranja': 0,
+            'Roxo': 0,
+            'Vinho': 0,
+            'Bege': 0,
+            'Preto': 0,
+            'Branco': 0,
+            'Cinza': 0,
+          };
 
-          for (let y = startY; y < endY; y++) {
-            for (let x = startX; x < endX; x++) {
+          let totalValidPixels = 0;
+          let totalChromaticVotes = 0;
+
+          for (let y = 6; y < height - 6; y++) {
+            for (let x = 6; x < width - 6; x++) {
               const idx = (y * width + x) * 4;
               const r = imgData[idx];
               const g = imgData[idx + 1];
               const b = imgData[idx + 2];
               const a = imgData[idx + 3];
 
-              // Ignora transparência e brancos puros de fundo de estúdio
-              if (a > 128) {
-                const isPureWhite = r > 245 && g > 245 && b > 245;
-                if (!isPureWhite) {
-                  rTotal += r;
-                  gTotal += g;
-                  bTotal += b;
-                  count++;
+              if (a < 100) continue;
+
+              // Ignora fundo branco puro ou muito claro de estúdio (> 245)
+              if (r > 245 && g > 245 && b > 245) continue;
+
+              totalValidPixels++;
+
+              // Conversão RGB -> HSL
+              const rN = r / 255, gN = g / 255, bN = b / 255;
+              const max = Math.max(rN, gN, bN), min = Math.min(rN, gN, bN);
+              let h = 0, s = 0, l = (max + min) / 2;
+
+              if (max !== min) {
+                const d = max - min;
+                s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+                switch (max) {
+                  case rN: h = (gN - bN) / d + (gN < bN ? 6 : 0); break;
+                  case gN: h = (bN - rN) / d + 2; break;
+                  case bN: h = (rN - gN) / d + 4; break;
+                }
+                h *= 60;
+              }
+
+              // Classificação por pixel individual
+              if (l < 0.16) {
+                colorVotes['Preto'] += 1;
+              } else if (l > 0.88 && s < 0.18) {
+                colorVotes['Branco'] += 1;
+              } else if (s < 0.16) {
+                colorVotes['Cinza'] += 1;
+              } else {
+                // Pixel cromático com cor ativa (Verde, Azul, Marrom, etc.)
+                totalChromaticVotes += 2.5;
+
+                if (h >= 0 && h < 18) {
+                  if (s > 0.22 && l < 0.40 && r > g && r > b) {
+                    colorVotes['Marrom'] += 3.5;
+                  } else if (l < 0.35) {
+                    colorVotes['Vinho'] += 2.5;
+                  } else {
+                    colorVotes['Vermelho'] += 2.5;
+                  }
+                } else if (h >= 18 && h < 45) {
+                  if (l < 0.45 && s < 0.75) {
+                    colorVotes['Marrom'] += 4;
+                  } else if (l > 0.65 && s < 0.5) {
+                    colorVotes['Bege'] += 2.5;
+                  } else {
+                    colorVotes['Laranja'] += 2.5;
+                  }
+                } else if (h >= 45 && h < 70) {
+                  if (l > 0.68 && s < 0.55) {
+                    colorVotes['Bege'] += 2.5;
+                  } else {
+                    colorVotes['Amarelo'] += 2.5;
+                  }
+                } else if (h >= 70 && h < 165) {
+                  colorVotes['Verde'] += 4; // Alta prioridade para tons verdes (oliva, militar, musgo, etc.)
+                } else if (h >= 165 && h < 260) {
+                  colorVotes['Azul'] += 4; // Alta prioridade para tons azuis (marinho, jeans, royal, etc.)
+                } else if (h >= 260 && h < 315) {
+                  colorVotes['Roxo'] += 3;
+                } else {
+                  if (l > 0.55) {
+                    colorVotes['Rosa'] += 3;
+                  } else {
+                    colorVotes['Vinho'] += 3;
+                  }
                 }
               }
             }
           }
 
-          if (count === 0) return resolve('Branco');
+          if (totalValidPixels === 0) return resolve('Branco');
 
-          const r = rTotal / count;
-          const g = gTotal / count;
-          const b = bTotal / count;
+          // Se mais de 10% dos pixels não-fundo têm cor cromática, desconsidera Cinza/Preto/Branco de fundo/sola
+          if (totalChromaticVotes > totalValidPixels * 0.10) {
+            delete colorVotes['Cinza'];
+            delete colorVotes['Branco'];
+            delete colorVotes['Preto'];
+          }
 
-          // Converter RGB para HSL
-          const rNorm = r / 255, gNorm = g / 255, bNorm = b / 255;
-          const max = Math.max(rNorm, gNorm, bNorm), min = Math.min(rNorm, gNorm, bNorm);
-          let h = 0, s = 0, l = (max + min) / 2;
-
-          if (max !== min) {
-            const d = max - min;
-            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-            switch (max) {
-              case rNorm: h = (gNorm - bNorm) / d + (gNorm < bNorm ? 6 : 0); break;
-              case gNorm: h = (bNorm - rNorm) / d + 2; break;
-              case bNorm: h = (rNorm - gNorm) / d + 4; break;
+          let bestColor = 'Preto';
+          let maxVotes = -1;
+          for (const [col, votes] of Object.entries(colorVotes)) {
+            if (votes > maxVotes) {
+              maxVotes = votes;
+              bestColor = col;
             }
-            h *= 60;
           }
 
-          // Classificar cor simples em português (estritamente uma palavra)
-          if (l < 0.22) return resolve('Preto');
-          if (l > 0.85 && s < 0.2) return resolve('Branco');
-          if (s < 0.15) {
-            return resolve('Cinza');
-          }
-
-          if (h >= 0 && h < 20) {
-            if (s > 0.2 && l < 0.4 && r > g && r > b) return resolve('Marrom');
-            return l < 0.35 ? resolve('Vinho') : resolve('Vermelho');
-          } else if (h >= 20 && h < 45) {
-            if (l < 0.4) return resolve('Marrom');
-            if (l > 0.7) return resolve('Bege');
-            return resolve('Laranja');
-          } else if (h >= 45 && h < 70) {
-            if (l > 0.7) return resolve('Bege');
-            return resolve('Amarelo');
-          } else if (h >= 70 && h < 165) {
-            return resolve('Verde');
-          } else if (h >= 165 && h < 260) {
-            return resolve('Azul');
-          } else if (h >= 260 && h < 320) {
-            return resolve('Roxo');
-          } else {
-            return l > 0.6 ? resolve('Rosa') : resolve('Vinho');
-          }
+          resolve(bestColor);
         } catch {
           resolve(null);
         }

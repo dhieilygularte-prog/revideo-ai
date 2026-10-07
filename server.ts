@@ -1457,12 +1457,23 @@ app.post('/api/detect-dominant-color', async (req, res) => {
       ? photoBase64
       : `data:image/jpeg;base64,${photoBase64}`;
 
-    const promptText = `Analise esta foto e identifique EXCLUSIVAMENTE a cor predominante/principal do produto ${productName ? `(${productName})` : ''}.
+    const promptText = `Analise a foto deste item comercial (${productName || (productMode === 'footwear' ? 'calçado / tênis' : 'roupa')}) e identifique com máxima precisão a cor predominante do corpo/cabedal/tecido principal.
 REGRAS OBRIGATÓRIAS:
-1. Ignore o fundo, piso, mesa, sombras, manequim ou modelos.
-2. Ignore pequenos detalhes, costuras, sola ou cadarços de outras cores se houver uma cor principal dominante.
-3. Responda em ESTRITAMENTE UMA ÚNICA PALAVRA da cor básica em português (Exemplos: Preto, Branco, Marrom, Azul, Vermelho, Verde, Rosa, Cinza, Bege, Amarelo, Vinho, Roxo, Laranja, Dourado, Prateado). NUNCA adicione adjetivos como 'oliva', 'marinho', 'claro', 'escuro', 'militar', 'bebê'.
-4. NÃO escreva frases, NÃO use pontuação, NÃO use aspas, responda ESTRITAMENTE a única palavra da cor.`;
+1. Se for calçado/tênis: ignore a sola de borracha (branca/preta) e foque exclusivamente no cabedal (parte superior/tecido/couro).
+2. Ignore o fundo branco/cinza, sombras, piso ou manequins.
+3. Se o cabedal for verde (oliva, militar, musgo, etc.), responda: Verde
+4. Se o cabedal for marrom (caramelo, café, chocolate), responda: Marrom
+5. Se o cabedal for azul (marinho, jeans, royal, celeste), responda: Azul
+6. Se o cabedal for vermelho/vinho, responda: Vermelho
+7. Se o cabedal for rosa/pink, responda: Rosa
+8. Se o cabedal for amarelo/mostarda, responda: Amarelo
+9. Se o cabedal for bege/nude/areia, responda: Bege
+10. Se o cabedal for laranja/terracota, responda: Laranja
+11. Se o cabedal for roxo/lilás, responda: Roxo
+12. Se o cabedal for preto, responda: Preto
+13. Se o cabedal for branco, responda: Branco
+14. Se o cabedal for cinza/chumbo, responda: Cinza
+Responda ESTRITAMENTE em UMA ÚNICA PALAVRA da cor básica em português, sem pontuação e sem explicações.`;
 
     // 1. Provedor OpenAI
     const activeProfile = aiProfile || getRequestAIProfile(req);
@@ -1480,8 +1491,7 @@ REGRAS OBRIGATÓRIAS:
               ],
             },
           ],
-          max_tokens: 10,
-          temperature: 0.1,
+          max_tokens: 60,
         });
 
         const rawColor = completion.choices[0]?.message?.content?.trim();
