@@ -106,9 +106,7 @@ PRODUCT LOCK TOTAL — reproduzir com MÁXIMA FIDELIDADE 1:1: tipo da peça/cal�
 Detalhes deste produto que DEVEM aparecer exatamente assim: ${detalhesList}.
 NÃO inventar, retirar ou modificar detalhes físicos do produto real.
 
-POIS E FOCO EXCLUSIVO NO PRODUTO:
-- O ÚNICO item a ser gerado/vestido é o produto principal anunciado (${productName}).
-- DESCARTE E IGNORE 100% de quaisquer brindes, palmilhas extras soltas flutuando, meias de brinde, acessórios soltos, caixas, plantas decorativas, banners de loja, selos ou itens secundários que possam estar na foto de referência. A imagem deve retratar APENAS a pessoa usando o produto (${productName}) de forma limpa e realista.
+POSE E APARÊNCIA:
 - Postura natural e relaxada, produto em primeiro plano.
 - Pele realista e natural, ZERO TATUAGENS (estritamente sem qualquer desenho, escrita ou tinta corporal no modelo, homem ou mulher).
 - Sem acessórios excessivos que disputem a atenção.
@@ -123,7 +121,6 @@ PROIBIÇÕES ABSOLUTAS:
 - NUNCA MOSTRAR O ROSTO (estritamente do pescoço para baixo ou pés).
 - PROIBIDO GERAR CRIANÇAS (em modo infantil, apenas mãos de adultos em POV apresentando a peça).
 - ZERO TATUAGENS em homem ou mulher.
-- ZERO PALMILHAS OU BRINDES FLUTUANDO OU NO CHÃO (nunca desenhar palmilhas extras soltas, brindes ou acessórios da foto de catálogo).
 - Sem textos, logos digitais, marcas d'água ou banners promocionais.`;
 }
 
@@ -163,7 +160,7 @@ export function buildAniaColorSwapPrompt(params: {
 Troque SOMENTE o calçado dos pés pelo calçado/cor mostrada na ${targetRefWord} imagem de referência: ${colorName}.
 
 A ${targetRefWord} imagem serve exclusivamente como referência da cor/variação do calçado (${pecaNome}).
-IGNORE E DESCARTE 100% de qualquer fundo, chão, pessoa, estúdio, iluminação, e PRINCIPALMENTE quaisquer brindes, palmilhas soltas flutuando, caixas, meias ou acessórios que apareçam na ${targetRefWord} imagem de referência.
+IGNORE E DESCARTE 100% de qualquer fundo, chão, pessoa, estúdio ou iluminação presente na ${targetRefWord} imagem de referência.
 
 Mantenha 100% idênticos à PRIMEIRA imagem:
 mesma pessoa, mesmas pernas, mesma pose, mesma posição dos pés, mesmo chão/piso, mesmo enquadramento, mesma câmera, mesma distância, mesmo cenário (${ambienteDesc}), mesmo fundo, mesma iluminação, e mesma calça/roupa complementar.
@@ -171,8 +168,7 @@ mesma pessoa, mesmas pernas, mesma pose, mesma posição dos pés, mesmo chão/p
 NÃO recrie a fotografia.
 NÃO gere outra modelo.
 NÃO altere cenário, piso, pernas, pose ou iluminação.
-NÃO desenhe palmilhas soltas, brindes ou qualquer objeto flutuando no ar.
-NÃO mude nenhum elemento fora do calçado principal nos pés.
+NÃO mude nenhum elemento fora do calçado principal.
 ZERO TATUAGENS: Pele 100% limpa e natural.
 
 Resultado esperado:
@@ -185,7 +181,7 @@ a PRIMEIRA imagem permanece visualmente igual, mudando exclusivamente o calçado
 Troque SOMENTE o produto infantil (${pecaNome}) pela cor/estampa mostrada na ${targetRefWord} imagem de referência: ${colorName}.
 
 A ${targetRefWord} imagem serve exclusivamente como referência da cor/variação do produto.
-IGNORE E DESCARTE 100% de qualquer fundo, manequim, cenário ou brindes/acessórios da ${targetRefWord} imagem de referência.
+IGNORE E DESCARTE 100% de qualquer fundo, manequim ou cenário da ${targetRefWord} imagem de referência.
 
 Mantenha 100% idênticos à PRIMEIRA imagem:
 mesmas mãos adultas em POV segurando e apresentando o produto, mesmo enquadramento em primeira pessoa (NUNCA MOSTRAR ROSTO E NUNCA MOSTRAR CRIANÇAS), mesma superfície limpa, mesmo cenário (${ambienteDesc}) e mesma iluminação.
@@ -203,7 +199,7 @@ a PRIMEIRA imagem permanece visualmente igual, mudando exclusivamente o produto 
 Troque SOMENTE a peça principal (${pecaNome}) da pessoa pela peça/cor mostrada na ${targetRefWord} imagem de referência: ${colorName}.
 
 A ${targetRefWord} imagem serve exclusivamente como referência da cor/variação do produto.
-IGNORE E DESCARTE COMPLETAMENTE qualquer fundo, manequim, cabide, loja, modelo, estúdio ou brindes/acessórios secundários da ${targetRefWord} imagem de referência! Não copie dela formato de corpo, modelo, cenário, iluminação ou brindes soltos.
+IGNORE E DESCARTE COMPLETAMENTE qualquer fundo, manequim, cabide, loja, modelo ou estúdio da ${targetRefWord} imagem de referência! Não copie dela formato de corpo, modelo, cenário ou iluminação.
 
 Mantenha 100% idênticos à PRIMEIRA imagem:
 mesma pessoa, mesmo corpo (${body}), mesma pose, mesma posição de braços e pernas, mesmo enquadramento vertical 9:16 do pescoço para baixo (sem rosto), mesma câmera, mesma distância, mesmo cenário (${ambienteDesc}), mesmo fundo, mesma iluminação, mesmo cabelo visível, mesma roupa complementar e mesmo calçado quando ele não for o produto vendido.

@@ -597,7 +597,7 @@ Retorne estritamente um JSON estruturado:
                     { type: 'image_url', image_url: { url: swatchStr.startsWith('data:') ? swatchStr : `data:image/jpeg;base64,${swatchStr}` } },
                     {
                       type: 'text',
-                      text: `Describe in English, in one dense paragraph, ONLY the main product (${productType}) in this photo, strictly ignoring the person, background, mannequin, and completely ignoring any secondary bonus items, floating shoe insoles/palmilhas, gift socks, boxes, plants or accessories: describe the exact main color, texture, material, sole/outsole, laces, stitching, trims, and details of ONLY the main product itself. Do not mention or include any floating accessories or bonus gifts.`,
+                      text: `Describe in English, in one dense paragraph, ONLY the garment/product (${productType}) in this photo, ignoring the person, background and mannequin: exact main color of each piece (top and bottom), exact color of the piping/trim/binding on collar, front placket, sleeve hems, shorts hems and pockets, exact button color and count, fabric texture, neckline shape, sleeve length, shorts length, any print or logo. Be precise about contrast colors.`,
                     },
                   ],
                 },
@@ -609,11 +609,10 @@ Retorne estritamente um JSON estruturado:
           }
         }
 
-        effectivePrompt = `Esta é uma EDIÇÃO LOCALIZADA da imagem enviada. A imagem enviada é a base absoluta e deve permanecer IDÊNTICA: mesma pessoa (pele, corpo, pernas, pés), mesma pose, mesmo quarto/cenário, mesmo piso/chão, mesma iluminação, mesmo ângulo, mesmo enquadramento e mesma composição. NÃO recrie a cena, NÃO gere outra pessoa, NÃO mude o fundo. Zero tatuagens.
+        effectivePrompt = `Esta é uma EDIÇÃO LOCALIZADA da imagem enviada. A imagem enviada é a base absoluta e deve permanecer IDÊNTICA: mesma mulher (rosto, cabelo, pele, corpo), mesma pose, mesmos braços e mãos, mesmo quarto/cenário, mesma iluminação, mesmo ângulo, mesmo enquadramento e mesma composição. NÃO recrie a cena, NÃO gere outra pessoa, NÃO mude o fundo. Zero tatuagens.
 
-ÚNICA ALTERAÇÃO: substitua exclusivamente o produto (${productType}) por uma peça com exatamente estas características (variante "${variationName}"): ${garmentSpec || `cor ${variationName}`}.
-IGNORE e NÃO desenhe nenhum brinde, palmilha flutuando ou objeto extra da foto de catálogo.
-Mantenha o mesmo modelo/corte e caimento do produto; troque somente cores e detalhes do produto conforme descrito. Tudo que não for o produto permanece pixel a pixel igual à imagem enviada. Sem textos, logos ou marcas d'água.`;
+ÚNICA ALTERAÇÃO: substitua a roupa/produto (${productType}) que ela veste por uma peça com exatamente estas características (variante "${variationName}"): ${garmentSpec || `cor ${variationName}`}.
+Mantenha o mesmo modelo/corte e caimento da peça atual; troque somente cores (peça principal, debruns/acabamentos, botões) e detalhes conforme descrito. Tudo que não for a peça permanece pixel a pixel igual à imagem enviada. Sem textos, logos ou marcas d'água.`;
       } else if (imageFiles.length > 0) {
         baseImageFile = imageFiles[0];
       }
