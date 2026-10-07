@@ -35,6 +35,20 @@ const PORT = Number(process.env.PORT) || 3000;
 app.use(express.json({ limit: '60mb' }));
 app.use(express.urlencoded({ extended: true, limit: '60mb' }));
 
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, DELETE');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-ai-profile');
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  // Normaliza caminhos em plataformas serverless caso o prefixo /api seja removido
+  if (req.url && !req.url.startsWith('/api') && req.url !== '/' && !req.url.startsWith('/assets') && !req.url.startsWith('/favicon')) {
+    req.url = `/api${req.url.startsWith('/') ? '' : '/'}${req.url}`;
+  }
+  next();
+});
+
 /**
  * Resolução centralizada do perfil de IA ativo da requisição
  */
