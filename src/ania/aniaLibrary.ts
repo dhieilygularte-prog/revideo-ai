@@ -45,16 +45,17 @@ export function removeAccents(str: string): string {
 /**
  * Detecta o tecido visual baseado no nome do produto, campo manual ou informações do produto.
  */
-export function detectFabric(name: string, manualFabric?: string, info?: string): { key: string; description: string } {
+export function detectFabric(name: string, manualFabric?: string, info?: string): { key: string; description: string; detected: boolean } {
   const combined = removeAccents(`${manualFabric || ''} ${name || ''} ${info || ''}`);
   for (const [key, desc] of Object.entries(FABRICS)) {
-    if (combined.includes(key)) {
-      return { key, description: desc };
+    if (new RegExp(`\\b${key}`, 'i').test(combined)) {
+      return { key, description: desc, detected: true };
     }
   }
   return {
-    key: manualFabric ? removeAccents(manualFabric) : 'padrao',
+    key: manualFabric ? removeAccents(manualFabric) : '',
     description: 'o mesmo tecido visível na referência',
+    detected: Boolean(manualFabric && manualFabric.trim().length > 0),
   };
 }
 
@@ -424,6 +425,8 @@ export const APPAREL_KEYWORDS = [
   'sunga',
   'legging',
   'pantalona',
+  'alfaiataria',
+  'social',
   'roupa',
   'roupas',
 ];

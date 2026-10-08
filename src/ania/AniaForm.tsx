@@ -474,6 +474,9 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
   const isBodyIdentified = form.bodySource === 'manual' || (form.bodySource === 'local_detect' && (form.productMode === 'footwear' || detectBody(form.productName, form.productInfo) !== null));
   const isNaturalEnvIdentified = form.naturalEnvSource === 'manual' || (form.naturalEnvSource === 'local_detect' && form.naturalEnvironment);
   const isStretchIdentified = form.stretch !== null && (form.stretchSource === 'manual' || form.stretchSource === 'local_detect' || form.stretchSource === 'product_info');
+  const isFabricIdentified = form.fabric.trim().length > 0 && (form.fabricSource === 'manual' || form.fabricSource === 'product_info' || form.fabricSource === 'local_detect');
+  const isInstructionsIdentified = form.additionalInstructions.trim().length > 0;
+  const isCustomSpeechIdentified = form.customSpeech.trim().length > 0;
   const hasCor1Photo = Boolean(form.colors[0]?.photoBase64);
   const isStretchSelected = form.stretch !== null;
   const areColorNamesFilled = form.colors.every((c) => !c.photoBase64 || c.name.trim().length > 0);
@@ -1098,106 +1101,145 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
         </div>
 
         {/* 11. Tipo de Tecido / Material (Texto Opcional) */}
-        <div className="md:col-span-6 p-3 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-1.5">
-          <label className="text-xs font-bold text-zinc-200 flex items-center justify-between">
-            <span>11. Tipo de Tecido / Material (Opcional)</span>
-            {form.fabric && (
-              <span className="text-[11px] text-emerald-400 font-medium">
-                {form.fabricSource === 'product_info' ? 'Detectado' : 'Definido'}
-              </span>
-            )}
+        <div
+          className={`md:col-span-6 p-3.5 rounded-2xl transition-all duration-300 space-y-1.5 ${
+            isFabricIdentified
+              ? 'bg-gradient-to-br from-sky-900/80 via-blue-900/75 to-slate-800/90 border-2 border-sky-400 shadow-lg shadow-sky-900/50 ring-2 ring-sky-400/40'
+              : 'bg-zinc-900/70 border border-zinc-800/90'
+          }`}
+        >
+          <label className="text-xs font-bold flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+              <span className={isFabricIdentified ? 'text-white' : 'text-zinc-200'}>11. Tipo de Tecido / Material (Opcional)</span>
+              {isFabricIdentified && (
+                <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-sky-300" /> {form.fabricSource === 'product_info' ? 'Identificado ✓' : 'Definido ✓'}
+                </span>
+              )}
+            </span>
+            <span className={`text-[11px] font-normal ${isFabricIdentified ? 'text-sky-200/90' : 'text-zinc-500'}`}>
+              {isFabricIdentified ? 'Auto-detectado da descrição' : 'Ex: duna, alfaiataria, linho...'}
+            </span>
           </label>
           <input
             type="text"
             value={form.fabric}
             onChange={(e) => handleManualFabricChange(e.target.value)}
-            placeholder="Ex.: duna, viscolinho, bengaline, suplex, couro, lona..."
-            className="w-full px-3.5 py-2 bg-zinc-950 border border-zinc-700/80 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 font-sans"
+            placeholder="Ex.: duna, alfaiataria, viscolinho, bengaline, suplex, couro, lona..."
+            className={`w-full px-3.5 py-2 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none font-sans transition-all ${
+              isFabricIdentified
+                ? 'bg-slate-950/80 border border-sky-400/60 focus:border-sky-300 focus:ring-1 focus:ring-sky-400'
+                : 'bg-zinc-950 border border-zinc-700/80 focus:border-sky-400 focus:ring-1 focus:ring-sky-400'
+            }`}
           />
         </div>
 
         {/* 12. Instruções Adicionais (Opcional) */}
-        <div className="md:col-span-6 p-3.5 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-bold text-zinc-200 flex items-center gap-1.5">
-              <span>12. Instruções adicionais (Opcional)</span>
-            </label>
+        <div
+          className={`md:col-span-6 p-3.5 rounded-2xl transition-all duration-300 space-y-1.5 ${
+            isInstructionsIdentified
+              ? 'bg-gradient-to-br from-sky-900/80 via-blue-900/75 to-slate-800/90 border-2 border-sky-400 shadow-lg shadow-sky-900/50 ring-2 ring-sky-400/40'
+              : 'bg-zinc-900/70 border border-zinc-800/90'
+          }`}
+        >
+          <label className="text-xs font-bold flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+              <span className={isInstructionsIdentified ? 'text-white' : 'text-zinc-200'}>12. Instruções adicionais (Opcional)</span>
+              {isInstructionsIdentified && (
+                <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-sky-300" /> Preenchido ✓
+                </span>
+              )}
+            </span>
+            <span className={`text-[11px] font-normal ${isInstructionsIdentified ? 'text-sky-200/90' : 'text-zinc-500'}`}>Ajustes específicos</span>
+          </label>
+          <div className="relative">
+            <textarea
+              ref={instructionsTextareaRef}
+              value={form.additionalInstructions}
+              onChange={(e) => {
+                onChange((prev) => ({ ...prev, additionalInstructions: e.target.value }));
+              }}
+              rows={2}
+              placeholder="Instruções específicas que deseja (detalhe visual, ajuste de cenário, idade exata, etc.)..."
+              className={`w-full p-2.5 pr-11 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-sky-400 font-sans leading-relaxed transition-all resize-none overflow-hidden ${
+                isInstructionsIdentified
+                  ? 'bg-slate-950/80 border border-sky-400/60 focus:border-sky-300'
+                  : 'bg-zinc-950 border border-zinc-700/80 focus:border-sky-400'
+              }`}
+              style={{ minHeight: '64px' }}
+            />
             <button
               type="button"
               onClick={() => toggleSpeechRecognition('instructions')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm ${
+              className={`absolute right-2 top-2 p-1.5 rounded-lg text-xs font-semibold flex items-center justify-center transition-all cursor-pointer shadow-sm ${
                 activeSpeechField === 'instructions'
-                  ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
-                  : 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 border border-zinc-700'
+                  ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400 scale-105'
+                  : 'bg-zinc-800/90 text-purple-400 hover:text-white hover:bg-zinc-700 border border-zinc-700/80'
               }`}
-              title={activeSpeechField === 'instructions' ? 'Parar gravação' : 'Ditar instruções por voz'}
+              title={activeSpeechField === 'instructions' ? 'Ouvindo... Clique para parar' : 'Ditar instruções por voz'}
             >
               {activeSpeechField === 'instructions' ? (
-                <>
-                  <MicOff className="w-3.5 h-3.5 text-white" />
-                  <span>Ouvindo... (clique p/ parar)</span>
-                </>
+                <MicOff className="w-4 h-4 text-white" />
               ) : (
-                <>
-                  <Mic className="w-3.5 h-3.5 text-purple-400" />
-                  <span>Ditar</span>
-                </>
+                <Mic className="w-4 h-4 text-purple-400" />
               )}
             </button>
           </div>
-          <textarea
-            ref={instructionsTextareaRef}
-            value={form.additionalInstructions}
-            onChange={(e) => {
-              onChange((prev) => ({ ...prev, additionalInstructions: e.target.value }));
-            }}
-            rows={2}
-            placeholder="Instruções específicas que deseja (detalhe visual, ajuste de cenário, idade exata, etc.)..."
-            className="w-full p-2.5 bg-zinc-950 border border-zinc-700/80 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 font-sans leading-relaxed transition-all resize-none overflow-hidden"
-            style={{ minHeight: '64px' }}
-          />
         </div>
 
         {/* 13. Personalizar ROTEIRO (opcional) */}
-        <div className="md:col-span-6 p-3.5 rounded-2xl bg-zinc-900/70 border border-zinc-800/90 space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-bold text-zinc-200 flex items-center gap-1.5">
-              <span>13. Personalizar ROTEIRO (opcional)</span>
-            </label>
+        <div
+          className={`md:col-span-6 p-3.5 rounded-2xl transition-all duration-300 space-y-1.5 ${
+            isCustomSpeechIdentified
+              ? 'bg-gradient-to-br from-sky-900/80 via-blue-900/75 to-slate-800/90 border-2 border-sky-400 shadow-lg shadow-sky-900/50 ring-2 ring-sky-400/40'
+              : 'bg-zinc-900/70 border border-zinc-800/90'
+          }`}
+        >
+          <label className="text-xs font-bold flex items-center justify-between">
+            <span className="flex items-center gap-1.5">
+              <span className={isCustomSpeechIdentified ? 'text-white' : 'text-zinc-200'}>13. Personalizar ROTEIRO (opcional)</span>
+              {isCustomSpeechIdentified && (
+                <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-sky-300" /> Personalizado ✓
+                </span>
+              )}
+            </span>
+            <span className={`text-[11px] font-normal ${isCustomSpeechIdentified ? 'text-sky-200/90' : 'text-zinc-500'}`}>Se vazio, usa acervo validado</span>
+          </label>
+          <div className="relative">
+            <textarea
+              ref={speechTextareaRef}
+              value={form.customSpeech}
+              onChange={(e) => {
+                onChange((prev) => ({ ...prev, customSpeech: e.target.value }));
+              }}
+              rows={2}
+              placeholder="Deixe vazio para usar automaticamente a fala campeã do acervo, ou dite/digite seu roteiro..."
+              className={`w-full p-2.5 pr-11 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-sky-400 font-sans leading-relaxed transition-all resize-none overflow-hidden ${
+                isCustomSpeechIdentified
+                  ? 'bg-slate-950/80 border border-sky-400/60 focus:border-sky-300'
+                  : 'bg-zinc-950 border border-zinc-700/80 focus:border-sky-400'
+              }`}
+              style={{ minHeight: '64px' }}
+            />
             <button
               type="button"
               onClick={() => toggleSpeechRecognition('speech')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm ${
+              className={`absolute right-2 top-2 p-1.5 rounded-lg text-xs font-semibold flex items-center justify-center transition-all cursor-pointer shadow-sm ${
                 activeSpeechField === 'speech'
-                  ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
-                  : 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 border border-zinc-700'
+                  ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400 scale-105'
+                  : 'bg-zinc-800/90 text-purple-400 hover:text-white hover:bg-zinc-700 border border-zinc-700/80'
               }`}
-              title={activeSpeechField === 'speech' ? 'Parar gravação' : 'Ditar roteiro por voz'}
+              title={activeSpeechField === 'speech' ? 'Ouvindo... Clique para parar' : 'Ditar roteiro por voz'}
             >
               {activeSpeechField === 'speech' ? (
-                <>
-                  <MicOff className="w-3.5 h-3.5 text-white" />
-                  <span>Ouvindo... (clique p/ parar)</span>
-                </>
+                <MicOff className="w-4 h-4 text-white" />
               ) : (
-                <>
-                  <Mic className="w-3.5 h-3.5 text-purple-400" />
-                  <span>Ditar</span>
-                </>
+                <Mic className="w-4 h-4 text-purple-400" />
               )}
             </button>
           </div>
-          <textarea
-            ref={speechTextareaRef}
-            value={form.customSpeech}
-            onChange={(e) => {
-              onChange((prev) => ({ ...prev, customSpeech: e.target.value }));
-            }}
-            rows={2}
-            placeholder="Deixe vazio para usar automaticamente a fala campeã do acervo, ou dite/digite seu roteiro..."
-            className="w-full p-2.5 bg-zinc-950 border border-zinc-700/80 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 font-sans leading-relaxed transition-all resize-none overflow-hidden"
-            style={{ minHeight: '64px' }}
-          />
         </div>
 
         {/* 14. Modelo do Veo (Duração por cena) */}
