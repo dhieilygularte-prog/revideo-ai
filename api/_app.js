@@ -7,7 +7,7 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
-import { Type } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 
 // src/config/models.ts
 var GEMINI_VISION_MODEL = "gemini-3.8-flash";
@@ -1209,6 +1209,72 @@ app.use((req, res, next) => {
   }
   next();
 });
+function getRequestAIProfile(req) {
+  const hasOpenAi = Boolean(openAIProvider && openAIProvider.isConfigured());
+  const hasGemini = Boolean(
+    process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim().length > 0 || process.env.GEMINIAPI && process.env.GEMINIAPI.trim().length > 0
+  );
+  const p = String(req.body?.aiProfile || req.headers["x-ai-profile"] || "").toLowerCase();
+  if (p === "openai" && hasOpenAi) return "openai";
+  if (p === "gemini" && hasGemini) return "gemini";
+  const envActive = getActiveProviderType();
+  if (envActive === "openai" && hasOpenAi) return "openai";
+  if (hasGemini) return "gemini";
+  if (hasOpenAi) return "openai";
+  return "gemini";
+}
+function getGenAI() {
+  const currentKey = process.env.GEMINI_API_KEY || "";
+  return new GoogleGenAI({
+    apiKey: currentKey,
+    httpOptions: {
+      headers: {
+        "User-Agent": "aistudio-build"
+      }
+    }
+  });
+}
+function parseInlineImage(imgStr) {
+  if (!imgStr || typeof imgStr !== "string") return null;
+  const match = imgStr.match(/^data:(image\/(?:jpeg|png|webp|gif));base64,([A-Za-z0-9+/=\r\n]+)$/);
+  if (match) {
+    const cleanData = match[2].replace(/[\r\n\s]/g, "");
+    if (cleanData.length > 20) {
+      return {
+        mimeType: match[1],
+        data: cleanData
+      };
+    }
+  }
+  const trimmed = imgStr.trim().replace(/[\r\n\s]/g, "");
+  if (/^[A-Za-z0-9+/=]{100,}$/.test(trimmed)) {
+    return {
+      mimeType: "image/jpeg",
+      data: trimmed
+    };
+  }
+  return null;
+}
+function parseInlineAudio(audioStr) {
+  if (!audioStr || typeof audioStr !== "string") return null;
+  const match = audioStr.match(/^data:(audio\/[a-zA-Z0-9.\-_+]+)(?:;[a-zA-Z0-9.\-_=]+)*;base64,([A-Za-z0-9+/=\r\n]+)$/);
+  if (match) {
+    let mimeType = match[1];
+    if (mimeType === "audio/mpeg") mimeType = "audio/mp3";
+    return {
+      mimeType,
+      data: match[2].replace(/[\r\n\s]/g, "")
+    };
+  }
+  const trimmed = audioStr.trim().replace(/[\r\n\s]/g, "");
+  if (/^[A-Za-z0-9+/=]{100,}$/.test(trimmed)) {
+    return {
+      mimeType: "audio/webm",
+      data: trimmed
+    };
+  }
+  return null;
+}
 async function extractProductSwatchDetails(swatchPhotoBase64, variationName, productType) {
   const parsed = parseInlineImage(swatchPhotoBase64);
   if (!parsed) return `cor "${variationName}"`;

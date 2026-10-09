@@ -65,6 +65,8 @@ app.use((req, res, next) => {
 });
 
 /**
+ * Resolução centralizada do perfil de IA ativo da requisição
+ */
 function getRequestAIProfile(req: express.Request): AIProfile {
   const hasOpenAi = Boolean(openAIProvider && openAIProvider.isConfigured());
   const hasGemini = Boolean(
