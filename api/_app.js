@@ -1,8 +1,9 @@
 import { createRequire as __createRequire } from 'module'; const require = __createRequire(import.meta.url);
 
 // server.ts
+import "dotenv/config";
+import dotenv3 from "dotenv";
 import express from "express";
-import dotenv from "dotenv";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
@@ -265,7 +266,11 @@ function selectRepresentativeKeyframes(frames, durationSeconds, calculatedScenes
   return Array.from(selectedIndices).sort((a, b) => a - b).map((idx) => sorted[idx]);
 }
 
+// src/services/ai/index.ts
+import dotenv2 from "dotenv";
+
 // src/services/ai/openaiProvider.ts
+import dotenv from "dotenv";
 import OpenAI from "openai";
 
 // src/config/openaiModels.ts
@@ -437,6 +442,7 @@ var CostTracker = class {
 var globalCostTracker = new CostTracker();
 
 // src/services/ai/openaiProvider.ts
+dotenv.config();
 var OpenAIProvider = class {
   constructor() {
     this.name = "openai";
@@ -1122,6 +1128,7 @@ Retorne estritamente um JSON:
 };
 
 // src/services/ai/index.ts
+dotenv2.config();
 if (!process.env.OPENAI_API_KEY) {
   process.env.OPENAI_API_KEY = process.env.APIOPENAI || process.env.OPENAI_KEY || process.env.VITE_OPENAI_API_KEY || "";
 }
@@ -1173,7 +1180,8 @@ REGRAS CR\xCDTICAS:
 }
 
 // server.ts
-dotenv.config();
+dotenv3.config();
+dotenv3.config();
 if (!process.env.OPENAI_API_KEY) {
   process.env.OPENAI_API_KEY = process.env.APIOPENAI || process.env.OPENAI_KEY || process.env.VITE_OPENAI_API_KEY || "";
 }

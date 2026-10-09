@@ -48,8 +48,15 @@ export default function App() {
   // Mode Selection State ('ania' default, always opens in Modo Ania)
   const [appMode, setAppMode] = useState<'ania' | 'clone'>('ania');
 
-  // AI Profile Selection State ('gemini' default, centralized configuration)
-  const [aiProfile, setAiProfile] = useState<AIProfile>('gemini');
+  // AI Profile Selection State ('openai' default no modo clonagem)
+  const [aiProfile, setAiProfile] = useState<AIProfile>('openai');
+
+  const handleModeChange = (newMode: 'ania' | 'clone') => {
+    setAppMode(newMode);
+    if (newMode === 'clone') {
+      setAiProfile('openai');
+    }
+  };
 
   // Modo Ania State
   const [aniaForm, setAniaForm] = useState<AniaFormState>({
@@ -1123,7 +1130,7 @@ export default function App() {
             : (analysisResult?.tokenUsage || sessionTokenStats)
         }
         mode={appMode}
-        onModeChange={setAppMode}
+        onModeChange={handleModeChange}
         aiProfile={aiProfile}
         onAIProfileChange={setAiProfile}
       />

@@ -1,3 +1,6 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import { AIProviderType, IAIProvider } from './types';
 import { OpenAIProvider } from './openaiProvider';
 

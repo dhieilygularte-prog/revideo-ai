@@ -16,13 +16,13 @@ export const Header: React.FC<HeaderProps> = ({
   tokenStats,
   mode = 'ania',
   onModeChange,
-  aiProfile = 'gemini',
+  aiProfile = 'openai',
   onAIProfileChange,
 }) => {
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const activeAI = AI_PROFILES[aiProfile] || AI_PROFILES.gemini;
+  const activeAI = AI_PROFILES[aiProfile] || AI_PROFILES.openai;
 
   // Fechar dropdown ao clicar fora
   useEffect(() => {
@@ -128,20 +128,6 @@ export const Header: React.FC<HeaderProps> = ({
               <div className="bg-zinc-950 p-1 rounded-xl border border-zinc-800 grid grid-cols-2 gap-1 shadow-inner">
                 <button
                   type="button"
-                  onClick={() => handleSelectProfile('gemini')}
-                  className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                    aiProfile === 'gemini'
-                      ? 'bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow'
-                      : 'text-zinc-400 hover:text-zinc-200'
-                  }`}
-                >
-                  {aiProfile === 'gemini' && <Check className="w-3.5 h-3.5" />}
-                  <span>Gemini</span>
-                  {aiProfile === 'gemini' && <span className="text-[9px] bg-blue-900/60 px-1 py-0.5 rounded text-blue-200 uppercase font-mono">Padrão</span>}
-                </button>
-
-                <button
-                  type="button"
                   onClick={() => handleSelectProfile('openai')}
                   className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                     aiProfile === 'openai'
@@ -151,6 +137,20 @@ export const Header: React.FC<HeaderProps> = ({
                 >
                   {aiProfile === 'openai' && <Check className="w-3.5 h-3.5" />}
                   <span>OpenAI</span>
+                  {aiProfile === 'openai' && <span className="text-[9px] bg-purple-900/60 px-1 py-0.5 rounded text-purple-200 uppercase font-mono">Padrão</span>}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleSelectProfile('gemini')}
+                  className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    aiProfile === 'gemini'
+                      ? 'bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow'
+                      : 'text-zinc-400 hover:text-zinc-200'
+                  }`}
+                >
+                  {aiProfile === 'gemini' && <Check className="w-3.5 h-3.5" />}
+                  <span>Gemini</span>
                 </button>
               </div>
 
