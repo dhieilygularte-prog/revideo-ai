@@ -21,14 +21,29 @@ export const openAIProvider = new OpenAIProvider();
  * Por padrão, preserva estritamente 'gemini' conforme diretriz de segurança.
  */
 export function getActiveProviderType(): AIProviderType {
+  const hasOpenAi = Boolean(
+    (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim().length > 0) ||
+    (process.env.APIOPENAI && process.env.APIOPENAI.trim().length > 0)
+  );
+  const hasGemini = Boolean(
+    (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim().length > 0) ||
+    (process.env.GEMINIAPI && process.env.GEMINIAPI.trim().length > 0)
+  );
   const envProvider = (process.env.AI_PROVIDER || '').toLowerCase();
-  if (envProvider === 'openai' || (process.env.OPENAI_API_KEY && !process.env.GEMINI_API_KEY)) {
+
+  if (envProvider === 'openai' && hasOpenAi) {
     return 'openai';
   }
-  if (envProvider === 'gemini') {
+  if (envProvider === 'gemini' && hasGemini) {
     return 'gemini';
   }
-  return process.env.OPENAI_API_KEY ? 'openai' : 'gemini';
+  if (hasGemini) {
+    return 'gemini';
+  }
+  if (hasOpenAi) {
+    return 'openai';
+  }
+  return 'gemini';
 }
 
 /**

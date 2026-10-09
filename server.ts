@@ -62,12 +62,22 @@ app.use((req, res, next) => {
 });
 
 /**
- * Resolução centralizada do perfil de IA ativo da requisição
- */
 function getRequestAIProfile(req: express.Request): AIProfile {
-  const p = String(req.body?.aiProfile || req.headers['x-ai-profile'] || getActiveProviderType()).toLowerCase();
-  if (p === 'gemini') return 'gemini';
-  return 'openai';
+  const hasOpenAi = Boolean(openAIProvider && openAIProvider.isConfigured());
+  const hasGemini = Boolean(
+    (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim().length > 0) ||
+    (process.env.GEMINIAPI && process.env.GEMINIAPI.trim().length > 0)
+  );
+  const p = String(req.body?.aiProfile || req.headers['x-ai-profile'] || '').toLowerCase();
+
+  if (p === 'openai' && hasOpenAi) return 'openai';
+  if (p === 'gemini' && hasGemini) return 'gemini';
+
+  const envActive = getActiveProviderType();
+  if (envActive === 'openai' && hasOpenAi) return 'openai';
+  if (hasGemini) return 'gemini';
+  if (hasOpenAi) return 'openai';
+  return 'gemini';
 }
 
 function getGenAI(): GoogleGenAI {
@@ -740,7 +750,7 @@ app.post('/api/analyze-video', async (req, res) => {
 
   // Roteamento baseado no Perfil de IA selecionado
   const activeProfile = getRequestAIProfile(req);
-  if (activeProfile === 'openai') {
+  if (activeProfile === 'openai' && openAIProvider.isConfigured()) {
     try {
       const openaiResult = await openAIProvider.analyzeVideo({
         durationSeconds: validDuration,
@@ -754,11 +764,8 @@ app.post('/api/analyze-video', async (req, res) => {
       });
       return res.json({ success: true, data: openaiResult });
     } catch (openaiErr: any) {
-      console.error('Falha no provedor OpenAI:', openaiErr);
-      return res.status(500).json({
-        success: false,
-        error: `Erro no provedor OpenAI (${OPENAI_BRAIN_MODEL}): ${openaiErr?.message || openaiErr}`,
-      });
+      console.warn('Falha no provedor OpenAI em analyze-video, recorrendo automaticamente ao Gemini:', openaiErr?.message || openaiErr);
+      // Continua para o pipeline Gemini abaixo sem falhar a requisição
     }
   }
 
@@ -1177,7 +1184,7 @@ app.post('/api/ania-planning', async (req, res) => {
 
     // ─── ROTEAMENTO BASEADO NO PERFIL DE IA SELECIONADO ────────────────────
     const activeProfile = getRequestAIProfile(req);
-    if (activeProfile === 'openai') {
+    if (activeProfile === 'openai' && openAIProvider.isConfigured()) {
       const client = (openAIProvider as any).getClient();
       const contentBlocks: any[] = [];
       if (primaryPhotoBase64) {
@@ -1608,7 +1615,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
 
     // ─── ROTEAMENTO BASEADO NO PERFIL DE IA SELECIONADO ────────────────────
     const activeProfile = getRequestAIProfile(req);
-    if (activeProfile === 'openai') {
+    if (activeProfile === 'openai' && openAIProvider.isConfigured()) {
       try {
         const result = await openAIProvider.generateSceneImage({
           prompt,
@@ -1625,24 +1632,15 @@ app.post('/api/generate-scene-image', async (req, res) => {
           additionalInstructions,
           hasUserProvidedModel,
         });
-        if (!result.success) {
-          // Stop and report â€“ never silently fall back to another model
-          return res.status(500).json({
-            success: false,
-            errorType: 'OPENAI_IMAGE_FAILED',
-            error: `Erro no modelo ${OPENAI_IMAGE_MODEL}: ${result.error}`,
-          });
+        if (result.success && result.imageUrl) {
+          return res.json(result);
         }
-        return res.json(result);
+        console.warn(`OpenAI ${OPENAI_IMAGE_MODEL} não retornou imagem, usando pipeline Gemini:`, result.error);
       } catch (oiErr: any) {
-        return res.status(500).json({
-          success: false,
-          errorType: 'OPENAI_IMAGE_FAILED',
-          error: `ExceÃ§Ã£o no modelo ${OPENAI_IMAGE_MODEL}: ${oiErr?.message || oiErr}`,
-        });
+        console.warn(`Exceção no modelo ${OPENAI_IMAGE_MODEL}, recorrendo ao pipeline Gemini:`, oiErr?.message || oiErr);
       }
     }
-    // â”€â”€ END OPENAI PROVIDER PATH â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── END OPENAI PROVIDER PATH ──────────────────────────────────────────
 
     if (!process.env.GEMINI_API_KEY) {
       return res.json({
@@ -1878,7 +1876,7 @@ app.post('/api/audit-image-fidelity', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Imagem gerada nÃ£o fornecida' });
     }
 
-    // ─── AUDITORIA DE FIDELIDADE (GPT 5.6 Luna PADRÃO NOS DOIS PERFIS) ────
+    // ─── AUDITORIA DE FIDELIDADE (GPT 5.6 Luna se configurado, ou Gemini) ────
     if (openAIProvider.isConfigured()) {
       try {
         const result = await openAIProvider.auditImageFidelity({
@@ -1887,15 +1885,14 @@ app.post('/api/audit-image-fidelity', async (req, res) => {
           variationName,
           role,
         });
-        return res.json(result);
+        if (result && result.success) {
+          return res.json(result);
+        }
       } catch (oiErr: any) {
-        return res.status(500).json({
-          success: false,
-          error: `ExceÃ§Ã£o no modelo de auditoria ${OPENAI_AUDIT_MODEL}: ${oiErr?.message || oiErr}`,
-        });
+        console.warn(`Exceção no modelo de auditoria ${OPENAI_AUDIT_MODEL}, recorrendo ao Gemini:`, oiErr?.message || oiErr);
       }
     }
-    // â”€â”€ END OPENAI PROVIDER PATH â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    // ─── END OPENAI PROVIDER PATH ──────────────────────────────────────────
 
     if (!process.env.GEMINI_API_KEY) {
       return res.json({

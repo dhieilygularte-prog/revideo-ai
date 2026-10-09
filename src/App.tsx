@@ -48,8 +48,8 @@ export default function App() {
   // Mode Selection State ('ania' default, always opens in Modo Ania)
   const [appMode, setAppMode] = useState<'ania' | 'clone'>('ania');
 
-  // AI Profile Selection State ('openai' default, centralized configuration)
-  const [aiProfile, setAiProfile] = useState<AIProfile>('openai');
+  // AI Profile Selection State ('gemini' default, centralized configuration)
+  const [aiProfile, setAiProfile] = useState<AIProfile>('gemini');
 
   // Modo Ania State
   const [aniaForm, setAniaForm] = useState<AniaFormState>({
@@ -296,9 +296,16 @@ export default function App() {
         }),
       });
 
-      const analyzeJson = await analyzeRes.json();
+      const analyzeText = await analyzeRes.text();
+      let analyzeJson: any;
+      try {
+        analyzeJson = JSON.parse(analyzeText);
+      } catch {
+        throw new Error(`Erro do servidor (${analyzeRes.status}): ${analyzeText.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120)}`);
+      }
+
       if (!analyzeRes.ok || !analyzeJson.success || !analyzeJson.data) {
-        throw new Error(analyzeJson.error || 'Falha na análise do vídeo.');
+        throw new Error(analyzeJson?.error || 'Falha na análise do vídeo.');
       }
 
       const structuredResult: VideoAnalysisResult = analyzeJson.data;
