@@ -202,13 +202,14 @@ ${prodInfoClause}
       - Quando o usuário NÃO FORNECER foto do modelo e o modelo for gerado com base no vídeo de referência:
         * É EXPRESSAMENTE PROIBIDO COPIAR OU CLONAR O ROSTO EXATO DO MODELO DO VÍDEO CONCORRENTE!
         * Gere/descreva um modelo com características similares (mesma faixa etária/estilo de criador, como um primo), PORÉM COM ROSTO DIFERENTE (traços faciais distintos, formato de rosto próprio, ou variação de cabelo/tom de pele) para evitar 100% qualquer violação de direitos autorais, imagem ou duplicidade no TikTok.
-        * Trava de consistência: esse NOVO modelo concebido deve permanecer rigorosamente O MESMO em todas as imagens (Imagem 1 a 6). O que muda de imagem para imagem é O CENÁRIO (local) e A AÇÃO física, mas A PESSOA/MODELO É RIGOROSAMENTE A MESMA do início ao fim!
+        * Trava de consistência: esse NOVO modelo concebido deve permanecer rigorosamente O MESMO em todas as imagens (Imagem 1 a 9). O que muda de imagem para imagem é O CENÁRIO (local) e A AÇÃO física, mas A PESSOA/MODELO É RIGOROSAMENTE A MESMA do início ao fim!
 
    c) SEQUÊNCIA DE 3 IMAGENS DE REFERÊNCIA POR CENA:
       - O vídeo possui ${validDuration}s e é dividido em exatamente ${calculatedScenes} cena(s) consecutivas de ${sceneDurationSec}s.
       - Cada cena deve conter EXATAMENTE 3 imagens mapeadas cronologicamente às ações e locais daquele trecho temporal:
         * Cena 1: Imagem 1, Imagem 2, Imagem 3.
         * Cena 2: Imagem 4, Imagem 5, Imagem 6.
+        * Cena 3: Imagem 7, Imagem 8, Imagem 9.
       - Para cada imagem no array 'images', preencha OBRIGATORIAMENTE:
         * 'location': Cenário e local específico daquele instante no vídeo (ex: "Corredor de supermercado moderno com prateleiras", "Topo de prédio urbano ao pôr do sol", "Cozinha residencial moderna ao redor da mesa", "Quarto aconchegante sobre a cama").
         * 'actionDescription': Ação corporal e interação precisa do modelo com o produto naquele momento.

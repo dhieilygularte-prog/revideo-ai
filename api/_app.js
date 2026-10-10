@@ -597,13 +597,14 @@ ${prodInfoClause}
       - Quando o usu\xE1rio N\xC3O FORNECER foto do modelo e o modelo for gerado com base no v\xEDdeo de refer\xEAncia:
         * \xC9 EXPRESSAMENTE PROIBIDO COPIAR OU CLONAR O ROSTO EXATO DO MODELO DO V\xCDDEO CONCORRENTE!
         * Gere/descreva um modelo com caracter\xEDsticas similares (mesma faixa et\xE1ria/estilo de criador, como um primo), POR\xC9M COM ROSTO DIFERENTE (tra\xE7os faciais distintos, formato de rosto pr\xF3prio, ou varia\xE7\xE3o de cabelo/tom de pele) para evitar 100% qualquer viola\xE7\xE3o de direitos autorais, imagem ou duplicidade no TikTok.
-        * Trava de consist\xEAncia: esse NOVO modelo concebido deve permanecer rigorosamente O MESMO em todas as imagens (Imagem 1 a 6). O que muda de imagem para imagem \xE9 O CEN\xC1RIO (local) e A A\xC7\xC3O f\xEDsica, mas A PESSOA/MODELO \xC9 RIGOROSAMENTE A MESMA do in\xEDcio ao fim!
+        * Trava de consist\xEAncia: esse NOVO modelo concebido deve permanecer rigorosamente O MESMO em todas as imagens (Imagem 1 a 9). O que muda de imagem para imagem \xE9 O CEN\xC1RIO (local) e A A\xC7\xC3O f\xEDsica, mas A PESSOA/MODELO \xC9 RIGOROSAMENTE A MESMA do in\xEDcio ao fim!
 
    c) SEQU\xCANCIA DE 3 IMAGENS DE REFER\xCANCIA POR CENA:
       - O v\xEDdeo possui ${validDuration}s e \xE9 dividido em exatamente ${calculatedScenes} cena(s) consecutivas de ${sceneDurationSec}s.
       - Cada cena deve conter EXATAMENTE 3 imagens mapeadas cronologicamente \xE0s a\xE7\xF5es e locais daquele trecho temporal:
         * Cena 1: Imagem 1, Imagem 2, Imagem 3.
         * Cena 2: Imagem 4, Imagem 5, Imagem 6.
+        * Cena 3: Imagem 7, Imagem 8, Imagem 9.
       - Para cada imagem no array 'images', preencha OBRIGATORIAMENTE:
         * 'location': Cen\xE1rio e local espec\xEDfico daquele instante no v\xEDdeo (ex: "Corredor de supermercado moderno com prateleiras", "Topo de pr\xE9dio urbano ao p\xF4r do sol", "Cozinha residencial moderna ao redor da mesa", "Quarto aconchegante sobre a cama").
         * 'actionDescription': A\xE7\xE3o corporal e intera\xE7\xE3o precisa do modelo com o produto naquele momento.
@@ -1356,78 +1357,61 @@ function buildFallbackVideoAnalysis(durationSeconds, variations, customSpeech) {
     const isSecondScene = s === 2;
     const actionSummary = isFirstScene ? `Apresenta\xE7\xE3o inicial da ${var1}, exibindo vis\xE3o frontal, design geral e primeiro contato comercial.` : isSecondScene ? `Continua\xE7\xE3o fluida da narrativa demonstrando novos \xE2ngulos (costas, lateral) e detalhes da ${varList.length > 1 ? var2 : var1}.` : `Demonstra\xE7\xE3o din\xE2mica final com intera\xE7\xE3o aproximada e chamada para a\xE7\xE3o.`;
     const eightSecondTimeline = isFirstScene ? `0.0\u20134.0s: Apresenta\xE7\xE3o frontal destacando propor\xE7\xF5es e acabamento. 4.0\u20138.0s: Movimento suave lateral revelando texturas e profundidade.` : isSecondScene ? `0.0\u20134.0s: Transi\xE7\xE3o cont\xEDnua sem reiniciar a cena, exibindo vis\xE3o posterior/costas e caimento. 4.0\u20138.0s: Demonstra\xE7\xE3o aproximada de detalhes e funcionalidade.` : `0.0\u20134.0s: Apresenta\xE7\xE3o din\xE2mica em uso real. 4.0\u20138.0s: Enquadramento final ressaltando qualidade e apelo comercial.`;
-    const images = isFirstScene ? [
+    const baseNum = (s - 1) * 3;
+    const activeVar = s === 1 || varList.length === 1 ? var1 : varList[1] || var2;
+    const images = [
       {
         id: `c${s}-img1`,
-        role: `Imagem 1: ${var1} em \xE2ngulo frontal principal`,
-        frameNumber: 1,
-        variationName: var1,
-        targetAngle: "front",
-        location: "Cen\xE1rio comercial principal bem iluminado",
-        actionDescription: "Apresenta\xE7\xE3o frontal em destaque com contato n\xEDtido",
+        role: `Imagem ${baseNum + 1}: ${activeVar} em \xE2ngulo ${s === 1 ? "frontal principal" : s === 2 ? "lateral e profundidade" : "em uso aut\xEAntico"}`,
+        frameNumber: baseNum + 1,
+        variationName: activeVar,
+        targetAngle: s === 1 ? "front" : s === 2 ? "side" : "front",
+        location: s === 1 ? "Cen\xE1rio comercial principal bem iluminado" : s === 2 ? "Segundo ambiente din\xE2mico em uso" : "Terceiro cen\xE1rio aconchegante com luz natural",
+        actionDescription: s === 1 ? "Apresenta\xE7\xE3o inicial com contato n\xEDtido e propor\xE7\xF5es vis\xEDveis" : s === 2 ? "Movimento demonstrando silhueta e acabamento em novo \xE2ngulo" : "Intera\xE7\xE3o comercial destacando qualidade e apelo de compra",
         imageUrl: "",
         promptUsed: buildUniversalSceneImagePrompt(
           "produto comercial",
-          var1,
-          "Apresenta\xE7\xE3o frontal em destaque",
-          "Cen\xE1rio moderno com ilumina\xE7\xE3o natural suave e contato limpo",
-          "Apresentado com enquadramento n\xEDtido evidenciando r\xF3tulo, embalagem e detalhes",
-          "front"
+          activeVar,
+          `Imagem ${baseNum + 1} em \xE2ngulo ${s === 1 ? "frontal" : "din\xE2mico"}`,
+          s === 1 ? "Cen\xE1rio moderno com ilumina\xE7\xE3o natural suave" : s === 2 ? "Segundo ambiente moderno din\xE2mico" : "Cen\xE1rio aconchegante realista",
+          "Apresenta\xE7\xE3o n\xEDtida evidenciando caracter\xEDsticas f\xEDsicas e acabamentos",
+          s === 1 ? "front" : s === 2 ? "side" : "front"
         )
       },
       {
         id: `c${s}-img2`,
-        role: `Imagem 2: ${var1} em perspectiva lateral e profundidade`,
-        frameNumber: 2,
-        variationName: var1,
-        targetAngle: "side",
-        location: "Cen\xE1rio comercial principal com novo \xE2ngulo",
-        actionDescription: "Movimento demonstrando o perfil lateral e acabamento",
+        role: `Imagem ${baseNum + 2}: ${activeVar} em \xE2ngulo ${s === 1 ? "lateral" : s === 2 ? "costas / vis\xE3o posterior" : "close aproximado"}`,
+        frameNumber: baseNum + 2,
+        variationName: activeVar,
+        targetAngle: s === 1 ? "side" : s === 2 ? "rear" : "detail",
+        location: s === 1 ? "Cen\xE1rio comercial com novo ponto de vista" : s === 2 ? "Segundo ambiente focado em detalhes" : "Terceiro cen\xE1rio aproximado",
+        actionDescription: s === 1 ? "Demonstra\xE7\xE3o de lateralidade e ergonomia" : s === 2 ? "Exibi\xE7\xE3o da parte posterior/costas e encaixe fiel" : "Close ressaltando materiais genu\xEDnos e costura/acabamento",
         imageUrl: "",
         promptUsed: buildUniversalSceneImagePrompt(
           "produto comercial",
-          var1,
-          "Vis\xE3o em perspectiva lateral / textura",
-          "Cen\xE1rio moderno com ilumina\xE7\xE3o natural suave",
-          "Apresentado em \xE2ngulo lateral evidenciando o design e acabamento",
-          "side"
-        )
-      }
-    ] : [
-      {
-        id: `c${s}-img1`,
-        role: `Imagem 1: ${varList.length > 1 ? var2 : var1} em vis\xE3o traseira / costas`,
-        frameNumber: 1,
-        variationName: varList.length > 1 ? var2 : var1,
-        targetAngle: "rear",
-        location: "Segundo cen\xE1rio em continua\xE7\xE3o progressiva",
-        actionDescription: "Exibi\xE7\xE3o da parte posterior/costas e encaixe do produto",
-        imageUrl: "",
-        promptUsed: buildUniversalSceneImagePrompt(
-          "produto comercial",
-          varList.length > 1 ? var2 : var1,
-          "Vis\xE3o traseira / costas destacando acabamentos e verso",
-          "Cen\xE1rio moderno com ilumina\xE7\xE3o natural suave",
-          "Enquadramento mostrando a parte posterior/costas do produto com fidelidade",
-          "rear"
+          activeVar,
+          `Imagem ${baseNum + 2} em perspectiva e textura`,
+          s === 1 ? "Cen\xE1rio comercial bem iluminado" : s === 2 ? "Segundo ambiente realista" : "Cen\xE1rio com ilumina\xE7\xE3o suave focada",
+          "Enquadramento destacando textura, acabamentos e detalhes reais",
+          s === 1 ? "side" : s === 2 ? "rear" : "detail"
         )
       },
       {
-        id: `c${s}-img2`,
-        role: `Imagem 2: ${varList.length > 1 ? var2 : var1} em close macro de detalhe`,
-        frameNumber: 2,
-        variationName: varList.length > 1 ? var2 : var1,
-        targetAngle: "detail",
-        location: "Cen\xE1rio focado em detalhes e textura",
-        actionDescription: "Close aproximado demonstrando texturas e materiais reais",
+        id: `c${s}-img3`,
+        role: `Imagem ${baseNum + 3}: ${activeVar} em \xE2ngulo ${s === 1 ? "close macro de detalhe" : s === 2 ? "demonstra\xE7\xE3o din\xE2mica" : "enquadramento final de destaque"}`,
+        frameNumber: baseNum + 3,
+        variationName: activeVar,
+        targetAngle: s === 1 ? "detail" : s === 2 ? "front_side" : "detail",
+        location: s === 1 ? "Cen\xE1rio focado em materiais e textura" : s === 2 ? "Segundo ambiente em a\xE7\xE3o" : "Cen\xE1rio final limpo comercial",
+        actionDescription: s === 1 ? "Close aproximado nas texturas e acabamentos de f\xE1brica" : s === 2 ? "A\xE7\xE3o fluida de manuseio e demonstra\xE7\xE3o de uso" : "Apresenta\xE7\xE3o final convidativa ao redor do produto",
         imageUrl: "",
         promptUsed: buildUniversalSceneImagePrompt(
           "produto comercial",
-          varList.length > 1 ? var2 : var1,
-          "Close de detalhe e textura aproximada",
-          "Cen\xE1rio minimalista com foco nas mat\xE9rias-primas e acabamentos",
+          activeVar,
+          `Imagem ${baseNum + 3} em demonstra\xE7\xE3o detalhada`,
+          s === 1 ? "Cen\xE1rio minimalista com foco nas mat\xE9rias-primas" : s === 2 ? "Segundo cen\xE1rio com intera\xE7\xE3o viva" : "Cen\xE1rio de convers\xE3o acolhedor",
           "Enquadramento aproximado valorizando a textura e acabamento",
-          "detail"
+          s === 1 ? "detail" : s === 2 ? "front_side" : "detail"
         )
       }
     ];
@@ -1904,16 +1888,19 @@ REGRAS CR\xCDTICAS E INVIOL\xC1VEIS DO CRIATIVO:
 3. REGRA ABSOLUTA DE CONSIST\xCANCIA DO MODELO & ANTI-VIOLA\xC7\xC3O DE ROSTO NO TIKTOK:
    - Se o usu\xE1rio forneceu foto do modelo: use essa pessoa com fidelidade m\xE1xima.
    - Se o usu\xE1rio N\xC3O forneceu foto do modelo: \xE9 PROIBIDO copiar ou clonar o rosto exato do modelo do v\xEDdeo de refer\xEAncia concorrente! O modelo gerado deve ter perfil similar (mesma faixa et\xE1ria/vibe, como um primo), POR\xC9M COM ROSTO DIFERENTE (tra\xE7os faciais distintos, formato de rosto pr\xF3prio, ou varia\xE7\xE3o de cabelo/tom de pele) para evitar viola\xE7\xF5es de direitos autorais e pl\xE1gio de imagem no TikTok.
-   - TRAVA DE CONSIST\xCANCIA: O mesmo novo modelo gerado DEVE ser preservado de forma 100% consistente da Imagem 1 \xE0 Imagem 6. O que muda de imagem para imagem \xE9 o CEN\xC1RIO (local) e a A\xC7\xC3O f\xEDsica, mas o MODELO \xC9 RIGOROSAMENTE O MESMO.
+   - TRAVA DE CONSIST\xCANCIA: O mesmo novo modelo gerado DEVE ser preservado de forma consistente em todas as imagens (da Imagem 1 \xE0 Imagem 9). O que muda de imagem para imagem \xE9 o CEN\xC1RIO (local) e a A\xC7\xC3O f\xEDsica, mas o MODELO \xC9 RIGOROSAMENTE O MESMO.
 4. LINHA DO TEMPO CONT\xCDNUA E PROGRESSIVA:
    - As cenas s\xE3o segmentos consecutivos do MESMO v\xEDdeo original (Cena 1 = 0\u20138s, Cena 2 = 8\u201316s, etc.).
    - A Cena 2 DEVE come\xE7ar narrativamente e visualmente de onde a Cena 1 terminou. Ela N\xC3O DEVE reiniciar o v\xEDdeo nem repetir as a\xE7\xF5es da Cena 1.
 5. IMAGENS POR CENA E STORYBOARD:
-   - Cada cena deve conter imagens mapeadas cronologicamente \xE0s a\xE7\xF5es e locais daquele trecho temporal.
+   - Cada cena deve conter EXATAMENTE 3 imagens mapeadas cronologicamente \xE0s a\xE7\xF5es e locais daquele trecho temporal:
+     * Cena 1: Imagem 1, Imagem 2, Imagem 3.
+     * Cena 2: Imagem 4, Imagem 5, Imagem 6.
+     * Cena 3: Imagem 7, Imagem 8, Imagem 9.
    - Para cada imagem no array 'images', preencha:
-     * 'location': Cen\xE1rio/local espec\xEDfico extra\xEDdo daquele momento do v\xEDdeo de refer\xEAncia.
-     * 'actionDescription': A\xE7\xE3o corporal e intera\xE7\xE3o precisa do modelo com o produto.
-     * 'role': T\xEDtulo descritivo combinando n\xFAmero da imagem, modelo, local e a\xE7\xE3o.
+     * 'location': Cen\xE1rio/local espec\xEDfico extra\xEDdo daquele momento do v\xEDdeo de refer\xEAncia (deve variar se o v\xEDdeo transita por novos locais!).
+     * 'actionDescription': A\xE7\xE3o corporal e intera\xE7\xE3o precisa do modelo com o produto naquele instante.
+     * 'role': T\xEDtulo descritivo combinando n\xFAmero global da imagem, modelo, local e a\xE7\xE3o (ex: "Imagem 1: Modelo no mercado...").
      * 'targetAngle': \xC2ngulo exato da c\xE2mera ('front', 'side', 'rear', 'detail', etc.).
 6. CONTINUIDADE DA FALA / LOCU\xC7\xC3O (SEM REPETI\xC7\xC3O):
    - Cada cena deve conter o campo 'sceneSpeech' com SOMENTE a fala dita no respectivo intervalo de tempo daquela cena. NUNCA repita na Cena 2 a fala da Cena 1!
@@ -2100,7 +2087,28 @@ Gere o JSON com exatamente ${calculatedScenes} cena(s) de 8 segundos para o Veo 
         data.scenes = distributeSpeechAcrossScenes(fullAdaptedScript, data.scenes);
       }
       const sceneDurationSec = veoModelMode === "veo3_omniflash_10s" ? 10 : 8;
-      data.scenes = data.scenes.map((scene) => {
+      data.scenes = data.scenes.map((scene, sIdx) => {
+        const baseImgNum = sIdx * 3;
+        const currentImgs = Array.isArray(scene.images) ? scene.images : [];
+        const finalImgs = [];
+        for (let i = 0; i < 3; i++) {
+          const imgSlotNumber = baseImgNum + i + 1;
+          const existing = currentImgs[i];
+          const defaultAngle = i === 0 ? "front" : i === 1 ? "side" : "detail";
+          const defaultLocation = existing?.location || scene.environmentDescription || data.environmentDescription || "cen\xE1rio comercial";
+          const defaultAction = existing?.actionDescription || `Demonstra\xE7\xE3o do produto no momento ${i + 1}`;
+          const defaultRole = `Imagem ${imgSlotNumber}: ${existing?.role || `A\xE7\xE3o ${i + 1} em ${defaultLocation}`}`;
+          finalImgs.push({
+            id: existing?.id || `img-${imgSlotNumber}`,
+            role: existing?.role || defaultRole,
+            frameNumber: imgSlotNumber,
+            variationName: existing?.variationName || productVariations[0]?.name || "Varia\xE7\xE3o 1",
+            targetAngle: existing?.targetAngle || defaultAngle,
+            location: existing?.location || defaultLocation,
+            actionDescription: existing?.actionDescription || defaultAction,
+            promptUsed: existing?.promptUsed || ""
+          });
+        }
         const varList = Array.isArray(scene.mappedVariations) && scene.mappedVariations.length > 0 ? scene.mappedVariations : productVariations.map((v, i) => v.name || `Varia\xE7\xE3o ${i + 1}`);
         const updatedVeo = buildVeoSingleParagraphPrompt({
           sceneNumber: scene.sceneNumber,
@@ -2114,7 +2122,7 @@ Gere o JSON com exatamente ${calculatedScenes} cena(s) de 8 segundos para o Veo 
           lighting: data.lightingStyle,
           secondTimeline: scene.eightSecondTimeline,
           speechVoiceover: scene.sceneSpeech,
-          sceneImages: (scene.images || []).map((im) => ({
+          sceneImages: finalImgs.map((im) => ({
             role: im.role,
             variationName: im.variationName,
             targetAngle: im.targetAngle,
@@ -2122,11 +2130,11 @@ Gere o JSON com exatamente ${calculatedScenes} cena(s) de 8 segundos para o Veo 
             actionDescription: im.actionDescription
           }))
         });
-        const imageCount = scene.images?.length || 1;
         return {
           ...scene,
+          images: finalImgs,
           veoPrompt: updatedVeo,
-          veoInstruction: `Anexe no Veo a(s) ${imageCount} imagem(ns) de refer\xEAncia gerada(s) para esta cena`
+          veoInstruction: `Anexe no Veo as 3 imagens de refer\xEAncia geradas para esta cena`
         };
       });
     }
@@ -2604,7 +2612,7 @@ app.post("/api/generate-scene-image", async (req, res) => {
 - Detalhes visuais extra\xEDdos da amostra oficial: ${swatchDetailsText || `cor ${variationName}`}
 - Todo o resto da Refer\xEAncia 1 (pessoa, rosto oculto, corpo, pose, m\xE3os, quarto, paredes, piso, ilumina\xE7\xE3o) permanece 100% id\xEAntico e intocado.`
       });
-    } else if (modelReferenceBase64 && isCloneMode) {
+    } else if (modelReferenceBase64 && isCloneMode && hasUserProvidedModel) {
       const primaryStr = productPhotoBase64 || (productPhotosBase64.length > 0 ? productPhotosBase64[0] : null);
       if (primaryStr) {
         const parsedPrimary = parseInlineImage(primaryStr);
@@ -2622,12 +2630,12 @@ app.post("/api/generate-scene-image", async (req, res) => {
       if (parsedModel) {
         parts.push({ inlineData: parsedModel });
         parts.push({
-          text: `[REFERENCE 2 - TALENT / MODEL IDENTITY CONTINUITY]:
-- MAINTAIN THE EXACT SAME ACTOR / MODEL:
+          text: `[REFERENCE 2 - USER PROVIDED TALENT / MODEL IDENTITY]:
+- MAINTAIN THE EXACT SAME ACTOR / MODEL FROM THE USER'S PHOTO:
   * Preserve the same person's demographic identity (same gender, approximate age, skin tone, hair color/style, and build).
   * CRITICAL FOR SCENE CONTINUITY: Do NOT lock the room or pose to Reference 2!
-  * STRICT ENVIRONMENT DIRECTIVE: Generate this image strictly in the scene's requested location: "${location || "cen\xE1rio da cena"}" and action: "${actionDescription || "a\xE7\xE3o da cena"}".
-  * ZERO BACKGROUND REPETITION: The background, furniture, and setting MUST match THIS scene's storyboard location, NEVER repeating the first image's room if this scene is in a different place!`
+  * STRICT ENVIRONMENT DIRECTIVE: Generate this image strictly in the scene's requested location: "${location || "cen\xE1rio da cena"}", angle: "${targetAngle || "front"}", and action: "${actionDescription || "a\xE7\xE3o da cena"}".
+  * ZERO BACKGROUND REPETITION: The background, furniture, and setting MUST match THIS scene's storyboard location!`
         });
       }
     } else {

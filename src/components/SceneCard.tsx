@@ -233,8 +233,8 @@ export const SceneCard: React.FC<SceneCardProps> = ({
   const handleDownloadImage = (img: SceneImage, index: number) => {
     const link = document.createElement('a');
     link.href = img.imageUrl;
-    const slotNumber = index + 1; // 1, 2, or 3
-    link.download = `${slotNumber}_${cleanProd}.jpg`; // e.g. "1_tenis.jpg", "2_tenis.jpg", "3_tenis.jpg"
+    const slotNumber = img.frameNumber || ((scene.sceneNumber - 1) * scene.images.length + index + 1);
+    link.download = `${slotNumber}_${cleanProd}.jpg`; // e.g. "1_tenis.jpg", "2_tenis.jpg", ..., "9_tenis.jpg"
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -326,32 +326,39 @@ export const SceneCard: React.FC<SceneCardProps> = ({
                   )}
 
                   {/* Top Left: Frame Number Badge */}
-                  <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-zinc-950/85 border border-zinc-700/80 text-[10px] font-bold text-sky-300">
-                    Imagem {imgIdx + 1}
-                  </div>
+                  {(() => {
+                    const globalSlot = img.frameNumber || ((scene.sceneNumber - 1) * scene.images.length + imgIdx + 1);
+                    return (
+                      <>
+                        <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-zinc-950/85 border border-zinc-700/80 text-[10px] font-bold text-sky-300">
+                          Imagem {globalSlot}
+                        </div>
 
-                  {/* Bottom Left: Angle Badge */}
-                  <div className="absolute bottom-2 left-2 flex items-center pointer-events-none">
-                    <span className="px-2 py-1 rounded-md bg-black/80 backdrop-blur-sm border border-zinc-700 text-[10px] font-bold text-white flex items-center gap-1">
-                      <Compass className="w-3 h-3 text-pink-400" />
-                      {angleLabel}
-                    </span>
-                  </div>
+                        {/* Bottom Left: Angle Badge */}
+                        <div className="absolute bottom-2 left-2 flex items-center pointer-events-none">
+                          <span className="px-2 py-1 rounded-md bg-black/80 backdrop-blur-sm border border-zinc-700 text-[10px] font-bold text-white flex items-center gap-1">
+                            <Compass className="w-3 h-3 text-pink-400" />
+                            {angleLabel}
+                          </span>
+                        </div>
 
-                  {/* Bottom Right: Direct Download Button Overlaid on Image */}
-                  {img.imageUrl && !img.isRegenerating && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDownloadImage(img, imgIdx);
-                      }}
-                      className="absolute bottom-2 right-2 p-1.5 rounded-lg bg-zinc-950/85 hover:bg-black text-white hover:text-emerald-400 border border-zinc-700/80 hover:border-emerald-500/60 shadow-lg backdrop-blur-sm transition-all cursor-pointer z-10 flex items-center justify-center"
-                      title={`Baixar ${imgIdx + 1}_${cleanProd}.jpg`}
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                    </button>
-                  )}
+                        {/* Bottom Right: Direct Download Button Overlaid on Image */}
+                        {img.imageUrl && !img.isRegenerating && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDownloadImage(img, imgIdx);
+                            }}
+                            className="absolute bottom-2 right-2 p-1.5 rounded-lg bg-zinc-950/85 hover:bg-black text-white hover:text-emerald-400 border border-zinc-700/80 hover:border-emerald-500/60 shadow-lg backdrop-blur-sm transition-all cursor-pointer z-10 flex items-center justify-center"
+                            title={`Baixar ${globalSlot}_${cleanProd}.jpg`}
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
 
                 {/* Card Meta & Actions */}

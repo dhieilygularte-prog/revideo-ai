@@ -32,11 +32,8 @@ export async function downloadAllGeneratedImagesZip(analysis: VideoAnalysisResul
     scene.images.forEach((img, imgIdx) => {
       if (!img.imageUrl) return;
       count++;
-      const slotNumber = imgIdx + 1;
-      const filename =
-        totalScenes > 1
-          ? `cena${scene.sceneNumber}_${slotNumber}_${prodSlug}.jpg`
-          : `${slotNumber}_${prodSlug}.jpg`;
+      const slotNumber = img.frameNumber || ((scene.sceneNumber - 1) * scene.images.length + imgIdx + 1);
+      const filename = `${slotNumber}_${prodSlug}.jpg`;
 
       try {
         if (img.imageUrl.startsWith('data:image/')) {
@@ -79,7 +76,7 @@ export async function downloadSceneImagesZip(scene: SceneDetail, productType?: s
   scene.images.forEach((img, imgIdx) => {
     if (!img.imageUrl) return;
     count++;
-    const slotNumber = imgIdx + 1;
+    const slotNumber = img.frameNumber || ((scene.sceneNumber - 1) * scene.images.length + imgIdx + 1);
     const filename = `${slotNumber}_${prodSlug}.jpg`;
 
     try {

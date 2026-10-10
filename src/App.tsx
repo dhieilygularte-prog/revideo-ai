@@ -443,7 +443,7 @@ export default function App() {
                 prompt: specificPrompt,
                 productPhotoBase64: primaryPhoto,
                 productPhotosBase64: varPhotos.length > 0 ? varPhotos : [primaryPhoto],
-                modelReferenceBase64: modelPhotoUrl || masterModelImage || undefined,
+                modelReferenceBase64: modelPhotoUrl || undefined,
                 hasUserProvidedModel: Boolean(modelPhotoUrl),
                 variationName,
                 productType: structuredResult.productType || 'produto comercial',
@@ -462,11 +462,6 @@ export default function App() {
             }
             finalImageUrl = imgJson.imageUrl;
             newImagesCostBRL += imgJson.costBRL || 0.08;
-
-            // Trava o primeiro modelo/pessoa gerado no vídeo inteiro para manter consistência absoluta
-            if (!masterModelImage && finalImageUrl) {
-              masterModelImage = finalImageUrl;
-            }
           } catch (fetchErr: any) {
             throw fetchErr;
           }
@@ -785,7 +780,7 @@ export default function App() {
           prompt: specificPrompt,
           productPhotoBase64: primaryPhoto,
           productPhotosBase64: varPhotos.length > 0 ? varPhotos : [primaryPhoto],
-          modelReferenceBase64: modelPhotoUrl || anchorModelImage || undefined,
+          modelReferenceBase64: modelPhotoUrl || undefined,
           hasUserProvidedModel: Boolean(modelPhotoUrl),
           variationName,
           productType: analysisResult.productType || 'produto comercial',
