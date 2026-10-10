@@ -127,11 +127,9 @@ export function detectStretch(text: string): boolean | null {
  * Redimensiona e comprime imagens no navegador antes do upload para evitar 413 Payload Too Large
  * e timeouts em ambientes de produção/Vercel/Cloudflare.
  */
-export async function compressAndResizeImage(file: File, maxDimension = 1280, quality = 0.84): Promise<string> {
+export async function compressAndResizeImage(fileOrBase64: File | Blob | string, maxDimension = 1280, quality = 0.84): Promise<string> {
   return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const rawBase64 = e.target?.result as string;
+    const processDataUrl = (rawBase64: string) => {
       if (!rawBase64) return resolve('');
 
       const img = new Image();
@@ -154,15 +152,30 @@ export async function compressAndResizeImage(file: File, maxDimension = 1280, qu
         if (!ctx) return resolve(rawBase64);
 
         ctx.drawImage(img, 0, 0, width, height);
-        // Sempre converte para image/jpeg para manter alta qualidade e peso levíssimo (< 300KB)
-        const resizedBase64 = canvas.toDataURL('image/jpeg', quality);
-        resolve(resizedBase64);
+        try {
+          const resizedBase64 = canvas.toDataURL('image/jpeg', quality);
+          resolve(resizedBase64 || rawBase64);
+        } catch {
+          resolve(rawBase64);
+        }
       };
       img.onerror = () => resolve(rawBase64);
       img.src = rawBase64;
     };
-    reader.onerror = () => resolve('');
-    reader.readAsDataURL(file);
+
+    if (typeof fileOrBase64 === 'string') {
+      processDataUrl(fileOrBase64);
+    } else if (fileOrBase64 instanceof Blob || (typeof File !== 'undefined' && fileOrBase64 instanceof File)) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const rawBase64 = e.target?.result as string;
+        processDataUrl(rawBase64 || '');
+      };
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(fileOrBase64);
+    } else {
+      resolve('');
+    }
   });
 }
 

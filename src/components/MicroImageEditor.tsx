@@ -27,21 +27,28 @@ export const MicroImageEditor: React.FC<MicroImageEditorProps> = ({
     if (!file) return;
 
     try {
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        const rawBase64 = event.target?.result as string;
-        try {
-          const compressed = await compressAndResizeImage(rawBase64, 1024, 1792, 0.85);
-          setSourceImage(compressed);
+      const compressed = await compressAndResizeImage(file, 1536, 0.88);
+      if (compressed) {
+        setSourceImage(compressed);
+        setResultImage(null);
+        setErrorMessage(null);
+      } else {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          setSourceImage(event.target?.result as string);
           setResultImage(null);
           setErrorMessage(null);
-        } catch {
-          setSourceImage(rawBase64);
-        }
+        };
+        reader.readAsDataURL(file);
+      }
+    } catch {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setSourceImage(event.target?.result as string);
+        setResultImage(null);
+        setErrorMessage(null);
       };
       reader.readAsDataURL(file);
-    } catch (err: any) {
-      setErrorMessage('Erro ao carregar a imagem.');
     }
   };
 

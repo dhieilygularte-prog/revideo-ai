@@ -147,17 +147,29 @@ export const ProdutoForm: React.FC<ProdutoFormProps> = ({
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       try {
-        const base64 = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-
-        const compressed = await compressAndResizeImage(base64, 1024, 1792, 0.85);
-        newPhotos.push(compressed);
+        const compressed = await compressAndResizeImage(file, 1536, 0.88);
+        if (compressed) {
+          newPhotos.push(compressed);
+        } else {
+          const raw = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve((e.target?.result as string) || '');
+            reader.onerror = () => resolve('');
+            reader.readAsDataURL(file);
+          });
+          if (raw) newPhotos.push(raw);
+        }
       } catch (err) {
         console.warn('Erro ao processar foto:', err);
+        try {
+          const raw = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => resolve((e.target?.result as string) || '');
+            reader.onerror = () => resolve('');
+            reader.readAsDataURL(file);
+          });
+          if (raw) newPhotos.push(raw);
+        } catch {}
       }
     }
 
