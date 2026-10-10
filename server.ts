@@ -2005,6 +2005,94 @@ Retorne estritamente um JSON no seguinte formato:
   }
 });
 
+// ─── ENDPOINT INDEPENDENTE: MICROEDIÇÃO DE IMAGEM ─────────────────────────────
+app.post('/api/micro-edit-image', async (req, res) => {
+  try {
+    const { imageBase64, instruction, aiProfile } = req.body;
+    if (!imageBase64 || !instruction) {
+      return res.status(400).json({ success: false, error: 'Imagem e instrução de edição são obrigatórias.' });
+    }
+
+    const cleanB64 = imageBase64.startsWith('data:')
+      ? imageBase64
+      : `data:image/jpeg;base64,${imageBase64}`;
+
+    const promptText = `Execute a microedição solicitada pelo usuário com MÁXIMA PRECISÃO E FIDELIDADE À IMAGEM FORNECIDA.
+REGRA FUNDAMENTAL E ABSOLUTA:
+1. Use SOMENTE a imagem fornecida como 100% da referência visual.
+2. Mantenha idênticos todo o enquadramento, proporções, iluminação, composição e detalhes que NÃO foram expressamente mandados alterar.
+3. INSTRUÇÃO DO USUÁRIO: "${instruction}".
+4. Aplique ESTRITAMENTE e EXCLUSIVAMENTE a alteração solicitada. Se pediu para trocar a cor, troque apenas a cor do item especificado. Se pediu para alterar um detalhe, altere apenas esse detalhe.
+5. Retorne a imagem editada realista com alta definição vertical 9:16.`;
+
+    const activeProfile = aiProfile || getRequestAIProfile(req);
+
+    // 1. OpenAI Path
+    if (activeProfile === 'openai' && openAIProvider.isConfigured()) {
+      try {
+        const result = await openAIProvider.generateSceneImage({
+          prompt: promptText,
+          productPhotoBase64: cleanB64,
+          variationName: 'Microedição',
+          productType: 'imagem de referência',
+          additionalInstructions: `Microedição isolada: ${instruction}`,
+        });
+        if (result.success && result.imageUrl) {
+          return res.json({ success: true, imageUrl: result.imageUrl });
+        }
+      } catch (err: any) {
+        console.warn('Erro na microedição via OpenAI, tentando Gemini:', err?.message || err);
+      }
+    }
+
+    // 2. Gemini Path
+    if (process.env.GEMINI_API_KEY) {
+      const parsed = parseInlineImage(cleanB64);
+      const parts: any[] = [];
+      if (parsed) {
+        parts.push({ inlineData: parsed });
+      }
+      parts.push({ text: promptText });
+
+      const modelsToTry = [
+        GEMINI_IMAGE_MODEL || 'gemini-3.1-flash-image',
+        GEMINI_IMAGE_FAST_MODEL || 'gemini-3.1-flash-lite-image',
+        'gemini-3-pro-image',
+      ];
+
+      for (const modelCandidate of modelsToTry) {
+        try {
+          const imgRes = await getGenAI().models.generateContent({
+            model: modelCandidate,
+            contents: { parts },
+            config: {
+              systemInstruction: 'Você é um editor de microedição de imagens. Edite estritamente o que foi solicitado na imagem fornecida, mantendo todo o restante inalterado.',
+              imageConfig: { aspectRatio: '9:16' },
+            },
+          });
+
+          const candidates = imgRes.candidates || [];
+          if (candidates[0]?.content?.parts) {
+            for (const part of candidates[0].content.parts) {
+              if (part.inlineData?.data) {
+                const mime = part.inlineData.mimeType || 'image/png';
+                return res.json({ success: true, imageUrl: `data:${mime};base64,${part.inlineData.data}` });
+              }
+            }
+          }
+        } catch (e: any) {
+          console.warn(`Tentativa de microedição com ${modelCandidate} falhou:`, e?.message || e);
+        }
+      }
+    }
+
+    return res.status(500).json({ success: false, error: 'Não foi possível gerar a microedição com os provedores configurados.' });
+  } catch (err: any) {
+    console.error('Erro no endpoint micro-edit-image:', err);
+    return res.status(500).json({ success: false, error: err?.message || 'Erro interno na microedição' });
+  }
+});
+
 // Setup Vite middleware in dev or static serve in prod
 async function startServer() {
   if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {

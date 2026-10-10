@@ -117,10 +117,13 @@ ILUMINAÇÃO: luz suave e uniforme vindo da direção da câmera, destacando cor
 
 ESTILO: fotografia real de celular moderno, alta definição, textura verdadeira e proporções humanas corretas.
 
-PROIBIÇÕES ABSOLUTAS:
+PROIBIÇÕES ABSOLUTAS E REGRAS DE INTEGRIDADE:
 - NUNCA MOSTRAR O ROSTO (estritamente do pescoço para baixo ou pés).
 - PROIBIDO GERAR CRIANÇAS (em modo infantil, apenas mãos de adultos em POV apresentando a peça).
-- NUNCA DEIXAR BARRIGA DE FORA (ZERO EXPOSED MIDRIFF): Mesmo que a foto de referência original mostre a modelo com barriga ou umbigo de fora, na imagem gerada o abdômen DEVE estar sempre 100% coberto por uma blusa combinando (por dentro do cós ou cobrindo a cintura). Nunca gerar barriga à mostra.
+- REDUÇÃO DISCRETA DE DECOTE (DECOTE MODERADO SEM ALTERAR A PEÇA): Se a roupa de referência tiver decote profundo com exposição excessiva do colo ou seios, eleve discretamente o ponto central do decote em 20% a 35% diminuindo a exposição sem fechar exageradamente e mantendo 100% o formato original (ex: se for decote V, continua decote V discreto), com as mesmas alças, caimento, tecido e costuras.
+- ZERO BARRIGA EXPOSTA (NUNCA DEIXAR BARRIGA OU UMBIGO DE FORA): Mesmo que a foto de referência original mostre a modelo com barriga de fora ou cropped, a imagem final DEVE cobrir o abdômen (usando blusa neutra por baixo ou prolongamento discreto), preservando o produto principal.
+- CARACTERÍSTICAS LOCALIZADAS PERMANECEM LOCALIZADAS: Se uma característica for de uma parte (ex: gola canelada, punho canelado, cós elástico, detalhe em renda), aplique SOMENTE naquela parte específica, NUNCA na peça inteira.
+- COR DECLARADA TEM PRIORIDADE ABSOLUTA: A cor escrita pelo usuário (${colorName}) tem prioridade total e indiscutível sobre qualquer variação ou distorção de luz da foto.
 - ZERO TATUAGENS em homem ou mulher.
 - Sem textos, logos digitais, marcas d'água ou banners promocionais.`;
 }

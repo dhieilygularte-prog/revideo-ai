@@ -184,131 +184,68 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
 
   const handleProductInfoChange = (val: string) => {
     onChange((prev) => {
+      // Regra 1: Reanalisar automaticamente todas as informações com base no texto mais recente
       // 1. Extrai o nome curto APENAS se for um produto reconhecido
       const extractedProdName = extractShortProductName(val);
-      let autoProductName = prev.productName;
-      let newProductNameSource = prev.productNameSource;
-      if (prev.productNameSource !== 'manual') {
-        autoProductName = extractedProdName;
-        newProductNameSource = extractedProdName ? 'local_detect' : undefined;
-      }
+      const autoProductName = extractedProdName || prev.productName;
+      const newProductNameSource = extractedProdName ? 'product_info' : prev.productNameSource;
 
       // 2. Detecta Tipo de Produto (Calçados vs Roupas)
       const detectedProdMode = detectProductMode(autoProductName, val);
-      let newProductMode = prev.productMode;
-      let newProductModeSource = prev.productModeSource;
-      if (prev.productModeSource !== 'manual') {
-        if (detectedProdMode !== null) {
-          newProductMode = detectedProdMode;
-          newProductModeSource = 'local_detect';
-        } else {
-          newProductMode = 'apparel';
-          newProductModeSource = undefined;
-        }
-      }
+      let newProductMode: ProductMode = detectedProdMode !== null ? detectedProdMode : 'apparel';
+      let newProductModeSource = detectedProdMode !== null ? 'product_info' : undefined;
       const isFootwear = newProductMode === 'footwear';
 
       // 3. Detecta Categoria
       const detectedCatResult = detectCategory(autoProductName, val);
       let newCategory = prev.category;
       let newCategorySource = prev.categorySource;
-      if (prev.categorySource !== 'manual') {
-        if (detectedCatResult.category !== 'AUTO' && detectedCatResult.category !== 'CALCADO') {
-          newCategory = detectedCatResult.category;
-          newCategorySource = 'local_detect';
-        } else {
-          newCategory = 'AUTO';
-          newCategorySource = undefined;
-        }
+      if (detectedCatResult.category !== 'AUTO' && detectedCatResult.category !== 'CALCADO') {
+        newCategory = detectedCatResult.category;
+        newCategorySource = 'product_info';
+      } else if (isFootwear) {
+        newCategory = 'CALCADO';
+        newCategorySource = 'product_info';
+      } else {
+        newCategory = 'AUTO';
+        newCategorySource = undefined;
       }
 
-      // 4. Detecta Gênero
+      // 4. Detecta Gênero (Regra 13: Unissex explícito fica null/desmarcado)
       const detectedGen = detectGender(autoProductName, val);
-      let newGender = prev.gender;
-      let newGenderSource = prev.genderSource;
-      if (prev.genderSource !== 'manual') {
-        if (detectedGen !== null) {
-          newGender = detectedGen;
-          newGenderSource = 'local_detect';
-        } else {
-          newGender = 'Mulher';
-          newGenderSource = undefined;
-        }
-      }
+      let newGender = detectedGen;
+      let newGenderSource = detectedGen !== null ? 'product_info' : undefined;
 
-      // 5. Detecta Faixa Etária
+      // 5. Detecta Faixa Etária (Regra 9: Baby doll é sempre adulto)
       const detectedAge = detectAgeMode(autoProductName, val);
-      let newAgeMode = prev.ageMode;
-      let newAgeModeSource = prev.ageModeSource;
-      if (prev.ageModeSource !== 'manual') {
-        if (detectedAge !== null) {
-          newAgeMode = detectedAge;
-          newAgeModeSource = 'local_detect';
-        } else {
-          newAgeMode = 'adult';
-          newAgeModeSource = undefined;
-        }
-      }
+      let newAgeMode = detectedAge || 'adult';
+      let newAgeModeSource = detectedAge !== null ? 'product_info' : undefined;
 
-      // 6. Detecta Tipo de Corpo
+      // 6. Detecta Tipo de Corpo (Regras 5, 8, 9: Se for roupa, Plus Size deve começar marcado por padrão)
       const detectedBodyVal = detectBody(autoProductName, val);
       let newBody = isFootwear ? 'Normal' : 'Plus size';
-      let newBodySource = prev.bodySource;
-      if (prev.bodySource !== 'manual') {
-        if (isFootwear) {
-          newBody = 'Normal';
-          newBodySource = 'local_detect';
-        } else if (detectedProdMode === 'apparel' || detectedBodyVal !== null) {
-          newBody = detectedBodyVal || 'Plus size';
-          newBodySource = 'local_detect';
-        } else {
-          newBody = 'Plus size';
-          newBodySource = undefined;
-        }
+      let newBodySource = 'product_info';
+      if (!isFootwear) {
+        // Para roupas (feminino, masculino ou infantil), Plus Size é o padrão obrigatório
+        newBody = detectedBodyVal || 'Plus size';
       }
 
       // 7. Detecta Cenário Natural
-      let newNaturalEnv = prev.naturalEnvironment;
-      let newNaturalEnvSource = prev.naturalEnvSource;
-      if (prev.naturalEnvSource !== 'manual') {
-        if (isFootwear && detectedProdMode === 'footwear') {
-          newNaturalEnv = true;
-          newNaturalEnvSource = 'local_detect';
-        } else {
-          newNaturalEnv = false;
-          newNaturalEnvSource = undefined;
-        }
-      }
+      let newNaturalEnv = isFootwear;
+      let newNaturalEnvSource = isFootwear ? 'product_info' : undefined;
 
       // 8. Detecta Elasticidade
       const detectedAutoStretch = isFootwear ? false : detectStretch(`${autoProductName} ${val}`);
-      let newStretch = prev.stretch;
-      let newStretchSource = prev.stretchSource;
-      if (prev.stretchSource !== 'manual') {
-        if (isFootwear && detectedProdMode === 'footwear') {
-          newStretch = false;
-          newStretchSource = 'local_detect';
-        } else if (detectedAutoStretch !== null) {
-          newStretch = detectedAutoStretch;
-          newStretchSource = 'local_detect';
-        } else {
-          newStretch = null;
-          newStretchSource = undefined;
-        }
-      }
+      let newStretch = isFootwear ? false : (detectedAutoStretch !== null ? detectedAutoStretch : null);
+      let newStretchSource = detectedAutoStretch !== null || isFootwear ? 'product_info' : undefined;
 
       // 9. Detecta Tecido
       const detectedFabricObj = detectFabric(autoProductName, undefined, val);
-      let newFabric = prev.fabric;
-      let newFabricSource = prev.fabricSource;
-      if (prev.fabricSource !== 'manual') {
-        if (detectedFabricObj.detected && detectedFabricObj.key !== 'padrao') {
-          newFabric = detectedFabricObj.key;
-          newFabricSource = 'product_info';
-        } else {
-          newFabric = '';
-          newFabricSource = undefined;
-        }
+      let newFabric = '';
+      let newFabricSource = undefined;
+      if (detectedFabricObj.detected && detectedFabricObj.key !== 'padrao') {
+        newFabric = detectedFabricObj.key;
+        newFabricSource = 'product_info';
       }
 
       return {
@@ -1188,20 +1125,20 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
           </div>
         </div>
 
-        {/* 13. Personalizar ROTEIRO (opcional) */}
+        {/* 13. Personalizar ROTEIRO (opcional) - Destacado visualmente com tom neutro/cinza para evitar edição acidental */}
         <div
           className={`md:col-span-6 p-3.5 rounded-2xl transition-all duration-300 space-y-1.5 ${
             isCustomSpeechIdentified
-              ? 'bg-gradient-to-br from-sky-900/80 via-blue-900/75 to-slate-800/90 border-2 border-sky-400 shadow-lg shadow-sky-900/50 ring-2 ring-sky-400/40'
-              : 'bg-zinc-900/70 border border-zinc-800/90'
+              ? 'bg-zinc-800/90 border-2 border-zinc-500 shadow-md ring-1 ring-zinc-500/40'
+              : 'bg-zinc-800/60 border border-zinc-700/80'
           }`}
         >
           <label className="text-xs font-bold flex items-center justify-between">
             <span className="flex items-center gap-1.5">
-              <span className={isCustomSpeechIdentified ? 'text-white' : 'text-zinc-200'}>13. Personalizar ROTEIRO (opcional)</span>
+              <span className="text-zinc-300">13. Personalizar ROTEIRO (opcional)</span>
               {isCustomSpeechIdentified && (
-                <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-sky-300" /> Personalizado ✓
+                <span className="text-[10px] text-zinc-200 font-extrabold bg-zinc-700 px-2 py-0.5 rounded-md border border-zinc-600 flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-zinc-300" /> Personalizado ✓
                 </span>
               )}
             </span>

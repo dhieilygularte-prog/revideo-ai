@@ -207,6 +207,12 @@ export function buildUniversalSceneImagePrompt(
    - ZERO ON-SCREEN TEXT, ZERO HEADLINES, ZERO BLACK-BORDERED CAPTION BOXES, ZERO STICKERS, ZERO SUBTITLES!
    - The photograph must be 100% clean and raw. Digital headlines will be added later during video editing. Only authentic logos physically printed or sewn on the product are permitted.
 
-6. NEGATIVE CONSTRAINTS:
-   - Zero on-screen text, zero subtitles, zero watermarks, zero tattoos or body ink, zero duplicate competitor frames, zero distorted product features, zero luxury mansions, zero hyper-instagrammed fake aesthetics.`;
+6. MODESTY & LOCALIZED ATTRIBUTE RULES:
+   - SUBTLE CLEAVAGE REDUCTION: If reference apparel presents deep revealing cleavage, raise center neckline point subtly (20% to 35% less deep) to maintain modesty while keeping 100% original neckline shape (e.g., V-neck remains V-neck), straps, and garment identity intact without changing the clothing.
+   - ZERO EXPOSED BELLY: No exposed midriff or belly button. Model abdomen must remain covered (with tucked-in under-top or discreet extension), preserving the primary apparel piece.
+   - LOCALIZED TEXTURES STAY LOCALIZED: Ribbed collars, ribbed cuffs, elastic waistbands, or lace borders apply strictly to their designated zone, NEVER to the entire garment.
+   - WRITTEN COLOR PRIORITY: Any color specified by the user in text overrides photographic lighting artifacts or reference tint differences.
+
+7. NEGATIVE CONSTRAINTS:
+   - Zero on-screen text, zero subtitles, zero watermarks, zero tattoos or body ink, zero duplicate competitor frames, zero distorted product features, zero exposed belly/navel, zero luxury mansions, zero hyper-instagrammed fake aesthetics.`;
 }

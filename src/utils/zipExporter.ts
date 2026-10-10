@@ -117,24 +117,58 @@ export async function exportAllClonedAssets(analysis: VideoAnalysisResult): Prom
   const zip = new JSZip();
   const prodSlug = getCleanProductName(analysis.productType);
 
-  // 1. Add Text Files
-  let promptsText = `========================================================\n`;
-  promptsText += `CLONADOR DE VÍDEO DE PRODUTO • PACOTE GOOGLE VEO\n`;
-  promptsText += `========================================================\n\n`;
-  promptsText += `Produto: ${analysis.productType || 'Produto Comercial'}\n`;
-  promptsText += `Cenário Geral: ${analysis.environmentDescription}\n`;
-  promptsText += `Câmera: ${analysis.cameraType} (${analysis.cameraStability})\n`;
-  promptsText += `Iluminação: ${analysis.lightingStyle}\n\n`;
-
+  // 1. Separate Prompt Files per Scene (Prompt_Cena_01.txt, Prompt_Cena_02.txt...)
   analysis.scenes.forEach((scene) => {
-    promptsText += `--------------------------------------------------------\n`;
-    promptsText += `CENA ${scene.sceneNumber} (${scene.timeRangeText})\n`;
-    promptsText += `Instrução: ${scene.veoInstruction}\n`;
-    promptsText += `Resumo: ${scene.actionSummary}\n\n`;
-    promptsText += `PROMPT VEO:\n${scene.veoPrompt}\n\n`;
+    const padNum = String(scene.sceneNumber).padStart(2, '0');
+    const promptFilename = `Prompt_Cena_${padNum}.txt`;
+    const promptBody = `========================================================
+PROMPT VEO 3.1 • CENA ${scene.sceneNumber} (${scene.timeRangeText})
+Produto: ${analysis.productType || 'Produto Comercial'}
+Cenário: ${analysis.environmentDescription}
+Câmera: ${analysis.cameraType} (${analysis.cameraStability})
+Iluminação: ${analysis.lightingStyle}
+========================================================
+
+INSTRUÇÃO DA CENA:
+${scene.veoInstruction}
+
+RESUMO DA AÇÃO:
+${scene.actionSummary}
+
+PROMPT COMPLETO PARA O GERADOR DE VÍDEO (GOOGLE VEO):
+${scene.veoPrompt}
+`;
+    zip.file(promptFilename, promptBody);
   });
 
-  zip.file('prompts_google_veo.txt', promptsText);
+  // 1.1 Conteúdo do Anúncio (Conteudo_Anuncio.txt)
+  let adContent = `========================================================
+CONTEÚDO DO ANÚNCIO (COPY, LOCUÇÃO E HASHTAGS)
+Produto: ${analysis.productType || 'Produto Comercial'}
+========================================================
+
+--- FALA COMPLETA / LOCUÇÃO ADAPTADA ---
+${analysis.speechData?.adaptedSpeech || analysis.speechData?.originalTranscription || 'Nenhuma locução gravada'}
+
+--- ROTEIRO POR CENA ---
+`;
+
+  analysis.scenes.forEach((sc) => {
+    adContent += `\n[CENA ${sc.sceneNumber}] (${sc.timeRangeText})\nAção: ${sc.actionSummary}\n`;
+    if (sc.speechVoiceover) {
+      adContent += `Locução: "${sc.speechVoiceover}"\n`;
+    }
+  });
+
+  if (analysis.onScreenTexts && analysis.onScreenTexts.length > 0) {
+    adContent += `\n--- TEXTOS NA TELA (HEADLINES CAPCUT / TIKTOK) ---\n`;
+    analysis.onScreenTexts.forEach((t, i) => {
+      adContent += `${i + 1}. [${t.timestamp}] "${t.text}" (${t.position}, cor: ${t.color})\n`;
+    });
+  }
+
+  adContent += `\n--- HASHTAGS RECOMENDADAS ---\n#tiktokshop #achadinhos #review #${prodSlug} #viral\n`;
+  zip.file('Conteudo_Anuncio.txt', adContent);
 
   // 2. Add Headlines File (if on-screen texts exist)
   if (analysis.onScreenTexts && analysis.onScreenTexts.length > 0) {

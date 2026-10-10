@@ -44,10 +44,20 @@ export function removeAccents(str: string): string {
 
 /**
  * Detecta o tecido visual baseado no nome do produto, campo manual ou informações do produto.
+ * Características localizadas (ex: gola canelada, punho canelado, cós elástico) não devem ser aplicadas à peça inteira.
  */
 export function detectFabric(name: string, manualFabric?: string, info?: string): { key: string; description: string; detected: boolean } {
   const combined = removeAccents(`${manualFabric || ''} ${name || ''} ${info || ''}`);
+
+  // Se "canelado" aparecer exclusivamente associado a partes localizadas (gola, punho, cós, barra),
+  // não assumir canelado como tecido principal do corpo da peça
+  const isOnlyLocalizedRib = /gola\s+canelad|punho\s+canelad|cos\s+canelad|barra\s+canelad/i.test(combined) &&
+    !/tecido\s+canelad|malha\s+canelad|canelad[oa]\s+premium|todo\s+canelad/i.test(combined);
+
   for (const [key, desc] of Object.entries(FABRICS)) {
+    if (key === 'canelad' && isOnlyLocalizedRib) {
+      continue;
+    }
     if (new RegExp(`\\b${key}`, 'i').test(combined)) {
       return { key, description: desc, detected: true };
     }
@@ -445,12 +455,25 @@ export function detectProductMode(name?: string, info?: string): ProductMode | n
 
 /**
  * Detecta o gênero do produto a partir do nome ou informações (ex: "masculino", "homem", "para ele", etc.)
+ * Regra 13: "Unissex" explícito nunca seleciona automaticamente masculino ou feminino (retorna null).
+ * Regra 9: "Baby Doll" é pijama feminino adulto (retorna 'Mulher').
  */
 export function detectGender(name?: string, info?: string): AniaGender | null {
   const combined = removeAccents(`${name || ''} ${info || ''}`);
   if (!combined.trim()) return null;
 
-  const isChild = CHILD_KEYWORDS.some((kw) => new RegExp(`\\b${kw}`, 'i').test(combined));
+  // Regra 13: Se o produto indicar explicitamente "unissex", não selecionar masculino nem feminino
+  if (new RegExp(`\\b(unissex|unisex)\\b`, 'i').test(combined)) {
+    return null;
+  }
+
+  // Regra 9: Baby Doll / babydoll é pijama feminino adulto
+  if (new RegExp(`\\b(baby doll|babydoll|short doll)\\b`, 'i').test(combined)) {
+    return 'Mulher';
+  }
+
+  const isChild = !new RegExp(`\\b(baby doll|babydoll|short doll)\\b`, 'i').test(combined) &&
+    CHILD_KEYWORDS.some((kw) => new RegExp(`\\b${kw}`, 'i').test(combined));
   // Se for produto infantil e NÃO for explicitamente "menino" ou "menina", o gênero fica desmarcado (null) para o usuário escolher
   if (isChild) {
     if (new RegExp(`\\bmenino\\b`, 'i').test(combined)) return 'Homem';
@@ -523,6 +546,11 @@ export const ELDERLY_KEYWORDS = [
 export function detectAgeMode(name?: string, info?: string): AgeMode | null {
   const combined = removeAccents(`${name || ''} ${info || ''}`);
   if (!combined.trim()) return null;
+
+  // Regra 9: Baby Doll / babydoll / short doll é sempre pijama adulto, NUNCA infantil
+  if (new RegExp(`\\b(baby doll|babydoll|short doll)\\b`, 'i').test(combined)) {
+    return 'adult';
+  }
 
   if (CHILD_KEYWORDS.some((kw) => new RegExp(`\\b${kw}`, 'i').test(combined))) {
     return 'child';
@@ -599,9 +627,9 @@ export function extractShortProductName(text: string): string {
   const shortKeywords: [string, string][] = [
     ['short saia', 'Short Saia'],
     ['shorts saia', 'Short Saia'],
-    ['baby doll', 'Baby Doll'],
-    ['babydoll', 'Baby Doll'],
-    ['short doll', 'Baby Doll'],
+    ['baby doll', 'Pijama'],
+    ['babydoll', 'Pijama'],
+    ['short doll', 'Pijama'],
     ['wide leg', 'Calça Wide Leg'],
     ['tenis', 'Tênis'],
     ['sapato', 'Sapato'],

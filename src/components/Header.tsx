@@ -1,13 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Sparkles, Sliders, Film, ChevronDown, Check, X, ShieldCheck } from 'lucide-react';
+import { Sparkles, Sliders, Film, ChevronDown, Check, X, ShieldCheck, Package } from 'lucide-react';
 import { TokenCostBadge } from './TokenCostBadge';
 import { TokenUsageStats } from '../types';
 import { AIProfile, AI_PROFILES } from '../config/aiProfiles';
 
 interface HeaderProps {
   tokenStats?: TokenUsageStats;
-  mode?: 'ania' | 'clone';
-  onModeChange?: (mode: 'ania' | 'clone') => void;
+  mode?: 'ania' | 'clone' | 'produto';
+  onModeChange?: (mode: 'ania' | 'clone' | 'produto') => void;
   aiProfile?: AIProfile;
   onAIProfileChange?: (profile: AIProfile) => void;
 }
@@ -83,6 +83,19 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Film className="w-3.5 h-3.5 text-sky-200" />
               <span>Modo Clonagem</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onModeChange('produto')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                mode === 'produto'
+                  ? 'bg-gradient-to-r from-amber-700 to-amber-900 text-white shadow-md border border-amber-600/40'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <Package className="w-3.5 h-3.5 text-amber-300" />
+              <span>Modo Produto</span>
             </button>
           </div>
         )}

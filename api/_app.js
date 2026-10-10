@@ -161,8 +161,14 @@ function buildUniversalSceneImagePrompt(productType, variationName, imageRole, i
    - ZERO ON-SCREEN TEXT, ZERO HEADLINES, ZERO BLACK-BORDERED CAPTION BOXES, ZERO STICKERS, ZERO SUBTITLES!
    - The photograph must be 100% clean and raw. Digital headlines will be added later during video editing. Only authentic logos physically printed or sewn on the product are permitted.
 
-6. NEGATIVE CONSTRAINTS:
-   - Zero on-screen text, zero subtitles, zero watermarks, zero tattoos or body ink, zero duplicate competitor frames, zero distorted product features, zero luxury mansions, zero hyper-instagrammed fake aesthetics.`;
+6. MODESTY & LOCALIZED ATTRIBUTE RULES:
+   - SUBTLE CLEAVAGE REDUCTION: If reference apparel presents deep revealing cleavage, raise center neckline point subtly (20% to 35% less deep) to maintain modesty while keeping 100% original neckline shape (e.g., V-neck remains V-neck), straps, and garment identity intact without changing the clothing.
+   - ZERO EXPOSED BELLY: No exposed midriff or belly button. Model abdomen must remain covered (with tucked-in under-top or discreet extension), preserving the primary apparel piece.
+   - LOCALIZED TEXTURES STAY LOCALIZED: Ribbed collars, ribbed cuffs, elastic waistbands, or lace borders apply strictly to their designated zone, NEVER to the entire garment.
+   - WRITTEN COLOR PRIORITY: Any color specified by the user in text overrides photographic lighting artifacts or reference tint differences.
+
+7. NEGATIVE CONSTRAINTS:
+   - Zero on-screen text, zero subtitles, zero watermarks, zero tattoos or body ink, zero duplicate competitor frames, zero distorted product features, zero exposed belly/navel, zero luxury mansions, zero hyper-instagrammed fake aesthetics.`;
 }
 
 // src/utils/speechDistributor.ts
@@ -2847,6 +2853,79 @@ Retorne estritamente um JSON no seguinte formato:
         correctionPrompt: ""
       }
     });
+  }
+});
+app.post("/api/micro-edit-image", async (req, res) => {
+  try {
+    const { imageBase64, instruction, aiProfile } = req.body;
+    if (!imageBase64 || !instruction) {
+      return res.status(400).json({ success: false, error: "Imagem e instru\xE7\xE3o de edi\xE7\xE3o s\xE3o obrigat\xF3rias." });
+    }
+    const cleanB64 = imageBase64.startsWith("data:") ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`;
+    const promptText = `Execute a microedi\xE7\xE3o solicitada pelo usu\xE1rio com M\xC1XIMA PRECIS\xC3O E FIDELIDADE \xC0 IMAGEM FORNECIDA.
+REGRA FUNDAMENTAL E ABSOLUTA:
+1. Use SOMENTE a imagem fornecida como 100% da refer\xEAncia visual.
+2. Mantenha id\xEAnticos todo o enquadramento, propor\xE7\xF5es, ilumina\xE7\xE3o, composi\xE7\xE3o e detalhes que N\xC3O foram expressamente mandados alterar.
+3. INSTRU\xC7\xC3O DO USU\xC1RIO: "${instruction}".
+4. Aplique ESTRITAMENTE e EXCLUSIVAMENTE a altera\xE7\xE3o solicitada. Se pediu para trocar a cor, troque apenas a cor do item especificado. Se pediu para alterar um detalhe, altere apenas esse detalhe.
+5. Retorne a imagem editada realista com alta defini\xE7\xE3o vertical 9:16.`;
+    const activeProfile = aiProfile || getRequestAIProfile(req);
+    if (activeProfile === "openai" && openAIProvider.isConfigured()) {
+      try {
+        const result = await openAIProvider.generateSceneImage({
+          prompt: promptText,
+          productPhotoBase64: cleanB64,
+          variationName: "Microedi\xE7\xE3o",
+          productType: "imagem de refer\xEAncia",
+          additionalInstructions: `Microedi\xE7\xE3o isolada: ${instruction}`
+        });
+        if (result.success && result.imageUrl) {
+          return res.json({ success: true, imageUrl: result.imageUrl });
+        }
+      } catch (err) {
+        console.warn("Erro na microedi\xE7\xE3o via OpenAI, tentando Gemini:", err?.message || err);
+      }
+    }
+    if (process.env.GEMINI_API_KEY) {
+      const parsed = parseInlineImage(cleanB64);
+      const parts = [];
+      if (parsed) {
+        parts.push({ inlineData: parsed });
+      }
+      parts.push({ text: promptText });
+      const modelsToTry = [
+        GEMINI_IMAGE_MODEL || "gemini-3.1-flash-image",
+        GEMINI_IMAGE_FAST_MODEL || "gemini-3.1-flash-lite-image",
+        "gemini-3-pro-image"
+      ];
+      for (const modelCandidate of modelsToTry) {
+        try {
+          const imgRes = await getGenAI().models.generateContent({
+            model: modelCandidate,
+            contents: { parts },
+            config: {
+              systemInstruction: "Voc\xEA \xE9 um editor de microedi\xE7\xE3o de imagens. Edite estritamente o que foi solicitado na imagem fornecida, mantendo todo o restante inalterado.",
+              imageConfig: { aspectRatio: "9:16" }
+            }
+          });
+          const candidates = imgRes.candidates || [];
+          if (candidates[0]?.content?.parts) {
+            for (const part of candidates[0].content.parts) {
+              if (part.inlineData?.data) {
+                const mime = part.inlineData.mimeType || "image/png";
+                return res.json({ success: true, imageUrl: `data:${mime};base64,${part.inlineData.data}` });
+              }
+            }
+          }
+        } catch (e) {
+          console.warn(`Tentativa de microedi\xE7\xE3o com ${modelCandidate} falhou:`, e?.message || e);
+        }
+      }
+    }
+    return res.status(500).json({ success: false, error: "N\xE3o foi poss\xEDvel gerar a microedi\xE7\xE3o com os provedores configurados." });
+  } catch (err) {
+    console.error("Erro no endpoint micro-edit-image:", err);
+    return res.status(500).json({ success: false, error: err?.message || "Erro interno na microedi\xE7\xE3o" });
   }
 });
 async function startServer() {

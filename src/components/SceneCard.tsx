@@ -330,13 +330,28 @@ export const SceneCard: React.FC<SceneCardProps> = ({
                     Imagem {imgIdx + 1}
                   </div>
 
-                  {/* Top Right: Angle Badge */}
-                  <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between pointer-events-none">
+                  {/* Bottom Left: Angle Badge */}
+                  <div className="absolute bottom-2 left-2 flex items-center pointer-events-none">
                     <span className="px-2 py-1 rounded-md bg-black/80 backdrop-blur-sm border border-zinc-700 text-[10px] font-bold text-white flex items-center gap-1">
                       <Compass className="w-3 h-3 text-pink-400" />
                       {angleLabel}
                     </span>
                   </div>
+
+                  {/* Bottom Right: Direct Download Button Overlaid on Image */}
+                  {img.imageUrl && !img.isRegenerating && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDownloadImage(img, imgIdx);
+                      }}
+                      className="absolute bottom-2 right-2 p-1.5 rounded-lg bg-zinc-950/85 hover:bg-black text-white hover:text-emerald-400 border border-zinc-700/80 hover:border-emerald-500/60 shadow-lg backdrop-blur-sm transition-all cursor-pointer z-10 flex items-center justify-center"
+                      title={`Baixar ${imgIdx + 1}_${cleanProd}.jpg`}
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                 </div>
 
                 {/* Card Meta & Actions */}

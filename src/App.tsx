@@ -42,21 +42,45 @@ import { runAniaPipeline, regenerateAniaSingleImage } from './ania/aniaPipeline'
 import { buildAniaVideoPrompt } from './ania/aniaPrompts';
 import { detectFabric, filterMoves, detectScenarioKey, getScenarioDescription } from './ania/aniaLibrary';
 import { AniaFormState, AniaResultState } from './ania/types';
+import { MicroImageEditor } from './components/MicroImageEditor';
+import { ProdutoForm } from './produto/ProdutoForm';
+import { ProdutoResults } from './produto/ProdutoResults';
+import { runProdutoPipeline } from './produto/produtoPipeline';
+import { ProdutoFormState, ProdutoResultState } from './produto/types';
 import { AIProfile, AI_PROFILES } from './config/aiProfiles';
 
 export default function App() {
-  // Mode Selection State ('ania' default, always opens in Modo Ania)
-  const [appMode, setAppMode] = useState<'ania' | 'clone'>('ania');
+  // Mode Selection State ('ania' default, options: 'ania' | 'clone' | 'produto')
+  const [appMode, setAppMode] = useState<'ania' | 'clone' | 'produto'>('ania');
 
   // AI Profile Selection State ('openai' default no modo clonagem)
   const [aiProfile, setAiProfile] = useState<AIProfile>('openai');
 
-  const handleModeChange = (newMode: 'ania' | 'clone') => {
+  const handleModeChange = (newMode: 'ania' | 'clone' | 'produto') => {
     setAppMode(newMode);
     if (newMode === 'clone') {
       setAiProfile('openai');
     }
   };
+
+  // Modo Produto State
+  const [produtoForm, setProdutoForm] = useState<ProdutoFormState>({
+    productName: '',
+    productInfo: '',
+    gender: 'Mulher',
+    framing: 'sem_rosto',
+    scenario: 'tipico',
+    sceneCount: 1,
+    veoModelMode: 'veo3_omniflash_10s',
+    colors: [],
+    additionalInstructions: '',
+    customSpeech: '',
+  });
+  const [produtoResult, setProdutoResult] = useState<ProdutoResultState | null>(null);
+  const [isProcessingProduto, setIsProcessingProduto] = useState(false);
+  const [produtoProgressPercent, setProdutoProgressPercent] = useState(0);
+  const [produtoStatusMessage, setProdutoStatusMessage] = useState('');
+  const [produtoErrorMessage, setProdutoErrorMessage] = useState<string | null>(null);
 
   // Modo Ania State
   const [aniaForm, setAniaForm] = useState<AniaFormState>({
@@ -77,7 +101,7 @@ export default function App() {
     productInfo: '',
     additionalInstructions: '',
     customSpeech: '',
-    veoModelMode: 'veo3_omniflash_10s',
+    veoModelMode: 'veo3_basic_8s',
   });
   const [aniaResult, setAniaResult] = useState<AniaResultState | null>(null);
   const [isProcessingAnia, setIsProcessingAnia] = useState(false);
@@ -1118,11 +1142,38 @@ export default function App() {
     });
   };
 
+  // Modo Produto Pipeline Trigger
+  const handleStartProduto = async () => {
+    setIsProcessingProduto(true);
+    setProdutoProgressPercent(5);
+    setProdutoStatusMessage('Iniciando...');
+    setProdutoErrorMessage(null);
+
+    try {
+      const res = await runProdutoPipeline({
+        form: produtoForm,
+        aiProfile,
+        onProgress: (pct, msg) => {
+          setProdutoProgressPercent(pct);
+          setProdutoStatusMessage(msg);
+        },
+      });
+      setProdutoResult(res);
+      playCompletionSound();
+    } catch (err: any) {
+      setProdutoErrorMessage(err.message || 'Erro ao processar o Modo Produto.');
+    } finally {
+      setIsProcessingProduto(false);
+    }
+  };
+
   const isProcessing =
     currentStep !== 'idle' && currentStep !== 'completed' && currentStep !== 'error';
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col font-sans selection:bg-purple-500/20 selection:text-purple-300">
+    <div className={`min-h-screen text-zinc-100 flex flex-col font-sans selection:bg-purple-500/20 selection:text-purple-300 transition-colors duration-300 ${
+      appMode === 'produto' ? 'bg-[#1c130e]' : 'bg-zinc-950'
+    }`}>
       <Header
         tokenStats={
           appMode === 'ania'
@@ -1188,6 +1239,60 @@ export default function App() {
                   onUpdateVideoSpeech={handleUpdateAniaVideoSpeech}
                   onUpdateVideoPrompt={handleUpdateAniaVideoPrompt}
                   onOpenPreviewModal={(url, title) => setPreviewModal({ isOpen: true, url, title })}
+                  aiProfile={aiProfile}
+                />
+              </div>
+            )}
+          </div>
+        ) : appMode === 'produto' ? (
+          /* ========================================================================= */
+          /* MODO PRODUTO VIEW (Tema Marrom Escuro #1c130e)                             */
+          /* ========================================================================= */
+          <div className="space-y-6">
+            {/* Error Notification */}
+            {produtoErrorMessage && (
+              <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl text-xs text-rose-300 flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-bold text-sm">Aviso no Processamento (Modo Produto):</p>
+                  <p className="text-rose-200/90 leading-relaxed">{produtoErrorMessage}</p>
+                </div>
+              </div>
+            )}
+
+            {!produtoResult ? (
+              <>
+                <ProdutoForm
+                  form={produtoForm}
+                  onChange={setProdutoForm}
+                  onSubmit={handleStartProduto}
+                  isProcessing={isProcessingProduto}
+                />
+
+                {isProcessingProduto && (
+                  <ProgressBar
+                    currentStep="generating_images"
+                    progressPercent={produtoProgressPercent}
+                    statusMessage={produtoStatusMessage}
+                  />
+                )}
+              </>
+            ) : (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between pb-2 border-b border-[#452d1f]">
+                  <button
+                    type="button"
+                    onClick={() => setProdutoResult(null)}
+                    className="px-4 py-2 bg-[#281b14] hover:bg-[#38261c] text-xs font-bold text-amber-200 hover:text-white rounded-xl flex items-center gap-2 transition-colors cursor-pointer border border-[#52392b]"
+                  >
+                    <RotateCcw className="w-4 h-4 text-amber-400" />
+                    <span>Criar Novo no Modo Produto</span>
+                  </button>
+                </div>
+
+                <ProdutoResults
+                  result={produtoResult}
+                  onOpenPreview={(url, title) => setPreviewModal({ isOpen: true, url, title })}
                   aiProfile={aiProfile}
                 />
               </div>
@@ -1372,6 +1477,12 @@ export default function App() {
                     />
                   ))}
                 </div>
+
+                {/* Microedição de Imagem Independente */}
+                <MicroImageEditor
+                  aiProfile={aiProfile}
+                  onOpenPreview={(url, title) => setPreviewModal({ isOpen: true, url, title })}
+                />
               </section>
             )}
           </div>

@@ -26,6 +26,7 @@ import {
 import { AniaResultState } from './types';
 import { exportAniaAssetsZip } from './aniaZipExporter';
 import { compressAndResizeImage } from './aniaLibrary';
+import { MicroImageEditor } from '../components/MicroImageEditor';
 
 interface AniaResultsProps {
   result: AniaResultState;
@@ -413,20 +414,6 @@ export function AniaResults({
                       <span>Fidelidade 100% conferida</span>
                     </div>
                   )}
-
-                  <button
-                    type="button"
-                    onClick={() => handleCopy(`img-prompt-${idx}`, imageObj.promptUsed)}
-                    className="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border border-zinc-700"
-                    title="Copiar prompt exato da imagem para usar no ChatGPT ou Flow"
-                  >
-                    {copiedId === `img-prompt-${idx}` ? (
-                      <Check className="w-3.5 h-3.5 text-emerald-400" />
-                    ) : (
-                      <Copy className="w-3.5 h-3.5" />
-                    )}
-                    <span>Copiar Prompt da Imagem</span>
-                  </button>
                 </div>
               </div>
 
@@ -492,6 +479,25 @@ export function AniaResults({
                           <Eye className="w-4 h-4" />
                           <span>Ampliar Imagem</span>
                         </div>
+
+                        {/* Botão de download individual sobre a imagem no canto inferior direito */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const link = document.createElement('a');
+                            link.href = imageObj.imageUrl!;
+                            const safeColor = (imageObj.colorName || `cor-${idx + 1}`).toLowerCase().replace(/[^a-z0-9]/g, '_');
+                            link.download = `imagem_${idx + 1}_${safeColor}.jpg`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                          }}
+                          className="absolute bottom-2.5 right-2.5 z-10 p-2 rounded-lg bg-zinc-950/85 hover:bg-black text-white hover:text-emerald-400 border border-zinc-700/80 hover:border-emerald-500/60 shadow-lg backdrop-blur-sm transition-all cursor-pointer flex items-center justify-center"
+                          title="Baixar somente esta imagem"
+                        >
+                          <Download className="w-4 h-4" />
+                        </button>
                       </>
                     )}
                   </div>
@@ -946,6 +952,12 @@ export function AniaResults({
           </span>
         </button>
       </div>
+
+      {/* MÓDULO INDEPENDENTE DE MICROEDIÇÃO DE IMAGEM */}
+      <MicroImageEditor
+        aiProfile={aiProfile}
+        onOpenPreview={onOpenPreviewModal}
+      />
     </div>
   );
 }
