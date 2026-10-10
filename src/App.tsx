@@ -72,6 +72,7 @@ export default function App() {
     scenario: 'tipico',
     sceneCount: 1,
     veoModelMode: 'veo3_omniflash_10s',
+    refImagesPerScene: 3,
     variations: [
       {
         id: 'var-1',

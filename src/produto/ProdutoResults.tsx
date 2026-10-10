@@ -88,8 +88,19 @@ export const ProdutoResults: React.FC<ProdutoResultsProps> = ({
               </button>
             </div>
 
+            {/* Instrução explícita de anexar as imagens no Veo */}
+            <div className="flex items-center justify-between bg-[#1c130e] px-3.5 py-2 rounded-xl border border-[#3b271b] text-xs">
+              <span className="font-bold text-amber-300 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                Imagens de Referência Geradas ({scene.images.length})
+              </span>
+              <span className="text-[11px] text-zinc-400">
+                Anexe {scene.images.length === 1 ? 'esta 1 imagem' : `estas ${scene.images.length} imagens`} no Google Veo 3.1
+              </span>
+            </div>
+
             {/* Imagens de Referência da Cena */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            <div className={`grid gap-4 ${scene.images.length === 1 ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3' : scene.images.length === 2 ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3' : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3'}`}>
               {scene.images.map((img, idx) => (
                 <div
                   key={img.id}
@@ -106,6 +117,12 @@ export const ProdutoResults: React.FC<ProdutoResultsProps> = ({
                           alt={img.role}
                           className="h-full w-full object-cover group-hover:scale-105 transition-transform"
                         />
+
+                        {/* Top Left: Frame Number Badge */}
+                        <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/80 border border-zinc-700 text-[10px] font-bold text-amber-300 z-10 backdrop-blur-sm">
+                          Imagem {idx + 1}
+                        </div>
+
                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1">
                           <Eye className="w-4 h-4" />
                           <span>Ampliar</span>

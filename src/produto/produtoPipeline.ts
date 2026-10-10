@@ -36,6 +36,9 @@ export async function runProdutoPipeline(params: {
 
   // 3. Montar Cenas e Prompts
   for (let s = 1; s <= totalScenes; s++) {
+    // Quantidade de imagens de referência por cena (1, 2 ou 3 conforme escolha do usuário, padrão 3)
+    const imagesCount = Math.min(3, Math.max(1, form.refImagesPerScene || (totalScenes === 1 ? 3 : 1)));
+
     const scenePrompt = buildProdutoVeoPrompt({
       sceneNumber: s,
       totalScenes,
@@ -45,19 +48,26 @@ export async function runProdutoPipeline(params: {
       speechText: speech,
       framing: form.framing,
       scenario: form.scenario,
+      refImagesCount: imagesCount,
     });
 
-    // Quantidade de imagens de referência
-    // 1 cena -> 3 imagens
-    // 2 cenas -> 2 imagens (1 por cena ou 2 na cena 1)
-    // 3 cenas -> 3 imagens (1 por cena)
-    const imagesCount = totalScenes === 1 ? 3 : totalScenes === 2 ? 1 : 1;
     const sceneImages: ProdutoImageItem[] = [];
 
     for (let i = 1; i <= imagesCount; i++) {
-      const role = totalScenes === 1
-        ? (i === 1 ? 'Apresentação principal do produto' : i === 2 ? 'Ângulo de uso e funcionalidade' : 'Detalhe de acabamento e call to action')
-        : `Demonstração da Cena ${s}`;
+      let role = `Demonstração da Cena ${s}`;
+      if (imagesCount === 1) {
+        role = `Imagem 1: Apresentação principal de ${form.productName}`;
+      } else if (imagesCount === 2) {
+        role = i === 1
+          ? `Imagem 1: Apresentação frontal / geral de ${form.productName}`
+          : `Imagem 2: Demonstração de uso e funcionalidade de ${form.productName}`;
+      } else {
+        role = i === 1
+          ? `Imagem 1: Apresentação principal de ${form.productName}`
+          : i === 2
+          ? `Imagem 2: Ângulo de uso e funcionalidade`
+          : `Imagem 3: Detalhe de textura e acabamento`;
+      }
 
       const imgPrompt = buildProdutoImagePrompt({
         productName: form.productName,
@@ -90,16 +100,23 @@ export async function runProdutoPipeline(params: {
   let currentImageIdx = 0;
 
   for (const sc of scenes) {
-    for (const img of sc.images) {
+    for (let imgIdx = 0; imgIdx < sc.images.length; imgIdx++) {
+      const img = sc.images[imgIdx];
       currentImageIdx++;
       const pct = Math.round(30 + (currentImageIdx / totalImagesCount) * 60);
       onProgress?.(pct, `Gerando imagem ${currentImageIdx} de ${totalImagesCount}...`);
 
-      // Identifica fotos da variação correspondente
-      const varIndex = Math.min(sc.sceneNumber - 1, (form.variations?.length || 1) - 1);
+      // Mapeia variação e foto de forma inteligente:
+      // Se há múltiplas variações cadastradas, distribui entre as referências.
+      // Se há 1 variação com múltiplas fotos, cada referência aproveita uma foto diferente.
+      const totalVars = (form.variations && form.variations.length > 0) ? form.variations.length : 1;
+      const varIndex = totalVars > 1
+        ? (imgIdx % totalVars)
+        : ((sc.sceneNumber - 1) % totalVars);
       const currentVar = form.variations?.[varIndex] || form.variations?.[0];
-      const primaryPhoto = currentVar?.photos?.[0] || '';
       const allPhotos = currentVar?.photos || [];
+      const primaryPhoto = allPhotos[imgIdx % Math.max(1, allPhotos.length)] || allPhotos[0] || '';
+      const targetAngle = imgIdx === 0 ? 'front' : imgIdx === 1 ? 'side' : 'detail';
 
       try {
         const res = await fetch('/api/generate-scene-image', {
@@ -109,9 +126,9 @@ export async function runProdutoPipeline(params: {
             prompt: img.promptUsed,
             productType: form.productName,
             variationName: currentVar?.name || 'Produto Original',
-            targetAngle: 'front',
+            targetAngle,
             productPhotoBase64: primaryPhoto,
-            productPhotosBase64: allPhotos,
+            productPhotosBase64: allPhotos.length > 0 ? allPhotos : (primaryPhoto ? [primaryPhoto] : []),
             additionalInstructions: form.additionalInstructions,
             aiProfile,
           }),

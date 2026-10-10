@@ -1125,25 +1125,30 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
           </div>
         </div>
 
-        {/* 13. Personalizar ROTEIRO (opcional) - Destacado visualmente com tom neutro/cinza para evitar edição acidental */}
+        {/* 13. Personalizar ROTEIRO (opcional) - Destacado visualmente com cinza mais claro e aviso explícito de não mexer */}
         <div
-          className={`md:col-span-6 p-3.5 rounded-2xl transition-all duration-300 space-y-1.5 ${
-            isCustomSpeechIdentified
-              ? 'bg-zinc-800/90 border-2 border-zinc-500 shadow-md ring-1 ring-zinc-500/40'
-              : 'bg-zinc-800/60 border border-zinc-700/80'
-          }`}
+          className="md:col-span-6 p-4 rounded-2xl bg-zinc-700/60 hover:bg-zinc-700/75 border-2 border-zinc-500/80 shadow-lg space-y-2.5 transition-all"
         >
-          <label className="text-xs font-bold flex items-center justify-between">
-            <span className="flex items-center gap-1.5">
-              <span className="text-zinc-300">13. Personalizar ROTEIRO (opcional)</span>
+          <div className="flex items-center justify-between gap-2 border-b border-zinc-600/70 pb-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black text-zinc-100 uppercase tracking-wide">
+                13. Personalizar ROTEIRO (Opcional)
+              </span>
               {isCustomSpeechIdentified && (
-                <span className="text-[10px] text-zinc-200 font-extrabold bg-zinc-700 px-2 py-0.5 rounded-md border border-zinc-600 flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-zinc-300" /> Personalizado ✓
+                <span className="text-[10px] text-zinc-900 font-extrabold bg-zinc-300 px-2 py-0.5 rounded-md border border-zinc-400 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-zinc-900" /> Personalizado ✓
                 </span>
               )}
+            </div>
+            <span className="px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-400/40 text-[10px] font-bold text-amber-200">
+              ⚠️ NÃO MEXER
             </span>
-            <span className={`text-[11px] font-normal ${isCustomSpeechIdentified ? 'text-sky-200/90' : 'text-zinc-500'}`}>Se vazio, usa acervo validado</span>
-          </label>
+          </div>
+
+          <p className="text-[11px] text-zinc-300 leading-tight font-medium">
+            Deixe esta caixa vazia para o aplicativo usar automaticamente a <strong>fala campeã validada</strong>. Só altere se quiser ditar um texto próprio.
+          </p>
+
           <div className="relative">
             <textarea
               ref={speechTextareaRef}
@@ -1152,12 +1157,8 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
                 onChange((prev) => ({ ...prev, customSpeech: e.target.value }));
               }}
               rows={2}
-              placeholder="Deixe vazio para usar automaticamente a fala campeã do acervo, ou dite/digite seu roteiro..."
-              className={`w-full p-2.5 pr-11 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-sky-400 font-sans leading-relaxed transition-all resize-none overflow-hidden ${
-                isCustomSpeechIdentified
-                  ? 'bg-slate-950/80 border border-sky-400/60 focus:border-sky-300'
-                  : 'bg-zinc-950 border border-zinc-700/80 focus:border-sky-400'
-              }`}
+              placeholder="Deixe vazio para usar a fala automática validada (não precisa mexer aqui)..."
+              className="w-full p-2.5 pr-11 rounded-xl text-xs text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400 font-sans leading-relaxed transition-all resize-none overflow-hidden bg-zinc-800/95 border border-zinc-500/80"
               style={{ minHeight: '64px' }}
             />
             <button
@@ -1166,14 +1167,14 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
               className={`absolute right-2 top-2 p-1.5 rounded-lg text-xs font-semibold flex items-center justify-center transition-all cursor-pointer shadow-sm ${
                 activeSpeechField === 'speech'
                   ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400 scale-105'
-                  : 'bg-zinc-800/90 text-purple-400 hover:text-white hover:bg-zinc-700 border border-zinc-700/80'
+                  : 'bg-zinc-700 text-zinc-200 hover:text-white hover:bg-zinc-600 border border-zinc-500'
               }`}
               title={activeSpeechField === 'speech' ? 'Ouvindo... Clique para parar' : 'Ditar roteiro por voz'}
             >
               {activeSpeechField === 'speech' ? (
                 <MicOff className="w-4 h-4 text-white" />
               ) : (
-                <Mic className="w-4 h-4 text-purple-400" />
+                <Mic className="w-4 h-4 text-zinc-300" />
               )}
             </button>
           </div>

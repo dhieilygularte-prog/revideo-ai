@@ -18,6 +18,7 @@ export interface ProdutoFormState {
   scenario: ProdutoScenario;
   sceneCount: ProdutoSceneCount;
   veoModelMode: 'veo3_omniflash_10s' | 'veo3_basic_8s';
+  refImagesPerScene?: 1 | 2 | 3;
   variations: ProdutoVariation[];
   additionalInstructions: string;
   customSpeech: string;
@@ -48,6 +49,7 @@ export interface ProdutoResultState {
   scenario: ProdutoScenario;
   sceneCount: ProdutoSceneCount;
   veoModelMode: 'veo3_omniflash_10s' | 'veo3_basic_8s';
+  refImagesPerScene?: 1 | 2 | 3;
   scenes: ProdutoSceneResult[];
   speech: string;
   description: string;

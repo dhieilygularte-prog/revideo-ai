@@ -483,7 +483,7 @@ export const ProdutoForm: React.FC<ProdutoFormProps> = ({
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
-              1 Cena (3 ref)
+              1 Cena (Vídeo Único)
             </button>
             <button
               type="button"
@@ -545,16 +545,78 @@ export const ProdutoForm: React.FC<ProdutoFormProps> = ({
           </div>
         </div>
 
-        {/* 9. Personalizar Roteiro (com fundo cinza escuro neutro para evitar edição acidental) */}
-        <div className="md:col-span-12 p-4 rounded-2xl bg-zinc-800/80 border border-zinc-700 space-y-2">
-          <label className="text-xs font-bold text-zinc-300 flex items-center justify-between">
-            <span>9. Personalizar Roteiro (Opcional)</span>
-            <span className="text-[11px] text-zinc-400 font-normal">
-              {form.sceneCount === 1
-                ? 'Máx: 252 caracteres (10s)'
-                : 'Máx: 199 caracteres por cena'}
+        {/* 9. Imagens de Referência por Cena (Livre: 1, 2 ou até 3 referências) */}
+        <div className="md:col-span-12 p-4 rounded-2xl bg-[#281b14] border border-[#4a3224] space-y-2.5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+            <label className="text-xs font-bold text-amber-200 block">
+              9. Imagens de Referência por Cena (para anexar no Veo)
+            </label>
+            <span className="text-[11px] text-zinc-400">
+              O Veo aceita até 3 imagens. Não é obrigatório colocar três — escolha 1, 2 ou até 3.
             </span>
-          </label>
+          </div>
+          <div className="grid grid-cols-3 gap-2.5 bg-[#1c130e] p-1.5 rounded-xl border border-[#52392b]">
+            <button
+              type="button"
+              onClick={() => onChange((prev) => ({ ...prev, refImagesPerScene: 1 }))}
+              className={`py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
+                (form.refImagesPerScene ?? 3) === 1
+                  ? 'bg-amber-600 text-white shadow'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <span>1 Referência</span>
+              <span className="text-[10px] font-normal opacity-80">(Foto/Ângulo Principal)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange((prev) => ({ ...prev, refImagesPerScene: 2 }))}
+              className={`py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
+                (form.refImagesPerScene ?? 3) === 2
+                  ? 'bg-amber-600 text-white shadow'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <span>2 Referências</span>
+              <span className="text-[10px] font-normal opacity-80">(2 Ângulos ou Cores)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange((prev) => ({ ...prev, refImagesPerScene: 3 }))}
+              className={`py-2.5 text-xs font-bold rounded-lg transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
+                (form.refImagesPerScene ?? 3) === 3
+                  ? 'bg-amber-600 text-white shadow'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <span>3 Referências</span>
+              <span className="text-[10px] font-normal opacity-80">(Máximo suportado)</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 10. Personalizar Roteiro (com fundo cinza mais claro e aviso de não mexer para evitar edições acidentais) */}
+        <div className="md:col-span-12 p-4 rounded-2xl bg-zinc-700/60 hover:bg-zinc-700/75 border-2 border-zinc-500/80 shadow-lg space-y-2.5 transition-all">
+          <div className="flex items-center justify-between gap-2 border-b border-zinc-600/70 pb-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black text-zinc-100 uppercase tracking-wide">
+                10. Personalizar Roteiro (Opcional)
+              </span>
+              <span className="text-[11px] text-zinc-300 font-normal">
+                {form.sceneCount === 1
+                  ? 'Máx: 252 caracteres (10s)'
+                  : 'Máx: 199 caracteres por cena'}
+              </span>
+            </div>
+            <span className="px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-400/40 text-[10px] font-bold text-amber-200">
+              ⚠️ NÃO MEXER
+            </span>
+          </div>
+
+          <p className="text-[11px] text-zinc-300 leading-tight font-medium">
+            Deixe esta caixa em branco para o aplicativo gerar a <strong>fala persuasiva validada automaticamente</strong>. Só edite se quiser ditar sua própria locução.
+          </p>
+
           <div className="relative">
             <textarea
               rows={2}
@@ -562,8 +624,8 @@ export const ProdutoForm: React.FC<ProdutoFormProps> = ({
               onChange={(e) =>
                 onChange((prev) => ({ ...prev, customSpeech: e.target.value }))
               }
-              placeholder="Deixe em branco para usar a locução persuasiva automática ou dite/digite seu roteiro..."
-              className="w-full p-3 pr-12 rounded-xl bg-zinc-950 border border-zinc-700 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-500 resize-none font-sans"
+              placeholder="Deixe em branco para usar a locução persuasiva automática (não precisa mexer aqui)..."
+              className="w-full p-3 pr-12 rounded-xl bg-zinc-800/95 border border-zinc-500/80 text-xs text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400 resize-none font-sans"
             />
             <button
               type="button"
@@ -571,11 +633,11 @@ export const ProdutoForm: React.FC<ProdutoFormProps> = ({
               className={`absolute right-2.5 top-2.5 p-2 rounded-lg text-xs transition-all cursor-pointer ${
                 activeMic === 'speech'
                   ? 'bg-rose-600 text-white animate-pulse'
-                  : 'bg-zinc-800 text-zinc-300'
+                  : 'bg-zinc-700 text-zinc-200 hover:text-white hover:bg-zinc-600 border border-zinc-500'
               }`}
               title="Ditar roteiro"
             >
-              {activeMic === 'speech' ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              {activeMic === 'speech' ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4 text-zinc-300" />}
             </button>
           </div>
         </div>

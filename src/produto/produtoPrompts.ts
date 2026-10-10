@@ -77,6 +77,7 @@ export function buildProdutoVeoPrompt(params: {
   speechText: string;
   framing: string;
   scenario: string;
+  refImagesCount?: number;
 }): string {
   const {
     sceneNumber,
@@ -87,6 +88,7 @@ export function buildProdutoVeoPrompt(params: {
     speechText,
     framing,
     scenario,
+    refImagesCount = 3,
   } = params;
 
   const durationWord = durationSeconds === 10 ? 'ten-second' : 'eight-second';
@@ -94,9 +96,19 @@ export function buildProdutoVeoPrompt(params: {
 
   let timeline = '';
   if (totalScenes === 1) {
-    timeline = `0.0–2.0 seconds (HOOK): Engaging visual introduction presenting ${productName} in action to immediately catch viewer attention.
-2.0–7.0 seconds (BENEFIT & PROBLEM): Dynamic demonstration showing key feature and practicality (${productInfo.slice(0, 80) || 'ease of use'}).
-7.0–10.0 seconds (CALL TO ACTION): Clear final presentation encouraging purchase via the shopping cart.`;
+    if (refImagesCount === 1) {
+      timeline = `0.0–3.0 seconds (HOOK): Engaging visual introduction presenting ${productName} in action to immediately catch viewer attention.
+3.0–7.0 seconds (BENEFIT): Clear functional demonstration showing practicality (${productInfo.slice(0, 80) || 'ease of use and premium feel'}).
+7.0–${durationSeconds}.0 seconds (CALL TO ACTION): Final clear product highlight directing to the shopping cart.`;
+    } else if (refImagesCount === 2) {
+      timeline = `0.0–3.0 seconds (HOOK): Dynamic opening with Reference 1 presenting ${productName} in motion.
+3.0–7.0 seconds (DEMONSTRATION): Cut to Reference 2 perspective showing detail and real-life functionality.
+7.0–${durationSeconds}.0 seconds (CTA): Final dynamic framing with compelling commercial call to action.`;
+    } else {
+      timeline = `0.0–2.5 seconds (HOOK): Engaging visual opening with Reference 1 presenting ${productName} in action.
+2.5–6.5 seconds (DEMONSTRATION): Quick clean cuts across Reference 2 and Reference 3 highlighting versatility and quality.
+6.5–${durationSeconds}.0 seconds (CALL TO ACTION): Full product presentation encouraging immediate purchase.`;
+    }
   } else {
     timeline = `0.0–4.0 seconds: Seamless demonstration of ${productName} focusing on functional benefits in ${scenarioDesc}.
 4.0–${durationSeconds}.0 seconds: Dynamic action highlighting quality and practical everyday appeal.`;
