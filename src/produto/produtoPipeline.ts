@@ -95,6 +95,12 @@ export async function runProdutoPipeline(params: {
       const pct = Math.round(30 + (currentImageIdx / totalImagesCount) * 60);
       onProgress?.(pct, `Gerando imagem ${currentImageIdx} de ${totalImagesCount}...`);
 
+      // Identifica fotos da variação correspondente
+      const varIndex = Math.min(sc.sceneNumber - 1, (form.variations?.length || 1) - 1);
+      const currentVar = form.variations?.[varIndex] || form.variations?.[0];
+      const primaryPhoto = currentVar?.photos?.[0] || '';
+      const allPhotos = currentVar?.photos || [];
+
       try {
         const res = await fetch('/api/generate-scene-image', {
           method: 'POST',
@@ -102,8 +108,10 @@ export async function runProdutoPipeline(params: {
           body: JSON.stringify({
             prompt: img.promptUsed,
             productType: form.productName,
-            variationName: 'Produto Original',
+            variationName: currentVar?.name || 'Produto Original',
             targetAngle: 'front',
+            productPhotoBase64: primaryPhoto,
+            productPhotosBase64: allPhotos,
             additionalInstructions: form.additionalInstructions,
             aiProfile,
           }),

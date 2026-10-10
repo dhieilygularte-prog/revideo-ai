@@ -4,9 +4,10 @@ export type ProdutoScenario = 'tipico' | 'casa' | 'ar_livre' | 'estudio_neutro';
 
 export type ProdutoSceneCount = 1 | 2 | 3;
 
-export interface ProdutoColorItem {
+export interface ProdutoVariation {
   id: string;
   name: string;
+  photos: string[];
 }
 
 export interface ProdutoFormState {
@@ -17,7 +18,7 @@ export interface ProdutoFormState {
   scenario: ProdutoScenario;
   sceneCount: ProdutoSceneCount;
   veoModelMode: 'veo3_omniflash_10s' | 'veo3_basic_8s';
-  colors: ProdutoColorItem[];
+  variations: ProdutoVariation[];
   additionalInstructions: string;
   customSpeech: string;
 }

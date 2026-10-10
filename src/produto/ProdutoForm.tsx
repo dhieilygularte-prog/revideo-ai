@@ -1,7 +1,24 @@
 import React, { useRef } from 'react';
-import { Sparkles, Mic, MicOff, CheckCircle2, Package, Layers, Info, RotateCcw } from 'lucide-react';
-import { ProdutoFormState, ProdutoFraming, ProdutoScenario, ProdutoSceneCount } from './types';
-import { detectGender, extractShortProductName } from '../ania/aniaLibrary';
+import {
+  Sparkles,
+  Mic,
+  MicOff,
+  CheckCircle2,
+  Package,
+  Plus,
+  Trash2,
+  Upload,
+  Image as ImageIcon,
+  X,
+} from 'lucide-react';
+import {
+  ProdutoFormState,
+  ProdutoFraming,
+  ProdutoScenario,
+  ProdutoSceneCount,
+  ProdutoVariation,
+} from './types';
+import { detectGender, extractShortProductName, compressAndResizeImage } from '../ania/aniaLibrary';
 
 interface ProdutoFormProps {
   form: ProdutoFormState;
@@ -19,6 +36,7 @@ export const ProdutoForm: React.FC<ProdutoFormProps> = ({
   const [activeMic, setActiveMic] = React.useState<string | null>(null);
   const recognitionRef = useRef<any>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
 
   // Reanalisar Informações do Produto
   const handleProductInfoChange = (text: string) => {
@@ -29,14 +47,18 @@ export const ProdutoForm: React.FC<ProdutoFormProps> = ({
       ...prev,
       productInfo: text,
       gender: inferredGender !== null ? inferredGender : prev.gender,
-      productName: inferredName ? inferredName.charAt(0).toUpperCase() + inferredName.slice(1) : prev.productName,
+      productName: inferredName
+        ? inferredName.charAt(0).toUpperCase() + inferredName.slice(1)
+        : prev.productName,
     }));
   };
 
   const toggleMic = async (field: 'info' | 'instructions' | 'speech') => {
     if (activeMic === field) {
       if (recognitionRef.current) {
-        try { recognitionRef.current.stop(); } catch {}
+        try {
+          recognitionRef.current.stop();
+        } catch {}
         recognitionRef.current = null;
       }
       if (streamRef.current) {
@@ -67,11 +89,23 @@ export const ProdutoForm: React.FC<ProdutoFormProps> = ({
             text += evt.results[i][0].transcript + ' ';
           }
           if (field === 'info') {
-            handleProductInfoChange(form.productInfo ? `${form.productInfo} ${text.trim()}` : text.trim());
+            handleProductInfoChange(
+              form.productInfo ? `${form.productInfo} ${text.trim()}` : text.trim()
+            );
           } else if (field === 'instructions') {
-            onChange((prev) => ({ ...prev, additionalInstructions: prev.additionalInstructions ? `${prev.additionalInstructions} ${text.trim()}` : text.trim() }));
+            onChange((prev) => ({
+              ...prev,
+              additionalInstructions: prev.additionalInstructions
+                ? `${prev.additionalInstructions} ${text.trim()}`
+                : text.trim(),
+            }));
           } else if (field === 'speech') {
-            onChange((prev) => ({ ...prev, customSpeech: prev.customSpeech ? `${prev.customSpeech} ${text.trim()}` : text.trim() }));
+            onChange((prev) => ({
+              ...prev,
+              customSpeech: prev.customSpeech
+                ? `${prev.customSpeech} ${text.trim()}`
+                : text.trim(),
+            }));
           }
         };
 
@@ -83,6 +117,69 @@ export const ProdutoForm: React.FC<ProdutoFormProps> = ({
     } catch {
       setActiveMic(null);
     }
+  };
+
+  // Variações e Fotos
+  const handleAddVariation = () => {
+    const nextIdx = (form.variations?.length || 0) + 1;
+    const newVar: ProdutoVariation = {
+      id: `var-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+      name: `Variação ${nextIdx}`,
+      photos: [],
+    };
+    onChange((prev) => ({
+      ...prev,
+      variations: [...(prev.variations || []), newVar],
+    }));
+  };
+
+  const handleRemoveVariation = (id: string) => {
+    onChange((prev) => ({
+      ...prev,
+      variations: (prev.variations || []).filter((v) => v.id !== id),
+    }));
+  };
+
+  const handleAddPhotosToVariation = async (varId: string, files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const newPhotos: string[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      try {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+        const compressed = await compressAndResizeImage(base64, 1024, 1792, 0.85);
+        newPhotos.push(compressed);
+      } catch (err) {
+        console.warn('Erro ao processar foto:', err);
+      }
+    }
+
+    if (newPhotos.length > 0) {
+      onChange((prev) => ({
+        ...prev,
+        variations: (prev.variations || []).map((v) =>
+          v.id === varId ? { ...v, photos: [...v.photos, ...newPhotos] } : v
+        ),
+      }));
+    }
+  };
+
+  const handleRemovePhotoFromVariation = (varId: string, photoIdx: number) => {
+    onChange((prev) => ({
+      ...prev,
+      variations: (prev.variations || []).map((v) =>
+        v.id === varId
+          ? { ...v, photos: v.photos.filter((_, idx) => idx !== photoIdx) }
+          : v
+      ),
+    }));
   };
 
   const canSubmit = Boolean(form.productName.trim() && !isProcessing);
@@ -218,7 +315,9 @@ export const ProdutoForm: React.FC<ProdutoFormProps> = ({
           </label>
           <select
             value={form.scenario}
-            onChange={(e) => onChange((prev) => ({ ...prev, scenario: e.target.value as ProdutoScenario }))}
+            onChange={(e) =>
+              onChange((prev) => ({ ...prev, scenario: e.target.value as ProdutoScenario }))
+            }
             className="w-full px-3.5 py-2.5 rounded-xl bg-[#1c130e] border border-[#52392b] text-xs text-white focus:outline-none focus:border-amber-500 cursor-pointer"
           >
             <option value="tipico">✨ Cenário típico de uso (padrão inteligente)</option>
@@ -228,17 +327,148 @@ export const ProdutoForm: React.FC<ProdutoFormProps> = ({
           </select>
         </div>
 
-        {/* 6. Quantidade de Cenas (1 cena por padrão) */}
+        {/* 6. Fotos do Produto & Variações (Multi-upload de até 10+ fotos por variação) */}
+        <div className="md:col-span-12 p-4 rounded-2xl bg-[#281b14] border border-[#4a3224] space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#3d271b] pb-3">
+            <div>
+              <label className="text-xs font-bold text-amber-200 flex items-center gap-1.5">
+                <Package className="w-4 h-4 text-amber-400" />
+                <span>6. Fotos do Produto & Variações (Cores, Modelos, Ângulos)</span>
+              </label>
+              <p className="text-[11px] text-zinc-400 mt-0.5">
+                Você pode anexar quantas fotos quiser (1, 3, 5 ou até 10+ fotos de uma vez: frontal, lateral, detalhes, etc.).
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleAddVariation}
+              className="px-3 py-1.5 bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/40 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer self-start sm:self-auto"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>+ Adicionar Variação</span>
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            {(form.variations || []).map((variation, varIdx) => {
+              const autoLabel = variation.name || `Variação ${varIdx + 1}`;
+
+              return (
+                <div
+                  key={variation.id}
+                  className="p-3.5 bg-[#1c130e] rounded-xl border border-[#452d1f] space-y-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shadow-sm shadow-amber-500/50" />
+                      <input
+                        type="text"
+                        value={variation.name}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          onChange((prev) => ({
+                            ...prev,
+                            variations: (prev.variations || []).map((v) =>
+                              v.id === variation.id ? { ...v, name: val } : v
+                            ),
+                          }));
+                        }}
+                        placeholder={`Variação ${varIdx + 1}`}
+                        className="bg-transparent border-b border-transparent hover:border-[#52392b] focus:border-amber-400 text-xs font-bold text-white focus:outline-none px-1 py-0.5"
+                      />
+                      <span className="text-[11px] text-zinc-400 font-mono">
+                        ({variation.photos.length}{' '}
+                        {variation.photos.length === 1 ? 'foto' : 'fotos'})
+                      </span>
+                    </div>
+
+                    {(form.variations || []).length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveVariation(variation.id)}
+                        className="p-1 rounded-lg text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                        title="Remover esta variação"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Grid de Fotos e Botão de Multi-Upload */}
+                  <div className="space-y-2">
+                    <input
+                      type="file"
+                      ref={(el) => {
+                        fileInputRefs.current[variation.id] = el;
+                      }}
+                      multiple
+                      accept="image/png,image/jpeg,image/webp,image/jpg"
+                      className="hidden"
+                      onChange={(e) => {
+                        handleAddPhotosToVariation(variation.id, e.target.files);
+                        e.target.value = '';
+                      }}
+                    />
+
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2.5">
+                      {/* Botão de Upload Múltiplo */}
+                      <button
+                        type="button"
+                        onClick={() => fileInputRefs.current[variation.id]?.click()}
+                        className="aspect-square rounded-xl border border-dashed border-[#52392b] hover:border-amber-500 bg-[#281b14]/60 hover:bg-amber-500/10 flex flex-col items-center justify-center gap-1.5 text-zinc-400 hover:text-amber-300 transition-all cursor-pointer p-2 text-center"
+                        title="Selecione várias fotos de uma vez (frontal, traseira, detalhes)"
+                      >
+                        <Upload className="w-5 h-5 text-amber-400" />
+                        <span className="text-[10px] font-bold leading-tight">
+                          Anexar Fotos (Multi)
+                        </span>
+                      </button>
+
+                      {/* Miniaturas das Fotos Anexadas */}
+                      {variation.photos.map((photo, pIdx) => (
+                        <div
+                          key={pIdx}
+                          className="aspect-square rounded-xl border border-[#3b271b] bg-black relative group/photo overflow-hidden shadow-sm"
+                        >
+                          <img
+                            src={photo}
+                            alt={`${autoLabel} foto ${pIdx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleRemovePhotoFromVariation(variation.id, pIdx)
+                            }
+                            className="absolute top-1 right-1 p-1 rounded-md bg-black/80 hover:bg-rose-600 text-white opacity-0 group-hover/photo:opacity-100 transition-opacity cursor-pointer shadow"
+                            title="Remover foto"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 7. Quantidade de Cenas (1 cena por padrão) */}
         <div className="md:col-span-6 p-4 rounded-2xl bg-[#281b14] border border-[#4a3224] space-y-2">
           <label className="text-xs font-bold text-amber-200 block">
-            6. Quantidade de Cenas
+            7. Quantidade de Cenas
           </label>
           <div className="grid grid-cols-3 gap-2 bg-[#1c130e] p-1 rounded-xl border border-[#52392b]">
             <button
               type="button"
               onClick={() => onChange((prev) => ({ ...prev, sceneCount: 1 }))}
               className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                form.sceneCount === 1 ? 'bg-amber-600 text-white shadow' : 'text-zinc-400 hover:text-white'
+                form.sceneCount === 1
+                  ? 'bg-amber-600 text-white shadow'
+                  : 'text-zinc-400 hover:text-white'
               }`}
             >
               1 Cena (3 ref)
@@ -247,7 +477,9 @@ export const ProdutoForm: React.FC<ProdutoFormProps> = ({
               type="button"
               onClick={() => onChange((prev) => ({ ...prev, sceneCount: 2 }))}
               className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                form.sceneCount === 2 ? 'bg-amber-600 text-white shadow' : 'text-zinc-400 hover:text-white'
+                form.sceneCount === 2
+                  ? 'bg-amber-600 text-white shadow'
+                  : 'text-zinc-400 hover:text-white'
               }`}
             >
               2 Cenas
@@ -256,7 +488,9 @@ export const ProdutoForm: React.FC<ProdutoFormProps> = ({
               type="button"
               onClick={() => onChange((prev) => ({ ...prev, sceneCount: 3 }))}
               className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                form.sceneCount === 3 ? 'bg-amber-600 text-white shadow' : 'text-zinc-400 hover:text-white'
+                form.sceneCount === 3
+                  ? 'bg-amber-600 text-white shadow'
+                  : 'text-zinc-400 hover:text-white'
               }`}
             >
               3 Cenas
@@ -264,26 +498,34 @@ export const ProdutoForm: React.FC<ProdutoFormProps> = ({
           </div>
         </div>
 
-        {/* 7. Modelo do Veo (10s por padrão no Modo Produto) */}
+        {/* 8. Modelo do Veo (10s por padrão no Modo Produto) */}
         <div className="md:col-span-6 p-4 rounded-2xl bg-[#281b14] border border-[#4a3224] space-y-2">
           <label className="text-xs font-bold text-amber-200 block">
-            7. Duração da Cena (Google Veo 3.1)
+            8. Duração da Cena (Google Veo 3.1)
           </label>
           <div className="grid grid-cols-2 gap-2 bg-[#1c130e] p-1 rounded-xl border border-[#52392b]">
             <button
               type="button"
-              onClick={() => onChange((prev) => ({ ...prev, veoModelMode: 'veo3_omniflash_10s' }))}
+              onClick={() =>
+                onChange((prev) => ({ ...prev, veoModelMode: 'veo3_omniflash_10s' }))
+              }
               className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                form.veoModelMode === 'veo3_omniflash_10s' ? 'bg-amber-600 text-white shadow' : 'text-zinc-400 hover:text-white'
+                form.veoModelMode === 'veo3_omniflash_10s'
+                  ? 'bg-amber-600 text-white shadow'
+                  : 'text-zinc-400 hover:text-white'
               }`}
             >
               Omni Flash — 10 s
             </button>
             <button
               type="button"
-              onClick={() => onChange((prev) => ({ ...prev, veoModelMode: 'veo3_basic_8s' }))}
+              onClick={() =>
+                onChange((prev) => ({ ...prev, veoModelMode: 'veo3_basic_8s' }))
+              }
               className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                form.veoModelMode === 'veo3_basic_8s' ? 'bg-amber-600 text-white shadow' : 'text-zinc-400 hover:text-white'
+                form.veoModelMode === 'veo3_basic_8s'
+                  ? 'bg-amber-600 text-white shadow'
+                  : 'text-zinc-400 hover:text-white'
               }`}
             >
               Veo 3 Básico — 8 s
@@ -291,19 +533,23 @@ export const ProdutoForm: React.FC<ProdutoFormProps> = ({
           </div>
         </div>
 
-        {/* 8. Personalizar Roteiro (com fundo cinza escuro neutro para evitar edição acidental) */}
+        {/* 9. Personalizar Roteiro (com fundo cinza escuro neutro para evitar edição acidental) */}
         <div className="md:col-span-12 p-4 rounded-2xl bg-zinc-800/80 border border-zinc-700 space-y-2">
           <label className="text-xs font-bold text-zinc-300 flex items-center justify-between">
-            <span>8. Personalizar Roteiro (Opcional)</span>
+            <span>9. Personalizar Roteiro (Opcional)</span>
             <span className="text-[11px] text-zinc-400 font-normal">
-              {form.sceneCount === 1 ? 'Máx: 252 caracteres (10s)' : 'Máx: 199 caracteres por cena'}
+              {form.sceneCount === 1
+                ? 'Máx: 252 caracteres (10s)'
+                : 'Máx: 199 caracteres por cena'}
             </span>
           </label>
           <div className="relative">
             <textarea
               rows={2}
               value={form.customSpeech}
-              onChange={(e) => onChange((prev) => ({ ...prev, customSpeech: e.target.value }))}
+              onChange={(e) =>
+                onChange((prev) => ({ ...prev, customSpeech: e.target.value }))
+              }
               placeholder="Deixe em branco para usar a locução persuasiva automática ou dite/digite seu roteiro..."
               className="w-full p-3 pr-12 rounded-xl bg-zinc-950 border border-zinc-700 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-500 resize-none font-sans"
             />
@@ -311,7 +557,9 @@ export const ProdutoForm: React.FC<ProdutoFormProps> = ({
               type="button"
               onClick={() => toggleMic('speech')}
               className={`absolute right-2.5 top-2.5 p-2 rounded-lg text-xs transition-all cursor-pointer ${
-                activeMic === 'speech' ? 'bg-rose-600 text-white animate-pulse' : 'bg-zinc-800 text-zinc-300'
+                activeMic === 'speech'
+                  ? 'bg-rose-600 text-white animate-pulse'
+                  : 'bg-zinc-800 text-zinc-300'
               }`}
               title="Ditar roteiro"
             >

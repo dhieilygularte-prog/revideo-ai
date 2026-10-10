@@ -72,7 +72,13 @@ export default function App() {
     scenario: 'tipico',
     sceneCount: 1,
     veoModelMode: 'veo3_omniflash_10s',
-    colors: [],
+    variations: [
+      {
+        id: 'var-1',
+        name: 'Variação 1',
+        photos: [],
+      },
+    ],
     additionalInstructions: '',
     customSpeech: '',
   });
