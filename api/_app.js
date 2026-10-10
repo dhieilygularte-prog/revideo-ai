@@ -872,7 +872,9 @@ Retorne estritamente um JSON estruturado:
       actionDescription,
       correctionPrompt,
       additionalInstructions = "",
-      hasUserProvidedModel = false
+      hasUserProvidedModel = false,
+      isCloneMode = false,
+      preserveLocation = false
     } = params;
     const client = this.getClient();
     let stepName = "imagem 1";
@@ -908,7 +910,7 @@ ${prompt}` : prompt;
       let baseImageFile = null;
       let swatchFile = null;
       let effectivePrompt = cleanPrompt;
-      if (modelReferenceBase64) {
+      if (modelReferenceBase64 && !isCloneMode) {
         const toFile = (dataUrl, name) => {
           const mimeMatch = dataUrl.match(/^data:(image\/(?:jpeg|png|webp));base64,/);
           const mime = mimeMatch ? mimeMatch[1] : "image/png";
@@ -952,7 +954,7 @@ ${prompt}` : prompt;
 
 \xDANICA ALTERA\xC7\xC3O: substitua a roupa/produto (${productType}) que ela veste por uma pe\xE7a com exatamente estas caracter\xEDsticas (variante "${variationName}"): ${garmentSpec || `cor ${variationName}`}.
 Mantenha o mesmo modelo/corte e caimento da pe\xE7a atual; troque somente cores (pe\xE7a principal, debruns/acabamentos, bot\xF5es) e detalhes conforme descrito. Tudo que n\xE3o for a pe\xE7a permanece pixel a pixel igual \xE0 imagem enviada. Sem textos, logos ou marcas d'\xE1gua.`;
-      } else if (imageFiles.length > 0) {
+      } else if (imageFiles.length > 0 && !isCloneMode) {
         baseImageFile = imageFiles[0];
       }
       if (baseImageFile) {
@@ -2535,7 +2537,9 @@ app.post("/api/generate-scene-image", async (req, res) => {
       actionDescription,
       correctionPrompt,
       additionalInstructions = "",
-      hasUserProvidedModel = false
+      hasUserProvidedModel = false,
+      isCloneMode = false,
+      preserveLocation = false
     } = req.body;
     if (!prompt) {
       return res.status(400).json({ success: false, error: "Prompt n\xE3o fornecido" });
@@ -2556,7 +2560,9 @@ app.post("/api/generate-scene-image", async (req, res) => {
           actionDescription,
           correctionPrompt,
           additionalInstructions,
-          hasUserProvidedModel
+          hasUserProvidedModel,
+          isCloneMode,
+          preserveLocation
         });
         if (result.success && result.imageUrl) {
           return res.json(result);
@@ -2574,7 +2580,7 @@ app.post("/api/generate-scene-image", async (req, res) => {
       });
     }
     const parts = [];
-    if (modelReferenceBase64) {
+    if (modelReferenceBase64 && !isCloneMode) {
       const parsedModel = parseInlineImage(modelReferenceBase64);
       if (parsedModel) {
         parts.push({ inlineData: parsedModel });
@@ -2598,6 +2604,32 @@ app.post("/api/generate-scene-image", async (req, res) => {
 - Detalhes visuais extra\xEDdos da amostra oficial: ${swatchDetailsText || `cor ${variationName}`}
 - Todo o resto da Refer\xEAncia 1 (pessoa, rosto oculto, corpo, pose, m\xE3os, quarto, paredes, piso, ilumina\xE7\xE3o) permanece 100% id\xEAntico e intocado.`
       });
+    } else if (modelReferenceBase64 && isCloneMode) {
+      const primaryStr = productPhotoBase64 || (productPhotosBase64.length > 0 ? productPhotosBase64[0] : null);
+      if (primaryStr) {
+        const parsedPrimary = parseInlineImage(primaryStr);
+        if (parsedPrimary) {
+          parts.push({ inlineData: parsedPrimary });
+          parts.push({
+            text: `[REFERENCE 1 - PRIMARY PRODUCT PHOTO FOR "${variationName}"]:
+- HIGHEST PRIORITY 1:1 PHYSICAL FIDELITY:
+  * The product in the generated image MUST BE AN EXACT, UNCOMPROMISED 1:1 REPLICA of this photo!
+  * Replicate exact shape, silhouette, materials, textures, logos, colors and physical details without alterations.`
+          });
+        }
+      }
+      const parsedModel = parseInlineImage(modelReferenceBase64);
+      if (parsedModel) {
+        parts.push({ inlineData: parsedModel });
+        parts.push({
+          text: `[REFERENCE 2 - TALENT / MODEL IDENTITY CONTINUITY]:
+- MAINTAIN THE EXACT SAME ACTOR / MODEL:
+  * Preserve the same person's demographic identity (same gender, approximate age, skin tone, hair color/style, and build).
+  * CRITICAL FOR SCENE CONTINUITY: Do NOT lock the room or pose to Reference 2!
+  * STRICT ENVIRONMENT DIRECTIVE: Generate this image strictly in the scene's requested location: "${location || "cen\xE1rio da cena"}" and action: "${actionDescription || "a\xE7\xE3o da cena"}".
+  * ZERO BACKGROUND REPETITION: The background, furniture, and setting MUST match THIS scene's storyboard location, NEVER repeating the first image's room if this scene is in a different place!`
+        });
+      }
     } else {
       const primaryStr = productPhotoBase64 || (productPhotosBase64.length > 0 ? productPhotosBase64[0] : null);
       if (primaryStr) {
@@ -2650,7 +2682,7 @@ USER SPECIFIC DIRECTIVES: "${additionalInstructions.trim()}". You MUST strictly 
       correctionBlock,
       userDirectivesBlock
     ].filter(Boolean).join("\n");
-    const finalDirective = modelReferenceBase64 ? `
+    const finalDirective = modelReferenceBase64 && !isCloneMode ? `
 
 [DIRETIVA FINAL INVIOL\xC1VEL DE CANVAS LOCK]:
 A imagem gerada DEVE ser uma c\xF3pia 100% id\xEAntica da REFER\xCANCIA 1 (mesma pessoa/modelo, mesmo corpo, mesma pose, mesmo quarto simples residencial, mesmo piso, paredes e ilumina\xE7\xE3o). Altere EXCLUSIVAMENTE a cor e tecido da ${productType} para "${variationName}". Descarte e ignore qualquer outro fundo ou ambiente!` : "";
@@ -2666,13 +2698,14 @@ ${prompt}${finalDirective}` : `${prompt}${finalDirective}`;
     ];
     let lastErrorType = "";
     let lastErrorMessage = "";
-    const systemInstructionText = modelReferenceBase64 ? `VOC\xCA \xC9 O MOTOR DE INPAINTING E TROCA DE COR DO REV\xCDDEO AI (PADR\xC3O TIKTOK SHOP BRASIL).
+    const systemInstructionText = modelReferenceBase64 && !isCloneMode ? `VOC\xCA \xC9 O MOTOR DE INPAINTING E TROCA DE COR DO REV\xCDDEO AI (PADR\xC3O TIKTOK SHOP BRASIL).
 DIRETIVA MESTRE 1 (CANVAS LOCK TOTAL): A REFER\xCANCIA 1 \xC9 O CANVAS MESTRE INVIOL\xC1VEL. Voc\xEA DEVE manter 100% id\xEAnticos a MESMA pessoa/modelo, o mesmo corpo, a mesma pose, o mesmo enquadramento sem rosto (do pesco\xE7o para baixo), o MESMO quarto/cen\xE1rio residencial simples, as mesmas paredes, o mesmo ch\xE3o/piso, os mesmos m\xF3veis e a mesma ilumina\xE7\xE3o da REFER\xCANCIA 1. \xC9 TERMINANTEMENTE PROIBIDO alterar o modelo ou o cen\xE1rio.
 DIRETIVA MESTRE 2 (A\xC7\xC3O EXCLUSIVA): A \xDANICA modifica\xE7\xE3o permitida em toda a imagem \xE9 pintar/trocar a cor e o tecido da ${productType} usada pela pessoa na REFER\xCANCIA 1 para a nova cor "${variationName}".
 DIRETIVA MESTRE 3: ZERO TATUAGENS. Pele 100% limpa, sem qualquer tatuagem em homem ou mulher.` : `VOC\xCA \xC9 O MOTOR DE GERA\xC7\xC3O VISUAL DO REV\xCDDEO AI (PADR\xC3O TIKTOK SHOP BRASIL).
 - M\xE1xima fidelidade 1:1 f\xEDsica ao produto real das fotos de refer\xEAncia.
 - Retratar pessoas brasileiras simples e comuns do dia a dia (sem supermodelos inalcan\xE7\xE1veis).
-- Cen\xE1rios residenciais de casas reais brasileiras simples e acolhedoras (proibido mans\xF5es e luxo falso).
+- Cen\xE1rios aut\xEAnticos e din\xE2micos conforme especificado pelo storyboard do v\xEDdeo (cada cena em seu ambiente e a\xE7\xE3o designados).
+- Consist\xEAncia de modelo humano sem repetir a mesma pose ou cen\xE1rio se o roteiro mudar de lugar.
 - Zero tatuagens na pele. Enquadramento do pesco\xE7o para baixo quando solicitado.`;
     for (const modelCandidate of modelsToTry) {
       try {

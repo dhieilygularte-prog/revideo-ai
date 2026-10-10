@@ -1612,6 +1612,8 @@ app.post('/api/generate-scene-image', async (req, res) => {
       correctionPrompt,
       additionalInstructions = '',
       hasUserProvidedModel = false,
+      isCloneMode = false,
+      preserveLocation = false,
     } = req.body;
 
     if (!prompt) {
@@ -1636,6 +1638,8 @@ app.post('/api/generate-scene-image', async (req, res) => {
           correctionPrompt,
           additionalInstructions,
           hasUserProvidedModel,
+          isCloneMode,
+          preserveLocation,
         });
         if (result.success && result.imageUrl) {
           return res.json(result);
@@ -1657,8 +1661,10 @@ app.post('/api/generate-scene-image', async (req, res) => {
 
     const parts: any[] = [];
 
-    // Se temos modelReferenceBase64 (Imagem 1 Mestra para derivar imagens 2 e 3 ou continuidade de cena):
-    if (modelReferenceBase64) {
+    // Se temos modelReferenceBase64:
+    // Em Modo Ania (isCloneMode === false): aplica CANVAS LOCK total (mesma pose, mesmo quarto, apenas troca de cor).
+    // Em Modo Clonagem (isCloneMode === true): aplica CONSISTÊNCIA DE MODELO/PESSOA, mas respeita 100% o cenário, ângulo e ação de cada cena!
+    if (modelReferenceBase64 && !isCloneMode) {
       const parsedModel = parseInlineImage(modelReferenceBase64);
       if (parsedModel) {
         parts.push({ inlineData: parsedModel });
@@ -1686,6 +1692,35 @@ app.post('/api/generate-scene-image', async (req, res) => {
 - Detalhes visuais extraídos da amostra oficial: ${swatchDetailsText || `cor ${variationName}`}
 - Todo o resto da Referência 1 (pessoa, rosto oculto, corpo, pose, mãos, quarto, paredes, piso, iluminação) permanece 100% idêntico e intocado.`,
       });
+    } else if (modelReferenceBase64 && isCloneMode) {
+      // 1. Em Modo Clonagem, insere as fotos REAIS do produto como referência primária 1:1 física
+      const primaryStr = productPhotoBase64 || (productPhotosBase64.length > 0 ? productPhotosBase64[0] : null);
+      if (primaryStr) {
+        const parsedPrimary = parseInlineImage(primaryStr);
+        if (parsedPrimary) {
+          parts.push({ inlineData: parsedPrimary });
+          parts.push({
+            text: `[REFERENCE 1 - PRIMARY PRODUCT PHOTO FOR "${variationName}"]:
+- HIGHEST PRIORITY 1:1 PHYSICAL FIDELITY:
+  * The product in the generated image MUST BE AN EXACT, UNCOMPROMISED 1:1 REPLICA of this photo!
+  * Replicate exact shape, silhouette, materials, textures, logos, colors and physical details without alterations.`,
+          });
+        }
+      }
+
+      // 2. Insere a referência do modelo/ator para manter CONSISTÊNCIA HUMANA sem travar cenário nem pose
+      const parsedModel = parseInlineImage(modelReferenceBase64);
+      if (parsedModel) {
+        parts.push({ inlineData: parsedModel });
+        parts.push({
+          text: `[REFERENCE 2 - TALENT / MODEL IDENTITY CONTINUITY]:
+- MAINTAIN THE EXACT SAME ACTOR / MODEL:
+  * Preserve the same person's demographic identity (same gender, approximate age, skin tone, hair color/style, and build).
+  * CRITICAL FOR SCENE CONTINUITY: Do NOT lock the room or pose to Reference 2!
+  * STRICT ENVIRONMENT DIRECTIVE: Generate this image strictly in the scene's requested location: "${location || 'cenário da cena'}" and action: "${actionDescription || 'ação da cena'}".
+  * ZERO BACKGROUND REPETITION: The background, furniture, and setting MUST match THIS scene's storyboard location, NEVER repeating the first image's room if this scene is in a different place!`,
+        });
+      }
     } else {
       // 1. Add PRIMARY photo for this specific colorway / variation (ABSOLUTE 1:1 PRODUCT FIDELITY)
       const primaryStr = productPhotoBase64 || (productPhotosBase64.length > 0 ? productPhotosBase64[0] : null);
@@ -1762,7 +1797,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
       userDirectivesBlock,
     ].filter(Boolean).join('\n');
 
-    const finalDirective = modelReferenceBase64
+    const finalDirective = (modelReferenceBase64 && !isCloneMode)
       ? `\n\n[DIRETIVA FINAL INVIOLÁVEL DE CANVAS LOCK]:
 A imagem gerada DEVE ser uma cópia 100% idêntica da REFERÊNCIA 1 (mesma pessoa/modelo, mesmo corpo, mesma pose, mesmo quarto simples residencial, mesmo piso, paredes e iluminação). Altere EXCLUSIVAMENTE a cor e tecido da ${productType} para "${variationName}". Descarte e ignore qualquer outro fundo ou ambiente!`
       : '';
@@ -1781,7 +1816,7 @@ A imagem gerada DEVE ser uma cópia 100% idêntica da REFERÊNCIA 1 (mesma pesso
     let lastErrorType = '';
     let lastErrorMessage = '';
 
-    const systemInstructionText = modelReferenceBase64
+    const systemInstructionText = (modelReferenceBase64 && !isCloneMode)
       ? `VOCÊ É O MOTOR DE INPAINTING E TROCA DE COR DO REVÍDEO AI (PADRÃO TIKTOK SHOP BRASIL).
 DIRETIVA MESTRE 1 (CANVAS LOCK TOTAL): A REFERÊNCIA 1 É O CANVAS MESTRE INVIOLÁVEL. Você DEVE manter 100% idênticos a MESMA pessoa/modelo, o mesmo corpo, a mesma pose, o mesmo enquadramento sem rosto (do pescoço para baixo), o MESMO quarto/cenário residencial simples, as mesmas paredes, o mesmo chão/piso, os mesmos móveis e a mesma iluminação da REFERÊNCIA 1. É TERMINANTEMENTE PROIBIDO alterar o modelo ou o cenário.
 DIRETIVA MESTRE 2 (AÇÃO EXCLUSIVA): A ÚNICA modificação permitida em toda a imagem é pintar/trocar a cor e o tecido da ${productType} usada pela pessoa na REFERÊNCIA 1 para a nova cor "${variationName}".
@@ -1789,7 +1824,8 @@ DIRETIVA MESTRE 3: ZERO TATUAGENS. Pele 100% limpa, sem qualquer tatuagem em hom
       : `VOCÊ É O MOTOR DE GERAÇÃO VISUAL DO REVÍDEO AI (PADRÃO TIKTOK SHOP BRASIL).
 - Máxima fidelidade 1:1 física ao produto real das fotos de referência.
 - Retratar pessoas brasileiras simples e comuns do dia a dia (sem supermodelos inalcançáveis).
-- Cenários residenciais de casas reais brasileiras simples e acolhedoras (proibido mansões e luxo falso).
+- Cenários autênticos e dinâmicos conforme especificado pelo storyboard do vídeo (cada cena em seu ambiente e ação designados).
+- Consistência de modelo humano sem repetir a mesma pose ou cenário se o roteiro mudar de lugar.
 - Zero tatuagens na pele. Enquadramento do pescoço para baixo quando solicitado.`;
 
     for (const modelCandidate of modelsToTry) {

@@ -39,6 +39,8 @@ export interface GenerateSceneImageParams {
   correctionPrompt?: string;
   additionalInstructions?: string;
   hasUserProvidedModel?: boolean;
+  isCloneMode?: boolean;
+  preserveLocation?: boolean;
 }
 
 export interface GenerateSceneImageResult {

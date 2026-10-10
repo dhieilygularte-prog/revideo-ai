@@ -516,6 +516,8 @@ Retorne estritamente um JSON estruturado:
       correctionPrompt,
       additionalInstructions = '',
       hasUserProvidedModel = false,
+      isCloneMode = false,
+      preserveLocation = false,
     } = params;
 
     const client = this.getClient();
@@ -566,8 +568,10 @@ Retorne estritamente um JSON estruturado:
       let swatchFile: File | null = null;
       let effectivePrompt = cleanPrompt;
 
-      // Se temos referência de modelo mestre (Imagem 1 base para clonagem):
-      if (modelReferenceBase64) {
+      // Se temos referência de modelo mestre:
+      // Em Modo Ania (!isCloneMode): é uma EDIÇÃO LOCALIZADA com trava de quarto/pose via client.images.edit
+      // Em Modo Clonagem (isCloneMode): NÃO travamos pose nem quarto! Usamos fotos do produto e geração direta com o prompt do storyboard!
+      if (modelReferenceBase64 && !isCloneMode) {
         const toFile = (dataUrl: string, name: string): File => {
           const mimeMatch = dataUrl.match(/^data:(image\/(?:jpeg|png|webp));base64,/);
           const mime = mimeMatch ? mimeMatch[1] : 'image/png';
@@ -617,7 +621,7 @@ Retorne estritamente um JSON estruturado:
 
 ÚNICA ALTERAÇÃO: substitua a roupa/produto (${productType}) que ela veste por uma peça com exatamente estas características (variante "${variationName}"): ${garmentSpec || `cor ${variationName}`}.
 Mantenha o mesmo modelo/corte e caimento da peça atual; troque somente cores (peça principal, debruns/acabamentos, botões) e detalhes conforme descrito. Tudo que não for a peça permanece pixel a pixel igual à imagem enviada. Sem textos, logos ou marcas d'água.`;
-      } else if (imageFiles.length > 0) {
+      } else if (imageFiles.length > 0 && !isCloneMode) {
         baseImageFile = imageFiles[0];
       }
 

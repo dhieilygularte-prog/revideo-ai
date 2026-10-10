@@ -452,6 +452,7 @@ export default function App() {
                 actionDescription: imageAction,
                 additionalInstructions,
                 aiProfile,
+                isCloneMode: true,
               }),
             });
 
@@ -794,6 +795,7 @@ export default function App() {
           correctionPrompt: effectiveCorrection,
           additionalInstructions,
           aiProfile,
+          isCloneMode: true,
         }),
       });
 
