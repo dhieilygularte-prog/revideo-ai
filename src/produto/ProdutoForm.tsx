@@ -43,14 +43,23 @@ export const ProdutoForm: React.FC<ProdutoFormProps> = ({
     const inferredGender = detectGender(text);
     const inferredName = extractShortProductName(text) || '';
 
-    onChange((prev) => ({
-      ...prev,
-      productInfo: text,
-      gender: inferredGender !== null ? inferredGender : prev.gender,
-      productName: inferredName
-        ? inferredName.charAt(0).toUpperCase() + inferredName.slice(1)
-        : prev.productName,
-    }));
+    onChange((prev) => {
+      let newGender = prev.gender;
+      if (inferredGender !== null) {
+        newGender = inferredGender;
+      } else if (text.trim()) {
+        newGender = null; // Unissex padrão para produtos gerais/neutros
+      }
+
+      return {
+        ...prev,
+        productInfo: text,
+        gender: newGender,
+        productName: inferredName
+          ? inferredName.charAt(0).toUpperCase() + inferredName.slice(1)
+          : prev.productName,
+      };
+    });
   };
 
   const toggleMic = async (field: 'info' | 'instructions' | 'speech') => {
@@ -142,42 +151,35 @@ export const ProdutoForm: React.FC<ProdutoFormProps> = ({
 
   const handleAddPhotosToVariation = async (varId: string, files: FileList | null) => {
     if (!files || files.length === 0) return;
-    const newPhotos: string[] = [];
+    const fileArray = Array.from(files);
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      try {
-        const compressed = await compressAndResizeImage(file, 1536, 0.88);
-        if (compressed) {
-          newPhotos.push(compressed);
-        } else {
-          const raw = await new Promise<string>((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve((e.target?.result as string) || '');
-            reader.onerror = () => resolve('');
-            reader.readAsDataURL(file);
-          });
-          if (raw) newPhotos.push(raw);
-        }
-      } catch (err) {
-        console.warn('Erro ao processar foto:', err);
+    const processed = await Promise.all(
+      fileArray.map(async (file) => {
         try {
-          const raw = await new Promise<string>((resolve) => {
+          const compressed = await compressAndResizeImage(file, 1536, 0.88);
+          if (compressed) return compressed;
+        } catch (err) {
+          console.warn('Erro ao comprimir foto:', err);
+        }
+        try {
+          return await new Promise<string>((resolve) => {
             const reader = new FileReader();
             reader.onload = (e) => resolve((e.target?.result as string) || '');
             reader.onerror = () => resolve('');
             reader.readAsDataURL(file);
           });
-          if (raw) newPhotos.push(raw);
-        } catch {}
-      }
-    }
+        } catch {
+          return '';
+        }
+      })
+    );
 
-    if (newPhotos.length > 0) {
+    const validPhotos = processed.filter((p): p is string => Boolean(p && p.trim()));
+    if (validPhotos.length > 0) {
       onChange((prev) => ({
         ...prev,
         variations: (prev.variations || []).map((v) =>
-          v.id === varId ? { ...v, photos: [...v.photos, ...newPhotos] } : v
+          v.id === varId ? { ...v, photos: [...v.photos, ...validPhotos] } : v
         ),
       }));
     }

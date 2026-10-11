@@ -1073,7 +1073,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
 
         {/* 12. Instruções Adicionais (Opcional) */}
         <div
-          className={`md:col-span-6 p-3.5 rounded-2xl transition-all duration-300 space-y-1.5 ${
+          className={`md:col-span-12 p-3.5 rounded-2xl transition-all duration-300 space-y-1.5 ${
             isInstructionsIdentified
               ? 'bg-gradient-to-br from-sky-900/80 via-blue-900/75 to-slate-800/90 border-2 border-sky-400 shadow-lg shadow-sky-900/50 ring-2 ring-sky-400/40'
               : 'bg-zinc-900/70 border border-zinc-800/90'
@@ -1127,7 +1127,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
 
         {/* 13. Personalizar ROTEIRO (opcional) - Destacado visualmente com cinza mais claro e aviso explícito de não mexer */}
         <div
-          className="md:col-span-6 p-4 rounded-2xl bg-zinc-700/60 hover:bg-zinc-700/75 border-2 border-zinc-500/80 shadow-lg space-y-2.5 transition-all"
+          className="md:col-span-12 p-4 rounded-2xl bg-zinc-700/60 hover:bg-zinc-700/75 border-2 border-zinc-500/80 shadow-lg space-y-2.5 transition-all"
         >
           <div className="flex items-center justify-between gap-2 border-b border-zinc-600/70 pb-2">
             <div className="flex items-center gap-2">
@@ -1136,7 +1136,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
               </span>
               {isCustomSpeechIdentified && (
                 <span className="text-[10px] text-zinc-900 font-extrabold bg-zinc-300 px-2 py-0.5 rounded-md border border-zinc-400 flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-zinc-900" /> Personalizado ✓
+                  <CheckCircle2 className="w-3.5 h-3.5 text-zinc-900" /> Personalizado ✓
                 </span>
               )}
             </div>
@@ -1146,7 +1146,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
           </div>
 
           <p className="text-[11px] text-zinc-300 leading-tight font-medium">
-            Deixe esta caixa vazia para o aplicativo usar automaticamente a <strong>fala campeã validada</strong>. Só altere se quiser ditar um texto próprio.
+            Deixe esta caixa em branco para o aplicativo gerar a <strong>fala campeã validada automaticamente</strong>. Só edite se quiser ditar sua própria locução.
           </p>
 
           <div className="relative">
@@ -1157,14 +1157,14 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
                 onChange((prev) => ({ ...prev, customSpeech: e.target.value }));
               }}
               rows={2}
-              placeholder="Deixe vazio para usar a fala automática validada (não precisa mexer aqui)..."
-              className="w-full p-2.5 pr-11 rounded-xl text-xs text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400 font-sans leading-relaxed transition-all resize-none overflow-hidden bg-zinc-800/95 border border-zinc-500/80"
+              placeholder="Deixe em branco para usar a fala automática validada (não precisa mexer aqui)..."
+              className="w-full p-3 pr-12 rounded-xl bg-zinc-800/95 border border-zinc-500/80 text-xs text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400 resize-none font-sans"
               style={{ minHeight: '64px' }}
             />
             <button
               type="button"
               onClick={() => toggleSpeechRecognition('speech')}
-              className={`absolute right-2 top-2 p-1.5 rounded-lg text-xs font-semibold flex items-center justify-center transition-all cursor-pointer shadow-sm ${
+              className={`absolute right-2.5 top-2.5 p-2 rounded-lg text-xs font-semibold flex items-center justify-center transition-all cursor-pointer shadow-sm ${
                 activeSpeechField === 'speech'
                   ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400 scale-105'
                   : 'bg-zinc-700 text-zinc-200 hover:text-white hover:bg-zinc-600 border border-zinc-500'

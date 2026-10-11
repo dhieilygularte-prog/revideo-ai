@@ -505,6 +505,11 @@ export function detectGender(name?: string, info?: string): AniaGender | null {
     'para ele',
     'menino',
     'garoto',
+    'cueca',
+    'cuecas',
+    'barba',
+    'barbeador',
+    'sunga',
   ];
   const femTerms = [
     'feminin',
@@ -518,12 +523,27 @@ export function detectGender(name?: string, info?: string): AniaGender | null {
     'menina',
     'garota',
     'dama',
+    'vestido',
+    'saia',
+    'short saia',
+    'cropped',
+    'camisola',
+    'baby doll',
+    'babydoll',
+    'sutia',
+    'calcinha',
+    'lingerie',
+    'maquiagem',
+    'batom',
+    'rasteirinha',
+    'salto alto',
+    'scarpin',
   ];
 
-  if (mascTerms.some((t) => new RegExp(`\\b${t}`, 'i').test(combined))) {
+  if (mascTerms.some((t) => new RegExp(`\\b${t}\\b`, 'i').test(combined))) {
     return 'Homem';
   }
-  if (femTerms.some((t) => new RegExp(`\\b${t}`, 'i').test(combined))) {
+  if (femTerms.some((t) => new RegExp(`\\b${t}\\b`, 'i').test(combined))) {
     return 'Mulher';
   }
   return null;
@@ -638,15 +658,27 @@ export function extractShortProductName(text: string): string {
 
   // Lista ordenada por especificidade composta primeiro
   const shortKeywords: [string, string][] = [
+    // Vestuário Composto
     ['short saia', 'Short Saia'],
     ['shorts saia', 'Short Saia'],
     ['baby doll', 'Pijama'],
     ['babydoll', 'Pijama'],
     ['short doll', 'Pijama'],
     ['wide leg', 'Calça Wide Leg'],
+    ['saia midi', 'Saia Midi'],
+    ['vestido longo', 'Vestido Longo'],
+    ['vestido midi', 'Vestido Midi'],
+    ['calca flare', 'Calça Flare'],
+    ['calca jeans', 'Calça Jeans'],
+    ['calca capri', 'Calça Capri'],
+
+    // Calçados
+    ['tenis esportivo', 'Tênis Esportivo'],
     ['tenis', 'Tênis'],
+    ['sapato social', 'Sapato Social'],
     ['sapato', 'Sapato'],
     ['sandalia', 'Sandália'],
+    ['chinelo slide', 'Chinelo Slide'],
     ['chinelo', 'Chinelo'],
     ['slide', 'Chinelo Slide'],
     ['rasteirinha', 'Rasteirinha'],
@@ -658,6 +690,8 @@ export function extractShortProductName(text: string): string {
     ['tamanco', 'Tamanco'],
     ['scarpin', 'Scarpin'],
     ['chuteira', 'Chuteira'],
+
+    // Vestuário Geral
     ['pijama', 'Pijama'],
     ['camisola', 'Camisola'],
     ['vestido', 'Vestido'],
@@ -673,6 +707,7 @@ export function extractShortProductName(text: string): string {
     ['conjunto', 'Conjunto'],
     ['blusa', 'Blusa'],
     ['cropped', 'Cropped'],
+    ['camisa polo', 'Camisa Polo'],
     ['camisa', 'Camisa'],
     ['camiseta', 'Camiseta'],
     ['regata', 'Regata'],
@@ -685,6 +720,109 @@ export function extractShortProductName(text: string): string {
     ['biquini', 'Biquíni'],
     ['maio', 'Maiô'],
     ['sunga', 'Sunga'],
+    ['cueca', 'Cueca'],
+    ['sutia', 'Sutiã'],
+    ['lingerie', 'Lingerie'],
+
+    // Eletrônicos & Acessórios Digitais (Modo Produto / Geral)
+    ['fone de ouvido bluetooth', 'Fone Bluetooth'],
+    ['fone de ouvido sem fio', 'Fone Bluetooth'],
+    ['fone bluetooth', 'Fone Bluetooth'],
+    ['fone de ouvido', 'Fone de Ouvido'],
+    ['headphone', 'Headphone'],
+    ['relogio inteligente', 'Smartwatch'],
+    ['smartwatch', 'Smartwatch'],
+    ['relogio', 'Relógio'],
+    ['caixa de som bluetooth', 'Caixa de Som'],
+    ['caixa de som', 'Caixa de Som'],
+    ['carregador portatil', 'Carregador Portátil'],
+    ['carregador por inducao', 'Carregador por Indução'],
+    ['power bank', 'Power Bank'],
+    ['carregador', 'Carregador'],
+    ['suporte para celular', 'Suporte de Celular'],
+    ['tripe', 'Tripé'],
+    ['ring light', 'Ring Light'],
+    ['cabo usb', 'Cabo USB'],
+
+    // Casa, Utilidades, Cama e Banho
+    ['garrafa termica', 'Garrafa Térmica'],
+    ['copo termico', 'Copo Térmico'],
+    ['garrafa de agua', 'Garrafa de Água'],
+    ['garrafa', 'Garrafa'],
+    ['travesseiro cervical', 'Travesseiro Cervical'],
+    ['travesseiro ortopedico', 'Travesseiro Ortopédico'],
+    ['travesseiro nasa', 'Travesseiro'],
+    ['travesseiro', 'Travesseiro'],
+    ['almofada', 'Almofada'],
+    ['guarda chuva automatico', 'Guarda-Chuva'],
+    ['guarda chuva', 'Guarda-Chuva'],
+    ['sombrinha', 'Sombrinha'],
+    ['mini processador', 'Mini Processador'],
+    ['mini liquidificador', 'Mini Liquidificador'],
+    ['liquidificador portatil', 'Liquidificador Portátil'],
+    ['triturador', 'Triturador de Alimentos'],
+    ['marmita termica', 'Marmita Térmica'],
+    ['marmita', 'Marmita'],
+    ['frigideira antiaderente', 'Frigideira Antiaderente'],
+    ['frigideira', 'Frigideira'],
+    ['panela de pressao', 'Panela de Pressão'],
+    ['panela', 'Panela'],
+    ['luminaria de mesa', 'Luminária de Mesa'],
+    ['luminaria led', 'Luminária LED'],
+    ['luminaria', 'Luminária'],
+    ['abajur', 'Abajur'],
+    ['fita led', 'Fita LED'],
+    ['umidificador de ar', 'Umidificador de Ar'],
+    ['umidificador', 'Umidificador'],
+    ['difusor', 'Difusor de Aromas'],
+    ['mini ventilador', 'Mini Ventilador'],
+    ['ventilador portatil', 'Ventilador Portátil'],
+    ['ventilador', 'Ventilador'],
+    ['mop giratorio', 'Mop Giratório'],
+    ['rodo magico', 'Rodo Mágico'],
+    ['toalha de banho', 'Toalha de Banho'],
+    ['toalha', 'Toalha'],
+    ['cobertor', 'Cobertor'],
+    ['lencol', 'Lençol'],
+    ['edredom', 'Edredom'],
+    ['tapete', 'Tapete'],
+
+    // Beleza, Cuidados e Acessórios
+    ['escova secadora', 'Escova Secadora'],
+    ['escova alisadora', 'Escova Alisadora'],
+    ['chapinha', 'Chapinha'],
+    ['secador de cabelo', 'Secador de Cabelo'],
+    ['secador', 'Secador'],
+    ['massageador facial', 'Massageador Facial'],
+    ['massageador corporal', 'Massageador Corporal'],
+    ['massageador', 'Massageador'],
+    ['corretor postural', 'Corretor Postural'],
+    ['cinta modeladora', 'Cinta Modeladora'],
+    ['cinta', 'Cinta'],
+    ['barbeador eletrico', 'Barbeador Elétrico'],
+    ['depilador', 'Depilador'],
+    ['mochila antifurto', 'Mochila Antifurto'],
+    ['mochila impermeavel', 'Mochila Impermeável'],
+    ['mochila', 'Mochila'],
+    ['bolsa transversal', 'Bolsa Transversal'],
+    ['bolsa de ombro', 'Bolsa de Ombro'],
+    ['bolsa feminina', 'Bolsa Feminina'],
+    ['bolsa', 'Bolsa'],
+    ['carteira masculina', 'Carteira Masculina'],
+    ['carteira feminina', 'Carteira Feminina'],
+    ['carteira', 'Carteira'],
+    ['mala de viagem', 'Mala de Viagem'],
+    ['mala', 'Mala'],
+    ['oculos de sol', 'Óculos de Sol'],
+    ['oculos', 'Óculos'],
+    ['bone', 'Boné'],
+    ['chapeu', 'Chapéu'],
+    ['perfume', 'Perfume'],
+    ['hidratante', 'Hidratante'],
+    ['serum', 'Sérum'],
+    ['protetor solar', 'Protetor Solar'],
+    ['batom', 'Batom'],
+    ['maquiagem', 'Maquiagem'],
   ];
 
   for (const [kw, formatted] of shortKeywords) {
@@ -693,7 +831,28 @@ export function extractShortProductName(text: string): string {
     }
   }
 
-  // Não usa fallback genérico de palavras avulsas para evitar textos aleatórios
+  // Fallback Inteligente: se o texto tiver linhas ou título, extrai o título limpo
+  const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  if (lines.length > 0) {
+    // Procura por linha que comece com "Produto:", "Nome:", "Título:"
+    const labeledLine = lines.find((l) => /^(produto|nome|titulo|item)\s*[:=-]\s*(.+)/i.test(l));
+    if (labeledLine) {
+      const match = labeledLine.match(/^(produto|nome|titulo|item)\s*[:=-]\s*(.+)/i);
+      if (match && match[2]) {
+        const clean = match[2].trim().split(/[,;.-]/)[0].trim();
+        if (clean.length > 2 && clean.length < 50) return clean;
+      }
+    }
+
+    // Caso a primeira linha seja um título de anúncio do e-commerce (ex: "Garrafa Térmica Inox 500ml")
+    const firstLine = lines[0].replace(/^[-*#•\s]+/, '').trim();
+    if (firstLine.length > 2 && firstLine.length <= 45 && !/^(descricao|ficha|caracteristicas|sobre|detalhes)/i.test(firstLine)) {
+      // Pega até 4 palavras significativas da primeira linha
+      const words = firstLine.split(/\s+/).slice(0, 4).join(' ');
+      return words.charAt(0).toUpperCase() + words.slice(1);
+    }
+  }
+
   return '';
 }
 
