@@ -17,6 +17,94 @@ import {
   getNineSceneTimings,
 } from './produtos2Prompts';
 
+/**
+ * Faz o parse seguro de respostas HTTP em JSON sem nunca lançar "Unexpected end of JSON input"
+ */
+async function safeParseJsonResponse(res: Response): Promise<any> {
+  try {
+    const rawText = await res.text();
+    if (!rawText || !rawText.trim()) {
+      return {
+        success: false,
+        error: `Resposta vazia do servidor (HTTP ${res.status}).`,
+      };
+    }
+    return JSON.parse(rawText);
+  } catch (err: any) {
+    return {
+      success: false,
+      error: `Falha ao ler resposta do servidor (HTTP ${res.status}).`,
+    };
+  }
+}
+
+/**
+ * Chama a geração da imagem do Storyboard 3x3 com retry automático e rota de fallback (/api/generate-scene-image)
+ */
+async function requestStoryboardImageGeneration(params: {
+  prompt: string;
+  productName: string;
+  allPhotos: string[];
+  additionalInstructions?: string;
+  aiProfile?: string;
+}): Promise<{ imageUrl?: string; error?: string }> {
+  const { prompt, productName, allPhotos, additionalInstructions, aiProfile = 'openai' } = params;
+  const photosSubset = allPhotos.slice(0, 3);
+
+  // Tentativa 1: Rota dedicada /api/produtos2-generate-storyboard
+  try {
+    const imgRes = await fetch('/api/produtos2-generate-storyboard', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt,
+        productName,
+        productPhotosBase64: photosSubset,
+        additionalInstructions,
+        aiProfile,
+      }),
+    });
+    const imgData = await safeParseJsonResponse(imgRes);
+    if (imgData && imgData.success && imgData.imageUrl) {
+      return { imageUrl: imgData.imageUrl };
+    }
+  } catch (err) {
+    console.warn('Tentativa 1 (/api/produtos2-generate-storyboard) falhou, tentando fallback:', err);
+  }
+
+  // Tentativa 2 (Fallback Universal): Rota /api/generate-scene-image (presente em todos os ambientes)
+  try {
+    const fallbackRes = await fetch('/api/generate-scene-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt,
+        productType: productName,
+        variationName: productName,
+        targetAngle: 'front',
+        productPhotoBase64: photosSubset[0] || '',
+        productPhotosBase64: photosSubset,
+        additionalInstructions,
+        isCloneMode: false,
+        aiProfile,
+      }),
+    });
+    const fallbackData = await safeParseJsonResponse(fallbackRes);
+    if (fallbackData && fallbackData.success && fallbackData.imageUrl) {
+      return { imageUrl: fallbackData.imageUrl };
+    }
+    return {
+      error:
+        fallbackData?.error ||
+        'Não foi possível gerar a imagem do storyboard. Clique em "Refazer" para tentar novamente.',
+    };
+  } catch (err: any) {
+    return {
+      error: err?.message || 'Erro de conexão ao gerar a imagem do storyboard.',
+    };
+  }
+}
+
 export async function runProdutos2Pipeline(params: {
   form: Produtos2FormState;
   aiProfile?: string;
@@ -60,7 +148,7 @@ export async function runProdutos2Pipeline(params: {
     }
   });
 
-  onProgress?.(32, '3/5 Construindo Mapa Visual da Copy, Product Lock e 9 Micro-Cenas...');
+  onProgress?.(30, '3/5 Construindo Mapa Visual da Copy, Product Lock e 9 Micro-Cenas...');
 
   // 5, 6 & 7. Planejamento Inicial Determinístico (garantia de estrutura e fallback)
   const fallbackPlan = buildDefaultProdutos2Plan({
@@ -107,14 +195,14 @@ export async function runProdutos2Pipeline(params: {
         framing: form.framing,
         scenario: form.scenario,
         additionalInstructions: form.additionalInstructions,
-        productPhotosBase64: allPhotos.slice(0, 4),
+        productPhotosBase64: allPhotos.slice(0, 3),
         aiProfile,
       }),
     });
 
     if (planRes.ok) {
-      const planJson = await planRes.json();
-      if (planJson.success && planJson.data) {
+      const planJson = await safeParseJsonResponse(planRes);
+      if (planJson && planJson.success && planJson.data) {
         const d = planJson.data;
 
         // Se a IA adaptou a copy (e não era customCopy), validamos regras de vocativo e tamanho
@@ -177,7 +265,7 @@ export async function runProdutos2Pipeline(params: {
     scenes[8].endTime = form.duration === 8 ? '8.0' : '10.0';
   }
 
-  // 8. Construir prompt do Storyboard 1080x1920 (Seção 7.6)
+  // 8. PRIMEIRO: Construir e GERAR A IMAGEM DO STORYBOARD 1080x1920 (Seção 7.6)
   const storyboardPrompt = buildProdutos2StoryboardImagePrompt({
     productName: finalProductName,
     productLock,
@@ -190,7 +278,22 @@ export async function runProdutos2Pipeline(params: {
     additionalInstructions: form.additionalInstructions,
   });
 
-  // 9. Construir prompt completo do Veo 3 (Seção 8.1 e 8.2)
+  onProgress?.(55, '4/5 Gerando PRIMEIRO a imagem do Storyboard 3x3 (9 cenas numeradas 1080x1920)...');
+
+  const imgGenResult = await requestStoryboardImageGeneration({
+    prompt: storyboardPrompt,
+    productName: finalProductName,
+    allPhotos,
+    additionalInstructions: form.additionalInstructions,
+    aiProfile,
+  });
+
+  const storyboardImageUrl = imgGenResult.imageUrl;
+  const storyboardError = imgGenResult.error;
+
+  onProgress?.(88, '5/5 Imagem do Storyboard pronta! Gerando agora o Prompt do Veo 3 baseado nela...');
+
+  // 9. DEPOIS QUE A IMAGEM ESTÁ PRONTA: Construir o Prompt completo do Veo 3 (Seção 8.1 e 8.2)
   const veoPrompt = buildProdutos2VeoPrompt({
     productName: finalProductName,
     duration: form.duration,
@@ -205,35 +308,7 @@ export async function runProdutos2Pipeline(params: {
     additionalInstructions: form.additionalInstructions,
   });
 
-  onProgress?.(60, '4/5 Gerando imagem do Storyboard 3x3 (9 cenas numeradas 1080x1920)...');
-
-  // Gerar a imagem única do Storyboard (1080x1920)
-  let storyboardImageUrl: string | undefined;
-  let storyboardError: string | undefined;
-
-  try {
-    const imgRes = await fetch('/api/produtos2-generate-storyboard', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        prompt: storyboardPrompt,
-        productName: finalProductName,
-        productPhotosBase64: allPhotos,
-        additionalInstructions: form.additionalInstructions,
-        aiProfile,
-      }),
-    });
-    const imgData = await imgRes.json();
-    if (imgData.success && imgData.imageUrl) {
-      storyboardImageUrl = imgData.imageUrl;
-    } else {
-      storyboardError = imgData.error || 'Não foi possível gerar a imagem do storyboard.';
-    }
-  } catch (err: any) {
-    storyboardError = err?.message || 'Erro de conexão ao gerar o storyboard.';
-  }
-
-  onProgress?.(100, '5/5 Storyboard e Prompt do Veo 3 concluídos!');
+  onProgress?.(100, 'Concluído! Storyboard 9 cenas e Prompt do Veo 3 gerados com sucesso.');
 
   return {
     productName: finalProductName,
@@ -277,24 +352,11 @@ export async function regenerateProdutos2Storyboard(params: {
     });
   });
 
-  try {
-    const imgRes = await fetch('/api/produtos2-generate-storyboard', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        prompt: result.storyboardPrompt,
-        productName: result.productName,
-        productPhotosBase64: allPhotos,
-        additionalInstructions: form.additionalInstructions,
-        aiProfile,
-      }),
-    });
-    const imgData = await imgRes.json();
-    if (imgData.success && imgData.imageUrl) {
-      return { imageUrl: imgData.imageUrl };
-    }
-    return { error: imgData.error || 'Falha ao regenerar storyboard.' };
-  } catch (err: any) {
-    return { error: err?.message || 'Erro de conexão.' };
-  }
+  return requestStoryboardImageGeneration({
+    prompt: result.storyboardPrompt,
+    productName: result.productName,
+    allPhotos,
+    additionalInstructions: form.additionalInstructions,
+    aiProfile,
+  });
 }
