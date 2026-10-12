@@ -1,0 +1,105 @@
+export type Produtos2SubMode = 'produtos_geral' | 'vestuario_masculino';
+export type Produtos2MaleSubOption = 'calcados' | 'roupas';
+export type Produtos2Duration = 10 | 8;
+export type Produtos2Influencer = 'Homem' | 'Mulher' | null;
+export type Produtos2ClientGender = 'Masculino' | 'Feminino' | 'Unissex';
+export type Produtos2SpeechMode = 'com_fala' | 'sem_fala';
+export type Produtos2Framing = 'com_rosto' | 'sem_rosto' | 'pov';
+export type Produtos2Scenario = 'padrao_uso' | 'em_casa';
+export type Produtos2MaleClothStyle = 'storyboard' | 'pov' | 'espelho';
+
+export type CopyArchetype =
+  | 'Achado/Demonstração'
+  | 'Dor→Solução'
+  | 'Choque de preço/Urgência'
+  | 'Especificação'
+  | 'Emoção/Presente'
+  | 'Kit/Valor'
+  | 'Unboxing/Chegou'
+  | 'Provocação/Comparação';
+
+export interface CopyBankEntry {
+  id: string;
+  bank: 'geral' | 'calcados_masculinos' | 'roupas_masculinas';
+  niche: string;
+  productType: string;
+  keywords: string[];
+  archetype: CopyArchetype;
+  audience: Produtos2ClientGender;
+  charCount: number;
+  fits8s: boolean;
+  isStarred?: boolean;
+  notes?: string;
+  text: string;
+  requiredFeatures?: string[];
+}
+
+export interface Produtos2Variation {
+  id: string;
+  name: string;
+  photos: string[];
+}
+
+export interface Produtos2FormState {
+  subMode: Produtos2SubMode;
+  maleSubOption: Produtos2MaleSubOption;
+  productInfo: string;
+  productName: string;
+  productNameAutoFilled?: boolean;
+  detectedNiche?: string;
+  duration: Produtos2Duration;
+  customCopy: string;
+  additionalInstructions: string;
+  influencer: Produtos2Influencer;
+  influencerAutoFilled?: boolean;
+  clientGender: Produtos2ClientGender;
+  clientGenderAutoFilled?: boolean;
+  speechMode: Produtos2SpeechMode;
+  framing: Produtos2Framing;
+  scenario: Produtos2Scenario;
+  variations: Produtos2Variation[];
+  maleClothStyle: Produtos2MaleClothStyle;
+}
+
+export interface Produtos2VisualMapItem {
+  excerpt: string;
+  intent: string;
+  visualProof: string;
+  scenes: string;
+}
+
+export interface Produtos2SceneItem {
+  number: number;
+  startTime: string;
+  endTime: string;
+  framing: string;
+  action: string;
+  cameraMovement: string;
+  storyboardDescription: string;
+}
+
+export interface Produtos2ResultState {
+  productName: string;
+  detectedNiche: string;
+  subMode: Produtos2SubMode;
+  maleSubOption: Produtos2MaleSubOption;
+  duration: Produtos2Duration;
+  speechMode: Produtos2SpeechMode;
+  framing: Produtos2Framing;
+  scenario: Produtos2Scenario;
+  influencerResolved: 'Homem' | 'Mulher';
+  clientGender: Produtos2ClientGender;
+  finalCopy: string;
+  copySourceLabel: string;
+  copyId: string;
+  productLock: string[];
+  avatarDescription: string;
+  scenarioDescription: string;
+  visualMap: Produtos2VisualMapItem[];
+  scenes: Produtos2SceneItem[];
+  storyboardPrompt: string;
+  storyboardImageUrl?: string;
+  storyboardError?: string;
+  isRegeneratingStoryboard?: boolean;
+  veoPrompt: string;
+}

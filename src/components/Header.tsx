@@ -6,15 +6,15 @@ import { AIProfile, AI_PROFILES } from '../config/aiProfiles';
 
 interface HeaderProps {
   tokenStats?: TokenUsageStats;
-  mode?: 'ania' | 'clone' | 'produto';
-  onModeChange?: (mode: 'ania' | 'clone' | 'produto') => void;
+  mode?: 'produtos2' | 'ania' | 'clone' | 'produto';
+  onModeChange?: (mode: 'produtos2' | 'ania' | 'clone' | 'produto') => void;
   aiProfile?: AIProfile;
   onAIProfileChange?: (profile: AIProfile) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   tokenStats,
-  mode = 'ania',
+  mode = 'produtos2',
   onModeChange,
   aiProfile = 'openai',
   onAIProfileChange,
@@ -58,7 +58,20 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Mode Switcher Segmented Control */}
         {onModeChange && (
-          <div className="bg-zinc-900/90 p-1 rounded-xl border border-zinc-700/80 flex items-center gap-1 shadow-inner order-3 sm:order-2">
+          <div className="bg-zinc-900/90 p-1 rounded-xl border border-zinc-700/80 flex flex-wrap items-center gap-1 shadow-inner order-3 sm:order-2">
+            <button
+              type="button"
+              onClick={() => onModeChange('produtos2')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                mode === 'produtos2'
+                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md border border-emerald-400/40'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <Package className="w-3.5 h-3.5 text-emerald-200" />
+              <span>Modo Produtos 2.0</span>
+            </button>
+
             <button
               type="button"
               onClick={() => onModeChange('ania')}
@@ -95,7 +108,7 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
             >
               <Package className="w-3.5 h-3.5 text-amber-300" />
-              <span>Modo Produto</span>
+              <span>Modo Produto OLD</span>
             </button>
           </div>
         )}

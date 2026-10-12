@@ -47,23 +47,56 @@ import { ProdutoForm } from './produto/ProdutoForm';
 import { ProdutoResults } from './produto/ProdutoResults';
 import { runProdutoPipeline } from './produto/produtoPipeline';
 import { ProdutoFormState, ProdutoResultState } from './produto/types';
+import { Produtos2Form } from './produtos2/Produtos2Form';
+import { Produtos2Results } from './produtos2/Produtos2Results';
+import { runProdutos2Pipeline, regenerateProdutos2Storyboard } from './produtos2/produtos2Pipeline';
+import { Produtos2FormState, Produtos2ResultState } from './produtos2/types';
 import { AIProfile, AI_PROFILES } from './config/aiProfiles';
 
 export default function App() {
-  // Mode Selection State ('ania' default, options: 'ania' | 'clone' | 'produto')
-  const [appMode, setAppMode] = useState<'ania' | 'clone' | 'produto'>('ania');
+  // Mode Selection State ('produtos2' default por padrão no APP, opções: 'produtos2' | 'ania' | 'clone' | 'produto')
+  const [appMode, setAppMode] = useState<'produtos2' | 'ania' | 'clone' | 'produto'>('produtos2');
 
   // AI Profile Selection State ('openai' default no modo clonagem)
   const [aiProfile, setAiProfile] = useState<AIProfile>('openai');
 
-  const handleModeChange = (newMode: 'ania' | 'clone' | 'produto') => {
+  const handleModeChange = (newMode: 'produtos2' | 'ania' | 'clone' | 'produto') => {
     setAppMode(newMode);
     if (newMode === 'clone') {
       setAiProfile('openai');
     }
   };
 
-  // Modo Produto State
+  // Modo Produtos 2.0 State (Express · 1 Geração · Storyboard 9 Cenas)
+  const [produtos2Form, setProdutos2Form] = useState<Produtos2FormState>({
+    subMode: 'produtos_geral',
+    maleSubOption: 'calcados',
+    productInfo: '',
+    productName: '',
+    duration: 10,
+    customCopy: '',
+    additionalInstructions: '',
+    influencer: null,
+    clientGender: 'Unissex',
+    speechMode: 'com_fala',
+    framing: 'com_rosto',
+    scenario: 'padrao_uso',
+    variations: [
+      {
+        id: 'p2-var-1',
+        name: 'Cor / Variação 1',
+        photos: [],
+      },
+    ],
+    maleClothStyle: 'storyboard',
+  });
+  const [produtos2Result, setProdutos2Result] = useState<Produtos2ResultState | null>(null);
+  const [isProcessingProdutos2, setIsProcessingProdutos2] = useState(false);
+  const [produtos2ProgressPercent, setProdutos2ProgressPercent] = useState(0);
+  const [produtos2StatusMessage, setProdutos2StatusMessage] = useState('');
+  const [produtos2ErrorMessage, setProdutos2ErrorMessage] = useState<string | null>(null);
+
+  // Modo Produto OLD State
   const [produtoForm, setProdutoForm] = useState<ProdutoFormState>({
     productName: '',
     productInfo: '',
@@ -1146,7 +1179,68 @@ export default function App() {
     });
   };
 
-  // Modo Produto Pipeline Trigger
+  // Modo Produtos 2.0 Pipeline Trigger
+  const handleStartProdutos2 = async () => {
+    setIsProcessingProdutos2(true);
+    setProdutos2ProgressPercent(5);
+    setProdutos2StatusMessage('Iniciando Modo Produtos 2.0...');
+    setProdutos2ErrorMessage(null);
+
+    try {
+      const res = await runProdutos2Pipeline({
+        form: produtos2Form,
+        aiProfile,
+        onProgress: (pct, msg) => {
+          setProdutos2ProgressPercent(pct);
+          setProdutos2StatusMessage(msg);
+        },
+      });
+      setProdutos2Result(res);
+      playCompletionSound();
+    } catch (err: any) {
+      setProdutos2ErrorMessage(err.message || 'Erro ao processar o Modo Produtos 2.0.');
+    } finally {
+      setIsProcessingProdutos2(false);
+    }
+  };
+
+  const handleRegenerateProdutos2Storyboard = async () => {
+    if (!produtos2Result) return;
+    setProdutos2Result((prev) =>
+      prev ? { ...prev, isRegeneratingStoryboard: true, storyboardError: undefined } : null
+    );
+    try {
+      const regen = await regenerateProdutos2Storyboard({
+        result: produtos2Result,
+        form: produtos2Form,
+        aiProfile,
+      });
+      setProdutos2Result((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          isRegeneratingStoryboard: false,
+          storyboardImageUrl: regen.imageUrl || prev.storyboardImageUrl,
+          storyboardError: regen.error,
+        };
+      });
+      if (regen.imageUrl) {
+        playCompletionSound();
+      }
+    } catch (err: any) {
+      setProdutos2Result((prev) =>
+        prev
+          ? {
+              ...prev,
+              isRegeneratingStoryboard: false,
+              storyboardError: err?.message || 'Erro ao refazer storyboard',
+            }
+          : null
+      );
+    }
+  };
+
+  // Modo Produto OLD Pipeline Trigger
   const handleStartProduto = async () => {
     setIsProcessingProduto(true);
     setProdutoProgressPercent(5);
@@ -1165,7 +1259,7 @@ export default function App() {
       setProdutoResult(res);
       playCompletionSound();
     } catch (err: any) {
-      setProdutoErrorMessage(err.message || 'Erro ao processar o Modo Produto.');
+      setProdutoErrorMessage(err.message || 'Erro ao processar o Modo Produto OLD.');
     } finally {
       setIsProcessingProduto(false);
     }
@@ -1192,9 +1286,64 @@ export default function App() {
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 space-y-8">
         {/* ========================================================================= */}
-        {/* MODO ANIA VIEW                                                            */}
+        {/* MODO PRODUTOS 2.0 VIEW (Padrão no App)                                    */}
         {/* ========================================================================= */}
-        {appMode === 'ania' ? (
+        {appMode === 'produtos2' ? (
+          <div className="space-y-6">
+            {produtos2ErrorMessage && (
+              <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl text-xs text-rose-300 flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-bold text-sm">Aviso no Processamento (Modo Produtos 2.0):</p>
+                  <p className="text-rose-200/90 leading-relaxed">{produtos2ErrorMessage}</p>
+                </div>
+              </div>
+            )}
+
+            {!produtos2Result ? (
+              <>
+                <Produtos2Form
+                  form={produtos2Form}
+                  onChange={setProdutos2Form}
+                  onSubmit={handleStartProdutos2}
+                  isProcessing={isProcessingProdutos2}
+                />
+
+                {isProcessingProdutos2 && (
+                  <ProgressBar
+                    currentStep="generating_images"
+                    progressPercent={produtos2ProgressPercent}
+                    statusMessage={produtos2StatusMessage}
+                  />
+                )}
+              </>
+            ) : (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
+                  <button
+                    type="button"
+                    onClick={() => setProdutos2Result(null)}
+                    className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-xs font-bold text-emerald-300 hover:text-white rounded-xl flex items-center gap-2 transition-colors cursor-pointer border border-zinc-700"
+                  >
+                    <RotateCcw className="w-4 h-4 text-emerald-400" />
+                    <span>Criar Novo no Modo Produtos 2.0</span>
+                  </button>
+                </div>
+
+                <Produtos2Results
+                  result={produtos2Result}
+                  onUpdateResult={setProdutos2Result}
+                  onRegenerateStoryboard={handleRegenerateProdutos2Storyboard}
+                  onOpenPreview={(url, title) => setPreviewModal({ isOpen: true, url, title })}
+                  aiProfile={aiProfile}
+                />
+              </div>
+            )}
+          </div>
+        ) : appMode === 'ania' ? (
+          /* ========================================================================= */
+          /* MODO ANIA VIEW (Original Intacto)                                         */
+          /* ========================================================================= */
           <div className="space-y-6">
             {/* Error Notification */}
             {aniaErrorMessage && (
@@ -1250,7 +1399,7 @@ export default function App() {
           </div>
         ) : appMode === 'produto' ? (
           /* ========================================================================= */
-          /* MODO PRODUTO VIEW (Tema Marrom Escuro #1c130e)                             */
+          /* MODO PRODUTO OLD VIEW (Tema Marrom Escuro #1c130e)                        */
           /* ========================================================================= */
           <div className="space-y-6">
             {/* Error Notification */}
@@ -1258,7 +1407,7 @@ export default function App() {
               <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl text-xs text-rose-300 flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
                 <div className="space-y-1">
-                  <p className="font-bold text-sm">Aviso no Processamento (Modo Produto):</p>
+                  <p className="font-bold text-sm">Aviso no Processamento (Modo Produto OLD):</p>
                   <p className="text-rose-200/90 leading-relaxed">{produtoErrorMessage}</p>
                 </div>
               </div>
@@ -1290,7 +1439,7 @@ export default function App() {
                     className="px-4 py-2 bg-[#281b14] hover:bg-[#38261c] text-xs font-bold text-amber-200 hover:text-white rounded-xl flex items-center gap-2 transition-colors cursor-pointer border border-[#52392b]"
                   >
                     <RotateCcw className="w-4 h-4 text-amber-400" />
-                    <span>Criar Novo no Modo Produto</span>
+                    <span>Criar Novo no Modo Produto OLD</span>
                   </button>
                 </div>
 

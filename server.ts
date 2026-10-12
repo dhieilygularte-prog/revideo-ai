@@ -27,6 +27,7 @@ import {
 } from './src/config/openaiModels';
 import { AIProfile, AI_PROFILES } from './src/config/aiProfiles';
 import { buildAniaPlanningSystemPrompt } from './src/ania/aniaPrompts';
+import { buildProdutos2PlanningSystemPrompt } from './src/produtos2/produtos2Prompts';
 
 dotenv.config();
 
@@ -2135,6 +2136,267 @@ REGRA FUNDAMENTAL E ABSOLUTA:
   } catch (err: any) {
     console.error('Erro no endpoint micro-edit-image:', err);
     return res.status(500).json({ success: false, error: err?.message || 'Erro interno na microedição' });
+  }
+});
+
+// ─── ENDPOINTS MODO PRODUTOS 2.0 (EXPRESS · 1 GERAÇÃO · STORYBOARD 9 CENAS) ─────
+app.post('/api/produtos2-planning', async (req, res) => {
+  try {
+    const {
+      productName,
+      productInfo,
+      niche,
+      subMode,
+      maleSubOption,
+      maleClothStyle,
+      baseCopy,
+      isCustomCopy,
+      duration,
+      influencer,
+      clientGender,
+      speechMode,
+      framing,
+      scenario,
+      additionalInstructions,
+      productPhotosBase64 = [],
+    } = req.body;
+
+    const systemInstruction = buildProdutos2PlanningSystemPrompt();
+    const userPrompt = `PLANEJAMENTO COPY-FIRST (MODO PRODUTOS 2.0):
+- Produto (nome curto): ${productName}
+- Sub-modo: ${subMode === 'vestuario_masculino' ? `Vestuário Masculino (${maleSubOption} - estilo ${maleClothStyle})` : 'Produtos (Geral)'}
+- Nicho detectado: ${niche}
+- Informações do produto: ${productInfo || productName}
+- Copy-base selecionada (${isCustomCopy ? 'PERSONALIZADA PELO USUÁRIO - NÃO ALTERAR' : 'DO BANCO VALIDADO - ADAPTAR MÍNIMO POSSÍVEL'}): "${baseCopy}"
+- Duração no Veo: ${duration} segundos (${duration === 8 ? 'MÁXIMO 199 CARACTERES COM ESPAÇOS' : '10s completa'})
+- Influencer (quem aparece e voz): ${influencer}
+- Gênero do cliente (vocativo): ${clientGender} (se feminino, usar "Amiga" ou "Gente", NUNCA usar "menina")
+- Modo de fala: ${speechMode}
+- Enquadramento: ${framing}
+- Cenário: ${scenario === 'padrao_uso' ? 'Cenário padrão de uso real do produto' : 'Em casa (casa brasileira simples e aconchegante)'}
+- Instruções adicionais prioritárias: ${additionalInstructions || 'Nenhuma'}
+
+Retorne APENAS um objeto JSON válido com as chaves:
+{
+  "adaptedCopy": "string",
+  "productLock": ["string", "string", "string", "string"],
+  "avatarDescription": "string",
+  "scenarioDescription": "string",
+  "visualMap": [
+    { "excerpt": "string", "intent": "string", "visualProof": "string", "scenes": "1–2" }
+  ],
+  "scenes": [
+    {
+      "number": 1,
+      "startTime": "0.0",
+      "endTime": "0.9",
+      "framing": "string",
+      "action": "string",
+      "cameraMovement": "string",
+      "storyboardDescription": "string"
+    }
+  ]
+} (exatamente 9 cenas numeradas de 1 a 9 somando ${duration}.0s).`;
+
+    const activeProfile = getRequestAIProfile(req);
+
+    // 1. OpenAI Path
+    if (activeProfile === 'openai' && openAIProvider.isConfigured()) {
+      const client = (openAIProvider as any).getClient();
+      const contentBlocks: any[] = [];
+      (Array.isArray(productPhotosBase64) ? productPhotosBase64 : []).slice(0, 3).forEach((photo: string) => {
+        if (photo && typeof photo === 'string') {
+          contentBlocks.push({
+            type: 'image_url',
+            image_url: {
+              url: photo.startsWith('data:') ? photo : `data:image/jpeg;base64,${photo}`,
+              detail: 'high',
+            },
+          });
+        }
+      });
+      contentBlocks.push({ type: 'text', text: userPrompt });
+
+      const modelsToTry = [OPENAI_BRAIN_MODEL, 'gpt-4o-mini', 'gpt-4o', 'gpt-5.6-luna'];
+      for (const modelCandidate of modelsToTry) {
+        try {
+          const params: any = {
+            model: modelCandidate,
+            messages: [
+              { role: 'system', content: systemInstruction },
+              { role: 'user', content: contentBlocks },
+            ],
+            response_format: { type: 'json_object' },
+          };
+          if (!modelCandidate.startsWith('gpt-5') && !modelCandidate.startsWith('o')) {
+            params.temperature = 0.35;
+          }
+          const completion = await client.chat.completions.create(params);
+          const parsed = JSON.parse(completion.choices[0]?.message?.content || '{}');
+          if (parsed && Array.isArray(parsed.scenes) && parsed.scenes.length === 9) {
+            return res.json({ success: true, data: parsed });
+          }
+        } catch (oiErr: any) {
+          console.warn(`Aviso OpenAI em produtos2-planning (${modelCandidate}):`, oiErr?.message || oiErr);
+        }
+      }
+    }
+
+    // 2. Gemini Path
+    if (process.env.GEMINI_API_KEY) {
+      const parts: any[] = [];
+      (Array.isArray(productPhotosBase64) ? productPhotosBase64 : []).slice(0, 3).forEach((photo: string, idx: number) => {
+        const parsed = parseInlineImage(photo);
+        if (parsed) {
+          parts.push({ text: `[Foto de Referência ${idx + 1} do Produto - Fidelidade Absoluta PRODUCT LOCK]:` });
+          parts.push({ inlineData: parsed });
+        }
+      });
+      parts.push({ text: userPrompt });
+
+      const response = await getGenAI().models.generateContent({
+        model: GEMINI_VISION_MODEL || 'gemini-2.5-flash',
+        contents: parts,
+        config: {
+          systemInstruction,
+          responseMimeType: 'application/json',
+        },
+      });
+      const parsed = JSON.parse(response.text || '{}');
+      return res.json({ success: true, data: parsed });
+    }
+
+    return res.json({ success: false, error: 'Nenhum provedor de IA configurado para planejamento.' });
+  } catch (err: any) {
+    console.warn('Erro em /api/produtos2-planning:', err?.message || err);
+    return res.json({ success: false, error: err?.message || 'Erro no planejamento Produtos 2.0' });
+  }
+});
+
+app.post('/api/produtos2-generate-storyboard', async (req, res) => {
+  try {
+    const {
+      prompt,
+      productName = 'Produto',
+      productPhotosBase64 = [],
+      additionalInstructions = '',
+    } = req.body;
+
+    if (!prompt) {
+      return res.status(400).json({ success: false, error: 'Prompt do storyboard não fornecido.' });
+    }
+
+    const photosList: string[] = Array.isArray(productPhotosBase64)
+      ? productPhotosBase64.filter(Boolean)
+      : [];
+
+    const activeProfile = getRequestAIProfile(req);
+
+    // 1. OpenAI Path
+    if (activeProfile === 'openai' && openAIProvider.isConfigured()) {
+      try {
+        const result = await openAIProvider.generateSceneImage({
+          prompt,
+          productPhotoBase64: photosList[0] || '',
+          productPhotosBase64: photosList,
+          variationName: productName,
+          productType: productName,
+          additionalInstructions,
+          hasUserProvidedModel: false,
+          isCloneMode: false,
+        });
+        if (result.success && result.imageUrl) {
+          return res.json(result);
+        }
+      } catch (oiErr: any) {
+        console.warn('Aviso OpenAI em produtos2-generate-storyboard, usando Gemini:', oiErr?.message || oiErr);
+      }
+    }
+
+    // 2. Gemini Path
+    if (!process.env.GEMINI_API_KEY) {
+      return res.json({
+        success: false,
+        error: 'Chave de API não configurada para gerar a imagem do storyboard.',
+      });
+    }
+
+    const parts: any[] = [];
+    photosList.slice(0, 4).forEach((photoStr: string, idx: number) => {
+      const parsed = parseInlineImage(photoStr);
+      if (parsed) {
+        parts.push({ inlineData: parsed });
+        parts.push({
+          text: `[FOTO DE REFERÊNCIA REAL DO PRODUTO #${idx + 1} (${productName})]: Preserve 100% idênticos o formato, cor, proporção, textura, rótulos/logos e detalhes físicos deste produto em todos os 9 quadros do storyboard 3x3.`,
+        });
+      }
+    });
+
+    parts.push({ text: prompt });
+
+    const systemInstructionText = `VOCÊ É O GERADOR DE STORYBOARD 3x3 DO MODO PRODUTOS 2.0 (TIKTOK SHOP BRASIL).
+- Gere UMA ÚNICA IMAGEM VERTICAL 9:16 (1080x1920) contendo uma grade 3x3 (3 colunas x 3 linhas) com EXATAMENTE 9 quadros fotográficos ultra-realistas numerados de 1 a 9 (selo circular branco pequeno no canto superior esquerdo de cada quadro com número preto).
+- Cantos arredondados nos quadros, separados por uma borda branca fina, sobre fundo branco.
+- PRODUCT LOCK ABSOLUTO: O produto em todos os 9 quadros deve ser 100% idêntico às fotos reais anexadas (mesmo formato, cor, textura, proporção e detalhes).
+- ZERO TEXTO NOS QUADROS: Não escreva nenhuma legenda, título, preço, seta, ícone de carrinho ou interface do TikTok. Apenas os números 1 a 9 nos selos circulares.`;
+
+    const modelsToTry = [
+      GEMINI_IMAGE_MODEL || 'gemini-3.1-flash-image',
+      GEMINI_IMAGE_FAST_MODEL || 'gemini-3.1-flash-lite-image',
+      'gemini-3-pro-image',
+    ];
+
+    let imageResultUrl = '';
+    let lastErrorMessage = '';
+
+    for (const modelCandidate of modelsToTry) {
+      try {
+        const imgRes = await getGenAI().models.generateContent({
+          model: modelCandidate,
+          contents: { parts },
+          config: {
+            systemInstruction: systemInstructionText,
+            imageConfig: {
+              aspectRatio: '9:16',
+            },
+          },
+        });
+
+        const candidates = imgRes.candidates || [];
+        if (candidates[0]?.content?.parts) {
+          for (const part of candidates[0].content.parts) {
+            if (part.inlineData?.data) {
+              const mime = part.inlineData.mimeType || 'image/png';
+              imageResultUrl = `data:${mime};base64,${part.inlineData.data}`;
+              break;
+            }
+          }
+        }
+        if (imageResultUrl) break;
+      } catch (imgErr: any) {
+        lastErrorMessage = imgErr?.message || 'Erro ao gerar imagem do storyboard';
+        console.warn(`Tentativa storyboard com ${modelCandidate} falhou:`, lastErrorMessage);
+      }
+    }
+
+    if (!imageResultUrl) {
+      return res.json({
+        success: false,
+        error: lastErrorMessage || 'Não foi possível gerar a imagem do storyboard.',
+      });
+    }
+
+    return res.json({
+      success: true,
+      imageUrl: imageResultUrl,
+      costBRL: 0.08,
+    });
+  } catch (err: any) {
+    console.error('Erro em /api/produtos2-generate-storyboard:', err);
+    return res.json({
+      success: false,
+      error: err?.message || 'Erro inesperado ao gerar storyboard.',
+    });
   }
 });
 

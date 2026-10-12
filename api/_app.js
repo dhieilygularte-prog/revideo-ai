@@ -1188,6 +1188,38 @@ REGRAS CR\xCDTICAS:
 - "peca": substantivo curto do produto em min\xFAsculas (ex: pijama, calca, bermuda, tenis, sandalia, vestido).`;
 }
 
+// src/produtos2/produtos2Prompts.ts
+function buildProdutos2PlanningSystemPrompt() {
+  return `Voc\xEA \xE9 o Diretor Criativo Copy-First do Modo Produtos 2.0 (TikTok Shop Brasil).
+REGRA-M\xC3E: A COPY VENDE. O STORYBOARD PROVA VISUALMENTE A COPY. O V\xCDDEO ANIMA O STORYBOARD SEM NUNCA MOSTRAR A PR\xD3PRIA FOLHA DO STORYBOARD.
+
+Sua tarefa \xE9 receber:
+1) As fotos reais do produto;
+2) As "Informa\xE7\xF5es do produto" e "Nome do produto";
+3) A "Copy-base selecionada do banco" (ou copy personalizada);
+4) As configura\xE7\xF5es (dura\xE7\xE3o 10s ou 8s, influencer, g\xEAnero do cliente, fala, enquadramento, cen\xE1rio, instru\xE7\xF5es adicionais).
+
+E retornar um JSON estrito com:
+1. "adaptedCopy":
+   - Se foi enviada copy personalizada do usu\xE1rio, mantenha-a EXATAMENTE como est\xE1 (s\xF3 reduza se dura\xE7\xE3o=8s e passar de 199 caracteres).
+   - Se veio do banco, MUDE O M\xCDNIMO POSS\xCDVEL (Se\xE7\xE3o 5): troque apenas nome/marca/modelo pelos do produto real, n\xFAmeros/especifica\xE7\xF5es pelos reais das Informa\xE7\xF5es do Produto, cor/material/quantidade.
+   - NUNCA use a palavra "menina" como vocativo; quando o p\xFAblico for feminino e houver vocativo, use "Amiga" ou "Gente". Para p\xFAblico masculino, use "Meu amigo", "Cara", "Irm\xE3o" ou "Gente".
+   - Se dura\xE7\xE3o = 8s, a "adaptedCopy" DEVE ter no m\xE1ximo 199 caracteres contando espa\xE7os (mantendo Gancho + Prova principal com "olha" + CTA).
+2. "productLock": array de 4 a 6 strings detalhando fisicamente o produto visto nas fotos (formato, cor exata, material, textura, propor\xE7\xE3o, logotipos existentes, costuras/bot\xF5es/sola/cabos/detalhes).
+3. "avatarDescription": descri\xE7\xE3o de 1 frase do consumidor brasileiro adulto que apresenta o produto (respeitando o g\xEAnero do Influencer e as Instru\xE7\xF5es Adicionais; se produto infantil, quem apresenta na cena 1 e 9 \xE9 sempre um adulto pai/m\xE3e).
+4. "scenarioDescription": descri\xE7\xE3o concreta do cen\xE1rio (onde o produto \xE9 usado de verdade ou casa brasileira simples e aconchegante, respeitando Instru\xE7\xF5es Adicionais).
+5. "visualMap": array de 4 objetos { "excerpt", "intent", "visualProof", "scenes" } mapeando os trechos da copy para provas visuais nas cenas 1 a 9.
+6. "scenes": array de EXATAMENTE 9 objetos { "number": 1..9, "startTime", "endTime", "framing", "action", "cameraMovement", "storyboardDescription" }:
+   - Cada cena prova visualmente o que est\xE1 sendo falado naquele momento da copy.
+   - Todo "olha [detalhe]" na copy vira uma cena de close/macro daquele detalhe.
+   - Variar enquadramentos (nunca duas cenas seguidas iguais): close, macro, POV de m\xE3os, plano m\xE9dio, plano aberto, uso real.
+   - Respeitar estritamente o Enquadramento:
+     * "com_rosto": rosto aparece em algumas cenas (especialmente gancho e cena 9).
+     * "sem_rosto": nunca mostrar o rosto; sempre do pesco\xE7o para baixo.
+     * "pov": mostrar somente as m\xE3os em primeira pessoa; nunca rosto ou corpo.
+   - Proibido texto, legenda, pre\xE7o, n\xFAmero escrito, carrinho ou interface do TikTok dentro das cenas.`;
+}
+
 // server.ts
 dotenv3.config();
 dotenv3.config();
@@ -2967,6 +2999,237 @@ REGRA FUNDAMENTAL E ABSOLUTA:
   } catch (err) {
     console.error("Erro no endpoint micro-edit-image:", err);
     return res.status(500).json({ success: false, error: err?.message || "Erro interno na microedi\xE7\xE3o" });
+  }
+});
+app.post("/api/produtos2-planning", async (req, res) => {
+  try {
+    const {
+      productName,
+      productInfo,
+      niche,
+      subMode,
+      maleSubOption,
+      maleClothStyle,
+      baseCopy,
+      isCustomCopy,
+      duration,
+      influencer,
+      clientGender,
+      speechMode,
+      framing,
+      scenario,
+      additionalInstructions,
+      productPhotosBase64 = []
+    } = req.body;
+    const systemInstruction = buildProdutos2PlanningSystemPrompt();
+    const userPrompt = `PLANEJAMENTO COPY-FIRST (MODO PRODUTOS 2.0):
+- Produto (nome curto): ${productName}
+- Sub-modo: ${subMode === "vestuario_masculino" ? `Vestu\xE1rio Masculino (${maleSubOption} - estilo ${maleClothStyle})` : "Produtos (Geral)"}
+- Nicho detectado: ${niche}
+- Informa\xE7\xF5es do produto: ${productInfo || productName}
+- Copy-base selecionada (${isCustomCopy ? "PERSONALIZADA PELO USU\xC1RIO - N\xC3O ALTERAR" : "DO BANCO VALIDADO - ADAPTAR M\xCDNIMO POSS\xCDVEL"}): "${baseCopy}"
+- Dura\xE7\xE3o no Veo: ${duration} segundos (${duration === 8 ? "M\xC1XIMO 199 CARACTERES COM ESPA\xC7OS" : "10s completa"})
+- Influencer (quem aparece e voz): ${influencer}
+- G\xEAnero do cliente (vocativo): ${clientGender} (se feminino, usar "Amiga" ou "Gente", NUNCA usar "menina")
+- Modo de fala: ${speechMode}
+- Enquadramento: ${framing}
+- Cen\xE1rio: ${scenario === "padrao_uso" ? "Cen\xE1rio padr\xE3o de uso real do produto" : "Em casa (casa brasileira simples e aconchegante)"}
+- Instru\xE7\xF5es adicionais priorit\xE1rias: ${additionalInstructions || "Nenhuma"}
+
+Retorne APENAS um objeto JSON v\xE1lido com as chaves:
+{
+  "adaptedCopy": "string",
+  "productLock": ["string", "string", "string", "string"],
+  "avatarDescription": "string",
+  "scenarioDescription": "string",
+  "visualMap": [
+    { "excerpt": "string", "intent": "string", "visualProof": "string", "scenes": "1\u20132" }
+  ],
+  "scenes": [
+    {
+      "number": 1,
+      "startTime": "0.0",
+      "endTime": "0.9",
+      "framing": "string",
+      "action": "string",
+      "cameraMovement": "string",
+      "storyboardDescription": "string"
+    }
+  ]
+} (exatamente 9 cenas numeradas de 1 a 9 somando ${duration}.0s).`;
+    const activeProfile = getRequestAIProfile(req);
+    if (activeProfile === "openai" && openAIProvider.isConfigured()) {
+      const client = openAIProvider.getClient();
+      const contentBlocks = [];
+      (Array.isArray(productPhotosBase64) ? productPhotosBase64 : []).slice(0, 3).forEach((photo) => {
+        if (photo && typeof photo === "string") {
+          contentBlocks.push({
+            type: "image_url",
+            image_url: {
+              url: photo.startsWith("data:") ? photo : `data:image/jpeg;base64,${photo}`,
+              detail: "high"
+            }
+          });
+        }
+      });
+      contentBlocks.push({ type: "text", text: userPrompt });
+      const modelsToTry = [OPENAI_BRAIN_MODEL, "gpt-4o-mini", "gpt-4o", "gpt-5.6-luna"];
+      for (const modelCandidate of modelsToTry) {
+        try {
+          const params = {
+            model: modelCandidate,
+            messages: [
+              { role: "system", content: systemInstruction },
+              { role: "user", content: contentBlocks }
+            ],
+            response_format: { type: "json_object" }
+          };
+          if (!modelCandidate.startsWith("gpt-5") && !modelCandidate.startsWith("o")) {
+            params.temperature = 0.35;
+          }
+          const completion = await client.chat.completions.create(params);
+          const parsed = JSON.parse(completion.choices[0]?.message?.content || "{}");
+          if (parsed && Array.isArray(parsed.scenes) && parsed.scenes.length === 9) {
+            return res.json({ success: true, data: parsed });
+          }
+        } catch (oiErr) {
+          console.warn(`Aviso OpenAI em produtos2-planning (${modelCandidate}):`, oiErr?.message || oiErr);
+        }
+      }
+    }
+    if (process.env.GEMINI_API_KEY) {
+      const parts = [];
+      (Array.isArray(productPhotosBase64) ? productPhotosBase64 : []).slice(0, 3).forEach((photo, idx) => {
+        const parsed2 = parseInlineImage(photo);
+        if (parsed2) {
+          parts.push({ text: `[Foto de Refer\xEAncia ${idx + 1} do Produto - Fidelidade Absoluta PRODUCT LOCK]:` });
+          parts.push({ inlineData: parsed2 });
+        }
+      });
+      parts.push({ text: userPrompt });
+      const response = await getGenAI().models.generateContent({
+        model: GEMINI_VISION_MODEL || "gemini-2.5-flash",
+        contents: parts,
+        config: {
+          systemInstruction,
+          responseMimeType: "application/json"
+        }
+      });
+      const parsed = JSON.parse(response.text || "{}");
+      return res.json({ success: true, data: parsed });
+    }
+    return res.json({ success: false, error: "Nenhum provedor de IA configurado para planejamento." });
+  } catch (err) {
+    console.warn("Erro em /api/produtos2-planning:", err?.message || err);
+    return res.json({ success: false, error: err?.message || "Erro no planejamento Produtos 2.0" });
+  }
+});
+app.post("/api/produtos2-generate-storyboard", async (req, res) => {
+  try {
+    const {
+      prompt,
+      productName = "Produto",
+      productPhotosBase64 = [],
+      additionalInstructions = ""
+    } = req.body;
+    if (!prompt) {
+      return res.status(400).json({ success: false, error: "Prompt do storyboard n\xE3o fornecido." });
+    }
+    const photosList = Array.isArray(productPhotosBase64) ? productPhotosBase64.filter(Boolean) : [];
+    const activeProfile = getRequestAIProfile(req);
+    if (activeProfile === "openai" && openAIProvider.isConfigured()) {
+      try {
+        const result = await openAIProvider.generateSceneImage({
+          prompt,
+          productPhotoBase64: photosList[0] || "",
+          productPhotosBase64: photosList,
+          variationName: productName,
+          productType: productName,
+          additionalInstructions,
+          hasUserProvidedModel: false,
+          isCloneMode: false
+        });
+        if (result.success && result.imageUrl) {
+          return res.json(result);
+        }
+      } catch (oiErr) {
+        console.warn("Aviso OpenAI em produtos2-generate-storyboard, usando Gemini:", oiErr?.message || oiErr);
+      }
+    }
+    if (!process.env.GEMINI_API_KEY) {
+      return res.json({
+        success: false,
+        error: "Chave de API n\xE3o configurada para gerar a imagem do storyboard."
+      });
+    }
+    const parts = [];
+    photosList.slice(0, 4).forEach((photoStr, idx) => {
+      const parsed = parseInlineImage(photoStr);
+      if (parsed) {
+        parts.push({ inlineData: parsed });
+        parts.push({
+          text: `[FOTO DE REFER\xCANCIA REAL DO PRODUTO #${idx + 1} (${productName})]: Preserve 100% id\xEAnticos o formato, cor, propor\xE7\xE3o, textura, r\xF3tulos/logos e detalhes f\xEDsicos deste produto em todos os 9 quadros do storyboard 3x3.`
+        });
+      }
+    });
+    parts.push({ text: prompt });
+    const systemInstructionText = `VOC\xCA \xC9 O GERADOR DE STORYBOARD 3x3 DO MODO PRODUTOS 2.0 (TIKTOK SHOP BRASIL).
+- Gere UMA \xDANICA IMAGEM VERTICAL 9:16 (1080x1920) contendo uma grade 3x3 (3 colunas x 3 linhas) com EXATAMENTE 9 quadros fotogr\xE1ficos ultra-realistas numerados de 1 a 9 (selo circular branco pequeno no canto superior esquerdo de cada quadro com n\xFAmero preto).
+- Cantos arredondados nos quadros, separados por uma borda branca fina, sobre fundo branco.
+- PRODUCT LOCK ABSOLUTO: O produto em todos os 9 quadros deve ser 100% id\xEAntico \xE0s fotos reais anexadas (mesmo formato, cor, textura, propor\xE7\xE3o e detalhes).
+- ZERO TEXTO NOS QUADROS: N\xE3o escreva nenhuma legenda, t\xEDtulo, pre\xE7o, seta, \xEDcone de carrinho ou interface do TikTok. Apenas os n\xFAmeros 1 a 9 nos selos circulares.`;
+    const modelsToTry = [
+      GEMINI_IMAGE_MODEL || "gemini-3.1-flash-image",
+      GEMINI_IMAGE_FAST_MODEL || "gemini-3.1-flash-lite-image",
+      "gemini-3-pro-image"
+    ];
+    let imageResultUrl = "";
+    let lastErrorMessage = "";
+    for (const modelCandidate of modelsToTry) {
+      try {
+        const imgRes = await getGenAI().models.generateContent({
+          model: modelCandidate,
+          contents: { parts },
+          config: {
+            systemInstruction: systemInstructionText,
+            imageConfig: {
+              aspectRatio: "9:16"
+            }
+          }
+        });
+        const candidates = imgRes.candidates || [];
+        if (candidates[0]?.content?.parts) {
+          for (const part of candidates[0].content.parts) {
+            if (part.inlineData?.data) {
+              const mime = part.inlineData.mimeType || "image/png";
+              imageResultUrl = `data:${mime};base64,${part.inlineData.data}`;
+              break;
+            }
+          }
+        }
+        if (imageResultUrl) break;
+      } catch (imgErr) {
+        lastErrorMessage = imgErr?.message || "Erro ao gerar imagem do storyboard";
+        console.warn(`Tentativa storyboard com ${modelCandidate} falhou:`, lastErrorMessage);
+      }
+    }
+    if (!imageResultUrl) {
+      return res.json({
+        success: false,
+        error: lastErrorMessage || "N\xE3o foi poss\xEDvel gerar a imagem do storyboard."
+      });
+    }
+    return res.json({
+      success: true,
+      imageUrl: imageResultUrl,
+      costBRL: 0.08
+    });
+  } catch (err) {
+    console.error("Erro em /api/produtos2-generate-storyboard:", err);
+    return res.json({
+      success: false,
+      error: err?.message || "Erro inesperado ao gerar storyboard."
+    });
   }
 });
 async function startServer() {

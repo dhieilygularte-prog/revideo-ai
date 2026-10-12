@@ -597,16 +597,16 @@ export const ProdutoForm: React.FC<ProdutoFormProps> = ({
           </div>
         </div>
 
-        {/* 10. Personalizar Roteiro (com fundo cinza mais claro e aviso de não mexer para evitar edições acidentais) */}
+        {/* 10. Personalizar Copy do Vídeo (com fundo cinza mais claro e aviso de não mexer para evitar edições acidentais) */}
         <div className="md:col-span-12 p-4 rounded-2xl bg-zinc-700/60 hover:bg-zinc-700/75 border-2 border-zinc-500/80 shadow-lg space-y-2.5 transition-all">
           <div className="flex items-center justify-between gap-2 border-b border-zinc-600/70 pb-2">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-black text-zinc-100 uppercase tracking-wide">
-                10. Personalizar Roteiro (Opcional)
+                10. Personalizar Copy do Vídeo ou seja o que é falado nele (Opcional)
               </span>
               <span className="text-[11px] text-zinc-300 font-normal">
                 {form.sceneCount === 1
-                  ? 'Máx: 252 caracteres (10s)'
+                  ? 'Máx: 259 caracteres (10s - Baseada nas Copys Validadas)'
                   : 'Máx: 199 caracteres por cena'}
               </span>
             </div>
@@ -637,7 +637,7 @@ export const ProdutoForm: React.FC<ProdutoFormProps> = ({
                   ? 'bg-rose-600 text-white animate-pulse'
                   : 'bg-zinc-700 text-zinc-200 hover:text-white hover:bg-zinc-600 border border-zinc-500'
               }`}
-              title="Ditar roteiro"
+              title="Ditar copy do vídeo"
             >
               {activeMic === 'speech' ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4 text-zinc-300" />}
             </button>
@@ -658,7 +658,7 @@ export const ProdutoForm: React.FC<ProdutoFormProps> = ({
           }`}
         >
           <Sparkles className="w-5 h-5 text-amber-200" />
-          <span>GERAR CRIATIVO • MODO PRODUTO</span>
+          <span>GERAR CRIATIVO • MODO PRODUTO OLD</span>
         </button>
       </div>
     </div>

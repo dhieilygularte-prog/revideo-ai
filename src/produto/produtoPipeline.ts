@@ -1,5 +1,10 @@
 import { ProdutoFormState, ProdutoResultState, ProdutoSceneResult, ProdutoImageItem } from './types';
 import { buildProdutoImagePrompt, buildProdutoVeoPrompt } from './produtoPrompts';
+import {
+  analyzeProductInfoForProdutos2,
+  enforceMaxChars,
+  selectAndAdaptProdutos2Copy,
+} from '../produtos2/produtos2CopyBank';
 
 export async function runProdutoPipeline(params: {
   form: ProdutoFormState;
@@ -8,25 +13,50 @@ export async function runProdutoPipeline(params: {
 }): Promise<ProdutoResultState> {
   const { form, aiProfile = 'openai', onProgress } = params;
 
-  onProgress?.(10, 'Iniciando planejamento do Modo Produto...');
+  onProgress?.(10, 'Iniciando planejamento do Modo Produto OLD...');
 
   // 1. Duração e Limite de Caracteres
   const durationSec = form.veoModelMode === 'veo3_omniflash_10s' ? 10 : 8;
-  const maxChars = form.sceneCount === 1 ? 252 : 199;
+  const maxChars = form.sceneCount === 1 ? 259 : 199;
 
-  // 2. Montar Fala Adaptada
+  // 2. Montar Fala Adaptada (Usa o Banco de Copies Validadas de 10s quando for 1 cena, e usa "Amiga" em vez de "Menina")
   let speech = form.customSpeech.trim();
   if (!speech) {
-    if (form.gender === 'Homem') {
-      speech = `Fala amigo, olha a praticidade desse ${form.productName}! Qualidade absurda, super fácil de usar no dia a dia. Aproveita que o desconto tá liberado no carrinho aqui embaixo!`;
+    if (form.sceneCount === 1) {
+      const specs = analyzeProductInfoForProdutos2(`${form.productName} ${form.productInfo}`);
+      const clientGender =
+        form.gender === 'Homem'
+          ? 'Masculino'
+          : form.gender === 'Mulher'
+          ? 'Feminino'
+          : 'Unissex';
+      const selected = selectAndAdaptProdutos2Copy({
+        subMode: specs.subMode,
+        maleSubOption: specs.maleSubOption,
+        productName: form.productName,
+        productInfo: form.productInfo,
+        duration: durationSec === 10 ? 10 : 8,
+        clientGender,
+        influencer: form.gender,
+      });
+      speech = selected.finalCopy;
     } else {
-      speech = `Menina, olha a praticidade desse ${form.productName}! Qualidade maravilhosa, super prático pro dia a dia. Aproveita que o preço promocional tá liberado no carrinho aqui embaixo!`;
+      if (form.gender === 'Homem') {
+        speech = `Meu amigo, olha a praticidade desse ${form.productName}! Qualidade absurda, super fácil de usar no dia a dia. Aproveita que o desconto tá liberado no carrinho laranja aqui embaixo!`;
+      } else if (form.gender === 'Mulher') {
+        speech = `Amiga, olha a praticidade desse ${form.productName}! Qualidade maravilhosa, super prático pro dia a dia. Aproveita que o preço promocional tá liberado no carrinho laranja aqui embaixo!`;
+      } else {
+        speech = `Gente, olha a praticidade desse ${form.productName}! Qualidade incrível, super prático pro dia a dia. Aproveita que a promoção tá liberada no carrinho laranja aqui embaixo!`;
+      }
     }
   }
 
+  // Garantir que nunca tenha "Menina," como vocativo
+  speech = speech.replace(/\bMeninas\s*,/gi, 'Amigas,').replace(/\bMenina\s*,/gi, 'Amiga,');
+
   // Garantir limites de caracteres por cena
   if (speech.length > maxChars) {
-    speech = speech.slice(0, maxChars - 1).trim() + '!';
+    speech = enforceMaxChars(speech, maxChars);
   }
 
   onProgress?.(30, 'Criando roteiro e prompts do Veo 3.1...');
