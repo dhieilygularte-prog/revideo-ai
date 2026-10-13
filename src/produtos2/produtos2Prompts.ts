@@ -932,6 +932,7 @@ E retornar um JSON estrito com:
    - A "baseCopy" recebida já é a copy do banco adaptada com o mínimo de mudanças e já começa obrigatoriamente com "Nossa! ". MANTENHA A "baseCopy" EXATAMENTE COMO ESTÁ!
    - A fala no Veo deve ser pronunciada de forma RÁPIDA E EUFÓRICA (estilo contando uma novidade imperdível e urgente).
    - NUNCA use a palavra "menina" como vocativo; quando o público for feminino, use "Amiga" ou "Gente". Para masculino, use "Meu amigo", "Cara", "Irmão" ou "Gente".
+   - NUNCA mencione "frete grátis" ou "frete gratuito" na fala, a menos que isso tenha sido informado expressamente nas Informações do Produto.
 3. "productLock": array de 4 a 6 strings detalhando fisicamente o produto visto nas fotos (1º item obrigatoriamente a descrição exata da logomarca/emblema/marca impressa no produto e sua posição exata; seguido de formato, cor exata, material, textura, proporção, botões/costuras/sola/cabos/detalhes).
 4. "avatarDescription": descrição de 1 frase do consumidor brasileiro adulto que apresenta o produto (respeitando o gênero do Influencer e as Instruções Adicionais; se produto infantil, quem apresenta na cena 1 e 9 é sempre um adulto pai/mãe).
 5. "scenarioDescription":

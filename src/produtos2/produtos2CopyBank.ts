@@ -136,7 +136,7 @@ export const COPIES_PRODUTOS_GERAIS: CopyBankEntry[] = [
     audience: 'Masculino',
     charCount: 218,
     fits8s: false,
-    text: 'Baixou o preço do amplificador mais vendido aqui do TikTok Shop. Clica no carrinho laranja pra você desbloquear a oferta relâmpago e já finaliza pra você não perder o frete grátis. Mas atenção, é só até meia-noite, tá?',
+    text: 'Baixou o preço do amplificador mais vendido aqui do TikTok Shop. Clica no carrinho laranja pra você desbloquear a oferta relâmpago e já finaliza pra você não perder esse super desconto. Mas atenção, é só até meia-noite, tá?',
   },
   {
     id: 'SOM-03',
@@ -598,7 +598,7 @@ export const COPIES_PRODUTOS_GERAIS: CopyBankEntry[] = [
     audience: 'Unissex',
     charCount: 260,
     fits8s: false,
-    text: 'Olha o preço disso aqui agora! Acabou de entrar em oferta relâmpago e tem muita gente conseguindo pegar com frete grátis. Aproveita, que só vai até a meia-noite. Eu vou deixar o link com desconto aqui no carrinho laranja. Já clica e pega o seu antes que acabe!',
+    text: 'Olha o preço disso aqui agora! Acabou de entrar em oferta relâmpago e tem muita gente conseguindo pegar com esse super desconto. Aproveita, que só vai até a meia-noite. Eu vou deixar o link com desconto aqui no carrinho laranja. Já clica e pega o seu antes que acabe!',
   },
   {
     id: 'ELE-04',
@@ -1017,8 +1017,39 @@ export const NEIGHBOR_NICHE_RULES: { keywords: string[]; targetNiches: string[] 
     targetNiches: ['Cabelo e beleza'],
   },
   {
-    keywords: ['organizador', 'prateleira', 'cortina', 'tapete', 'cama', 'mesa', 'banho', 'lencol', 'travesseiro', 'toalha', 'armario', 'rack', 'banheiro', 'placa de casa', 'cabide', 'sapateira', 'cesto', 'varal', 'edredom', 'cobertor'],
-    targetNiches: ['Casa, banheiro e organização'],
+    keywords: [
+      'organizador',
+      'prateleira',
+      'cortina',
+      'tapete',
+      'cama',
+      'mesa',
+      'banho',
+      'lencol',
+      'travesseiro',
+      'toalha',
+      'armario',
+      'rack',
+      'banheiro',
+      'placa de casa',
+      'cabide',
+      'sapateira',
+      'cesto',
+      'varal',
+      'edredom',
+      'cobertor',
+      'rede de descanso',
+      'rede de dormir',
+      'rede casal',
+      'rede solteiro',
+      'rede compacta',
+      'rede',
+      'acampamento',
+      'camping',
+      'varanda',
+      'descanso',
+    ],
+    targetNiches: ['Casa, banheiro e organização', 'Casa e utilidades'],
   },
   {
     keywords: ['pneu', 'capa de carro', 'central multimidia', 'camera de re', 'acessorio de carro', 'capa de moto', 'capacete', 'bau moto', 'som automotivo', 'alto-falante', 'amplificador', 'aspirador automotivo', 'led automotivo'],
@@ -1088,6 +1119,56 @@ export interface ProductSpecsExtracted {
 }
 
 /**
+ * Limpa uma linha de título de anúncio de e-commerce e extrai o nome conciso do produto
+ */
+export function cleanTitleToShortName(firstLine: string): string {
+  let cleaned = (firstLine || '')
+    .replace(/^[-*#•\s]+/, '')
+    .replace(/^(?:produto|nome|t[ií]tulo|item)\s*[:=-]\s*/i, '')
+    // Remove medidas técnicas e especificações comuns (ex: 2.40x1.40 metros, 100% algodão, 2000w, etc.)
+    .replace(/\b\d+(?:[.,]\d+)?\s*(?:x|por)\s*\d+(?:[.,]\d+)?\s*(?:metros?|m|cm|mm)?\b/gi, '')
+    .replace(/\b\d+(?:[.,]\d+)?\s*(?:metros?|m|cm|mm|kg|g|litros?|l|ml|watts?|w|volts?|v|polegadas?|pol)\b/gi, '')
+    .replace(/\b(?:em|com|de)?\s*\d+%\s*[a-zà-ú]+\b/gi, '')
+    .replace(/\b(?:solteiro\s+e\s+casal|solteiro|casal|bivolt|original|premium|novo|lancamento)\b/gi, '')
+    .replace(/[,;:.!?\-–—]+.*$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const words = cleaned.split(/\s+/).filter(Boolean);
+  if (words.length >= 2) {
+    const candidate = words.slice(0, 3).join(' ');
+    return candidate.charAt(0).toUpperCase() + candidate.slice(1);
+  }
+  return cleaned;
+}
+
+/**
+ * Verifica se o usuário informou diretamente que há frete grátis no produto
+ */
+export function hasExplicitFreeShipping(info: string): boolean {
+  const norm = normalizeAccents(info || '');
+  return /\b(?:frete\s*gratis|frete\s*gratuito|frete\s*0|frete\s*zero|sem\s*custo\s*de\s*envio|envio\s*gratis|envio\s*gratuito)\b/i.test(norm);
+}
+
+/**
+ * Remove qualquer menção a 'frete grátis' da fala, a menos que tenha sido informado diretamente
+ */
+export function sanitizeFreeShippingMentions(text: string, hasFreeShipping: boolean): string {
+  if (hasFreeShipping) return text;
+  return text
+    .replace(/\bcom\s+frete\s+gr[aá]tis\b/gi, 'com super desconto')
+    .replace(/\bcom\s+frete\s+gratuito\b/gi, 'com super desconto')
+    .replace(/\bo\s+frete\s+gr[aá]tis\b/gi, 'esse super desconto')
+    .replace(/\bo\s+frete\s+gratuito\b/gi, 'esse super desconto')
+    .replace(/\bde\s+frete\s+gr[aá]tis\b/gi, 'com super desconto')
+    .replace(/\bde\s+frete\s+gratuito\b/gi, 'com super desconto')
+    .replace(/\be\s+tem\s+frete\s+gr[aá]tis\b/gi, 'e tá valendo muito a pena')
+    .replace(/\be\s+tem\s+frete\s+gratuito\b/gi, 'e tá valendo muito a pena')
+    .replace(/\bfrete\s+gr[aá]tis\b/gi, 'super desconto')
+    .replace(/\bfrete\s+gratuito\b/gi, 'super desconto');
+}
+
+/**
  * Analisa "Informações do Produto" em tempo real para o Modo Produtos 2.0
  */
 export function analyzeProductInfoForProdutos2(rawText: string): ProductSpecsExtracted {
@@ -1122,11 +1203,15 @@ export function analyzeProductInfoForProdutos2(rawText: string): ProductSpecsExt
   // 2. Detectar se é Calçado Masculino ou Roupa Masculina vs Produto Geral
   const footwearTerms = ['tenis', 'sapato', 'sapatenis', 'bota', 'coturno', 'chuteira', 'chinelo', 'sandalia', 'papete', 'mocassim'];
   const maleApparelTerms = ['camiseta', 'camisa', 'bermuda', 'short', 'shorts', 'calca jogger', 'jogger', 'moletom', 'jaqueta', 'cueca', 'sunga', 'camisa termica', 'camiseta termica'];
-  const femaleOnlyApparelTerms = ['vestido', 'saia', 'cropped', 'baby doll', 'babydoll', 'camisola', 'sutia', 'calcinha', 'lingerie', 'biquini', 'maio', 'rasteirinha', 'scarpin', 'salto alto'];
+  const femaleOnlyApparelTerms = ['saia', 'cropped', 'baby doll', 'babydoll', 'camisola', 'sutia', 'calcinha', 'lingerie', 'biquini', 'maio', 'rasteirinha', 'scarpin', 'salto alto'];
+  const isVestidoGarment = /(?<!\bbem\s+|\bmal\s+)\bvestido(?:s)?\b/i.test(norm) && !norm.includes('bem vestido') && !norm.includes('mal vestido');
 
   const isFootwear = footwearTerms.some((t) => new RegExp(`\\b${t}\\b`, 'i').test(norm)) && !norm.includes('palmilha');
   const isApparel = maleApparelTerms.some((t) => new RegExp(`\\b${t}\\b`, 'i').test(norm)) && !norm.includes('saia babado') && !norm.includes('mesa');
-  const isFemaleExplicit = /\b(feminino|feminina|mulher|mulheres|para ela|dama)\b/i.test(norm) || femaleOnlyApparelTerms.some((t) => new RegExp(`\\b${t}\\b`, 'i').test(norm));
+  const isFemaleExplicit =
+    /\b(feminino|feminina|mulher|mulheres|para ela|dama)\b/i.test(norm) ||
+    femaleOnlyApparelTerms.some((t) => new RegExp(`\\b${t}\\b`, 'i').test(norm)) ||
+    isVestidoGarment;
   const isMaleExplicit = /\b(masculino|masculina|homem|homens|para ele)\b/i.test(norm);
 
   let subMode: Produtos2SubMode = 'produtos_geral';
@@ -1137,12 +1222,40 @@ export function analyzeProductInfoForProdutos2(rawText: string): ProductSpecsExt
     maleSubOption = isFootwear ? 'calcados' : 'roupas';
   }
 
-  // 3. Extrair Nome Curto e Falável (ex: "Roçadeira 2000 W", "Banco de Exercícios", "Kit 2 Tênis")
+  // 3. Extrair Nome Curto e Falável
+  // REGRA MESTRA: O título do anúncio (primeiras 1 a 3 linhas) SEMPRE tem prioridade máxima absoluta
+  // sobre palavras avulsas que aparecem no meio ou fim da descrição (como acessórios ou casos de uso).
+  const rawLines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  const sectionHeaderRegex = /^(?:especifica[cç][oõ]es|benef[ií]cios|instru[cç][oõ]es|cuidados|caracter[ií]sticas|descri[cç][aã]o|sobre|itens\s+inclusos|dados\s+t[eé]cnicos|como\s+usar|medidas|tamanhos?)\b/i;
+
+  const titleLines: string[] = [];
+  for (let i = 0; i < Math.min(rawLines.length, 3); i++) {
+    if (sectionHeaderRegex.test(rawLines[i])) break;
+    titleLines.push(rawLines[i]);
+  }
+  const titleText = titleLines.join(' ');
+  const titleNorm = normalizeAccents(titleText);
+
+  // Sanitiza menções circunstanciais / periféricas no corpo do texto (ex: "com seu smartphone", "usando seu smartphone", "cabe na mochila")
+  const bodyNormCleaned = norm
+    .replace(/\b(?:com|usando|usar|utilizando|no|na|para|pro|pra|cabe\s+no|cabe\s+na|compat[ií]vel\s+com|conecta\s+no|carrega\s+o|carregue\s+seu)\s+(?:o|a|os|as|seu|sua|seus|suas)?\s*(?:smartphone|celular|telefone|aparelho|computador|notebook|mochila|bolso|carro|moto|ve[ií]culo)\b/gi, ' ')
+    .replace(/\b(?:descansar|dormir|relaxar|deitar|assistir|jogar)\s+(?:com|usando|no)\s+(?:seu\s+)?(?:smartphone|celular)\b/gi, ' ');
+
   let shortName = '';
   const specificShortNames: [RegExp, string][] = [
     [/\bbanco\s+(?:de\s+)?(?:exercicios?|musculacao|supino|treino)/i, 'Banco de Exercícios'],
     [/\bbanco\s+(?:ajustavel|reclinavel|dobravel)/i, 'Banco Ajustável'],
     [/\bestacao\s+de\s+musculacao/i, 'Estação de Musculação'],
+    [/\brede\s+(?:de\s+)?descanso|\brede\s+(?:de\s+)?dormir|\brede\s+(?:casal|solteiro)|\brede\s+compacta\b/i, 'Rede de Descanso'],
+    [/\brede\b/i, 'Rede de Descanso'],
+    [/\bcadeira\s+(?:de\s+)?(?:escritorio|gamer|presidente|ergonomica)/i, 'Cadeira de Escritório'],
+    [/\bmochila\s+(?:impermeavel|notebook|escolar|viagem)?/i, 'Mochila Impermeável'],
+    [/\bbarraca\s+(?:de\s+)?(?:camping|acampamento)/i, 'Barraca de Camping'],
+    [/\bcolchao\s+(?:inflavel|casal|solteiro)/i, 'Colchão Inflável'],
     [/\bvara\s+(?:de\s+)?(?:pesca|pescar|carbono)/i, 'Vara de Carbono'],
     [/\blinha\s+de\s+pesca/i, 'Linha de Pesca'],
     [/\boculos\s+de\s+natacao/i, 'Óculos de Natação'],
@@ -1157,6 +1270,8 @@ export function analyzeProductInfoForProdutos2(rawText: string): ProductSpecsExt
     [/\bar[-\s]?condicionado\s+portatil/i, 'Ar-Condicionado Portátil'],
     [/\bclimatizador/i, 'Climatizador de Ar'],
     [/\bpanificadora/i, 'Panificadora Automática'],
+    [/\bpanela\s+de\s+pressao/i, 'Panela de Pressão'],
+    [/\bjogo\s+de\s+panelas/i, 'Jogo de Panelas'],
     [/\bair\s*fryer|\bfritadeira\s+eletrica/i, 'Air Fryer'],
     [/\bgarrafa\s+termica/i, 'Garrafa Térmica'],
     [/\bcopo\s+termico/i, 'Copo Térmico'],
@@ -1173,6 +1288,13 @@ export function analyzeProductInfoForProdutos2(rawText: string): ProductSpecsExt
     [/\bpastilha\s+(?:para\s+|de\s+)?vaso\s+sanitario/i, 'Pastilha Sanitária'],
     [/\bplaca\s+de\s+(?:casa|numero|endereco)/i, 'Placa de Casa'],
     [/\bcapa\s+de\s+moto/i, 'Capa de Moto'],
+    [/\btravesseiro\s+(?:ortopedico|cervical|viscoelastico)?/i, 'Travesseiro Ortopédico'],
+    [/\bcortina\s+(?:blackout|corta\s*luz)?/i, 'Cortina Blackout'],
+    [/\btapete\s+(?:antiderrapante|sala|quarto)?/i, 'Tapete Antiderrapante'],
+    [/\bluminaria\s+(?:solar|led|mesa)?/i, 'Luminária Solar'],
+    [/\bfita\s+led/i, 'Fita LED'],
+    [/\bumidificador\s+(?:de\s+ar)?/i, 'Umidificador de Ar'],
+    [/\baspirador\s+(?:de\s+po|robo)?/i, 'Aspirador de Pó'],
     [/\bpalmilha\s+(?:de\s+)?gel|\bpalmilha\s+ortopedica/i, 'Palmilha de Gel'],
     [/\bluva\s+descartavel|\bviniflex/i, 'Luva Descartável'],
     [/\bsaia\s+(?:de\s+)?babado|\btoalha\s+decorativa/i, 'Saia de Mesa TNT'],
@@ -1204,19 +1326,40 @@ export function analyzeProductInfoForProdutos2(rawText: string): ProductSpecsExt
     [/\bcamisa/i, 'Camisa Masculina'],
   ];
 
-  for (const [regex, label] of specificShortNames) {
-    if (regex.test(norm)) {
-      shortName = label;
-      break;
+  // Prioridade 1: Verifica se o título do anúncio casa com algum produto conhecido
+  if (titleNorm) {
+    for (const [regex, label] of specificShortNames) {
+      if (regex.test(titleNorm)) {
+        shortName = label;
+        break;
+      }
     }
   }
 
+  // Prioridade 2: Se não casou no título com termos fixos, extrai o nome do produto limpo da 1ª linha
+  if (!shortName && titleLines.length > 0) {
+    const extractedFromTitle = cleanTitleToShortName(titleLines[0]);
+    if (extractedFromTitle && extractedFromTitle.length >= 3) {
+      shortName = extractedFromTitle;
+    }
+  }
+
+  // Prioridade 3: Se ainda não tiver shortName, checa o corpo sanitizado (sem menções periféricas a celulares/notebooks)
+  if (!shortName) {
+    for (const [regex, label] of specificShortNames) {
+      if (regex.test(bodyNormCleaned)) {
+        shortName = label;
+        break;
+      }
+    }
+  }
+
+  // Prioridade 4: Fallback
   if (!shortName && text) {
-    const firstLine = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean)[0] || '';
-    const cleaned = firstLine.replace(/^[-*#•\s]+/, '').replace(/^(produto|nome|titulo|item)\s*[:=-]\s*/i, '').trim();
-    const words = cleaned.split(/\s+/).slice(0, 4).join(' ');
-    if (words.length >= 2) {
-      shortName = words.charAt(0).toUpperCase() + words.slice(1);
+    const firstLine = rawLines[0] || '';
+    const cleaned = cleanTitleToShortName(firstLine);
+    if (cleaned && cleaned.length >= 2) {
+      shortName = cleaned;
     }
   }
 
@@ -1228,21 +1371,42 @@ export function analyzeProductInfoForProdutos2(rawText: string): ProductSpecsExt
     }
   }
 
-  // 4. Detectar Nicho (Prioridade 1/2: banco direto; Prioridade 3: nichos vizinhos)
+  // 4. Detectar Nicho (Prioridade 1: Título e ShortName; Prioridade 2: Regras de nicho vizinho; Prioridade 3: Banco geral)
   let niche = 'Produtos Gerais';
   if (subMode === 'vestuario_masculino') {
     niche = maleSubOption === 'calcados' ? 'Calçados masculinos' : 'Roupas masculinas';
   } else {
-    // Checa primeiro regras de nicho vizinho mais específicas (como banco de exercícios -> Fitness)
+    const shortNameNorm = normalizeAccents(shortName || '');
+    const titleAndShortNorm = `${shortNameNorm} ${titleNorm}`.trim();
+
+    // Prioridade 1: Checa no título e no shortName identificado
     for (const rule of NEIGHBOR_NICHE_RULES) {
-      if (rule.keywords.some((kw) => norm.includes(normalizeAccents(kw)))) {
+      if (rule.keywords.some((kw) => titleAndShortNorm.includes(normalizeAccents(kw)))) {
         niche = rule.targetNiches[0];
         break;
       }
     }
     if (niche === 'Produtos Gerais') {
       for (const entry of COPIES_PRODUTOS_GERAIS) {
-        if (entry.keywords.some((kw) => norm.includes(normalizeAccents(kw)))) {
+        if (entry.keywords.some((kw) => titleAndShortNorm.includes(normalizeAccents(kw)))) {
+          niche = entry.niche;
+          break;
+        }
+      }
+    }
+
+    // Prioridade 2: Se ainda for Produtos Gerais, checa no corpo sanitizado
+    if (niche === 'Produtos Gerais') {
+      for (const rule of NEIGHBOR_NICHE_RULES) {
+        if (rule.keywords.some((kw) => bodyNormCleaned.includes(normalizeAccents(kw)))) {
+          niche = rule.targetNiches[0];
+          break;
+        }
+      }
+    }
+    if (niche === 'Produtos Gerais') {
+      for (const entry of COPIES_PRODUTOS_GERAIS) {
+        if (entry.keywords.some((kw) => bodyNormCleaned.includes(normalizeAccents(kw)))) {
           niche = entry.niche;
           break;
         }
@@ -1256,7 +1420,10 @@ export function analyzeProductInfoForProdutos2(rawText: string): ProductSpecsExt
 
   const clearlyMaleNiches = ['Pesca', 'Som automotivo', 'Moto e acessórios automotivos', 'Ferramentas', 'Agro e roça', 'Calçados masculinos', 'Roupas masculinas'];
   const clearlyFemaleNiches = ['Cabelo e beleza', 'Limpeza e descartáveis', 'Festa e decoração', 'Garrafas e copos'];
-  const isKidsOrAmbiguous =
+  const isUnissexNiches =
+    niche === 'Casa, banheiro e organização' ||
+    niche === 'Casa e utilidades' ||
+    niche === 'Jardim' ||
     niche === 'Infantil e brinquedos' ||
     niche === 'Eletrônicos' ||
     niche === 'Climatização' ||
@@ -1264,15 +1431,19 @@ export function analyzeProductInfoForProdutos2(rawText: string): ProductSpecsExt
     niche === 'Natação / Esporte aquático' ||
     niche === 'Pet' ||
     niche === 'Conforto para os pés' ||
-    niche === 'Música';
+    niche === 'Música' ||
+    /rede|descanso|acampamento|camping|travesseiro|colchao/i.test(normalizeAccents(shortName || ''));
 
-  if (subMode === 'vestuario_masculino' || isMaleExplicit || clearlyMaleNiches.includes(niche) || /\b(banco de exercicio|banco ajustavel|supino|musculacao|apoio scott)\b/i.test(norm)) {
+  if (isUnissexNiches && !isMaleExplicit && !isFemaleExplicit) {
+    influencer = null;
+    clientGender = 'Unissex';
+  } else if (subMode === 'vestuario_masculino' || isMaleExplicit || clearlyMaleNiches.includes(niche) || /\b(banco de exercicio|banco ajustavel|supino|musculacao|apoio scott)\b/i.test(norm)) {
     influencer = 'Homem';
     clientGender = 'Masculino';
   } else if (isFemaleExplicit || clearlyFemaleNiches.includes(niche) || /banheiro|toalha|cosmetico|esteira ergometrica/i.test(norm)) {
     influencer = 'Mulher';
     clientGender = 'Feminino';
-  } else if (isKidsOrAmbiguous) {
+  } else {
     influencer = null;
     clientGender = 'Unissex';
   }
@@ -1477,7 +1648,7 @@ export function ensureLeadingNossaPrefix(text: string): string {
  */
 function isFeminineProductName(name: string): boolean {
   const norm = normalizeAccents(name.trim());
-  return /^(tinta|esteira|bicicleta|bike|e-bike|scooter|moto|garrafa|garrafinha|panificadora|air\s*fryer|fritadeira|panela|sanduicheira|torradeira|batedeira|chaleira|cafeteira|rocadeira|motosserra|mangueira|semente|escova|chapinha|prancha|palmilha|luva|saia|toalha|cortina|prateleira|sapateira|camera|webcam|tv|televisao|bateria|parafusadeira|furadeira|esmerilhadeira|lixadeira|serra|puncao|puncionadeira|trena|pedaleira|guitarra|camisa|camiseta|bermuda|calca|jaqueta|bota|sandalia|papete|chuteira|rasteirinha|cadeirinha|boneca|pelucia|capa|placa|pastilha|vara|linha|carretilha|isca|central|mesa|cama|cadeira|poltrona|estacao|barra|corda|anilha|fita|luminaria|lampada)\b/i.test(
+  return /^(rede|tinta|esteira|bicicleta|bike|e-bike|scooter|moto|garrafa|garrafinha|panificadora|air\s*fryer|fritadeira|panela|sanduicheira|torradeira|batedeira|chaleira|cafeteira|rocadeira|motosserra|mangueira|semente|escova|chapinha|prancha|palmilha|luva|saia|toalha|cortina|prateleira|sapateira|camera|webcam|tv|televisao|bateria|parafusadeira|furadeira|esmerilhadeira|lixadeira|serra|puncao|puncionadeira|trena|pedaleira|guitarra|camisa|camiseta|bermuda|calca|jaqueta|bota|sandalia|papete|chuteira|rasteirinha|cadeirinha|boneca|pelucia|capa|placa|pastilha|vara|linha|carretilha|isca|central|mesa|cama|cadeira|poltrona|estacao|barra|corda|anilha|fita|luminaria|lampada)\b/i.test(
     norm
   );
 }
@@ -1498,6 +1669,21 @@ function buildMinimalReplacementClauses(
 } {
   const norm = normalizeAccents(`${productName} ${productInfo}`);
 
+  // Caso Rede de Descanso / Camping / Ar livre
+  if (/\b(rede|descanso|acampamento|camping|varanda)\b/i.test(norm)) {
+    const isAlgodao = /algodao/i.test(norm);
+    const hasFranja = /franja/i.test(norm);
+    const shortClause = isAlgodao
+      ? hasFranja
+        ? 'feita em 100% algodão com franjas reforçadas'
+        : 'feita em 100% algodão super confortável'
+      : 'super confortável e resistente';
+    return {
+      conciseFeatureSentence: 'Costuras reforçadas, super macia, fácil de instalar e aguenta o tranco com total segurança.',
+      shortWithClause: shortClause,
+    };
+  }
+
   // Caso Banco de Exercícios / Musculação
   if (/\b(banco|supino|apoio scott|extensor)\b/i.test(norm)) {
     const parts: string[] = [];
@@ -1515,7 +1701,7 @@ function buildMinimalReplacementClauses(
   }
 
   // Caso Tinta / Parede / Reforma
-  if (/\b(tinta|parede|pintura|acrilica|emborrachada)\b/i.test(norm)) {
+  if (/\b(tinta\s+(?:de\s+)?parede|tinta\s+acrilica|tinta\s+emborrachada|pintura\s+(?:de\s+)?parede)\b/i.test(norm) && !norm.includes('nao solta tinta')) {
     return {
       conciseFeatureSentence: /lavavel|sem cheiro/i.test(norm)
         ? 'Cobre já na primeira mão, sem cheiro forte e super lavável. Rende demais.'
@@ -1668,6 +1854,8 @@ export function selectAndAdaptProdutos2Copy(params: {
     } else if (duration === 10 && finalCustom.length > 250) {
       finalCustom = ensureLeadingNossaPrefix(enforceMaxChars(finalCustom, 250, 190));
     }
+    const customFreeShipping = hasExplicitFreeShipping(`${productName} ${productInfo} ${customCopy}`);
+    finalCustom = sanitizeFreeShippingMentions(finalCustom, customFreeShipping);
     return {
       finalCopy: finalCustom,
       copyId: 'CUSTOM',
@@ -1686,7 +1874,12 @@ export function selectAndAdaptProdutos2Copy(params: {
         : COPIES_ROUPAS_MASCULINAS
       : COPIES_PRODUTOS_GERAIS;
 
+  const rawInfoLines = (productInfo || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const titleNorm = normalizeAccents(rawInfoLines.slice(0, 3).join(' '));
+  const titleAndNameNorm = `${normalizeAccents(cleanName)} ${titleNorm}`.trim();
+
   // Prioridade 1: Mesmo produto no banco ativo
+  // Compara o nome e o título do produto contra o tipo ou palavras-chave das copies (evitando falsos positivos do corpo)
   let candidates = activeBank.filter((entry) => {
     const entryTypeNorm = normalizeAccents(entry.productType);
     const nameNorm = normalizeAccents(cleanName);
@@ -1695,7 +1888,7 @@ export function selectAndAdaptProdutos2Copy(params: {
     }
     return entry.keywords.some((kw) => {
       const kwNorm = normalizeAccents(kw);
-      return kwNorm.length > 3 && new RegExp(`\\b${kwNorm}\\b`, 'i').test(normCombined);
+      return kwNorm.length > 3 && new RegExp(`\\b${kwNorm}\\b`, 'i').test(titleAndNameNorm);
     });
   });
 
@@ -1796,8 +1989,11 @@ export function selectAndAdaptProdutos2Copy(params: {
       ? `Copy ${chosen.id} (${chosen.productType}) adaptada — Nicho: ${chosen.niche}`
       : `Copy ${chosen.id} (${chosen.productType}) do banco adaptada para ${cleanName}`;
 
+  const freeShipping = hasExplicitFreeShipping(`${productName} ${productInfo}`);
+  const safeFinalCopy = sanitizeFreeShippingMentions(adapted, freeShipping);
+
   return {
-    finalCopy: adapted,
+    finalCopy: safeFinalCopy,
     copyId: chosen.id,
     copySourceLabel: sourceDesc,
     archetype: chosen.archetype,
@@ -2048,10 +2244,13 @@ export function adaptBankCopyToProduct(
       ? 'com a parcela menos que uma pizza'
       : 'a parcela é menos que uma pizza';
   });
-  text = text.replace(/([.!?]\s*)a parcela é menos que uma pizza/g, '$1A parcela é menos que uma pizza');
   if (text.startsWith('a parcela é menos que uma pizza')) {
     text = 'A parcela é menos que uma pizza' + text.slice('a parcela é menos que uma pizza'.length);
   }
+
+  // Regra de Frete Grátis: NUNCA colocar frete grátis na copy a menos que tenha sido informado diretamente
+  const freeShipping = hasExplicitFreeShipping(`${productName} ${productInfo}`);
+  text = sanitizeFreeShippingMentions(text, freeShipping);
 
   return text;
 }
