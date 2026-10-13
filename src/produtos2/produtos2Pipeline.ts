@@ -448,13 +448,16 @@ export async function runProdutos2Pipeline(params: {
         }
         if (Array.isArray(d.scenes) && d.scenes.length === 9) {
           const defaultTimings = getNineSceneTimings(form.duration);
-          scenes = d.scenes.map((sc: any, idx: number) => {
+          const mappedScenes = d.scenes.map((sc: any, idx: number) => {
             const cleanFraming = stripTikTokOutsideSpeech(
               String(sc.framing || fallbackPlan.scenes[idx].framing).trim()
             );
             const rawAction = stripTikTokOutsideSpeech(
               String(sc.action || fallbackPlan.scenes[idx].action).trim()
-            );
+            )
+              .replace(/\[(?:Produto na cor\/variação|Variação de Cor|COR\/VARIAÇÃO|Variação)[^\]]*\]/gi, '')
+              .replace(/\s+/g, ' ')
+              .trim();
             const cleanAction =
               form.scenario === 'padrao_uso'
                 ? sanitizeScenarioDescriptionForMode(
@@ -478,6 +481,23 @@ export async function runProdutos2Pipeline(params: {
               storyboardDescription: `${cleanFraming}. ${cleanAction}`,
             };
           });
+
+          // Proteção contra repetição indevida de ações entre variações (Cena 4 repetindo Cena 1 ou Cena 5 repetindo Cena 2)
+          const isRepetitive =
+            mappedScenes.length === 9 &&
+            (
+              (mappedScenes[3].action.length > 15 && mappedScenes[0].action.length > 15 &&
+               mappedScenes[3].action.toLowerCase().includes(mappedScenes[0].action.toLowerCase().slice(0, 25))) ||
+              (mappedScenes[4].action.length > 15 && mappedScenes[1].action.length > 15 &&
+               mappedScenes[4].action.toLowerCase().includes(mappedScenes[1].action.toLowerCase().slice(0, 25)))
+            );
+
+          if (isRepetitive) {
+            console.warn('Detectada repetição indevida de cenas entre variações. Mantendo sequência progressiva do plano mestre.');
+            scenes = fallbackPlan.scenes;
+          } else {
+            scenes = mappedScenes;
+          }
         }
       }
     }

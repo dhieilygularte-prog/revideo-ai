@@ -77,6 +77,7 @@ export interface Produtos2SceneItem {
   action: string;
   cameraMovement: string;
   storyboardDescription: string;
+  variationName?: string;
 }
 
 export type Produtos2AuditColorStatus = 'green' | 'yellow' | 'orange' | 'red';

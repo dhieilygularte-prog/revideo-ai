@@ -2168,13 +2168,15 @@ app.post('/api/produtos2-planning', async (req, res) => {
     const variationsClause =
       activeReqVars.length >= 2
         ? `\n- Variações de cor do produto: ${activeReqVars.map((v: any) => v.name).join(', ')}
-  REGRA OBRIGATÓRIA DE VARIAÇÕES:
+  REGRA MANDATÓRIA DE NARRATIVA PROGRESSIVA CONTÍNUA (NÃO REPETIR CENAS):
+  As 9 cenas formam UMA ÚNICA DEMONSTRAÇÃO PROGRESSIVA DO PRODUTO acompanhando a copy do segundo 0 ao final.
+  PROIBIDO REPETIR CENAS OU REINICIAR A DEMONSTRAÇÃO PARA CADA COR! As 9 cenas seguem normalmente seu fluxo narrativo sem repetições (apresentação inicial -> funcionamento prático -> detalhes/macro -> benefício no cenário -> CTA).
+  A ÚNICA diferença é a cor em que o produto é retratado em cada grupo de quadros:
   ${
     activeReqVars.length === 2
-      ? 'Cenas 1 a 4 exibem a 1ª Variação; Cenas 5 a 9 exibem a 2ª Variação.'
-      : 'Cenas 1 a 3 exibem a 1ª Variação; Cenas 4 a 6 exibem a 2ª Variação; Cenas 7 a 9 exibem a 3ª Variação.'
-  }
-  Mencione explicitamente a variação/cor correspondente na descrição de cada cena!`
+      ? '• Cenas 1 a 4: produto retratado na 1ª Variação (' + (activeReqVars[0]?.name || '1ª Cor') + ')\n  • Cenas 5 a 9: produto retratado na 2ª Variação (' + (activeReqVars[1]?.name || '2ª Cor') + ')'
+      : '• Cenas 1 a 3: produto retratado na 1ª Variação (' + (activeReqVars[0]?.name || '1ª Cor') + ')\n  • Cenas 4 a 6: produto retratado na 2ª Variação (' + (activeReqVars[1]?.name || '2ª Cor') + ')\n  • Cenas 7 a 9: produto retratado na 3ª Variação (' + (activeReqVars[2]?.name || '3ª Cor') + ')'
+  }`
         : '';
 
     const systemInstruction = buildProdutos2PlanningSystemPrompt();

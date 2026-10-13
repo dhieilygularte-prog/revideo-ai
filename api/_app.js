@@ -1226,12 +1226,19 @@ E retornar um JSON estrito com:
    - Se o usu\xE1rio escreveu um local nas Instru\xE7\xF5es adicionais (ex.: "na praia"), essa instru\xE7\xE3o tem prioridade.
 6. "visualMap": array de 4 objetos { "excerpt", "intent", "visualProof", "scenes" } mapeando os trechos da copy para provas visuais nas cenas 1 a 9.
 7. "scenes": array de EXATAMENTE 9 objetos { "number": 1..9, "startTime", "endTime", "framing", "action", "cameraMovement", "storyboardDescription" }:
-   - Cada cena prova visualmente o que est\xE1 sendo falado naquele momento da copy.
+   - REGRA MANDAT\xD3RIA E INEGOCI\xC1VEL \u2014 SEQU\xCANCIA PROGRESSIVA CONT\xCDNUA (NUNCA REPETIR CENAS):
+     * As 9 cenas formam UMA \xDANICA HIST\xD3RIA PROGRESSIVA DE DEMONSTRA\xC7\xC3O DO PRODUTO acompanhando a copy do in\xEDcio ao fim (Cena 1 a 9 \xE9 um fluxo cont\xEDnuo e sem repeti\xE7\xF5es).
+     * \xC9 EXPRESSAMENTE PROIBIDO REPETIR AS MESMAS CENAS PARA CADA COR! (Por exemplo: NUNCA crie cena 1 apresentando cor 1, cena 2 balan\xE7ando produto cor 1, cena 3 tocando tecido cor 1, e depois na cena 4 reiniciar com a apresentadora sorrindo com cor 2, cena 5 balan\xE7ando cor 2... ISSO \xC9 TOTALMENTE PROIBIDO!).
+     * A demonstra\xE7\xE3o do produto segue seu fluxo narrativo normal, din\xE2mico e progressivo de 1 a 9:
+       - Cenas 1\u20132: Gancho inicial, primeiro impacto e revela\xE7\xE3o do produto;
+       - Cenas 3\u20135: Demonstra\xE7\xE3o pr\xE1tica, funcionamento ativo, teste real e prova do benef\xEDcio central;
+       - Cenas 6\u20138: Macro de costuras/acabamento/material ("Olha..."), prova f\xEDsica de resist\xEAncia e vis\xE3o ampla de uso no cen\xE1rio;
+       - Cena 9: Fechamento com alta convers\xE3o e CTA.
+     * A \xDANICA DIFEREN\xC7A quando h\xE1 varia\xE7\xF5es de cor adicionadas \xE9 que o produto, nas cenas em que ele aparece, \xE9 retratado na cor correspondente \xE0quele grupo de quadros:
+       - Se 2 varia\xE7\xF5es: Cenas 1 a 4 na 1\xAA Cor; Cenas 5 a 9 na 2\xAA Cor.
+       - Se 3 varia\xE7\xF5es: Cenas 1 a 3 na 1\xAA Cor; Cenas 4 a 6 na 2\xAA Cor; Cenas 7 a 9 na 3\xAA Cor.
+     * Todas as 9 cenas devem ter a\xE7\xF5es DIFERENTES, complementares e progressivas, acompanhando rigorosamente a locu\xE7\xE3o!
    - Todo "olha [detalhe]" na copy vira uma cena de close/macro daquele detalhe.
-   - REGRA DE VARIA\xC7\xD5ES DE COR DO PRODUTO (quando houver mais de 1 varia\xE7\xE3o):
-     * Se 2 varia\xE7\xF5es: cenas 1 a 4 exibem a Varia\xE7\xE3o 1; cenas 5 a 9 exibem a Varia\xE7\xE3o 2.
-     * Se 3 varia\xE7\xF5es: cenas 1 a 3 exibem a Varia\xE7\xE3o 1; cenas 4 a 6 exibem a Varia\xE7\xE3o 2; cenas 7 a 9 exibem a Varia\xE7\xE3o 3.
-     * Mencione explicitamente a varia\xE7\xE3o/cor que aparece na cena.
    - Variar enquadramentos (nunca duas cenas seguidas iguais): close, macro, POV de m\xE3os, plano m\xE9dio, plano aberto, uso real.
    - "storyboardDescription" DEVE ser id\xEAntico a "{framing}. {action}" (mesma pessoa, mesma a\xE7\xE3o, mesmo enquadramento e mesmos objetos, sem inventar objetos extras ou mudar quem aparece entre um campo e outro).
    - Sempre que a parte do produto onde fica a logomarca do fabricante estiver vis\xEDvel na cena, inclua na descri\xE7\xE3o da cena que a logomarca original est\xE1 vis\xEDvel e id\xEAntica \xE0 foto.
@@ -3048,9 +3055,11 @@ app.post("/api/produtos2-planning", async (req, res) => {
     const activeReqVars = Array.isArray(variations) ? variations.filter((v) => v && (v.photosCount > 0 || v.name)) : [];
     const variationsClause = activeReqVars.length >= 2 ? `
 - Varia\xE7\xF5es de cor do produto: ${activeReqVars.map((v) => v.name).join(", ")}
-  REGRA OBRIGAT\xD3RIA DE VARIA\xC7\xD5ES:
-  ${activeReqVars.length === 2 ? "Cenas 1 a 4 exibem a 1\xAA Varia\xE7\xE3o; Cenas 5 a 9 exibem a 2\xAA Varia\xE7\xE3o." : "Cenas 1 a 3 exibem a 1\xAA Varia\xE7\xE3o; Cenas 4 a 6 exibem a 2\xAA Varia\xE7\xE3o; Cenas 7 a 9 exibem a 3\xAA Varia\xE7\xE3o."}
-  Mencione explicitamente a varia\xE7\xE3o/cor correspondente na descri\xE7\xE3o de cada cena!` : "";
+  REGRA MANDAT\xD3RIA DE NARRATIVA PROGRESSIVA CONT\xCDNUA (N\xC3O REPETIR CENAS):
+  As 9 cenas formam UMA \xDANICA DEMONSTRA\xC7\xC3O PROGRESSIVA DO PRODUTO acompanhando a copy do segundo 0 ao final.
+  PROIBIDO REPETIR CENAS OU REINICIAR A DEMONSTRA\xC7\xC3O PARA CADA COR! As 9 cenas seguem normalmente seu fluxo narrativo sem repeti\xE7\xF5es (apresenta\xE7\xE3o inicial -> funcionamento pr\xE1tico -> detalhes/macro -> benef\xEDcio no cen\xE1rio -> CTA).
+  A \xDANICA diferen\xE7a \xE9 a cor em que o produto \xE9 retratado em cada grupo de quadros:
+  ${activeReqVars.length === 2 ? "\u2022 Cenas 1 a 4: produto retratado na 1\xAA Varia\xE7\xE3o (" + (activeReqVars[0]?.name || "1\xAA Cor") + ")\n  \u2022 Cenas 5 a 9: produto retratado na 2\xAA Varia\xE7\xE3o (" + (activeReqVars[1]?.name || "2\xAA Cor") + ")" : "\u2022 Cenas 1 a 3: produto retratado na 1\xAA Varia\xE7\xE3o (" + (activeReqVars[0]?.name || "1\xAA Cor") + ")\n  \u2022 Cenas 4 a 6: produto retratado na 2\xAA Varia\xE7\xE3o (" + (activeReqVars[1]?.name || "2\xAA Cor") + ")\n  \u2022 Cenas 7 a 9: produto retratado na 3\xAA Varia\xE7\xE3o (" + (activeReqVars[2]?.name || "3\xAA Cor") + ")"}` : "";
     const systemInstruction = buildProdutos2PlanningSystemPrompt();
     const userPrompt = `PLANEJAMENTO COPY-FIRST (MODO PRODUTOS 2.0):
 - Produto (nome curto): ${productName}

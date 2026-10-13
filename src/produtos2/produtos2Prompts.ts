@@ -106,6 +106,50 @@ export function getSceneVariationInfo(
 }
 
 /**
+ * Higieniza adjetivos de cores fixos do texto descritivo da ação quando o produto tem variações de cores ativas.
+ * Isso evita que o modelo de vídeo (Veo) receba descrições de cor conflitantes no texto (ex: "rede azul-acinzentada")
+ * e priorize fielmente a cor de cada quadro numerado de 1 a 9 do Storyboard anexado.
+ */
+export function sanitizeSceneColorAdjectivesForVeo(
+  actionText: string,
+  sceneNumber: number,
+  activeVars: { name?: string; photos?: string[] }[] = [],
+  productName: string = ''
+): string {
+  if (!actionText || activeVars.length < 2) return actionText;
+
+  let cleaned = actionText;
+
+  // Se a ação tiver menções a cores/estampas específicas anexadas a palavras comuns de produtos
+  // ex: "rede azul-acinzentada listrada", "tecido azul-acinzentado", "banco preto", "tênis branco"
+  // mantemos "rede", "tecido", "banco", "tênis" sem a cor fixa conflitante que confunde o Veo
+  cleaned = cleaned.replace(
+    /\b(rede|tecido|banco|tênis|calçado|peça|camisa|camiseta|calça|bermuda|conjunto|produto|aparelho|equipamento)\s+((?:[a-záàâãéêíóôõúç-]+(?:\s+e\s+|\s+))*\b(?:azul-acinzentad[ao]s?|azul(?:es)?|vermelh[ao]s?|pret[ao]s?|branc[ao]s?|cinzas?|verdes?|amarel[ao]s?|laranjas?|rosas?|marrons?|beges?|rox[ao]s?|vinho|listrad[ao]s?|estampad[ao]s?)\b)/gi,
+    '$1'
+  );
+
+  // Coleta termos específicos das variações cadastradas (ex: nomes de cores informados)
+  const customVarTerms: string[] = [];
+  activeVars.forEach((v) => {
+    if (v.name && v.name.trim()) {
+      const words = v.name.trim().split(/[\s/,-]+/).filter((w) => w.length >= 3);
+      customVarTerms.push(...words);
+    }
+  });
+
+  customVarTerms.forEach((term) => {
+    if (productName && productName.toLowerCase().includes(term.toLowerCase())) return;
+    const reg = new RegExp(`\\b${term}\\b`, 'gi');
+    cleaned = cleaned.replace(reg, '');
+  });
+
+  // Limpa espaços extras
+  cleaned = cleaned.replace(/\s+/g, ' ').replace(/\s+([.,;:!?])/g, '$1').trim();
+
+  return cleaned;
+}
+
+/**
  * SEÇÃO 7.6 — Prompt-base para o gerador de imagem do Storyboard (1080 x 1920, grade 3x3, 9 cenas)
  */
 export function buildProdutos2StoryboardImagePrompt(params: {
@@ -163,6 +207,7 @@ ${
 • Quadros 4, 5 e 6 (Linha 2 do Storyboard): O produto DEVE ser retratado OBRIGATORIAMENTE na COR/VARIAÇÃO 2: ${activeVars[1].name || '2ª Cor'}.
 • Quadros 7, 8 e 9 (Linha 3 do Storyboard): O produto DEVE ser retratado OBRIGATORIAMENTE na COR/VARIAÇÃO 3: ${activeVars[2].name || '3ª Cor'}.`
 }
+NARRATIVA CONTÍNUA E PROGRESSIVA: As 9 cenas contam uma única história contínua de demonstração do produto (NUNCA repita as mesmas ações ou cenas para cada cor). A demonstração progride normalmente da Cena 1 à Cena 9; apenas retrate o produto na cor indicada para cada grupo de quadros!
 PROIBIÇÃO ABSOLUTA: NUNCA gere todos os 9 quadros na mesma cor! É expressamente PROIBIDO usar uma única cor para todo o storyboard quando há variações informadas. A divisão de cores acima é RIGOROSA e OBRIGATÓRIA!
 ═══════════════════════════════════════════════════════════════════`;
   }
@@ -264,7 +309,7 @@ export function buildProdutos2VeoPrompt(params: {
       : `POV: mostrar somente as mãos em primeira pessoa interagindo com ${productName}; nunca mostrar rosto ou corpo.`;
 
   // Item 7.3: Gerar o prompt a partir das MESMAS 9 descrições usadas para criar a imagem, sem reescrever as cenas
-  // e respeitando a divisão de variações de cor (Item 7)
+  // e orientando o Veo rigorosamente pelo número dos quadros (1 a 9) do storyboard anexado
   const activeVars = (variations || []).filter((v) => v.photos && v.photos.length > 0);
   const scenesBlock = scenes
     .slice(0, 9)
@@ -276,9 +321,21 @@ export function buildProdutos2VeoPrompt(params: {
       if (speechMode === 'sem_fala' && isLast) {
         actionText = actionText.replace(/falando para a câmera/gi, 'sorrindo e mostrando o produto para a câmera');
       }
-      const varInfo = getSceneVariationInfo(num, activeVars);
-      const varTag = varInfo ? ` [Produto na cor/variação: ${varInfo.variationName}]` : '';
-      return `CENA ${num} — ${sc.startTime} a ${sc.endTime}s${varTag}\n${actionText}`;
+
+      // Remove tags internas de variação do texto da ação (ex: [Variação de Cor: ...], [Produto na cor/variação: ...])
+      actionText = actionText
+        .replace(/\[(?:Produto na cor\/variação|Variação de Cor|COR\/VARIAÇÃO|Variação)[^\]]*\]/gi, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      // Se houver múltiplas variações, higieniza adjetivos fixos de cor no texto para não criar conflito com os outros quadros do storyboard
+      if (activeVars.length >= 2) {
+        actionText = sanitizeSceneColorAdjectivesForVeo(actionText, num, activeVars, productName);
+      }
+
+      // O prompt do Veo orienta pelas cenas do storyboard pelo número delas (Quadros 1 a 9 da imagem anexada)
+      const sceneStoryboardRef = ` [Visual e cor do produto: idêntico ao Quadro ${num} do storyboard anexado]`;
+      return `CENA ${num} — ${sc.startTime} a ${sc.endTime}s${sceneStoryboardRef}\n${actionText}`;
     })
     .join('\n\n');
 
@@ -344,30 +401,39 @@ Tom da voz: natural, brasileiro, rápido, eufórico, dinâmico e expressivo, com
 NÃO usar locução. NÃO usar narração. Ninguém fala no vídeo e ninguém mexe a boca como se estivesse falando.
 Usar apenas som ambiente natural do cenário e uma trilha instrumental animada e leve, com ritmo que acompanha os cortes.`;
 
-  // Item 5: PRIORIDADE MÁXIMA — novo item 1 (os demais descem uma posição)
+  // Item 5: PRIORIDADE MÁXIMA
+  const copyStartClause = useSpeechIntro
+    ? 'respeitar a copy validada, falada exatamente uma vez começando obrigatoriamente com "Nossa! ";'
+    : 'respeitar a copy validada, falada exatamente uma vez sem introduções extras;';
+
   const prioritySection =
     speechMode === 'com_fala'
       ? `PRIORIDADE MÁXIMA:
 1. vídeo limpo: sem marca d'água, sem logo do TikTok, sem @, sem carrinho e sem nenhum texto adicionado; a marca/logo que já está impressa no produto aparece idêntica às fotos;
-2. respeitar a copy validada, falada exatamente uma vez começando obrigatoriamente com "Nossa! ";
+2. ${copyStartClause}
 3. locução RÁPIDA E EUFÓRICA (estilo contando uma novidade imperdível), garantindo ritmo ágil para falar todo o texto com clareza sem cortes;
 4. usar as cenas como tradução visual da copy;
-5. fidelidade absoluta ao produto (PRODUCT LOCK) e às suas variações de cor em todas as cenas;
+5. fidelidade absoluta ao produto (PRODUCT LOCK) e às cores retratadas em cada um dos quadros de 1 a 9 do storyboard anexado;
 6. usar o storyboard somente como guia visual e nunca exibi-lo;
 7. começar diretamente com uma nova cena real em movimento;
-8. recriar as 9 cenas na ordem dos números;
+8. recriar as 9 cenas na ordem dos números correspondentes aos quadros 1 a 9 do storyboard anexado;
 9. fazer um vídeo rápido e muito dinâmico;
 10. usar uma única locução contínua, sem repetições.`
       : `PRIORIDADE MÁXIMA:
 1. vídeo limpo: sem marca d'água, sem logo do TikTok, sem @, sem carrinho e sem nenhum texto adicionado; a marca/logo que já está impressa no produto aparece idêntica às fotos;
 2. seguir a ordem das cenas definida pela copy;
 3. usar as cenas como tradução visual e demonstração real do produto;
-4. fidelidade absoluta ao produto (PRODUCT LOCK) e às suas variações de cor em todas as cenas;
+4. fidelidade absoluta ao produto (PRODUCT LOCK) e às cores retratadas em cada um dos quadros de 1 a 9 do storyboard anexado;
 5. usar o storyboard somente como guia visual e nunca exibi-lo;
 6. começar diretamente com uma nova cena real em movimento;
-7. recriar as 9 cenas na ordem dos números;
+7. recriar as 9 cenas na ordem dos números correspondentes aos quadros 1 a 9 do storyboard anexado;
 8. fazer um vídeo rápido e muito dinâmico;
 9. nenhuma voz e nenhuma fala no vídeo.`;
+
+  const productLockColorClause =
+    activeVars.length >= 2
+      ? `Manter o modelo, acabamento, textura, proporções e costuras do produto idênticos em todas as cenas. Nas cenas onde o produto alternar de cor ou modelo entre os quadros do storyboard (quadros 1 a 9), reproduza com total fidelidade em cada cena a cor exata retratada no respectivo Quadro correspondente do storyboard anexado.`
+      : `Não alterar a aparência do produto entre as cenas. Não redesenhar, não trocar cor, não acrescentar peças e não simplificar detalhes.`;
 
   // Item 1, Item 2, Item 4 e CORREÇÃO 2 (Parte G: "gravação real" em vez de "gravação caseira")
   return `Crie um vídeo vertical 9:16, ultra-realista, com aparência de gravação real feita com smartphone (estilo UGC), com duração total de ${duration} segundos.
@@ -382,24 +448,40 @@ NÃO adicionar logotipo de nenhuma rede social ou aplicativo.
 NÃO adicionar textos, legendas, números, ícones, botões ou stickers.
 EXCEÇÃO: a marca, o logo e os textos que já estão impressos no próprio produto (iguais às fotos de referência e ao storyboard) DEVEM aparecer, idênticos, sempre que aquela parte do produto estiver visível.
 
-IMPORTANTE SOBRE A IMAGEM ANEXADA:
-A imagem anexada é SOMENTE UM STORYBOARD DE REFERÊNCIA com 9 cenas numeradas.
+IMPORTANTE SOBRE A IMAGEM ANEXADA (STORYBOARD DE REFERÊNCIA — 9 QUADROS NUMERADOS):
+A imagem anexada é uma grade 3x3 de storyboard contendo EXATAMENTE 9 quadros numerados de 1 a 9 em ordem de leitura.
 NÃO mostre a imagem do storyboard no vídeo.
 NÃO use o storyboard como primeiro frame.
 NÃO use a grade 3x3 como introdução.
-NÃO reproduza a imagem completa.
-NÃO mostre números, bordas, divisões ou estrutura de storyboard.
+NÃO reproduza a imagem completa nem mostre números, bordas ou divisões.
 NÃO faça colagem. NÃO faça tela dividida. NÃO faça mosaico.
-Use o storyboard APENAS para entender: o produto, a aparência do produto, os personagens, os enquadramentos, a ordem das ações e a progressão das 9 cenas.
+Use o storyboard para entender o produto, as pessoas, os enquadramentos e a progressão contínua das 9 cenas.
 RECRIE cada quadro do storyboard como uma NOVA CENA REALISTA E INDEPENDENTE EM MOVIMENTO.
 O PRIMEIRO FRAME DO VÍDEO já deve ser uma cena real em movimento ${firstFrameClause}, e nunca a imagem inteira do storyboard.
+
+CORRESPONDÊNCIA OBRIGATÓRIA AOS QUADROS 1 A 9 DO STORYBOARD:
+O vídeo deve recriar fielmente as 9 micro-cenas seguindo rigorosamente a ordem e o conteúdo visual dos quadros de 1 a 9 da imagem anexada:
+- A Cena 1 corresponde estritamente ao Quadro 1 do storyboard anexado.
+- A Cena 2 corresponde estritamente ao Quadro 2 do storyboard anexado.
+- A Cena 3 corresponde estritamente ao Quadro 3 do storyboard anexado.
+- A Cena 4 corresponde estritamente ao Quadro 4 do storyboard anexado.
+- A Cena 5 corresponde estritamente ao Quadro 5 do storyboard anexado.
+- A Cena 6 corresponde estritamente ao Quadro 6 do storyboard anexado.
+- A Cena 7 corresponde estritamente ao Quadro 7 do storyboard anexado.
+- A Cena 8 corresponde estritamente ao Quadro 8 do storyboard anexado.
+- A Cena 9 corresponde estritamente ao Quadro 9 do storyboard anexado.
+Cada cena do vídeo deve reproduzir os mesmos personagens, roupas, cenário, enquadramento de câmera e ações retratadas no respectivo Quadro (1 a 9) da imagem.
+
+REGRA DE CORES E VARIAÇÕES POR QUADRO DO STORYBOARD:
+Cada cena do vídeo DEVE reproduzir a cor, estampa e acabamento do produto EXATAMENTE como retratados no respectivo Quadro correspondente (1 a 9) do storyboard anexado.
+Quando o storyboard alternar a cor do produto entre os quadros (por exemplo, uma cor nos quadros 1 a 3, outra cor nos quadros 4 a 6 e outra nos quadros 7 a 9), o vídeo DEVE acompanhar fielmente essa mudança em cada cena, usando a cor do produto ilustrada naquele quadro específico! A imagem do storyboard é a referência visual soberana e absoluta da cor do produto para cada cena.
 
 ========================
 FIDELIDADE DO PRODUTO (PRODUCT LOCK)
 ========================
 Manter ${productName} exatamente como aparece no storyboard e nas fotos:
 ${productLockBullets}
-Não alterar a aparência do produto entre as cenas. Não redesenhar, não trocar cor, não acrescentar peças e não simplificar detalhes. A marca, a logomarca/emblema e os textos do fabricante impressos no próprio produto DEVEM aparecer 100% idênticos às fotos de referência em todas as cenas em que aquela parte do produto estiver visível. Proibido apenas adicionar textos ou logos externos de redes sociais (como TikTok/@/carrinho) na tela.
+${productLockColorClause} A marca, a logomarca/emblema e os textos do fabricante impressos no próprio produto DEVEM aparecer 100% idênticos às fotos de referência em todas as cenas em que aquela parte do produto estiver visível. Proibido apenas adicionar textos ou logos externos de redes sociais (como TikTok/@/carrinho) na tela.
 
 ========================
 PERSONAGEM
@@ -902,16 +984,16 @@ export function buildDefaultProdutos2Plan(params: {
   const scenes: Produtos2SceneItem[] = rawScenes.map((sc, idx) => {
     const num = idx + 1;
     const varInfo = getSceneVariationInfo(num, activePlanVars);
-    const varSuffix = varInfo ? ` [Variação de Cor: ${varInfo.variationName}]` : '';
-    const fullAction = `${sc.action}${varSuffix}`;
+    const cleanAction = sc.action.trim();
     return {
       number: num,
       startTime: timings[idx].start,
       endTime: timings[idx].end,
       framing: sc.framing,
-      action: fullAction,
+      action: cleanAction,
       cameraMovement: sc.cameraMovement,
-      storyboardDescription: `${sc.framing}: ${fullAction}`,
+      storyboardDescription: `${sc.framing}: ${cleanAction}`,
+      variationName: varInfo?.variationName,
     };
   });
 
@@ -962,12 +1044,19 @@ E retornar um JSON estrito com:
    - Se o usuário escreveu um local nas Instruções adicionais (ex.: "na praia"), essa instrução tem prioridade.
 6. "visualMap": array de 4 objetos { "excerpt", "intent", "visualProof", "scenes" } mapeando os trechos da copy para provas visuais nas cenas 1 a 9.
 7. "scenes": array de EXATAMENTE 9 objetos { "number": 1..9, "startTime", "endTime", "framing", "action", "cameraMovement", "storyboardDescription" }:
-   - Cada cena prova visualmente o que está sendo falado naquele momento da copy.
+   - REGRA MANDATÓRIA E INEGOCIÁVEL — SEQUÊNCIA PROGRESSIVA CONTÍNUA (NUNCA REPETIR CENAS):
+     * As 9 cenas formam UMA ÚNICA HISTÓRIA PROGRESSIVA DE DEMONSTRAÇÃO DO PRODUTO acompanhando a copy do início ao fim (Cena 1 a 9 é um fluxo contínuo e sem repetições).
+     * É EXPRESSAMENTE PROIBIDO REPETIR AS MESMAS CENAS PARA CADA COR! (Por exemplo: NUNCA crie cena 1 apresentando cor 1, cena 2 balançando produto cor 1, cena 3 tocando tecido cor 1, e depois na cena 4 reiniciar com a apresentadora sorrindo com cor 2, cena 5 balançando cor 2... ISSO É TOTALMENTE PROIBIDO!).
+     * A demonstração do produto segue seu fluxo narrativo normal, dinâmico e progressivo de 1 a 9:
+       - Cenas 1–2: Gancho inicial, primeiro impacto e revelação do produto;
+       - Cenas 3–5: Demonstração prática, funcionamento ativo, teste real e prova do benefício central;
+       - Cenas 6–8: Macro de costuras/acabamento/material ("Olha..."), prova física de resistência e visão ampla de uso no cenário;
+       - Cena 9: Fechamento com alta conversão e CTA.
+     * A ÚNICA DIFERENÇA quando há variações de cor adicionadas é que o produto, nas cenas em que ele aparece, é retratado na cor correspondente àquele grupo de quadros:
+       - Se 2 variações: Cenas 1 a 4 na 1ª Cor; Cenas 5 a 9 na 2ª Cor.
+       - Se 3 variações: Cenas 1 a 3 na 1ª Cor; Cenas 4 a 6 na 2ª Cor; Cenas 7 a 9 na 3ª Cor.
+     * Todas as 9 cenas devem ter ações DIFERENTES, complementares e progressivas, acompanhando rigorosamente a locução!
    - Todo "olha [detalhe]" na copy vira uma cena de close/macro daquele detalhe.
-   - REGRA DE VARIAÇÕES DE COR DO PRODUTO (quando houver mais de 1 variação):
-     * Se 2 variações: cenas 1 a 4 exibem a Variação 1; cenas 5 a 9 exibem a Variação 2.
-     * Se 3 variações: cenas 1 a 3 exibem a Variação 1; cenas 4 a 6 exibem a Variação 2; cenas 7 a 9 exibem a Variação 3.
-     * Mencione explicitamente a variação/cor que aparece na cena.
    - Variar enquadramentos (nunca duas cenas seguidas iguais): close, macro, POV de mãos, plano médio, plano aberto, uso real.
    - "storyboardDescription" DEVE ser idêntico a "{framing}. {action}" (mesma pessoa, mesma ação, mesmo enquadramento e mesmos objetos, sem inventar objetos extras ou mudar quem aparece entre um campo e outro).
    - Sempre que a parte do produto onde fica a logomarca do fabricante estiver visível na cena, inclua na descrição da cena que a logomarca original está visível e idêntica à foto.
