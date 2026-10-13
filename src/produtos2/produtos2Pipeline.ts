@@ -527,7 +527,7 @@ export async function runProdutos2Pipeline(params: {
     console.warn('Usando planejamento determinístico Copy-First:', planErr);
   }
 
-  // Checklist Parte B & Parte E: garantir calibragem exata de caracteres (<=199 em 8s, <=250 em 10s), vocativo e prefixo de intro se selecionado
+  // Checklist: garantir calibragem exata de caracteres (<=165 em 8s, <=235 em 10s), vocativo e prefixo de intro se selecionado
   finalCopy = calibrateCopyToTargetWindow({
     copy: finalCopy,
     duration: form.duration,

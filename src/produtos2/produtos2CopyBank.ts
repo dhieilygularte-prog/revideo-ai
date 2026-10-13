@@ -46,9 +46,9 @@ export const COPIES_PRODUTOS_GERAIS: CopyBankEntry[] = [
     keywords: ['vara de pescar', 'vara de pesca', 'vara de carbono', 'vara ultralight', 'molinete', 'carretilha'],
     archetype: 'Achado/Demonstração',
     audience: 'Masculino',
-    charCount: 300,
+    charCount: 224,
     fits8s: false,
-    text: 'Gente, se você pesca, olha a leveza dessa vara de carbono. Ela é ultralight, a ponta dobra com qualquer belisco, mas o carbono aguenta a briga. O cabo em EVA encaixa perfeito na mão, arremesso preciso o dia todo sem cansar o braço. Olha esse detalhe vermelho premium, o preço tá ridículo no carrinho.',
+    text: 'Gente, se você pesca, olha a leveza dessa vara de carbono. Ponta ultralight e carbono que aguenta a briga. O cabo em EVA garante arremesso preciso sem cansar a mão. Olha o acabamento premium, o preço tá ridículo no carrinho.',
   },
   {
     id: 'PES-02',
@@ -58,9 +58,9 @@ export const COPIES_PRODUTOS_GERAIS: CopyBankEntry[] = [
     keywords: ['vara de pescar', 'vara de pesca', 'vara de carbono', 'vara ultralight'],
     archetype: 'Unboxing/Chegou',
     audience: 'Masculino',
-    charCount: 277,
+    charCount: 229,
     fits8s: false,
-    text: 'Gente, finalmente chegou a vara de carbono ultralight que eu tanto queria testar na represa. Olha a flexibilidade e a sensibilidade dessa ponta. Ação rápida, e o cabo de carbono é muito resistente. Leve demais para pescar o dia todo sem cansar o braço. Equipamento sensacional.',
+    text: 'Gente, finalmente chegou a vara de carbono ultralight que eu tanto queria testar. Olha a flexibilidade e a sensibilidade dessa ponta com ação rápida. Leve demais para pescar o dia todo sem cansar o braço. Equipamento sensacional.',
   },
   {
     id: 'PES-03',
@@ -70,9 +70,9 @@ export const COPIES_PRODUTOS_GERAIS: CopyBankEntry[] = [
     keywords: ['vara de pescar', 'vara de pesca', 'vara de carbono', 'vara ultralight'],
     archetype: 'Achado/Demonstração',
     audience: 'Masculino',
-    charCount: 245,
+    charCount: 220,
     fits8s: false,
-    text: 'Gente, olha a sensibilidade dessa vara de carbono ultralight que acabou de chegar. Ação sensacional, verga quase no meio sem quebrar e sente até a mordida mais fraca da tilápia. Perfeita para piapara e tilápia. Corre para o link e garante a sua.',
+    text: 'Gente, olha a sensibilidade dessa vara de carbono ultralight que acabou de chegar. Ação sensacional, verga sem quebrar e sente até a mordida mais fraca. Perfeita para piapara e tilápia. Corre para o link e garante a sua.',
   },
   {
     id: 'PES-04',
@@ -96,9 +96,9 @@ export const COPIES_PRODUTOS_GERAIS: CopyBankEntry[] = [
     keywords: ['oculos de natacao', 'touca de natacao', 'natacao', 'mergulho'],
     archetype: 'Dor→Solução',
     audience: 'Unissex',
-    charCount: 252,
+    charCount: 203,
     fits8s: false,
-    text: 'Chega de nadar cego e perder protetor de ouvido. Olha isso! O protetor já vem embutido na tira. É impossível perder na água. E o tratamento antiembaçante é surreal. A visão fica cristalina. O fecho de clique rápido não puxa o cabelo. Clica no carrinho.',
+    text: 'Chega de nadar cego e perder protetor de ouvido. Olha isso! O protetor já vem embutido na tira, não perde nunca. Lente antiembaçante com visão cristalina e fecho que não puxa o cabelo. Clica no carrinho.',
   },
   {
     id: 'NAT-02',
@@ -146,9 +146,9 @@ export const COPIES_PRODUTOS_GERAIS: CopyBankEntry[] = [
     keywords: ['alto-falante', 'alto falante', 'autofalante', 'subwoofer', 'som automotivo'],
     archetype: 'Achado/Demonstração',
     audience: 'Masculino',
-    charCount: 291,
+    charCount: 216,
     fits8s: false,
-    text: 'A qualidade de som desse alto-falante não combina com esse valor. Ele tem uma carcaça metálica robusta e um cone resistente pra entregar batidas muito potentes. Liga o som no máximo e treme a cabine inteira, som limpo sem distorcer nada. Som de cinema no seu carro. Pega no carrinho laranja.',
+    text: 'A qualidade de som desse alto-falante não combina com esse valor. Carcaça metálica robusta e batidas muito potentes. Liga no som máximo e não distorce nada, som limpo de cinema no seu carro. Pega no carrinho laranja.',
   },
   {
     id: 'SOM-04',
@@ -357,9 +357,9 @@ export const COPIES_PRODUTOS_GERAIS: CopyBankEntry[] = [
     keywords: ['panificadora', 'maquina de pao', 'maquina de fazer pao'],
     archetype: 'Unboxing/Chegou',
     audience: 'Unissex',
-    charCount: 403,
+    charCount: 225,
     fits8s: false,
-    text: 'Gente, olha essa loucura! Todo mundo correndo pra pegar essa panificadora, mas a minha já tá garantida! Acabei de trazer pra casa, olha que design lindo, tudo em preto, e o painel digital é super moderno! Testei hoje mesmo: são 19 programas, é só colocar os ingredientes e ela faz tudo sozinha, muito prático! Vamos pro carrinho agora, de verdade, esse modelo esgota num piscar de olhos, não fiquem sem!',
+    text: 'Gente, olha essa loucura! Todo mundo correndo pra panificadora! Acabei de trazer pra casa, são 19 programas automáticos que fazem tudo sozinha. Corre pro carrinho agora, esse modelo esgota num piscar de olhos, não fiquem sem!',
   },
 
   // Nicho: Garrafas e copos
@@ -371,10 +371,10 @@ export const COPIES_PRODUTOS_GERAIS: CopyBankEntry[] = [
     keywords: ['garrafinha', 'garrafa de agua', 'squeeze', 'copo termico'],
     archetype: 'Achado/Demonstração',
     audience: 'Feminino',
-    charCount: 270,
+    charCount: 222,
     fits8s: false,
     notes: 'Estilo POV.',
-    text: 'Gente, achei a garrafinha mais estética e perfeita pra levar na bolsa. O tamanho de 400 ml é ideal, super sustentável, e olha o brilho dessa tampa. E o melhor: fechei e não vazou absolutamente nada. Super prática pro dia a dia. Clica aqui embaixo pra escolher a sua cor.',
+    text: 'Gente, achei a garrafinha mais estética e perfeita pra levar na bolsa. Tamanho ideal de 400 ml, sustentável e com essa tampa brilhante incrível. Veda perfeitamente sem vazar nada. Clica aqui embaixo pra escolher a sua cor.',
   },
   {
     id: 'GAR-02',
@@ -384,9 +384,9 @@ export const COPIES_PRODUTOS_GERAIS: CopyBankEntry[] = [
     keywords: ['garrafinha', 'garrafa de agua', 'squeeze'],
     archetype: 'Achado/Demonstração',
     audience: 'Feminino',
-    charCount: 279,
+    charCount: 208,
     fits8s: false,
-    text: 'Gente, achei a garrafinha mais linda e sustentável pro meu dia a dia. Ela tem essa alça super prática de carregar, e a tampa metálica veda perfeitamente. Além de ser linda com esse desenho simples, não pega cheiro de jeito nenhum. Perfeita pro trabalho e pra academia. Recomendo!',
+    text: 'Gente, achei a garrafinha mais linda e sustentável pro meu dia a dia. Alça super prática de carregar e tampa metálica com vedação que não vaza nem pega cheiro. Perfeita pro trabalho e pra academia. Recomendo!',
   },
   {
     id: 'GAR-03',
@@ -408,9 +408,9 @@ export const COPIES_PRODUTOS_GERAIS: CopyBankEntry[] = [
     keywords: ['garrafa termica', 'copo termico', 'garrafa inox'],
     archetype: 'Achado/Demonstração',
     audience: 'Feminino',
-    charCount: 279,
+    charCount: 205,
     fits8s: false,
-    text: 'Gente, achei a garrafa térmica mais estilosa e perfeita para o dia a dia. Design de garrafa de refri, aço inox por dentro, mantém o gelo o dia todo. E o melhor: vira de ponta-cabeça e não vaza uma gota na bolsa. Super prática essa alcinha. Clica aqui embaixo para escolher a sua.',
+    text: 'Gente, achei a garrafa térmica mais estilosa e perfeita para o dia a dia. Aço inox por dentro, mantém o gelo o dia todo e não vaza uma gota na bolsa de jeito nenhum. Clica aqui embaixo para escolher a sua.',
   },
 
   // Nicho: Jardim
@@ -464,9 +464,9 @@ export const COPIES_PRODUTOS_GERAIS: CopyBankEntry[] = [
     keywords: ['escova alisadora', 'escova chapinha', 'escova secadora', 'escova de ceramica'],
     archetype: 'Dor→Solução',
     audience: 'Feminino',
-    charCount: 260,
+    charCount: 205,
     fits8s: false,
-    text: 'Adeus, chapinha que queima a testa. Olha essa escova de cerâmica. Ela esquenta muito rápido. A cerâmica alisa desde a raiz sem puxar os fios e sem te queimar. Perfeita, e vem com esse suporte pra apoiar na mesa com segurança. Clica no carrinho e garante a sua.',
+    text: 'Adeus, chapinha que queima a testa. Olha essa escova de cerâmica. Esquenta muito rápido, alisa desde a raiz sem puxar os fios e vem com suporte seguro pra apoiar na mesa. Clica no carrinho e garante a sua.',
   },
 
   // Nicho: Casa, banheiro e organização
@@ -478,9 +478,9 @@ export const COPIES_PRODUTOS_GERAIS: CopyBankEntry[] = [
     keywords: ['armario de banheiro', 'rack de banheiro', 'rack de chao', 'organizador de banheiro'],
     archetype: 'Dor→Solução',
     audience: 'Feminino',
-    charCount: 316,
+    charCount: 220,
     fits8s: false,
-    text: 'Falta espaço no banheiro e você não pode furar o azulejo? Olha isso! É um rack de chão que aproveita o espaço em cima do vaso. Cabe toalha, cosmético e fica super chique. E ele é super reforçado, não fica bambeando e aguenta bastante peso. Sua pia finalmente vai ficar livre. Garante o seu na cor preta aqui no link.',
+    text: 'Falta espaço no banheiro e você não pode furar o azulejo? Olha isso! Rack de chão super reforçado que aproveita o espaço sobre o vaso sem bambear. Cabe tudo e deixa sua pia livre. Garante o seu na cor preta aqui no link.',
   },
   {
     id: 'CAS-02',
@@ -490,9 +490,9 @@ export const COPIES_PRODUTOS_GERAIS: CopyBankEntry[] = [
     keywords: ['pastilha vaso sanitario', 'pastilha sanitaria', 'bloco sanitario', 'gel sanitario'],
     archetype: 'Unboxing/Chegou',
     audience: 'Feminino',
-    charCount: 248,
+    charCount: 192,
     fits8s: false,
-    text: 'Chegou meu kit de pastilhas pra vaso sanitário do TikTok Shop! Essa aqui é floral, tem de limão, lavanda e oceano, o cheiro é maravilhoso logo que abre! Olha essa espuma limpando tudinho, não precisa mais ficar esfregando o vaso sanitário todo dia.',
+    text: 'Chegou meu kit de pastilhas pra vaso sanitário do TikTok Shop! Cheirinho maravilhoso logo que abre e espuma ativa limpando tudinho sem você precisar ficar esfregando o vaso sanitário todo dia.',
   },
   {
     id: 'CAS-03',
@@ -502,9 +502,9 @@ export const COPIES_PRODUTOS_GERAIS: CopyBankEntry[] = [
     keywords: ['placa de casa', 'placa de numero', 'numero residencial', 'placa de endereco'],
     archetype: 'Achado/Demonstração',
     audience: 'Unissex',
-    charCount: 308,
+    charCount: 224,
     fits8s: false,
-    text: 'Finalmente os entregadores vão achar minha casa, e com muito estilo. Olha a qualidade: fundo preto espelhado e letras em alto-relevo. Não é adesivo barato, não. É super fácil de instalar e já transforma a fachada da casa na hora, fica com cara de casa de rico. Clica no link pra fazer a sua com seu endereço.',
+    text: 'Finalmente os entregadores vão achar minha casa, e com muito estilo. Olha a qualidade: acabamento espelhado e letras em relevo. Fácil de instalar, transforma a fachada na hora. Clica no link pra fazer a sua com seu endereço.',
   },
 
   // Nicho: Casa, lazer e descanso
@@ -542,9 +542,9 @@ export const COPIES_PRODUTOS_GERAIS: CopyBankEntry[] = [
     keywords: ['capa de moto', 'capa impermeavel moto', 'capa para moto'],
     archetype: 'Dor→Solução',
     audience: 'Masculino',
-    charCount: 274,
+    charCount: 211,
     fits8s: false,
-    text: 'Se você deixa sua moto no tempo, olha o que acabou de chegar. Material super grosso e resistente, não é daquelas que rasgam fácil. Bateu a chuva, a água escorre na hora, zero chance de enferrujar sua moto. Tem do tamanho P ao GG, protege sua guerreira clicando aqui embaixo.',
+    text: 'Se você deixa sua moto no tempo, olha o que acabou de chegar. Capa grossa super resistente: bateu a chuva a água escorre na hora, zero chance de ferrugem. Do P ao GG, protege sua guerreira clicando aqui embaixo.',
   },
 
   // Nicho: Conforto para os pés
@@ -556,9 +556,9 @@ export const COPIES_PRODUTOS_GERAIS: CopyBankEntry[] = [
     keywords: ['palmilha de gel', 'palmilha ortopedica', 'palmilha'],
     archetype: 'Dor→Solução',
     audience: 'Unissex',
-    charCount: 236,
+    charCount: 213,
     fits8s: false,
-    text: 'Gente, quem trabalha em pé o dia todo precisa ver isso. Olha a grossura desse gel, ele absorve todo o impacto e transforma qualquer sapato duro na coisa mais confortável do mundo. Vem dois pares, clica aqui embaixo para salvar seus pés.',
+    text: 'Gente, quem trabalha em pé o dia todo precisa ver isso. Olha a grossura desse gel: absorve o impacto e transforma qualquer sapato duro num conforto surreal. Vem dois pares, clica aqui embaixo para salvar seus pés.',
   },
 
   // Nicho: Limpeza e descartáveis
@@ -570,9 +570,9 @@ export const COPIES_PRODUTOS_GERAIS: CopyBankEntry[] = [
     keywords: ['luva descartavel', 'luva vinil', 'luva nitrilica', 'viniflex'],
     archetype: 'Dor→Solução',
     audience: 'Feminino',
-    charCount: 340,
+    charCount: 226,
     fits8s: false,
-    text: 'Tá cansada daquelas luvas que rasgam por qualquer coisinha? Olha a resistência dessa Viniflex da Vabani. O ajuste é perfeito e não tem aquele pó chato pra sujar a mão. A sensibilidade ao toque é surreal. Serve pra comida, limpeza, estética, tudo que você imaginar. Vem 100 unidades na caixa, rende demais. Clica no carrinho e garante a sua.',
+    text: 'Tá cansada daquelas luvas que rasgam por qualquer coisinha? Olha a resistência da Viniflex! Ajuste perfeito, sem aquele pó chato e com máxima sensibilidade. Serve pra tudo e vem 100 unidades. Clica no carrinho e garante a sua.',
   },
 
   // Nicho: Festa e decoração
@@ -584,9 +584,9 @@ export const COPIES_PRODUTOS_GERAIS: CopyBankEntry[] = [
     keywords: ['saia babado', 'saia de mesa', 'toalha de mesa festa'],
     archetype: 'Achado/Demonstração',
     audience: 'Feminino',
-    charCount: 345,
+    charCount: 205,
     fits8s: false,
-    text: 'Olha o tamanho disso! Pra mesa de festa grande, eu gosto de abrir com alguém, porque já dá pra ver certinho até onde vai cobrir. Cada um pega um lado e vai ajustando. Em poucos minutos a frente da mesa fica toda coberta e a bagunça some da vista. Acabou a festa, eu vou soltando com calma, e assim fica bem mais fácil usar tudo depois do evento.',
+    text: 'Olha o tamanho disso! Pra mesa de festa grande cobre tudo num instante, escondendo qualquer bagunça com caimento perfeito. Muito fácil de instalar e super prática de guardar pra usar tudo depois do evento.',
   },
 
   // Nicho: Eletrônicos
@@ -610,9 +610,9 @@ export const COPIES_PRODUTOS_GERAIS: CopyBankEntry[] = [
     keywords: ['smartwatch', 'relogio inteligente', 'apple watch', 'relogio digital'],
     archetype: 'Provocação/Comparação',
     audience: 'Unissex',
-    charCount: 255,
+    charCount: 197,
     fits8s: false,
-    text: 'Ah, mas o rico gosta de ser feito de bobo mesmo, né? Paga mais de 5 mil reais no relógio da maçã, sendo que você pode pegar aqui no TikTok, original, com um ano de garantia e parcelar em até 12 vezes sem juros. Inclusive, tá rolando oferta até meia-noite.',
+    text: 'Ah, mas o rico gosta de ser feito de bobo mesmo, né? Paga caro na maçã sendo que aqui tem smartwatch completo, com garantia e parcelamento sem juros. Aproveita que tá rolando oferta até meia-noite.',
   },
   {
     id: 'ELE-03',
@@ -622,9 +622,9 @@ export const COPIES_PRODUTOS_GERAIS: CopyBankEntry[] = [
     keywords: ['celular', 'smartphone', 'iphone', 'xiaomi', 'samsung', 'motorola'],
     archetype: 'Choque de preço/Urgência',
     audience: 'Unissex',
-    charCount: 260,
+    charCount: 206,
     fits8s: false,
-    text: 'Olha o preço disso aqui agora! Acabou de entrar em oferta relâmpago e tem muita gente conseguindo pegar com esse super desconto. Aproveita, que só vai até a meia-noite. Eu vou deixar o link com desconto aqui no carrinho laranja. Já clica e pega o seu antes que acabe!',
+    text: 'Olha o preço disso aqui agora! Acabou de entrar em oferta relâmpago com super desconto exclusivo. Aproveita que só vai até meia-noite. O link tá aqui no carrinho laranja, corre e pega o seu antes que acabe!',
   },
   {
     id: 'ELE-04',
@@ -814,9 +814,9 @@ export const COPIES_PRODUTOS_GERAIS: CopyBankEntry[] = [
     keywords: ['bateria de litio', 'bateria lifepo4', 'bateria estacionaria'],
     archetype: 'Especificação',
     audience: 'Unissex',
-    charCount: 248,
+    charCount: 199,
     fits8s: false,
-    text: 'Consegui pegar a minha na loja. Essa bateria é incrível. Olha esse visor LCD, muito mais leve que as outras. O conector já tá funcionando, dá pra levar pra qualquer lugar. Lítio com BMS integrado. Esquece o chumbo-ácido. Corre antes que acabe tudo.',
+    text: 'Consegui pegar a minha na loja. Essa bateria é incrível. Olha o visor LCD, super leve, conector pronto e célula de lítio com BMS integrado. Muito superior ao chumbo-ácido. Corre antes que acabe tudo.',
   },
 
   // Nicho: Ferramentas
@@ -840,9 +840,9 @@ export const COPIES_PRODUTOS_GERAIS: CopyBankEntry[] = [
     keywords: ['puncao eletrica', 'puncionadeira', 'puncao hidraulica'],
     archetype: 'Especificação',
     audience: 'Masculino',
-    charCount: 357,
+    charCount: 218,
     fits8s: false,
-    text: 'Gente, olha esse achado pra quem trabalha com metal! Essa punção elétrica hidráulica entrou em superoferta. Ela tem 200 W de potência e 20 toneladas de força. Vem com nove matrizes diferentes pra você fazer furos redondos ou ovais, com um acabamento perfeito. Tem envio para todo o Brasil, gente! Corre e clica aqui embaixo, no carrinho, pra garantir a sua.',
+    text: 'Gente, olha esse achado pra quem trabalha com metal! Punção elétrica com 200 W e 20 toneladas de força. Vem com 9 matrizes pra furos perfeitos, acabamento impecável e envio rápido. Clica no carrinho pra garantir a sua.',
   },
 
   // Nicho: Agro e roça
@@ -910,9 +910,9 @@ export const COPIES_CALCADOS_MASCULINOS: CopyBankEntry[] = [
     keywords: ['kit 2 pares', 'dois pares', '2 pares', 'kit tenis'],
     archetype: 'Kit/Valor',
     audience: 'Masculino',
-    charCount: 262,
+    charCount: 216,
     fits8s: false,
-    text: 'Paguei o preço de um e recebi dois pares, perfeitos para a academia. Olha a flexibilidade e o amortecimento disso. Super leve, e o pé respira o treino todo. O design é lindo. O kit com 2 está quase de graça hoje. Clique aqui embaixo antes que acabe o seu número.',
+    text: 'Paguei o preço de um e recebi dois pares, perfeitos para a academia. Flexibilidade surreal, super leve e o pé respira o treino inteiro. Kit com 2 quase de graça hoje. Clique aqui embaixo antes que acabe o seu número.',
   },
   {
     id: 'CAL-04',
@@ -922,9 +922,9 @@ export const COPIES_CALCADOS_MASCULINOS: CopyBankEntry[] = [
     keywords: ['kit 2 pares', 'dois pares', '2 pares', 'kit tenis'],
     archetype: 'Unboxing/Chegou',
     audience: 'Masculino',
-    charCount: 249,
+    charCount: 215,
     fits8s: false,
-    text: 'Cara, não acredito que chegou o meu kit com dois pares. Olha a maciez disso aqui, dá pra dobrar no meio e não estraga. Parece que você tá pisando nas nuvens, super leve. Pra academia ou pro dia a dia, perfeito. Clica no carrinho e garante o seu kit.',
+    text: 'Cara, não acredito que chegou o meu kit com dois pares. Olha a maciez disso aqui: dobra no meio, não deforma e parece que você tá pisando nas nuvens. Leve demais pro dia a dia. Clica no carrinho e garante o seu kit.',
   },
 ];
 
@@ -940,9 +940,9 @@ export const COPIES_ROUPAS_MASCULINAS: CopyBankEntry[] = [
     keywords: ['camiseta', 'camisa', 'blusa masculina', 'streetwear', 'oversized', 'algodao', 'polo'],
     archetype: 'Especificação',
     audience: 'Masculino',
-    charCount: 273,
+    charCount: 218,
     fits8s: false,
-    text: 'Se liga nessa camiseta streetwear, a estampa é insana e a qualidade vai te surpreender. 100% algodão fio 30.1 de verdade. Não esquenta, super macia. Costura premium com reforço na gola e nos ombros, feita pra durar. Caimento perfeito. O estoque tá voando, já garante a sua.',
+    text: 'Se liga nessa camiseta streetwear, a estampa é insana e a qualidade vai te surpreender. 100% algodão fio 30.1, super macia, caimento impecável e costura reforçada pra durar muito. O estoque tá voando, já garante a sua.',
   },
   {
     id: 'ROU-02',
@@ -952,9 +952,9 @@ export const COPIES_ROUPAS_MASCULINAS: CopyBankEntry[] = [
     keywords: ['bermuda', 'short', 'shorts', 'bermuda treino', 'short academia'],
     archetype: 'Dor→Solução',
     audience: 'Masculino',
-    charCount: 250,
+    charCount: 202,
     fits8s: false,
-    text: 'Irmão, achei a bermuda que resolveu o problema do celular no treino. Olha esse bolso secreto: você corre e o celular não balança por nada. Zero assadura na perna e máximo conforto. Todo mundo na academia tá usando. Clica aqui embaixo e garante a sua.',
+    text: 'Irmão, achei a bermuda que resolveu o problema do celular no treino. Olha esse bolso interno: você corre e o celular não balança nada. Zero assadura e conforto total. Clica aqui embaixo e garante a sua.',
   },
   {
     id: 'ROU-03',
@@ -964,9 +964,9 @@ export const COPIES_ROUPAS_MASCULINAS: CopyBankEntry[] = [
     keywords: ['kit 2 bermudas', 'kit 2 shorts', 'short 2 em 1', 'kit bermuda', 'kit shorts'],
     archetype: 'Kit/Valor',
     audience: 'Masculino',
-    charCount: 317,
+    charCount: 220,
     fits8s: false,
-    text: 'Gente, olha esse kit com dois shorts 2 em 1 que acabou de chegar pra treinar. Veste super anatômico no corpo, o tecido dry fit é muito leve. Tem bolso no forro pra prender o celular firme sem pressão, e dá pra agachar pesado com segurança. Muito confortável pra corrida, academia e treino diário, com total liberdade.',
+    text: 'Gente, olha esse kit com dois shorts 2 em 1 pra treinar. Tecido dry fit super leve, forro com bolso firme que segura o celular e total liberdade pra agachar pesado. Conforto máximo pro treino diário, com total liberdade.',
   },
   {
     id: 'ROU-04',
@@ -976,9 +976,9 @@ export const COPIES_ROUPAS_MASCULINAS: CopyBankEntry[] = [
     keywords: ['camisa termica', 'camiseta termica', 'segunda pele', 'protecao uv', 'kit 4 camisas', 'kit camisetas'],
     archetype: 'Kit/Valor',
     audience: 'Masculino',
-    charCount: 301,
+    charCount: 211,
     fits8s: false,
-    text: 'E aí, mano, olha o que eu recebi. Kit com 4 camisas térmicas baratinhas, mas de qualidade. Olha a elasticidade dela, fica como uma segunda pele super confortável. Protege do sol e é super fresca. Pra trabalho, andar de bike ou de canoa. E a melhor parte: leva 4 unidades. Toca embaixo e garante o seu.',
+    text: 'E aí, mano, olha o que eu recebi. Kit com 4 camisas térmicas de altíssima qualidade. Veste como segunda pele, super flexível, fresca e com proteção solar pro dia todo. Leva 4 peças. Toca embaixo e garante o seu.',
   },
   {
     id: 'ROU-05',
@@ -988,9 +988,9 @@ export const COPIES_ROUPAS_MASCULINAS: CopyBankEntry[] = [
     keywords: ['calca jogger', 'calca moletom', 'calca masculina', 'jogger', 'moletom'],
     archetype: 'Dor→Solução',
     audience: 'Masculino',
-    charCount: 303,
+    charCount: 217,
     fits8s: false,
-    text: 'Esfriou, né? Achei aquela jogger perfeita pra treinar ou sair sem congelar. Olha esse forro felpudo por dentro, é super grossinho e macio, esquenta demais. E o melhor: tem elástico na cintura e não prende o movimento, dá pra caminhar de boa. Tem várias cores no carrinho, clica e garanta a sua pro frio.',
+    text: 'Esfriou, né? Achei aquela jogger perfeita pra treinar ou sair sem congelar. Forro felpudo super macio que esquenta de verdade, com cós elástico confortável que não prende os movimentos. Clica e garanta a sua pro frio.',
   },
   {
     id: 'ROU-06',
@@ -1000,9 +1000,9 @@ export const COPIES_ROUPAS_MASCULINAS: CopyBankEntry[] = [
     keywords: ['calca jogger', 'calca moletom', 'calca flanelada', 'jogger', 'calca de frio'],
     archetype: 'Dor→Solução',
     audience: 'Masculino',
-    charCount: 268,
+    charCount: 204,
     fits8s: false,
-    text: 'Cara, se você odeia passar frio, olha o que eu achei no TikTok. Ela é toda flanelada por dentro, muito macia e não passa vento nenhum. O caimento é perfeito, tem bolso fundo e o cós ajusta super bem no corpo. O melhor investimento pro frio tá aqui no carrinho laranja.',
+    text: 'Cara, se você odeia passar frio, olha o que eu achei no TikTok. Toda flanelada por dentro, corte impecável que barra o vento e cós ajustável super confortável. O melhor achado tá aqui no carrinho laranja.',
   },
 ];
 
@@ -1519,14 +1519,14 @@ export function analyzeProductInfoForProdutos2(rawText: string): ProductSpecsExt
 
 /**
  * Encurta copy longa caso ultrapasse o limite de caracteres:
- * - Para vídeos de 8s: no máximo 199 caracteres com espaço
- * - Para vídeos de 10s: até 250 caracteres com espaço
+ * - Para vídeos de 8s: no máximo 165 caracteres com espaço
+ * - Para vídeos de 10s: no máximo 235 caracteres com espaço
  * MEXENDO O MÍNIMO POSSÍVEL:
  * - Evita mexer no início ("hook" dos primeiros 3 segundos que possui o "Nossa!" e as palavras seguintes)
  * - Evita mexer no final (o "CTA", chamada para ação que é parte vital da conversão)
  * - Mexe exclusivamente no MEIO (o "corpo" da fala), enxugando orações ou frases secundárias
  */
-export function enforceMaxChars(copyText: string, maxChars: number, minTargetChars = 140): string {
+export function enforceMaxChars(copyText: string, maxChars: number, minTargetChars = 120): string {
   const clean = copyText.replace(/\s+/g, ' ').trim();
   if (clean.length <= maxChars) return clean;
 
@@ -1824,7 +1824,7 @@ export function evaluateCopyDnaChecklist(copy: string, duration: Produtos2Durati
   const hasCompleteCta = /\b(carrinho|aqui embaixo|link|garante|aproveita|estoque|oferta|promoção|desconto|parcela|confira|confere|compre|adquira|pra você)\b/i.test(
     clean.slice(-95)
   );
-  const maxAllowed = duration === 8 ? 199 : 360;
+  const maxAllowed = duration === 8 ? 165 : 235;
   const isWithinWindow = clean.length >= 80 && clean.length <= maxAllowed;
 
   let score = 100;
@@ -1842,7 +1842,7 @@ export function evaluateCopyDnaChecklist(copy: string, duration: Produtos2Durati
 }
 
 /**
- * Garante o prefixo "Nossa, ", concordância de gênero/vocativo e o respeito ao limite de 8 segundos (<= 199 chars)
+ * Garante o prefixo "Nossa, ", concordância de gênero/vocativo e o respeito ao limite de caracteres (<= 165 em 8s, <= 235 em 10s)
  * sem alterar o texto original validado do banco além do estritamente necessário.
  */
 export function calibrateCopyToTargetWindow(params: {
@@ -1859,8 +1859,8 @@ export function calibrateCopyToTargetWindow(params: {
     useSpeechIntro
   );
 
-  const maxAllowed = duration === 8 ? 199 : 250;
-  const minTarget = duration === 8 ? 140 : 190;
+  const maxAllowed = duration === 8 ? 165 : 235;
+  const minTarget = duration === 8 ? 110 : 160;
 
   if (text.length > maxAllowed) {
     text = applySpeechIntro(enforceMaxChars(text, maxAllowed, minTarget), useSpeechIntro);
@@ -1917,10 +1917,10 @@ export function selectAndAdaptProdutos2Copy(params: {
     const resolvedInf: 'Homem' | 'Mulher' =
       influencer || specs.influencer || (clientGender === 'Masculino' ? 'Homem' : 'Mulher');
     let finalCustom = applySpeechIntro(customCopy.trim(), Boolean(useSpeechIntro));
-    if (duration === 8 && finalCustom.length > 199) {
-      finalCustom = applySpeechIntro(enforceMaxChars(finalCustom, 199, 140), Boolean(useSpeechIntro));
-    } else if (duration === 10 && finalCustom.length > 250) {
-      finalCustom = applySpeechIntro(enforceMaxChars(finalCustom, 250, 190), Boolean(useSpeechIntro));
+    if (duration === 8 && finalCustom.length > 165) {
+      finalCustom = applySpeechIntro(enforceMaxChars(finalCustom, 165, 110), Boolean(useSpeechIntro));
+    } else if (duration === 10 && finalCustom.length > 235) {
+      finalCustom = applySpeechIntro(enforceMaxChars(finalCustom, 235, 160), Boolean(useSpeechIntro));
     }
     const customFreeShipping = hasExplicitFreeShipping(`${productName} ${productInfo} ${customCopy}`);
     finalCustom = sanitizeFreeShippingMentions(finalCustom, customFreeShipping);
@@ -2023,10 +2023,10 @@ export function selectAndAdaptProdutos2Copy(params: {
     }
   }
 
-  // Em 8s, já dá preferência para falas da memória do app que possuem menos de 199 caracteres (Item 9)
+  // Em 8s, já dá preferência para falas da memória do app que possuem menos de 165 caracteres (Item 9)
   let pool = candidates;
   if (duration === 8) {
-    const shortPool = candidates.filter((c) => c.fits8s || c.charCount <= 199 || c.text.length <= 199);
+    const shortPool = candidates.filter((c) => c.fits8s || c.charCount <= 165 || c.text.length <= 165);
     if (shortPool.length > 0) {
       pool = shortPool;
     }

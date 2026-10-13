@@ -525,7 +525,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
           <label className="text-xs font-bold text-white flex items-center justify-between">
             <span>3. Duração no Veo</span>
             <span className="text-[10px] text-sky-200 font-semibold">
-              {form.duration === 10 ? '10 s (Copy completa)' : '8 s (Máx. 199 caracteres c/ espaços)'}
+              {form.duration === 10 ? '10 s (Máx. 235 caracteres c/ espaços)' : '8 s (Máx. 165 caracteres c/ espaços)'}
             </span>
           </label>
           <div className="grid grid-cols-2 gap-2 bg-slate-950/90 p-1 rounded-xl border border-sky-400/50">
@@ -538,7 +538,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
-              10 s (Padrão · Veo Omni Flash)
+              10 s (Até 235 caracteres)
             </button>
             <button
               type="button"
@@ -549,7 +549,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
-              8 s (Até 199 caracteres)
+              8 s (Até 165 caracteres)
             </button>
           </div>
         </div>

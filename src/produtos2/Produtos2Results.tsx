@@ -151,12 +151,13 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
             </span>
             <span
               className={`px-2 py-0.5 rounded text-[11px] font-mono font-bold ${
-                result.duration === 8 && result.finalCopy.length > 199
+                (result.duration === 8 && result.finalCopy.length > 165) ||
+                (result.duration === 10 && result.finalCopy.length > 235)
                   ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
                   : 'bg-zinc-800 text-zinc-300 border border-zinc-700'
               }`}
             >
-              {result.finalCopy.length} caracteres ({result.duration}s)
+              {result.finalCopy.length} caracteres ({result.duration}s · máx. {result.duration === 8 ? 165 : 235})
             </span>
           </div>
 
