@@ -123,5 +123,6 @@ export interface Produtos2ResultState {
   isAuditingStoryboard?: boolean;
   storyboardAudit?: Produtos2StoryboardAudit;
   veoPrompt: string;
+  variations?: Produtos2Variation[];
 }
 

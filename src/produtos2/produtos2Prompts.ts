@@ -10,6 +10,7 @@ import {
   Produtos2SubMode,
   Produtos2VisualMapItem,
 } from './types';
+import { ensureLeadingNossaPrefix } from './produtos2CopyBank';
 
 /**
  * Retorna a descrição canônica unificada de uma cena (mesma pessoa, mesma ação e mesmo enquadramento
@@ -66,6 +67,44 @@ export function formatFirstFrameClause(scene1: Produtos2SceneItem | undefined, p
   return `de ${cleaned}`;
 }
 
+export interface SceneVariationInfo {
+  variationIndex: number;
+  variationName: string;
+  totalVariations: number;
+}
+
+/**
+ * Regra de divisão das variações do produto (Item 7 do usuário):
+ * - 1 variação: aparece normal em todas as cenas.
+ * - 2 variações: divide em 2: cenas 1 a 4 (metade inicial na 1ª cor) e cenas 5 a 9 (segunda metade na 2ª cor).
+ * - 3 variações: cenas 1, 2 e 3 (1ª cor); cenas 4, 5 e 6 (2ª cor); cenas 7, 8 e 9 (3ª cor).
+ */
+export function getSceneVariationInfo(
+  sceneNumber: number,
+  variations: { name?: string; photos?: string[] }[] = []
+): SceneVariationInfo | null {
+  const active = (variations || []).filter(
+    (v) => (v.name && v.name.trim().length > 0) || (v.photos && v.photos.length > 0)
+  );
+  if (active.length <= 1) return null;
+
+  if (active.length === 2) {
+    const idx = sceneNumber <= 4 ? 0 : 1;
+    return {
+      variationIndex: idx,
+      variationName: active[idx].name?.trim() || `Variação ${idx + 1}`,
+      totalVariations: 2,
+    };
+  }
+
+  const idx = sceneNumber <= 3 ? 0 : sceneNumber <= 6 ? 1 : 2;
+  return {
+    variationIndex: idx,
+    variationName: active[idx].name?.trim() || `Variação ${idx + 1}`,
+    totalVariations: Math.min(3, active.length),
+  };
+}
+
 /**
  * SEÇÃO 7.6 — Prompt-base para o gerador de imagem do Storyboard (1080 x 1920, grade 3x3, 9 cenas)
  */
@@ -79,8 +118,10 @@ export function buildProdutos2StoryboardImagePrompt(params: {
   scenarioDescription: string;
   scenes: Produtos2SceneItem[];
   additionalInstructions?: string;
+  variations?: { name: string; photos: string[] }[];
 }): string {
   const {
+    productName,
     productLock,
     finalCopy,
     visualMap,
@@ -89,6 +130,7 @@ export function buildProdutos2StoryboardImagePrompt(params: {
     scenarioDescription,
     scenes,
     additionalInstructions,
+    variations = [],
   } = params;
 
   const framingLabel =
@@ -112,12 +154,24 @@ export function buildProdutos2StoryboardImagePrompt(params: {
     ? `\nINSTRUÇÕES ADICIONAIS PRIORITÁRIAS DO USUÁRIO: ${additionalInstructions.trim()}`
     : '';
 
+  const activeVars = (variations || []).filter((v) => v.photos && v.photos.length > 0);
+  let variationsBlock = '';
+  if (activeVars.length >= 2) {
+    variationsBlock = `\nREGRA OBRIGATÓRIA DE DIVISÃO DAS VARIAÇÕES DE COR DO PRODUTO NOS 9 QUADROS:
+O produto possui ${activeVars.length} variações de cor/modelo anexadas nas fotos de referência:
+${
+  activeVars.length === 2
+    ? `- Quadros 1, 2, 3 e 4 (metade inicial): O produto DEVE ser retratado rigorosamente na 1ª Variação (${activeVars[0].name || 'Variação 1'}).\n- Quadros 5, 6, 7, 8 e 9 (segunda metade): O produto DEVE ser retratado rigorosamente na 2ª Variação (${activeVars[1].name || 'Variação 2'}).`
+    : `- Quadros 1, 2 e 3: O produto DEVE ser retratado rigorosamente na 1ª Variação (${activeVars[0].name || 'Variação 1'}).\n- Quadros 4, 5 e 6: O produto DEVE ser retratado rigorosamente na 2ª Variação (${activeVars[1].name || 'Variação 2'}).\n- Quadros 7, 8 e 9: O produto DEVE ser retratado rigorosamente na 3ª Variação (${activeVars[2].name || 'Variação 3'}).`
+}
+Respeite rigorosamente essa alternância de cores entre os conjuntos de quadros correspondentes conforme as fotos de cada variação!\n`;
+  }
+
   return `Crie UMA ÚNICA IMAGEM VERTICAL 1080x1920 (9:16) de storyboard fotográfico ultra-realista em grade 3x3 (3 colunas x 3 linhas), com EXATAMENTE 9 cenas numeradas de 1 a 9 em ordem de leitura (esquerda para direita, de cima para baixo). Quadros de tamanho igual, cantos arredondados, separados por uma borda branca fina, fundo branco.
 
 Use as fotos anexadas como referência absoluta do produto. Preserve fielmente (PRODUCT LOCK): ${productLock.join('; ')}.
 O produto deve ser 100% idêntico em todos os quadros: não redesenhar, não embelezar, não trocar cor, não acrescentar peças e não simplificar detalhes.
-REGRA OBRIGATÓRIA DE LOGOMARCA DO FABRICANTE NO PRODUTO: A marca, a logomarca, o emblema/símbolo e os textos originais do fabricante que estão impressos, estampados ou gravados no próprio produto nas fotos de referência DEVEM aparecer 100% idênticos (mesmo desenho, formato, cor, proporção e posição exata na peça, como no encosto, painel ou corpo do produto) em TODOS os quadros onde essa parte do produto estiver visível. JAMAIS remova, apague ou deixe lisa a área onde fica a logomarca original do fabricante no produto!
-
+REGRA OBRIGATÓRIA DE LOGOMARCA DO FABRICANTE NO PRODUTO: A marca, a logomarca, o emblema/símbolo e os textos originais do fabricante que estão impressos, estampados ou gravados no próprio produto nas fotos de referência DEVEM aparecer 100% idênticos (mesmo desenho, formato, cor, proporção e posição exata na peça, como no encosto, painel ou corpo do produto) em TODOS os quadros onde essa parte do produto estiver visível. JAMAIS remova, apague ou deixe lisa a área onde fica a logomarca original do fabricante no produto!${variationsBlock}
 A copy selecionada para este criativo é:
 "${finalCopy}"
 As cenas do storyboard devem ser construídas A PARTIR DESSA COPY. Cada cena deve provar, ilustrar ou reforçar visualmente um trecho da fala.
@@ -151,6 +205,7 @@ export function buildProdutos2VeoPrompt(params: {
   scenarioDescription: string;
   scenes: Produtos2SceneItem[];
   additionalInstructions?: string;
+  variations?: { name: string; photos: string[] }[];
 }): string {
   const {
     productName,
@@ -162,12 +217,16 @@ export function buildProdutos2VeoPrompt(params: {
     productLock,
     avatarDescription,
     scenarioDescription,
-    scenes,
+    scenes = [],
     additionalInstructions,
+    variations = [],
   } = params;
 
+  // Garante de forma incondicional o prefixo "Nossa! " com inicial maiúscula
+  const safeSpeech = ensureLeadingNossaPrefix(finalCopy);
+
   // Item 7.1: Frase do primeiro frame com letra minúscula e sem ponto no meio
-  const firstFrameClause = formatFirstFrameClause(scenes[0], productName);
+  const firstFrameClause = formatFirstFrameClause(scenes?.[0], productName);
 
   // Item 7.2: PRODUCT LOCK sempre igual no prompt da imagem e no prompt do Veo
   const productLockBullets = productLock
@@ -184,6 +243,8 @@ export function buildProdutos2VeoPrompt(params: {
       : `POV: mostrar somente as mãos em primeira pessoa interagindo com ${productName}; nunca mostrar rosto ou corpo.`;
 
   // Item 7.3: Gerar o prompt a partir das MESMAS 9 descrições usadas para criar a imagem, sem reescrever as cenas
+  // e respeitando a divisão de variações de cor (Item 7)
+  const activeVars = (variations || []).filter((v) => v.photos && v.photos.length > 0);
   const scenesBlock = scenes
     .slice(0, 9)
     .map((sc, idx) => {
@@ -194,7 +255,9 @@ export function buildProdutos2VeoPrompt(params: {
       if (speechMode === 'sem_fala' && isLast) {
         actionText = actionText.replace(/falando para a câmera/gi, 'sorrindo e mostrando o produto para a câmera');
       }
-      return `CENA ${num} — ${sc.startTime} a ${sc.endTime}s\n${actionText}`;
+      const varInfo = getSceneVariationInfo(num, activeVars);
+      const varTag = varInfo ? ` [Produto na cor/variação: ${varInfo.variationName}]` : '';
+      return `CENA ${num} — ${sc.startTime} a ${sc.endTime}s${varTag}\n${actionText}`;
     })
     .join('\n\n');
 
@@ -205,7 +268,7 @@ export function buildProdutos2VeoPrompt(params: {
   // Item 3: Novo bloco logo depois de "Tom da voz: …" (só quando tiver fala)
   // Inclui somente as linhas que se aplicam à copy usada
   const speechWordsAudioOnlyLines: string[] = [];
-  const lowerCopy = finalCopy.toLowerCase();
+  const lowerCopy = safeSpeech.toLowerCase();
 
   if (lowerCopy.includes('tiktok') || lowerCopy.includes('tik tok')) {
     speechWordsAudioOnlyLines.push(
@@ -248,9 +311,12 @@ NÃO criar uma fala diferente para cada cena.
 NÃO criar várias narradoras.
 
 FALAR EXATAMENTE UMA VEZ:
-"${finalCopy}"
+"${safeSpeech}"
 
-Tom da voz: natural, brasileiro, rápido, espontâneo, acolhedor e com energia de recomendação real.${speechWordsOnlyBlock}`
+RITMO E TOM DA FALA (PRIORIDADE ABSOLUTA):
+A fala DEVE ser RÁPIDA E EUFÓRICA, com tom entusiasmado, acelerado e espontâneo como se a pessoa estivesse contando uma novidade imperdível, algo novo e urgente que o espectador precisa prestar atenção agora.
+Locução ágil, sem arrastar e sem pausas desnecessárias, garantindo que todo o texto seja pronunciado com total clareza e emoção dentro do tempo do vídeo sem cortes.
+Tom da voz: natural, brasileiro, rápido, eufórico, dinâmico e expressivo, com energia contagiante de novidade imperdível.${speechWordsOnlyBlock}`
       : `========================
 ÁUDIO — SEM FALA
 ========================
@@ -262,19 +328,20 @@ Usar apenas som ambiente natural do cenário e uma trilha instrumental animada e
     speechMode === 'com_fala'
       ? `PRIORIDADE MÁXIMA:
 1. vídeo limpo: sem marca d'água, sem logo do TikTok, sem @, sem carrinho e sem nenhum texto adicionado; a marca/logo que já está impressa no produto aparece idêntica às fotos;
-2. respeitar a copy validada, falada exatamente uma vez;
-3. usar as cenas como tradução visual da copy;
-4. fidelidade absoluta ao produto (PRODUCT LOCK) em todas as cenas;
-5. usar o storyboard somente como guia visual e nunca exibi-lo;
-6. começar diretamente com uma nova cena real em movimento;
-7. recriar as 9 cenas na ordem dos números;
-8. fazer um vídeo rápido e muito dinâmico;
-9. usar uma única locução contínua, sem repetições.`
+2. respeitar a copy validada, falada exatamente uma vez começando obrigatoriamente com "Nossa! ";
+3. locução RÁPIDA E EUFÓRICA (estilo contando uma novidade imperdível), garantindo ritmo ágil para falar todo o texto com clareza sem cortes;
+4. usar as cenas como tradução visual da copy;
+5. fidelidade absoluta ao produto (PRODUCT LOCK) e às suas variações de cor em todas as cenas;
+6. usar o storyboard somente como guia visual e nunca exibi-lo;
+7. começar diretamente com uma nova cena real em movimento;
+8. recriar as 9 cenas na ordem dos números;
+9. fazer um vídeo rápido e muito dinâmico;
+10. usar uma única locução contínua, sem repetições.`
       : `PRIORIDADE MÁXIMA:
 1. vídeo limpo: sem marca d'água, sem logo do TikTok, sem @, sem carrinho e sem nenhum texto adicionado; a marca/logo que já está impressa no produto aparece idêntica às fotos;
 2. seguir a ordem das cenas definida pela copy;
 3. usar as cenas como tradução visual e demonstração real do produto;
-4. fidelidade absoluta ao produto (PRODUCT LOCK) em todas as cenas;
+4. fidelidade absoluta ao produto (PRODUCT LOCK) e às suas variações de cor em todas as cenas;
 5. usar o storyboard somente como guia visual e nunca exibi-lo;
 6. começar diretamente com uma nova cena real em movimento;
 7. recriar as 9 cenas na ordem dos números;
@@ -543,6 +610,7 @@ export function buildDefaultProdutos2Plan(params: {
   scenario: Produtos2Scenario;
   additionalInstructions?: string;
   variationNames: string[];
+  variations?: { name: string; photos: string[] }[];
 }): {
   productLock: string[];
   avatarDescription: string;
@@ -563,6 +631,7 @@ export function buildDefaultProdutos2Plan(params: {
     scenario,
     additionalInstructions,
     variationNames,
+    variations = [],
   } = params;
 
   const timings = getNineSceneTimings(duration);
@@ -808,15 +877,22 @@ export function buildDefaultProdutos2Plan(params: {
     ];
   }
 
-  const scenes: Produtos2SceneItem[] = rawScenes.map((sc, idx) => ({
-    number: idx + 1,
-    startTime: timings[idx].start,
-    endTime: timings[idx].end,
-    framing: sc.framing,
-    action: sc.action,
-    cameraMovement: sc.cameraMovement,
-    storyboardDescription: `${sc.framing}: ${sc.action}`,
-  }));
+  const activePlanVars = (variations || []).filter((v) => v.photos && v.photos.length > 0);
+  const scenes: Produtos2SceneItem[] = rawScenes.map((sc, idx) => {
+    const num = idx + 1;
+    const varInfo = getSceneVariationInfo(num, activePlanVars);
+    const varSuffix = varInfo ? ` [Variação de Cor: ${varInfo.variationName}]` : '';
+    const fullAction = `${sc.action}${varSuffix}`;
+    return {
+      number: num,
+      startTime: timings[idx].start,
+      endTime: timings[idx].end,
+      framing: sc.framing,
+      action: fullAction,
+      cameraMovement: sc.cameraMovement,
+      storyboardDescription: `${sc.framing}: ${fullAction}`,
+    };
+  });
 
   return {
     productLock,
@@ -847,13 +923,14 @@ Sua tarefa é receber:
 1) As fotos reais do produto;
 2) As "Informações do produto" e "Nome do produto";
 3) A "Copy-base selecionada do banco" (ou copy nova/adaptada do molde do nicho);
-4) As configurações (duração 10s ou 8s, influencer, gênero do cliente, fala, enquadramento, cenário, instruções adicionais).
+4) As configurações (duração 10s ou 8s, influencer, gênero do cliente, fala, enquadramento, cenário, instruções adicionais, variações anexadas).
 
 E retornar um JSON estrito com:
 1. "manufacturerLogoDescription": string detalhando exatamente a logomarca/emblema/texto do fabricante visível no produto nas fotos anexadas (cor, formato, desenho e onde fica no produto).
 2. "adaptedCopy":
    - REGRA ABSOLUTA: NUNCA crie copy do zero! O aplicativo trabalha EXCLUSIVAMENTE com as ~62 copies vencedoras validadas que já estão na memória (ou copy do mesmo produto, ou copy de outro produto do mesmo nicho adaptada, ou outra copy do banco adaptada).
-   - A "baseCopy" recebida já é a copy do banco adaptada com o mínimo de mudanças e já começa com "Nossa, ". MANTENHA A "baseCopy" EXATAMENTE COMO ESTÁ!
+   - A "baseCopy" recebida já é a copy do banco adaptada com o mínimo de mudanças e já começa obrigatoriamente com "Nossa! ". MANTENHA A "baseCopy" EXATAMENTE COMO ESTÁ!
+   - A fala no Veo deve ser pronunciada de forma RÁPIDA E EUFÓRICA (estilo contando uma novidade imperdível e urgente).
    - NUNCA use a palavra "menina" como vocativo; quando o público for feminino, use "Amiga" ou "Gente". Para masculino, use "Meu amigo", "Cara", "Irmão" ou "Gente".
 3. "productLock": array de 4 a 6 strings detalhando fisicamente o produto visto nas fotos (1º item obrigatoriamente a descrição exata da logomarca/emblema/marca impressa no produto e sua posição exata; seguido de formato, cor exata, material, textura, proporção, botões/costuras/sola/cabos/detalhes).
 4. "avatarDescription": descrição de 1 frase do consumidor brasileiro adulto que apresenta o produto (respeitando o gênero do Influencer e as Instruções Adicionais; se produto infantil, quem apresenta na cena 1 e 9 é sempre um adulto pai/mãe).
@@ -865,6 +942,10 @@ E retornar um JSON estrito com:
 7. "scenes": array de EXATAMENTE 9 objetos { "number": 1..9, "startTime", "endTime", "framing", "action", "cameraMovement", "storyboardDescription" }:
    - Cada cena prova visualmente o que está sendo falado naquele momento da copy.
    - Todo "olha [detalhe]" na copy vira uma cena de close/macro daquele detalhe.
+   - REGRA DE VARIAÇÕES DE COR DO PRODUTO (quando houver mais de 1 variação):
+     * Se 2 variações: cenas 1 a 4 exibem a Variação 1; cenas 5 a 9 exibem a Variação 2.
+     * Se 3 variações: cenas 1 a 3 exibem a Variação 1; cenas 4 a 6 exibem a Variação 2; cenas 7 a 9 exibem a Variação 3.
+     * Mencione explicitamente a variação/cor que aparece na cena.
    - Variar enquadramentos (nunca duas cenas seguidas iguais): close, macro, POV de mãos, plano médio, plano aberto, uso real.
    - "storyboardDescription" DEVE ser idêntico a "{framing}. {action}" (mesma pessoa, mesma ação, mesmo enquadramento e mesmos objetos, sem inventar objetos extras ou mudar quem aparece entre um campo e outro).
    - Sempre que a parte do produto onde fica a logomarca do fabricante estiver visível na cena, inclua na descrição da cena que a logomarca original está visível e idêntica à foto.

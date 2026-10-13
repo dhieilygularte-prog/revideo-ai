@@ -110,6 +110,7 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
         avatarDescription: prev.avatarDescription,
         scenarioDescription: prev.scenarioDescription,
         scenes: prev.scenes,
+        variations: prev.variations,
       });
       return {
         ...prev,

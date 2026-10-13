@@ -1208,13 +1208,14 @@ Sua tarefa \xE9 receber:
 1) As fotos reais do produto;
 2) As "Informa\xE7\xF5es do produto" e "Nome do produto";
 3) A "Copy-base selecionada do banco" (ou copy nova/adaptada do molde do nicho);
-4) As configura\xE7\xF5es (dura\xE7\xE3o 10s ou 8s, influencer, g\xEAnero do cliente, fala, enquadramento, cen\xE1rio, instru\xE7\xF5es adicionais).
+4) As configura\xE7\xF5es (dura\xE7\xE3o 10s ou 8s, influencer, g\xEAnero do cliente, fala, enquadramento, cen\xE1rio, instru\xE7\xF5es adicionais, varia\xE7\xF5es anexadas).
 
 E retornar um JSON estrito com:
 1. "manufacturerLogoDescription": string detalhando exatamente a logomarca/emblema/texto do fabricante vis\xEDvel no produto nas fotos anexadas (cor, formato, desenho e onde fica no produto).
 2. "adaptedCopy":
    - REGRA ABSOLUTA: NUNCA crie copy do zero! O aplicativo trabalha EXCLUSIVAMENTE com as ~62 copies vencedoras validadas que j\xE1 est\xE3o na mem\xF3ria (ou copy do mesmo produto, ou copy de outro produto do mesmo nicho adaptada, ou outra copy do banco adaptada).
-   - A "baseCopy" recebida j\xE1 \xE9 a copy do banco adaptada com o m\xEDnimo de mudan\xE7as e j\xE1 come\xE7a com "Nossa, ". MANTENHA A "baseCopy" EXATAMENTE COMO EST\xC1!
+   - A "baseCopy" recebida j\xE1 \xE9 a copy do banco adaptada com o m\xEDnimo de mudan\xE7as e j\xE1 come\xE7a obrigatoriamente com "Nossa! ". MANTENHA A "baseCopy" EXATAMENTE COMO EST\xC1!
+   - A fala no Veo deve ser pronunciada de forma R\xC1PIDA E EUF\xD3RICA (estilo contando uma novidade imperd\xEDvel e urgente).
    - NUNCA use a palavra "menina" como vocativo; quando o p\xFAblico for feminino, use "Amiga" ou "Gente". Para masculino, use "Meu amigo", "Cara", "Irm\xE3o" ou "Gente".
 3. "productLock": array de 4 a 6 strings detalhando fisicamente o produto visto nas fotos (1\xBA item obrigatoriamente a descri\xE7\xE3o exata da logomarca/emblema/marca impressa no produto e sua posi\xE7\xE3o exata; seguido de formato, cor exata, material, textura, propor\xE7\xE3o, bot\xF5es/costuras/sola/cabos/detalhes).
 4. "avatarDescription": descri\xE7\xE3o de 1 frase do consumidor brasileiro adulto que apresenta o produto (respeitando o g\xEAnero do Influencer e as Instru\xE7\xF5es Adicionais; se produto infantil, quem apresenta na cena 1 e 9 \xE9 sempre um adulto pai/m\xE3e).
@@ -1226,6 +1227,10 @@ E retornar um JSON estrito com:
 7. "scenes": array de EXATAMENTE 9 objetos { "number": 1..9, "startTime", "endTime", "framing", "action", "cameraMovement", "storyboardDescription" }:
    - Cada cena prova visualmente o que est\xE1 sendo falado naquele momento da copy.
    - Todo "olha [detalhe]" na copy vira uma cena de close/macro daquele detalhe.
+   - REGRA DE VARIA\xC7\xD5ES DE COR DO PRODUTO (quando houver mais de 1 varia\xE7\xE3o):
+     * Se 2 varia\xE7\xF5es: cenas 1 a 4 exibem a Varia\xE7\xE3o 1; cenas 5 a 9 exibem a Varia\xE7\xE3o 2.
+     * Se 3 varia\xE7\xF5es: cenas 1 a 3 exibem a Varia\xE7\xE3o 1; cenas 4 a 6 exibem a Varia\xE7\xE3o 2; cenas 7 a 9 exibem a Varia\xE7\xE3o 3.
+     * Mencione explicitamente a varia\xE7\xE3o/cor que aparece na cena.
    - Variar enquadramentos (nunca duas cenas seguidas iguais): close, macro, POV de m\xE3os, plano m\xE9dio, plano aberto, uso real.
    - "storyboardDescription" DEVE ser id\xEAntico a "{framing}. {action}" (mesma pessoa, mesma a\xE7\xE3o, mesmo enquadramento e mesmos objetos, sem inventar objetos extras ou mudar quem aparece entre um campo e outro).
    - Sempre que a parte do produto onde fica a logomarca do fabricante estiver vis\xEDvel na cena, inclua na descri\xE7\xE3o da cena que a logomarca original est\xE1 vis\xEDvel e id\xEAntica \xE0 foto.
@@ -3036,8 +3041,15 @@ app.post("/api/produtos2-planning", async (req, res) => {
       framing,
       scenario,
       additionalInstructions,
+      variations = [],
       productPhotosBase64 = []
     } = req.body;
+    const activeReqVars = Array.isArray(variations) ? variations.filter((v) => v && (v.photosCount > 0 || v.name)) : [];
+    const variationsClause = activeReqVars.length >= 2 ? `
+- Varia\xE7\xF5es de cor do produto: ${activeReqVars.map((v) => v.name).join(", ")}
+  REGRA OBRIGAT\xD3RIA DE VARIA\xC7\xD5ES:
+  ${activeReqVars.length === 2 ? "Cenas 1 a 4 exibem a 1\xAA Varia\xE7\xE3o; Cenas 5 a 9 exibem a 2\xAA Varia\xE7\xE3o." : "Cenas 1 a 3 exibem a 1\xAA Varia\xE7\xE3o; Cenas 4 a 6 exibem a 2\xAA Varia\xE7\xE3o; Cenas 7 a 9 exibem a 3\xAA Varia\xE7\xE3o."}
+  Mencione explicitamente a varia\xE7\xE3o/cor correspondente na descri\xE7\xE3o de cada cena!` : "";
     const systemInstruction = buildProdutos2PlanningSystemPrompt();
     const userPrompt = `PLANEJAMENTO COPY-FIRST (MODO PRODUTOS 2.0):
 - Produto (nome curto): ${productName}
@@ -3045,13 +3057,13 @@ app.post("/api/produtos2-planning", async (req, res) => {
 - Nicho detectado: ${niche}
 - Informa\xE7\xF5es do produto: ${productInfo || productName}
 - Copy-base selecionada (${isCustomCopy ? "PERSONALIZADA PELO USU\xC1RIO - N\xC3O ALTERAR" : "DO BANCO VALIDADO - ADAPTAR M\xCDNIMO POSS\xCDVEL"}): "${baseCopy}"
-- Dura\xE7\xE3o no Veo: ${duration} segundos (${duration === 8 ? "M\xC1XIMO 199 CARACTERES COM ESPA\xC7OS" : "10s completa"})
+- Dura\xE7\xE3o no Veo: ${duration} segundos (${duration === 8 ? "M\xC1XIMO 199 CARACTERES COM ESPA\xC7OS" : "AT\xC9 250 CARACTERES COM ESPA\xC7OS"})
 - Influencer (quem aparece e voz): ${influencer}
 - G\xEAnero do cliente (vocativo): ${clientGender} (se feminino, usar "Amiga" ou "Gente", NUNCA usar "menina")
-- Modo de fala: ${speechMode}
+- Modo de fala: ${speechMode} (locu\xE7\xE3o R\xC1PIDA E EUF\xD3RICA, com tom animado como se estivesse contando uma novidade imperd\xEDvel)
 - Enquadramento: ${framing}
 - Cen\xE1rio: ${scenario === "padrao_uso" ? "Cen\xE1rio padr\xE3o de uso real do produto" : "Em casa (casa brasileira simples e aconchegante)"}
-- Instru\xE7\xF5es adicionais priorit\xE1rias: ${additionalInstructions || "Nenhuma"}
+- Instru\xE7\xF5es adicionais priorit\xE1rias: ${additionalInstructions || "Nenhuma"}${variationsClause}
 
 Retorne APENAS um objeto JSON v\xE1lido com as chaves:
 {

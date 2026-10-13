@@ -324,6 +324,7 @@ export async function runProdutos2Pipeline(params: {
     scenario: form.scenario,
     additionalInstructions: form.additionalInstructions,
     variationNames,
+    variations: form.variations,
   });
 
   let productLock = fallbackPlan.productLock;
@@ -356,6 +357,7 @@ export async function runProdutos2Pipeline(params: {
         framing: form.framing,
         scenario: form.scenario,
         additionalInstructions: form.additionalInstructions,
+        variations: (form.variations || []).map((v) => ({ name: v.name, photosCount: v.photos?.length || 0 })),
         productPhotosBase64: compressedPlanningPhotos,
         aiProfile,
       }),
@@ -367,8 +369,8 @@ export async function runProdutos2Pipeline(params: {
         const d = planJson.data;
 
         // REGRA DO USUÁRIO: Trabalhar SEMPRE com as copies validadas que já estão na memória (selectAndAdaptProdutos2Copy),
-        // mudando o mínimo possível, sem deixar a IA inventar copy do zero.
-        finalCopy = copySelection.finalCopy;
+        // mudando o mínimo possível, sem deixar a IA inventar copy do zero, e sempre com "Nossa! " no início.
+        finalCopy = ensureLeadingNossaPrefix(copySelection.finalCopy);
 
         if (Array.isArray(d.productLock) && d.productLock.length >= 2) {
           productLock = d.productLock
@@ -443,7 +445,7 @@ export async function runProdutos2Pipeline(params: {
     console.warn('Usando planejamento determinístico Copy-First:', planErr);
   }
 
-  // Checklist Parte B & Parte E: garantir calibragem exata de caracteres, vocativo e prefixo "Nossa, " antes do storyboard
+  // Checklist Parte B & Parte E: garantir calibragem exata de caracteres (<=199 em 8s, <=250 em 10s), vocativo e prefixo "Nossa! " antes do storyboard
   finalCopy = calibrateCopyToTargetWindow({
     copy: finalCopy,
     duration: form.duration,
@@ -451,6 +453,7 @@ export async function runProdutos2Pipeline(params: {
     clientGender: form.clientGender,
     influencer: resolvedInfluencer,
   });
+  finalCopy = ensureLeadingNossaPrefix(finalCopy);
 
   // Garantir que a última cena termine exatamente em 10.0 ou 8.0
   if (scenes.length === 9) {
@@ -469,6 +472,7 @@ export async function runProdutos2Pipeline(params: {
     scenarioDescription,
     scenes,
     additionalInstructions: form.additionalInstructions,
+    variations: form.variations,
   });
 
   onProgress?.(52, '4/6 Gerando PRIMEIRO a imagem do Storyboard 3x3 (9 cenas numeradas 1080x1920)...');
@@ -513,6 +517,7 @@ export async function runProdutos2Pipeline(params: {
     scenarioDescription,
     scenes,
     additionalInstructions: form.additionalInstructions,
+    variations: form.variations,
   });
 
   onProgress?.(100, 'Concluído! Storyboard 9 cenas auditado e Prompt do Veo 3 gerados com sucesso.');
@@ -528,7 +533,7 @@ export async function runProdutos2Pipeline(params: {
     scenario: form.scenario,
     influencerResolved: resolvedInfluencer,
     clientGender: form.clientGender,
-    finalCopy,
+    finalCopy: ensureLeadingNossaPrefix(finalCopy),
     copySourceLabel: copySelection.copySourceLabel,
     copyId: copySelection.copyId,
     productLock,
@@ -541,6 +546,7 @@ export async function runProdutos2Pipeline(params: {
     storyboardError,
     storyboardAudit,
     veoPrompt,
+    variations: form.variations,
   };
 }
 

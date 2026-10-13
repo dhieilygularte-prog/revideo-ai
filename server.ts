@@ -2158,8 +2158,24 @@ app.post('/api/produtos2-planning', async (req, res) => {
       framing,
       scenario,
       additionalInstructions,
+      variations = [],
       productPhotosBase64 = [],
     } = req.body;
+
+    const activeReqVars = Array.isArray(variations)
+      ? variations.filter((v: any) => v && (v.photosCount > 0 || v.name))
+      : [];
+    const variationsClause =
+      activeReqVars.length >= 2
+        ? `\n- Variações de cor do produto: ${activeReqVars.map((v: any) => v.name).join(', ')}
+  REGRA OBRIGATÓRIA DE VARIAÇÕES:
+  ${
+    activeReqVars.length === 2
+      ? 'Cenas 1 a 4 exibem a 1ª Variação; Cenas 5 a 9 exibem a 2ª Variação.'
+      : 'Cenas 1 a 3 exibem a 1ª Variação; Cenas 4 a 6 exibem a 2ª Variação; Cenas 7 a 9 exibem a 3ª Variação.'
+  }
+  Mencione explicitamente a variação/cor correspondente na descrição de cada cena!`
+        : '';
 
     const systemInstruction = buildProdutos2PlanningSystemPrompt();
     const userPrompt = `PLANEJAMENTO COPY-FIRST (MODO PRODUTOS 2.0):
@@ -2168,13 +2184,13 @@ app.post('/api/produtos2-planning', async (req, res) => {
 - Nicho detectado: ${niche}
 - Informações do produto: ${productInfo || productName}
 - Copy-base selecionada (${isCustomCopy ? 'PERSONALIZADA PELO USUÁRIO - NÃO ALTERAR' : 'DO BANCO VALIDADO - ADAPTAR MÍNIMO POSSÍVEL'}): "${baseCopy}"
-- Duração no Veo: ${duration} segundos (${duration === 8 ? 'MÁXIMO 199 CARACTERES COM ESPAÇOS' : '10s completa'})
+- Duração no Veo: ${duration} segundos (${duration === 8 ? 'MÁXIMO 199 CARACTERES COM ESPAÇOS' : 'ATÉ 250 CARACTERES COM ESPAÇOS'})
 - Influencer (quem aparece e voz): ${influencer}
 - Gênero do cliente (vocativo): ${clientGender} (se feminino, usar "Amiga" ou "Gente", NUNCA usar "menina")
-- Modo de fala: ${speechMode}
+- Modo de fala: ${speechMode} (locução RÁPIDA E EUFÓRICA, com tom animado como se estivesse contando uma novidade imperdível)
 - Enquadramento: ${framing}
 - Cenário: ${scenario === 'padrao_uso' ? 'Cenário padrão de uso real do produto' : 'Em casa (casa brasileira simples e aconchegante)'}
-- Instruções adicionais prioritárias: ${additionalInstructions || 'Nenhuma'}
+- Instruções adicionais prioritárias: ${additionalInstructions || 'Nenhuma'}${variationsClause}
 
 Retorne APENAS um objeto JSON válido com as chaves:
 {

@@ -638,7 +638,7 @@ export const COPIES_PRODUTOS_GERAIS: CopyBankEntry[] = [
     fits8s: true,
     isStarred: true,
     notes: '⭐ Melhor copy de monitor (10 s, produto de ~R$ 600).',
-    text: 'Agora é oficial, o TikTok endoidou. Esse monitor Valac Z18 Maze baixou mais da metade, com tela curva super imersiva e imagens muito nítidas, saindo por menos que uma pizza. Clica no carrinho!',
+    text: 'Agora é oficial, o TikTok endoidou. Esse monitor Valac Z18 Maze baixou mais da metade, com tela curva super imersiva e imagens muito nítidas, com a parcela menos que uma pizza. Clica no carrinho!',
   },
   {
     id: 'ELE-07',
@@ -752,7 +752,7 @@ export const COPIES_PRODUTOS_GERAIS: CopyBankEntry[] = [
     audience: 'Unissex',
     charCount: 221,
     fits8s: false,
-    text: 'Agora é oficial, o TikTok endoidou. Essa esteira elétrica dobrável caiu pra menos da metade. Silenciosa, com controle e painel LED. E ainda suporta até 100 quilos. Menos que uma pizza. Acaba hoje. Clica no carrinho agora.',
+    text: 'Agora é oficial, o TikTok endoidou. Essa esteira elétrica dobrável caiu pra menos da metade. Silenciosa, com controle e painel LED. E ainda suporta até 100 quilos. A parcela é menos que uma pizza. Acaba hoje. Clica no carrinho agora.',
   },
   {
     id: 'FIT-02',
@@ -1099,8 +1099,19 @@ export function analyzeProductInfoForProdutos2(rawText: string): ProductSpecsExt
   const voltsMatch = text.match(/\b(\d+\s*(?:v|volts|bivolt))\b/i);
   const mlMatch = text.match(/\b(\d+(?:[.,]\d+)?\s*(?:ml|litros?|l))\b/i);
   const inchesMatch = text.match(/\b(\d+(?:[.,]\d+)?\s*(?:polegadas|pol|cm|mm|metros?|m))\b/i);
-  const kitMatch = norm.match(/\b(?:kit\s*(?:com\s*)?|leve\s*|vem\s*)(\d+)\s*(?:pares|unidades|pecas|camisetas|camisas|bermudas|shorts|ventiladores|alto-falantes|alto falantes)\b/i);
-  const kitQty = kitMatch ? parseInt(kitMatch[1], 10) : (/\bkit\s*2\b|\bdois\b|\b2\s*pares\b|\b2\s*unidades\b/i.test(norm) ? 2 : undefined);
+  const kitMatch =
+    norm.match(/\b(?:kit\s*(?:com\s*)?|combo\s*(?:com\s*)?|leve\s*|vem\s*|pacote\s*(?:com\s*)?)(\d+)\b/i) ||
+    norm.match(/\b(\d+)\s*(?:unidades?|pecas?|itens|pares|camisetas?|camisas?|regatas?|bermudas?|shorts?|ventiladores?|alto-falantes?|cuecas?)\b/i);
+  let kitQty = kitMatch ? parseInt(kitMatch[1], 10) : undefined;
+  if (!kitQty) {
+    if (/\b(?:kit\s*(?:com\s*)?)?(?:dois|duas)\b|\b2\s*(?:pares|unidades|pecas|itens)?\b/i.test(norm) && /\b(?:kit|combo|par|pares|dupla)\b/i.test(norm)) {
+      kitQty = 2;
+    } else if (/\b(?:kit\s*(?:com\s*)?)?tres\b|\b3\s*(?:unidades|pecas|itens)?\b/i.test(norm) && /\b(?:kit|combo|trio)\b/i.test(norm)) {
+      kitQty = 3;
+    } else if (/\b(?:kit\s*(?:com\s*)?)?quatro\b|\b4\s*(?:unidades|pecas|itens)?\b/i.test(norm) && /\b(?:kit|combo|quarteto)\b/i.test(norm)) {
+      kitQty = 4;
+    }
+  }
 
   const colorCandidates = ['preto', 'preta', 'branco', 'branca', 'vermelho', 'vermelha', 'azul', 'rosa', 'verde', 'cinza', 'amarelo', 'bege', 'marrom', 'dourado', 'prata', 'roxo', 'laranja'];
   const colors = colorCandidates.filter((c) => new RegExp(`\\b${c}\\b`, 'i').test(norm));
@@ -1299,64 +1310,93 @@ export function analyzeProductInfoForProdutos2(rawText: string): ProductSpecsExt
 }
 
 /**
- * SEÇÃO 5.3 / PARTE B — Corta copy longa preservando: (1) Gancho, (2) Prova principal ("olha..."), (3) CTA completo.
- * Para copy do banco em 8s > 199 chars, encurta apenas o suficiente para ficar entre 185 e 195 chars.
+ * Encurta copy longa caso ultrapasse o limite de caracteres:
+ * - Para vídeos de 8s: no máximo 199 caracteres com espaço
+ * - Para vídeos de 10s: até 250 caracteres com espaço
+ * MEXENDO O MÍNIMO POSSÍVEL:
+ * - Evita mexer no início ("hook" dos primeiros 3 segundos que possui o "Nossa!" e as palavras seguintes)
+ * - Evita mexer no final (o "CTA", chamada para ação que é parte vital da conversão)
+ * - Mexe exclusivamente no MEIO (o "corpo" da fala), enxugando orações ou frases secundárias
  */
-export function enforceMaxChars(copyText: string, maxChars: number, minTargetChars = 185): string {
+export function enforceMaxChars(copyText: string, maxChars: number, minTargetChars = 140): string {
   const clean = copyText.replace(/\s+/g, ' ').trim();
   if (clean.length <= maxChars) return clean;
 
   const sentences = clean.match(/[^.!?]+[.!?]+/g)?.map((s) => s.trim()) || [clean];
   if (sentences.length <= 1) {
+    // Frase única: preserva os primeiros 3 segundos ("Nossa!" + palavras do início)
+    const words = clean.split(' ');
+    const hookWords = words.slice(0, 5).join(' ');
+    const rest = words.slice(5).join(' ');
+    const available = maxChars - hookWords.length - 1;
+    if (available > 15) {
+      return `${hookWords} ${rest.slice(0, available).replace(/[,;:\s]+$/, '')}!`;
+    }
     return clean.slice(0, maxChars - 1).replace(/[,;:\s]+$/, '') + '!';
   }
 
-  const hook = sentences[0];
-  const cta = sentences[sentences.length - 1];
+  const hook = sentences[0]; // Início intacto (Hook com "Nossa!")
+  const cta = sentences[sentences.length - 1]; // Final intacto (CTA)
   const middle = sentences.slice(1, -1);
 
-  // Tenta primeiro remover pequenos trechos acessórios ou frases curtas do meio mantendo o texto entre minTargetChars e maxChars
-  const sortedMiddle = [...middle].sort((a, b) => {
-    const scoreA = (/olha/i.test(a) ? 3 : 0) + (/\d/.test(a) ? 1 : 0);
-    const scoreB = (/olha/i.test(b) ? 3 : 0) + (/\d/.test(b) ? 1 : 0);
-    return scoreB - scoreA;
-  });
+  if (middle.length > 0) {
+    // Prioriza manter as frases do meio mais ricas em benefício ("olha", números)
+    const sortedMiddle = [...middle].sort((a, b) => {
+      const scoreA = (/olha/i.test(a) ? 3 : 0) + (/\d/.test(a) ? 1 : 0);
+      const scoreB = (/olha/i.test(b) ? 3 : 0) + (/\d/.test(b) ? 1 : 0);
+      return scoreB - scoreA;
+    });
 
-  const keptMiddle: string[] = [];
-  let currentLen = hook.length + 1 + cta.length;
+    const keptMiddle: string[] = [];
+    let currentLen = hook.length + 1 + cta.length;
 
-  for (const m of sortedMiddle) {
-    if (currentLen + 1 + m.length <= maxChars) {
-      keptMiddle.push(m);
-      currentLen += 1 + m.length;
+    for (const m of sortedMiddle) {
+      if (currentLen + 1 + m.length <= maxChars) {
+        keptMiddle.push(m);
+        currentLen += 1 + m.length;
+      }
     }
-  }
 
-  const orderedMiddle = middle.filter((m) => keptMiddle.includes(m));
-  let candidate = [hook, ...orderedMiddle, cta].join(' ').replace(/\s+/g, ' ').trim();
+    const orderedMiddle = middle.filter((m) => keptMiddle.includes(m));
+    let candidate = [hook, ...orderedMiddle, cta].join(' ').replace(/\s+/g, ' ').trim();
 
-  // Se ficou muito curto (< minTargetChars) porque uma frase do meio era longa demais, encurta a frase do meio em vez de descartá-la inteira
-  if (candidate.length < minTargetChars && middle.length > 0) {
+    if (candidate.length <= maxChars && candidate.length >= minTargetChars) {
+      return candidate;
+    }
+
+    if (candidate.length <= maxChars && orderedMiddle.length > 0) {
+      return candidate;
+    }
+
+    // Se ficou curto ou sobrou espaço para uma oração parcial de uma frase descartada do meio:
     const remainingMiddle = middle.find((m) => !keptMiddle.includes(m));
     if (remainingMiddle) {
       const clauses = remainingMiddle.split(/[,;–—]+/).map((c) => c.trim()).filter(Boolean);
       for (let k = clauses.length - 1; k >= 1; k--) {
         const partialMid = clauses.slice(0, k).join(', ') + '.';
         const testCand = [hook, ...orderedMiddle, partialMid, cta].join(' ').replace(/\s+/g, ' ').trim();
-        if (testCand.length >= minTargetChars && testCand.length <= maxChars) {
+        if (testCand.length <= maxChars) {
           return testCand;
         }
       }
     }
+
+    if (candidate.length <= maxChars) {
+      return candidate;
+    }
   }
 
-  if (candidate.length <= maxChars) {
-    return candidate;
+  // Se mesmo sem nenhuma frase do meio a soma de hook + cta couber no limite:
+  const baseHookCta = `${hook} ${cta}`.replace(/\s+/g, ' ').trim();
+  if (baseHookCta.length <= maxChars) {
+    return baseHookCta;
   }
 
-  candidate = `${hook} ${cta}`.replace(/\s+/g, ' ').trim();
-  if (candidate.length <= maxChars) {
-    return candidate;
+  // Se até hook + cta exceder: preserva 100% o hook ("Nossa!" + primeiras palavras) e enxuga a cauda do CTA
+  const allowedCtaLen = maxChars - hook.length - 1;
+  if (allowedCtaLen > 15) {
+    const trimmedCta = cta.slice(0, allowedCtaLen).replace(/[,;:\s]+$/, '') + '!';
+    return `${hook} ${trimmedCta}`;
   }
 
   return clean.slice(0, maxChars - 1).replace(/[,;:\s]+$/, '') + '!';
@@ -1380,22 +1420,22 @@ export function applyGenderAndVocativeRules(
 
   if (clientGender === 'Feminino') {
     out = out
-      .replace(/^(Nossa,\s*)?Meu amigo\s*,/i, '$1Amiga,')
-      .replace(/^(Nossa,\s*)?Cara\s*,/i, '$1Amiga,')
-      .replace(/^(Nossa,\s*)?Irmão\s*,/i, '$1Amiga,')
-      .replace(/^(Nossa,\s*)?E aí,\s*mano\s*,/i, '$1Amiga,');
+      .replace(/^(Nossa[!,\s]*\s*)?Meu amigo\s*,/i, '$1Amiga,')
+      .replace(/^(Nossa[!,\s]*\s*)?Cara\s*,/i, '$1Amiga,')
+      .replace(/^(Nossa[!,\s]*\s*)?Irmão\s*,/i, '$1Amiga,')
+      .replace(/^(Nossa[!,\s]*\s*)?E aí,\s*mano\s*,/i, '$1Amiga,');
   } else if (clientGender === 'Masculino') {
     out = out
-      .replace(/^(Nossa,\s*)?Amiga\s*,/i, '$1Meu amigo,')
+      .replace(/^(Nossa[!,\s]*\s*)?Amiga\s*,/i, '$1Meu amigo,')
       .replace(/\bTá cansada\b/g, 'Tá cansado')
       .replace(/\btá cansada\b/g, 'tá cansado')
       .replace(/\bcansada de\b/gi, 'cansado de');
   } else if (clientGender === 'Unissex') {
     out = out
-      .replace(/^(Nossa,\s*)?Meu amigo\s*,/i, '$1Gente,')
-      .replace(/^(Nossa,\s*)?Cara\s*,/i, '$1Gente,')
-      .replace(/^(Nossa,\s*)?Irmão\s*,/i, '$1Gente,')
-      .replace(/^(Nossa,\s*)?Amiga\s*,/i, '$1Gente,');
+      .replace(/^(Nossa[!,\s]*\s*)?Meu amigo\s*,/i, '$1Gente,')
+      .replace(/^(Nossa[!,\s]*\s*)?Cara\s*,/i, '$1Gente,')
+      .replace(/^(Nossa[!,\s]*\s*)?Irmão\s*,/i, '$1Gente,')
+      .replace(/^(Nossa[!,\s]*\s*)?Amiga\s*,/i, '$1Gente,');
   }
 
   // Concordância de quem fala (influencer)
@@ -1411,21 +1451,25 @@ export function applyGenderAndVocativeRules(
 }
 
 /**
- * Adiciona a expressão neutra "Nossa, " no início de todas as copies/falas
+ * Adiciona a expressão neutra "Nossa! " no início de todas as copies/falas
  * para servir de margem de corte do 1º segundo no Veo (onde o Veo exibe o frame do storyboard),
- * sem duplicar caso a fala já comece com "Nossa".
+ * padronizando sempre para "Nossa! [Texto com inicial maiúscula]".
  */
 export function ensureLeadingNossaPrefix(text: string): string {
   const trimmed = (text || '').trim();
   if (!trimmed) return '';
-  if (/^nossa\b/i.test(trimmed)) {
-    return trimmed;
+
+  // Se já começa com "Nossa!" ou "Nossa,", padroniza com "Nossa! " e capitaliza a palavra seguinte
+  if (/^nossa[!,\s]\s*/i.test(trimmed)) {
+    const after = trimmed.replace(/^nossa[!,\s]\s*/i, '').trim();
+    if (!after) return 'Nossa!';
+    const capitalizedAfter = after.charAt(0).toUpperCase() + after.slice(1);
+    return `Nossa! ${capitalizedAfter}`;
   }
-  const loweredFirst =
-    /^(Eu\b|TikTok\b|CPF\b|USB\b|LED\b|RGB\b|JBL\b|BML\b|Poco\b)/.test(trimmed)
-      ? trimmed
-      : trimmed.charAt(0).toLowerCase() + trimmed.slice(1);
-  return `Nossa, ${loweredFirst}`;
+
+  // Adiciona "Nossa! " no início mantendo a primeira letra em maiúscula
+  const capitalized = trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+  return `Nossa! ${capitalized}`;
 }
 
 /**
@@ -1559,12 +1603,15 @@ export function calibrateCopyToTargetWindow(params: {
   influencer: 'Homem' | 'Mulher';
 }): string {
   const { duration, clientGender, influencer } = params;
-  const text = ensureLeadingNossaPrefix(
+  let text = ensureLeadingNossaPrefix(
     applyGenderAndVocativeRules(params.copy.replace(/\s+/g, ' ').trim(), clientGender, influencer)
   );
 
-  if (duration === 8 && text.length > 199) {
-    return ensureLeadingNossaPrefix(enforceMaxChars(text, 199, 155));
+  const maxAllowed = duration === 8 ? 199 : 250;
+  const minTarget = duration === 8 ? 140 : 190;
+
+  if (text.length > maxAllowed) {
+    text = ensureLeadingNossaPrefix(enforceMaxChars(text, maxAllowed, minTarget));
   }
 
   return text;
@@ -1617,7 +1664,9 @@ export function selectAndAdaptProdutos2Copy(params: {
       influencer || specs.influencer || (clientGender === 'Masculino' ? 'Homem' : 'Mulher');
     let finalCustom = ensureLeadingNossaPrefix(customCopy.trim());
     if (duration === 8 && finalCustom.length > 199) {
-      finalCustom = ensureLeadingNossaPrefix(enforceMaxChars(finalCustom, 199, 155));
+      finalCustom = ensureLeadingNossaPrefix(enforceMaxChars(finalCustom, 199, 140));
+    } else if (duration === 10 && finalCustom.length > 250) {
+      finalCustom = ensureLeadingNossaPrefix(enforceMaxChars(finalCustom, 250, 190));
     }
     return {
       finalCopy: finalCustom,
@@ -1650,10 +1699,19 @@ export function selectAndAdaptProdutos2Copy(params: {
     });
   });
 
+  let matchPriority: 'mesmo_produto' | 'mesmo_nicho' | 'nicho_vizinho' | 'outra_copy_do_banco' = 'mesmo_produto';
+
   if (specs.kitQuantity && specs.kitQuantity >= 2) {
     const kitCandidates = candidates.filter((c) => c.archetype === 'Kit/Valor' || /kit|dois|2|4/i.test(c.productType));
     if (kitCandidates.length > 0) {
       candidates = kitCandidates;
+    } else {
+      // Se não encontrou kit do mesmo produto, pega as falas validadas de kit da memória do app (CLI-03, CLI-04, CLI-05)
+      const memoryKits = COPIES_PRODUTOS_GERAIS.filter((e) => ['CLI-03', 'CLI-04', 'CLI-05'].includes(e.id));
+      if (memoryKits.length > 0) {
+        candidates = memoryKits;
+        matchPriority = 'mesmo_nicho';
+      }
     }
   } else if (candidates.length > 1) {
     const singleCandidates = candidates.filter((c) => c.archetype !== 'Kit/Valor');
@@ -1661,8 +1719,6 @@ export function selectAndAdaptProdutos2Copy(params: {
       candidates = singleCandidates;
     }
   }
-
-  let matchPriority: 'mesmo_produto' | 'mesmo_nicho' | 'nicho_vizinho' | 'outra_copy_do_banco' = 'mesmo_produto';
 
   // Prioridade 2: Outro produto do MESMO NICHO no banco ativo (ex: Banco de exercícios -> Fitness -> FIT-01 / FIT-02)
   if (candidates.length === 0) {
@@ -1706,10 +1762,10 @@ export function selectAndAdaptProdutos2Copy(params: {
     }
   }
 
-  // Em 8s, prioriza copies do pool que já cabem bem em 8s ou podem ser encurtadas mantendo 100% de sentido
+  // Em 8s, já dá preferência para falas da memória do app que possuem menos de 199 caracteres (Item 9)
   let pool = candidates;
   if (duration === 8) {
-    const shortPool = candidates.filter((c) => c.fits8s || c.text.length <= 235);
+    const shortPool = candidates.filter((c) => c.fits8s || c.charCount <= 199 || c.text.length <= 199);
     if (shortPool.length > 0) {
       pool = shortPool;
     }
@@ -1801,8 +1857,8 @@ export function adaptBankCopyToProduct(
     // preservando todo o resto da copy original do banco 100% intacto!
     switch (entry.id) {
       case 'FIT-01':
-        // Original: "Agora é oficial, o TikTok endoidou. Essa esteira elétrica dobrável caiu pra menos da metade. Silenciosa, com controle e painel LED. E ainda suporta até 100 quilos. Menos que uma pizza. Acaba hoje. Clica no carrinho agora."
-        text = `Agora é oficial, o TikTok endoidou. ${EsseProd} caiu pra menos da metade. ${conciseFeatureSentence} Menos que uma pizza. Acaba hoje. Clica no carrinho agora.`;
+        // Original: "Agora é oficial, o TikTok endoidou. Essa esteira elétrica dobrável caiu pra menos da metade. Silenciosa, com controle e painel LED. E ainda suporta até 100 quilos. A parcela é menos que uma pizza. Acaba hoje. Clica no carrinho agora."
+        text = `Agora é oficial, o TikTok endoidou. ${EsseProd} caiu pra menos da metade. ${conciseFeatureSentence} A parcela é menos que uma pizza. Acaba hoje. Clica no carrinho agora.`;
         break;
 
       case 'FIT-02':
@@ -1815,8 +1871,8 @@ export function adaptBankCopyToProduct(
         break;
 
       case 'ELE-06':
-        // Original: "Agora é oficial, o TikTok endoidou. Esse monitor Valac Z18 Maze baixou mais da metade, com tela curva super imersiva e imagens muito nítidas, saindo por menos que uma pizza. Clica no carrinho!"
-        text = `Agora é oficial, o TikTok endoidou. ${EsseProd} baixou mais da metade, ${shortWithClause}, saindo por menos que uma pizza. Clica no carrinho!`;
+        // Original: "Agora é oficial, o TikTok endoidou. Esse monitor Valac Z18 Maze baixou mais da metade, com tela curva super imersiva e imagens muito nítidas, com a parcela menos que uma pizza. Clica no carrinho!"
+        text = `Agora é oficial, o TikTok endoidou. ${EsseProd} baixou mais da metade, ${shortWithClause}, com a parcela menos que uma pizza. Clica no carrinho!`;
         break;
 
       case 'ELE-07':
@@ -1850,9 +1906,17 @@ export function adaptBankCopyToProduct(
       case 'CLI-04':
       case 'CLI-05': {
         const qty = specs.kitQuantity && specs.kitQuantity >= 2 ? specs.kitQuantity : 2;
+        const qtyWord = qty === 2 ? (isFem ? 'Duas' : 'Dois') : qty === 3 ? 'Três' : `Kit com ${qty}`;
+        const qtyNumWord = qty === 2 ? (isFem ? 'duas' : 'dois') : qty === 3 ? 'três' : `${qty}`;
+        const umWord = isFem ? 'uma' : 'um';
+        const osSeus = isFem ? 'as suas' : 'os seus';
         text = text
-          .replace(/^Dois ventiladores/i, `Kit com ${qty} ${spokenName}`)
-          .replace(/\bpra refrescar sua casa, quarto ou trabalho\b/i, 'pro seu dia a dia');
+          .replace(/^Dois ventiladores/i, `${qtyWord} ${spokenName}`)
+          .replace(/\bmal paga um\b/i, `mal paga ${umWord}`)
+          .replace(/\bmal compra um\b/i, `mal compra ${umWord}`)
+          .replace(/\bleva dois de uma vez\b/i, `leva ${qtyNumWord} de uma vez`)
+          .replace(/\bpra refrescar sua casa, quarto ou trabalho\b/i, 'pro seu dia a dia')
+          .replace(/\bgarante os seus\b/i, `garante ${osSeus}`);
         break;
       }
 
@@ -1977,6 +2041,17 @@ export function adaptBankCopyToProduct(
 
   // Ajustar vocativos e concordância (Seção 5.2 - usando Amiga para Feminino, nunca menina)
   text = applyGenderAndVocativeRules(text, clientGender, influencer);
+
+  // Regra da pizza (Item 8): NUNCA dizer somente "menos que uma pizza", sempre "a parcela é menos que uma pizza"
+  text = text.replace(/(?:(?:com\s+)?a\s+parcela\s+[eé]\s+)*(?:com\s+a\s+parcela\s+)?(?:por\s+)?menos\s+que\s+uma\s+pizza/gi, (match) => {
+    return match.toLowerCase().includes('com')
+      ? 'com a parcela menos que uma pizza'
+      : 'a parcela é menos que uma pizza';
+  });
+  text = text.replace(/([.!?]\s*)a parcela é menos que uma pizza/g, '$1A parcela é menos que uma pizza');
+  if (text.startsWith('a parcela é menos que uma pizza')) {
+    text = 'A parcela é menos que uma pizza' + text.slice('a parcela é menos que uma pizza'.length);
+  }
 
   return text;
 }
