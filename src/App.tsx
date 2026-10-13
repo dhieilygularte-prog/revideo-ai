@@ -1204,7 +1204,7 @@ export default function App() {
     }
   };
 
-  const handleRegenerateProdutos2Storyboard = async () => {
+  const handleRegenerateProdutos2Storyboard = async (customCorrection?: string) => {
     if (!produtos2Result) return;
     setProdutos2Result((prev) =>
       prev ? { ...prev, isRegeneratingStoryboard: true, storyboardError: undefined } : null
@@ -1213,6 +1213,7 @@ export default function App() {
       const regen = await regenerateProdutos2Storyboard({
         result: produtos2Result,
         form: produtos2Form,
+        customCorrection,
         aiProfile,
       });
       setProdutos2Result((prev) => {
@@ -1221,6 +1222,7 @@ export default function App() {
           ...prev,
           isRegeneratingStoryboard: false,
           storyboardImageUrl: regen.imageUrl || prev.storyboardImageUrl,
+          storyboardAudit: regen.storyboardAudit || prev.storyboardAudit,
           storyboardError: regen.error,
         };
       });

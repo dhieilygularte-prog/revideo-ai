@@ -1190,8 +1190,14 @@ REGRAS CR\xCDTICAS:
 
 // src/produtos2/produtos2Prompts.ts
 function buildProdutos2PlanningSystemPrompt() {
-  return `Voc\xEA \xE9 o Diretor Criativo Copy-First do Modo Produtos 2.0 (TikTok Shop Brasil).
+  return `Voc\xEA \xE9 o Diretor Criativo Copy-First do Modo Produtos 2.0.
 REGRA-M\xC3E: A COPY VENDE. O STORYBOARD PROVA VISUALMENTE A COPY. O V\xCDDEO ANIMA O STORYBOARD SEM NUNCA MOSTRAR A PR\xD3PRIA FOLHA DO STORYBOARD.
+
+REGRA DE OURO \u2014 TEXTO, LOGO E PALAVRA PROIBIDA:
+- A palavra "TikTok" NUNCA pode aparecer em "productLock", "avatarDescription", "scenarioDescription", "visualMap" nem em "scenes" (somente dentro de "adaptedCopy" se j\xE1 fizer parte da fala).
+- O produto \xE9 sempre 100% id\xEAntico \xE0s fotos de refer\xEAncia, inclusive a marca/logo e qualquer texto que j\xE1 estejam impressos no pr\xF3prio produto.
+- Se as fotos de refer\xEAncia mostram marca, logo ou texto impresso no produto, o "productLock" DEVE descrever exatamente (o qu\xEA, onde fica no produto, cor e tamanho \u2014 ex.: "logo branco da marca impresso na face frontal do apoio Scott, igual \xE0 foto").
+- Se o produto N\xC3O tem marca ou texto nas fotos, o "productLock" deve descrever como "superf\xEDcie lisa, sem marcas".
 
 Sua tarefa \xE9 receber:
 1) As fotos reais do produto;
@@ -1205,7 +1211,7 @@ E retornar um JSON estrito com:
    - Se veio do banco, MUDE O M\xCDNIMO POSS\xCDVEL (Se\xE7\xE3o 5): troque apenas nome/marca/modelo pelos do produto real, n\xFAmeros/especifica\xE7\xF5es pelos reais das Informa\xE7\xF5es do Produto, cor/material/quantidade.
    - NUNCA use a palavra "menina" como vocativo; quando o p\xFAblico for feminino e houver vocativo, use "Amiga" ou "Gente". Para p\xFAblico masculino, use "Meu amigo", "Cara", "Irm\xE3o" ou "Gente".
    - Se dura\xE7\xE3o = 8s, a "adaptedCopy" DEVE ter no m\xE1ximo 199 caracteres contando espa\xE7os (mantendo Gancho + Prova principal com "olha" + CTA).
-2. "productLock": array de 4 a 6 strings detalhando fisicamente o produto visto nas fotos (formato, cor exata, material, textura, propor\xE7\xE3o, logotipos existentes, costuras/bot\xF5es/sola/cabos/detalhes).
+2. "productLock": array de 4 a 6 strings detalhando fisicamente o produto visto nas fotos (formato, cor exata, material, textura, propor\xE7\xE3o, bot\xF5es/costuras/sola/cabos/detalhes, e obrigatoriamente a descri\xE7\xE3o exata da marca/logo/texto impresso no produto conforme as fotos ou "superf\xEDcie lisa, sem marcas").
 3. "avatarDescription": descri\xE7\xE3o de 1 frase do consumidor brasileiro adulto que apresenta o produto (respeitando o g\xEAnero do Influencer e as Instru\xE7\xF5es Adicionais; se produto infantil, quem apresenta na cena 1 e 9 \xE9 sempre um adulto pai/m\xE3e).
 4. "scenarioDescription": descri\xE7\xE3o concreta do cen\xE1rio (onde o produto \xE9 usado de verdade ou casa brasileira simples e aconchegante, respeitando Instru\xE7\xF5es Adicionais).
 5. "visualMap": array de 4 objetos { "excerpt", "intent", "visualProof", "scenes" } mapeando os trechos da copy para provas visuais nas cenas 1 a 9.
@@ -1213,11 +1219,13 @@ E retornar um JSON estrito com:
    - Cada cena prova visualmente o que est\xE1 sendo falado naquele momento da copy.
    - Todo "olha [detalhe]" na copy vira uma cena de close/macro daquele detalhe.
    - Variar enquadramentos (nunca duas cenas seguidas iguais): close, macro, POV de m\xE3os, plano m\xE9dio, plano aberto, uso real.
+   - "storyboardDescription" DEVE ser id\xEAntico a "{framing}. {action}" (mesma pessoa, mesma a\xE7\xE3o, mesmo enquadramento e mesmos objetos, sem inventar objetos extras ou mudar quem aparece entre um campo e outro).
+   - Na Cena 1, escreva "action" de forma direta e objetiva (sem retic\xEAncias e sem ponto no meio da frase).
    - Respeitar estritamente o Enquadramento:
      * "com_rosto": rosto aparece em algumas cenas (especialmente gancho e cena 9).
      * "sem_rosto": nunca mostrar o rosto; sempre do pesco\xE7o para baixo.
      * "pov": mostrar somente as m\xE3os em primeira pessoa; nunca rosto ou corpo.
-   - Proibido texto, legenda, pre\xE7o, n\xFAmero escrito, carrinho ou interface do TikTok dentro das cenas.`;
+   - Proibido texto, legenda, pre\xE7o, n\xFAmero escrito, carrinho, marca d'\xE1gua, @ ou interface de aplicativo dentro das cenas.`;
 }
 
 // server.ts
@@ -3130,22 +3138,31 @@ app.post("/api/produtos2-generate-storyboard", async (req, res) => {
       prompt,
       productName = "Produto",
       productPhotosBase64 = [],
-      additionalInstructions = ""
+      additionalInstructions = "",
+      previousStoryboardImageBase64 = "",
+      correctionPrompt = ""
     } = req.body;
     if (!prompt) {
       return res.status(400).json({ success: false, error: "Prompt do storyboard n\xE3o fornecido." });
     }
     const photosList = Array.isArray(productPhotosBase64) ? productPhotosBase64.filter(Boolean) : [];
+    const effectivePrompt = correctionPrompt && correctionPrompt.trim() ? `${prompt}
+
+========================
+CORRE\xC7\xC3O OBRIGAT\xD3RIA DE AUDITORIA DE FIDELIDADE DOS 9 QUADRANTES:
+${correctionPrompt.trim()}
+========================` : prompt;
     const activeProfile = getRequestAIProfile(req);
     if (activeProfile === "openai" && openAIProvider.isConfigured()) {
       try {
         const result = await openAIProvider.generateSceneImage({
-          prompt,
+          prompt: effectivePrompt,
           productPhotoBase64: photosList[0] || "",
           productPhotosBase64: photosList,
+          modelReferenceBase64: previousStoryboardImageBase64 || void 0,
           variationName: productName,
           productType: productName,
-          additionalInstructions,
+          additionalInstructions: [additionalInstructions, correctionPrompt].filter(Boolean).join(" | "),
           hasUserProvidedModel: false,
           isCloneMode: false
         });
@@ -3168,16 +3185,26 @@ app.post("/api/produtos2-generate-storyboard", async (req, res) => {
       if (parsed) {
         parts.push({ inlineData: parsed });
         parts.push({
-          text: `[FOTO DE REFER\xCANCIA REAL DO PRODUTO #${idx + 1} (${productName})]: Preserve 100% id\xEAnticos o formato, cor, propor\xE7\xE3o, textura, r\xF3tulos/logos e detalhes f\xEDsicos deste produto em todos os 9 quadros do storyboard 3x3.`
+          text: `[FOTO DE REFER\xCANCIA REAL DO PRODUTO #${idx + 1} (${productName})]: Preserve 100% id\xEAnticos o formato, cor, propor\xE7\xE3o, textura, bot\xF5es e principalmente a MARCA/LOGOMARCA e TEXTOS IMPRESSOS NO PRODUTO em todos os 9 quadros do storyboard 3x3.`
         });
       }
     });
-    parts.push({ text: prompt });
-    const systemInstructionText = `VOC\xCA \xC9 O GERADOR DE STORYBOARD 3x3 DO MODO PRODUTOS 2.0 (TIKTOK SHOP BRASIL).
+    if (previousStoryboardImageBase64 && typeof previousStoryboardImageBase64 === "string") {
+      const parsedPrev = parseInlineImage(previousStoryboardImageBase64);
+      if (parsedPrev) {
+        parts.push({ inlineData: parsedPrev });
+        parts.push({
+          text: `[STORYBOARD ANTERIOR PARA CORRE\xC7\xC3O DOS QUADRANTES COM ERRO]: Mantenha os quadros que j\xE1 estavam corretos e CORRIJA rigorosamente os quadros apontados na instru\xE7\xE3o de corre\xE7\xE3o para que o produto fique 100% id\xEAntico \xE0s fotos reais de refer\xEAncia.`
+        });
+      }
+    }
+    parts.push({ text: effectivePrompt });
+    const systemInstructionText = `VOC\xCA \xC9 O GERADOR DE STORYBOARD 3x3 DO MODO PRODUTOS 2.0.
 - Gere UMA \xDANICA IMAGEM VERTICAL 9:16 (1080x1920) contendo uma grade 3x3 (3 colunas x 3 linhas) com EXATAMENTE 9 quadros fotogr\xE1ficos ultra-realistas numerados de 1 a 9 (selo circular branco pequeno no canto superior esquerdo de cada quadro com n\xFAmero preto).
 - Cantos arredondados nos quadros, separados por uma borda branca fina, sobre fundo branco.
-- PRODUCT LOCK ABSOLUTO: O produto em todos os 9 quadros deve ser 100% id\xEAntico \xE0s fotos reais anexadas (mesmo formato, cor, textura, propor\xE7\xE3o e detalhes).
-- ZERO TEXTO NOS QUADROS: N\xE3o escreva nenhuma legenda, t\xEDtulo, pre\xE7o, seta, \xEDcone de carrinho ou interface do TikTok. Apenas os n\xFAmeros 1 a 9 nos selos circulares.`;
+- PRODUCT LOCK ABSOLUTO: O produto em todos os 9 quadros onde aparece deve ser 100% id\xEAntico \xE0s fotos reais anexadas (mesmo formato, cor, textura, bot\xF5es, fun\xE7\xF5es, propor\xE7\xE3o e detalhes).
+- MARCA E LOGO DO PRODUTO: A marca, o logo e os textos que j\xE1 est\xE3o impressos no pr\xF3prio produto nas fotos de refer\xEAncia DEVEM aparecer exatamente iguais, no mesmo lugar, em todos os quadros em que aquela parte estiver vis\xEDvel.
+- ZERO ELEMENTOS EXTERNOS: N\xE3o adicione legendas, textos publicit\xE1rios, pre\xE7os, setas, carrinho, marca d'\xE1gua, @ ou logotipo de rede social/aplicativo. Apenas os n\xFAmeros 1 a 9 nos selos circulares.`;
     const modelsToTry = [
       GEMINI_IMAGE_MODEL || "gemini-3.1-flash-image",
       GEMINI_IMAGE_FAST_MODEL || "gemini-3.1-flash-lite-image",
@@ -3229,6 +3256,248 @@ app.post("/api/produtos2-generate-storyboard", async (req, res) => {
     return res.json({
       success: false,
       error: err?.message || "Erro inesperado ao gerar storyboard."
+    });
+  }
+});
+function getAuditColorStatus(score) {
+  if (score >= 90) return "green";
+  if (score >= 71) return "yellow";
+  if (score >= 60) return "orange";
+  return "red";
+}
+function getAuditColorLabel(status, score) {
+  if (status === "green") return `Verde \u2014 Produto Id\xEAntico (${score}%)`;
+  if (status === "yellow") return `Amarelo \u2014 Pequena Diferen\xE7a (${score}%)`;
+  if (status === "orange") return `Laranja \u2014 Diferen\xE7a Moderada (${score}%)`;
+  return `Vermelho \u2014 Produto Muito Diferente (${score}%)`;
+}
+app.post("/api/produtos2-audit-storyboard", async (req, res) => {
+  try {
+    const {
+      storyboardImageBase64,
+      productPhotosBase64 = [],
+      productName = "Produto",
+      productLock = [],
+      scenes = []
+    } = req.body;
+    if (!storyboardImageBase64) {
+      return res.status(400).json({ success: false, error: "Imagem do storyboard n\xE3o fornecida para auditoria." });
+    }
+    const photosList = Array.isArray(productPhotosBase64) ? productPhotosBase64.filter(Boolean) : [];
+    const scenesContext = Array.isArray(scenes) ? scenes.slice(0, 9).map((s, idx) => `Cena ${idx + 1}: ${s.framing || ""}. ${s.action || ""}`).join("\n") : "";
+    const lockContext = Array.isArray(productLock) ? productLock.join("; ") : "";
+    const auditSystemInstruction = `Voc\xEA \xE9 o Fiscal Rigoroso de Fidelidade Visual de Produtos (Storyboard 3x3 \u2014 9 Quadrantes).
+Sua miss\xE3o \xE9 inspecionar CADA UM DOS 9 QUADRANTES (numerados de 1 a 9, da esquerda para a direita, de cima para baixo: Linha 1 = Cenas 1, 2, 3; Linha 2 = Cenas 4, 5, 6; Linha 3 = Cenas 7, 8, 9) da imagem de Storyboard gerada e comparar o produto com as FOTOS REAIS DE REFER\xCANCIA do produto "${productName}".
+
+REGRAS DE OURO DA FISCALIZA\xC7\xC3O POR QUADRANTE:
+1. Se em algum quadrante aparecer SOMENTE o modelo/pessoa (ex: rea\xE7\xE3o facial) ou SOMENTE o cen\xE1rio, SEM o produto aparecer:
+   - marque "productVisible": false
+   - marque "score": 100
+   - "issue": "Cena X: Apenas modelo/cen\xE1rio (sem produto vis\xEDvel \u2014 OK)"
+2. Em TODOS os quadrantes onde o produto aparece ("productVisible": true), avalie com rigor m\xE1ximo (0 a 100):
+   - LOGOMARCA E TEXTO DO PRODUTO: A logomarca e o texto de nome/marca impressos no produto nas fotos de refer\xEAncia est\xE3o 100% ID\xCANTICOS naquele quadrante (mesmo nome, mesma posi\xE7\xE3o, mesma cor e formato)? Se a logo do produto sumiu, mudou de lugar ou foi trocada, reduza a nota daquele quadrante!
+   - CORES E MATERIAIS: As cores de cada parte do produto conferem exatamente com as fotos reais?
+   - FORMATO, ESTRUTURA, BOT\xD5ES E FUN\xC7\xD5ES: O formato f\xEDsico, encaixes, bot\xF5es, cabos, costuras ou pe\xE7as conferem 100% com as fotos reais?
+   - LIMPEZA VISUAL: N\xE3o pode haver logotipo de rede social, @, marca d'\xE1gua ou \xEDcone de carrinho.
+3. ESCALA DE NOTAS DE CADA QUADRANTE (0 a 100):
+   - 90 a 100 (VERDE): Produto 90%+ id\xEAntico \xE0s fotos de refer\xEAncia (logo, texto do produto, cor, formato e bot\xF5es fi\xE9is).
+   - 71 a 89 (AMARELO): Produto com pequena varia\xE7\xE3o de detalhe secund\xE1rio, textura leve ou logo levemente apagada naquele quadro.
+   - 60 a 70 (LARANJA): Produto com diferen\xE7a percept\xEDvel (falta da logomarca original, detalhe de formato/bot\xE3o diferente ou varia\xE7\xE3o de tom).
+   - Abaixo de 60 (VERMELHO): Produto muito diferente das fotos reais (outro formato, cor errada, pe\xE7a inventada ou descaracterizada).
+
+CONTEXTO DO PRODUCT LOCK ESPERADO:
+${lockContext}
+
+DESCRI\xC7\xC3O PLANEJADA DAS 9 CENAS:
+${scenesContext}
+
+Retorne ESTRITAMENTE um objeto JSON v\xE1lido com este formato exato:
+{
+  "quadrants": [
+    {
+      "sceneNumber": 1,
+      "productVisible": true,
+      "score": 95,
+      "issue": "Cena 1: Produto id\xEAntico \xE0 refer\xEAncia (logo, cor e estrutura fi\xE9is)"
+    }
+  ]
+}
+O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9). Quando score < 90, o campo "issue" DEVE come\xE7ar dizendo claramente "Na Cena X, o produto est\xE1 diferente: [explica\xE7\xE3o clara do que est\xE1 errado]".`;
+    const activeProfile = getRequestAIProfile(req);
+    let rawQuadrants = null;
+    if (activeProfile === "openai" && openAIProvider.isConfigured()) {
+      try {
+        const client = openAIProvider.getClient();
+        const contentBlocks = [];
+        contentBlocks.push({
+          type: "text",
+          text: "[IMAGEM 1 \u2014 STORYBOARD 3x3 GERADO (9 CENAS NUMERADAS DE 1 A 9)]:"
+        });
+        contentBlocks.push({
+          type: "image_url",
+          image_url: {
+            url: storyboardImageBase64.startsWith("data:") ? storyboardImageBase64 : `data:image/png;base64,${storyboardImageBase64}`,
+            detail: "high"
+          }
+        });
+        photosList.slice(0, 3).forEach((photo, idx) => {
+          contentBlocks.push({
+            type: "text",
+            text: `[FOTO DE REFER\xCANCIA REAL DO PRODUTO #${idx + 1}]:`
+          });
+          contentBlocks.push({
+            type: "image_url",
+            image_url: {
+              url: photo.startsWith("data:") ? photo : `data:image/jpeg;base64,${photo}`,
+              detail: "high"
+            }
+          });
+        });
+        contentBlocks.push({
+          type: "text",
+          text: "Analise cada um dos 9 quadrantes (Cena 1 a Cena 9) comparando com as fotos reais de refer\xEAncia e retorne o JSON."
+        });
+        const modelsToTry = [OPENAI_AUDIT_MODEL || "gpt-4o", "gpt-4o", "gpt-4o-mini"];
+        for (const modelCandidate of modelsToTry) {
+          try {
+            const params = {
+              model: modelCandidate,
+              messages: [
+                { role: "system", content: auditSystemInstruction },
+                { role: "user", content: contentBlocks }
+              ],
+              response_format: { type: "json_object" }
+            };
+            if (!modelCandidate.startsWith("gpt-5") && !modelCandidate.startsWith("o")) {
+              params.temperature = 0.2;
+            }
+            const completion = await client.chat.completions.create(params);
+            const parsed = JSON.parse(completion.choices[0]?.message?.content || "{}");
+            if (parsed && Array.isArray(parsed.quadrants) && parsed.quadrants.length > 0) {
+              rawQuadrants = parsed.quadrants;
+              break;
+            }
+          } catch (e) {
+            console.warn(`Aviso OpenAI audit storyboard (${modelCandidate}):`, e?.message || e);
+          }
+        }
+      } catch (oiErr) {
+        console.warn("Falha OpenAI em produtos2-audit-storyboard, usando Gemini:", oiErr?.message || oiErr);
+      }
+    }
+    if (!rawQuadrants && process.env.GEMINI_API_KEY) {
+      try {
+        const parts = [];
+        const parsedStoryboard = parseInlineImage(storyboardImageBase64);
+        if (parsedStoryboard) {
+          parts.push({ text: "[IMAGEM 1 \u2014 STORYBOARD 3x3 GERADO (9 CENAS NUMERADAS DE 1 A 9)]:" });
+          parts.push({ inlineData: parsedStoryboard });
+        }
+        photosList.slice(0, 3).forEach((photo, idx) => {
+          const parsedRef = parseInlineImage(photo);
+          if (parsedRef) {
+            parts.push({ text: `[FOTO DE REFER\xCANCIA REAL DO PRODUTO #${idx + 1}]:` });
+            parts.push({ inlineData: parsedRef });
+          }
+        });
+        parts.push({
+          text: `${auditSystemInstruction}
+
+Analise cada um dos 9 quadrantes (Cena 1 a Cena 9) e retorne o JSON.`
+        });
+        const auditRes = await getGenAI().models.generateContent({
+          model: GEMINI_VISION_MODEL || "gemini-2.5-flash",
+          contents: parts,
+          config: {
+            responseMimeType: "application/json"
+          }
+        });
+        const parsed = JSON.parse(auditRes.text || "{}");
+        if (parsed && Array.isArray(parsed.quadrants) && parsed.quadrants.length > 0) {
+          rawQuadrants = parsed.quadrants;
+        }
+      } catch (gemErr) {
+        console.warn("Aviso Gemini em produtos2-audit-storyboard:", gemErr?.message || gemErr);
+      }
+    }
+    const normalizedQuadrants = Array.from({ length: 9 }, (_, i) => {
+      const sceneNum = i + 1;
+      const found = (rawQuadrants || []).find((q) => Number(q.sceneNumber) === sceneNum) || (rawQuadrants || [])[i];
+      const productVisible = found?.productVisible !== void 0 ? Boolean(found.productVisible) : true;
+      const rawScore = productVisible ? Number(found?.score ?? 93) : 100;
+      const score = Math.max(0, Math.min(100, Math.round(isNaN(rawScore) ? 93 : rawScore)));
+      const status = getAuditColorStatus(score);
+      let issue = String(found?.issue || "").trim();
+      if (!issue) {
+        if (!productVisible) {
+          issue = `Cena ${sceneNum}: Apenas modelo/cen\xE1rio (sem produto vis\xEDvel \u2014 OK)`;
+        } else if (score >= 90) {
+          issue = `Cena ${sceneNum}: Produto id\xEAntico \xE0 refer\xEAncia (${score}%)`;
+        } else {
+          issue = `Na Cena ${sceneNum}, o produto est\xE1 diferente da foto de refer\xEAncia (${score}%).`;
+        }
+      } else if (productVisible && score < 90 && !issue.toLowerCase().includes(`cena ${sceneNum}`)) {
+        issue = `Na Cena ${sceneNum}, o produto est\xE1 diferente: ${issue}`;
+      }
+      return {
+        sceneNumber: sceneNum,
+        productVisible,
+        score,
+        status,
+        issue
+      };
+    });
+    const visibleQuadrants = normalizedQuadrants.filter((q) => q.productVisible);
+    const problemQuadrants = visibleQuadrants.filter((q) => q.score < 90);
+    const approvedQuadrants = normalizedQuadrants.filter((q) => q.score >= 90);
+    let overallScore = 95;
+    if (visibleQuadrants.length > 0) {
+      const avgScore = visibleQuadrants.reduce((acc, q) => acc + q.score, 0) / visibleQuadrants.length;
+      const minScore = Math.min(...visibleQuadrants.map((q) => q.score));
+      if (problemQuadrants.length === 0) {
+        overallScore = Math.max(90, Math.round(avgScore));
+      } else if (minScore < 60) {
+        overallScore = Math.min(59, Math.round(minScore * 0.75 + avgScore * 0.25));
+      } else if (minScore <= 70) {
+        overallScore = Math.min(70, Math.max(60, Math.round(minScore * 0.7 + avgScore * 0.3)));
+      } else {
+        overallScore = Math.min(89, Math.max(71, Math.round(minScore * 0.65 + avgScore * 0.35)));
+      }
+    }
+    const overallStatus = getAuditColorStatus(overallScore);
+    const overallLabel = getAuditColorLabel(overallStatus, overallScore);
+    const summaryIssues = problemQuadrants.length > 0 ? problemQuadrants.map((q) => `${q.issue} (Nota: ${q.score}%)`) : ["Todas as 9 cenas est\xE3o com fidelidade acima de 90% em rela\xE7\xE3o \xE0s fotos de refer\xEAncia."];
+    let correctionPrompt = "";
+    if (problemQuadrants.length > 0) {
+      const approvedNums = approvedQuadrants.map((q) => q.sceneNumber).join(", ");
+      const fixesList = problemQuadrants.map(
+        (q) => `- CORRIGIR CENA ${q.sceneNumber} (nota anterior ${q.score}%): ${q.issue}. Fa\xE7a o produto "${productName}" na Cena ${q.sceneNumber} ficar 100% ID\xCANTICO \xE0s fotos reais de refer\xEAncia (mesma logomarca, mesmo texto impresso no produto, mesmas cores, mesmo formato e bot\xF5es).`
+      ).join("\n");
+      correctionPrompt = [
+        approvedNums ? `MANTENHA A QUALIDADE E FIDELIDADE DAS CENAS J\xC1 APROVADAS (Cenas ${approvedNums}).` : "",
+        `CORRIJA PRIORITARIAMENTE AS CENAS ONDE O PRODUTO FICOU DIFERENTE:`,
+        fixesList,
+        `OBJETIVO OBRIGAT\xD3RIO: Atingir mais de 90% de similaridade em TODOS os 9 quadrantes, preservando logomarca, textos impressos, cores, formato e bot\xF5es 100% id\xEAnticos \xE0s fotos de refer\xEAncia.`
+      ].filter(Boolean).join("\n");
+    } else {
+      correctionPrompt = `Mantenha mais de 90% de similaridade em todos os 9 quadrantes, preservando logomarca, textos impressos no produto, cores, bot\xF5es e formato 100% id\xEAnticos \xE0s fotos de refer\xEAncia.`;
+    }
+    return res.json({
+      success: true,
+      audit: {
+        overallScore,
+        overallStatus,
+        overallLabel,
+        summaryIssues,
+        quadrants: normalizedQuadrants,
+        correctionPrompt
+      }
+    });
+  } catch (err) {
+    console.warn("Erro em /api/produtos2-audit-storyboard:", err?.message || err);
+    return res.json({
+      success: false,
+      error: err?.message || "Erro ao auditar os 9 quadrantes do storyboard."
     });
   }
 });

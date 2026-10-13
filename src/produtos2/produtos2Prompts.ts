@@ -12,6 +12,61 @@ import {
 } from './types';
 
 /**
+ * Retorna a descrição canônica unificada de uma cena (mesma pessoa, mesma ação e mesmo enquadramento
+ * tanto no prompt da imagem do storyboard quanto no prompt do Veo — Item 7.3)
+ */
+export function getUnifiedSceneDescription(sc: Produtos2SceneItem): string {
+  const framing = (sc.framing || '').trim().replace(/[.]+$/, '');
+  let action = (sc.action || sc.storyboardDescription || '').trim();
+  if (framing && action.toLowerCase().startsWith(framing.toLowerCase())) {
+    action = action.slice(framing.length).replace(/^[:.\-\s]+/, '').trim();
+  }
+  if (!action.endsWith('.')) {
+    action = `${action}.`;
+  }
+  return framing ? `${framing}. ${action}` : action;
+}
+
+/**
+ * Formata a descrição curta da Cena 1 para completar a frase do primeiro frame:
+ * com letra minúscula, sem ponto no meio e concordância natural ("da apresentadora...", "de duas mãos...") — Item 7.1
+ */
+export function formatFirstFrameClause(scene1: Produtos2SceneItem | undefined, productName: string): string {
+  const raw = (scene1?.action || `apresentação inicial em close de ${productName}`).trim();
+  // Remove reticências e substitui pontos no meio por vírgulas, limpando pontuação final
+  let cleaned = raw
+    .replace(/…|\.\.\./g, ',')
+    .replace(/\.\s+/g, ', ')
+    .replace(/[,;:.!?]+\s*$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!cleaned) {
+    return `de apresentação inicial em close de ${productName}`;
+  }
+
+  // Primeira letra minúscula
+  cleaned = cleaned.charAt(0).toLowerCase() + cleaned.slice(1);
+
+  if (cleaned.startsWith('a ')) {
+    return `da ${cleaned.slice(2)}`;
+  }
+  if (cleaned.startsWith('o ')) {
+    return `do ${cleaned.slice(2)}`;
+  }
+  if (cleaned.startsWith('as ')) {
+    return `das ${cleaned.slice(3)}`;
+  }
+  if (cleaned.startsWith('os ')) {
+    return `dos ${cleaned.slice(3)}`;
+  }
+  if (cleaned.startsWith('de ') || cleaned.startsWith('da ') || cleaned.startsWith('do ')) {
+    return cleaned;
+  }
+  return `de ${cleaned}`;
+}
+
+/**
  * SEÇÃO 7.6 — Prompt-base para o gerador de imagem do Storyboard (1080 x 1920, grade 3x3, 9 cenas)
  */
 export function buildProdutos2StoryboardImagePrompt(params: {
@@ -47,9 +102,10 @@ export function buildProdutos2StoryboardImagePrompt(params: {
     .map((m) => `"${m.excerpt}" → ${m.intent} (${m.visualProof}) → cenas ${m.scenes}`)
     .join('\n');
 
+  // Item 7.3: Usar exatamente as mesmas 9 descrições canônicas no storyboard e no Veo
   const scenesLines = scenes
     .slice(0, 9)
-    .map((sc, i) => `CENA ${i + 1}: ${sc.storyboardDescription || `${sc.framing}. ${sc.action}`}`)
+    .map((sc, i) => `CENA ${i + 1}: ${getUnifiedSceneDescription(sc)}`)
     .join('\n');
 
   const extraInstructions = additionalInstructions?.trim()
@@ -58,7 +114,7 @@ export function buildProdutos2StoryboardImagePrompt(params: {
 
   return `Crie UMA ÚNICA IMAGEM VERTICAL 1080x1920 (9:16) de storyboard fotográfico ultra-realista em grade 3x3 (3 colunas x 3 linhas), com EXATAMENTE 9 cenas numeradas de 1 a 9 em ordem de leitura (esquerda para direita, de cima para baixo). Quadros de tamanho igual, cantos arredondados, separados por uma borda branca fina, fundo branco.
 
-Use as fotos anexadas como referência absoluta do produto. Preserve fielmente (PRODUCT LOCK): ${productLock.join('; ')}. O produto deve ser idêntico em todos os quadros: não redesenhar, não embelezar, não trocar cor, não acrescentar peças e não simplificar detalhes.
+Use as fotos anexadas como referência absoluta do produto. Preserve fielmente (PRODUCT LOCK): ${productLock.join('; ')}. O produto deve ser idêntico em todos os quadros: não redesenhar, não embelezar, não trocar cor, não acrescentar peças e não simplificar detalhes. A marca, o logo e os textos impressos no produto devem aparecer exatamente como nas fotos de referência. Nenhum outro texto ou logo.
 
 A copy selecionada para este criativo é:
 "${finalCopy}"
@@ -68,13 +124,13 @@ Mapa visual da copy:
 ${visualMapLines}
 
 PERSONAGEM: ${avatarDescription}, o mesmo em todos os quadros. Enquadramento: ${framingLabel}.
-Estilo: fotografia ultra-realista de smartphone, UGC premium de TikTok Shop, luz natural, ${scenarioDescription}. Variar enquadramentos: close, macro, POV, plano médio, plano aberto.${extraInstructions}
+Estilo: fotografia ultra-realista de smartphone, UGC premium de anúncio, luz natural, ${scenarioDescription}. Variar enquadramentos: close, macro, POV, plano médio, plano aberto.${extraInstructions}
 
 ${scenesLines}
 
 Mantenha continuidade de produto, personagem, ambiente e iluminação entre as cenas relacionadas. Cada quadro deve parecer uma fotografia real e utilizável como referência de futura animação.
 Adicionar SOMENTE os números 1 a 9 em pequenos selos circulares brancos com número preto, no canto superior esquerdo de cada quadro.
-NÃO adicionar frases, legendas, textos publicitários, carrinho, ícones, botões, setas, preços, interface do TikTok ou marca d'água.`;
+NÃO adicionar frases, legendas, textos publicitários, carrinho, ícones, botões, setas, preços, interface de aplicativo, logotipo do TikTok ou de rede social, nome de usuário/@, carrinho ou marca d'água.`;
 }
 
 /**
@@ -108,9 +164,10 @@ export function buildProdutos2VeoPrompt(params: {
     additionalInstructions,
   } = params;
 
-  const scene1Summary =
-    scenes[0]?.action || `apresentação inicial em close de ${productName}`;
+  // Item 7.1: Frase do primeiro frame com letra minúscula e sem ponto no meio
+  const firstFrameClause = formatFirstFrameClause(scenes[0], productName);
 
+  // Item 7.2: PRODUCT LOCK sempre igual no prompt da imagem e no prompt do Veo
   const productLockBullets = productLock
     .map((item) => `- ${item.replace(/^[-•*]\s*/, '')}`)
     .join('\n');
@@ -124,12 +181,14 @@ export function buildProdutos2VeoPrompt(params: {
       ? `Sem rosto: nunca mostrar o rosto em nenhuma cena; enquadrar sempre do pescoço para baixo.`
       : `POV: mostrar somente as mãos em primeira pessoa interagindo com ${productName}; nunca mostrar rosto ou corpo.`;
 
+  // Item 7.3: Gerar o prompt a partir das MESMAS 9 descrições usadas para criar a imagem, sem reescrever as cenas
   const scenesBlock = scenes
     .slice(0, 9)
     .map((sc, idx) => {
       const num = idx + 1;
       const isLast = num === 9;
-      let actionText = `${sc.framing}. ${sc.action} ${sc.cameraMovement || ''}`.trim();
+      const unifiedDesc = getUnifiedSceneDescription(sc);
+      let actionText = `${unifiedDesc} ${sc.cameraMovement || ''}`.trim();
       if (speechMode === 'sem_fala' && isLast) {
         actionText = actionText.replace(/falando para a câmera/gi, 'sorrindo e mostrando o produto para a câmera');
       }
@@ -140,6 +199,36 @@ export function buildProdutos2VeoPrompt(params: {
   const voiceGender = influencerResolved === 'Homem' ? 'MASCULINA' : 'FEMININA';
   const accentMatch = additionalInstructions?.match(/sotaque\s+([a-záàâãéêíóôõúç]+)/i);
   const accentClause = accentMatch ? `, com sotaque ${accentMatch[1]}` : '';
+
+  // Item 3: Novo bloco logo depois de "Tom da voz: …" (só quando tiver fala)
+  // Inclui somente as linhas que se aplicam à copy usada
+  const speechWordsAudioOnlyLines: string[] = [];
+  const lowerCopy = finalCopy.toLowerCase();
+
+  if (lowerCopy.includes('tiktok') || lowerCopy.includes('tik tok')) {
+    speechWordsAudioOnlyLines.push(
+      `A palavra "TikTok" existe SOMENTE NA LOCUÇÃO. Ela NÃO deve gerar logotipo, marca d'água, nome de usuário nem nenhum elemento visual de rede social.`
+    );
+  }
+
+  const matchedCtaTerms: string[] = [];
+  for (const term of ['carrinho laranja', 'carrinho', 'botão', 'link', 'aqui embaixo', 'veja aqui']) {
+    if (lowerCopy.includes(term)) {
+      if (term === 'carrinho' && matchedCtaTerms.includes('carrinho laranja')) continue;
+      matchedCtaTerms.push(term);
+    }
+  }
+  if (matchedCtaTerms.length > 0) {
+    speechWordsAudioOnlyLines.push(
+      `A expressão "${matchedCtaTerms.join(' / ')}" existe SOMENTE NA LOCUÇÃO. Ela NÃO deve gerar carrinho, ícone de carrinho, desenho de carrinho ou botão em nenhum momento.`
+    );
+  }
+
+  speechWordsAudioOnlyLines.push(
+    `"${productName}" e as especificações existem SOMENTE NA LOCUÇÃO. NÃO escrever nenhuma palavra ou número na tela.`
+  );
+
+  const speechWordsOnlyBlock = `\n\nAS PALAVRAS DA FALA EXISTEM SOMENTE NO ÁUDIO:\n${speechWordsAudioOnlyLines.join('\n')}`;
 
   const audioSection =
     speechMode === 'com_fala'
@@ -159,53 +248,49 @@ NÃO criar várias narradoras.
 FALAR EXATAMENTE UMA VEZ:
 "${finalCopy}"
 
-Tom da voz: natural, brasileiro, rápido, espontâneo, acolhedor e com energia de recomendação real.`
+Tom da voz: natural, brasileiro, rápido, espontâneo, acolhedor e com energia de recomendação real.${speechWordsOnlyBlock}`
       : `========================
 ÁUDIO — SEM FALA
 ========================
 NÃO usar locução. NÃO usar narração. Ninguém fala no vídeo e ninguém mexe a boca como se estivesse falando.
 Usar apenas som ambiente natural do cenário e uma trilha instrumental animada e leve, com ritmo que acompanha os cortes.`;
 
-  // Detectar expressões de CTA e números na copy para blindar na seção PROIBIÇÕES
-  const ctaTermsFound: string[] = [];
-  for (const term of ['carrinho laranja', 'carrinho', 'botão', 'link', 'aqui embaixo', 'veja aqui']) {
-    if (finalCopy.toLowerCase().includes(term)) {
-      ctaTermsFound.push(term);
-      break;
-    }
-  }
-  const ctaProhibitionLine =
-    ctaTermsFound.length > 0
-      ? `\nA expressão "${ctaTermsFound[0]}" existe SOMENTE NA LOCUÇÃO. Ela NÃO deve gerar nenhum elemento visual na tela.`
-      : '';
-
-  const hasNumbersInCopy = /\d/.test(finalCopy) || /preço| metade|pizza|fábrica|oferta|desconto/i.test(finalCopy);
-  const numbersProhibitionLine = hasNumbersInCopy
-    ? `\nPreços, números e especificações existem SOMENTE NA LOCUÇÃO. NÃO escrever nenhum número na tela.`
-    : '';
-
+  // Item 5: PRIORIDADE MÁXIMA — novo item 1 (os demais descem uma posição)
   const prioritySection =
     speechMode === 'com_fala'
       ? `PRIORIDADE MÁXIMA:
-1. respeitar a copy validada, falada exatamente uma vez;
-2. usar as cenas como tradução visual da copy;
-3. fidelidade absoluta ao produto (PRODUCT LOCK) em todas as cenas;
-4. usar o storyboard somente como guia visual e nunca exibi-lo;
-5. começar diretamente com uma nova cena real em movimento;
-6. recriar as 9 cenas na ordem dos números;
-7. fazer um vídeo rápido e muito dinâmico;
-8. usar uma única locução contínua, sem repetições.`
+1. vídeo limpo: sem marca d'água, sem logo do TikTok, sem @, sem carrinho e sem nenhum texto adicionado; a marca/logo que já está impressa no produto aparece idêntica às fotos;
+2. respeitar a copy validada, falada exatamente uma vez;
+3. usar as cenas como tradução visual da copy;
+4. fidelidade absoluta ao produto (PRODUCT LOCK) em todas as cenas;
+5. usar o storyboard somente como guia visual e nunca exibi-lo;
+6. começar diretamente com uma nova cena real em movimento;
+7. recriar as 9 cenas na ordem dos números;
+8. fazer um vídeo rápido e muito dinâmico;
+9. usar uma única locução contínua, sem repetições.`
       : `PRIORIDADE MÁXIMA:
-1. seguir a ordem das cenas definida pela copy;
-2. usar as cenas como tradução visual e demonstração real do produto;
-3. fidelidade absoluta ao produto (PRODUCT LOCK) em todas as cenas;
-4. usar o storyboard somente como guia visual e nunca exibi-lo;
-5. começar diretamente com uma nova cena real em movimento;
-6. recriar as 9 cenas na ordem dos números;
-7. fazer um vídeo rápido e muito dinâmico;
-8. nenhuma voz e nenhuma fala no vídeo.`;
+1. vídeo limpo: sem marca d'água, sem logo do TikTok, sem @, sem carrinho e sem nenhum texto adicionado; a marca/logo que já está impressa no produto aparece idêntica às fotos;
+2. seguir a ordem das cenas definida pela copy;
+3. usar as cenas como tradução visual e demonstração real do produto;
+4. fidelidade absoluta ao produto (PRODUCT LOCK) em todas as cenas;
+5. usar o storyboard somente como guia visual e nunca exibi-lo;
+6. começar diretamente com uma nova cena real em movimento;
+7. recriar as 9 cenas na ordem dos números;
+8. fazer um vídeo rápido e muito dinâmico;
+9. nenhuma voz e nenhuma fala no vídeo.`;
 
-  return `Crie um vídeo vertical 9:16, ultra-realista, estilo UGC/POV para TikTok Shop, com duração total de ${duration} segundos.
+  // Item 1, Item 2 e Item 4 aplicados integralmente
+  return `Crie um vídeo vertical 9:16, ultra-realista, com aparência de gravação caseira feita com smartphone (estilo UGC), com duração total de ${duration} segundos.
+
+VÍDEO LIMPO — REGRA ABSOLUTA:
+O vídeo é uma filmagem original e limpa. O quadro inteiro mostra somente a cena filmada, do primeiro ao último frame.
+Os quatro cantos da tela ficam livres, sem nada por cima da imagem.
+NÃO adicionar marca d'água.
+NÃO adicionar logotipo flutuante.
+NÃO adicionar nome de usuário, @ ou perfil.
+NÃO adicionar logotipo de nenhuma rede social ou aplicativo.
+NÃO adicionar textos, legendas, números, ícones, botões ou stickers.
+EXCEÇÃO: a marca, o logo e os textos que já estão impressos no próprio produto (iguais às fotos de referência e ao storyboard) DEVEM aparecer, idênticos, sempre que aquela parte do produto estiver visível.
 
 IMPORTANTE SOBRE A IMAGEM ANEXADA:
 A imagem anexada é SOMENTE UM STORYBOARD DE REFERÊNCIA com 9 cenas numeradas.
@@ -217,14 +302,14 @@ NÃO mostre números, bordas, divisões ou estrutura de storyboard.
 NÃO faça colagem. NÃO faça tela dividida. NÃO faça mosaico.
 Use o storyboard APENAS para entender: o produto, a aparência do produto, os personagens, os enquadramentos, a ordem das ações e a progressão das 9 cenas.
 RECRIE cada quadro do storyboard como uma NOVA CENA REALISTA E INDEPENDENTE EM MOVIMENTO.
-O PRIMEIRO FRAME DO VÍDEO já deve ser uma cena real em movimento de ${scene1Summary}, e nunca a imagem inteira do storyboard.
+O PRIMEIRO FRAME DO VÍDEO já deve ser uma cena real em movimento ${firstFrameClause}, e nunca a imagem inteira do storyboard.
 
 ========================
 FIDELIDADE DO PRODUTO (PRODUCT LOCK)
 ========================
 Manter ${productName} exatamente como aparece no storyboard e nas fotos:
 ${productLockBullets}
-Não alterar a aparência do produto entre as cenas. Não redesenhar, não trocar cor, não acrescentar peças e não simplificar detalhes.
+Não alterar a aparência do produto entre as cenas. Não redesenhar, não trocar cor, não acrescentar peças e não simplificar detalhes. A marca, o logo e os textos impressos no próprio produto devem aparecer exatamente como nas fotos de referência. Nenhum outro texto ou logo pode ser adicionado.
 
 ========================
 PERSONAGEM
@@ -266,15 +351,16 @@ NÃO usar o storyboard como primeiro frame.
 NÃO mostrar grade 3x3.
 NÃO mostrar números 1 a 9.
 NÃO mostrar bordas entre cenas.
-NÃO mostrar textos do storyboard.
 NÃO mostrar legendas.
 NÃO adicionar textos na tela.
-NÃO adicionar logotipos.
-NÃO adicionar interface do TikTok.
+NÃO adicionar marca d'água.
+NÃO adicionar nome de usuário ou @.
+NÃO adicionar logotipo do TikTok nem de nenhuma rede social ou aplicativo.
+NÃO adicionar interface de aplicativo.
+NÃO adicionar carrinho, ícone de carrinho ou desenho de carrinho.
 NÃO adicionar ícone de carrinho.
-NÃO adicionar desenho de carrinho.
 NÃO adicionar botão de compra.
-NÃO adicionar stickers.${ctaProhibitionLine}${numbersProhibitionLine}
+NÃO adicionar stickers.
 
 ${prioritySection}`;
 }
@@ -367,7 +453,8 @@ export function buildDefaultProdutos2Plan(params: {
   const productLock: string[] = [
     `Formato, silhueta, proporção e dimensões exatas de ${productName} conforme fotos anexadas`,
     colorsNote,
-    `Textura, material, costuras, encaixes, botões e logotipos originais preservados 1:1 sem redesenho`,
+    `Marca, logotipo e textos que já estão impressos no próprio produto (o quê, posição exata, cor e tamanho iguais às fotos de referência; se não houver marca nas fotos, superfície lisa sem marcas)`,
+    `Textura, material, costuras, encaixes, botões e funções originais preservados 1:1 sem redesenho`,
     ...(infoHighlights.length > 0 ? infoHighlights : [`Acabamento físico autêntico idêntico em todas as 9 cenas`]),
   ];
 
@@ -640,8 +727,14 @@ export function buildDefaultProdutos2Plan(params: {
  * System Prompt para o endpoint /api/produtos2-planning no backend
  */
 export function buildProdutos2PlanningSystemPrompt(): string {
-  return `Você é o Diretor Criativo Copy-First do Modo Produtos 2.0 (TikTok Shop Brasil).
+  return `Você é o Diretor Criativo Copy-First do Modo Produtos 2.0.
 REGRA-MÃE: A COPY VENDE. O STORYBOARD PROVA VISUALMENTE A COPY. O VÍDEO ANIMA O STORYBOARD SEM NUNCA MOSTRAR A PRÓPRIA FOLHA DO STORYBOARD.
+
+REGRA DE OURO — TEXTO, LOGO E PALAVRA PROIBIDA:
+- A palavra "TikTok" NUNCA pode aparecer em "productLock", "avatarDescription", "scenarioDescription", "visualMap" nem em "scenes" (somente dentro de "adaptedCopy" se já fizer parte da fala).
+- O produto é sempre 100% idêntico às fotos de referência, inclusive a marca/logo e qualquer texto que já estejam impressos no próprio produto.
+- Se as fotos de referência mostram marca, logo ou texto impresso no produto, o "productLock" DEVE descrever exatamente (o quê, onde fica no produto, cor e tamanho — ex.: "logo branco da marca impresso na face frontal do apoio Scott, igual à foto").
+- Se o produto NÃO tem marca ou texto nas fotos, o "productLock" deve descrever como "superfície lisa, sem marcas".
 
 Sua tarefa é receber:
 1) As fotos reais do produto;
@@ -655,7 +748,7 @@ E retornar um JSON estrito com:
    - Se veio do banco, MUDE O MÍNIMO POSSÍVEL (Seção 5): troque apenas nome/marca/modelo pelos do produto real, números/especificações pelos reais das Informações do Produto, cor/material/quantidade.
    - NUNCA use a palavra "menina" como vocativo; quando o público for feminino e houver vocativo, use "Amiga" ou "Gente". Para público masculino, use "Meu amigo", "Cara", "Irmão" ou "Gente".
    - Se duração = 8s, a "adaptedCopy" DEVE ter no máximo 199 caracteres contando espaços (mantendo Gancho + Prova principal com "olha" + CTA).
-2. "productLock": array de 4 a 6 strings detalhando fisicamente o produto visto nas fotos (formato, cor exata, material, textura, proporção, logotipos existentes, costuras/botões/sola/cabos/detalhes).
+2. "productLock": array de 4 a 6 strings detalhando fisicamente o produto visto nas fotos (formato, cor exata, material, textura, proporção, botões/costuras/sola/cabos/detalhes, e obrigatoriamente a descrição exata da marca/logo/texto impresso no produto conforme as fotos ou "superfície lisa, sem marcas").
 3. "avatarDescription": descrição de 1 frase do consumidor brasileiro adulto que apresenta o produto (respeitando o gênero do Influencer e as Instruções Adicionais; se produto infantil, quem apresenta na cena 1 e 9 é sempre um adulto pai/mãe).
 4. "scenarioDescription": descrição concreta do cenário (onde o produto é usado de verdade ou casa brasileira simples e aconchegante, respeitando Instruções Adicionais).
 5. "visualMap": array de 4 objetos { "excerpt", "intent", "visualProof", "scenes" } mapeando os trechos da copy para provas visuais nas cenas 1 a 9.
@@ -663,9 +756,12 @@ E retornar um JSON estrito com:
    - Cada cena prova visualmente o que está sendo falado naquele momento da copy.
    - Todo "olha [detalhe]" na copy vira uma cena de close/macro daquele detalhe.
    - Variar enquadramentos (nunca duas cenas seguidas iguais): close, macro, POV de mãos, plano médio, plano aberto, uso real.
+   - "storyboardDescription" DEVE ser idêntico a "{framing}. {action}" (mesma pessoa, mesma ação, mesmo enquadramento e mesmos objetos, sem inventar objetos extras ou mudar quem aparece entre um campo e outro).
+   - Na Cena 1, escreva "action" de forma direta e objetiva (sem reticências e sem ponto no meio da frase).
    - Respeitar estritamente o Enquadramento:
      * "com_rosto": rosto aparece em algumas cenas (especialmente gancho e cena 9).
      * "sem_rosto": nunca mostrar o rosto; sempre do pescoço para baixo.
      * "pov": mostrar somente as mãos em primeira pessoa; nunca rosto ou corpo.
-   - Proibido texto, legenda, preço, número escrito, carrinho ou interface do TikTok dentro das cenas.`;
+   - Proibido texto, legenda, preço, número escrito, carrinho, marca d'água, @ ou interface de aplicativo dentro das cenas.`;
 }
+

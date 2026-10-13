@@ -8,8 +8,11 @@ import {
   Sparkles,
   CheckCircle2,
   Eye,
+  ShieldCheck,
+  AlertTriangle,
+  AlertCircle,
 } from 'lucide-react';
-import { Produtos2ResultState } from './types';
+import { Produtos2AuditColorStatus, Produtos2ResultState } from './types';
 import {
   downloadProdutos2StoryboardImage,
   exportProdutos2Zip,
@@ -22,9 +25,43 @@ import { AIProfile } from '../config/aiProfiles';
 interface Produtos2ResultsProps {
   result: Produtos2ResultState;
   onUpdateResult: React.Dispatch<React.SetStateAction<Produtos2ResultState | null>>;
-  onRegenerateStoryboard: () => void;
+  onRegenerateStoryboard: (customCorrection?: string) => void;
   onOpenPreview: (url: string, title: string) => void;
   aiProfile?: AIProfile;
+}
+
+function getStatusClasses(status: Produtos2AuditColorStatus) {
+  switch (status) {
+    case 'green':
+      return {
+        box: 'bg-emerald-500/10 border-emerald-500/35 text-emerald-300',
+        badge: 'bg-emerald-500/20 border-emerald-400/40 text-emerald-200',
+        cell: 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300',
+        dot: 'bg-emerald-400',
+      };
+    case 'yellow':
+      return {
+        box: 'bg-amber-500/10 border-amber-500/40 text-amber-200',
+        badge: 'bg-amber-500/20 border-amber-400/50 text-amber-200',
+        cell: 'bg-amber-950/60 border-amber-500/50 text-amber-200',
+        dot: 'bg-amber-400',
+      };
+    case 'orange':
+      return {
+        box: 'bg-orange-500/15 border-orange-500/50 text-orange-200',
+        badge: 'bg-orange-500/25 border-orange-400/60 text-orange-200',
+        cell: 'bg-orange-950/70 border-orange-500/60 text-orange-200',
+        dot: 'bg-orange-400',
+      };
+    case 'red':
+    default:
+      return {
+        box: 'bg-rose-500/15 border-rose-500/50 text-rose-200',
+        badge: 'bg-rose-500/25 border-rose-400/60 text-rose-200',
+        cell: 'bg-rose-950/70 border-rose-500/60 text-rose-200',
+        dot: 'bg-rose-500',
+      };
+  }
 }
 
 export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
@@ -40,6 +77,11 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
   const [isExportingZip, setIsExportingZip] = useState(false);
 
   const safeFileName = sanitizeProductFileName(result.productName);
+  const audit = result.storyboardAudit;
+  const auditStyles = getStatusClasses(audit?.overallStatus || 'green');
+  const problemQuadrants = (audit?.quadrants || []).filter(
+    (q) => q.productVisible && q.score < 90
+  );
 
   const handleCopyVeoPrompt = () => {
     navigator.clipboard.writeText(result.veoPrompt);
@@ -151,8 +193,8 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
       {/* LADO A LADO: IMAGEM DO STORYBOARD (1080x1920) + PROMPT DO VEO 3       */}
       {/* ===================================================================== */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* COLUNA ESQUERDA: IMAGEM DO STORYBOARD 9 CENAS (1080x1920) */}
-        <div className="lg:col-span-5 p-4 rounded-2xl bg-zinc-900/90 border border-zinc-800 shadow-xl space-y-3">
+        {/* COLUNA ESQUERDA: IMAGEM DO STORYBOARD 9 CENAS (1080x1920) + FISCALIZAÇÃO */}
+        <div className="lg:col-span-5 p-4 rounded-2xl bg-zinc-900/90 border border-zinc-800 shadow-xl space-y-3.5">
           <div className="flex items-center justify-between gap-2">
             <div>
               <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-wide">
@@ -165,10 +207,10 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
 
             <button
               type="button"
-              onClick={onRegenerateStoryboard}
+              onClick={() => onRegenerateStoryboard()}
               disabled={Boolean(result.isRegeneratingStoryboard)}
               className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 border border-zinc-700 text-xs font-bold text-zinc-200 flex items-center gap-1.5 transition-all cursor-pointer"
-              title="Gerar novamente a imagem do storyboard"
+              title="Corrigir e gerar novamente a imagem do storyboard"
             >
               <RefreshCw
                 className={`w-3.5 h-3.5 text-sky-400 ${
@@ -183,8 +225,11 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
             {result.isRegeneratingStoryboard ? (
               <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center gap-3">
                 <RefreshCw className="w-8 h-8 text-sky-400 animate-spin" />
-                <p className="text-xs font-bold text-zinc-300">
-                  Regenerando Storyboard 3×3 (9 cenas)...
+                <p className="text-xs font-bold text-zinc-200">
+                  Refazendo Storyboard 3×3 e corrigindo cenas apontadas...
+                </p>
+                <p className="text-[11px] text-zinc-400">
+                  Preservando logomarca, textos impressos, cores e formato reais do produto
                 </p>
               </div>
             ) : result.storyboardImageUrl ? (
@@ -237,7 +282,7 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
                 </p>
                 <button
                   type="button"
-                  onClick={onRegenerateStoryboard}
+                  onClick={() => onRegenerateStoryboard()}
                   className="mt-2 px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold cursor-pointer"
                 >
                   Tentar Novamente
@@ -245,6 +290,117 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
               </div>
             )}
           </div>
+
+          {/* ================================================================= */}
+          {/* PAINEL DE FISCALIZAÇÃO DE FIDELIDADE DOS 9 QUADRANTES (3x3)       */}
+          {/* ================================================================= */}
+          {audit && (
+            <div className={`p-3.5 rounded-xl border space-y-3 ${auditStyles.box}`}>
+              {/* Cabeçalho com Nota Geral e Semáforo de 4 Cores */}
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  {audit.overallStatus === 'green' ? (
+                    <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                  ) : audit.overallStatus === 'yellow' ? (
+                    <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                  ) : (
+                    <AlertCircle
+                      className={`w-4 h-4 shrink-0 ${
+                        audit.overallStatus === 'orange' ? 'text-orange-400' : 'text-rose-400'
+                      }`}
+                    />
+                  )}
+                  <div>
+                    <span className="text-xs font-black block leading-tight">
+                      {audit.overallLabel}
+                    </span>
+                    <span className="text-[10px] opacity-80 block">
+                      Fiscalização por quadrante (Logo, Texto, Cor, Formato e Botões)
+                    </span>
+                  </div>
+                </div>
+
+                <span
+                  className={`px-2.5 py-1 rounded-lg border font-mono text-xs font-black shrink-0 ${auditStyles.badge}`}
+                >
+                  {audit.overallScore}%
+                </span>
+              </div>
+
+              {/* Grade 3x3 dos 9 Quadrantes (Cenas 1 a 9) */}
+              <div className="grid grid-cols-3 gap-1.5">
+                {audit.quadrants.slice(0, 9).map((q) => {
+                  const qStyle = getStatusClasses(q.status);
+                  return (
+                    <div
+                      key={q.sceneNumber}
+                      title={q.issue}
+                      className={`px-2 py-1.5 rounded-lg border text-[10px] flex items-center justify-between gap-1 ${qStyle.cell}`}
+                    >
+                      <span className="font-bold flex items-center gap-1">
+                        <span className={`w-1.5 h-1.5 rounded-full ${qStyle.dot}`} />
+                        Cena {q.sceneNumber}
+                      </span>
+                      <span className="font-mono font-black">
+                        {q.productVisible ? `${q.score}%` : 'OK'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Textos explicativos das cenas onde o produto ficou diferente */}
+              {problemQuadrants.length > 0 ? (
+                <div className="p-2.5 rounded-lg bg-black/35 border border-white/10 space-y-1">
+                  <p className="text-[10px] font-extrabold uppercase tracking-wider opacity-90">
+                    Cenas que precisam de correção (meta &ge; 90%):
+                  </p>
+                  {problemQuadrants.map((q) => (
+                    <p key={q.sceneNumber} className="text-[11px] leading-snug font-medium">
+                      • {q.issue}
+                    </p>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[11px] leading-snug opacity-95 font-medium">
+                  ✓ Produto acima de 90% idêntico às fotos de referência em todos os quadrantes onde aparece (logomarca, textos, cores e formato preservados).
+                </p>
+              )}
+
+              {/* Legenda rápida das faixas de cores */}
+              <div className="flex flex-wrap items-center justify-between gap-1 pt-1 border-t border-white/10 text-[9px] opacity-80">
+                <span className="text-emerald-300 font-bold">● &ge;90% Verde</span>
+                <span className="text-amber-300 font-bold">● 71–89% Amarelo</span>
+                <span className="text-orange-300 font-bold">● 60–70% Laranja</span>
+                <span className="text-rose-300 font-bold">● &lt;60% Vermelho</span>
+              </div>
+
+              {/* Botão de Refazer Inteligente (corrige os frames apontados com erro) */}
+              <button
+                type="button"
+                onClick={() => onRegenerateStoryboard()}
+                disabled={Boolean(result.isRegeneratingStoryboard)}
+                className={`w-full py-2.5 px-3 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md disabled:opacity-50 ${
+                  problemQuadrants.length > 0
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-zinc-950'
+                    : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-100 border border-zinc-700'
+                }`}
+              >
+                <RefreshCw
+                  className={`w-3.5 h-3.5 ${result.isRegeneratingStoryboard ? 'animate-spin' : ''}`}
+                />
+                <span>
+                  {result.isRegeneratingStoryboard
+                    ? 'Refazendo e Corrigindo Cenas...'
+                    : problemQuadrants.length > 0
+                    ? `Refazer Corrigindo Cena${problemQuadrants.length > 1 ? 's' : ''} ${problemQuadrants
+                        .map((q) => q.sceneNumber)
+                        .join(', ')}`
+                    : 'Refazer Imagem do Storyboard'}
+                </span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* COLUNA DIREITA: PROMPT COMPLETO DO VEO 3 (Fica com fundo azul ao copiar!) */}

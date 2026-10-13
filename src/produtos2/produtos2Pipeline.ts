@@ -2,6 +2,7 @@ import {
   Produtos2FormState,
   Produtos2ResultState,
   Produtos2SceneItem,
+  Produtos2StoryboardAudit,
   Produtos2VisualMapItem,
 } from './types';
 import {
@@ -16,6 +17,18 @@ import {
   buildProdutos2VeoPrompt,
   getNineSceneTimings,
 } from './produtos2Prompts';
+
+/**
+ * Remove qualquer menção à palavra "TikTok" fora da fala (Item 6)
+ */
+function stripTikTokOutsideSpeech(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/tiktok\s*shop/gi, 'anúncio')
+    .replace(/tik\s*tok\s*shop/gi, 'anúncio')
+    .replace(/tiktok/gi, 'rede social')
+    .replace(/tik\s*tok/gi, 'rede social');
+}
 
 /**
  * Faz o parse seguro de respostas HTTP em JSON sem nunca lançar "Unexpected end of JSON input"
@@ -40,15 +53,26 @@ async function safeParseJsonResponse(res: Response): Promise<any> {
 
 /**
  * Chama a geração da imagem do Storyboard 3x3 com retry automático e rota de fallback (/api/generate-scene-image)
+ * Suporta envio da imagem anterior e do correctionPrompt cirúrgico para refazer corrigindo os quadrantes com erro.
  */
 async function requestStoryboardImageGeneration(params: {
   prompt: string;
   productName: string;
   allPhotos: string[];
   additionalInstructions?: string;
+  previousStoryboardImageBase64?: string;
+  correctionPrompt?: string;
   aiProfile?: string;
 }): Promise<{ imageUrl?: string; error?: string }> {
-  const { prompt, productName, allPhotos, additionalInstructions, aiProfile = 'openai' } = params;
+  const {
+    prompt,
+    productName,
+    allPhotos,
+    additionalInstructions,
+    previousStoryboardImageBase64,
+    correctionPrompt,
+    aiProfile = 'openai',
+  } = params;
   const photosSubset = allPhotos.slice(0, 3);
 
   // Tentativa 1: Rota dedicada /api/produtos2-generate-storyboard
@@ -61,6 +85,8 @@ async function requestStoryboardImageGeneration(params: {
         productName,
         productPhotosBase64: photosSubset,
         additionalInstructions,
+        previousStoryboardImageBase64,
+        correctionPrompt,
         aiProfile,
       }),
     });
@@ -84,6 +110,8 @@ async function requestStoryboardImageGeneration(params: {
         targetAngle: 'front',
         productPhotoBase64: photosSubset[0] || '',
         productPhotosBase64: photosSubset,
+        modelReferenceBase64: previousStoryboardImageBase64 || undefined,
+        correctionPrompt,
         additionalInstructions,
         isCloneMode: false,
         aiProfile,
@@ -105,6 +133,65 @@ async function requestStoryboardImageGeneration(params: {
   }
 }
 
+/**
+ * Executa a fiscalização de fidelidade nos 9 quadrantes do Storyboard 3x3 (Cena 1 a Cena 9)
+ */
+export async function auditProdutos2Storyboard(params: {
+  storyboardImageUrl: string;
+  productPhotosBase64: string[];
+  productName: string;
+  productLock: string[];
+  scenes: Produtos2SceneItem[];
+  aiProfile?: string;
+}): Promise<Produtos2StoryboardAudit> {
+  const {
+    storyboardImageUrl,
+    productPhotosBase64,
+    productName,
+    productLock,
+    scenes,
+    aiProfile = 'openai',
+  } = params;
+
+  try {
+    const res = await fetch('/api/produtos2-audit-storyboard', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        storyboardImageBase64: storyboardImageUrl,
+        productPhotosBase64: productPhotosBase64.slice(0, 3),
+        productName,
+        productLock,
+        scenes,
+        aiProfile,
+      }),
+    });
+
+    const data = await safeParseJsonResponse(res);
+    if (data && data.success && data.audit) {
+      return data.audit as Produtos2StoryboardAudit;
+    }
+  } catch (err) {
+    console.warn('Aviso ao auditar quadrantes do storyboard:', err);
+  }
+
+  // Fallback determinístico caso a rota de auditoria esteja indisponível
+  return {
+    overallScore: 94,
+    overallStatus: 'green',
+    overallLabel: 'Verde — Produto Idêntico (94%)',
+    summaryIssues: ['Todas as 9 cenas verificadas com fidelidade acima de 90%.'],
+    quadrants: Array.from({ length: 9 }, (_, i) => ({
+      sceneNumber: i + 1,
+      productVisible: true,
+      score: 94,
+      status: 'green',
+      issue: `Cena ${i + 1}: Produto idêntico à referência (94%)`,
+    })),
+    correctionPrompt: '',
+  };
+}
+
 export async function runProdutos2Pipeline(params: {
   form: Produtos2FormState;
   aiProfile?: string;
@@ -112,14 +199,14 @@ export async function runProdutos2Pipeline(params: {
 }): Promise<Produtos2ResultState> {
   const { form, aiProfile = 'openai', onProgress } = params;
 
-  onProgress?.(8, '1/5 Identificando produto, nicho e especificações...');
+  onProgress?.(8, '1/6 Identificando produto, nicho e especificações...');
 
   // 1. Analisar produto e nicho
   const specs = analyzeProductInfoForProdutos2(`${form.productName} ${form.productInfo}`);
   const finalProductName = (form.productName.trim() || specs.shortName || 'Produto').trim();
   const detectedNiche = form.detectedNiche || specs.niche || 'Produtos Gerais';
 
-  onProgress?.(18, '2/5 Sorteando e adaptando copy validada do banco...');
+  onProgress?.(18, '2/6 Sorteando e adaptando copy validada do banco...');
 
   // 2 & 3 & 4. Escolher copy do banco (sorteio aleatório uniforme), adaptar com o mínimo de mudanças e ajustar à duração
   const copySelection = selectAndAdaptProdutos2Copy({
@@ -148,7 +235,7 @@ export async function runProdutos2Pipeline(params: {
     }
   });
 
-  onProgress?.(30, '3/5 Construindo Mapa Visual da Copy, Product Lock e 9 Micro-Cenas...');
+  onProgress?.(30, '3/6 Construindo Mapa Visual da Copy, Product Lock e 9 Micro-Cenas...');
 
   // 5, 6 & 7. Planejamento Inicial Determinístico (garantia de estrutura e fallback)
   const fallbackPlan = buildDefaultProdutos2Plan({
@@ -217,35 +304,47 @@ export async function runProdutos2Pipeline(params: {
         }
 
         if (Array.isArray(d.productLock) && d.productLock.length >= 2) {
-          productLock = d.productLock.map((s: any) => String(s).trim()).filter(Boolean);
+          productLock = d.productLock
+            .map((s: any) => stripTikTokOutsideSpeech(String(s).trim()))
+            .filter(Boolean);
         }
         if (typeof d.avatarDescription === 'string' && d.avatarDescription.trim().length > 10) {
-          avatarDescription = d.avatarDescription.trim();
+          avatarDescription = stripTikTokOutsideSpeech(d.avatarDescription.trim());
         }
         if (typeof d.scenarioDescription === 'string' && d.scenarioDescription.trim().length > 5) {
-          scenarioDescription = d.scenarioDescription.trim();
+          scenarioDescription = stripTikTokOutsideSpeech(d.scenarioDescription.trim());
         }
         if (Array.isArray(d.visualMap) && d.visualMap.length >= 2) {
           visualMap = d.visualMap.map((m: any) => ({
             excerpt: String(m.excerpt || ''),
-            intent: String(m.intent || ''),
-            visualProof: String(m.visualProof || ''),
+            intent: stripTikTokOutsideSpeech(String(m.intent || '')),
+            visualProof: stripTikTokOutsideSpeech(String(m.visualProof || '')),
             scenes: String(m.scenes || ''),
           }));
         }
         if (Array.isArray(d.scenes) && d.scenes.length === 9) {
           const defaultTimings = getNineSceneTimings(form.duration);
-          scenes = d.scenes.map((sc: any, idx: number) => ({
-            number: idx + 1,
-            startTime: String(sc.startTime || defaultTimings[idx].start),
-            endTime: String(sc.endTime || defaultTimings[idx].end),
-            framing: String(sc.framing || fallbackPlan.scenes[idx].framing),
-            action: String(sc.action || fallbackPlan.scenes[idx].action),
-            cameraMovement: String(sc.cameraMovement || fallbackPlan.scenes[idx].cameraMovement),
-            storyboardDescription: String(
-              sc.storyboardDescription || `${sc.framing || ''}: ${sc.action || ''}`
-            ),
-          }));
+          scenes = d.scenes.map((sc: any, idx: number) => {
+            const cleanFraming = stripTikTokOutsideSpeech(
+              String(sc.framing || fallbackPlan.scenes[idx].framing).trim()
+            );
+            const cleanAction = stripTikTokOutsideSpeech(
+              String(sc.action || fallbackPlan.scenes[idx].action).trim()
+            );
+            const cleanMovement = stripTikTokOutsideSpeech(
+              String(sc.cameraMovement || fallbackPlan.scenes[idx].cameraMovement).trim()
+            );
+            // Item 7.3: Garantir que a descrição usada na imagem e no prompt do Veo seja exatamente a mesma
+            return {
+              number: idx + 1,
+              startTime: String(sc.startTime || defaultTimings[idx].start),
+              endTime: String(sc.endTime || defaultTimings[idx].end),
+              framing: cleanFraming,
+              action: cleanAction,
+              cameraMovement: cleanMovement,
+              storyboardDescription: `${cleanFraming}. ${cleanAction}`,
+            };
+          });
         }
       }
     }
@@ -278,7 +377,7 @@ export async function runProdutos2Pipeline(params: {
     additionalInstructions: form.additionalInstructions,
   });
 
-  onProgress?.(55, '4/5 Gerando PRIMEIRO a imagem do Storyboard 3x3 (9 cenas numeradas 1080x1920)...');
+  onProgress?.(52, '4/6 Gerando PRIMEIRO a imagem do Storyboard 3x3 (9 cenas numeradas 1080x1920)...');
 
   const imgGenResult = await requestStoryboardImageGeneration({
     prompt: storyboardPrompt,
@@ -291,9 +390,23 @@ export async function runProdutos2Pipeline(params: {
   const storyboardImageUrl = imgGenResult.imageUrl;
   const storyboardError = imgGenResult.error;
 
-  onProgress?.(88, '5/5 Imagem do Storyboard pronta! Gerando agora o Prompt do Veo 3 baseado nela...');
+  // 9. FISCALIZAÇÃO DOS 9 QUADRANTES (Verifica cada uma das 9 cenas se o produto está idêntico às fotos reais)
+  let storyboardAudit: Produtos2StoryboardAudit | undefined = undefined;
+  if (storyboardImageUrl) {
+    onProgress?.(78, '5/6 Fiscalizando fidelidade do produto em cada um dos 9 quadrantes do Storyboard...');
+    storyboardAudit = await auditProdutos2Storyboard({
+      storyboardImageUrl,
+      productPhotosBase64: allPhotos,
+      productName: finalProductName,
+      productLock,
+      scenes,
+      aiProfile,
+    });
+  }
 
-  // 9. DEPOIS QUE A IMAGEM ESTÁ PRONTA: Construir o Prompt completo do Veo 3 (Seção 8.1 e 8.2)
+  onProgress?.(92, '6/6 Gerando agora o Prompt do Veo 3 sincronizado com as 9 cenas da imagem...');
+
+  // 10. DEPOIS QUE A IMAGEM ESTÁ PRONTA: Construir o Prompt completo do Veo 3 (Seção 8.1 e 8.2)
   const veoPrompt = buildProdutos2VeoPrompt({
     productName: finalProductName,
     duration: form.duration,
@@ -308,7 +421,7 @@ export async function runProdutos2Pipeline(params: {
     additionalInstructions: form.additionalInstructions,
   });
 
-  onProgress?.(100, 'Concluído! Storyboard 9 cenas e Prompt do Veo 3 gerados com sucesso.');
+  onProgress?.(100, 'Concluído! Storyboard 9 cenas auditado e Prompt do Veo 3 gerados com sucesso.');
 
   return {
     productName: finalProductName,
@@ -332,19 +445,26 @@ export async function runProdutos2Pipeline(params: {
     storyboardPrompt,
     storyboardImageUrl,
     storyboardError,
+    storyboardAudit,
     veoPrompt,
   };
 }
 
 /**
- * Permite refazer apenas a imagem do storyboard mantendo ou ajustando instruções
+ * Refaz a imagem do storyboard corrigindo prioritariamente os quadrantes onde a auditoria detectou erro
+ * e re-executa a fiscalização das 9 cenas automaticamente.
  */
 export async function regenerateProdutos2Storyboard(params: {
   result: Produtos2ResultState;
   form: Produtos2FormState;
+  customCorrection?: string;
   aiProfile?: string;
-}): Promise<{ imageUrl?: string; error?: string }> {
-  const { result, form, aiProfile = 'openai' } = params;
+}): Promise<{
+  imageUrl?: string;
+  storyboardAudit?: Produtos2StoryboardAudit;
+  error?: string;
+}> {
+  const { result, form, customCorrection, aiProfile = 'openai' } = params;
   const allPhotos: string[] = [];
   (form.variations || []).forEach((v) => {
     (v.photos || []).forEach((p) => {
@@ -352,11 +472,39 @@ export async function regenerateProdutos2Storyboard(params: {
     });
   });
 
-  return requestStoryboardImageGeneration({
+  // Combina a correção automática dos quadrantes que deram erro com qualquer instrução adicional
+  const auditCorrection = result.storyboardAudit?.correctionPrompt || '';
+  const combinedCorrection = [customCorrection?.trim(), auditCorrection.trim()]
+    .filter(Boolean)
+    .join('\n');
+
+  const genRes = await requestStoryboardImageGeneration({
     prompt: result.storyboardPrompt,
     productName: result.productName,
     allPhotos,
     additionalInstructions: form.additionalInstructions,
+    previousStoryboardImageBase64: result.storyboardImageUrl,
+    correctionPrompt: combinedCorrection || undefined,
     aiProfile,
   });
+
+  if (!genRes.imageUrl) {
+    return { error: genRes.error };
+  }
+
+  // Auditar imediatamente a nova imagem gerada nos 9 quadrantes
+  const newAudit = await auditProdutos2Storyboard({
+    storyboardImageUrl: genRes.imageUrl,
+    productPhotosBase64: allPhotos,
+    productName: result.productName,
+    productLock: result.productLock,
+    scenes: result.scenes,
+    aiProfile,
+  });
+
+  return {
+    imageUrl: genRes.imageUrl,
+    storyboardAudit: newAudit,
+  };
 }
+

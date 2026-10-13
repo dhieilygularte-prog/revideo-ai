@@ -78,6 +78,25 @@ export interface Produtos2SceneItem {
   storyboardDescription: string;
 }
 
+export type Produtos2AuditColorStatus = 'green' | 'yellow' | 'orange' | 'red';
+
+export interface Produtos2QuadrantAuditItem {
+  sceneNumber: number;
+  productVisible: boolean;
+  score: number;
+  status: Produtos2AuditColorStatus;
+  issue: string;
+}
+
+export interface Produtos2StoryboardAudit {
+  overallScore: number;
+  overallStatus: Produtos2AuditColorStatus;
+  overallLabel: string;
+  summaryIssues: string[];
+  quadrants: Produtos2QuadrantAuditItem[];
+  correctionPrompt: string;
+}
+
 export interface Produtos2ResultState {
   productName: string;
   detectedNiche: string;
@@ -101,5 +120,8 @@ export interface Produtos2ResultState {
   storyboardImageUrl?: string;
   storyboardError?: string;
   isRegeneratingStoryboard?: boolean;
+  isAuditingStoryboard?: boolean;
+  storyboardAudit?: Produtos2StoryboardAudit;
   veoPrompt: string;
 }
+
