@@ -8,8 +8,10 @@ import {
 import {
   analyzeProductInfoForProdutos2,
   applyGenderAndVocativeRules,
+  calibrateCopyToTargetWindow,
   enforceMaxChars,
   ensureLeadingNossaPrefix,
+  evaluateCopyDnaChecklist,
   selectAndAdaptProdutos2Copy,
 } from './produtos2CopyBank';
 import {
@@ -17,6 +19,7 @@ import {
   buildProdutos2StoryboardImagePrompt,
   buildProdutos2VeoPrompt,
   getNineSceneTimings,
+  sanitizeScenarioDescriptionForMode,
 } from './produtos2Prompts';
 
 /**
@@ -363,17 +366,26 @@ export async function runProdutos2Pipeline(params: {
       if (planJson && planJson.success && planJson.data) {
         const d = planJson.data;
 
-        // Se a IA adaptou a copy (e não era customCopy), validamos regras de vocativo e tamanho
-        if (!form.customCopy?.trim() && typeof d.adaptedCopy === 'string' && d.adaptedCopy.trim().length > 30) {
-          let aiCopy = ensureLeadingNossaPrefix(
-            applyGenderAndVocativeRules(d.adaptedCopy.trim(), form.clientGender, resolvedInfluencer)
-          );
-          if (form.duration === 8 && aiCopy.length > 199) {
-            aiCopy = ensureLeadingNossaPrefix(enforceMaxChars(aiCopy, 199));
-          } else if (form.duration === 10 && copySelection.copyId.startsWith('NOVA-') && aiCopy.length > 259) {
-            aiCopy = ensureLeadingNossaPrefix(enforceMaxChars(aiCopy, 259));
+        // Se a IA adaptou a copy (e não era customCopy nem copy exata do mesmo produto do banco),
+        // validamos pelo Checklist da Parte E e pela janela de caracteres da Parte B (185-195 em 8s; 242-250 em 10s)
+        if (
+          !form.customCopy?.trim() &&
+          !copySelection.isSameProductBankCopy &&
+          typeof d.adaptedCopy === 'string' &&
+          d.adaptedCopy.trim().length > 30
+        ) {
+          const calibratedAiCopy = calibrateCopyToTargetWindow({
+            copy: d.adaptedCopy.trim(),
+            duration: form.duration,
+            isSameProductBankCopy: false,
+            clientGender: form.clientGender,
+            influencer: resolvedInfluencer,
+          });
+          const aiCheck = evaluateCopyDnaChecklist(calibratedAiCopy, form.duration);
+          const baseCheck = evaluateCopyDnaChecklist(finalCopy, form.duration);
+          if (aiCheck.passed && aiCheck.score >= baseCheck.score) {
+            finalCopy = calibratedAiCopy;
           }
-          finalCopy = aiCopy;
         }
 
         if (Array.isArray(d.productLock) && d.productLock.length >= 2) {
@@ -395,7 +407,12 @@ export async function runProdutos2Pipeline(params: {
           avatarDescription = stripTikTokOutsideSpeech(d.avatarDescription.trim());
         }
         if (typeof d.scenarioDescription === 'string' && d.scenarioDescription.trim().length > 5) {
-          scenarioDescription = stripTikTokOutsideSpeech(d.scenarioDescription.trim());
+          scenarioDescription = sanitizeScenarioDescriptionForMode(
+            stripTikTokOutsideSpeech(d.scenarioDescription.trim()),
+            form.scenario,
+            fallbackPlan.scenarioDescription,
+            form.additionalInstructions
+          );
         }
         if (Array.isArray(d.visualMap) && d.visualMap.length >= 2) {
           visualMap = d.visualMap.map((m: any) => ({
@@ -411,9 +428,18 @@ export async function runProdutos2Pipeline(params: {
             const cleanFraming = stripTikTokOutsideSpeech(
               String(sc.framing || fallbackPlan.scenes[idx].framing).trim()
             );
-            const cleanAction = stripTikTokOutsideSpeech(
+            const rawAction = stripTikTokOutsideSpeech(
               String(sc.action || fallbackPlan.scenes[idx].action).trim()
             );
+            const cleanAction =
+              form.scenario === 'padrao_uso'
+                ? sanitizeScenarioDescriptionForMode(
+                    rawAction,
+                    form.scenario,
+                    rawAction,
+                    form.additionalInstructions
+                  )
+                : rawAction;
             const cleanMovement = stripTikTokOutsideSpeech(
               String(sc.cameraMovement || fallbackPlan.scenes[idx].cameraMovement).trim()
             );
@@ -435,13 +461,14 @@ export async function runProdutos2Pipeline(params: {
     console.warn('Usando planejamento determinístico Copy-First:', planErr);
   }
 
-  // Checklist Seção 10: garantir limite de caracteres, vocativo e prefixo "Nossa, " antes do storyboard
-  finalCopy = ensureLeadingNossaPrefix(
-    applyGenderAndVocativeRules(finalCopy, form.clientGender, resolvedInfluencer)
-  );
-  if (form.duration === 8 && finalCopy.length > 199) {
-    finalCopy = ensureLeadingNossaPrefix(enforceMaxChars(finalCopy, 199));
-  }
+  // Checklist Parte B & Parte E: garantir calibragem exata de caracteres, vocativo e prefixo "Nossa, " antes do storyboard
+  finalCopy = calibrateCopyToTargetWindow({
+    copy: finalCopy,
+    duration: form.duration,
+    isSameProductBankCopy: copySelection.isSameProductBankCopy,
+    clientGender: form.clientGender,
+    influencer: resolvedInfluencer,
+  });
 
   // Garantir que a última cena termine exatamente em 10.0 ou 8.0
   if (scenes.length === 9) {

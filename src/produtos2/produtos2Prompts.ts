@@ -281,8 +281,8 @@ Usar apenas som ambiente natural do cenário e uma trilha instrumental animada e
 8. fazer um vídeo rápido e muito dinâmico;
 9. nenhuma voz e nenhuma fala no vídeo.`;
 
-  // Item 1, Item 2 e Item 4 aplicados integralmente
-  return `Crie um vídeo vertical 9:16, ultra-realista, com aparência de gravação caseira feita com smartphone (estilo UGC), com duração total de ${duration} segundos.
+  // Item 1, Item 2, Item 4 e CORREÇÃO 2 (Parte G: "gravação real" em vez de "gravação caseira")
+  return `Crie um vídeo vertical 9:16, ultra-realista, com aparência de gravação real feita com smartphone (estilo UGC), com duração total de ${duration} segundos.
 
 VÍDEO LIMPO — REGRA ABSOLUTA:
 O vídeo é uma filmagem original e limpa. O quadro inteiro mostra somente a cena filmada, do primeiro ao último frame.
@@ -398,6 +398,133 @@ export function getNineSceneTimings(duration: Produtos2Duration): { start: strin
 }
 
 /**
+ * PARTE G — Resolve a descrição de cenário respeitando estritamente a escolha do usuário:
+ * - Se "Em casa" (em_casa): "casa brasileira simples e aconchegante, [cômodo adequado ao produto]"
+ * - Se "Cenário padrão de uso" (padrao_uso): lugar real onde o produto é usado, SEM mencionar "casa", "caseiro" ou "casa brasileira"
+ *   (a menos que o uso real seja exclusivamente dentro de um cômodo doméstico como cozinha/banheiro).
+ * - Se o usuário informou um local nas Instruções adicionais (ex: "na praia"), essa instrução tem prioridade.
+ */
+export function resolveProdutos2ScenarioDescription(params: {
+  scenario: Produtos2Scenario;
+  niche: string;
+  productName: string;
+  productInfo: string;
+  additionalInstructions?: string;
+}): string {
+  const { scenario, niche, productName, productInfo, additionalInstructions } = params;
+  const combined = `${productName} ${productInfo}`.toLowerCase();
+
+  if (scenario === 'em_casa') {
+    let room = 'sala bem iluminada';
+    if (/cozinha|air\s*fryer|fritadeira|panela|panificadora|liquidificador|cafeteira|garrafa|copo/i.test(combined)) {
+      room = 'cozinha organizada e bem iluminada';
+    } else if (/banheiro|vaso\s+sanitario|pastilha|toalha|rack\s+de\s+banheiro/i.test(combined)) {
+      room = 'banheiro limpo e bem iluminado';
+    } else if (/cabelo|chapinha|escova|secador|maquiagem|vestido|camisa|camiseta|bermuda|calca|tenis/i.test(combined)) {
+      room = 'quarto organizado e bem iluminado';
+    } else if (/rocadeira|cortador|jardim|grama|pulverizador|moto|carro|ferramenta|furadeira|parafusadeira/i.test(combined)) {
+      room = 'quintal ou garagem bem iluminada';
+    } else if (/banco|esteira|halter|treino|exercicio|academia|fitness/i.test(combined)) {
+      room = 'sala espaçosa com área de treino e luz natural';
+    }
+    const baseHome = `casa brasileira simples e aconchegante, ${room}`;
+    if (additionalInstructions && additionalInstructions.trim()) {
+      return `${baseHome} (${additionalInstructions.trim()})`;
+    }
+    return baseHome;
+  }
+
+  // scenario === 'padrao_uso': lugar real de uso, SEM "casa", "caseiro" ou "casa brasileira"
+  const padraoByNiche: Record<string, string> = {
+    'Pesca': 'margem de represa ao amanhecer com água calma e vegetação natural',
+    'Natação / Esporte aquático': 'borda de piscina com água cristalina sob luz solar natural',
+    'Som automotivo': 'interior de um carro estacionado em local bem iluminado',
+    'Mobilidade elétrica': 'ciclovia e rua arborizada ao ar livre durante o dia',
+    'Climatização': 'ambiente interno confortável e arejado em dia de calor',
+    'Cozinha / Eletroportáteis': 'cozinha real em uso com bancada limpa e bem iluminada',
+    'Garrafas e copos': 'mesa de trabalho ou bancada de academia com luz natural',
+    'Jardim': 'jardim gramado ao ar livre, dia ensolarado',
+    'Agro e roça': 'terreno de sítio e lavoura ao ar livre sob luz do dia',
+    'Pet': 'ambiente interno organizado com tapete e área pet',
+    'Cabelo e beleza': 'penteadeira bem iluminada com espelho e luz natural',
+    'Casa, banheiro e organização': 'ambiente interno organizado e bem iluminado em uso real',
+    'Moto e acessórios automotivos': 'estacionamento aberto ou garagem ampla com moto estacionada',
+    'Conforto para os pés': 'piso limpo e bem iluminado destacando o calçado nos pés',
+    'Limpeza e descartáveis': 'bancada de preparo e limpeza bem iluminada em uso prático',
+    'Festa e decoração': 'salão de festa decorado com mesa principal iluminada',
+    'Eletrônicos': 'bancada moderna de trabalho e setup bem iluminado com luz natural',
+    'Infantil e brinquedos': 'pátio amplo ou área de lazer ao ar livre bem iluminada (adulto apresentando e criança brincando)',
+    'Fitness': 'academia ou espaço de treino bem iluminado com equipamentos ao fundo',
+    'Energia': 'bancada técnica de trabalho e operação bem iluminada',
+    'Ferramentas': 'oficina mecânica ou bancada de trabalho prático bem iluminada',
+    'Música': 'estúdio musical ou palco bem iluminado',
+    'Calçados masculinos': 'rua/parque em corrida ao ar livre e piso de academia bem iluminado',
+    'Roupas masculinas': 'ambiente urbano moderno ao ar livre e espaço de treino bem iluminado',
+  };
+
+  let resolved = padraoByNiche[niche] || '';
+  if (!resolved) {
+    if (/banco|supino|musculacao|treino|exercicio|halter|esteira|fitness|academia/i.test(combined)) {
+      resolved = 'academia ou espaço de treino bem iluminado';
+    } else if (/cortador|rocadeira|grama|jardim|pulverizador/i.test(combined)) {
+      resolved = 'jardim gramado ao ar livre, dia ensolarado';
+    } else if (/pesca|vara|molinete|carretilha/i.test(combined)) {
+      resolved = 'margem de represa ao amanhecer';
+    } else if (/som\s+automotivo|alto-falante|amplificador|carro|automotivo/i.test(combined)) {
+      resolved = 'interior de um carro';
+    } else if (/tenis|corrida|calcado/i.test(combined)) {
+      resolved = 'rua/parque em corrida ao ar livre';
+    } else if (/panela|air\s*fryer|liquidificador|cozinha/i.test(combined)) {
+      resolved = 'cozinha real em uso';
+    } else {
+      resolved = 'ambiente real de uso prático do produto, organizado e com iluminação natural';
+    }
+  }
+
+  if (additionalInstructions && additionalInstructions.trim()) {
+    return `${resolved} (${additionalInstructions.trim()})`;
+  }
+  return resolved;
+}
+
+/**
+ * Garante que quando scenario === 'padrao_uso', a descrição de cenário gerada pela IA não contenha
+ * "casa brasileira" ou "caseiro/caseira" indevidamente (Parte G).
+ */
+export function sanitizeScenarioDescriptionForMode(
+  rawScenarioDesc: string,
+  scenario: Produtos2Scenario,
+  fallbackScenarioDesc: string,
+  additionalInstructions?: string
+): string {
+  const clean = (rawScenarioDesc || '').trim();
+  if (!clean) return fallbackScenarioDesc;
+
+  // Se o usuário pediu explicitamente casa nas instruções adicionais, respeita
+  if (additionalInstructions && /\bcasa\b/i.test(additionalInstructions)) {
+    return clean;
+  }
+
+  if (scenario === 'padrao_uso') {
+    const cleaned = clean
+      .replace(/\bcasa brasileira simples e aconchegante\b/gi, fallbackScenarioDesc)
+      .replace(/\bcasa brasileira simples\b/gi, fallbackScenarioDesc)
+      .replace(/\bcasa brasileira\b/gi, 'ambiente real')
+      .replace(/\bresidencial brasileiro\b/gi, 'real')
+      .replace(/\bresidencial\b/gi, 'de uso real')
+      .replace(/\bcaseiro\b/gi, 'profissional')
+      .replace(/\bcaseira\b/gi, 'real')
+      .replace(/\bde casa\b/gi, 'de uso real')
+      .replace(/\bem casa\b/gi, 'no local de treino/uso')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return cleaned || fallbackScenarioDesc;
+  }
+
+  return clean;
+}
+
+/**
  * Planejador determinístico estruturado (COPY-FIRST — Seção 7)
  * Garante que as 9 cenas provem visualmente a copy escolhida mesmo se a IA demorar ou falhar.
  */
@@ -470,40 +597,15 @@ export function buildDefaultProdutos2Plan(params: {
     avatarDescription += ` (Prioridade de instrução do usuário: ${additionalInstructions.trim()})`;
   }
 
-  // 3. CENÁRIO
-  let scenarioDescription = 'casa brasileira simples, aconchegante, organizada e com iluminação natural de dia';
-  if (scenario === 'padrao_uso') {
-    const scenarioByNiche: Record<string, string> = {
-      'Pesca': 'beira de represa/rio com água calma e vegetação natural sob luz do dia',
-      'Natação / Esporte aquático': 'borda de piscina com água cristalina e iluminação solar natural',
-      'Som automotivo': 'interior/porta-malas de carro brasileiro real em garagem bem iluminada',
-      'Mobilidade elétrica': 'calçada e rua residencial brasileira tranquila durante o dia',
-      'Climatização': 'sala ou quarto de casa brasileira simples e aconchegante em dia de calor',
-      'Cozinha / Eletroportáteis': 'bancada de cozinha brasileira real, limpa e bem iluminada',
-      'Garrafas e copos': 'ambiente cotidiano brasileiro (mesa de trabalho/academia/bolsa) com luz natural',
-      'Jardim': 'quintal/jardim residencial brasileiro com plantas verdes e luz do sol',
-      'Agro e roça': 'terreno de sítio/roça com terra real e luz natural do dia',
-      'Pet': 'sala de casa brasileira simples com tapete e pet próximo',
-      'Cabelo e beleza': 'quarto/penteadeira bem iluminada de casa brasileira real',
-      'Casa, banheiro e organização': 'banheiro ou fachada de casa brasileira real e bem iluminada',
-      'Moto e acessórios automotivos': 'garagem/quintal residencial brasileiro com moto estacionada',
-      'Conforto para os pés': 'ambiente residencial brasileiro mostrando o calçado e os pés com clareza',
-      'Limpeza e descartáveis': 'cozinha/área de serviço brasileira limpa e iluminada',
-      'Festa e decoração': 'salão/espaço de festa familiar brasileira com mesa principal',
-      'Eletrônicos': 'mesa/bancada de casa brasileira moderna e aconchegante com luz natural',
-      'Infantil e brinquedos': 'sala ou quintal espaçoso de casa brasileira acolhedora (adulto apresentando e criança brincando)',
-      'Fitness': 'sala de casa brasileira ou academia residencial bem iluminada',
-      'Energia': 'bancada residencial/oficina doméstica brasileira bem iluminada',
-      'Ferramentas': 'bancada de oficina/trabalho prático bem iluminada',
-      'Música': 'estúdio caseiro/palco de igreja bem iluminado',
-      'Calçados masculinos': 'ambiente de treino/academia e calçada urbana brasileira com luz natural',
-      'Roupas masculinas': 'quarto residencial brasileiro bem iluminado e ambiente de treino/rua',
-    };
-    scenarioDescription = scenarioByNiche[niche] || scenarioDescription;
-  }
-  if (additionalInstructions && additionalInstructions.trim()) {
-    scenarioDescription = `${scenarioDescription} (${additionalInstructions.trim()})`;
-  }
+  // 3. CENÁRIO (Parte G: respeita "Em casa" vs "Cenário padrão de uso" sem vazar "casa brasileira" no padrão de uso)
+  const scenarioDescription = resolveProdutos2ScenarioDescription({
+    scenario,
+    niche,
+    productName,
+    productInfo,
+    additionalInstructions,
+  });
+
 
   // 4. QUEBRAR COPY EM BLOCOS PARA O MAPA VISUAL
   const sentences = finalCopy.match(/[^.!?]+[.!?]+/g)?.map((s) => s.trim()) || [finalCopy];
@@ -744,20 +846,31 @@ REGRA DE OURO INVIOLÁVEL — LOGOMARCA DO FABRICANTE NO PRODUTO vs ELEMENTOS DE
 Sua tarefa é receber:
 1) As fotos reais do produto;
 2) As "Informações do produto" e "Nome do produto";
-3) A "Copy-base selecionada do banco" (ou copy personalizada);
+3) A "Copy-base selecionada do banco" (ou copy nova/adaptada do molde do nicho);
 4) As configurações (duração 10s ou 8s, influencer, gênero do cliente, fala, enquadramento, cenário, instruções adicionais).
 
 E retornar um JSON estrito com:
 1. "manufacturerLogoDescription": string detalhando exatamente a logomarca/emblema/texto do fabricante visível no produto nas fotos anexadas (cor, formato, desenho e onde fica no produto).
 2. "adaptedCopy":
    - TODA copy/fala DEVE obrigatoriamente começar com a expressão inicial neutra "Nossa, " (ex.: "Nossa, ..."), que serve de margem para o corte do primeiro segundo no Veo. Não duplique caso já comece com "Nossa".
-   - Se foi enviada copy personalizada do usuário, mantenha-a EXATAMENTE como está com "Nossa, " no início (só reduza se duração=8s e passar de 199 caracteres).
-   - Se veio do banco, MUDE O MÍNIMO POSSÍVEL (Seção 5): troque apenas nome/marca/modelo pelos do produto real, números/especificações pelos reais das Informações do Produto, cor/material/quantidade, mantendo "Nossa, " no início.
-   - NUNCA use a palavra "menina" como vocativo; quando o público for feminino e houver vocativo, use "Amiga" ou "Gente". Para público masculino, use "Meu amigo", "Cara", "Irmão" ou "Gente".
-   - Se duração = 8s, a "adaptedCopy" DEVE ter no máximo 199 caracteres contando espaços (mantendo "Nossa, " + Gancho + Prova principal com "olha" + CTA).
+   - Se a "Copy-base selecionada" já veio pronta e calibrada, MANTENHA A "baseCopy" EXATAMENTE COMO ESTÁ! NUNCA transforme a copy em uma lista de ficha técnica (PROIBIDO escrever frases secas como "Banco ajustável com espuma de 5 cm, base de aço triangular e pés antiderrapantes. Clica no carrinho.").
+   - Caso precise adaptar ou criar copy para produto novo ou outro produto do nicho, siga obrigatoriamente o DNA DAS COPIES QUE VENDEM (6 partes na ordem fixa):
+     [1. GANCHO DE INTERRUPÇÃO (Choque de preço/loucura, Pergunta de dor/inconformismo, Conversa direta com vocativo + descoberta, Provocação/contraste, Desejo imediato/parcela, Segredo revelado ou Urgência de estoque)] ->
+     [2. APRESENTA O PRODUTO COM EMOÇÃO] ->
+     [3. "OLHA" + BENEFÍCIO 1 (característica traduzida em benefício real: "característica + que/pra/sem + benefício")] ->
+     [4. BENEFÍCIO 2 (no máximo 2 ou 3 características em toda a copy, sempre traduzidas em benefício)] ->
+     [5. QUEBRA DE OBJEÇÃO / COMPARAÇÃO DE VALOR / CENA DE USO] ->
+     [6. CTA COMPLETO (verbo de ação + "no carrinho / aqui embaixo" + recompensa/urgência, ex.: "Clica no carrinho e garante o seu!". NUNCA use "Clica no carrinho." seco)].
+   - LIMITES E ALVOS EXATOS DE CARACTERES (contando espaços e o "Nossa, " inicial):
+     * Em 8 segundos (copy nova ou adaptada): janela obrigatória de 185 a 195 caracteres (limite máximo 199, quanto mais perto de 195 melhor; abaixo de 185 é proibido).
+     * Em 10 segundos (copy nova ou adaptada): janela obrigatória de 242 a 250 caracteres (limite máximo 252, quanto mais perto de 250 melhor; abaixo de 242 é proibido).
+   - NUNCA use a palavra "menina" como vocativo; quando o público for feminino, use "Amiga" ou "Gente". Para masculino, use "Meu amigo", "Cara", "Irmão" ou "Gente".
 3. "productLock": array de 4 a 6 strings detalhando fisicamente o produto visto nas fotos (1º item obrigatoriamente a descrição exata da logomarca/emblema/marca impressa no produto e sua posição exata; seguido de formato, cor exata, material, textura, proporção, botões/costuras/sola/cabos/detalhes).
 4. "avatarDescription": descrição de 1 frase do consumidor brasileiro adulto que apresenta o produto (respeitando o gênero do Influencer e as Instruções Adicionais; se produto infantil, quem apresenta na cena 1 e 9 é sempre um adulto pai/mãe).
-5. "scenarioDescription": descrição concreta do cenário (onde o produto é usado de verdade ou casa brasileira simples e aconchegante, respeitando Instruções Adicionais).
+5. "scenarioDescription":
+   - Se o usuário escolheu "em_casa" ("Em casa"): "casa brasileira simples e aconchegante, [cômodo adequado ao produto]".
+   - Se o usuário escolheu "padrao_uso" ("Cenário padrão de uso"): descreva o LUGAR REAL onde o produto é usado, SEM mencionar "casa", "caseiro" ou "casa brasileira" (ex.: academia ou espaço de treino para banco de exercícios; jardim gramado ao ar livre para cortador de grama; margem de represa para vara de pesca; interior de um carro para som automotivo; rua/parque em corrida ao ar livre para tênis).
+   - Se o usuário escreveu um local nas Instruções adicionais (ex.: "na praia"), essa instrução tem prioridade.
 6. "visualMap": array de 4 objetos { "excerpt", "intent", "visualProof", "scenes" } mapeando os trechos da copy para provas visuais nas cenas 1 a 9.
 7. "scenes": array de EXATAMENTE 9 objetos { "number": 1..9, "startTime", "endTime", "framing", "action", "cameraMovement", "storyboardDescription" }:
    - Cada cena prova visualmente o que está sendo falado naquele momento da copy.

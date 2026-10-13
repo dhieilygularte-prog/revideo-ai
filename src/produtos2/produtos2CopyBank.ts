@@ -985,15 +985,15 @@ export const COPIES_ROUPAS_MASCULINAS: CopyBankEntry[] = [
  */
 export const NEIGHBOR_NICHE_RULES: { keywords: string[]; targetNiches: string[] }[] = [
   {
-    keywords: ['tablet', 'notebook', 'fone', 'headphone', 'earbuds', 'caixa de som portatil', 'smartwatch', 'relogio', 'tv', 'televisao', 'projetor', 'celular', 'smartphone', 'monitor', 'camera', 'carregador'],
+    keywords: ['tablet', 'notebook', 'fone', 'headphone', 'earbuds', 'caixa de som portatil', 'smartwatch', 'relogio', 'tv', 'televisao', 'projetor', 'celular', 'smartphone', 'monitor', 'camera', 'carregador', 'mouse', 'teclado', 'webcam', 'ring light', 'microfone'],
     targetNiches: ['Eletrônicos'],
   },
   {
-    keywords: ['furadeira', 'parafusadeira', 'esmerilhadeira', 'serra', 'compressor', 'solda', 'alicate', 'puncao', 'chave', 'ferramenta', 'lixadeira', 'martelete', 'trena'],
+    keywords: ['furadeira', 'parafusadeira', 'esmerilhadeira', 'serra', 'compressor', 'solda', 'alicate', 'puncao', 'chave', 'ferramenta', 'lixadeira', 'martelete', 'trena', 'nivel laser', 'soprador', 'tupia', 'plaina'],
     targetNiches: ['Ferramentas'],
   },
   {
-    keywords: ['rocadeira', 'cortador de grama', 'semente', 'sementes', 'mangueira', 'adubo', 'pulverizador', 'podador', 'jardim', 'grama', 'planta'],
+    keywords: ['rocadeira', 'cortador de grama', 'semente', 'sementes', 'mangueira', 'adubo', 'pulverizador', 'podador', 'jardim', 'grama', 'planta', 'motosserra', 'aparador de grama', 'irrigador'],
     targetNiches: ['Jardim', 'Agro e roça'],
   },
   {
@@ -1005,35 +1005,64 @@ export const NEIGHBOR_NICHE_RULES: { keywords: string[]; targetNiches: string[] 
     targetNiches: ['Mobilidade elétrica'],
   },
   {
-    keywords: ['air fryer', 'fritadeira', 'liquidificador', 'cafeteira', 'mixer', 'panela eletrica', 'panificadora', 'batedeira', 'sanduicheira', 'torradeira', 'chaleira'],
+    keywords: ['air fryer', 'fritadeira', 'liquidificador', 'cafeteira', 'mixer', 'panela eletrica', 'panificadora', 'batedeira', 'sanduicheira', 'torradeira', 'chaleira', 'processador de alimentos', 'espremedor', 'forno eletrico', 'churrasqueira eletrica', 'panela de pressao'],
     targetNiches: ['Cozinha / Eletroportáteis'],
   },
   {
-    keywords: ['copo termico', 'marmita', 'pote', 'garrafa', 'garrafinha', 'squeeze', 'stanley'],
+    keywords: ['copo termico', 'marmita', 'pote', 'garrafa', 'garrafinha', 'squeeze', 'stanley', 'caneca termica', 'jarra'],
     targetNiches: ['Garrafas e copos'],
   },
   {
-    keywords: ['secador', 'chapinha', 'babyliss', 'maquiagem', 'skincare', 'escova alisadora', 'escova secadora', 'elastico de cabelo', 'serum', 'batom', 'creme', 'perfume', 'depilador'],
+    keywords: ['secador', 'chapinha', 'babyliss', 'maquiagem', 'skincare', 'escova alisadora', 'escova secadora', 'elastico de cabelo', 'serum', 'batom', 'creme', 'perfume', 'depilador', 'modelador de cachos', 'prancha de cabelo'],
     targetNiches: ['Cabelo e beleza'],
   },
   {
-    keywords: ['organizador', 'prateleira', 'cortina', 'tapete', 'cama', 'mesa', 'banho', 'lencol', 'travesseiro', 'toalha', 'armario', 'rack', 'banheiro', 'placa de casa', 'cabide', 'sapateira'],
+    keywords: ['organizador', 'prateleira', 'cortina', 'tapete', 'cama', 'mesa', 'banho', 'lencol', 'travesseiro', 'toalha', 'armario', 'rack', 'banheiro', 'placa de casa', 'cabide', 'sapateira', 'cesto', 'varal', 'edredom', 'cobertor'],
     targetNiches: ['Casa, banheiro e organização'],
   },
   {
-    keywords: ['pneu', 'capa de carro', 'central multimidia', 'camera de re', 'acessorio de carro', 'capa de moto', 'capacete', 'bau moto', 'som automotivo', 'alto-falante', 'amplificador'],
+    keywords: ['pneu', 'capa de carro', 'central multimidia', 'camera de re', 'acessorio de carro', 'capa de moto', 'capacete', 'bau moto', 'som automotivo', 'alto-falante', 'amplificador', 'aspirador automotivo', 'led automotivo'],
     targetNiches: ['Moto e acessórios automotivos', 'Som automotivo'],
   },
   {
-    keywords: ['brinquedo', 'bebe', 'fralda', 'cadeirinha', 'jipe eletrico', 'triciclo', 'carrinho de bebe', 'boneca', 'pelucia', 'infantil', 'crianca'],
+    keywords: ['brinquedo', 'bebe', 'fralda', 'cadeirinha', 'jipe eletrico', 'triciclo', 'carrinho de bebe', 'boneca', 'pelucia', 'infantil', 'crianca', 'patins', 'bicicleta infantil'],
     targetNiches: ['Infantil e brinquedos'],
   },
   {
-    keywords: ['halter', 'halteres', 'elastico de treino', 'bicicleta ergometrica', 'colchonete', 'esteira', 'academia', 'fitness', 'treino'],
+    keywords: [
+      'banco de exercicios',
+      'banco de exercicio',
+      'banco ajustavel',
+      'banco reclinavel',
+      'banco de musculacao',
+      'banco supino',
+      'apoio scott',
+      'extensor de pernas',
+      'supino',
+      'musculacao',
+      'abdominal',
+      'barra fixa',
+      'estacao de musculacao',
+      'halter',
+      'halteres',
+      'anilhas',
+      'kettlebell',
+      'elastico de treino',
+      'bicicleta ergometrica',
+      'spinning',
+      'colchonete',
+      'esteira',
+      'academia',
+      'fitness',
+      'treino',
+      'exercicio',
+      'exercicios',
+      'corda de pular',
+    ],
     targetNiches: ['Fitness'],
   },
   {
-    keywords: ['painel solar', 'gerador', 'power bank', 'inversor', 'bateria', 'estacao de energia', 'no-break', 'nobreak'],
+    keywords: ['painel solar', 'gerador', 'power bank', 'inversor', 'bateria', 'estacao de energia', 'no-break', 'nobreak', 'placa solar'],
     targetNiches: ['Energia'],
   },
 ];
@@ -1076,7 +1105,7 @@ export function analyzeProductInfoForProdutos2(rawText: string): ProductSpecsExt
   const colorCandidates = ['preto', 'preta', 'branco', 'branca', 'vermelho', 'vermelha', 'azul', 'rosa', 'verde', 'cinza', 'amarelo', 'bege', 'marrom', 'dourado', 'prata', 'roxo', 'laranja'];
   const colors = colorCandidates.filter((c) => new RegExp(`\\b${c}\\b`, 'i').test(norm));
 
-  const materialCandidates = ['carbono', 'inox', 'aco inox', 'ceramica', 'silicone', 'vidro', 'algodao', 'dry fit', 'flanelado', 'felpudo', 'couro', 'eva', 'gel', 'litio', 'tnt', 'vinil', 'metal'];
+  const materialCandidates = ['carbono', 'inox', 'aco inox', 'aco', 'ceramica', 'silicone', 'vidro', 'algodao', 'dry fit', 'flanelado', 'felpudo', 'couro', 'eva', 'gel', 'litio', 'tnt', 'vinil', 'metal'];
   const foundMaterial = materialCandidates.find((m) => norm.includes(m));
 
   // 2. Detectar se é Calçado Masculino ou Roupa Masculina vs Produto Geral
@@ -1097,9 +1126,12 @@ export function analyzeProductInfoForProdutos2(rawText: string): ProductSpecsExt
     maleSubOption = isFootwear ? 'calcados' : 'roupas';
   }
 
-  // 3. Extrair Nome Curto e Falável (ex: "Roçadeira 2000 W", "Vara de Carbono", "Kit 2 Tênis")
+  // 3. Extrair Nome Curto e Falável (ex: "Roçadeira 2000 W", "Banco de Exercícios", "Kit 2 Tênis")
   let shortName = '';
   const specificShortNames: [RegExp, string][] = [
+    [/\bbanco\s+(?:de\s+)?(?:exercicios?|musculacao|supino|treino)/i, 'Banco de Exercícios'],
+    [/\bbanco\s+(?:ajustavel|reclinavel|dobravel)/i, 'Banco Ajustável'],
+    [/\bestacao\s+de\s+musculacao/i, 'Estação de Musculação'],
     [/\bvara\s+(?:de\s+)?(?:pesca|pescar|carbono)/i, 'Vara de Carbono'],
     [/\blinha\s+de\s+pesca/i, 'Linha de Pesca'],
     [/\boculos\s+de\s+natacao/i, 'Óculos de Natação'],
@@ -1149,6 +1181,7 @@ export function analyzeProductInfoForProdutos2(rawText: string): ProductSpecsExt
     [/\bfuradeira/i, 'Furadeira'],
     [/\bmotocultivador/i, 'Motocultivador'],
     [/\bpedaleira/i, 'Pedaleira'],
+    [/\btinta\s+(?:de\s+parede|acrilica|lavavel|emborrachada)/i, 'Tinta de Parede'],
     [/\bkit\s+(?:com\s+)?2\s+pares\s+de\s+tenis|\bkit\s+2\s+tenis|\bdois\s+pares/i, 'Kit 2 Pares de Tênis'],
     [/\btenis/i, 'Tênis Masculino'],
     [/\bsapatenis/i, 'Sapatênis'],
@@ -1184,21 +1217,22 @@ export function analyzeProductInfoForProdutos2(rawText: string): ProductSpecsExt
     }
   }
 
-  // 4. Detectar Nicho
+  // 4. Detectar Nicho (Prioridade 1/2: banco direto; Prioridade 3: nichos vizinhos)
   let niche = 'Produtos Gerais';
   if (subMode === 'vestuario_masculino') {
     niche = maleSubOption === 'calcados' ? 'Calçados masculinos' : 'Roupas masculinas';
   } else {
-    for (const entry of COPIES_PRODUTOS_GERAIS) {
-      if (entry.keywords.some((kw) => norm.includes(normalizeAccents(kw)))) {
-        niche = entry.niche;
+    // Checa primeiro regras de nicho vizinho mais específicas (como banco de exercícios -> Fitness)
+    for (const rule of NEIGHBOR_NICHE_RULES) {
+      if (rule.keywords.some((kw) => norm.includes(normalizeAccents(kw)))) {
+        niche = rule.targetNiches[0];
         break;
       }
     }
     if (niche === 'Produtos Gerais') {
-      for (const rule of NEIGHBOR_NICHE_RULES) {
-        if (rule.keywords.some((kw) => norm.includes(normalizeAccents(kw)))) {
-          niche = rule.targetNiches[0];
+      for (const entry of COPIES_PRODUTOS_GERAIS) {
+        if (entry.keywords.some((kw) => norm.includes(normalizeAccents(kw)))) {
+          niche = entry.niche;
           break;
         }
       }
@@ -1221,14 +1255,14 @@ export function analyzeProductInfoForProdutos2(rawText: string): ProductSpecsExt
     niche === 'Conforto para os pés' ||
     niche === 'Música';
 
-  if (subMode === 'vestuario_masculino' || isMaleExplicit || clearlyMaleNiches.includes(niche)) {
+  if (subMode === 'vestuario_masculino' || isMaleExplicit || clearlyMaleNiches.includes(niche) || /\b(banco de exercicio|banco ajustavel|supino|musculacao|apoio scott)\b/i.test(norm)) {
     influencer = 'Homem';
     clientGender = 'Masculino';
   } else if (isFemaleExplicit || clearlyFemaleNiches.includes(niche) || /banheiro|toalha|cosmetico|esteira ergometrica/i.test(norm)) {
     influencer = 'Mulher';
     clientGender = 'Feminino';
   } else if (isKidsOrAmbiguous) {
-    influencer = null; // Desmarcado quando ambíguo (Seção 2 campo 6)
+    influencer = null;
     clientGender = 'Unissex';
   }
 
@@ -1240,7 +1274,7 @@ export function analyzeProductInfoForProdutos2(rawText: string): ProductSpecsExt
     .slice(0, 6);
 
   const isExpensive =
-    /\b(scooter|bicicleta eletrica|e-bike|celular|smartphone|monitor|tablet|esteira|bateria|panificadora|motocultivador|puncao|jipe eletrico|triciclo|smartwatch)\b/i.test(norm);
+    /\b(scooter|bicicleta eletrica|e-bike|celular|smartphone|monitor|tablet|esteira|banco de exercicio|banco ajustavel|bateria|panificadora|motocultivador|puncao|jipe eletrico|triciclo|smartwatch)\b/i.test(norm);
 
   const isKidsProduct = niche === 'Infantil e brinquedos' || /\b(crianca|infantil|filho|bebe|brinquedo|jipe|triciclo)\b/i.test(norm);
 
@@ -1265,27 +1299,26 @@ export function analyzeProductInfoForProdutos2(rawText: string): ProductSpecsExt
 }
 
 /**
- * SEÇÃO 5.3 — Modo 8 segundos (máximo 199 caracteres com espaços)
- * Mantém na ordem: (1) Gancho, (2) Prova principal ("olha..."), (3) CTA.
+ * SEÇÃO 5.3 / PARTE B — Corta copy longa preservando: (1) Gancho, (2) Prova principal ("olha..."), (3) CTA completo.
+ * Para copy do banco em 8s > 199 chars, encurta apenas o suficiente para ficar entre 185 e 195 chars.
  */
-export function enforceMaxChars(copyText: string, maxChars: number): string {
+export function enforceMaxChars(copyText: string, maxChars: number, minTargetChars = 185): string {
   const clean = copyText.replace(/\s+/g, ' ').trim();
   if (clean.length <= maxChars) return clean;
 
-  // Divide em frases preservando pontuação
   const sentences = clean.match(/[^.!?]+[.!?]+/g)?.map((s) => s.trim()) || [clean];
   if (sentences.length <= 1) {
-    return clean.slice(0, maxChars - 1).trim() + '!';
+    return clean.slice(0, maxChars - 1).replace(/[,;:\s]+$/, '') + '!';
   }
 
   const hook = sentences[0];
   const cta = sentences[sentences.length - 1];
   const middle = sentences.slice(1, -1);
 
-  // Prioriza frases do meio que tenham "olha" ou números
+  // Tenta primeiro remover pequenos trechos acessórios ou frases curtas do meio mantendo o texto entre minTargetChars e maxChars
   const sortedMiddle = [...middle].sort((a, b) => {
-    const scoreA = (/olha/i.test(a) ? 2 : 0) + (/\d/.test(a) ? 1 : 0);
-    const scoreB = (/olha/i.test(b) ? 2 : 0) + (/\d/.test(b) ? 1 : 0);
+    const scoreA = (/olha/i.test(a) ? 3 : 0) + (/\d/.test(a) ? 1 : 0);
+    const scoreB = (/olha/i.test(b) ? 3 : 0) + (/\d/.test(b) ? 1 : 0);
     return scoreB - scoreA;
   });
 
@@ -1299,15 +1332,28 @@ export function enforceMaxChars(copyText: string, maxChars: number): string {
     }
   }
 
-  // Reordena keptMiddle na ordem original
   const orderedMiddle = middle.filter((m) => keptMiddle.includes(m));
   let candidate = [hook, ...orderedMiddle, cta].join(' ').replace(/\s+/g, ' ').trim();
+
+  // Se ficou muito curto (< minTargetChars) porque uma frase do meio era longa demais, encurta a frase do meio em vez de descartá-la inteira
+  if (candidate.length < minTargetChars && middle.length > 0) {
+    const remainingMiddle = middle.find((m) => !keptMiddle.includes(m));
+    if (remainingMiddle) {
+      const clauses = remainingMiddle.split(/[,;–—]+/).map((c) => c.trim()).filter(Boolean);
+      for (let k = clauses.length - 1; k >= 1; k--) {
+        const partialMid = clauses.slice(0, k).join(', ') + '.';
+        const testCand = [hook, ...orderedMiddle, partialMid, cta].join(' ').replace(/\s+/g, ' ').trim();
+        if (testCand.length >= minTargetChars && testCand.length <= maxChars) {
+          return testCand;
+        }
+      }
+    }
+  }
 
   if (candidate.length <= maxChars) {
     return candidate;
   }
 
-  // Se ainda passar (ex: hook + cta > maxChars), usa hook + primeira prova ou corta suavemente antes do CTA
   candidate = `${hook} ${cta}`.replace(/\s+/g, ' ').trim();
   if (candidate.length <= maxChars) {
     return candidate;
@@ -1330,39 +1376,39 @@ export function applyGenderAndVocativeRules(
   // Nunca usar "menina" / "meninas" como vocativo -> trocar sempre por "Amiga" / "Amigas"
   out = out.replace(/\bMeninas\s*,/gi, 'Amigas,');
   out = out.replace(/\bMenina\s*,/gi, 'Amiga,');
+  out = out.replace(/\bmenina\b/gi, 'amiga');
 
   if (clientGender === 'Feminino') {
     out = out
-      .replace(/^Meu amigo\s*,/i, 'Amiga,')
-      .replace(/^Cara\s*,/i, 'Amiga,')
-      .replace(/^Irmão\s*,/i, 'Amiga,')
-      .replace(/^E aí,\s*mano\s*,/i, 'Amiga,');
+      .replace(/^(Nossa,\s*)?Meu amigo\s*,/i, '$1Amiga,')
+      .replace(/^(Nossa,\s*)?Cara\s*,/i, '$1Amiga,')
+      .replace(/^(Nossa,\s*)?Irmão\s*,/i, '$1Amiga,')
+      .replace(/^(Nossa,\s*)?E aí,\s*mano\s*,/i, '$1Amiga,');
   } else if (clientGender === 'Masculino') {
     out = out
-      .replace(/^Amiga\s*,/i, 'Meu amigo,')
-      .replace(/^Tá cansada\b/i, 'Tá cansado')
+      .replace(/^(Nossa,\s*)?Amiga\s*,/i, '$1Meu amigo,')
+      .replace(/\bTá cansada\b/gi, 'Tá cansado')
       .replace(/\bcansada de\b/gi, 'cansado de');
   } else if (clientGender === 'Unissex') {
     out = out
-      .replace(/^Meu amigo\s*,/i, 'Gente,')
-      .replace(/^Cara\s*,/i, 'Gente,')
-      .replace(/^Irmão\s*,/i, 'Gente,')
-      .replace(/^Amiga\s*,/i, 'Gente,');
+      .replace(/^(Nossa,\s*)?Meu amigo\s*,/i, '$1Gente,')
+      .replace(/^(Nossa,\s*)?Cara\s*,/i, '$1Gente,')
+      .replace(/^(Nossa,\s*)?Irmão\s*,/i, '$1Gente,')
+      .replace(/^(Nossa,\s*)?Amiga\s*,/i, '$1Gente,');
   }
 
   // Concordância de quem fala (influencer)
   if (influencer === 'Homem') {
     out = out.replace(/\bTô apaixonada\b/gi, 'Tô apaixonado');
+    out = out.replace(/\bfiquei chocada\b/gi, 'fiquei chocado');
   } else {
     out = out.replace(/\bTô apaixonado\b/gi, 'Tô apaixonada');
+    out = out.replace(/\bfiquei chocado\b/gi, 'fiquei chocada');
   }
 
   return out;
 }
 
-/**
- * SEÇÃO 4, 5 e 6 — Seleciona copy do banco (ou gera pela Fórmula) e adapta com o mínimo de mudanças
- */
 /**
  * Adiciona a expressão neutra "Nossa, " no início de todas as copies/falas
  * para servir de margem de corte do 1º segundo no Veo (onde o Veo exibe o frame do storyboard),
@@ -1374,7 +1420,467 @@ export function ensureLeadingNossaPrefix(text: string): string {
   if (/^nossa\b/i.test(trimmed)) {
     return trimmed;
   }
-  return `Nossa, ${trimmed}`;
+  const loweredFirst =
+    /^(Eu\b|TikTok\b|CPF\b|USB\b|LED\b|RGB\b|JBL\b|BML\b|Poco\b)/.test(trimmed)
+      ? trimmed
+      : trimmed.charAt(0).toLowerCase() + trimmed.slice(1);
+  return `Nossa, ${loweredFirst}`;
+}
+
+/**
+ * PARTE C (Passo 1) — Traduz especificações técnicas de "Informações do Produto" em BENEFÍCIOS FALADOS
+ * Nunca lista ficha técnica crua; escolhe no máximo 2 ou 3 pontos visuais/desejáveis e traduz em "característica + benefício".
+ */
+export function translateSpecsToSpokenBenefits(
+  productName: string,
+  productInfo: string,
+  specs: ProductSpecsExtracted
+): {
+  benefit1WithOlha: string;
+  benefit2: string;
+  objectionOrUseCase: string;
+} {
+  const norm = normalizeAccents(`${productName} ${productInfo}`);
+
+  // Caso específico: Banco de exercícios / musculação / fitness
+  if (/\b(banco|supino|apoio scott|extensor|musculacao|abdominal)\b/i.test(norm)) {
+    const hasScott = /scott/i.test(norm);
+    const hasExtensor = /extensor/i.test(norm);
+    const hasEspuma = /espuma/i.test(norm);
+    const hasAco = /aco|triangular|antiderrapante/i.test(norm);
+    const b1 =
+      hasScott && hasExtensor
+        ? 'Olha o apoio Scott e o extensor pra treinar braço e perna em casa'
+        : hasScott
+        ? 'Olha esse apoio Scott ajustável pra treinar braço completo'
+        : 'Olha a regulagem de inclinação pra treinar peito e abdômen';
+    const b2 =
+      hasEspuma && hasAco
+        ? 'com espuma macia que não machuca as costas e base de aço que não balança nada.'
+        : hasEspuma
+        ? 'com espuma grossa que não machuca as costas e estrutura super firme.'
+        : 'com estrutura de aço reforçada que aguenta treino pesado sem balançar.';
+    const obj = 'Você monta sua academia em casa sem pagar mensalidade cara.';
+    return { benefit1WithOlha: b1, benefit2: b2, objectionOrUseCase: obj };
+  }
+
+  // Caso específico: Tinta / reforma / parede
+  if (/\b(tinta|parede|pintura|acrilica|emborrachada)\b/i.test(norm)) {
+    const b1 = 'Olha essa cobertura que fecha a parede já na primeira mão';
+    const b2 = /lavavel|impermeavel|mofo/i.test(norm)
+      ? 'não tem cheiro forte, seca rápido e é lavável pra limpar sem descascar.'
+      : 'rende muito mais, seca rapidinho e deixa acabamento liso de profissional.';
+    const obj = 'Você mesmo renova a casa inteira sem gastar uma fortuna com pintor.';
+    return { benefit1WithOlha: b1, benefit2: b2, objectionOrUseCase: obj };
+  }
+
+  // Traduções genéricas inteligentes baseadas nas specs reais informadas
+  const benefitParts: string[] = [];
+  if (specs.watts) {
+    benefitParts.push(`a potência de ${specs.watts} que dá conta do serviço pesado sem engasgar`);
+  }
+  if (specs.capacityMl) {
+    benefitParts.push(`o espaço de ${specs.capacityMl} pra caber tudo de uma vez sem aperto`);
+  }
+  if (specs.material) {
+    benefitParts.push(`o acabamento em ${specs.material} que não enferruja e dura anos`);
+  }
+  if (/bateria|recarregavel|sem fio/i.test(norm)) {
+    benefitParts.push('a bateria que dura muito pra você usar em qualquer lugar sem fio');
+  }
+  if (/dobravel|compacto|portatil/i.test(norm)) {
+    benefitParts.push('como ele dobra fácil pra guardar em qualquer cantinho sem ocupar espaço');
+  }
+  if (/antiderrapante|estavel|firme|seguro/i.test(norm)) {
+    benefitParts.push('a base antiderrapante que fica firme e traz segurança total no uso');
+  }
+  if (/ajustavel|regulavel|inclinacao|niveis/i.test(norm)) {
+    benefitParts.push('a regulagem fácil que se adapta certinho ao seu jeito de usar');
+  }
+
+  // Se ainda faltarem benefícios, extrai dos keyFacts transformando em benefício falado (sem despejar lista técnica)
+  for (const fact of specs.keyFacts) {
+    if (benefitParts.length >= 2) break;
+    const cleanFact = fact.replace(/^[•*-]\s*/, '').replace(/\.$/, '').trim();
+    if (cleanFact.length >= 8 && cleanFact.length <= 55) {
+      benefitParts.push(`${cleanFact.charAt(0).toLowerCase() + cleanFact.slice(1)} que facilita demais a sua rotina`);
+    }
+  }
+
+  const b1 = benefitParts[0]
+    ? `Olha ${benefitParts[0]}`
+    : `Olha o acabamento reforçado desse ${productName} que facilita demais o dia a dia`;
+
+  const b2 = benefitParts[1]
+    ? `e ainda conta com ${benefitParts[1].replace(/^a |^o |^como /, '')}.`
+    : 'entrega resultado de nível profissional logo na primeira vez que você usa.';
+
+  const obj = specs.isExpensive
+    ? 'Pelo que entrega, em qualquer loja física custaria mais que o dobro do preço.'
+    : 'Resolve seu problema na hora sem esforço e sem gastar caro.';
+
+  return { benefit1WithOlha: b1, benefit2: b2, objectionOrUseCase: obj };
+}
+
+/**
+ * PARTE E — Checklist de aprovação antes de entregar qualquer copy nova ou adaptada
+ */
+export function evaluateCopyDnaChecklist(copy: string, duration: Produtos2Duration): {
+  passed: boolean;
+  hasOlha: boolean;
+  hasCompleteCta: boolean;
+  isWithinWindow: boolean;
+  score: number;
+} {
+  const clean = copy.replace(/\s+/g, ' ').trim();
+  const hasOlha = /\bolha\b|\bolhem\b/i.test(clean);
+  // Proibido terminar apenas com "Clica no carrinho." seco
+  const isDryCta = /clica no carrinho\.?$/i.test(clean) && !/garante|aproveita|acaba|desconto|oferta|seu|sua|laranja|aqui embaixo/i.test(clean.slice(-45));
+  const hasCompleteCta =
+    !isDryCta &&
+    /\b(carrinho|aqui embaixo|link|garante|aproveita|estoque|oferta|promoção|desconto|parcela)\b/i.test(clean.slice(-85));
+
+  const minTarget = duration === 8 ? 185 : 242;
+  const maxTarget = duration === 8 ? 195 : 250;
+  const hardMax = duration === 8 ? 199 : 252;
+  const idealTarget = duration === 8 ? 195 : 250;
+
+  const isWithinWindow = clean.length >= minTarget && clean.length <= maxTarget;
+  const distanceToIdeal = Math.abs(idealTarget - clean.length);
+
+  let score = 100 - distanceToIdeal * 3;
+  if (!hasOlha) score -= 50;
+  if (!hasCompleteCta) score -= 50;
+  if (clean.length < minTarget) score -= (minTarget - clean.length) * 6;
+  if (clean.length > maxTarget) score -= (clean.length - maxTarget) * 5;
+  if (clean.length > hardMax) score -= (clean.length - hardMax) * 15;
+  if (isWithinWindow) score += 25;
+
+  return {
+    passed: hasOlha && hasCompleteCta && isWithinWindow,
+    hasOlha,
+    hasCompleteCta,
+    isWithinWindow,
+    score,
+  };
+}
+
+/**
+ * PARTE B — Calibra o tamanho exato da copy (contando espaços e o prefixo "Nossa, "):
+ * - Copy do BANCO (mesmo produto):
+ *   - 10s: usa como está (não encurta).
+ *   - 8s: se <= 199 chars, usa como está; se > 199 chars, encurta apenas até entrar na janela 185–195 (máx 199).
+ * - Copy NOVA ou ADAPTADA para outro produto do nicho:
+ *   - 8s: janela obrigatória 185 a 195 chars (máx absoluto 199, ideal 195).
+ *   - 10s: janela obrigatória 242 a 250 chars (máx absoluto 252, ideal 250).
+ */
+export function calibrateCopyToTargetWindow(params: {
+  copy: string;
+  duration: Produtos2Duration;
+  isSameProductBankCopy: boolean;
+  clientGender: Produtos2ClientGender;
+  influencer: 'Homem' | 'Mulher';
+}): string {
+  const { duration, isSameProductBankCopy, clientGender, influencer } = params;
+  let text = ensureLeadingNossaPrefix(
+    applyGenderAndVocativeRules(params.copy.replace(/\s+/g, ' ').trim(), clientGender, influencer)
+  );
+
+  // Regra para Copy do BANCO (exatamente o mesmo produto)
+  if (isSameProductBankCopy) {
+    if (duration === 10) {
+      return text; // Em 10s, NUNCA encurtar copy do banco
+    }
+    // Em 8s: se <= 199 chars, usar como está; se > 199, encurtar apenas até entrar em 185–195 (máx 199)
+    if (text.length <= 199) {
+      return text;
+    }
+    return ensureLeadingNossaPrefix(enforceMaxChars(text, 195, 185));
+  }
+
+  // Regra para Copy NOVA ou ADAPTADA (produto diferente do banco)
+  const minChars = duration === 8 ? 185 : 242;
+  const targetMax = duration === 8 ? 195 : 250;
+
+  // 1. Garantir que nunca termine com "Clica no carrinho." seco (Parte C item 6)
+  text = text.replace(/\bClica no carrinho\.?$/i, 'Clica no carrinho e garante o seu!');
+  text = text.replace(/\bClique no carrinho\.?$/i, 'Clica no carrinho e garante o seu!');
+
+  // 2. Garantir que tenha "olha" se não tiver
+  if (!/\bolha\b|\bolhem\b/i.test(text)) {
+    const sentences = text.match(/[^.!?]+[.!?]+/g)?.map((s) => s.trim()) || [text];
+    if (sentences.length >= 2) {
+      sentences[1] = `Olha a qualidade: ${sentences[1].charAt(0).toLowerCase() + sentences[1].slice(1)}`;
+      text = sentences.join(' ');
+    }
+  }
+
+  // Se já está cravado na janela [minChars, targetMax] e tem CTA completo, retorna!
+  const initialCheck = evaluateCopyDnaChecklist(text, duration);
+  if (initialCheck.passed) {
+    return text;
+  }
+
+  // 3. Ajustar o CTA ou frases de reforço para cair exatamente na janela [minChars, targetMax] (priorizando mais perto de targetMax)
+  const ctaVariants = [
+    'Garante no carrinho!',
+    'Aproveita no carrinho!',
+    'Garante já no carrinho!',
+    'Clica e garante no carrinho!',
+    'Corre e garante no carrinho!',
+    'Garante o seu no carrinho!',
+    'Clica no carrinho e garante!',
+    'Clica no carrinho e aproveita!',
+    'Aproveita e garante no carrinho!',
+    'Corre no carrinho e garante já!',
+    'Clica no carrinho e garante o seu!',
+    'Corre no carrinho e garante o seu!',
+    'Clica no carrinho laranja e garante!',
+    'Aproveita a oferta aqui no carrinho!',
+    'Clica aqui no carrinho e garante já!',
+    'Clica aqui no carrinho e garante o seu!',
+    'Clica no carrinho laranja e garante já!',
+    'Clica aqui embaixo no carrinho e garante!',
+    'Clica no carrinho laranja e garante o seu!',
+    'Aproveita o desconto e garante no carrinho!',
+    'Clica aqui embaixo no carrinho e aproveita!',
+    'Clica aqui embaixo no carrinho e garante já!',
+    'Clica aqui embaixo no carrinho e garante o seu!',
+    'Corre, clica no carrinho laranja e garante o seu!',
+    'Aproveita e clica aqui embaixo no carrinho laranja!',
+    'Corre, clica no carrinho laranja e garante o seu agora!',
+    'Aproveita a promoção, clica no carrinho e garante o seu!',
+    'Aproveita a promoção, clica no carrinho laranja e garante o seu!',
+    'Não perde tempo, clica aqui embaixo no carrinho e garante o seu!',
+    'Não perde tempo, clica aqui embaixo no carrinho laranja e garante o seu!',
+  ];
+
+  const reinforcementBoosters = [
+    'Vale muito!',
+    'É bom demais!',
+    'Zero esforço!',
+    'Vale cada centavo!',
+    'É prático demais!',
+    'Não estraga por nada!',
+    'Dura por muitos anos!',
+    'Acabamento impecável!',
+    'Qualidade de outro nível!',
+    'Surpreendeu demais mesmo!',
+    'Compensa cada centavo pago!',
+    'Surpreendeu demais na qualidade!',
+    'Quem compra não se arrepende nunca!',
+    'Quem compra não se arrepende por nada!',
+    'Pelo que entrega, tá barato demais mesmo!',
+    'A qualidade impressiona logo no primeiro uso!',
+  ];
+
+  const sentences = text.match(/[^.!?]+[.!?]+/g)?.map((s) => s.trim()) || [text];
+  if (sentences.length >= 2) {
+    const bodyWithoutCta = sentences.slice(0, -1).join(' ').trim();
+    let bestCandidate = '';
+    let bestScore = -9999;
+
+    // Passo A: Testar troca direta de CTA sobre o corpo atual
+    for (const cta of ctaVariants) {
+      const cand = `${bodyWithoutCta} ${cta}`.replace(/\s+/g, ' ').trim();
+      if (cand.length >= minChars && cand.length <= targetMax) {
+        const score = 1000 - (targetMax - cand.length);
+        if (score > bestScore) {
+          bestScore = score;
+          bestCandidate = cand;
+        }
+      }
+    }
+
+    // Passo B: Se o corpo + menor CTA ainda passa de targetMax, tenta encurtar levemente o corpo preservando a frase com "Olha"
+    if (!bestCandidate && `${bodyWithoutCta} ${ctaVariants[0]}`.length > targetMax) {
+      const bodySentences = sentences.slice(0, -1);
+      // Tenta podar a última cláusula ou frase de objeção preservando Gancho (frase 0) e a frase com "Olha"
+      const hookSent = bodySentences[0];
+      const olhaSent = bodySentences.find((s, i) => i > 0 && /\bolha\b/i.test(s)) || bodySentences[1] || '';
+      const compactBodies: string[] = [];
+      if (olhaSent && olhaSent !== hookSent) {
+        compactBodies.push(`${hookSent} ${olhaSent}`);
+        // Também testa versões com cláusula reduzida de olhaSent se ela tiver vírgula ou " e "
+        const subClauses = olhaSent.split(/,\s*|\s+e\s+(?=base|estrutura|nao|seca|ainda)/i);
+        if (subClauses.length > 1) {
+          compactBodies.push(`${hookSent} ${subClauses[0].replace(/[.!?]+$/, '')}.`);
+        }
+      } else {
+        compactBodies.push(hookSent);
+      }
+
+      for (const cBody of compactBodies) {
+        for (const cta of ctaVariants) {
+          const cand = `${cBody} ${cta}`.replace(/\s+/g, ' ').trim();
+          if (cand.length >= minChars && cand.length <= targetMax && /\bolha\b/i.test(cand)) {
+            const score = 1000 - (targetMax - cand.length);
+            if (score > bestScore) {
+              bestScore = score;
+              bestCandidate = cand;
+            }
+          }
+        }
+        for (const booster of reinforcementBoosters) {
+          for (const cta of ctaVariants) {
+            const cand = `${cBody} ${booster} ${cta}`.replace(/\s+/g, ' ').trim();
+            if (cand.length >= minChars && cand.length <= targetMax && /\bolha\b/i.test(cand)) {
+              const score = 1000 - (targetMax - cand.length);
+              if (score > bestScore) {
+                bestScore = score;
+                bestCandidate = cand;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Passo C: Se o corpo é curto (< minChars), testar inserindo 1 ou 2 reforços do DNA antes do CTA + variante de CTA
+    if (!bestCandidate) {
+      for (const booster of reinforcementBoosters) {
+        for (const cta of ctaVariants) {
+          const cand = `${bodyWithoutCta} ${booster} ${cta}`.replace(/\s+/g, ' ').trim();
+          if (cand.length >= minChars && cand.length <= targetMax) {
+            const score = 1000 - (targetMax - cand.length);
+            if (score > bestScore) {
+              bestScore = score;
+              bestCandidate = cand;
+            }
+          }
+        }
+      }
+    }
+
+    if (!bestCandidate) {
+      for (const bA of reinforcementBoosters) {
+        for (const bB of reinforcementBoosters) {
+          if (bA === bB) continue;
+          for (const cta of ctaVariants) {
+            const cand = `${bodyWithoutCta} ${bA} ${bB} ${cta}`.replace(/\s+/g, ' ').trim();
+            if (cand.length >= minChars && cand.length <= targetMax) {
+              const score = 1000 - (targetMax - cand.length);
+              if (score > bestScore) {
+                bestScore = score;
+                bestCandidate = cand;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (bestCandidate) {
+      return bestCandidate;
+    }
+  }
+
+  // Fallback seguro caso a estrutura seja de frase única
+  if (text.length > targetMax) {
+    return ensureLeadingNossaPrefix(enforceMaxChars(text, targetMax, minChars));
+  }
+  return text;
+}
+
+/**
+ * PARTES C, D, E e F — Cria ou adapta copy para produto novo / produto do mesmo nicho
+ * usando a estrutura fixa de 6 partes do DNA, traduzindo características em benefícios,
+ * gerando 3 versões internas baseadas no molde e escolhendo a que crava a janela de caracteres
+ * (185–195 em 8s; 242–250 em 10s).
+ */
+export function buildFormulaCopyForNewProduct(params: {
+  productName: string;
+  productInfo: string;
+  specs: ProductSpecsExtracted;
+  clientGender: Produtos2ClientGender;
+  influencer: 'Homem' | 'Mulher';
+  duration: Produtos2Duration;
+  moldEntry?: CopyBankEntry;
+}): { copy: string; archetype: CopyArchetype; moldId: string } {
+  const { productName, productInfo, specs, clientGender, influencer, duration, moldEntry } = params;
+
+  const vocative =
+    clientGender === 'Feminino'
+      ? 'Amiga'
+      : clientGender === 'Masculino'
+      ? 'Meu amigo'
+      : 'Gente';
+
+  const { benefit1WithOlha, benefit2, objectionOrUseCase } = translateSpecsToSpokenBenefits(
+    productName,
+    productInfo,
+    specs
+  );
+
+  const spokenProd = productName.toLowerCase();
+  const isFeminineNoun =
+    /^(tinta|esteira|bicicleta|scooter|garrafa|garrafinha|panificadora|air\s*fryer|fritadeira|panela|rocadeira|escova|chapinha|prancha|palmilha|luva|saia|toalha|camera|bateria|parafusadeira|furadeira|puncao|pedaleira|camisa|camiseta|bermuda|calca|bota|sandalia|chuteira|cadeirinha|capa|placa|pastilha|vara|linha)\b/i.test(
+      normalizeAccents(spokenProd)
+    );
+  const prodWithDemonstrative = isFeminineNoun ? `essa ${spokenProd}` : `esse ${spokenProd}`;
+  const prodWithGenitive = isFeminineNoun ? `dessa ${spokenProd}` : `desse ${spokenProd}`;
+
+  let archetype: CopyArchetype = moldEntry?.archetype || 'Achado/Demonstração';
+  let moldId = moldEntry?.id || 'FIT-02';
+
+  if (!moldEntry) {
+    if (specs.kitQuantity && specs.kitQuantity >= 2) {
+      archetype = 'Kit/Valor';
+      moldId = 'CLI-03';
+    } else if (specs.isKidsProduct) {
+      archetype = 'Emoção/Presente';
+      moldId = 'INF-01';
+    } else if (specs.isExpensive) {
+      archetype = 'Choque de preço/Urgência';
+      moldId = 'FIT-02';
+    } else {
+      archetype = 'Dor→Solução';
+      moldId = 'BEL-02';
+    }
+  }
+
+  // Gerar 3 versões internas completas seguindo as 6 partes do DNA:
+  // [1. GANCHO] -> [2. APRESENTA COM EMOÇÃO] -> [3. "OLHA" + BENEFÍCIO 1] -> [4. BENEFÍCIO 2] -> [5. OBJEÇÃO/USO] -> [6. CTA COMPLETO]
+  const rawVersions: string[] =
+    duration === 8
+      ? [
+          // 8s Versão 1: Gancho Choque de Preço / Urgência (Molde FIT-02 / ELE-06)
+          `O TikTok perdeu o juízo e derrubou ${prodWithDemonstrative}! ${benefit1WithOlha}, ${benefit2} Clica no carrinho e garante!`,
+          // 8s Versão 2: Gancho Conversa Direta / Descoberta (Molde FIT-01 / GAR-04)
+          `${vocative}, que achado absurdo ${prodWithDemonstrative}! ${benefit1WithOlha}, ${benefit2} Clica no carrinho e garante!`,
+          // 8s Versão 3: Gancho Dor -> Solução / Inconformismo (Molde BEL-02 / PES-02)
+          `${vocative}, quer resultado real sem gastar caro? ${benefit1WithOlha}, ${benefit2} Clica no carrinho e garante!`,
+        ]
+      : [
+          // 10s Versão 1: Gancho Choque de Preço / Urgência (Molde FIT-02 / ELE-06)
+          `O TikTok perdeu o juízo, baixou demais o preço ${prodWithGenitive}! ${benefit1WithOlha}, ${benefit2} ${objectionOrUseCase} Corre no carrinho e garante!`,
+          // 10s Versão 2: Gancho Conversa Direta / Descoberta (Molde FIT-01 / GAR-04)
+          `${vocative}, que achado absurdo ${prodWithDemonstrative} que acabou de chegar! ${benefit1WithOlha}, ${benefit2} ${objectionOrUseCase} Clica no carrinho e garante!`,
+          // 10s Versão 3: Gancho Dor -> Solução / Inconformismo (Molde BEL-02 / PES-02)
+          `${vocative}, quer praticidade de verdade sem gastar caro? ${benefit1WithOlha}, ${benefit2} ${objectionOrUseCase} Clica no carrinho e garante!`,
+        ];
+
+  // Calibrar cada uma das 3 versões para a janela exata (185–195 em 8s, 242–250 em 10s) e avaliar pelo Checklist da Parte E
+  const calibratedCandidates = rawVersions.map((raw) => {
+    const calibrated = calibrateCopyToTargetWindow({
+      copy: raw,
+      duration,
+      isSameProductBankCopy: false,
+      clientGender,
+      influencer,
+    });
+    const check = evaluateCopyDnaChecklist(calibrated, duration);
+    return { calibrated, check };
+  });
+
+  // Ordena pelas que passaram no checklist e têm maior score (mais perto de 195 em 8s ou 250 em 10s)
+  calibratedCandidates.sort((a, b) => b.check.score - a.check.score);
+
+  return {
+    copy: calibratedCandidates[0].calibrated,
+    archetype,
+    moldId,
+  };
 }
 
 export function selectAndAdaptProdutos2Copy(params: {
@@ -1392,6 +1898,7 @@ export function selectAndAdaptProdutos2Copy(params: {
   copySourceLabel: string;
   archetype: CopyArchetype;
   resolvedInfluencer: 'Homem' | 'Mulher';
+  isSameProductBankCopy: boolean;
   baseEntry?: CopyBankEntry;
 } {
   const {
@@ -1415,7 +1922,7 @@ export function selectAndAdaptProdutos2Copy(params: {
       influencer || specs.influencer || (clientGender === 'Masculino' ? 'Homem' : 'Mulher');
     let finalCustom = ensureLeadingNossaPrefix(customCopy.trim());
     if (duration === 8 && finalCustom.length > 199) {
-      finalCustom = ensureLeadingNossaPrefix(enforceMaxChars(finalCustom, 199));
+      finalCustom = ensureLeadingNossaPrefix(enforceMaxChars(finalCustom, 195, 185));
     }
     return {
       finalCopy: finalCustom,
@@ -1423,6 +1930,7 @@ export function selectAndAdaptProdutos2Copy(params: {
       copySourceLabel: 'Copy personalizada informada pelo usuário',
       archetype: 'Achado/Demonstração',
       resolvedInfluencer: resolvedInf,
+      isSameProductBankCopy: true,
     };
   }
 
@@ -1447,14 +1955,12 @@ export function selectAndAdaptProdutos2Copy(params: {
     });
   });
 
-  // Se for kit de 2 pares/unidades, priorizar copies de kit se houver
   if (specs.kitQuantity && specs.kitQuantity >= 2) {
     const kitCandidates = candidates.filter((c) => c.archetype === 'Kit/Valor' || /kit|dois|2|4/i.test(c.productType));
     if (kitCandidates.length > 0) {
       candidates = kitCandidates;
     }
   } else if (candidates.length > 1) {
-    // Se não for kit, evitar pegar copy exclusiva de kit quando há copies unitárias do mesmo produto
     const singleCandidates = candidates.filter((c) => c.archetype !== 'Kit/Valor');
     if (singleCandidates.length > 0) {
       candidates = singleCandidates;
@@ -1463,7 +1969,7 @@ export function selectAndAdaptProdutos2Copy(params: {
 
   let matchPriority: 'mesmo_produto' | 'mesmo_nicho' | 'nicho_vizinho' | 'nova_formula' = 'mesmo_produto';
 
-  // Prioridade 2: Mesmo nicho no banco ativo
+  // Prioridade 2: Mesmo nicho no banco ativo (ex: Banco de exercícios -> Fitness -> FIT-01 / FIT-02)
   if (candidates.length === 0) {
     candidates = activeBank.filter((entry) => entry.niche === specs.niche);
     if (candidates.length > 0) {
@@ -1484,15 +1990,13 @@ export function selectAndAdaptProdutos2Copy(params: {
     }
   }
 
-  // Se estiver em 8s (Seção 4.2): sortear primeiro entre as elegíveis com <= 199 chars
   if (candidates.length > 0) {
     let pool = candidates;
-    if (duration === 8) {
-      const shortPool = candidates.filter((c) => c.fits8s || c.text.length <= 199);
+    if (duration === 8 && matchPriority === 'mesmo_produto') {
+      const shortPool = candidates.filter((c) => c.fits8s || ensureLeadingNossaPrefix(c.text).length <= 199);
       if (shortPool.length > 0) {
         pool = shortPool;
       } else {
-        // Pega a mais curta para encurtar
         const sortedByLen = [...candidates].sort((a, b) => a.text.length - b.text.length);
         pool = [sortedByLen[0]];
       }
@@ -1504,32 +2008,56 @@ export function selectAndAdaptProdutos2Copy(params: {
       specs.influencer ||
       (chosen.audience === 'Masculino' ? 'Homem' : 'Mulher');
 
-    let adapted = ensureLeadingNossaPrefix(
-      adaptBankCopyToProduct(chosen, cleanName, productInfo, specs, clientGender, resolvedInf)
-    );
+    // Se for o MESMO PRODUTO do banco (Prioridade 1), preserva a copy validada 99% intacta
+    if (matchPriority === 'mesmo_produto') {
+      const adaptedSame = calibrateCopyToTargetWindow({
+        copy: adaptBankCopyToProduct(chosen, cleanName, productInfo, specs, clientGender, resolvedInf),
+        duration,
+        isSameProductBankCopy: true,
+        clientGender,
+        influencer: resolvedInf,
+      });
 
-    if (duration === 8 && adapted.length > 199) {
-      adapted = ensureLeadingNossaPrefix(enforceMaxChars(adapted, 199));
+      return {
+        finalCopy: adaptedSame,
+        copyId: chosen.id,
+        copySourceLabel: `Copy ${chosen.id} (${chosen.productType}) — Nicho: ${chosen.niche}`,
+        archetype: chosen.archetype,
+        resolvedInfluencer: resolvedInf,
+        isSameProductBankCopy: true,
+        baseEntry: chosen,
+      };
     }
 
+    // Se for Prioridade 2 ou 3 (outro produto do mesmo nicho ou nicho vizinho, ex: Banco de exercícios no nicho Fitness):
+    // Usa a copy sorteada do nicho como MOLDE e gera 3 versões internas seguindo o DNA das Copies (Partes C, D, E, F)
+    const moldedResult = buildFormulaCopyForNewProduct({
+      productName: cleanName,
+      productInfo,
+      specs,
+      clientGender,
+      influencer: resolvedInf,
+      duration,
+      moldEntry: chosen,
+    });
+
     const sourceDesc =
-      matchPriority === 'mesmo_produto'
-        ? `Copy ${chosen.id} (${chosen.productType}) — Nicho: ${chosen.niche}`
-        : matchPriority === 'mesmo_nicho'
-        ? `Copy ${chosen.id} adaptada — Mesmo Nicho: ${chosen.niche}`
-        : `Copy ${chosen.id} adaptada — Nicho vizinho: ${chosen.niche}`;
+      matchPriority === 'mesmo_nicho'
+        ? `Copy ${chosen.id} adaptada como Molde — Mesmo Nicho: ${chosen.niche}`
+        : `Copy ${chosen.id} adaptada como Molde — Nicho vizinho: ${chosen.niche}`;
 
     return {
-      finalCopy: adapted,
+      finalCopy: moldedResult.copy,
       copyId: chosen.id,
       copySourceLabel: sourceDesc,
       archetype: chosen.archetype,
       resolvedInfluencer: resolvedInf,
+      isSameProductBankCopy: false,
       baseEntry: chosen,
     };
   }
 
-  // Prioridade 4: Nenhum parecido -> Criar copy nova seguindo a Fórmula (Seção 6)
+  // Prioridade 4: Nenhum parecido -> Criar copy nova seguindo o DNA das Copies (Partes C, D, E, F) com 3 versões internas
   const resolvedInf: 'Homem' | 'Mulher' =
     influencer || specs.influencer || (clientGender === 'Masculino' ? 'Homem' : 'Mulher');
 
@@ -1543,16 +2071,17 @@ export function selectAndAdaptProdutos2Copy(params: {
   });
 
   return {
-    finalCopy: ensureLeadingNossaPrefix(formulaResult.copy),
+    finalCopy: formulaResult.copy,
     copyId: `NOVA-${formulaResult.archetype.slice(0, 3).toUpperCase()}`,
-    copySourceLabel: `Copy nova gerada pela Fórmula — Arquétipo: ${formulaResult.archetype} (Molde: ${formulaResult.moldId})`,
+    copySourceLabel: `Copy nova gerada pelo DNA — Arquétipo: ${formulaResult.archetype} (Molde: ${formulaResult.moldId})`,
     archetype: formulaResult.archetype,
     resolvedInfluencer: resolvedInf,
+    isSameProductBankCopy: false,
   };
 }
 
 /**
- * SEÇÃO 5 — Adapta copy do banco mudando o MÍNIMO possível
+ * SEÇÃO 5 — Adapta copy do banco para o MESMO produto mudando o MÍNIMO possível
  */
 function adaptBankCopyToProduct(
   entry: CopyBankEntry,
@@ -1563,65 +2092,6 @@ function adaptBankCopyToProduct(
   influencer: 'Homem' | 'Mulher'
 ): string {
   let text = entry.text;
-  const entryProdNorm = normalizeAccents(entry.productType);
-  const targetProdNorm = normalizeAccents(productName);
-
-  // Se for exatamente o mesmo tipo de produto, preserva 99% intacto e só atualiza números/cores se informados
-  const isSameProductType =
-    targetProdNorm && (entryProdNorm.includes(targetProdNorm) || targetProdNorm.includes(entryProdNorm));
-
-  if (!isSameProductType && productName) {
-    // Substitui o nome do produto original da copy pelo novo produto anunciado
-    const replacements: [RegExp, string][] = [
-      [/\bvara de carbono ultralight\b/gi, productName],
-      [/\bvara de carbono\b/gi, productName],
-      [/\bóculos de natação\b/gi, productName],
-      [/\bamplificador automotivo\b/gi, productName],
-      [/\bamplificador\b/gi, productName],
-      [/\bBomber BBX de 6 polegadas\b/gi, productName],
-      [/\bkit Bravox\b/gi, productName],
-      [/\bkit com 4 alto-falantes Hurricane de 6 polegadas\b/gi, productName],
-      [/\btriaxial da JBL\b/gi, productName],
-      [/\balto-falante de 8 polegadas\b/gi, productName],
-      [/\balto-falante\b/gi, productName],
-      [/\bscooter elétrica retrô\b/gi, productName],
-      [/\bscooter elétrica\b/gi, productName],
-      [/\bbicicleta elétrica\b/gi, productName],
-      [/\bbike elétrica\b/gi, productName],
-      [/\be-bike\b/gi, productName],
-      [/\bventilador de mesa 40 cm Turbo\b/gi, productName],
-      [/\bpanificadora\b/gi, productName],
-      [/\bgarrafa térmica\b/gi, productName],
-      [/\bgarrafinha\b/gi, productName],
-      [/\bpulverizador elétrico\b/gi, productName],
-      [/\belástico\b/gi, productName],
-      [/\bescova de cerâmica\b/gi, productName],
-      [/\brack de chão\b/gi, productName],
-      [/\bViniflex da Vabani\b/gi, productName],
-      [/\bcâmera digital\b/gi, productName],
-      [/\bPoco X8 Pro\b/gi, productName],
-      [/\bBML S26 Ultra\b/gi, productName],
-      [/\bmonitor Valac Z18 Maze\b/gi, productName],
-      [/\bmonitor Galfolk\b/gi, productName],
-      [/\btablet lançamento\b/gi, productName],
-      [/\bjipe elétrico\b/gi, productName],
-      [/\btriciclo elétrico\b/gi, productName],
-      [/\bTriciclo Drift\b/gi, productName],
-      [/\besteira elétrica dobrável\b/gi, productName],
-      [/\besteira ergométrica\b/gi, productName],
-      [/\balicate hidráulico à bateria\b/gi, productName],
-      [/\bpunção elétrica hidráulica\b/gi, productName],
-      [/\bmotocultivador Buffalo de 7 cavalos\b/gi, productName],
-      [/\bpedaleira\b/gi, productName],
-    ];
-
-    for (const [regex, rep] of replacements) {
-      if (regex.test(text)) {
-        text = text.replace(regex, rep);
-        break;
-      }
-    }
-  }
 
   // Atualizar números/especificações reais se presentes nas Informações do Produto (Seção 5.1)
   if (specs.watts) {
@@ -1638,68 +2108,4 @@ function adaptBankCopyToProduct(
   text = applyGenderAndVocativeRules(text, clientGender, influencer);
 
   return text;
-}
-
-/**
- * SEÇÃO 6 — FÓRMULA PARA CRIAR COPY NOVA (produtos sem similar direto no banco)
- * Usa os arquétipos e moldes validados do banco, com "olha" obrigatório, números reais e CTA nativo.
- */
-function buildFormulaCopyForNewProduct(params: {
-  productName: string;
-  productInfo: string;
-  specs: ProductSpecsExtracted;
-  clientGender: Produtos2ClientGender;
-  influencer: 'Homem' | 'Mulher';
-  duration: Produtos2Duration;
-}): { copy: string; archetype: CopyArchetype; moldId: string } {
-  const { productName, specs, clientGender, influencer, duration } = params;
-  const vocative =
-    clientGender === 'Feminino'
-      ? 'Amiga'
-      : clientGender === 'Masculino'
-      ? 'Meu amigo'
-      : 'Gente';
-
-  const specDetail =
-    specs.watts
-      ? `com ${specs.watts} de potência`
-      : specs.capacityMl
-      ? `com capacidade de ${specs.capacityMl}`
-      : specs.material
-      ? `com acabamento reforçado em ${specs.material}`
-      : specs.keyFacts[0]
-      ? specs.keyFacts[0].toLowerCase()
-      : 'com acabamento premium e super resistente';
-
-  let archetype: CopyArchetype = 'Achado/Demonstração';
-  let moldId = 'GAR-04';
-  let rawCopy = '';
-
-  if (specs.kitQuantity && specs.kitQuantity >= 2) {
-    archetype = 'Kit/Valor';
-    moldId = 'CLI-03';
-    rawCopy = `Kit com ${specs.kitQuantity} ${productName} por esse valor? Tá barato demais! Em muitos lugares, esse preço mal paga um. Olha a qualidade ${specDetail}, prático demais pro dia a dia. Aproveita no carrinho laranja e garante os seus!`;
-  } else if (specs.isKidsProduct) {
-    archetype = 'Emoção/Presente';
-    moldId = 'INF-01';
-    rawCopy = `Eu não quero nem saber o preço, eu quero saber em quantas vezes dá pra parcelar. Olha esse ${productName}, imagina a felicidade de uma criança ganhando um presente desses? É diversão garantida no carrinho laranja!`;
-  } else if (specs.isExpensive) {
-    archetype = 'Choque de preço/Urgência';
-    moldId = 'ELE-06';
-    rawCopy = `Agora é oficial, o TikTok endoidou. Esse ${productName} baixou mais da metade, olha esse acabamento ${specDetail}, entregando resultado absurdo por preço de fábrica. Acaba hoje, clica no carrinho laranja!`;
-  } else {
-    archetype = 'Dor→Solução';
-    moldId = 'BEL-02';
-    rawCopy = `${vocative}, olha esse achado que acabou de chegar! Esse ${productName} ${specDetail} resolve na hora com zero esforço. Olha a qualidade e a praticidade no uso real, não estraga por nada. Clica aqui embaixo no carrinho e garante o seu!`;
-  }
-
-  rawCopy = applyGenderAndVocativeRules(rawCopy, clientGender, influencer);
-  const maxLimit = duration === 8 ? 199 : 259;
-  const finalCopy = enforceMaxChars(rawCopy, maxLimit);
-
-  return {
-    copy: finalCopy,
-    archetype,
-    moldId,
-  };
 }
