@@ -9,6 +9,7 @@ import {
   analyzeProductInfoForProdutos2,
   applyGenderAndVocativeRules,
   enforceMaxChars,
+  ensureLeadingNossaPrefix,
   selectAndAdaptProdutos2Copy,
 } from './produtos2CopyBank';
 import {
@@ -294,11 +295,13 @@ export async function runProdutos2Pipeline(params: {
 
         // Se a IA adaptou a copy (e não era customCopy), validamos regras de vocativo e tamanho
         if (!form.customCopy?.trim() && typeof d.adaptedCopy === 'string' && d.adaptedCopy.trim().length > 30) {
-          let aiCopy = applyGenderAndVocativeRules(d.adaptedCopy.trim(), form.clientGender, resolvedInfluencer);
+          let aiCopy = ensureLeadingNossaPrefix(
+            applyGenderAndVocativeRules(d.adaptedCopy.trim(), form.clientGender, resolvedInfluencer)
+          );
           if (form.duration === 8 && aiCopy.length > 199) {
-            aiCopy = enforceMaxChars(aiCopy, 199);
+            aiCopy = ensureLeadingNossaPrefix(enforceMaxChars(aiCopy, 199));
           } else if (form.duration === 10 && copySelection.copyId.startsWith('NOVA-') && aiCopy.length > 259) {
-            aiCopy = enforceMaxChars(aiCopy, 259);
+            aiCopy = ensureLeadingNossaPrefix(enforceMaxChars(aiCopy, 259));
           }
           finalCopy = aiCopy;
         }
@@ -352,10 +355,12 @@ export async function runProdutos2Pipeline(params: {
     console.warn('Usando planejamento determinístico Copy-First:', planErr);
   }
 
-  // Checklist Seção 10: garantir limite de caracteres e vocativo antes do storyboard
-  finalCopy = applyGenderAndVocativeRules(finalCopy, form.clientGender, resolvedInfluencer);
+  // Checklist Seção 10: garantir limite de caracteres, vocativo e prefixo "Nossa, " antes do storyboard
+  finalCopy = ensureLeadingNossaPrefix(
+    applyGenderAndVocativeRules(finalCopy, form.clientGender, resolvedInfluencer)
+  );
   if (form.duration === 8 && finalCopy.length > 199) {
-    finalCopy = enforceMaxChars(finalCopy, 199);
+    finalCopy = ensureLeadingNossaPrefix(enforceMaxChars(finalCopy, 199));
   }
 
   // Garantir que a última cena termine exatamente em 10.0 ou 8.0

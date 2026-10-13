@@ -744,10 +744,11 @@ Sua tarefa é receber:
 
 E retornar um JSON estrito com:
 1. "adaptedCopy":
-   - Se foi enviada copy personalizada do usuário, mantenha-a EXATAMENTE como está (só reduza se duração=8s e passar de 199 caracteres).
-   - Se veio do banco, MUDE O MÍNIMO POSSÍVEL (Seção 5): troque apenas nome/marca/modelo pelos do produto real, números/especificações pelos reais das Informações do Produto, cor/material/quantidade.
+   - TODA copy/fala DEVE obrigatoriamente começar com a expressão inicial neutra "Nossa, " (ex.: "Nossa, ..."), que serve de margem para o corte do primeiro segundo no Veo. Não duplique caso já comece com "Nossa".
+   - Se foi enviada copy personalizada do usuário, mantenha-a EXATAMENTE como está com "Nossa, " no início (só reduza se duração=8s e passar de 199 caracteres).
+   - Se veio do banco, MUDE O MÍNIMO POSSÍVEL (Seção 5): troque apenas nome/marca/modelo pelos do produto real, números/especificações pelos reais das Informações do Produto, cor/material/quantidade, mantendo "Nossa, " no início.
    - NUNCA use a palavra "menina" como vocativo; quando o público for feminino e houver vocativo, use "Amiga" ou "Gente". Para público masculino, use "Meu amigo", "Cara", "Irmão" ou "Gente".
-   - Se duração = 8s, a "adaptedCopy" DEVE ter no máximo 199 caracteres contando espaços (mantendo Gancho + Prova principal com "olha" + CTA).
+   - Se duração = 8s, a "adaptedCopy" DEVE ter no máximo 199 caracteres contando espaços (mantendo "Nossa, " + Gancho + Prova principal com "olha" + CTA).
 2. "productLock": array de 4 a 6 strings detalhando fisicamente o produto visto nas fotos (formato, cor exata, material, textura, proporção, botões/costuras/sola/cabos/detalhes, e obrigatoriamente a descrição exata da marca/logo/texto impresso no produto conforme as fotos ou "superfície lisa, sem marcas").
 3. "avatarDescription": descrição de 1 frase do consumidor brasileiro adulto que apresenta o produto (respeitando o gênero do Influencer e as Instruções Adicionais; se produto infantil, quem apresenta na cena 1 e 9 é sempre um adulto pai/mãe).
 4. "scenarioDescription": descrição concreta do cenário (onde o produto é usado de verdade ou casa brasileira simples e aconchegante, respeitando Instruções Adicionais).

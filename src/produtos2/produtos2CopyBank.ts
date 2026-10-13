@@ -1363,6 +1363,20 @@ export function applyGenderAndVocativeRules(
 /**
  * SEÇÃO 4, 5 e 6 — Seleciona copy do banco (ou gera pela Fórmula) e adapta com o mínimo de mudanças
  */
+/**
+ * Adiciona a expressão neutra "Nossa, " no início de todas as copies/falas
+ * para servir de margem de corte do 1º segundo no Veo (onde o Veo exibe o frame do storyboard),
+ * sem duplicar caso a fala já comece com "Nossa".
+ */
+export function ensureLeadingNossaPrefix(text: string): string {
+  const trimmed = (text || '').trim();
+  if (!trimmed) return '';
+  if (/^nossa\b/i.test(trimmed)) {
+    return trimmed;
+  }
+  return `Nossa, ${trimmed}`;
+}
+
 export function selectAndAdaptProdutos2Copy(params: {
   subMode: Produtos2SubMode;
   maleSubOption: Produtos2MaleSubOption;
@@ -1399,9 +1413,9 @@ export function selectAndAdaptProdutos2Copy(params: {
   if (customCopy && customCopy.trim().length > 0) {
     const resolvedInf: 'Homem' | 'Mulher' =
       influencer || specs.influencer || (clientGender === 'Masculino' ? 'Homem' : 'Mulher');
-    let finalCustom = customCopy.trim();
+    let finalCustom = ensureLeadingNossaPrefix(customCopy.trim());
     if (duration === 8 && finalCustom.length > 199) {
-      finalCustom = enforceMaxChars(finalCustom, 199);
+      finalCustom = ensureLeadingNossaPrefix(enforceMaxChars(finalCustom, 199));
     }
     return {
       finalCopy: finalCustom,
@@ -1490,10 +1504,12 @@ export function selectAndAdaptProdutos2Copy(params: {
       specs.influencer ||
       (chosen.audience === 'Masculino' ? 'Homem' : 'Mulher');
 
-    let adapted = adaptBankCopyToProduct(chosen, cleanName, productInfo, specs, clientGender, resolvedInf);
+    let adapted = ensureLeadingNossaPrefix(
+      adaptBankCopyToProduct(chosen, cleanName, productInfo, specs, clientGender, resolvedInf)
+    );
 
     if (duration === 8 && adapted.length > 199) {
-      adapted = enforceMaxChars(adapted, 199);
+      adapted = ensureLeadingNossaPrefix(enforceMaxChars(adapted, 199));
     }
 
     const sourceDesc =
@@ -1527,7 +1543,7 @@ export function selectAndAdaptProdutos2Copy(params: {
   });
 
   return {
-    finalCopy: formulaResult.copy,
+    finalCopy: ensureLeadingNossaPrefix(formulaResult.copy),
     copyId: `NOVA-${formulaResult.archetype.slice(0, 3).toUpperCase()}`,
     copySourceLabel: `Copy nova gerada pela Fórmula — Arquétipo: ${formulaResult.archetype} (Molde: ${formulaResult.moldId})`,
     archetype: formulaResult.archetype,

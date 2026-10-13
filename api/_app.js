@@ -1207,10 +1207,11 @@ Sua tarefa \xE9 receber:
 
 E retornar um JSON estrito com:
 1. "adaptedCopy":
-   - Se foi enviada copy personalizada do usu\xE1rio, mantenha-a EXATAMENTE como est\xE1 (s\xF3 reduza se dura\xE7\xE3o=8s e passar de 199 caracteres).
-   - Se veio do banco, MUDE O M\xCDNIMO POSS\xCDVEL (Se\xE7\xE3o 5): troque apenas nome/marca/modelo pelos do produto real, n\xFAmeros/especifica\xE7\xF5es pelos reais das Informa\xE7\xF5es do Produto, cor/material/quantidade.
+   - TODA copy/fala DEVE obrigatoriamente come\xE7ar com a express\xE3o inicial neutra "Nossa, " (ex.: "Nossa, ..."), que serve de margem para o corte do primeiro segundo no Veo. N\xE3o duplique caso j\xE1 comece com "Nossa".
+   - Se foi enviada copy personalizada do usu\xE1rio, mantenha-a EXATAMENTE como est\xE1 com "Nossa, " no in\xEDcio (s\xF3 reduza se dura\xE7\xE3o=8s e passar de 199 caracteres).
+   - Se veio do banco, MUDE O M\xCDNIMO POSS\xCDVEL (Se\xE7\xE3o 5): troque apenas nome/marca/modelo pelos do produto real, n\xFAmeros/especifica\xE7\xF5es pelos reais das Informa\xE7\xF5es do Produto, cor/material/quantidade, mantendo "Nossa, " no in\xEDcio.
    - NUNCA use a palavra "menina" como vocativo; quando o p\xFAblico for feminino e houver vocativo, use "Amiga" ou "Gente". Para p\xFAblico masculino, use "Meu amigo", "Cara", "Irm\xE3o" ou "Gente".
-   - Se dura\xE7\xE3o = 8s, a "adaptedCopy" DEVE ter no m\xE1ximo 199 caracteres contando espa\xE7os (mantendo Gancho + Prova principal com "olha" + CTA).
+   - Se dura\xE7\xE3o = 8s, a "adaptedCopy" DEVE ter no m\xE1ximo 199 caracteres contando espa\xE7os (mantendo "Nossa, " + Gancho + Prova principal com "olha" + CTA).
 2. "productLock": array de 4 a 6 strings detalhando fisicamente o produto visto nas fotos (formato, cor exata, material, textura, propor\xE7\xE3o, bot\xF5es/costuras/sola/cabos/detalhes, e obrigatoriamente a descri\xE7\xE3o exata da marca/logo/texto impresso no produto conforme as fotos ou "superf\xEDcie lisa, sem marcas").
 3. "avatarDescription": descri\xE7\xE3o de 1 frase do consumidor brasileiro adulto que apresenta o produto (respeitando o g\xEAnero do Influencer e as Instru\xE7\xF5es Adicionais; se produto infantil, quem apresenta na cena 1 e 9 \xE9 sempre um adulto pai/m\xE3e).
 4. "scenarioDescription": descri\xE7\xE3o concreta do cen\xE1rio (onde o produto \xE9 usado de verdade ou casa brasileira simples e aconchegante, respeitando Instru\xE7\xF5es Adicionais).
