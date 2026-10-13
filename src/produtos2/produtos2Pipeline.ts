@@ -121,6 +121,7 @@ async function requestStoryboardImageGeneration(params: {
   prompt: string;
   productName: string;
   allPhotos: string[];
+  variations?: { name: string; photos: string[] }[];
   additionalInstructions?: string;
   previousStoryboardImageBase64?: string;
   correctionPrompt?: string;
@@ -130,12 +131,34 @@ async function requestStoryboardImageGeneration(params: {
     prompt,
     productName,
     allPhotos,
+    variations,
     additionalInstructions,
     previousStoryboardImageBase64,
     correctionPrompt,
     aiProfile = 'openai',
   } = params;
-  const rawSubset = allPhotos.slice(0, 3);
+
+  // Garante que a 1ª foto de CADA variação esteja presente nas referências enviadas
+  let rawSubset: string[] = [];
+  const activeVars = (variations || []).filter(
+    (v) => (v.name && v.name.trim().length > 0) || (v.photos && v.photos.length > 0)
+  );
+  if (activeVars.length >= 2) {
+    activeVars.forEach((v) => {
+      const p = (v.photos || []).find(Boolean);
+      if (p && !rawSubset.includes(p) && rawSubset.length < 4) {
+        rawSubset.push(p);
+      }
+    });
+    allPhotos.forEach((p) => {
+      if (!rawSubset.includes(p) && rawSubset.length < 4) {
+        rawSubset.push(p);
+      }
+    });
+  } else {
+    rawSubset = allPhotos.slice(0, 4);
+  }
+
   const photosSubset = await Promise.all(rawSubset.map((p) => compressImageForPayload(p, 1500, 0.9)));
   const compressedPrev = previousStoryboardImageBase64
     ? await compressImageForPayload(previousStoryboardImageBase64, 1500, 0.86)
@@ -150,6 +173,7 @@ async function requestStoryboardImageGeneration(params: {
         prompt,
         productName,
         productPhotosBase64: photosSubset,
+        variations,
         additionalInstructions,
         previousStoryboardImageBase64: compressedPrev,
         correctionPrompt,
@@ -208,6 +232,7 @@ export async function auditProdutos2Storyboard(params: {
   productName: string;
   productLock: string[];
   scenes: Produtos2SceneItem[];
+  variations?: { name: string; photos: string[] }[];
   aiProfile?: string;
 }): Promise<Produtos2StoryboardAudit> {
   const {
@@ -216,13 +241,14 @@ export async function auditProdutos2Storyboard(params: {
     productName,
     productLock,
     scenes,
+    variations = [],
     aiProfile = 'openai',
   } = params;
 
   try {
     const compressedStoryboard = await compressImageForPayload(storyboardImageUrl, 1600, 0.88);
     const compressedRefs = await Promise.all(
-      productPhotosBase64.slice(0, 3).map((p) => compressImageForPayload(p, 1400, 0.88))
+      productPhotosBase64.slice(0, 4).map((p) => compressImageForPayload(p, 1400, 0.88))
     );
 
     const res = await fetch('/api/produtos2-audit-storyboard', {
@@ -234,6 +260,7 @@ export async function auditProdutos2Storyboard(params: {
         productName,
         productLock,
         scenes,
+        variations,
         aiProfile,
       }),
     });
@@ -294,17 +321,27 @@ export async function runProdutos2Pipeline(params: {
   let finalCopy = copySelection.finalCopy;
   const resolvedInfluencer = copySelection.resolvedInfluencer;
 
-  // Coletar todas as fotos anexadas nas variações
-  const allPhotos: string[] = [];
+  // Coletar todas as fotos anexadas nas variações priorizando a 1ª foto de CADA variação
   const variationNames: string[] = [];
+  const prioritizedPhotos: string[] = [];
+  const otherPhotos: string[] = [];
+
   (form.variations || []).forEach((v) => {
-    if (v.photos && v.photos.length > 0) {
-      if (v.name?.trim()) variationNames.push(v.name.trim());
-      v.photos.forEach((p) => {
-        if (p && !allPhotos.includes(p)) allPhotos.push(p);
+    if (v.name?.trim()) variationNames.push(v.name.trim());
+    const validPhotos = (v.photos || []).filter(Boolean);
+    if (validPhotos.length > 0) {
+      if (!prioritizedPhotos.includes(validPhotos[0])) {
+        prioritizedPhotos.push(validPhotos[0]);
+      }
+      validPhotos.slice(1).forEach((p) => {
+        if (!prioritizedPhotos.includes(p) && !otherPhotos.includes(p)) {
+          otherPhotos.push(p);
+        }
       });
     }
   });
+
+  const allPhotos: string[] = [...prioritizedPhotos, ...otherPhotos];
 
   onProgress?.(30, '3/6 Construindo Mapa Visual da Copy, Product Lock (incluindo logomarca) e 9 Micro-Cenas...');
 
@@ -481,6 +518,7 @@ export async function runProdutos2Pipeline(params: {
     prompt: storyboardPrompt,
     productName: finalProductName,
     allPhotos,
+    variations: form.variations,
     additionalInstructions: form.additionalInstructions,
     aiProfile,
   });
@@ -498,6 +536,7 @@ export async function runProdutos2Pipeline(params: {
       productName: finalProductName,
       productLock,
       scenes,
+      variations: form.variations,
       aiProfile,
     });
   }
@@ -565,12 +604,22 @@ export async function regenerateProdutos2Storyboard(params: {
   error?: string;
 }> {
   const { result, form, customCorrection, aiProfile = 'openai' } = params;
-  const allPhotos: string[] = [];
+  const prioritizedPhotos: string[] = [];
+  const otherPhotos: string[] = [];
   (form.variations || []).forEach((v) => {
-    (v.photos || []).forEach((p) => {
-      if (p && !allPhotos.includes(p)) allPhotos.push(p);
-    });
+    const validPhotos = (v.photos || []).filter(Boolean);
+    if (validPhotos.length > 0) {
+      if (!prioritizedPhotos.includes(validPhotos[0])) {
+        prioritizedPhotos.push(validPhotos[0]);
+      }
+      validPhotos.slice(1).forEach((p) => {
+        if (!prioritizedPhotos.includes(p) && !otherPhotos.includes(p)) {
+          otherPhotos.push(p);
+        }
+      });
+    }
   });
+  const allPhotos: string[] = [...prioritizedPhotos, ...otherPhotos];
 
   // Combina a correção automática dos quadrantes que deram erro com qualquer instrução adicional
   const auditCorrection = result.storyboardAudit?.correctionPrompt || '';
@@ -582,6 +631,7 @@ export async function regenerateProdutos2Storyboard(params: {
     prompt: result.storyboardPrompt,
     productName: result.productName,
     allPhotos,
+    variations: form.variations,
     additionalInstructions: form.additionalInstructions,
     previousStoryboardImageBase64: result.storyboardImageUrl,
     correctionPrompt: combinedCorrection || undefined,
@@ -599,6 +649,7 @@ export async function regenerateProdutos2Storyboard(params: {
     productName: result.productName,
     productLock: result.productLock,
     scenes: result.scenes,
+    variations: form.variations,
     aiProfile,
   });
 

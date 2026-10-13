@@ -144,34 +144,53 @@ export function buildProdutos2StoryboardImagePrompt(params: {
     .map((m) => `"${m.excerpt}" → ${m.intent} (${m.visualProof}) → cenas ${m.scenes}`)
     .join('\n');
 
-  // Item 7.3: Usar exatamente as mesmas 9 descrições canônicas no storyboard e no Veo
+  const activeVars = (variations || []).filter(
+    (v) => (v.name && v.name.trim().length > 0) || (v.photos && v.photos.length > 0)
+  );
+
+  let variationsBlock = '';
+  if (activeVars.length >= 2) {
+    variationsBlock = `
+
+═══════════════════════════════════════════════════════════════════
+REGRA MANDATÓRIA E INEGOCIÁVEL — DIVISÃO DE CORES DO PRODUTO (GRADE 3x3):
+O produto possui ${activeVars.length} variações de cor/modelo anexadas nas fotos de referência:
+${
+  activeVars.length === 2
+    ? `• Quadros 1, 2, 3 e 4 (metade inicial): O produto DEVE ser retratado OBRIGATORIAMENTE na COR/VARIAÇÃO 1: ${activeVars[0].name || '1ª Cor'}.
+• Quadros 5, 6, 7, 8 e 9 (segunda metade): O produto DEVE ser retratado OBRIGATORIAMENTE na COR/VARIAÇÃO 2: ${activeVars[1].name || '2ª Cor'}.`
+    : `• Quadros 1, 2 e 3 (Linha 1 do Storyboard): O produto DEVE ser retratado OBRIGATORIAMENTE na COR/VARIAÇÃO 1: ${activeVars[0].name || '1ª Cor'}.
+• Quadros 4, 5 e 6 (Linha 2 do Storyboard): O produto DEVE ser retratado OBRIGATORIAMENTE na COR/VARIAÇÃO 2: ${activeVars[1].name || '2ª Cor'}.
+• Quadros 7, 8 e 9 (Linha 3 do Storyboard): O produto DEVE ser retratado OBRIGATORIAMENTE na COR/VARIAÇÃO 3: ${activeVars[2].name || '3ª Cor'}.`
+}
+PROIBIÇÃO ABSOLUTA: NUNCA gere todos os 9 quadros na mesma cor! É expressamente PROIBIDO usar uma única cor para todo o storyboard quando há variações informadas. A divisão de cores acima é RIGOROSA e OBRIGATÓRIA!
+═══════════════════════════════════════════════════════════════════`;
+  }
+
+  // Item 7.3: Usar exatamente as mesmas 9 descrições canônicas no storyboard e no Veo, injetando a variação correspondente
   const scenesLines = scenes
     .slice(0, 9)
-    .map((sc, i) => `CENA ${i + 1}: ${getUnifiedSceneDescription(sc)}`)
+    .map((sc, i) => {
+      const varInfo = getSceneVariationInfo(i + 1, activeVars);
+      const varTag = varInfo ? ` [COR/VARIAÇÃO OBRIGATÓRIA DESTE QUADRO: ${varInfo.variationName.toUpperCase()}]` : '';
+      return `CENA ${i + 1} (QUADRO ${i + 1})${varTag}: ${getUnifiedSceneDescription(sc)}`;
+    })
     .join('\n');
 
   const extraInstructions = additionalInstructions?.trim()
     ? `\nINSTRUÇÕES ADICIONAIS PRIORITÁRIAS DO USUÁRIO: ${additionalInstructions.trim()}`
     : '';
 
-  const activeVars = (variations || []).filter((v) => v.photos && v.photos.length > 0);
-  let variationsBlock = '';
-  if (activeVars.length >= 2) {
-    variationsBlock = `\nREGRA OBRIGATÓRIA DE DIVISÃO DAS VARIAÇÕES DE COR DO PRODUTO NOS 9 QUADROS:
-O produto possui ${activeVars.length} variações de cor/modelo anexadas nas fotos de referência:
-${
-  activeVars.length === 2
-    ? `- Quadros 1, 2, 3 e 4 (metade inicial): O produto DEVE ser retratado rigorosamente na 1ª Variação (${activeVars[0].name || 'Variação 1'}).\n- Quadros 5, 6, 7, 8 e 9 (segunda metade): O produto DEVE ser retratado rigorosamente na 2ª Variação (${activeVars[1].name || 'Variação 2'}).`
-    : `- Quadros 1, 2 e 3: O produto DEVE ser retratado rigorosamente na 1ª Variação (${activeVars[0].name || 'Variação 1'}).\n- Quadros 4, 5 e 6: O produto DEVE ser retratado rigorosamente na 2ª Variação (${activeVars[1].name || 'Variação 2'}).\n- Quadros 7, 8 e 9: O produto DEVE ser retratado rigorosamente na 3ª Variação (${activeVars[2].name || 'Variação 3'}).`
-}
-Respeite rigorosamente essa alternância de cores entre os conjuntos de quadros correspondentes conforme as fotos de cada variação!\n`;
-  }
+  const productIdentityRule =
+    activeVars.length >= 2
+      ? `O produto deve ser 100% idêntico no modelo, formato, peças, costuras e detalhes em todos os quadros (não redesenhar, não embelezar, não acrescentar peças e não simplificar detalhes), ALTERNANDO RIGOROSAMENTE A COR ENTRE OS GRUPOS DE QUADROS CONFORME A REGRA MANDATÓRIA DE VARIAÇÕES ACIMA.`
+      : `O produto deve ser 100% idêntico em todos os quadros: não redesenhar, não embelezar, não trocar cor, não acrescentar peças e não simplificar detalhes.`;
 
-  return `Crie UMA ÚNICA IMAGEM VERTICAL 1080x1920 (9:16) de storyboard fotográfico ultra-realista em grade 3x3 (3 colunas x 3 linhas), com EXATAMENTE 9 cenas numeradas de 1 a 9 em ordem de leitura (esquerda para direita, de cima para baixo). Quadros de tamanho igual, cantos arredondados, separados por uma borda branca fina, fundo branco.
+  return `Crie UMA ÚNICA IMAGEM VERTICAL 1080x1920 (9:16) de storyboard fotográfico ultra-realista em grade 3x3 (3 colunas x 3 linhas), com EXATAMENTE 9 cenas numeradas de 1 a 9 em ordem de leitura (esquerda para direita, de cima para baixo). Quadros de tamanho igual, cantos arredondados, separados por uma borda branca fina, fundo branco.${variationsBlock}
 
 Use as fotos anexadas como referência absoluta do produto. Preserve fielmente (PRODUCT LOCK): ${productLock.join('; ')}.
-O produto deve ser 100% idêntico em todos os quadros: não redesenhar, não embelezar, não trocar cor, não acrescentar peças e não simplificar detalhes.
-REGRA OBRIGATÓRIA DE LOGOMARCA DO FABRICANTE NO PRODUTO: A marca, a logomarca, o emblema/símbolo e os textos originais do fabricante que estão impressos, estampados ou gravados no próprio produto nas fotos de referência DEVEM aparecer 100% idênticos (mesmo desenho, formato, cor, proporção e posição exata na peça, como no encosto, painel ou corpo do produto) em TODOS os quadros onde essa parte do produto estiver visível. JAMAIS remova, apague ou deixe lisa a área onde fica a logomarca original do fabricante no produto!${variationsBlock}
+${productIdentityRule}
+REGRA OBRIGATÓRIA DE LOGOMARCA DO FABRICANTE NO PRODUTO: A marca, a logomarca, o emblema/símbolo e os textos originais do fabricante que estão impressos, estampados ou gravados no próprio produto nas fotos de referência DEVEM aparecer 100% idênticos (mesmo desenho, formato, cor, proporção e posição exata na peça, como no encosto, painel ou corpo do produto) em TODOS os quadros onde essa parte do produto estiver visível. JAMAIS remova, apague ou deixe lisa a área onde fica a logomarca original do fabricante no produto!
 A copy selecionada para este criativo é:
 "${finalCopy}"
 As cenas do storyboard devem ser construídas A PARTIR DESSA COPY. Cada cena deve provar, ilustrar ou reforçar visualmente um trecho da fala.

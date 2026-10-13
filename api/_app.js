@@ -3238,6 +3238,7 @@ app.post("/api/produtos2-generate-storyboard", async (req, res) => {
       prompt,
       productName = "Produto",
       productPhotosBase64 = [],
+      variations = [],
       additionalInstructions = "",
       previousStoryboardImageBase64 = "",
       correctionPrompt = ""
@@ -3246,6 +3247,9 @@ app.post("/api/produtos2-generate-storyboard", async (req, res) => {
       return res.status(400).json({ success: false, error: "Prompt do storyboard n\xE3o fornecido." });
     }
     const photosList = Array.isArray(productPhotosBase64) ? productPhotosBase64.filter(Boolean) : [];
+    const activeVariations = Array.isArray(variations) ? variations.filter(
+      (v) => v.name && String(v.name).trim().length > 0 || Array.isArray(v.photos) && v.photos.length > 0
+    ) : [];
     let logoEnforcementBlock = "";
     if (photosList.length > 0 && !prompt.includes("LOGOMARCA ORIGINAL DO FABRICANTE NO PRODUTO")) {
       const extractedLogo = await extractManufacturerLogoSpecFromPhotos(photosList, productName);
@@ -3300,9 +3304,21 @@ ${correctionPrompt.trim()}
           const parsed = parseInlineImage(photoStr);
           if (parsed) {
             parts.push({ inlineData: parsed });
-            parts.push({
-              text: `[FOTO DE REFER\xCANCIA REAL DO PRODUTO #${idx + 1} (${productName})]: Preserve 100% id\xEAnticos o formato, cor, propor\xE7\xE3o, textura, bot\xF5es e OBRIGATORIAMENTE A LOGOMARCA/EMBLEMA E TEXTOS DO FABRICANTE IMPRESSOS NO PRODUTO em todos os 9 quadros do storyboard 3x3. JAMAIS apague a logo original do produto.`
-            });
+            if (activeVariations.length >= 2) {
+              const matchedVarIdx = activeVariations.findIndex(
+                (v) => Array.isArray(v.photos) && v.photos.includes(photoStr)
+              );
+              const vIdx = matchedVarIdx >= 0 ? matchedVarIdx : Math.min(idx, activeVariations.length - 1);
+              const varName = activeVariations[vIdx]?.name?.trim() || `Varia\xE7\xE3o ${vIdx + 1}`;
+              const frameRange = activeVariations.length === 2 ? vIdx === 0 ? "Quadros 1, 2, 3 e 4" : "Quadros 5, 6, 7, 8 e 9" : vIdx === 0 ? "Quadros 1, 2 e 3 (Linha 1)" : vIdx === 1 ? "Quadros 4, 5 e 6 (Linha 2)" : "Quadros 7, 8 e 9 (Linha 3)";
+              parts.push({
+                text: `[FOTO DE REFER\xCANCIA REAL - VARIA\xC7\xC3O ${vIdx + 1}: ${varName.toUpperCase()}]: Esta foto define a cor/estilo para uso RIGOROSO nos ${frameRange}. O modelo, formato, pe\xE7as e logomarca do fabricante devem permanecer id\xEAnticos, mas a cor deve ser exatamente a desta foto nesses quadros espec\xEDficos!`
+              });
+            } else {
+              parts.push({
+                text: `[FOTO DE REFER\xCANCIA REAL DO PRODUTO #${idx + 1} (${productName})]: Preserve 100% id\xEAnticos o formato, cor, propor\xE7\xE3o, textura, bot\xF5es e OBRIGATORIAMENTE A LOGOMARCA/EMBLEMA E TEXTOS DO FABRICANTE IMPRESSOS NO PRODUTO em todos os 9 quadros do storyboard 3x3. JAMAIS apague a logo original do produto.`
+              });
+            }
           }
         });
         if (previousStoryboardImageBase64 && typeof previousStoryboardImageBase64 === "string") {
@@ -3310,15 +3326,16 @@ ${correctionPrompt.trim()}
           if (parsedPrev) {
             parts.push({ inlineData: parsedPrev });
             parts.push({
-              text: `[STORYBOARD ANTERIOR PARA CORRE\xC7\xC3O DOS QUADRANTES COM ERRO]: Mantenha os quadros que j\xE1 estavam corretos e CORRIJA rigorosamente os quadros apontados na instru\xE7\xE3o de corre\xE7\xE3o para que o produto (incluindo sua logomarca original do fabricante) fique 100% id\xEAntico \xE0s fotos reais de refer\xEAncia.`
+              text: `[STORYBOARD ANTERIOR PARA CORRE\xC7\xC3O DOS QUADRANTES COM ERRO]: Mantenha os quadros que j\xE1 estavam corretos e CORRIJA rigorosamente os quadros apontados na instru\xE7\xE3o de corre\xE7\xE3o para que o produto (incluindo sua logomarca original do fabricante e a cor correta da varia\xE7\xE3o) fique 100% id\xEAntico \xE0s fotos reais de refer\xEAncia.`
             });
           }
         }
         parts.push({ text: effectivePrompt });
+        const variationInstructionRule = activeVariations.length >= 2 ? `- REGRA MANDAT\xD3RIA DE ALTERN\xC2NCIA DE CORES ENTRE OS QUADROS (GRADE 3x3): O produto possui ${activeVariations.length} varia\xE7\xF5es de cores/modelos. Voc\xEA DEVE OBRIGATORIAMENTE alternar as cores conforme a divis\xE3o especificada: ${activeVariations.length === 2 ? "Quadros 1 a 4 na Varia\xE7\xE3o 1 (" + (activeVariations[0]?.name || "1\xAA cor") + "); Quadros 5 a 9 na Varia\xE7\xE3o 2 (" + (activeVariations[1]?.name || "2\xAA cor") + ")" : "Quadros 1 a 3 na Varia\xE7\xE3o 1 (" + (activeVariations[0]?.name || "1\xAA cor") + "); Quadros 4 a 6 na Varia\xE7\xE3o 2 (" + (activeVariations[1]?.name || "2\xAA cor") + "); Quadros 7 a 9 na Varia\xE7\xE3o 3 (" + (activeVariations[2]?.name || "3\xAA cor") + ")"}. NUNCA gere todos os 9 quadros na mesma cor! \xC9 expressamente PROIBIDO usar uma \xFAnica cor para todo o storyboard quando h\xE1 varia\xE7\xF5es informadas. Apenas o modelo, formato e pe\xE7as permanecem id\xEAnticos, a cor DEVE alternar entre os blocos de quadros!` : `- PRODUCT LOCK ABSOLUTO: O produto em todos os 9 quadros onde aparece deve ser 100% id\xEAntico \xE0s fotos reais anexadas (mesmo formato, cor, textura, bot\xF5es, fun\xE7\xF5es, propor\xE7\xE3o e detalhes).`;
         const systemInstructionText = `VOC\xCA \xC9 O GERADOR DE STORYBOARD 3x3 DO MODO PRODUTOS 2.0.
 - Gere UMA \xDANICA IMAGEM VERTICAL 9:16 (1080x1920) contendo uma grade 3x3 (3 colunas x 3 linhas) com EXATAMENTE 9 quadros fotogr\xE1ficos ultra-realistas numerados de 1 a 9 (selo circular branco pequeno no canto superior esquerdo de cada quadro com n\xFAmero preto).
 - Cantos arredondados nos quadros, separados por uma borda branca fina, sobre fundo branco.
-- PRODUCT LOCK ABSOLUTO: O produto em todos os 9 quadros onde aparece deve ser 100% id\xEAntico \xE0s fotos reais anexadas (mesmo formato, cor, textura, bot\xF5es, fun\xE7\xF5es, propor\xE7\xE3o e detalhes).
+${variationInstructionRule}
 - LOGOMARCA E MARCA DO FABRICANTE NO PRODUTO (OBRIGAT\xD3RIO): A marca, a logomarca, o emblema e os textos que j\xE1 est\xE3o impressos/estampados no pr\xF3prio produto nas fotos de refer\xEAncia DEVEM aparecer 100% id\xEAnticos, na mesma cor e no mesmo lugar da pe\xE7a, em todos os quadros em que aquela parte estiver vis\xEDvel. JAMAIS remova ou alise a logomarca do produto!
 - ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: N\xE3o adicione legendas flutuantes, textos publicit\xE1rios externos, pre\xE7os, setas, carrinho de compras, marca d'\xE1gua externa, @ ou logotipo do TikTok. Apenas os n\xFAmeros 1 a 9 nos selos circulares e a logomarca original do fabricante no pr\xF3prio produto.`;
         const modelsToTry = [
@@ -3389,14 +3406,28 @@ app.post("/api/produtos2-audit-storyboard", async (req, res) => {
       productPhotosBase64 = [],
       productName = "Produto",
       productLock = [],
-      scenes = []
+      scenes = [],
+      variations = []
     } = req.body;
     if (!storyboardImageBase64) {
       return res.status(400).json({ success: false, error: "Imagem do storyboard n\xE3o fornecida para auditoria." });
     }
     const photosList = Array.isArray(productPhotosBase64) ? productPhotosBase64.filter(Boolean) : [];
+    const activeVariations = Array.isArray(variations) ? variations.filter(
+      (v) => v.name && String(v.name).trim().length > 0 || Array.isArray(v.photos) && v.photos.length > 0
+    ) : [];
     const scenesContext = Array.isArray(scenes) ? scenes.slice(0, 9).map((s, idx) => `Cena ${idx + 1}: ${s.framing || ""}. ${s.action || ""}`).join("\n") : "";
     const lockContext = Array.isArray(productLock) ? productLock.join("; ") : "";
+    const variationsAuditRule = activeVariations.length >= 2 ? `
+PASSO 3 \u2014 VERIFICA\xC7\xC3O MANDAT\xD3RIA DE ALTERN\xC2NCIA DE CORES/VARIA\xC7\xD5ES DO PRODUTO (DIVIS\xC3O 3x3):
+O produto possui ${activeVariations.length} varia\xE7\xF5es de cores/modelos cadastradas:
+${activeVariations.length === 2 ? `- Quadros 1, 2, 3 e 4: O produto DEVE estar na COR/VARIA\xC7\xC3O 1 ("${activeVariations[0]?.name || "1\xAA Varia\xE7\xE3o"}").
+- Quadros 5, 6, 7, 8 e 9: O produto DEVE estar na COR/VARIA\xC7\xC3O 2 ("${activeVariations[1]?.name || "2\xAA Varia\xE7\xE3o"}").` : `- Quadros 1, 2 e 3 (Linha 1): O produto DEVE estar na COR/VARIA\xC7\xC3O 1 ("${activeVariations[0]?.name || "1\xAA Varia\xE7\xE3o"}").
+- Quadros 4, 5 e 6 (Linha 2): O produto DEVE estar na COR/VARIA\xC7\xC3O 2 ("${activeVariations[1]?.name || "2\xAA Varia\xE7\xE3o"}").
+- Quadros 7, 8 e 9 (Linha 3): O produto DEVE estar na COR/VARIA\xC7\xC3O 3 ("${activeVariations[2]?.name || "3\xAA Varia\xE7\xE3o"}").`}
+SE EM QUALQUER QUADRANTE a cor do produto N\xC3O coincidir com a cor/varia\xE7\xE3o designada para aquele quadro (por exemplo, se todos os 9 quadros foram gerados na mesma cor, violando a divis\xE3o de varia\xE7\xF5es):
+-> D\xEA OBRIGATORIAMENTE uma nota BAIXA entre 45 e 58 (VERMELHO, abaixo de 60) para aquele quadrante!
+-> No campo "issue" (EM PORTUGU\xCAS), escreva claramente: "Na Cena X, a cor da varia\xE7\xE3o est\xE1 incorreta: deveria ser a Varia\xE7\xE3o [Nome esperado], mas foi gerado na cor errada (violando a altern\xE2ncia de cores do storyboard)."` : "";
     const auditSystemInstruction = `Voc\xEA \xE9 o Fiscal Rigoroso de Fidelidade Visual de Produtos (Storyboard 3x3 \u2014 9 Quadrantes).
 Sua miss\xE3o \xE9 inspecionar CADA UM DOS 9 QUADRANTES (numerados de 1 a 9, da esquerda para a direita, de cima para baixo: Linha 1 = Cenas 1, 2, 3; Linha 2 = Cenas 4, 5, 6; Linha 3 = Cenas 7, 8, 9) da imagem de Storyboard gerada e comparar o produto com as FOTOS REAIS DE REFER\xCANCIA do produto "${productName}".
 
@@ -3421,12 +3452,12 @@ PASSO 2 \u2014 REGRAS DE OURO DA FISCALIZA\xC7\xC3O POR QUADRANTE (CENA 1 A CENA
        -> Marque OBRIGATORIAMENTE "logoFaithful": false!
        -> D\xEA OBRIGATORIAMENTE uma nota BAIXA entre 45 e 58 (VERMELHO, abaixo de 60) para aquele quadrante! NUNCA d\xEA nota alta se a parte da logo est\xE1 vis\xEDvel e a logo sumiu!
        -> No campo "issue" (SEMPRE EM PORTUGU\xCAS), escreva claramente: "Na Cena X, o produto est\xE1 diferente: a logomarca original do fabricante ([descreva a logo e onde fica, ex: no encosto]) foi removida e n\xE3o aparece como na foto de refer\xEAncia."
-   - CORES, FORMATO, ESTRUTURA E DETALHES: Verifique tamb\xE9m se cor, formato, estofamento, costuras, pinos e pe\xE7as conferem 100% com as fotos de refer\xEAncia.
+   - CORES, FORMATO, ESTRUTURA E DETALHES: Verifique tamb\xE9m se cor, formato, estofamento, costuras, pinos e pe\xE7as conferem 100% com as fotos de refer\xEAncia.${variationsAuditRule}
 3. ESCALA INTEIRA DE NOTAS DE CADA QUADRANTE (0 a 100 \u2014 NUNCA use decimais de 0 a 1):
    - 90 a 100 (VERDE): Produto 90%+ id\xEAntico \xE0s fotos de refer\xEAncia (logomarca original presente e fiel quando a \xE1rea aparece, ou close fiel de outra parte do produto).
    - 71 a 89 (AMARELO): Produto com pequena varia\xE7\xE3o leve de detalhe secund\xE1rio.
    - 60 a 70 (LARANJA): Diferen\xE7a moderada de formato/cor ou logomarca parcialmente distorcida/apagada.
-   - Abaixo de 60 (VERMELHO): Logomarca original do fabricante removida/ausente em quadrante onde aquela parte est\xE1 vis\xEDvel, formato errado ou cor errada.
+   - Abaixo de 60 (VERMELHO): Logomarca original do fabricante removida/ausente em quadrante onde aquela parte est\xE1 vis\xEDvel, formato errado ou cor errada da varia\xE7\xE3o correspondente.
 
 CONTEXTO DO PRODUCT LOCK ESPERADO:
 ${lockContext}
@@ -3461,10 +3492,11 @@ O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "iss
         try {
           const client = openAIProvider.getClient();
           const contentBlocks = [];
-          photosList.slice(0, 3).forEach((photo, idx) => {
+          photosList.slice(0, 4).forEach((photo, idx) => {
+            const varTag = activeVariations.length >= 2 ? ` \u2014 REFER\xCANCIA DA VARIA\xC7\xC3O ${idx + 1} (${activeVariations[idx]?.name || "Varia\xE7\xE3o " + (idx + 1)})` : "";
             contentBlocks.push({
               type: "text",
-              text: `[FOTO DE REFER\xCANCIA REAL DO PRODUTO #${idx + 1} \u2014 OBSERVE ATENTAMENTE O FORMATO E A LOGOMARCA DO FABRICANTE IMPRESSA NO PRODUTO]:`
+              text: `[FOTO DE REFER\xCANCIA REAL DO PRODUTO #${idx + 1}${varTag} \u2014 OBSERVE ATENTAMENTE O FORMATO, COR E A LOGOMARCA DO FABRICANTE IMPRESSA NO PRODUTO]:`
             });
             contentBlocks.push({
               type: "image_url",
@@ -3487,7 +3519,7 @@ O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "iss
           });
           contentBlocks.push({
             type: "text",
-            text: "Inspecione cada um dos 9 quadrantes (Cena 1 a Cena 9) comparando rigorosamente com as fotos reais de refer\xEAncia (especialmente se a logomarca do fabricante impressa no produto est\xE1 presente nos quadros onde aquela parte do produto aparece) e retorne o JSON em portugu\xEAs."
+            text: "Inspecione cada um dos 9 quadrantes (Cena 1 a Cena 9) comparando rigorosamente com as fotos reais de refer\xEAncia (especialmente se a logomarca do fabricante impressa no produto est\xE1 presente nos quadros onde aquela parte do produto aparece e se a divis\xE3o de cores das varia\xE7\xF5es foi estritamente respeitada) e retorne o JSON em portugu\xEAs."
           });
           const modelsToTry = [OPENAI_AUDIT_MODEL || "gpt-5.6-luna", "gpt-4o", "gpt-4o-mini", OPENAI_BRAIN_MODEL];
           for (const modelCandidate of modelsToTry) {
@@ -3522,10 +3554,11 @@ O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "iss
       if (!rawQuadrants && provider === "gemini" && process.env.GEMINI_API_KEY) {
         try {
           const parts = [];
-          photosList.slice(0, 3).forEach((photo, idx) => {
+          photosList.slice(0, 4).forEach((photo, idx) => {
             const parsedRef = parseInlineImage(photo);
             if (parsedRef) {
-              parts.push({ text: `[FOTO DE REFER\xCANCIA REAL DO PRODUTO #${idx + 1} \u2014 OBSERVE A LOGOMARCA DO FABRICANTE E DETALHES]:` });
+              const varTag = activeVariations.length >= 2 ? ` \u2014 REFER\xCANCIA DA VARIA\xC7\xC3O ${idx + 1} (${activeVariations[idx]?.name || "Varia\xE7\xE3o " + (idx + 1)})` : "";
+              parts.push({ text: `[FOTO DE REFER\xCANCIA REAL DO PRODUTO #${idx + 1}${varTag} \u2014 OBSERVE A LOGOMARCA DO FABRICANTE, COR E DETALHES]:` });
               parts.push({ inlineData: parsedRef });
             }
           });
@@ -3590,6 +3623,10 @@ Analise cada um dos 9 quadrantes (Cena 1 a Cena 9) e retorne o JSON em portugu\x
           issue = `Na Cena ${sceneNum}, o produto est\xE1 diferente: a logomarca original do fabricante${logoRefText} foi removida ou n\xE3o aparece id\xEAntica na pe\xE7a.`;
         }
       }
+      const mentionsWrongVariation = lowerIssue.includes("varia\xE7\xE3o") && (lowerIssue.includes("incorret") || lowerIssue.includes("cor errada") || lowerIssue.includes("cor diferente") || lowerIssue.includes("deveria ser") || lowerIssue.includes("mesma cor"));
+      if (productVisible && mentionsWrongVariation) {
+        rawScore = Math.min(rawScore, 54);
+      }
       const score = Math.max(0, Math.min(100, Math.round(rawScore)));
       const status = getAuditColorStatus(score);
       if (!issue) {
@@ -3633,20 +3670,26 @@ Analise cada um dos 9 quadrantes (Cena 1 a Cena 9) e retorne o JSON em portugu\x
     const summaryIssues = problemQuadrants.length > 0 ? problemQuadrants.map((q) => `${q.issue} (Nota: ${q.score}%)`) : ["Todas as 9 cenas est\xE3o com fidelidade acima de 90% em rela\xE7\xE3o \xE0s fotos de refer\xEAncia."];
     let correctionPrompt = "";
     const logoMandatoryNote = hasReferenceLogo && referenceLogoDescription ? `OBRIGAT\xD3RIO REPRODUZIR A LOGOMARCA ORIGINAL DO FABRICANTE NO PRODUTO: "${referenceLogoDescription}". JAMAIS deixe a superf\xEDcie lisa onde existe a logomarca nas fotos de refer\xEAncia!` : `OBRIGAT\xD3RIO preservar 100% id\xEAnticos a logomarca e os textos originais do fabricante impressos no pr\xF3prio produto nas fotos de refer\xEAncia.`;
+    const variationMandatoryNote = activeVariations.length >= 2 ? activeVariations.length === 2 ? `DIVIS\xC3O OBRIGAT\xD3RIA DE CORES: Quadros 1 a 4 na Varia\xE7\xE3o 1 (${activeVariations[0]?.name || "1\xAA Cor"}), e Quadros 5 a 9 na Varia\xE7\xE3o 2 (${activeVariations[1]?.name || "2\xAA Cor"}). NUNCA gere todos os quadros na mesma cor!` : `DIVIS\xC3O OBRIGAT\xD3RIA DE CORES: Quadros 1 a 3 na Varia\xE7\xE3o 1 (${activeVariations[0]?.name || "1\xAA Cor"}), Quadros 4 a 6 na Varia\xE7\xE3o 2 (${activeVariations[1]?.name || "2\xAA Cor"}), e Quadros 7 a 9 na Varia\xE7\xE3o 3 (${activeVariations[2]?.name || "3\xAA Cor"}). NUNCA gere todos os quadros na mesma cor!` : "";
     if (problemQuadrants.length > 0) {
       const approvedNums = approvedQuadrants.map((q) => q.sceneNumber).join(", ");
       const fixesList = problemQuadrants.map(
-        (q) => `- CORRIGIR CENA ${q.sceneNumber} (nota anterior ${q.score}%): ${q.issue}. Fa\xE7a o produto "${productName}" na Cena ${q.sceneNumber} ficar 100% ID\xCANTICO \xE0s fotos reais de refer\xEAncia (reproduzindo fielmente a logomarca original do fabricante na pe\xE7a, cores, formato e bot\xF5es).`
+        (q) => `- CORRIGIR CENA ${q.sceneNumber} (nota anterior ${q.score}%): ${q.issue}. Fa\xE7a o produto "${productName}" na Cena ${q.sceneNumber} ficar 100% ID\xCANTICO \xE0s fotos reais de refer\xEAncia (reproduzindo fielmente a logomarca original do fabricante na pe\xE7a, cores das varia\xE7\xF5es, formato e bot\xF5es).`
       ).join("\n");
       correctionPrompt = [
         logoMandatoryNote,
+        variationMandatoryNote,
         approvedNums ? `MANTENHA A QUALIDADE E FIDELIDADE DAS CENAS J\xC1 APROVADAS (Cenas ${approvedNums}).` : "",
         `CORRIJA PRIORITARIAMENTE AS CENAS ONDE O PRODUTO FICOU DIFERENTE:`,
         fixesList,
-        `OBJETIVO OBRIGAT\xD3RIO: Atingir mais de 90% de similaridade em TODOS os 9 quadrantes, preservando logomarca do fabricante, textos impressos no produto, cores, formato e bot\xF5es 100% id\xEAnticos \xE0s fotos de refer\xEAncia.`
+        `OBJETIVO OBRIGAT\xD3RIO: Atingir mais de 90% de similaridade em TODOS os 9 quadrantes, preservando logomarca do fabricante, textos impressos no produto, cores das varia\xE7\xF5es, formato e bot\xF5es 100% id\xEAnticos \xE0s fotos de refer\xEAncia.`
       ].filter(Boolean).join("\n");
     } else {
-      correctionPrompt = `${logoMandatoryNote} Mantenha mais de 90% de similaridade em todos os 9 quadrantes, preservando logomarca do fabricante, textos impressos no produto, cores, bot\xF5es e formato 100% id\xEAnticos \xE0s fotos de refer\xEAncia.`;
+      correctionPrompt = [
+        logoMandatoryNote,
+        variationMandatoryNote,
+        "Mantenha mais de 90% de similaridade em todos os 9 quadrantes, preservando logomarca do fabricante, textos impressos no produto, cores das varia\xE7\xF5es, bot\xF5es e formato 100% id\xEAnticos \xE0s fotos de refer\xEAncia."
+      ].filter(Boolean).join(" ");
     }
     return res.json({
       success: true,
