@@ -10,7 +10,7 @@ import {
   Produtos2SubMode,
   Produtos2VisualMapItem,
 } from './types';
-import { ensureLeadingNossaPrefix } from './produtos2CopyBank';
+import { applySpeechIntro, ensureLeadingNossaPrefix, stripLeadingNossaPrefix } from './produtos2CopyBank';
 
 /**
  * Retorna a descrição canônica unificada de uma cena (mesma pessoa, mesma ação e mesmo enquadramento
@@ -216,6 +216,7 @@ export function buildProdutos2VeoPrompt(params: {
   productName: string;
   duration: Produtos2Duration;
   speechMode: Produtos2SpeechMode;
+  useSpeechIntro?: boolean;
   finalCopy: string;
   influencerResolved: 'Homem' | 'Mulher';
   framing: Produtos2Framing;
@@ -230,6 +231,7 @@ export function buildProdutos2VeoPrompt(params: {
     productName,
     duration,
     speechMode,
+    useSpeechIntro = false,
     finalCopy,
     influencerResolved,
     framing,
@@ -241,8 +243,8 @@ export function buildProdutos2VeoPrompt(params: {
     variations = [],
   } = params;
 
-  // Garante de forma incondicional o prefixo "Nossa! " com inicial maiúscula
-  const safeSpeech = ensureLeadingNossaPrefix(finalCopy);
+  // Aplica o prefixo "Nossa! " se useSpeechIntro estiver ativo, ou remove se estiver desativado (Padrão)
+  const safeSpeech = applySpeechIntro(finalCopy, Boolean(useSpeechIntro));
 
   // Item 7.1: Frase do primeiro frame com letra minúscula e sem ponto no meio
   const firstFrameClause = formatFirstFrameClause(scenes?.[0], productName);

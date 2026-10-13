@@ -8,11 +8,13 @@ import {
 import {
   analyzeProductInfoForProdutos2,
   applyGenderAndVocativeRules,
+  applySpeechIntro,
   calibrateCopyToTargetWindow,
   enforceMaxChars,
   ensureLeadingNossaPrefix,
   evaluateCopyDnaChecklist,
   selectAndAdaptProdutos2Copy,
+  stripLeadingNossaPrefix,
 } from './produtos2CopyBank';
 import {
   buildDefaultProdutos2Plan,
@@ -316,6 +318,7 @@ export async function runProdutos2Pipeline(params: {
     customCopy: form.customCopy,
     clientGender: form.clientGender,
     influencer: form.influencer,
+    useSpeechIntro: form.useSpeechIntro,
   });
 
   let finalCopy = copySelection.finalCopy;
@@ -482,15 +485,16 @@ export async function runProdutos2Pipeline(params: {
     console.warn('Usando planejamento determinístico Copy-First:', planErr);
   }
 
-  // Checklist Parte B & Parte E: garantir calibragem exata de caracteres (<=199 em 8s, <=250 em 10s), vocativo e prefixo "Nossa! " antes do storyboard
+  // Checklist Parte B & Parte E: garantir calibragem exata de caracteres (<=199 em 8s, <=250 em 10s), vocativo e prefixo de intro se selecionado
   finalCopy = calibrateCopyToTargetWindow({
     copy: finalCopy,
     duration: form.duration,
     isSameProductBankCopy: copySelection.isSameProductBankCopy,
     clientGender: form.clientGender,
     influencer: resolvedInfluencer,
+    useSpeechIntro: form.useSpeechIntro,
   });
-  finalCopy = ensureLeadingNossaPrefix(finalCopy);
+  finalCopy = applySpeechIntro(finalCopy, Boolean(form.useSpeechIntro));
 
   // Garantir que a última cena termine exatamente em 10.0 ou 8.0
   if (scenes.length === 9) {
@@ -548,6 +552,7 @@ export async function runProdutos2Pipeline(params: {
     productName: finalProductName,
     duration: form.duration,
     speechMode: form.speechMode,
+    useSpeechIntro: form.useSpeechIntro,
     finalCopy,
     influencerResolved: resolvedInfluencer,
     framing: form.framing,
@@ -568,11 +573,12 @@ export async function runProdutos2Pipeline(params: {
     maleSubOption: form.maleSubOption,
     duration: form.duration,
     speechMode: form.speechMode,
+    useSpeechIntro: form.useSpeechIntro,
     framing: form.framing,
     scenario: form.scenario,
     influencerResolved: resolvedInfluencer,
     clientGender: form.clientGender,
-    finalCopy: ensureLeadingNossaPrefix(finalCopy),
+    finalCopy: applySpeechIntro(finalCopy, Boolean(form.useSpeechIntro)),
     copySourceLabel: copySelection.copySourceLabel,
     copyId: copySelection.copyId,
     productLock,

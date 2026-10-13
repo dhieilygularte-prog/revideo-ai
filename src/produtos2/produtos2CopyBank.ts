@@ -507,6 +507,32 @@ export const COPIES_PRODUTOS_GERAIS: CopyBankEntry[] = [
     text: 'Finalmente os entregadores vão achar minha casa, e com muito estilo. Olha a qualidade: fundo preto espelhado e letras em alto-relevo. Não é adesivo barato, não. É super fácil de instalar e já transforma a fachada da casa na hora, fica com cara de casa de rico. Clica no link pra fazer a sua com seu endereço.',
   },
 
+  // Nicho: Casa, lazer e descanso
+  {
+    id: 'RED-01',
+    bank: 'geral',
+    niche: 'Casa, lazer e descanso',
+    productType: 'Rede de descanso',
+    keywords: ['rede de descanso', 'rede de dormir', 'rede casal', 'rede solteiro', 'rede compacta', 'rede de algodao', 'rede'],
+    archetype: 'Achado/Demonstração',
+    audience: 'Unissex',
+    charCount: 204,
+    fits8s: false,
+    text: 'Olha que delícia de achado! Essa rede de descanso é feita em 100% algodão, super macia, resistente e cabe com conforto total. Perfeita pra relaxar na varanda e tirar aquele cochilo. Clica no carrinho e garante a sua!',
+  },
+  {
+    id: 'RED-02',
+    bank: 'geral',
+    niche: 'Casa, lazer e descanso',
+    productType: 'Rede de descanso',
+    keywords: ['rede de descanso', 'rede de dormir', 'rede casal', 'rede solteiro', 'rede compacta', 'rede de algodao', 'rede'],
+    archetype: 'Dor→Solução',
+    audience: 'Unissex',
+    charCount: 174,
+    fits8s: true,
+    text: 'Quer descansar de verdade e tirar aquele cochilo gostoso? Essa rede em algodão reforçado é puro conforto, não esquenta e aguenta o tranco. Clica aqui embaixo e garante a sua!',
+  },
+
   // Nicho: Moto e acessórios automotivos
   {
     id: 'MOT-01',
@@ -1027,7 +1053,6 @@ export const NEIGHBOR_NICHE_RULES: { keywords: string[]; targetNiches: string[] 
       'banho',
       'lencol',
       'travesseiro',
-      'toalha',
       'armario',
       'rack',
       'banheiro',
@@ -1036,8 +1061,13 @@ export const NEIGHBOR_NICHE_RULES: { keywords: string[]; targetNiches: string[] 
       'sapateira',
       'cesto',
       'varal',
-      'edredom',
-      'cobertor',
+      'organizador',
+      'pastilha sanitaria',
+    ],
+    targetNiches: ['Casa, banheiro e organização', 'Casa e utilidades'],
+  },
+  {
+    keywords: [
       'rede de descanso',
       'rede de dormir',
       'rede casal',
@@ -1048,8 +1078,15 @@ export const NEIGHBOR_NICHE_RULES: { keywords: string[]; targetNiches: string[] 
       'camping',
       'varanda',
       'descanso',
+      'cochilo',
+      'lazer',
+      'relaxar',
+      'toalha',
+      'edredom',
+      'cobertor',
+      'manta',
     ],
-    targetNiches: ['Casa, banheiro e organização', 'Casa e utilidades'],
+    targetNiches: ['Casa, lazer e descanso', 'Casa e utilidades'],
   },
   {
     keywords: ['pneu', 'capa de carro', 'central multimidia', 'camera de re', 'acessorio de carro', 'capa de moto', 'capacete', 'bau moto', 'som automotivo', 'alto-falante', 'amplificador', 'aspirador automotivo', 'led automotivo'],
@@ -1644,6 +1681,33 @@ export function ensureLeadingNossaPrefix(text: string): string {
 }
 
 /**
+ * Remove o prefixo "Nossa! " ou "Nossa, " do início de uma copy,
+ * garantindo que a frase comece direto com a primeira letra maiúscula (modo "Não Usar Intro").
+ */
+export function stripLeadingNossaPrefix(text: string): string {
+  const trimmed = (text || '').trim();
+  if (!trimmed) return '';
+  if (/^nossa[!,\s]\s*/i.test(trimmed)) {
+    const after = trimmed.replace(/^nossa[!,\s]\s*/i, '').trim();
+    if (!after) return '';
+    return after.charAt(0).toUpperCase() + after.slice(1);
+  }
+  return trimmed;
+}
+
+/**
+ * Aplica ou remove a Intro ("Nossa! ") conforme a escolha do usuário no painel:
+ * - useIntro === true: garante prefixo "Nossa! "
+ * - useIntro === false: remove qualquer "Nossa! " inicial
+ */
+export function applySpeechIntro(text: string, useIntro: boolean = false): string {
+  if (useIntro) {
+    return ensureLeadingNossaPrefix(text);
+  }
+  return stripLeadingNossaPrefix(text);
+}
+
+/**
  * Verifica se o nome do produto é feminino em português para concordância ("esse"/"essa", "o seu"/"a sua")
  */
 function isFeminineProductName(name: string): boolean {
@@ -1787,17 +1851,19 @@ export function calibrateCopyToTargetWindow(params: {
   isSameProductBankCopy: boolean;
   clientGender: Produtos2ClientGender;
   influencer: 'Homem' | 'Mulher';
+  useSpeechIntro?: boolean;
 }): string {
-  const { duration, clientGender, influencer } = params;
-  let text = ensureLeadingNossaPrefix(
-    applyGenderAndVocativeRules(params.copy.replace(/\s+/g, ' ').trim(), clientGender, influencer)
+  const { duration, clientGender, influencer, useSpeechIntro = false } = params;
+  let text = applySpeechIntro(
+    applyGenderAndVocativeRules(params.copy.replace(/\s+/g, ' ').trim(), clientGender, influencer),
+    useSpeechIntro
   );
 
   const maxAllowed = duration === 8 ? 199 : 250;
   const minTarget = duration === 8 ? 140 : 190;
 
   if (text.length > maxAllowed) {
-    text = ensureLeadingNossaPrefix(enforceMaxChars(text, maxAllowed, minTarget));
+    text = applySpeechIntro(enforceMaxChars(text, maxAllowed, minTarget), useSpeechIntro);
   }
 
   return text;
@@ -1820,6 +1886,7 @@ export function selectAndAdaptProdutos2Copy(params: {
   customCopy?: string;
   clientGender: Produtos2ClientGender;
   influencer: Produtos2Influencer;
+  useSpeechIntro?: boolean;
 }): {
   finalCopy: string;
   copyId: string;
@@ -1838,6 +1905,7 @@ export function selectAndAdaptProdutos2Copy(params: {
     customCopy,
     clientGender,
     influencer,
+    useSpeechIntro = false,
   } = params;
 
   const specs = analyzeProductInfoForProdutos2(`${productName} ${productInfo}`);
@@ -1848,11 +1916,11 @@ export function selectAndAdaptProdutos2Copy(params: {
   if (customCopy && customCopy.trim().length > 0) {
     const resolvedInf: 'Homem' | 'Mulher' =
       influencer || specs.influencer || (clientGender === 'Masculino' ? 'Homem' : 'Mulher');
-    let finalCustom = ensureLeadingNossaPrefix(customCopy.trim());
+    let finalCustom = applySpeechIntro(customCopy.trim(), Boolean(useSpeechIntro));
     if (duration === 8 && finalCustom.length > 199) {
-      finalCustom = ensureLeadingNossaPrefix(enforceMaxChars(finalCustom, 199, 140));
+      finalCustom = applySpeechIntro(enforceMaxChars(finalCustom, 199, 140), Boolean(useSpeechIntro));
     } else if (duration === 10 && finalCustom.length > 250) {
-      finalCustom = ensureLeadingNossaPrefix(enforceMaxChars(finalCustom, 250, 190));
+      finalCustom = applySpeechIntro(enforceMaxChars(finalCustom, 250, 190), Boolean(useSpeechIntro));
     }
     const customFreeShipping = hasExplicitFreeShipping(`${productName} ${productInfo} ${customCopy}`);
     finalCustom = sanitizeFreeShippingMentions(finalCustom, customFreeShipping);
@@ -1978,6 +2046,7 @@ export function selectAndAdaptProdutos2Copy(params: {
     isSameProductBankCopy: true,
     clientGender,
     influencer: resolvedInf,
+    useSpeechIntro,
   });
 
   const sourceDesc =
@@ -2121,8 +2190,22 @@ export function adaptBankCopyToProduct(
         text = `Olha a qualidade ${desseProd} que acabou de chegar. ${conciseFeatureSentence} O resultado é impecável e rende demais no uso. Clica no carrinho e garante ${oSeu}.`;
         break;
 
-      case 'CAS-01':
-        text = `Quer mais praticidade e organização sem dor de cabeça? Olha isso! É ${umProd} ${shortWithClause}. ${conciseFeatureSentence} Garante ${oSeu} aqui no link.`;
+      case 'CAS-01': {
+        const isOrganizer = /organizador|rack|armario|estante|sapateira|cesto|gaveteir|suporte|banheiro/i.test(targetProdNorm);
+        if (isOrganizer) {
+          text = `Quer mais praticidade e organização sem dor de cabeça? Olha isso! É ${umProd} ${shortWithClause}. ${conciseFeatureSentence} Garante ${oSeu} aqui no link.`;
+        } else {
+          text = `Olha a qualidade ${desseProd} que acabou de chegar. ${conciseFeatureSentence} O resultado é incrível pro seu dia a dia. Garante ${oSeu} aqui no link.`;
+        }
+        break;
+      }
+
+      case 'RED-01':
+        text = `Olha que delícia de achado! ${EsseProd} ${shortWithClause || 'feita em 100% algodão super macia e resistente'}. Perfeita pra relaxar com conforto total e tirar aquele cochilo. Clica no carrinho e garante ${oSeu}!`;
+        break;
+
+      case 'RED-02':
+        text = `Quer descansar de verdade e tirar aquele cochilo gostoso? ${EsseProd} ${shortWithClause || 'em algodão reforçado'} é puro conforto, não esquenta e aguenta o tranco. Clica aqui embaixo e garante ${oSeu}!`;
         break;
 
       case 'CAS-03':

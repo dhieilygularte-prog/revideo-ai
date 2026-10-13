@@ -55,6 +55,7 @@ export interface Produtos2FormState {
   clientGender: Produtos2ClientGender;
   clientGenderAutoFilled?: boolean;
   speechMode: Produtos2SpeechMode;
+  useSpeechIntro?: boolean;
   framing: Produtos2Framing;
   scenario: Produtos2Scenario;
   variations: Produtos2Variation[];
@@ -104,6 +105,7 @@ export interface Produtos2ResultState {
   maleSubOption: Produtos2MaleSubOption;
   duration: Produtos2Duration;
   speechMode: Produtos2SpeechMode;
+  useSpeechIntro?: boolean;
   framing: Produtos2Framing;
   scenario: Produtos2Scenario;
   influencerResolved: 'Homem' | 'Mulher';

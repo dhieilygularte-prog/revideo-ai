@@ -654,9 +654,12 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
           </div>
         </div>
 
-        {/* 8. Fala (Com fala / Sem fala) */}
-        <div className={`md:col-span-4 p-4 rounded-2xl space-y-2 ${blueAutoCardClass}`}>
-          <label className="text-xs font-bold text-white block">8. Fala</label>
+        {/* 8. Fala (Com fala / Sem fala) e Opção de Intro */}
+        <div className={`md:col-span-4 p-4 rounded-2xl space-y-2.5 ${blueAutoCardClass}`}>
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-white block">8. Fala</label>
+            <span className="text-[10px] text-zinc-400">Locução Veo 3</span>
+          </div>
           <div className="grid grid-cols-2 gap-2 bg-slate-950/90 p-1 rounded-xl border border-sky-400/50">
             <button
               type="button"
@@ -681,6 +684,44 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
               Sem fala
             </button>
           </div>
+
+          {/* Opção Intro ("Nossa!") */}
+          {form.speechMode === 'com_fala' && (
+            <div className="pt-2 border-t border-sky-500/20 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-bold text-sky-200">Intro da Fala</label>
+                <span className="text-[10px] text-zinc-400">
+                  {form.useSpeechIntro ? 'Com palavra extra ("Nossa!")' : 'Sem palavra extra (Direto)'}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 bg-slate-950/90 p-1 rounded-xl border border-sky-400/40">
+                <button
+                  type="button"
+                  onClick={() => onChange((prev) => ({ ...prev, useSpeechIntro: false }))}
+                  className={`py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                    !form.useSpeechIntro
+                      ? 'bg-sky-500 text-white shadow'
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
+                  title="Não adiciona 'Nossa!' no início da fala (fala direta)"
+                >
+                  Não Usar intro (Padrão)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onChange((prev) => ({ ...prev, useSpeechIntro: true }))}
+                  className={`py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                    form.useSpeechIntro
+                      ? 'bg-sky-500 text-white shadow'
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
+                  title="Adiciona 'Nossa!' no início de todas as falas para margem de corte"
+                >
+                  Usar Intro
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 9. Enquadramento (Com rosto / Sem rosto / POV) */}
