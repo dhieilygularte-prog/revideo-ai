@@ -553,13 +553,20 @@ Retorne estritamente um JSON estruturado:
 
     try {
       const imageFiles: File[] = [];
+      const toImageFile = (dataUrl: string, baseName: string): File => {
+        const mimeMatch = dataUrl.match(/^data:(image\/(?:jpeg|png|webp|gif));base64,/i);
+        const mime = mimeMatch ? mimeMatch[1].toLowerCase() : 'image/png';
+        const ext = mime.includes('jpeg') ? 'jpg' : mime.includes('webp') ? 'webp' : 'png';
+        const cleanB64 = dataUrl.replace(/^data:image\/[a-zA-Z0-9+.-]+;base64,/i, '').replace(/[\r\n\s]/g, '');
+        return new File([Buffer.from(cleanB64, 'base64')], `${baseName}.${ext}`, { type: mime });
+      };
 
-      // Converte até 4 fotos de referência mais relevantes para envio
+      // Converte até 4 fotos de referência mais relevantes para envio com seu MIME real
       allPhotos.slice(0, 4).forEach((photoStr, idx) => {
         try {
-          const cleanB64 = photoStr.replace(/^data:image\/(?:jpeg|png|webp|gif);base64,/, '');
-          const buffer = Buffer.from(cleanB64, 'base64');
-          imageFiles.push(new File([buffer], `reference_${idx + 1}.png`, { type: 'image/png' }));
+          if (photoStr && typeof photoStr === 'string') {
+            imageFiles.push(toImageFile(photoStr, `reference_${idx + 1}`));
+          }
         } catch (e) {
           // ignore invalid buffer
         }
@@ -568,27 +575,23 @@ Retorne estritamente um JSON estruturado:
       let baseImageFile: File | null = null;
       let swatchFile: File | null = null;
       let effectivePrompt = cleanPrompt;
+      const isStoryboardGrid =
+        prompt.includes('grade 3x3') ||
+        prompt.includes('9 cenas numeradas') ||
+        prompt.includes('STORYBOARD');
 
       // Se temos referência de modelo mestre:
-      // Em Modo Ania (!isCloneMode): é uma EDIÇÃO LOCALIZADA com trava de quarto/pose via client.images.edit
-      // Em Modo Clonagem (isCloneMode): NÃO travamos pose nem quarto! Usamos fotos do produto e geração direta com o prompt do storyboard!
-      if (modelReferenceBase64 && !isCloneMode) {
-        const toFile = (dataUrl: string, name: string): File => {
-          const mimeMatch = dataUrl.match(/^data:(image\/(?:jpeg|png|webp));base64,/);
-          const mime = mimeMatch ? mimeMatch[1] : 'image/png';
-          const ext = mime.split('/')[1] === 'jpeg' ? 'jpg' : mime.split('/')[1];
-          const b64 = dataUrl.replace(/^data:image\/[a-zA-Z+]+;base64,/, '');
-          return new File([Buffer.from(b64, 'base64')], `${name}.${ext}`, { type: mime });
-        };
-
+      // Em Modo Ania (!isCloneMode && !isStoryboardGrid): é uma EDIÇÃO LOCALIZADA com trava de quarto/pose via client.images.edit
+      // Em Modo Clonagem ou Storyboard 3x3 (Produtos 2.0): NÃO substituímos o prompt por troca de roupa! Mantemos o prompt completo e as fotos reais do produto!
+      if (modelReferenceBase64 && !isCloneMode && !isStoryboardGrid) {
         // 1ª imagem = IMAGEM 1 GERADA (base absoluta)
-        baseImageFile = toFile(modelReferenceBase64, 'imagem_1_base');
+        baseImageFile = toImageFile(modelReferenceBase64, 'imagem_1_base');
 
         // 2ª imagem = amostra COR 2 / COR 3 (somente referência do produto)
         const swatchStr = productPhotoBase64 || productPhotosBase64[0];
         if (swatchStr) {
           try {
-            swatchFile = toFile(swatchStr, 'amostra_cor');
+            swatchFile = toImageFile(swatchStr, 'amostra_cor');
           } catch {
             swatchFile = null;
           }
@@ -606,7 +609,7 @@ Retorne estritamente um JSON estruturado:
                     { type: 'image_url', image_url: { url: swatchStr.startsWith('data:') ? swatchStr : `data:image/jpeg;base64,${swatchStr}` } },
                     {
                       type: 'text',
-                      text: `Describe in English, in one dense paragraph, ONLY the garment/product (${productType}) in this photo, ignoring the person, background and mannequin: exact main color of each piece (top and bottom), exact color of the piping/trim/binding on collar, front placket, sleeve hems, shorts hems and pockets, exact button color and count, fabric texture, neckline shape, sleeve length, shorts length, any print or logo. Be precise about contrast colors.`,
+                      text: `Describe in English, in one dense paragraph, ONLY the garment/product (${productType}) in this photo, ignoring the person, background and mannequin: exact main color of each piece (top and bottom), exact color of the piping/trim/binding on collar, front placket, sleeve hems, shorts hems and pockets, exact button color and count, fabric texture, neckline shape, sleeve length, shorts length, and any manufacturer print, emblem or logo on the product itself. Be precise about contrast colors and brand logos on the item.`,
                     },
                   ],
                 },
@@ -621,16 +624,18 @@ Retorne estritamente um JSON estruturado:
         effectivePrompt = `Esta é uma EDIÇÃO LOCALIZADA da imagem enviada. A imagem enviada é a base absoluta e deve permanecer IDÊNTICA: mesma mulher (rosto, cabelo, pele, corpo), mesma pose, mesmos braços e mãos, mesmo quarto/cenário, mesma iluminação, mesmo ângulo, mesmo enquadramento e mesma composição. NÃO recrie a cena, NÃO gere outra pessoa, NÃO mude o fundo. Zero tatuagens.
 
 ÚNICA ALTERAÇÃO: substitua a roupa/produto (${productType}) que ela veste por uma peça com exatamente estas características (variante "${variationName}"): ${garmentSpec || `cor ${variationName}`}.
-Mantenha o mesmo modelo/corte e caimento da peça atual; troque somente cores (peça principal, debruns/acabamentos, botões) e detalhes conforme descrito. Tudo que não for a peça permanece pixel a pixel igual à imagem enviada. Sem textos, logos ou marcas d'água.`;
+Mantenha o mesmo modelo/corte e caimento da peça atual; troque somente cores (peça principal, debruns/acabamentos, botões) e detalhes conforme descrito, preservando fielmente qualquer logomarca ou estampa original do fabricante presente na peça. Tudo que não for a peça permanece pixel a pixel igual à imagem enviada. Proibido adicionar textos flutuantes, logos de redes sociais (TikTok/@) ou marcas d'água externas.`;
       } else if (imageFiles.length > 0 && !isCloneMode) {
         baseImageFile = imageFiles[0];
       }
 
       // Se temos arquivo de imagem de base válido para edição, usamos client.images.edit
       if (baseImageFile) {
+        const editImageInput: any =
+          !modelReferenceBase64 && imageFiles.length > 1 ? imageFiles : baseImageFile;
         const editResponse = await client.images.edit({
           model: OPENAI_IMAGE_MODEL,
-          image: baseImageFile,
+          image: editImageInput,
           prompt: effectivePrompt,
           quality: OPENAI_IMAGE_QUALITY,
           size: OPENAI_IMAGE_SIZE,

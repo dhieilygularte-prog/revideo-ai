@@ -53,6 +53,64 @@ async function safeParseJsonResponse(res: Response): Promise<any> {
 }
 
 /**
+ * Comprime imagens base64 muito pesadas (ex: PNGs de 4MB gerados pela IA) para JPEG de alta nitidez (~200-350KB)
+ * antes de trafegar em JSON para o backend/Vercel, evitando erro HTTP 413 Payload Too Large sem perder detalhes de logomarcas.
+ */
+async function compressImageForPayload(
+  dataUrl: string,
+  maxDim = 1500,
+  quality = 0.88
+): Promise<string> {
+  if (!dataUrl || typeof dataUrl !== 'string') return dataUrl;
+  // Se já for pequena (< 600KB em base64) e for JPEG/WEBP/PNG, mantém direto
+  if (dataUrl.length < 600_000 && typeof document === 'undefined') {
+    return dataUrl;
+  }
+  if (typeof document === 'undefined' || typeof Image === 'undefined') {
+    return dataUrl;
+  }
+  // Só comprime se passar de ~550KB em base64
+  if (dataUrl.length < 550_000) {
+    return dataUrl;
+  }
+  return new Promise<string>((resolve) => {
+    try {
+      const img = new Image();
+      img.onload = () => {
+        try {
+          let w = img.naturalWidth || img.width || 1080;
+          let h = img.naturalHeight || img.height || 1920;
+          if (w > maxDim || h > maxDim) {
+            const scale = maxDim / Math.max(w, h);
+            w = Math.round(w * scale);
+            h = Math.round(h * scale);
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(dataUrl);
+            return;
+          }
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, w, h);
+          ctx.drawImage(img, 0, 0, w, h);
+          const compressed = canvas.toDataURL('image/jpeg', quality);
+          resolve(compressed && compressed.length < dataUrl.length ? compressed : dataUrl);
+        } catch {
+          resolve(dataUrl);
+        }
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    } catch {
+      resolve(dataUrl);
+    }
+  });
+}
+
+/**
  * Chama a geração da imagem do Storyboard 3x3 com retry automático e rota de fallback (/api/generate-scene-image)
  * Suporta envio da imagem anterior e do correctionPrompt cirúrgico para refazer corrigindo os quadrantes com erro.
  */
@@ -74,7 +132,11 @@ async function requestStoryboardImageGeneration(params: {
     correctionPrompt,
     aiProfile = 'openai',
   } = params;
-  const photosSubset = allPhotos.slice(0, 3);
+  const rawSubset = allPhotos.slice(0, 3);
+  const photosSubset = await Promise.all(rawSubset.map((p) => compressImageForPayload(p, 1500, 0.9)));
+  const compressedPrev = previousStoryboardImageBase64
+    ? await compressImageForPayload(previousStoryboardImageBase64, 1500, 0.86)
+    : undefined;
 
   // Tentativa 1: Rota dedicada /api/produtos2-generate-storyboard
   try {
@@ -86,7 +148,7 @@ async function requestStoryboardImageGeneration(params: {
         productName,
         productPhotosBase64: photosSubset,
         additionalInstructions,
-        previousStoryboardImageBase64,
+        previousStoryboardImageBase64: compressedPrev,
         correctionPrompt,
         aiProfile,
       }),
@@ -111,7 +173,7 @@ async function requestStoryboardImageGeneration(params: {
         targetAngle: 'front',
         productPhotoBase64: photosSubset[0] || '',
         productPhotosBase64: photosSubset,
-        modelReferenceBase64: previousStoryboardImageBase64 || undefined,
+        modelReferenceBase64: undefined,
         correctionPrompt,
         additionalInstructions,
         isCloneMode: false,
@@ -155,12 +217,17 @@ export async function auditProdutos2Storyboard(params: {
   } = params;
 
   try {
+    const compressedStoryboard = await compressImageForPayload(storyboardImageUrl, 1600, 0.88);
+    const compressedRefs = await Promise.all(
+      productPhotosBase64.slice(0, 3).map((p) => compressImageForPayload(p, 1400, 0.88))
+    );
+
     const res = await fetch('/api/produtos2-audit-storyboard', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        storyboardImageBase64: storyboardImageUrl,
-        productPhotosBase64: productPhotosBase64.slice(0, 3),
+        storyboardImageBase64: compressedStoryboard,
+        productPhotosBase64: compressedRefs,
         productName,
         productLock,
         scenes,
@@ -236,7 +303,7 @@ export async function runProdutos2Pipeline(params: {
     }
   });
 
-  onProgress?.(30, '3/6 Construindo Mapa Visual da Copy, Product Lock e 9 Micro-Cenas...');
+  onProgress?.(30, '3/6 Construindo Mapa Visual da Copy, Product Lock (incluindo logomarca) e 9 Micro-Cenas...');
 
   // 5, 6 & 7. Planejamento Inicial Determinístico (garantia de estrutura e fallback)
   const fallbackPlan = buildDefaultProdutos2Plan({
@@ -264,6 +331,9 @@ export async function runProdutos2Pipeline(params: {
 
   // Refinamento Inteligente via IA (/api/produtos2-planning) analisando as fotos reais e a copy
   try {
+    const compressedPlanningPhotos = await Promise.all(
+      allPhotos.slice(0, 3).map((p) => compressImageForPayload(p, 1400, 0.88))
+    );
     const planRes = await fetch('/api/produtos2-planning', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -283,7 +353,7 @@ export async function runProdutos2Pipeline(params: {
         framing: form.framing,
         scenario: form.scenario,
         additionalInstructions: form.additionalInstructions,
-        productPhotosBase64: allPhotos.slice(0, 3),
+        productPhotosBase64: compressedPlanningPhotos,
         aiProfile,
       }),
     });
@@ -310,6 +380,16 @@ export async function runProdutos2Pipeline(params: {
           productLock = d.productLock
             .map((s: any) => stripTikTokOutsideSpeech(String(s).trim()))
             .filter(Boolean);
+        }
+        if (
+          typeof d.manufacturerLogoDescription === 'string' &&
+          d.manufacturerLogoDescription.trim().length > 3
+        ) {
+          const cleanLogoDesc = stripTikTokOutsideSpeech(d.manufacturerLogoDescription.trim());
+          const logoEntry = `LOGOMARCA ORIGINAL DO FABRICANTE NO PRODUTO (OBRIGATÓRIO REPRODUZIR 100% IDÊNTICA): ${cleanLogoDesc}`;
+          if (!productLock.some((item) => item.includes(cleanLogoDesc))) {
+            productLock = [logoEntry, ...productLock];
+          }
         }
         if (typeof d.avatarDescription === 'string' && d.avatarDescription.trim().length > 10) {
           avatarDescription = stripTikTokOutsideSpeech(d.avatarDescription.trim());

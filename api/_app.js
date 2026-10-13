@@ -900,30 +900,31 @@ Retorne estritamente um JSON estruturado:
 ${prompt}` : prompt;
     try {
       const imageFiles = [];
+      const toImageFile = (dataUrl, baseName) => {
+        const mimeMatch = dataUrl.match(/^data:(image\/(?:jpeg|png|webp|gif));base64,/i);
+        const mime = mimeMatch ? mimeMatch[1].toLowerCase() : "image/png";
+        const ext = mime.includes("jpeg") ? "jpg" : mime.includes("webp") ? "webp" : "png";
+        const cleanB64 = dataUrl.replace(/^data:image\/[a-zA-Z0-9+.-]+;base64,/i, "").replace(/[\r\n\s]/g, "");
+        return new File([Buffer.from(cleanB64, "base64")], `${baseName}.${ext}`, { type: mime });
+      };
       allPhotos.slice(0, 4).forEach((photoStr, idx) => {
         try {
-          const cleanB64 = photoStr.replace(/^data:image\/(?:jpeg|png|webp|gif);base64,/, "");
-          const buffer = Buffer.from(cleanB64, "base64");
-          imageFiles.push(new File([buffer], `reference_${idx + 1}.png`, { type: "image/png" }));
+          if (photoStr && typeof photoStr === "string") {
+            imageFiles.push(toImageFile(photoStr, `reference_${idx + 1}`));
+          }
         } catch (e) {
         }
       });
       let baseImageFile = null;
       let swatchFile = null;
       let effectivePrompt = cleanPrompt;
-      if (modelReferenceBase64 && !isCloneMode) {
-        const toFile = (dataUrl, name) => {
-          const mimeMatch = dataUrl.match(/^data:(image\/(?:jpeg|png|webp));base64,/);
-          const mime = mimeMatch ? mimeMatch[1] : "image/png";
-          const ext = mime.split("/")[1] === "jpeg" ? "jpg" : mime.split("/")[1];
-          const b642 = dataUrl.replace(/^data:image\/[a-zA-Z+]+;base64,/, "");
-          return new File([Buffer.from(b642, "base64")], `${name}.${ext}`, { type: mime });
-        };
-        baseImageFile = toFile(modelReferenceBase64, "imagem_1_base");
+      const isStoryboardGrid = prompt.includes("grade 3x3") || prompt.includes("9 cenas numeradas") || prompt.includes("STORYBOARD");
+      if (modelReferenceBase64 && !isCloneMode && !isStoryboardGrid) {
+        baseImageFile = toImageFile(modelReferenceBase64, "imagem_1_base");
         const swatchStr = productPhotoBase64 || productPhotosBase64[0];
         if (swatchStr) {
           try {
-            swatchFile = toFile(swatchStr, "amostra_cor");
+            swatchFile = toImageFile(swatchStr, "amostra_cor");
           } catch {
             swatchFile = null;
           }
@@ -940,7 +941,7 @@ ${prompt}` : prompt;
                     { type: "image_url", image_url: { url: swatchStr.startsWith("data:") ? swatchStr : `data:image/jpeg;base64,${swatchStr}` } },
                     {
                       type: "text",
-                      text: `Describe in English, in one dense paragraph, ONLY the garment/product (${productType}) in this photo, ignoring the person, background and mannequin: exact main color of each piece (top and bottom), exact color of the piping/trim/binding on collar, front placket, sleeve hems, shorts hems and pockets, exact button color and count, fabric texture, neckline shape, sleeve length, shorts length, any print or logo. Be precise about contrast colors.`
+                      text: `Describe in English, in one dense paragraph, ONLY the garment/product (${productType}) in this photo, ignoring the person, background and mannequin: exact main color of each piece (top and bottom), exact color of the piping/trim/binding on collar, front placket, sleeve hems, shorts hems and pockets, exact button color and count, fabric texture, neckline shape, sleeve length, shorts length, and any manufacturer print, emblem or logo on the product itself. Be precise about contrast colors and brand logos on the item.`
                     }
                   ]
                 }
@@ -954,14 +955,15 @@ ${prompt}` : prompt;
         effectivePrompt = `Esta \xE9 uma EDI\xC7\xC3O LOCALIZADA da imagem enviada. A imagem enviada \xE9 a base absoluta e deve permanecer ID\xCANTICA: mesma mulher (rosto, cabelo, pele, corpo), mesma pose, mesmos bra\xE7os e m\xE3os, mesmo quarto/cen\xE1rio, mesma ilumina\xE7\xE3o, mesmo \xE2ngulo, mesmo enquadramento e mesma composi\xE7\xE3o. N\xC3O recrie a cena, N\xC3O gere outra pessoa, N\xC3O mude o fundo. Zero tatuagens.
 
 \xDANICA ALTERA\xC7\xC3O: substitua a roupa/produto (${productType}) que ela veste por uma pe\xE7a com exatamente estas caracter\xEDsticas (variante "${variationName}"): ${garmentSpec || `cor ${variationName}`}.
-Mantenha o mesmo modelo/corte e caimento da pe\xE7a atual; troque somente cores (pe\xE7a principal, debruns/acabamentos, bot\xF5es) e detalhes conforme descrito. Tudo que n\xE3o for a pe\xE7a permanece pixel a pixel igual \xE0 imagem enviada. Sem textos, logos ou marcas d'\xE1gua.`;
+Mantenha o mesmo modelo/corte e caimento da pe\xE7a atual; troque somente cores (pe\xE7a principal, debruns/acabamentos, bot\xF5es) e detalhes conforme descrito, preservando fielmente qualquer logomarca ou estampa original do fabricante presente na pe\xE7a. Tudo que n\xE3o for a pe\xE7a permanece pixel a pixel igual \xE0 imagem enviada. Proibido adicionar textos flutuantes, logos de redes sociais (TikTok/@) ou marcas d'\xE1gua externas.`;
       } else if (imageFiles.length > 0 && !isCloneMode) {
         baseImageFile = imageFiles[0];
       }
       if (baseImageFile) {
+        const editImageInput = !modelReferenceBase64 && imageFiles.length > 1 ? imageFiles : baseImageFile;
         const editResponse = await client.images.edit({
           model: OPENAI_IMAGE_MODEL,
-          image: baseImageFile,
+          image: editImageInput,
           prompt: effectivePrompt,
           quality: OPENAI_IMAGE_QUALITY,
           size: OPENAI_IMAGE_SIZE
@@ -1193,11 +1195,14 @@ function buildProdutos2PlanningSystemPrompt() {
   return `Voc\xEA \xE9 o Diretor Criativo Copy-First do Modo Produtos 2.0.
 REGRA-M\xC3E: A COPY VENDE. O STORYBOARD PROVA VISUALMENTE A COPY. O V\xCDDEO ANIMA O STORYBOARD SEM NUNCA MOSTRAR A PR\xD3PRIA FOLHA DO STORYBOARD.
 
-REGRA DE OURO \u2014 TEXTO, LOGO E PALAVRA PROIBIDA:
-- A palavra "TikTok" NUNCA pode aparecer em "productLock", "avatarDescription", "scenarioDescription", "visualMap" nem em "scenes" (somente dentro de "adaptedCopy" se j\xE1 fizer parte da fala).
-- O produto \xE9 sempre 100% id\xEAntico \xE0s fotos de refer\xEAncia, inclusive a marca/logo e qualquer texto que j\xE1 estejam impressos no pr\xF3prio produto.
-- Se as fotos de refer\xEAncia mostram marca, logo ou texto impresso no produto, o "productLock" DEVE descrever exatamente (o qu\xEA, onde fica no produto, cor e tamanho \u2014 ex.: "logo branco da marca impresso na face frontal do apoio Scott, igual \xE0 foto").
-- Se o produto N\xC3O tem marca ou texto nas fotos, o "productLock" deve descrever como "superf\xEDcie lisa, sem marcas".
+REGRA DE OURO INVIOL\xC1VEL \u2014 LOGOMARCA DO FABRICANTE NO PRODUTO vs ELEMENTOS DE REDE SOCIAL:
+- DIFERENCIE TOTALMENTE:
+  1) PROIBIDO: Logotipo do TikTok, marca d'\xE1gua de rede social, @usu\xE1rio, bot\xF5es ou \xEDcone de carrinho flutuantes na tela. A palavra "TikTok" NUNCA pode aparecer em "productLock", "avatarDescription", "scenarioDescription", "visualMap" nem em "scenes" (somente dentro de "adaptedCopy" se j\xE1 fizer parte da fala).
+  2) OBRIGAT\xD3RIO E SAGRADO: A logomarca, o emblema, o escudo/s\xEDmbolo e o nome da marca DO PR\xD3PRIO FABRICANTE que est\xE3o impressos, bordados ou estampados NO PRODUTO nas fotos de refer\xEAncia DEVEM SER FIELMENTE REPRESENTADOS E PRESERVADOS 100% ID\xCANTICOS!
+- Inspecione minuciosamente as fotos de refer\xEAncia anexadas procurando qualquer logomarca, emblema, s\xEDmbolo gr\xE1fico ou texto de marca no produto (por exemplo: logo branca no encosto de um banco de exerc\xEDcios, logo na lateral de um t\xEAnis, marca no painel de um eletr\xF4nico, r\xF3tulo de um frasco, etc.).
+- Preencha obrigatoriamente o campo "manufacturerLogoDescription" descrevendo com precis\xE3o cir\xFArgica a logomarca/marca vis\xEDvel no produto (formato, desenho, letras/s\xEDmbolo, cor exata e localiza\xE7\xE3o exata na pe\xE7a, ex.: "Logomarca geom\xE9trica branca em formato de escudo hexagonal com 'W' estilizado centralizada na parte superior do encosto preto do banco").
+- O 1\xBA item do array "productLock" DEVE ser essa descri\xE7\xE3o exata da logomarca do fabricante e a exig\xEAncia de que ela apare\xE7a id\xEAntica em todas as cenas onde aquela parte do produto estiver vis\xEDvel.
+- Nas descri\xE7\xF5es das cenas ("scenes") em que a parte do produto com a logomarca aparece, mencione explicitamente a presen\xE7a da logomarca original no local exato (ex.: "...exibindo o encosto preto com a logomarca branca original do fabricante no topo").
 
 Sua tarefa \xE9 receber:
 1) As fotos reais do produto;
@@ -1206,27 +1211,29 @@ Sua tarefa \xE9 receber:
 4) As configura\xE7\xF5es (dura\xE7\xE3o 10s ou 8s, influencer, g\xEAnero do cliente, fala, enquadramento, cen\xE1rio, instru\xE7\xF5es adicionais).
 
 E retornar um JSON estrito com:
-1. "adaptedCopy":
+1. "manufacturerLogoDescription": string detalhando exatamente a logomarca/emblema/texto do fabricante vis\xEDvel no produto nas fotos anexadas (cor, formato, desenho e onde fica no produto).
+2. "adaptedCopy":
    - TODA copy/fala DEVE obrigatoriamente come\xE7ar com a express\xE3o inicial neutra "Nossa, " (ex.: "Nossa, ..."), que serve de margem para o corte do primeiro segundo no Veo. N\xE3o duplique caso j\xE1 comece com "Nossa".
    - Se foi enviada copy personalizada do usu\xE1rio, mantenha-a EXATAMENTE como est\xE1 com "Nossa, " no in\xEDcio (s\xF3 reduza se dura\xE7\xE3o=8s e passar de 199 caracteres).
    - Se veio do banco, MUDE O M\xCDNIMO POSS\xCDVEL (Se\xE7\xE3o 5): troque apenas nome/marca/modelo pelos do produto real, n\xFAmeros/especifica\xE7\xF5es pelos reais das Informa\xE7\xF5es do Produto, cor/material/quantidade, mantendo "Nossa, " no in\xEDcio.
    - NUNCA use a palavra "menina" como vocativo; quando o p\xFAblico for feminino e houver vocativo, use "Amiga" ou "Gente". Para p\xFAblico masculino, use "Meu amigo", "Cara", "Irm\xE3o" ou "Gente".
    - Se dura\xE7\xE3o = 8s, a "adaptedCopy" DEVE ter no m\xE1ximo 199 caracteres contando espa\xE7os (mantendo "Nossa, " + Gancho + Prova principal com "olha" + CTA).
-2. "productLock": array de 4 a 6 strings detalhando fisicamente o produto visto nas fotos (formato, cor exata, material, textura, propor\xE7\xE3o, bot\xF5es/costuras/sola/cabos/detalhes, e obrigatoriamente a descri\xE7\xE3o exata da marca/logo/texto impresso no produto conforme as fotos ou "superf\xEDcie lisa, sem marcas").
-3. "avatarDescription": descri\xE7\xE3o de 1 frase do consumidor brasileiro adulto que apresenta o produto (respeitando o g\xEAnero do Influencer e as Instru\xE7\xF5es Adicionais; se produto infantil, quem apresenta na cena 1 e 9 \xE9 sempre um adulto pai/m\xE3e).
-4. "scenarioDescription": descri\xE7\xE3o concreta do cen\xE1rio (onde o produto \xE9 usado de verdade ou casa brasileira simples e aconchegante, respeitando Instru\xE7\xF5es Adicionais).
-5. "visualMap": array de 4 objetos { "excerpt", "intent", "visualProof", "scenes" } mapeando os trechos da copy para provas visuais nas cenas 1 a 9.
-6. "scenes": array de EXATAMENTE 9 objetos { "number": 1..9, "startTime", "endTime", "framing", "action", "cameraMovement", "storyboardDescription" }:
+3. "productLock": array de 4 a 6 strings detalhando fisicamente o produto visto nas fotos (1\xBA item obrigatoriamente a descri\xE7\xE3o exata da logomarca/emblema/marca impressa no produto e sua posi\xE7\xE3o exata; seguido de formato, cor exata, material, textura, propor\xE7\xE3o, bot\xF5es/costuras/sola/cabos/detalhes).
+4. "avatarDescription": descri\xE7\xE3o de 1 frase do consumidor brasileiro adulto que apresenta o produto (respeitando o g\xEAnero do Influencer e as Instru\xE7\xF5es Adicionais; se produto infantil, quem apresenta na cena 1 e 9 \xE9 sempre um adulto pai/m\xE3e).
+5. "scenarioDescription": descri\xE7\xE3o concreta do cen\xE1rio (onde o produto \xE9 usado de verdade ou casa brasileira simples e aconchegante, respeitando Instru\xE7\xF5es Adicionais).
+6. "visualMap": array de 4 objetos { "excerpt", "intent", "visualProof", "scenes" } mapeando os trechos da copy para provas visuais nas cenas 1 a 9.
+7. "scenes": array de EXATAMENTE 9 objetos { "number": 1..9, "startTime", "endTime", "framing", "action", "cameraMovement", "storyboardDescription" }:
    - Cada cena prova visualmente o que est\xE1 sendo falado naquele momento da copy.
    - Todo "olha [detalhe]" na copy vira uma cena de close/macro daquele detalhe.
    - Variar enquadramentos (nunca duas cenas seguidas iguais): close, macro, POV de m\xE3os, plano m\xE9dio, plano aberto, uso real.
    - "storyboardDescription" DEVE ser id\xEAntico a "{framing}. {action}" (mesma pessoa, mesma a\xE7\xE3o, mesmo enquadramento e mesmos objetos, sem inventar objetos extras ou mudar quem aparece entre um campo e outro).
+   - Sempre que a parte do produto onde fica a logomarca do fabricante estiver vis\xEDvel na cena, inclua na descri\xE7\xE3o da cena que a logomarca original est\xE1 vis\xEDvel e id\xEAntica \xE0 foto.
    - Na Cena 1, escreva "action" de forma direta e objetiva (sem retic\xEAncias e sem ponto no meio da frase).
    - Respeitar estritamente o Enquadramento:
      * "com_rosto": rosto aparece em algumas cenas (especialmente gancho e cena 9).
      * "sem_rosto": nunca mostrar o rosto; sempre do pesco\xE7o para baixo.
      * "pov": mostrar somente as m\xE3os em primeira pessoa; nunca rosto ou corpo.
-   - Proibido texto, legenda, pre\xE7o, n\xFAmero escrito, carrinho, marca d'\xE1gua, @ ou interface de aplicativo dentro das cenas.`;
+   - Proibido texto flutuante externo, legenda, pre\xE7o, n\xFAmero escrito, carrinho, marca d'\xE1gua de rede social, @ ou interface de aplicativo dentro das cenas (mas OBRIGAT\xD3RIO manter a logomarca original do fabricante impressa no pr\xF3prio produto).`;
 }
 
 // server.ts
@@ -3047,8 +3054,9 @@ app.post("/api/produtos2-planning", async (req, res) => {
 
 Retorne APENAS um objeto JSON v\xE1lido com as chaves:
 {
+  "manufacturerLogoDescription": "string (descreva com precis\xE3o cir\xFArgica a logomarca, emblema, s\xEDmbolo ou nome da marca impresso/estampado no pr\xF3prio produto nas fotos de refer\xEAncia: formato, desenho, letras, cor exata e posi\xE7\xE3o exata na pe\xE7a, ex: 'Logomarca geom\xE9trica branca em formato de escudo hexagonal com W estilizado centralizada na parte superior do encosto preto')",
   "adaptedCopy": "string",
-  "productLock": ["string", "string", "string", "string"],
+  "productLock": ["string (1\xBA item obrigatoriamente a descri\xE7\xE3o exata da logomarca/marca impressa no produto e sua posi\xE7\xE3o)", "string", "string", "string"],
   "avatarDescription": "string",
   "scenarioDescription": "string",
   "visualMap": [
@@ -3067,65 +3075,97 @@ Retorne APENAS um objeto JSON v\xE1lido com as chaves:
   ]
 } (exatamente 9 cenas numeradas de 1 a 9 somando ${duration}.0s).`;
     const activeProfile = getRequestAIProfile(req);
-    if (activeProfile === "openai" && openAIProvider.isConfigured()) {
-      const client = openAIProvider.getClient();
-      const contentBlocks = [];
-      (Array.isArray(productPhotosBase64) ? productPhotosBase64 : []).slice(0, 3).forEach((photo) => {
-        if (photo && typeof photo === "string") {
-          contentBlocks.push({
-            type: "image_url",
-            image_url: {
-              url: photo.startsWith("data:") ? photo : `data:image/jpeg;base64,${photo}`,
-              detail: "high"
+    const tryOrder = activeProfile === "gemini" ? ["gemini", "openai"] : ["openai", "gemini"];
+    for (const provider of tryOrder) {
+      if (provider === "openai" && openAIProvider.isConfigured()) {
+        const client = openAIProvider.getClient();
+        const contentBlocks = [];
+        (Array.isArray(productPhotosBase64) ? productPhotosBase64 : []).slice(0, 3).forEach((photo) => {
+          if (photo && typeof photo === "string") {
+            contentBlocks.push({
+              type: "image_url",
+              image_url: {
+                url: photo.startsWith("data:") ? photo : `data:image/jpeg;base64,${photo}`,
+                detail: "high"
+              }
+            });
+          }
+        });
+        contentBlocks.push({ type: "text", text: userPrompt });
+        const modelsToTry = [OPENAI_BRAIN_MODEL, "gpt-4o", "gpt-4o-mini", OPENAI_AUDIT_MODEL];
+        for (const modelCandidate of modelsToTry) {
+          try {
+            const params = {
+              model: modelCandidate,
+              messages: [
+                { role: "system", content: systemInstruction },
+                { role: "user", content: contentBlocks }
+              ],
+              response_format: { type: "json_object" }
+            };
+            if (!modelCandidate.startsWith("gpt-5") && !modelCandidate.startsWith("o")) {
+              params.temperature = 0.35;
             }
-          });
-        }
-      });
-      contentBlocks.push({ type: "text", text: userPrompt });
-      const modelsToTry = [OPENAI_BRAIN_MODEL, "gpt-4o-mini", "gpt-4o", "gpt-5.6-luna"];
-      for (const modelCandidate of modelsToTry) {
-        try {
-          const params = {
-            model: modelCandidate,
-            messages: [
-              { role: "system", content: systemInstruction },
-              { role: "user", content: contentBlocks }
-            ],
-            response_format: { type: "json_object" }
-          };
-          if (!modelCandidate.startsWith("gpt-5") && !modelCandidate.startsWith("o")) {
-            params.temperature = 0.35;
+            const completion = await client.chat.completions.create(params);
+            const parsed = JSON.parse(completion.choices[0]?.message?.content || "{}");
+            if (parsed && Array.isArray(parsed.scenes) && parsed.scenes.length === 9) {
+              if (typeof parsed.manufacturerLogoDescription === "string" && parsed.manufacturerLogoDescription.trim().length > 3) {
+                const logoLockEntry = `LOGOMARCA ORIGINAL DO FABRICANTE NO PRODUTO (OBRIGAT\xD3RIO REPRODUZIR 100% ID\xCANTICA): ${parsed.manufacturerLogoDescription.trim()}`;
+                const existingLocks = Array.isArray(parsed.productLock) ? parsed.productLock : [];
+                parsed.productLock = [
+                  logoLockEntry,
+                  ...existingLocks.filter((l) => !String(l).includes(parsed.manufacturerLogoDescription.trim()))
+                ];
+              }
+              return res.json({ success: true, data: parsed });
+            }
+          } catch (oiErr) {
+            console.warn(`Aviso OpenAI em produtos2-planning (${modelCandidate}):`, oiErr?.message || oiErr);
           }
-          const completion = await client.chat.completions.create(params);
-          const parsed = JSON.parse(completion.choices[0]?.message?.content || "{}");
-          if (parsed && Array.isArray(parsed.scenes) && parsed.scenes.length === 9) {
-            return res.json({ success: true, data: parsed });
-          }
-        } catch (oiErr) {
-          console.warn(`Aviso OpenAI em produtos2-planning (${modelCandidate}):`, oiErr?.message || oiErr);
         }
       }
-    }
-    if (process.env.GEMINI_API_KEY) {
-      const parts = [];
-      (Array.isArray(productPhotosBase64) ? productPhotosBase64 : []).slice(0, 3).forEach((photo, idx) => {
-        const parsed2 = parseInlineImage(photo);
-        if (parsed2) {
-          parts.push({ text: `[Foto de Refer\xEAncia ${idx + 1} do Produto - Fidelidade Absoluta PRODUCT LOCK]:` });
-          parts.push({ inlineData: parsed2 });
+      if (provider === "gemini" && process.env.GEMINI_API_KEY) {
+        const parts = [];
+        (Array.isArray(productPhotosBase64) ? productPhotosBase64 : []).slice(0, 3).forEach((photo, idx) => {
+          const parsed = parseInlineImage(photo);
+          if (parsed) {
+            parts.push({ text: `[Foto de Refer\xEAncia ${idx + 1} do Produto - Fidelidade Absoluta PRODUCT LOCK]:` });
+            parts.push({ inlineData: parsed });
+          }
+        });
+        parts.push({ text: userPrompt });
+        const geminiModels = [
+          GEMINI_VISION_MODEL || "gemini-3.8-flash",
+          "gemini-2.5-flash",
+          GEMINI_VISION_FAST_MODEL || "gemini-3.1-flash-lite"
+        ];
+        for (const gemModel of geminiModels) {
+          try {
+            const response = await getGenAI().models.generateContent({
+              model: gemModel,
+              contents: parts,
+              config: {
+                systemInstruction,
+                responseMimeType: "application/json"
+              }
+            });
+            const parsed = JSON.parse(response.text || "{}");
+            if (parsed && Array.isArray(parsed.scenes) && parsed.scenes.length === 9) {
+              if (typeof parsed.manufacturerLogoDescription === "string" && parsed.manufacturerLogoDescription.trim().length > 3) {
+                const logoLockEntry = `LOGOMARCA ORIGINAL DO FABRICANTE NO PRODUTO (OBRIGAT\xD3RIO REPRODUZIR 100% ID\xCANTICA): ${parsed.manufacturerLogoDescription.trim()}`;
+                const existingLocks = Array.isArray(parsed.productLock) ? parsed.productLock : [];
+                parsed.productLock = [
+                  logoLockEntry,
+                  ...existingLocks.filter((l) => !String(l).includes(parsed.manufacturerLogoDescription.trim()))
+                ];
+              }
+              return res.json({ success: true, data: parsed });
+            }
+          } catch (gemErr) {
+            console.warn(`Aviso Gemini em produtos2-planning (${gemModel}):`, gemErr?.message || gemErr);
+          }
         }
-      });
-      parts.push({ text: userPrompt });
-      const response = await getGenAI().models.generateContent({
-        model: GEMINI_VISION_MODEL || "gemini-2.5-flash",
-        contents: parts,
-        config: {
-          systemInstruction,
-          responseMimeType: "application/json"
-        }
-      });
-      const parsed = JSON.parse(response.text || "{}");
-      return res.json({ success: true, data: parsed });
+      }
     }
     return res.json({ success: false, error: "Nenhum provedor de IA configurado para planejamento." });
   } catch (err) {
@@ -3133,6 +3173,50 @@ Retorne APENAS um objeto JSON v\xE1lido com as chaves:
     return res.json({ success: false, error: err?.message || "Erro no planejamento Produtos 2.0" });
   }
 });
+async function extractManufacturerLogoSpecFromPhotos(photosList, productName) {
+  if (!photosList || photosList.length === 0) return "";
+  const promptLogo = `Inspecione as fotos de refer\xEAncia do produto "${productName}".
+O produto possui alguma logomarca, emblema, escudo, s\xEDmbolo gr\xE1fico ou texto de marca do fabricante impresso/estampado/bordado nele mesmo (por exemplo: no encosto, na estrutura, na lateral, no painel ou no r\xF3tulo)?
+IMPORTANTE: Ignore qualquer marca d'\xE1gua de rede social fora do produto. Olhe SOMENTE para a marca/logomarca que faz parte do pr\xF3prio produto f\xEDsico.
+Retorne ESTRITAMENTE um JSON:
+{
+  "hasManufacturerLogo": boolean,
+  "logoSpec": "Descreva em portugu\xEAs com m\xE1xima precis\xE3o visual o formato, desenho/s\xEDmbolo/letras, cor exata e localiza\xE7\xE3o exata da logomarca no produto (ex: 'Grande logomarca/emblema geom\xE9trico branco em formato de escudo hexagonal com W estilizado centralizado na parte superior do encosto preto do banco')"
+}`;
+  if (openAIProvider.isConfigured()) {
+    try {
+      const client = openAIProvider.getClient();
+      const contentBlocks = [];
+      photosList.slice(0, 2).forEach((photo) => {
+        contentBlocks.push({
+          type: "image_url",
+          image_url: {
+            url: photo.startsWith("data:") ? photo : `data:image/jpeg;base64,${photo}`,
+            detail: "high"
+          }
+        });
+      });
+      contentBlocks.push({ type: "text", text: promptLogo });
+      for (const m of [OPENAI_AUDIT_MODEL || "gpt-5.6-luna", "gpt-4o-mini", OPENAI_BRAIN_MODEL]) {
+        try {
+          const r = await client.chat.completions.create({
+            model: m,
+            messages: [{ role: "user", content: contentBlocks }],
+            response_format: { type: "json_object" }
+          });
+          const parsed = JSON.parse(r.choices[0]?.message?.content || "{}");
+          if (parsed?.hasManufacturerLogo && parsed?.logoSpec) {
+            return String(parsed.logoSpec).trim();
+          }
+          return "";
+        } catch {
+        }
+      }
+    } catch {
+    }
+  }
+  return "";
+}
 app.post("/api/produtos2-generate-storyboard", async (req, res) => {
   try {
     const {
@@ -3147,110 +3231,121 @@ app.post("/api/produtos2-generate-storyboard", async (req, res) => {
       return res.status(400).json({ success: false, error: "Prompt do storyboard n\xE3o fornecido." });
     }
     const photosList = Array.isArray(productPhotosBase64) ? productPhotosBase64.filter(Boolean) : [];
-    const effectivePrompt = correctionPrompt && correctionPrompt.trim() ? `${prompt}
+    let logoEnforcementBlock = "";
+    if (photosList.length > 0 && !prompt.includes("LOGOMARCA ORIGINAL DO FABRICANTE NO PRODUTO")) {
+      const extractedLogo = await extractManufacturerLogoSpecFromPhotos(photosList, productName);
+      if (extractedLogo) {
+        logoEnforcementBlock = `
+
+========================
+TRAVA OBRIGAT\xD3RIA DE LOGOMARCA DO FABRICANTE NO PRODUTO (FIDELIDADE 1:1):
+Nas fotos reais anexadas, o produto possui esta logomarca original de f\xE1brica:
+"${extractedLogo}".
+REGRA INEGOCI\xC1VEL: Em TODOS os quadrantes do storyboard 3x3 onde essa parte do produto aparecer, voc\xEA DEVE desenhar e reproduzir FIELMENTE essa exata logomarca do fabricante (mesmo s\xEDmbolo/desenho, mesma cor, mesmo tamanho e mesma posi\xE7\xE3o na pe\xE7a). \xC9 TERMINANTEMENTE PROIBIDO apagar, remover ou deixar lisa a \xE1rea onde fica a logomarca do fabricante!
+========================`;
+      }
+    }
+    const baseWithLogo = `${prompt}${logoEnforcementBlock}`;
+    const effectivePrompt = correctionPrompt && correctionPrompt.trim() ? `${baseWithLogo}
 
 ========================
 CORRE\xC7\xC3O OBRIGAT\xD3RIA DE AUDITORIA DE FIDELIDADE DOS 9 QUADRANTES:
 ${correctionPrompt.trim()}
-========================` : prompt;
+========================` : baseWithLogo;
     const activeProfile = getRequestAIProfile(req);
-    if (activeProfile === "openai" && openAIProvider.isConfigured()) {
-      try {
-        const result = await openAIProvider.generateSceneImage({
-          prompt: effectivePrompt,
-          productPhotoBase64: photosList[0] || "",
-          productPhotosBase64: photosList,
-          modelReferenceBase64: previousStoryboardImageBase64 || void 0,
-          variationName: productName,
-          productType: productName,
-          additionalInstructions: [additionalInstructions, correctionPrompt].filter(Boolean).join(" | "),
-          hasUserProvidedModel: false,
-          isCloneMode: false
-        });
-        if (result.success && result.imageUrl) {
-          return res.json(result);
+    const tryOrder = activeProfile === "gemini" ? ["gemini", "openai"] : ["openai", "gemini"];
+    let lastErrorMessage = "";
+    for (const provider of tryOrder) {
+      if (provider === "openai" && openAIProvider.isConfigured()) {
+        try {
+          const result = await openAIProvider.generateSceneImage({
+            prompt: effectivePrompt,
+            productPhotoBase64: photosList[0] || "",
+            productPhotosBase64: photosList,
+            modelReferenceBase64: void 0,
+            // Sempre usa as fotos reais do produto como referência primária no storyboard 3x3
+            variationName: productName,
+            productType: productName,
+            additionalInstructions: [additionalInstructions, correctionPrompt].filter(Boolean).join(" | "),
+            hasUserProvidedModel: false,
+            isCloneMode: false
+          });
+          if (result.success && result.imageUrl) {
+            return res.json(result);
+          }
+          if (result.error) lastErrorMessage = result.error;
+        } catch (oiErr) {
+          lastErrorMessage = oiErr?.message || "Erro OpenAI ao gerar storyboard";
+          console.warn("Aviso OpenAI em produtos2-generate-storyboard:", lastErrorMessage);
         }
-      } catch (oiErr) {
-        console.warn("Aviso OpenAI em produtos2-generate-storyboard, usando Gemini:", oiErr?.message || oiErr);
       }
-    }
-    if (!process.env.GEMINI_API_KEY) {
-      return res.json({
-        success: false,
-        error: "Chave de API n\xE3o configurada para gerar a imagem do storyboard."
-      });
-    }
-    const parts = [];
-    photosList.slice(0, 4).forEach((photoStr, idx) => {
-      const parsed = parseInlineImage(photoStr);
-      if (parsed) {
-        parts.push({ inlineData: parsed });
-        parts.push({
-          text: `[FOTO DE REFER\xCANCIA REAL DO PRODUTO #${idx + 1} (${productName})]: Preserve 100% id\xEAnticos o formato, cor, propor\xE7\xE3o, textura, bot\xF5es e principalmente a MARCA/LOGOMARCA e TEXTOS IMPRESSOS NO PRODUTO em todos os 9 quadros do storyboard 3x3.`
+      if (provider === "gemini" && process.env.GEMINI_API_KEY) {
+        const parts = [];
+        photosList.slice(0, 4).forEach((photoStr, idx) => {
+          const parsed = parseInlineImage(photoStr);
+          if (parsed) {
+            parts.push({ inlineData: parsed });
+            parts.push({
+              text: `[FOTO DE REFER\xCANCIA REAL DO PRODUTO #${idx + 1} (${productName})]: Preserve 100% id\xEAnticos o formato, cor, propor\xE7\xE3o, textura, bot\xF5es e OBRIGATORIAMENTE A LOGOMARCA/EMBLEMA E TEXTOS DO FABRICANTE IMPRESSOS NO PRODUTO em todos os 9 quadros do storyboard 3x3. JAMAIS apague a logo original do produto.`
+            });
+          }
         });
-      }
-    });
-    if (previousStoryboardImageBase64 && typeof previousStoryboardImageBase64 === "string") {
-      const parsedPrev = parseInlineImage(previousStoryboardImageBase64);
-      if (parsedPrev) {
-        parts.push({ inlineData: parsedPrev });
-        parts.push({
-          text: `[STORYBOARD ANTERIOR PARA CORRE\xC7\xC3O DOS QUADRANTES COM ERRO]: Mantenha os quadros que j\xE1 estavam corretos e CORRIJA rigorosamente os quadros apontados na instru\xE7\xE3o de corre\xE7\xE3o para que o produto fique 100% id\xEAntico \xE0s fotos reais de refer\xEAncia.`
-        });
-      }
-    }
-    parts.push({ text: effectivePrompt });
-    const systemInstructionText = `VOC\xCA \xC9 O GERADOR DE STORYBOARD 3x3 DO MODO PRODUTOS 2.0.
+        if (previousStoryboardImageBase64 && typeof previousStoryboardImageBase64 === "string") {
+          const parsedPrev = parseInlineImage(previousStoryboardImageBase64);
+          if (parsedPrev) {
+            parts.push({ inlineData: parsedPrev });
+            parts.push({
+              text: `[STORYBOARD ANTERIOR PARA CORRE\xC7\xC3O DOS QUADRANTES COM ERRO]: Mantenha os quadros que j\xE1 estavam corretos e CORRIJA rigorosamente os quadros apontados na instru\xE7\xE3o de corre\xE7\xE3o para que o produto (incluindo sua logomarca original do fabricante) fique 100% id\xEAntico \xE0s fotos reais de refer\xEAncia.`
+            });
+          }
+        }
+        parts.push({ text: effectivePrompt });
+        const systemInstructionText = `VOC\xCA \xC9 O GERADOR DE STORYBOARD 3x3 DO MODO PRODUTOS 2.0.
 - Gere UMA \xDANICA IMAGEM VERTICAL 9:16 (1080x1920) contendo uma grade 3x3 (3 colunas x 3 linhas) com EXATAMENTE 9 quadros fotogr\xE1ficos ultra-realistas numerados de 1 a 9 (selo circular branco pequeno no canto superior esquerdo de cada quadro com n\xFAmero preto).
 - Cantos arredondados nos quadros, separados por uma borda branca fina, sobre fundo branco.
 - PRODUCT LOCK ABSOLUTO: O produto em todos os 9 quadros onde aparece deve ser 100% id\xEAntico \xE0s fotos reais anexadas (mesmo formato, cor, textura, bot\xF5es, fun\xE7\xF5es, propor\xE7\xE3o e detalhes).
-- MARCA E LOGO DO PRODUTO: A marca, o logo e os textos que j\xE1 est\xE3o impressos no pr\xF3prio produto nas fotos de refer\xEAncia DEVEM aparecer exatamente iguais, no mesmo lugar, em todos os quadros em que aquela parte estiver vis\xEDvel.
-- ZERO ELEMENTOS EXTERNOS: N\xE3o adicione legendas, textos publicit\xE1rios, pre\xE7os, setas, carrinho, marca d'\xE1gua, @ ou logotipo de rede social/aplicativo. Apenas os n\xFAmeros 1 a 9 nos selos circulares.`;
-    const modelsToTry = [
-      GEMINI_IMAGE_MODEL || "gemini-3.1-flash-image",
-      GEMINI_IMAGE_FAST_MODEL || "gemini-3.1-flash-lite-image",
-      "gemini-3-pro-image"
-    ];
-    let imageResultUrl = "";
-    let lastErrorMessage = "";
-    for (const modelCandidate of modelsToTry) {
-      try {
-        const imgRes = await getGenAI().models.generateContent({
-          model: modelCandidate,
-          contents: { parts },
-          config: {
-            systemInstruction: systemInstructionText,
-            imageConfig: {
-              aspectRatio: "9:16"
+- LOGOMARCA E MARCA DO FABRICANTE NO PRODUTO (OBRIGAT\xD3RIO): A marca, a logomarca, o emblema e os textos que j\xE1 est\xE3o impressos/estampados no pr\xF3prio produto nas fotos de refer\xEAncia DEVEM aparecer 100% id\xEAnticos, na mesma cor e no mesmo lugar da pe\xE7a, em todos os quadros em que aquela parte estiver vis\xEDvel. JAMAIS remova ou alise a logomarca do produto!
+- ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: N\xE3o adicione legendas flutuantes, textos publicit\xE1rios externos, pre\xE7os, setas, carrinho de compras, marca d'\xE1gua externa, @ ou logotipo do TikTok. Apenas os n\xFAmeros 1 a 9 nos selos circulares e a logomarca original do fabricante no pr\xF3prio produto.`;
+        const modelsToTry = [
+          GEMINI_IMAGE_MODEL || "gemini-3.1-flash-image",
+          GEMINI_IMAGE_FAST_MODEL || "gemini-3.1-flash-lite-image",
+          "gemini-3-pro-image"
+        ];
+        for (const modelCandidate of modelsToTry) {
+          try {
+            const imgRes = await getGenAI().models.generateContent({
+              model: modelCandidate,
+              contents: { parts },
+              config: {
+                systemInstruction: systemInstructionText,
+                imageConfig: {
+                  aspectRatio: "9:16"
+                }
+              }
+            });
+            const candidates = imgRes.candidates || [];
+            if (candidates[0]?.content?.parts) {
+              for (const part of candidates[0].content.parts) {
+                if (part.inlineData?.data) {
+                  const mime = part.inlineData.mimeType || "image/png";
+                  return res.json({
+                    success: true,
+                    imageUrl: `data:${mime};base64,${part.inlineData.data}`,
+                    costBRL: 0.08
+                  });
+                }
+              }
             }
-          }
-        });
-        const candidates = imgRes.candidates || [];
-        if (candidates[0]?.content?.parts) {
-          for (const part of candidates[0].content.parts) {
-            if (part.inlineData?.data) {
-              const mime = part.inlineData.mimeType || "image/png";
-              imageResultUrl = `data:${mime};base64,${part.inlineData.data}`;
-              break;
-            }
+          } catch (imgErr) {
+            lastErrorMessage = imgErr?.message || "Erro ao gerar imagem do storyboard";
+            console.warn(`Tentativa storyboard com ${modelCandidate} falhou:`, lastErrorMessage);
           }
         }
-        if (imageResultUrl) break;
-      } catch (imgErr) {
-        lastErrorMessage = imgErr?.message || "Erro ao gerar imagem do storyboard";
-        console.warn(`Tentativa storyboard com ${modelCandidate} falhou:`, lastErrorMessage);
       }
     }
-    if (!imageResultUrl) {
-      return res.json({
-        success: false,
-        error: lastErrorMessage || "N\xE3o foi poss\xEDvel gerar a imagem do storyboard."
-      });
-    }
     return res.json({
-      success: true,
-      imageUrl: imageResultUrl,
-      costBRL: 0.08
+      success: false,
+      error: lastErrorMessage || "N\xE3o foi poss\xEDvel gerar a imagem do storyboard."
     });
   } catch (err) {
     console.error("Erro em /api/produtos2-generate-storyboard:", err);
@@ -3290,21 +3385,33 @@ app.post("/api/produtos2-audit-storyboard", async (req, res) => {
     const auditSystemInstruction = `Voc\xEA \xE9 o Fiscal Rigoroso de Fidelidade Visual de Produtos (Storyboard 3x3 \u2014 9 Quadrantes).
 Sua miss\xE3o \xE9 inspecionar CADA UM DOS 9 QUADRANTES (numerados de 1 a 9, da esquerda para a direita, de cima para baixo: Linha 1 = Cenas 1, 2, 3; Linha 2 = Cenas 4, 5, 6; Linha 3 = Cenas 7, 8, 9) da imagem de Storyboard gerada e comparar o produto com as FOTOS REAIS DE REFER\xCANCIA do produto "${productName}".
 
-REGRAS DE OURO DA FISCALIZA\xC7\xC3O POR QUADRANTE:
-1. Se em algum quadrante aparecer SOMENTE o modelo/pessoa (ex: rea\xE7\xE3o facial) ou SOMENTE o cen\xE1rio, SEM o produto aparecer:
-   - marque "productVisible": false
-   - marque "score": 100
+PASSO 1 \u2014 VERIFICA\xC7\xC3O DA LOGOMARCA DO FABRICANTE NAS FOTOS DE REFER\xCANCIA:
+Primeiro, olhe com aten\xE7\xE3o m\xE1xima para as FOTOS DE REFER\xCANCIA REAIS do produto e identifique se o produto possui alguma LOGOMARCA, EMBLEMA, ESCUDO, S\xCDMBOLO ou NOME DA MARCA impresso/estampado/gravado nele (por exemplo: logomarca branca no topo do encosto de um banco de exerc\xEDcios, logo na lateral, emblema frontal, r\xF3tulo, etc.).
+- Preencha "hasReferenceLogo": true ou false.
+- Preencha "referenceLogoDescription": descri\xE7\xE3o exata da logomarca original vista na foto de refer\xEAncia e em qual parte do produto ela fica (ex: "Logomarca geom\xE9trica branca em formato de escudo no topo do encosto preto").
+
+PASSO 2 \u2014 REGRAS DE OURO DA FISCALIZA\xC7\xC3O POR QUADRANTE (CENA 1 A CENA 9):
+1. Se em algum quadrante aparecer SOMENTE o modelo/pessoa ou SOMENTE o cen\xE1rio, SEM o produto aparecer:
+   - "productVisible": false
+   - "logoPartVisible": false
+   - "logoFaithful": true
+   - "score": 100
    - "issue": "Cena X: Apenas modelo/cen\xE1rio (sem produto vis\xEDvel \u2014 OK)"
-2. Em TODOS os quadrantes onde o produto aparece ("productVisible": true), avalie com rigor m\xE1ximo (0 a 100):
-   - LOGOMARCA E TEXTO DO PRODUTO: A logomarca e o texto de nome/marca impressos no produto nas fotos de refer\xEAncia est\xE3o 100% ID\xCANTICOS naquele quadrante (mesmo nome, mesma posi\xE7\xE3o, mesma cor e formato)? Se a logo do produto sumiu, mudou de lugar ou foi trocada, reduza a nota daquele quadrante!
-   - CORES E MATERIAIS: As cores de cada parte do produto conferem exatamente com as fotos reais?
-   - FORMATO, ESTRUTURA, BOT\xD5ES E FUN\xC7\xD5ES: O formato f\xEDsico, encaixes, bot\xF5es, cabos, costuras ou pe\xE7as conferem 100% com as fotos reais?
-   - LIMPEZA VISUAL: N\xE3o pode haver logotipo de rede social, @, marca d'\xE1gua ou \xEDcone de carrinho.
-3. ESCALA DE NOTAS DE CADA QUADRANTE (0 a 100):
-   - 90 a 100 (VERDE): Produto 90%+ id\xEAntico \xE0s fotos de refer\xEAncia (logo, texto do produto, cor, formato e bot\xF5es fi\xE9is).
-   - 71 a 89 (AMARELO): Produto com pequena varia\xE7\xE3o de detalhe secund\xE1rio, textura leve ou logo levemente apagada naquele quadro.
-   - 60 a 70 (LARANJA): Produto com diferen\xE7a percept\xEDvel (falta da logomarca original, detalhe de formato/bot\xE3o diferente ou varia\xE7\xE3o de tom).
-   - Abaixo de 60 (VERMELHO): Produto muito diferente das fotos reais (outro formato, cor errada, pe\xE7a inventada ou descaracterizada).
+2. Em TODOS os quadrantes onde o produto aparece ("productVisible": true), avalie com rigor m\xE1ximo em escala INTEIRA de 0 a 100:
+   - VERIFICA\xC7\xC3O CR\xCDTICA DE LOGOMARCA DO FABRICANTE ("logoPartVisible" e "logoFaithful"):
+     * Se a parte espec\xEDfica do produto onde fica a logomarca nas fotos de refer\xEAncia (ex: a face frontal superior do encosto do banco) est\xE1 vis\xEDvel e desobstru\xEDda naquele quadrante, marque "logoPartVisible": true.
+     * Se o quadrante \xE9 um close em outra parte do produto onde n\xE3o h\xE1 logo na foto original (ex: pino de ajuste, base inferior, p\xE9s, verso) OU se a pessoa est\xE1 deitada/apoiada cobrindo exatamente o local da logo, marque "logoPartVisible": false, "logoFaithful": true e avalie a nota (90 a 98 se a parte vis\xEDvel estiver fiel \xE0 foto de refer\xEAncia!).
+     * Quando "logoPartVisible": true, verifique se a logomarca original do fabricante est\xE1 presente e id\xEAntica naquele quadrante!
+     * SE "logoPartVisible": true E A LOGOMARCA DO FABRICANTE FOI REMOVIDA, APAGADA, DEIXADA LISA OU ALTERADA naquele quadrante:
+       -> Marque OBRIGATORIAMENTE "logoFaithful": false!
+       -> D\xEA OBRIGATORIAMENTE uma nota BAIXA entre 45 e 58 (VERMELHO, abaixo de 60) para aquele quadrante! NUNCA d\xEA nota alta se a parte da logo est\xE1 vis\xEDvel e a logo sumiu!
+       -> No campo "issue" (SEMPRE EM PORTUGU\xCAS), escreva claramente: "Na Cena X, o produto est\xE1 diferente: a logomarca original do fabricante ([descreva a logo e onde fica, ex: no encosto]) foi removida e n\xE3o aparece como na foto de refer\xEAncia."
+   - CORES, FORMATO, ESTRUTURA E DETALHES: Verifique tamb\xE9m se cor, formato, estofamento, costuras, pinos e pe\xE7as conferem 100% com as fotos de refer\xEAncia.
+3. ESCALA INTEIRA DE NOTAS DE CADA QUADRANTE (0 a 100 \u2014 NUNCA use decimais de 0 a 1):
+   - 90 a 100 (VERDE): Produto 90%+ id\xEAntico \xE0s fotos de refer\xEAncia (logomarca original presente e fiel quando a \xE1rea aparece, ou close fiel de outra parte do produto).
+   - 71 a 89 (AMARELO): Produto com pequena varia\xE7\xE3o leve de detalhe secund\xE1rio.
+   - 60 a 70 (LARANJA): Diferen\xE7a moderada de formato/cor ou logomarca parcialmente distorcida/apagada.
+   - Abaixo de 60 (VERMELHO): Logomarca original do fabricante removida/ausente em quadrante onde aquela parte est\xE1 vis\xEDvel, formato errado ou cor errada.
 
 CONTEXTO DO PRODUCT LOCK ESPERADO:
 ${lockContext}
@@ -3312,123 +3419,164 @@ ${lockContext}
 DESCRI\xC7\xC3O PLANEJADA DAS 9 CENAS:
 ${scenesContext}
 
-Retorne ESTRITAMENTE um objeto JSON v\xE1lido com este formato exato:
+Retorne ESTRITAMENTE um objeto JSON v\xE1lido EM PORTUGU\xCAS com este formato exato:
 {
+  "hasReferenceLogo": true,
+  "referenceLogoDescription": "string em portugu\xEAs descrevendo a logomarca original e sua posi\xE7\xE3o na foto de refer\xEAncia",
   "quadrants": [
     {
       "sceneNumber": 1,
       "productVisible": true,
-      "score": 95,
-      "issue": "Cena 1: Produto id\xEAntico \xE0 refer\xEAncia (logo, cor e estrutura fi\xE9is)"
+      "logoPartVisible": true,
+      "logoFaithful": false,
+      "score": 52,
+      "issue": "Na Cena 1, o produto est\xE1 diferente: a logomarca branca original do fabricante no encosto foi removida."
     }
   ]
 }
-O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9). Quando score < 90, o campo "issue" DEVE come\xE7ar dizendo claramente "Na Cena X, o produto est\xE1 diferente: [explica\xE7\xE3o clara do que est\xE1 errado]".`;
+O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "issue" sempre em portugu\xEAs do Brasil.`;
     const activeProfile = getRequestAIProfile(req);
+    const tryOrder = activeProfile === "gemini" ? ["gemini", "openai"] : ["openai", "gemini"];
     let rawQuadrants = null;
-    if (activeProfile === "openai" && openAIProvider.isConfigured()) {
-      try {
-        const client = openAIProvider.getClient();
-        const contentBlocks = [];
-        contentBlocks.push({
-          type: "text",
-          text: "[IMAGEM 1 \u2014 STORYBOARD 3x3 GERADO (9 CENAS NUMERADAS DE 1 A 9)]:"
-        });
-        contentBlocks.push({
-          type: "image_url",
-          image_url: {
-            url: storyboardImageBase64.startsWith("data:") ? storyboardImageBase64 : `data:image/png;base64,${storyboardImageBase64}`,
-            detail: "high"
-          }
-        });
-        photosList.slice(0, 3).forEach((photo, idx) => {
+    let hasReferenceLogo = false;
+    let referenceLogoDescription = "";
+    for (const provider of tryOrder) {
+      if (rawQuadrants) break;
+      if (provider === "openai" && openAIProvider.isConfigured()) {
+        try {
+          const client = openAIProvider.getClient();
+          const contentBlocks = [];
+          photosList.slice(0, 3).forEach((photo, idx) => {
+            contentBlocks.push({
+              type: "text",
+              text: `[FOTO DE REFER\xCANCIA REAL DO PRODUTO #${idx + 1} \u2014 OBSERVE ATENTAMENTE O FORMATO E A LOGOMARCA DO FABRICANTE IMPRESSA NO PRODUTO]:`
+            });
+            contentBlocks.push({
+              type: "image_url",
+              image_url: {
+                url: photo.startsWith("data:") ? photo : `data:image/jpeg;base64,${photo}`,
+                detail: "high"
+              }
+            });
+          });
           contentBlocks.push({
             type: "text",
-            text: `[FOTO DE REFER\xCANCIA REAL DO PRODUTO #${idx + 1}]:`
+            text: "[IMAGEM GERADA \u2014 STORYBOARD 3x3 COM 9 CENAS NUMERADAS DE 1 A 9 PARA FISCALIZA\xC7\xC3O]:"
           });
           contentBlocks.push({
             type: "image_url",
             image_url: {
-              url: photo.startsWith("data:") ? photo : `data:image/jpeg;base64,${photo}`,
+              url: storyboardImageBase64.startsWith("data:") ? storyboardImageBase64 : `data:image/png;base64,${storyboardImageBase64}`,
               detail: "high"
             }
           });
-        });
-        contentBlocks.push({
-          type: "text",
-          text: "Analise cada um dos 9 quadrantes (Cena 1 a Cena 9) comparando com as fotos reais de refer\xEAncia e retorne o JSON."
-        });
-        const modelsToTry = [OPENAI_AUDIT_MODEL || "gpt-4o", "gpt-4o", "gpt-4o-mini"];
-        for (const modelCandidate of modelsToTry) {
-          try {
-            const params = {
-              model: modelCandidate,
-              messages: [
-                { role: "system", content: auditSystemInstruction },
-                { role: "user", content: contentBlocks }
-              ],
-              response_format: { type: "json_object" }
-            };
-            if (!modelCandidate.startsWith("gpt-5") && !modelCandidate.startsWith("o")) {
-              params.temperature = 0.2;
+          contentBlocks.push({
+            type: "text",
+            text: "Inspecione cada um dos 9 quadrantes (Cena 1 a Cena 9) comparando rigorosamente com as fotos reais de refer\xEAncia (especialmente se a logomarca do fabricante impressa no produto est\xE1 presente nos quadros onde aquela parte do produto aparece) e retorne o JSON em portugu\xEAs."
+          });
+          const modelsToTry = [OPENAI_AUDIT_MODEL || "gpt-5.6-luna", "gpt-4o", "gpt-4o-mini", OPENAI_BRAIN_MODEL];
+          for (const modelCandidate of modelsToTry) {
+            try {
+              const params = {
+                model: modelCandidate,
+                messages: [
+                  { role: "system", content: auditSystemInstruction },
+                  { role: "user", content: contentBlocks }
+                ],
+                response_format: { type: "json_object" }
+              };
+              if (!modelCandidate.startsWith("gpt-5") && !modelCandidate.startsWith("o")) {
+                params.temperature = 0.15;
+              }
+              const completion = await client.chat.completions.create(params);
+              const parsed = JSON.parse(completion.choices[0]?.message?.content || "{}");
+              if (parsed && Array.isArray(parsed.quadrants) && parsed.quadrants.length > 0) {
+                rawQuadrants = parsed.quadrants;
+                hasReferenceLogo = Boolean(parsed.hasReferenceLogo);
+                referenceLogoDescription = String(parsed.referenceLogoDescription || "").trim();
+                break;
+              }
+            } catch (e) {
+              console.warn(`Aviso OpenAI audit storyboard (${modelCandidate}):`, e?.message || e);
             }
-            const completion = await client.chat.completions.create(params);
-            const parsed = JSON.parse(completion.choices[0]?.message?.content || "{}");
-            if (parsed && Array.isArray(parsed.quadrants) && parsed.quadrants.length > 0) {
-              rawQuadrants = parsed.quadrants;
-              break;
-            }
-          } catch (e) {
-            console.warn(`Aviso OpenAI audit storyboard (${modelCandidate}):`, e?.message || e);
           }
+        } catch (oiErr) {
+          console.warn("Falha OpenAI em produtos2-audit-storyboard:", oiErr?.message || oiErr);
         }
-      } catch (oiErr) {
-        console.warn("Falha OpenAI em produtos2-audit-storyboard, usando Gemini:", oiErr?.message || oiErr);
       }
-    }
-    if (!rawQuadrants && process.env.GEMINI_API_KEY) {
-      try {
-        const parts = [];
-        const parsedStoryboard = parseInlineImage(storyboardImageBase64);
-        if (parsedStoryboard) {
-          parts.push({ text: "[IMAGEM 1 \u2014 STORYBOARD 3x3 GERADO (9 CENAS NUMERADAS DE 1 A 9)]:" });
-          parts.push({ inlineData: parsedStoryboard });
-        }
-        photosList.slice(0, 3).forEach((photo, idx) => {
-          const parsedRef = parseInlineImage(photo);
-          if (parsedRef) {
-            parts.push({ text: `[FOTO DE REFER\xCANCIA REAL DO PRODUTO #${idx + 1}]:` });
-            parts.push({ inlineData: parsedRef });
+      if (!rawQuadrants && provider === "gemini" && process.env.GEMINI_API_KEY) {
+        try {
+          const parts = [];
+          photosList.slice(0, 3).forEach((photo, idx) => {
+            const parsedRef = parseInlineImage(photo);
+            if (parsedRef) {
+              parts.push({ text: `[FOTO DE REFER\xCANCIA REAL DO PRODUTO #${idx + 1} \u2014 OBSERVE A LOGOMARCA DO FABRICANTE E DETALHES]:` });
+              parts.push({ inlineData: parsedRef });
+            }
+          });
+          const parsedStoryboard = parseInlineImage(storyboardImageBase64);
+          if (parsedStoryboard) {
+            parts.push({ text: "[IMAGEM GERADA \u2014 STORYBOARD 3x3 (9 CENAS NUMERADAS DE 1 A 9)]:" });
+            parts.push({ inlineData: parsedStoryboard });
           }
-        });
-        parts.push({
-          text: `${auditSystemInstruction}
+          parts.push({
+            text: `${auditSystemInstruction}
 
-Analise cada um dos 9 quadrantes (Cena 1 a Cena 9) e retorne o JSON.`
-        });
-        const auditRes = await getGenAI().models.generateContent({
-          model: GEMINI_VISION_MODEL || "gemini-2.5-flash",
-          contents: parts,
-          config: {
-            responseMimeType: "application/json"
+Analise cada um dos 9 quadrantes (Cena 1 a Cena 9) e retorne o JSON em portugu\xEAs.`
+          });
+          const geminiModels = [
+            GEMINI_VISION_MODEL || "gemini-3.8-flash",
+            "gemini-2.5-flash",
+            GEMINI_VISION_FAST_MODEL || "gemini-3.1-flash-lite"
+          ];
+          for (const gemModel of geminiModels) {
+            try {
+              const auditRes = await getGenAI().models.generateContent({
+                model: gemModel,
+                contents: parts,
+                config: {
+                  responseMimeType: "application/json"
+                }
+              });
+              const parsed = JSON.parse(auditRes.text || "{}");
+              if (parsed && Array.isArray(parsed.quadrants) && parsed.quadrants.length > 0) {
+                rawQuadrants = parsed.quadrants;
+                hasReferenceLogo = Boolean(parsed.hasReferenceLogo);
+                referenceLogoDescription = String(parsed.referenceLogoDescription || "").trim();
+                break;
+              }
+            } catch (gemErr) {
+              console.warn(`Aviso Gemini em produtos2-audit-storyboard (${gemModel}):`, gemErr?.message || gemErr);
+            }
           }
-        });
-        const parsed = JSON.parse(auditRes.text || "{}");
-        if (parsed && Array.isArray(parsed.quadrants) && parsed.quadrants.length > 0) {
-          rawQuadrants = parsed.quadrants;
+        } catch (gemOuterErr) {
+          console.warn("Aviso Gemini outer em produtos2-audit-storyboard:", gemOuterErr?.message || gemOuterErr);
         }
-      } catch (gemErr) {
-        console.warn("Aviso Gemini em produtos2-audit-storyboard:", gemErr?.message || gemErr);
       }
     }
     const normalizedQuadrants = Array.from({ length: 9 }, (_, i) => {
       const sceneNum = i + 1;
       const found = (rawQuadrants || []).find((q) => Number(q.sceneNumber) === sceneNum) || (rawQuadrants || [])[i];
       const productVisible = found?.productVisible !== void 0 ? Boolean(found.productVisible) : true;
-      const rawScore = productVisible ? Number(found?.score ?? 93) : 100;
-      const score = Math.max(0, Math.min(100, Math.round(isNaN(rawScore) ? 93 : rawScore)));
-      const status = getAuditColorStatus(score);
+      const logoPartVisible = found?.logoPartVisible !== void 0 ? Boolean(found.logoPartVisible) : false;
+      const logoFaithful = found?.logoFaithful !== void 0 ? Boolean(found.logoFaithful) : true;
+      let rawScore = productVisible ? Number(found?.score ?? 93) : 100;
+      if (isNaN(rawScore)) rawScore = 93;
+      if (rawScore > 0 && rawScore <= 1) {
+        rawScore = Math.round(rawScore * 100);
+      }
       let issue = String(found?.issue || "").trim();
+      const lowerIssue = issue.toLowerCase();
+      const mentionsMissingLogo = logoPartVisible && !logoFaithful || lowerIssue.includes("foi removid") || logoPartVisible && (lowerIssue.includes("not visible") || lowerIssue.includes("missing") || lowerIssue.includes("sem a logo") || lowerIssue.includes("sem logo") || lowerIssue.includes("ausente") || lowerIssue.includes("n\xE3o aparece"));
+      if (productVisible && mentionsMissingLogo) {
+        rawScore = Math.min(rawScore, 54);
+        if (!issue || !lowerIssue.includes("cena")) {
+          const logoRefText = referenceLogoDescription ? ` (${referenceLogoDescription})` : " presente na foto de refer\xEAncia";
+          issue = `Na Cena ${sceneNum}, o produto est\xE1 diferente: a logomarca original do fabricante${logoRefText} foi removida ou n\xE3o aparece id\xEAntica na pe\xE7a.`;
+        }
+      }
+      const score = Math.max(0, Math.min(100, Math.round(rawScore)));
+      const status = getAuditColorStatus(score);
       if (!issue) {
         if (!productVisible) {
           issue = `Cena ${sceneNum}: Apenas modelo/cen\xE1rio (sem produto vis\xEDvel \u2014 OK)`;
@@ -3469,19 +3617,21 @@ Analise cada um dos 9 quadrantes (Cena 1 a Cena 9) e retorne o JSON.`
     const overallLabel = getAuditColorLabel(overallStatus, overallScore);
     const summaryIssues = problemQuadrants.length > 0 ? problemQuadrants.map((q) => `${q.issue} (Nota: ${q.score}%)`) : ["Todas as 9 cenas est\xE3o com fidelidade acima de 90% em rela\xE7\xE3o \xE0s fotos de refer\xEAncia."];
     let correctionPrompt = "";
+    const logoMandatoryNote = hasReferenceLogo && referenceLogoDescription ? `OBRIGAT\xD3RIO REPRODUZIR A LOGOMARCA ORIGINAL DO FABRICANTE NO PRODUTO: "${referenceLogoDescription}". JAMAIS deixe a superf\xEDcie lisa onde existe a logomarca nas fotos de refer\xEAncia!` : `OBRIGAT\xD3RIO preservar 100% id\xEAnticos a logomarca e os textos originais do fabricante impressos no pr\xF3prio produto nas fotos de refer\xEAncia.`;
     if (problemQuadrants.length > 0) {
       const approvedNums = approvedQuadrants.map((q) => q.sceneNumber).join(", ");
       const fixesList = problemQuadrants.map(
-        (q) => `- CORRIGIR CENA ${q.sceneNumber} (nota anterior ${q.score}%): ${q.issue}. Fa\xE7a o produto "${productName}" na Cena ${q.sceneNumber} ficar 100% ID\xCANTICO \xE0s fotos reais de refer\xEAncia (mesma logomarca, mesmo texto impresso no produto, mesmas cores, mesmo formato e bot\xF5es).`
+        (q) => `- CORRIGIR CENA ${q.sceneNumber} (nota anterior ${q.score}%): ${q.issue}. Fa\xE7a o produto "${productName}" na Cena ${q.sceneNumber} ficar 100% ID\xCANTICO \xE0s fotos reais de refer\xEAncia (reproduzindo fielmente a logomarca original do fabricante na pe\xE7a, cores, formato e bot\xF5es).`
       ).join("\n");
       correctionPrompt = [
+        logoMandatoryNote,
         approvedNums ? `MANTENHA A QUALIDADE E FIDELIDADE DAS CENAS J\xC1 APROVADAS (Cenas ${approvedNums}).` : "",
         `CORRIJA PRIORITARIAMENTE AS CENAS ONDE O PRODUTO FICOU DIFERENTE:`,
         fixesList,
-        `OBJETIVO OBRIGAT\xD3RIO: Atingir mais de 90% de similaridade em TODOS os 9 quadrantes, preservando logomarca, textos impressos, cores, formato e bot\xF5es 100% id\xEAnticos \xE0s fotos de refer\xEAncia.`
+        `OBJETIVO OBRIGAT\xD3RIO: Atingir mais de 90% de similaridade em TODOS os 9 quadrantes, preservando logomarca do fabricante, textos impressos no produto, cores, formato e bot\xF5es 100% id\xEAnticos \xE0s fotos de refer\xEAncia.`
       ].filter(Boolean).join("\n");
     } else {
-      correctionPrompt = `Mantenha mais de 90% de similaridade em todos os 9 quadrantes, preservando logomarca, textos impressos no produto, cores, bot\xF5es e formato 100% id\xEAnticos \xE0s fotos de refer\xEAncia.`;
+      correctionPrompt = `${logoMandatoryNote} Mantenha mais de 90% de similaridade em todos os 9 quadrantes, preservando logomarca do fabricante, textos impressos no produto, cores, bot\xF5es e formato 100% id\xEAnticos \xE0s fotos de refer\xEAncia.`;
     }
     return res.json({
       success: true,

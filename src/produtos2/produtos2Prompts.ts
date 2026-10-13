@@ -114,7 +114,9 @@ export function buildProdutos2StoryboardImagePrompt(params: {
 
   return `Crie UMA ÚNICA IMAGEM VERTICAL 1080x1920 (9:16) de storyboard fotográfico ultra-realista em grade 3x3 (3 colunas x 3 linhas), com EXATAMENTE 9 cenas numeradas de 1 a 9 em ordem de leitura (esquerda para direita, de cima para baixo). Quadros de tamanho igual, cantos arredondados, separados por uma borda branca fina, fundo branco.
 
-Use as fotos anexadas como referência absoluta do produto. Preserve fielmente (PRODUCT LOCK): ${productLock.join('; ')}. O produto deve ser idêntico em todos os quadros: não redesenhar, não embelezar, não trocar cor, não acrescentar peças e não simplificar detalhes. A marca, o logo e os textos impressos no produto devem aparecer exatamente como nas fotos de referência. Nenhum outro texto ou logo.
+Use as fotos anexadas como referência absoluta do produto. Preserve fielmente (PRODUCT LOCK): ${productLock.join('; ')}.
+O produto deve ser 100% idêntico em todos os quadros: não redesenhar, não embelezar, não trocar cor, não acrescentar peças e não simplificar detalhes.
+REGRA OBRIGATÓRIA DE LOGOMARCA DO FABRICANTE NO PRODUTO: A marca, a logomarca, o emblema/símbolo e os textos originais do fabricante que estão impressos, estampados ou gravados no próprio produto nas fotos de referência DEVEM aparecer 100% idênticos (mesmo desenho, formato, cor, proporção e posição exata na peça, como no encosto, painel ou corpo do produto) em TODOS os quadros onde essa parte do produto estiver visível. JAMAIS remova, apague ou deixe lisa a área onde fica a logomarca original do fabricante no produto!
 
 A copy selecionada para este criativo é:
 "${finalCopy}"
@@ -128,9 +130,9 @@ Estilo: fotografia ultra-realista de smartphone, UGC premium de anúncio, luz na
 
 ${scenesLines}
 
-Mantenha continuidade de produto, personagem, ambiente e iluminação entre as cenas relacionadas. Cada quadro deve parecer uma fotografia real e utilizável como referência de futura animação.
+Mantenha continuidade de produto, logomarca original do fabricante no produto, personagem, ambiente e iluminação entre as cenas relacionadas. Cada quadro deve parecer uma fotografia real e utilizável como referência de futura animação.
 Adicionar SOMENTE os números 1 a 9 em pequenos selos circulares brancos com número preto, no canto superior esquerdo de cada quadro.
-NÃO adicionar frases, legendas, textos publicitários, carrinho, ícones, botões, setas, preços, interface de aplicativo, logotipo do TikTok ou de rede social, nome de usuário/@, carrinho ou marca d'água.`;
+PROIBIÇÃO EXCLUSIVA DE INTERFACE EXTERNA: NÃO adicionar frases flutuantes na tela, legendas, textos publicitários externos, ícone de carrinho de compras, botões, setas, preços, interface de aplicativo, logotipo do TikTok ou de rede social, nome de usuário/@ ou marca d'água externa (mantendo obrigatoriamente a logomarca original do fabricante impressa no próprio produto).`;
 }
 
 /**
@@ -309,7 +311,7 @@ FIDELIDADE DO PRODUTO (PRODUCT LOCK)
 ========================
 Manter ${productName} exatamente como aparece no storyboard e nas fotos:
 ${productLockBullets}
-Não alterar a aparência do produto entre as cenas. Não redesenhar, não trocar cor, não acrescentar peças e não simplificar detalhes. A marca, o logo e os textos impressos no próprio produto devem aparecer exatamente como nas fotos de referência. Nenhum outro texto ou logo pode ser adicionado.
+Não alterar a aparência do produto entre as cenas. Não redesenhar, não trocar cor, não acrescentar peças e não simplificar detalhes. A marca, a logomarca/emblema e os textos do fabricante impressos no próprio produto DEVEM aparecer 100% idênticos às fotos de referência em todas as cenas em que aquela parte do produto estiver visível. Proibido apenas adicionar textos ou logos externos de redes sociais (como TikTok/@/carrinho) na tela.
 
 ========================
 PERSONAGEM
@@ -451,9 +453,9 @@ export function buildDefaultProdutos2Plan(params: {
     .slice(0, 3);
 
   const productLock: string[] = [
+    `LOGOMARCA E IDENTIDADE DO FABRICANTE: Preservar 100% idênticos a logomarca, o emblema/símbolo e o nome da marca originais do fabricante impressos/estampados no próprio produto nas fotos de referência (mesmo desenho, cor, tamanho e posição exata na peça, jamais apagar ou alisar a logo do produto)`,
     `Formato, silhueta, proporção e dimensões exatas de ${productName} conforme fotos anexadas`,
     colorsNote,
-    `Marca, logotipo e textos que já estão impressos no próprio produto (o quê, posição exata, cor e tamanho iguais às fotos de referência; se não houver marca nas fotos, superfície lisa sem marcas)`,
     `Textura, material, costuras, encaixes, botões e funções originais preservados 1:1 sem redesenho`,
     ...(infoHighlights.length > 0 ? infoHighlights : [`Acabamento físico autêntico idêntico em todas as 9 cenas`]),
   ];
@@ -730,11 +732,14 @@ export function buildProdutos2PlanningSystemPrompt(): string {
   return `Você é o Diretor Criativo Copy-First do Modo Produtos 2.0.
 REGRA-MÃE: A COPY VENDE. O STORYBOARD PROVA VISUALMENTE A COPY. O VÍDEO ANIMA O STORYBOARD SEM NUNCA MOSTRAR A PRÓPRIA FOLHA DO STORYBOARD.
 
-REGRA DE OURO — TEXTO, LOGO E PALAVRA PROIBIDA:
-- A palavra "TikTok" NUNCA pode aparecer em "productLock", "avatarDescription", "scenarioDescription", "visualMap" nem em "scenes" (somente dentro de "adaptedCopy" se já fizer parte da fala).
-- O produto é sempre 100% idêntico às fotos de referência, inclusive a marca/logo e qualquer texto que já estejam impressos no próprio produto.
-- Se as fotos de referência mostram marca, logo ou texto impresso no produto, o "productLock" DEVE descrever exatamente (o quê, onde fica no produto, cor e tamanho — ex.: "logo branco da marca impresso na face frontal do apoio Scott, igual à foto").
-- Se o produto NÃO tem marca ou texto nas fotos, o "productLock" deve descrever como "superfície lisa, sem marcas".
+REGRA DE OURO INVIOLÁVEL — LOGOMARCA DO FABRICANTE NO PRODUTO vs ELEMENTOS DE REDE SOCIAL:
+- DIFERENCIE TOTALMENTE:
+  1) PROIBIDO: Logotipo do TikTok, marca d'água de rede social, @usuário, botões ou ícone de carrinho flutuantes na tela. A palavra "TikTok" NUNCA pode aparecer em "productLock", "avatarDescription", "scenarioDescription", "visualMap" nem em "scenes" (somente dentro de "adaptedCopy" se já fizer parte da fala).
+  2) OBRIGATÓRIO E SAGRADO: A logomarca, o emblema, o escudo/símbolo e o nome da marca DO PRÓPRIO FABRICANTE que estão impressos, bordados ou estampados NO PRODUTO nas fotos de referência DEVEM SER FIELMENTE REPRESENTADOS E PRESERVADOS 100% IDÊNTICOS!
+- Inspecione minuciosamente as fotos de referência anexadas procurando qualquer logomarca, emblema, símbolo gráfico ou texto de marca no produto (por exemplo: logo branca no encosto de um banco de exercícios, logo na lateral de um tênis, marca no painel de um eletrônico, rótulo de um frasco, etc.).
+- Preencha obrigatoriamente o campo "manufacturerLogoDescription" descrevendo com precisão cirúrgica a logomarca/marca visível no produto (formato, desenho, letras/símbolo, cor exata e localização exata na peça, ex.: "Logomarca geométrica branca em formato de escudo hexagonal com 'W' estilizado centralizada na parte superior do encosto preto do banco").
+- O 1º item do array "productLock" DEVE ser essa descrição exata da logomarca do fabricante e a exigência de que ela apareça idêntica em todas as cenas onde aquela parte do produto estiver visível.
+- Nas descrições das cenas ("scenes") em que a parte do produto com a logomarca aparece, mencione explicitamente a presença da logomarca original no local exato (ex.: "...exibindo o encosto preto com a logomarca branca original do fabricante no topo").
 
 Sua tarefa é receber:
 1) As fotos reais do produto;
@@ -743,26 +748,28 @@ Sua tarefa é receber:
 4) As configurações (duração 10s ou 8s, influencer, gênero do cliente, fala, enquadramento, cenário, instruções adicionais).
 
 E retornar um JSON estrito com:
-1. "adaptedCopy":
+1. "manufacturerLogoDescription": string detalhando exatamente a logomarca/emblema/texto do fabricante visível no produto nas fotos anexadas (cor, formato, desenho e onde fica no produto).
+2. "adaptedCopy":
    - TODA copy/fala DEVE obrigatoriamente começar com a expressão inicial neutra "Nossa, " (ex.: "Nossa, ..."), que serve de margem para o corte do primeiro segundo no Veo. Não duplique caso já comece com "Nossa".
    - Se foi enviada copy personalizada do usuário, mantenha-a EXATAMENTE como está com "Nossa, " no início (só reduza se duração=8s e passar de 199 caracteres).
    - Se veio do banco, MUDE O MÍNIMO POSSÍVEL (Seção 5): troque apenas nome/marca/modelo pelos do produto real, números/especificações pelos reais das Informações do Produto, cor/material/quantidade, mantendo "Nossa, " no início.
    - NUNCA use a palavra "menina" como vocativo; quando o público for feminino e houver vocativo, use "Amiga" ou "Gente". Para público masculino, use "Meu amigo", "Cara", "Irmão" ou "Gente".
    - Se duração = 8s, a "adaptedCopy" DEVE ter no máximo 199 caracteres contando espaços (mantendo "Nossa, " + Gancho + Prova principal com "olha" + CTA).
-2. "productLock": array de 4 a 6 strings detalhando fisicamente o produto visto nas fotos (formato, cor exata, material, textura, proporção, botões/costuras/sola/cabos/detalhes, e obrigatoriamente a descrição exata da marca/logo/texto impresso no produto conforme as fotos ou "superfície lisa, sem marcas").
-3. "avatarDescription": descrição de 1 frase do consumidor brasileiro adulto que apresenta o produto (respeitando o gênero do Influencer e as Instruções Adicionais; se produto infantil, quem apresenta na cena 1 e 9 é sempre um adulto pai/mãe).
-4. "scenarioDescription": descrição concreta do cenário (onde o produto é usado de verdade ou casa brasileira simples e aconchegante, respeitando Instruções Adicionais).
-5. "visualMap": array de 4 objetos { "excerpt", "intent", "visualProof", "scenes" } mapeando os trechos da copy para provas visuais nas cenas 1 a 9.
-6. "scenes": array de EXATAMENTE 9 objetos { "number": 1..9, "startTime", "endTime", "framing", "action", "cameraMovement", "storyboardDescription" }:
+3. "productLock": array de 4 a 6 strings detalhando fisicamente o produto visto nas fotos (1º item obrigatoriamente a descrição exata da logomarca/emblema/marca impressa no produto e sua posição exata; seguido de formato, cor exata, material, textura, proporção, botões/costuras/sola/cabos/detalhes).
+4. "avatarDescription": descrição de 1 frase do consumidor brasileiro adulto que apresenta o produto (respeitando o gênero do Influencer e as Instruções Adicionais; se produto infantil, quem apresenta na cena 1 e 9 é sempre um adulto pai/mãe).
+5. "scenarioDescription": descrição concreta do cenário (onde o produto é usado de verdade ou casa brasileira simples e aconchegante, respeitando Instruções Adicionais).
+6. "visualMap": array de 4 objetos { "excerpt", "intent", "visualProof", "scenes" } mapeando os trechos da copy para provas visuais nas cenas 1 a 9.
+7. "scenes": array de EXATAMENTE 9 objetos { "number": 1..9, "startTime", "endTime", "framing", "action", "cameraMovement", "storyboardDescription" }:
    - Cada cena prova visualmente o que está sendo falado naquele momento da copy.
    - Todo "olha [detalhe]" na copy vira uma cena de close/macro daquele detalhe.
    - Variar enquadramentos (nunca duas cenas seguidas iguais): close, macro, POV de mãos, plano médio, plano aberto, uso real.
    - "storyboardDescription" DEVE ser idêntico a "{framing}. {action}" (mesma pessoa, mesma ação, mesmo enquadramento e mesmos objetos, sem inventar objetos extras ou mudar quem aparece entre um campo e outro).
+   - Sempre que a parte do produto onde fica a logomarca do fabricante estiver visível na cena, inclua na descrição da cena que a logomarca original está visível e idêntica à foto.
    - Na Cena 1, escreva "action" de forma direta e objetiva (sem reticências e sem ponto no meio da frase).
    - Respeitar estritamente o Enquadramento:
      * "com_rosto": rosto aparece em algumas cenas (especialmente gancho e cena 9).
      * "sem_rosto": nunca mostrar o rosto; sempre do pescoço para baixo.
      * "pov": mostrar somente as mãos em primeira pessoa; nunca rosto ou corpo.
-   - Proibido texto, legenda, preço, número escrito, carrinho, marca d'água, @ ou interface de aplicativo dentro das cenas.`;
+   - Proibido texto flutuante externo, legenda, preço, número escrito, carrinho, marca d'água de rede social, @ ou interface de aplicativo dentro das cenas (mas OBRIGATÓRIO manter a logomarca original do fabricante impressa no próprio produto).`;
 }
 
