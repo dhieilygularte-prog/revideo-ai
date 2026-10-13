@@ -1213,18 +1213,8 @@ Sua tarefa \xE9 receber:
 E retornar um JSON estrito com:
 1. "manufacturerLogoDescription": string detalhando exatamente a logomarca/emblema/texto do fabricante vis\xEDvel no produto nas fotos anexadas (cor, formato, desenho e onde fica no produto).
 2. "adaptedCopy":
-   - TODA copy/fala DEVE obrigatoriamente come\xE7ar com a express\xE3o inicial neutra "Nossa, " (ex.: "Nossa, ..."), que serve de margem para o corte do primeiro segundo no Veo. N\xE3o duplique caso j\xE1 comece com "Nossa".
-   - Se a "Copy-base selecionada" j\xE1 veio pronta e calibrada, MANTENHA A "baseCopy" EXATAMENTE COMO EST\xC1! NUNCA transforme a copy em uma lista de ficha t\xE9cnica (PROIBIDO escrever frases secas como "Banco ajust\xE1vel com espuma de 5 cm, base de a\xE7o triangular e p\xE9s antiderrapantes. Clica no carrinho.").
-   - Caso precise adaptar ou criar copy para produto novo ou outro produto do nicho, siga obrigatoriamente o DNA DAS COPIES QUE VENDEM (6 partes na ordem fixa):
-     [1. GANCHO DE INTERRUP\xC7\xC3O (Choque de pre\xE7o/loucura, Pergunta de dor/inconformismo, Conversa direta com vocativo + descoberta, Provoca\xE7\xE3o/contraste, Desejo imediato/parcela, Segredo revelado ou Urg\xEAncia de estoque)] ->
-     [2. APRESENTA O PRODUTO COM EMO\xC7\xC3O] ->
-     [3. "OLHA" + BENEF\xCDCIO 1 (caracter\xEDstica traduzida em benef\xEDcio real: "caracter\xEDstica + que/pra/sem + benef\xEDcio")] ->
-     [4. BENEF\xCDCIO 2 (no m\xE1ximo 2 ou 3 caracter\xEDsticas em toda a copy, sempre traduzidas em benef\xEDcio)] ->
-     [5. QUEBRA DE OBJE\xC7\xC3O / COMPARA\xC7\xC3O DE VALOR / CENA DE USO] ->
-     [6. CTA COMPLETO (verbo de a\xE7\xE3o + "no carrinho / aqui embaixo" + recompensa/urg\xEAncia, ex.: "Clica no carrinho e garante o seu!". NUNCA use "Clica no carrinho." seco)].
-   - LIMITES E ALVOS EXATOS DE CARACTERES (contando espa\xE7os e o "Nossa, " inicial):
-     * Em 8 segundos (copy nova ou adaptada): janela obrigat\xF3ria de 185 a 195 caracteres (limite m\xE1ximo 199, quanto mais perto de 195 melhor; abaixo de 185 \xE9 proibido).
-     * Em 10 segundos (copy nova ou adaptada): janela obrigat\xF3ria de 242 a 250 caracteres (limite m\xE1ximo 252, quanto mais perto de 250 melhor; abaixo de 242 \xE9 proibido).
+   - REGRA ABSOLUTA: NUNCA crie copy do zero! O aplicativo trabalha EXCLUSIVAMENTE com as ~62 copies vencedoras validadas que j\xE1 est\xE3o na mem\xF3ria (ou copy do mesmo produto, ou copy de outro produto do mesmo nicho adaptada, ou outra copy do banco adaptada).
+   - A "baseCopy" recebida j\xE1 \xE9 a copy do banco adaptada com o m\xEDnimo de mudan\xE7as e j\xE1 come\xE7a com "Nossa, ". MANTENHA A "baseCopy" EXATAMENTE COMO EST\xC1!
    - NUNCA use a palavra "menina" como vocativo; quando o p\xFAblico for feminino, use "Amiga" ou "Gente". Para masculino, use "Meu amigo", "Cara", "Irm\xE3o" ou "Gente".
 3. "productLock": array de 4 a 6 strings detalhando fisicamente o produto visto nas fotos (1\xBA item obrigatoriamente a descri\xE7\xE3o exata da logomarca/emblema/marca impressa no produto e sua posi\xE7\xE3o exata; seguido de formato, cor exata, material, textura, propor\xE7\xE3o, bot\xF5es/costuras/sola/cabos/detalhes).
 4. "avatarDescription": descri\xE7\xE3o de 1 frase do consumidor brasileiro adulto que apresenta o produto (respeitando o g\xEAnero do Influencer e as Instru\xE7\xF5es Adicionais; se produto infantil, quem apresenta na cena 1 e 9 \xE9 sempre um adulto pai/m\xE3e).

@@ -366,27 +366,9 @@ export async function runProdutos2Pipeline(params: {
       if (planJson && planJson.success && planJson.data) {
         const d = planJson.data;
 
-        // Se a IA adaptou a copy (e não era customCopy nem copy exata do mesmo produto do banco),
-        // validamos pelo Checklist da Parte E e pela janela de caracteres da Parte B (185-195 em 8s; 242-250 em 10s)
-        if (
-          !form.customCopy?.trim() &&
-          !copySelection.isSameProductBankCopy &&
-          typeof d.adaptedCopy === 'string' &&
-          d.adaptedCopy.trim().length > 30
-        ) {
-          const calibratedAiCopy = calibrateCopyToTargetWindow({
-            copy: d.adaptedCopy.trim(),
-            duration: form.duration,
-            isSameProductBankCopy: false,
-            clientGender: form.clientGender,
-            influencer: resolvedInfluencer,
-          });
-          const aiCheck = evaluateCopyDnaChecklist(calibratedAiCopy, form.duration);
-          const baseCheck = evaluateCopyDnaChecklist(finalCopy, form.duration);
-          if (aiCheck.passed && aiCheck.score >= baseCheck.score) {
-            finalCopy = calibratedAiCopy;
-          }
-        }
+        // REGRA DO USUÁRIO: Trabalhar SEMPRE com as copies validadas que já estão na memória (selectAndAdaptProdutos2Copy),
+        // mudando o mínimo possível, sem deixar a IA inventar copy do zero.
+        finalCopy = copySelection.finalCopy;
 
         if (Array.isArray(d.productLock) && d.productLock.length >= 2) {
           productLock = d.productLock

@@ -852,18 +852,8 @@ Sua tarefa é receber:
 E retornar um JSON estrito com:
 1. "manufacturerLogoDescription": string detalhando exatamente a logomarca/emblema/texto do fabricante visível no produto nas fotos anexadas (cor, formato, desenho e onde fica no produto).
 2. "adaptedCopy":
-   - TODA copy/fala DEVE obrigatoriamente começar com a expressão inicial neutra "Nossa, " (ex.: "Nossa, ..."), que serve de margem para o corte do primeiro segundo no Veo. Não duplique caso já comece com "Nossa".
-   - Se a "Copy-base selecionada" já veio pronta e calibrada, MANTENHA A "baseCopy" EXATAMENTE COMO ESTÁ! NUNCA transforme a copy em uma lista de ficha técnica (PROIBIDO escrever frases secas como "Banco ajustável com espuma de 5 cm, base de aço triangular e pés antiderrapantes. Clica no carrinho.").
-   - Caso precise adaptar ou criar copy para produto novo ou outro produto do nicho, siga obrigatoriamente o DNA DAS COPIES QUE VENDEM (6 partes na ordem fixa):
-     [1. GANCHO DE INTERRUPÇÃO (Choque de preço/loucura, Pergunta de dor/inconformismo, Conversa direta com vocativo + descoberta, Provocação/contraste, Desejo imediato/parcela, Segredo revelado ou Urgência de estoque)] ->
-     [2. APRESENTA O PRODUTO COM EMOÇÃO] ->
-     [3. "OLHA" + BENEFÍCIO 1 (característica traduzida em benefício real: "característica + que/pra/sem + benefício")] ->
-     [4. BENEFÍCIO 2 (no máximo 2 ou 3 características em toda a copy, sempre traduzidas em benefício)] ->
-     [5. QUEBRA DE OBJEÇÃO / COMPARAÇÃO DE VALOR / CENA DE USO] ->
-     [6. CTA COMPLETO (verbo de ação + "no carrinho / aqui embaixo" + recompensa/urgência, ex.: "Clica no carrinho e garante o seu!". NUNCA use "Clica no carrinho." seco)].
-   - LIMITES E ALVOS EXATOS DE CARACTERES (contando espaços e o "Nossa, " inicial):
-     * Em 8 segundos (copy nova ou adaptada): janela obrigatória de 185 a 195 caracteres (limite máximo 199, quanto mais perto de 195 melhor; abaixo de 185 é proibido).
-     * Em 10 segundos (copy nova ou adaptada): janela obrigatória de 242 a 250 caracteres (limite máximo 252, quanto mais perto de 250 melhor; abaixo de 242 é proibido).
+   - REGRA ABSOLUTA: NUNCA crie copy do zero! O aplicativo trabalha EXCLUSIVAMENTE com as ~62 copies vencedoras validadas que já estão na memória (ou copy do mesmo produto, ou copy de outro produto do mesmo nicho adaptada, ou outra copy do banco adaptada).
+   - A "baseCopy" recebida já é a copy do banco adaptada com o mínimo de mudanças e já começa com "Nossa, ". MANTENHA A "baseCopy" EXATAMENTE COMO ESTÁ!
    - NUNCA use a palavra "menina" como vocativo; quando o público for feminino, use "Amiga" ou "Gente". Para masculino, use "Meu amigo", "Cara", "Irmão" ou "Gente".
 3. "productLock": array de 4 a 6 strings detalhando fisicamente o produto visto nas fotos (1º item obrigatoriamente a descrição exata da logomarca/emblema/marca impressa no produto e sua posição exata; seguido de formato, cor exata, material, textura, proporção, botões/costuras/sola/cabos/detalhes).
 4. "avatarDescription": descrição de 1 frase do consumidor brasileiro adulto que apresenta o produto (respeitando o gênero do Influencer e as Instruções Adicionais; se produto infantil, quem apresenta na cena 1 e 9 é sempre um adulto pai/mãe).
