@@ -2176,7 +2176,11 @@ app.post('/api/produtos2-planning', async (req, res) => {
     activeReqVars.length === 2
       ? '• Cenas 1 a 4: produto retratado na 1ª Variação (' + (activeReqVars[0]?.name || '1ª Cor') + ')\n  • Cenas 5 a 9: produto retratado na 2ª Variação (' + (activeReqVars[1]?.name || '2ª Cor') + ')'
       : '• Cenas 1 a 3: produto retratado na 1ª Variação (' + (activeReqVars[0]?.name || '1ª Cor') + ')\n  • Cenas 4 a 6: produto retratado na 2ª Variação (' + (activeReqVars[1]?.name || '2ª Cor') + ')\n  • Cenas 7 a 9: produto retratado na 3ª Variação (' + (activeReqVars[2]?.name || '3ª Cor') + ')'
-  }`
+  }
+  REGRA MANDATÓRIA DE PRODUCT LOCK COM VARIAÇÕES:
+  NUNCA coloque no "productLock" a cor ou estampa de apenas uma das variações (ex: PROIBIDO escrever "tecido azul-marinho com listras" no productLock se essa for apenas uma das variações)!
+  Descreva no "productLock" as características universais da peça e declare: "Variações oficiais de cor: ${activeReqVars.map((v: any) => v.name).join(', ')}, todas corretas e representadas nos seus respectivos quadros do storyboard".
+  Nas descrições das cenas, NUNCA cite a cor de uma variação em cenas de outra variação!`
         : '';
 
     const systemInstruction = buildProdutos2PlanningSystemPrompt();
@@ -2631,18 +2635,21 @@ app.post('/api/produtos2-audit-storyboard', async (req, res) => {
     const variationsAuditRule =
       activeVariations.length >= 2
         ? `\nPASSO 3 — VERIFICAÇÃO MANDATÓRIA DE ALTERNÂNCIA DE CORES/VARIAÇÕES DO PRODUTO (DIVISÃO 3x3):
-O produto possui ${activeVariations.length} variações de cores/modelos cadastradas:
+O produto possui ${activeVariations.length} variações distintas de cores/modelos anexadas nas fotos:
 ${
   activeVariations.length === 2
-    ? `- Quadros 1, 2, 3 e 4: O produto DEVE estar na COR/VARIAÇÃO 1 ("${activeVariations[0]?.name || '1ª Variação'}").
-- Quadros 5, 6, 7, 8 e 9: O produto DEVE estar na COR/VARIAÇÃO 2 ("${activeVariations[1]?.name || '2ª Variação'}").`
-    : `- Quadros 1, 2 e 3 (Linha 1): O produto DEVE estar na COR/VARIAÇÃO 1 ("${activeVariations[0]?.name || '1ª Variação'}").
-- Quadros 4, 5 e 6 (Linha 2): O produto DEVE estar na COR/VARIAÇÃO 2 ("${activeVariations[1]?.name || '2ª Variação'}").
-- Quadros 7, 8 e 9 (Linha 3): O produto DEVE estar na COR/VARIAÇÃO 3 ("${activeVariations[2]?.name || '3ª Variação'}").`
+    ? `• Quadros 1, 2, 3 e 4 (metade inicial): O produto DEVE estar na Variação 1 ("${activeVariations[0]?.name || '1ª Variação'}"). Compare estes quadros EXCLUSIVAMENTE com a Foto de Referência da Variação 1!
+• Quadros 5, 6, 7, 8 e 9 (segunda metade): O produto DEVE estar na Variação 2 ("${activeVariations[1]?.name || '2ª Variação'}"). Compare estes quadros EXCLUSIVAMENTE com a Foto de Referência da Variação 2! NUNCA compare com a Variação 1!`
+    : `• Quadros 1, 2 e 3 (Linha 1): O produto DEVE estar na Variação 1 ("${activeVariations[0]?.name || '1ª Variação'}"). Compare estes quadros EXCLUSIVAMENTE com a Foto da Variação 1!
+• Quadros 4, 5 e 6 (Linha 2): O produto DEVE estar na Variação 2 ("${activeVariations[1]?.name || '2ª Variação'}"). Compare estes quadros EXCLUSIVAMENTE com a Foto da Variação 2! NUNCA compare com a Variação 1! A cor esperada dos quadros 4, 5 e 6 É "${activeVariations[1]?.name || '2ª Variação'}". Se o produto estiver em "${activeVariations[1]?.name}", está 100% CORRETO e APROVADO!
+• Quadros 7, 8 e 9 (Linha 3): O produto DEVE estar na Variação 3 ("${activeVariations[2]?.name || '3ª Variação'}"). Compare estes quadros EXCLUSIVAMENTE com a Foto da Variação 3! NUNCA compare com a Variação 1 ou 2! A cor esperada dos quadros 7, 8 e 9 É "${activeVariations[2]?.name || '3ª Variação'}". Se o produto estiver em "${activeVariations[2]?.name}", está 100% CORRETO e APROVADO!`
 }
-SE EM QUALQUER QUADRANTE a cor do produto NÃO coincidir com a cor/variação designada para aquele quadro (por exemplo, se todos os 9 quadros foram gerados na mesma cor, violando a divisão de variações):
--> Dê OBRIGATORIAMENTE uma nota BAIXA entre 45 e 58 (VERMELHO, abaixo de 60) para aquele quadrante!
--> No campo "issue" (EM PORTUGUÊS), escreva claramente: "Na Cena X, a cor da variação está incorreta: deveria ser a Variação [Nome esperado], mas foi gerado na cor errada (violando a alternância de cores do storyboard)."`
+REGRA ABSOLUTA CONTRA FALSOS POSITIVOS DE COR:
+- É EXPRESSAMENTE PROIBIDO esperar a cor da Variação 1 nos quadros pertencentes à Variação 2 ou Variação 3!
+- Cada grupo de quadros deve ser comparado unicamente com a sua própria variação.
+- Se o quadro 4, 5 ou 6 estiver na cor da Variação 2, ele DEVE receber nota máxima (90 a 100).
+- Se o quadro 7, 8 ou 9 estiver na cor da Variação 3, ele DEVE receber nota máxima (90 a 100).
+- Dê nota baixa (<60) APENAS se o quadro violar a sua respectiva variação (por exemplo, se o quadro 4 ficou na cor da Variação 1 em vez da Variação 2, ou se todos os 9 quadros foram gerados na mesma cor).`
         : '';
 
     const auditSystemInstruction = `Você é o Fiscal Rigoroso de Fidelidade Visual de Produtos (Storyboard 3x3 — 9 Quadrantes).
@@ -2716,23 +2723,38 @@ O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "iss
           const client = (openAIProvider as any).getClient();
           const contentBlocks: any[] = [];
 
-          photosList.slice(0, 4).forEach((photo: string, idx: number) => {
-            const varTag =
-              activeVariations.length >= 2
-                ? ` — REFERÊNCIA DA VARIAÇÃO ${idx + 1} (${activeVariations[idx]?.name || 'Variação ' + (idx + 1)})`
-                : '';
-            contentBlocks.push({
-              type: 'text',
-              text: `[FOTO DE REFERÊNCIA REAL DO PRODUTO #${idx + 1}${varTag} — OBSERVE ATENTAMENTE O FORMATO, COR E A LOGOMARCA DO FABRICANTE IMPRESSA NO PRODUTO]:`,
+          if (activeVariations.length >= 2) {
+            activeVariations.forEach((v: any, idx: number) => {
+              const photo = v.photos?.[0] || v.photo || photosList[idx];
+              if (photo) {
+                contentBlocks.push({
+                  type: 'text',
+                  text: `[FOTO DE REFERÊNCIA REAL DA VARIAÇÃO ${idx + 1} ("${v.name || 'Variação ' + (idx + 1)}") — OBSERVE A COR E ACABAMENTO DESTA VARIAÇÃO]:`,
+                });
+                contentBlocks.push({
+                  type: 'image_url',
+                  image_url: {
+                    url: photo.startsWith('data:') ? photo : `data:image/jpeg;base64,${photo}`,
+                    detail: 'high',
+                  },
+                });
+              }
             });
-            contentBlocks.push({
-              type: 'image_url',
-              image_url: {
-                url: photo.startsWith('data:') ? photo : `data:image/jpeg;base64,${photo}`,
-                detail: 'high',
-              },
+          } else {
+            photosList.slice(0, 4).forEach((photo: string, idx: number) => {
+              contentBlocks.push({
+                type: 'text',
+                text: `[FOTO DE REFERÊNCIA REAL DO PRODUTO #${idx + 1} — OBSERVE ATENTAMENTE O FORMATO, COR E A LOGOMARCA DO FABRICANTE IMPRESSA NO PRODUTO]:`,
+              });
+              contentBlocks.push({
+                type: 'image_url',
+                image_url: {
+                  url: photo.startsWith('data:') ? photo : `data:image/jpeg;base64,${photo}`,
+                  detail: 'high',
+                },
+              });
             });
-          });
+          }
 
           contentBlocks.push({
             type: 'text',
@@ -2788,17 +2810,26 @@ O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "iss
       if (!rawQuadrants && provider === 'gemini' && process.env.GEMINI_API_KEY) {
         try {
           const parts: any[] = [];
-          photosList.slice(0, 4).forEach((photo: string, idx: number) => {
-            const parsedRef = parseInlineImage(photo);
-            if (parsedRef) {
-              const varTag =
-                activeVariations.length >= 2
-                  ? ` — REFERÊNCIA DA VARIAÇÃO ${idx + 1} (${activeVariations[idx]?.name || 'Variação ' + (idx + 1)})`
-                  : '';
-              parts.push({ text: `[FOTO DE REFERÊNCIA REAL DO PRODUTO #${idx + 1}${varTag} — OBSERVE A LOGOMARCA DO FABRICANTE, COR E DETALHES]:` });
-              parts.push({ inlineData: parsedRef });
-            }
-          });
+          if (activeVariations.length >= 2) {
+            activeVariations.forEach((v: any, idx: number) => {
+              const photo = v.photos?.[0] || v.photo || photosList[idx];
+              const parsedRef = photo ? parseInlineImage(photo) : null;
+              if (parsedRef) {
+                parts.push({
+                  text: `[FOTO DE REFERÊNCIA REAL DA VARIAÇÃO ${idx + 1} ("${v.name || 'Variação ' + (idx + 1)}") — OBSERVE A COR E ACABAMENTO DESTA VARIAÇÃO]:`,
+                });
+                parts.push({ inlineData: parsedRef });
+              }
+            });
+          } else {
+            photosList.slice(0, 4).forEach((photo: string, idx: number) => {
+              const parsedRef = parseInlineImage(photo);
+              if (parsedRef) {
+                parts.push({ text: `[FOTO DE REFERÊNCIA REAL DO PRODUTO #${idx + 1} — OBSERVE A LOGOMARCA DO FABRICANTE, COR E DETALHES]:` });
+                parts.push({ inlineData: parsedRef });
+              }
+            });
+          }
           const parsedStoryboard = parseInlineImage(storyboardImageBase64);
           if (parsedStoryboard) {
             parts.push({ text: '[IMAGEM GERADA — STORYBOARD 3x3 (9 CENAS NUMERADAS DE 1 A 9)]:' });
@@ -2878,16 +2909,54 @@ O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "iss
         }
       }
 
-      const mentionsWrongVariation =
-        lowerIssue.includes('variação') &&
-        (lowerIssue.includes('incorret') ||
-          lowerIssue.includes('cor errada') ||
-          lowerIssue.includes('cor diferente') ||
-          lowerIssue.includes('deveria ser') ||
-          lowerIssue.includes('mesma cor'));
+      // Verificação de falso positivo de cor entre variações:
+      // Se o fiscal reclamou que a cor na cena da Variação 2 ou 3 diverge da Variação 1 (ex: "em vez de azul-marinho"):
+      let isFalsePositiveVariationMismatch = false;
+      if (activeVariations.length >= 2) {
+        const expectedVarIndex =
+          activeVariations.length === 2
+            ? (sceneNum <= 4 ? 0 : 1)
+            : (sceneNum <= 3 ? 0 : sceneNum <= 6 ? 1 : 2);
+        const expectedVar = activeVariations[expectedVarIndex];
+        const var1Name = (activeVariations[0]?.name || '').toLowerCase();
+        const var1Words = var1Name.split(/[\s/,-]+/).filter((w: string) => w.length >= 4);
 
-      if (productVisible && mentionsWrongVariation) {
-        rawScore = Math.min(rawScore, 54);
+        if (expectedVarIndex > 0) {
+          const mentionsVar1 = var1Words.some((w: string) => lowerIssue.includes(w));
+          const hasDivergencePhrase =
+            lowerIssue.includes('em vez de') ||
+            lowerIssue.includes('em lugar de') ||
+            lowerIssue.includes('diverge do produto esperado') ||
+            lowerIssue.includes('diverge da cor') ||
+            lowerIssue.includes('em vez do') ||
+            lowerIssue.includes('em vez da');
+
+          if (hasDivergencePhrase || mentionsVar1) {
+            isFalsePositiveVariationMismatch = true;
+          }
+        }
+      }
+
+      if (isFalsePositiveVariationMismatch) {
+        rawScore = Math.max(rawScore, 95);
+        const expectedVarIndex =
+          activeVariations.length === 2
+            ? (sceneNum <= 4 ? 0 : 1)
+            : (sceneNum <= 3 ? 0 : sceneNum <= 6 ? 1 : 2);
+        const expectedVarName = activeVariations[expectedVarIndex]?.name || `Variação ${expectedVarIndex + 1}`;
+        issue = `Cena ${sceneNum}: Produto idêntico à Variação ${expectedVarName} (95%)`;
+      } else {
+        const mentionsWrongVariation =
+          lowerIssue.includes('variação') &&
+          (lowerIssue.includes('incorret') ||
+            lowerIssue.includes('cor errada') ||
+            lowerIssue.includes('cor diferente') ||
+            lowerIssue.includes('deveria ser') ||
+            lowerIssue.includes('mesma cor'));
+
+        if (productVisible && mentionsWrongVariation) {
+          rawScore = Math.min(rawScore, 54);
+        }
       }
 
       const score = Math.max(0, Math.min(100, Math.round(rawScore)));

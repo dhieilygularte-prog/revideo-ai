@@ -1218,7 +1218,11 @@ E retornar um JSON estrito com:
    - A fala no Veo deve ser pronunciada de forma R\xC1PIDA E EUF\xD3RICA (estilo contando uma novidade imperd\xEDvel e urgente).
    - NUNCA use a palavra "menina" como vocativo; quando o p\xFAblico for feminino, use "Amiga" ou "Gente". Para masculino, use "Meu amigo", "Cara", "Irm\xE3o" ou "Gente".
    - NUNCA mencione "frete gr\xE1tis" ou "frete gratuito" na fala, a menos que isso tenha sido informado expressamente nas Informa\xE7\xF5es do Produto.
-3. "productLock": array de 4 a 6 strings detalhando fisicamente o produto visto nas fotos (1\xBA item obrigatoriamente a descri\xE7\xE3o exata da logomarca/emblema/marca impressa no produto e sua posi\xE7\xE3o exata; seguido de formato, cor exata, material, textura, propor\xE7\xE3o, bot\xF5es/costuras/sola/cabos/detalhes).
+3. "productLock": array de 4 a 6 strings detalhando fisicamente o produto visto nas fotos (1\xBA item obrigatoriamente a descri\xE7\xE3o exata da logomarca/emblema/marca impressa no produto e sua posi\xE7\xE3o exata; seguido de formato, propor\xE7\xE3o, material, textura, bot\xF5es/costuras/sola/cabos/detalhes).
+   - REGRA MANDAT\xD3RIA DE VARIA\xC7\xD5ES DE COR NO PRODUCT LOCK:
+     * Quando houver mais de 1 varia\xE7\xE3o de cor/modelo, NUNCA fixe a cor ou estampa de apenas uma das fotos (ex.: NUNCA escreva "tecido azul-marinho com listras" ou "franjas azul-marinho" como se fosse o produto inteiro!).
+     * No "productLock", descreva apenas os aspectos f\xEDsicos universais da pe\xE7a (tecido 100% algod\xE3o, formato curvo, franjas nas laterais, cordas refor\xE7adas nas pontas, acabamento).
+     * Para a cor, cite explicitamente: "Varia\xE7\xF5es oficiais de cor: o produto possui as varia\xE7\xF5es informadas ([listar todas]), todas corretas e representadas fielmente nos seus respectivos quadros do storyboard".
 4. "avatarDescription": descri\xE7\xE3o de 1 frase do consumidor brasileiro adulto que apresenta o produto (respeitando o g\xEAnero do Influencer e as Instru\xE7\xF5es Adicionais; se produto infantil, quem apresenta na cena 1 e 9 \xE9 sempre um adulto pai/m\xE3e).
 5. "scenarioDescription":
    - Se o usu\xE1rio escolheu "em_casa" ("Em casa"): "casa brasileira simples e aconchegante, [c\xF4modo adequado ao produto]".
@@ -1238,6 +1242,7 @@ E retornar um JSON estrito com:
        - Se 2 varia\xE7\xF5es: Cenas 1 a 4 na 1\xAA Cor; Cenas 5 a 9 na 2\xAA Cor.
        - Se 3 varia\xE7\xF5es: Cenas 1 a 3 na 1\xAA Cor; Cenas 4 a 6 na 2\xAA Cor; Cenas 7 a 9 na 3\xAA Cor.
      * Todas as 9 cenas devem ter a\xE7\xF5es DIFERENTES, complementares e progressivas, acompanhando rigorosamente a locu\xE7\xE3o!
+     * REGRA DE DESCRI\xC7\xC3O NEUTRA DE COR NAS CENAS: Quando houver varia\xE7\xF5es, NUNCA descreva no texto da cena a cor de uma varia\xE7\xE3o em cenas pertencentes a outra varia\xE7\xE3o (ex.: proibido citar "azul-marinho" na Cena 4 a 9 se for vermelho ou preto!). Refira-se ao produto como "a rede", "o tecido da rede", "as franjas", permitindo que cada cena herde a cor do respectivo quadro do storyboard!
    - Todo "olha [detalhe]" na copy vira uma cena de close/macro daquele detalhe.
    - Variar enquadramentos (nunca duas cenas seguidas iguais): close, macro, POV de m\xE3os, plano m\xE9dio, plano aberto, uso real.
    - "storyboardDescription" DEVE ser id\xEAntico a "{framing}. {action}" (mesma pessoa, mesma a\xE7\xE3o, mesmo enquadramento e mesmos objetos, sem inventar objetos extras ou mudar quem aparece entre um campo e outro).
@@ -3059,7 +3064,11 @@ app.post("/api/produtos2-planning", async (req, res) => {
   As 9 cenas formam UMA \xDANICA DEMONSTRA\xC7\xC3O PROGRESSIVA DO PRODUTO acompanhando a copy do segundo 0 ao final.
   PROIBIDO REPETIR CENAS OU REINICIAR A DEMONSTRA\xC7\xC3O PARA CADA COR! As 9 cenas seguem normalmente seu fluxo narrativo sem repeti\xE7\xF5es (apresenta\xE7\xE3o inicial -> funcionamento pr\xE1tico -> detalhes/macro -> benef\xEDcio no cen\xE1rio -> CTA).
   A \xDANICA diferen\xE7a \xE9 a cor em que o produto \xE9 retratado em cada grupo de quadros:
-  ${activeReqVars.length === 2 ? "\u2022 Cenas 1 a 4: produto retratado na 1\xAA Varia\xE7\xE3o (" + (activeReqVars[0]?.name || "1\xAA Cor") + ")\n  \u2022 Cenas 5 a 9: produto retratado na 2\xAA Varia\xE7\xE3o (" + (activeReqVars[1]?.name || "2\xAA Cor") + ")" : "\u2022 Cenas 1 a 3: produto retratado na 1\xAA Varia\xE7\xE3o (" + (activeReqVars[0]?.name || "1\xAA Cor") + ")\n  \u2022 Cenas 4 a 6: produto retratado na 2\xAA Varia\xE7\xE3o (" + (activeReqVars[1]?.name || "2\xAA Cor") + ")\n  \u2022 Cenas 7 a 9: produto retratado na 3\xAA Varia\xE7\xE3o (" + (activeReqVars[2]?.name || "3\xAA Cor") + ")"}` : "";
+  ${activeReqVars.length === 2 ? "\u2022 Cenas 1 a 4: produto retratado na 1\xAA Varia\xE7\xE3o (" + (activeReqVars[0]?.name || "1\xAA Cor") + ")\n  \u2022 Cenas 5 a 9: produto retratado na 2\xAA Varia\xE7\xE3o (" + (activeReqVars[1]?.name || "2\xAA Cor") + ")" : "\u2022 Cenas 1 a 3: produto retratado na 1\xAA Varia\xE7\xE3o (" + (activeReqVars[0]?.name || "1\xAA Cor") + ")\n  \u2022 Cenas 4 a 6: produto retratado na 2\xAA Varia\xE7\xE3o (" + (activeReqVars[1]?.name || "2\xAA Cor") + ")\n  \u2022 Cenas 7 a 9: produto retratado na 3\xAA Varia\xE7\xE3o (" + (activeReqVars[2]?.name || "3\xAA Cor") + ")"}
+  REGRA MANDAT\xD3RIA DE PRODUCT LOCK COM VARIA\xC7\xD5ES:
+  NUNCA coloque no "productLock" a cor ou estampa de apenas uma das varia\xE7\xF5es (ex: PROIBIDO escrever "tecido azul-marinho com listras" no productLock se essa for apenas uma das varia\xE7\xF5es)!
+  Descreva no "productLock" as caracter\xEDsticas universais da pe\xE7a e declare: "Varia\xE7\xF5es oficiais de cor: ${activeReqVars.map((v) => v.name).join(", ")}, todas corretas e representadas nos seus respectivos quadros do storyboard".
+  Nas descri\xE7\xF5es das cenas, NUNCA cite a cor de uma varia\xE7\xE3o em cenas de outra varia\xE7\xE3o!` : "";
     const systemInstruction = buildProdutos2PlanningSystemPrompt();
     const userPrompt = `PLANEJAMENTO COPY-FIRST (MODO PRODUTOS 2.0):
 - Produto (nome curto): ${productName}
@@ -3429,14 +3438,17 @@ app.post("/api/produtos2-audit-storyboard", async (req, res) => {
     const lockContext = Array.isArray(productLock) ? productLock.join("; ") : "";
     const variationsAuditRule = activeVariations.length >= 2 ? `
 PASSO 3 \u2014 VERIFICA\xC7\xC3O MANDAT\xD3RIA DE ALTERN\xC2NCIA DE CORES/VARIA\xC7\xD5ES DO PRODUTO (DIVIS\xC3O 3x3):
-O produto possui ${activeVariations.length} varia\xE7\xF5es de cores/modelos cadastradas:
-${activeVariations.length === 2 ? `- Quadros 1, 2, 3 e 4: O produto DEVE estar na COR/VARIA\xC7\xC3O 1 ("${activeVariations[0]?.name || "1\xAA Varia\xE7\xE3o"}").
-- Quadros 5, 6, 7, 8 e 9: O produto DEVE estar na COR/VARIA\xC7\xC3O 2 ("${activeVariations[1]?.name || "2\xAA Varia\xE7\xE3o"}").` : `- Quadros 1, 2 e 3 (Linha 1): O produto DEVE estar na COR/VARIA\xC7\xC3O 1 ("${activeVariations[0]?.name || "1\xAA Varia\xE7\xE3o"}").
-- Quadros 4, 5 e 6 (Linha 2): O produto DEVE estar na COR/VARIA\xC7\xC3O 2 ("${activeVariations[1]?.name || "2\xAA Varia\xE7\xE3o"}").
-- Quadros 7, 8 e 9 (Linha 3): O produto DEVE estar na COR/VARIA\xC7\xC3O 3 ("${activeVariations[2]?.name || "3\xAA Varia\xE7\xE3o"}").`}
-SE EM QUALQUER QUADRANTE a cor do produto N\xC3O coincidir com a cor/varia\xE7\xE3o designada para aquele quadro (por exemplo, se todos os 9 quadros foram gerados na mesma cor, violando a divis\xE3o de varia\xE7\xF5es):
--> D\xEA OBRIGATORIAMENTE uma nota BAIXA entre 45 e 58 (VERMELHO, abaixo de 60) para aquele quadrante!
--> No campo "issue" (EM PORTUGU\xCAS), escreva claramente: "Na Cena X, a cor da varia\xE7\xE3o est\xE1 incorreta: deveria ser a Varia\xE7\xE3o [Nome esperado], mas foi gerado na cor errada (violando a altern\xE2ncia de cores do storyboard)."` : "";
+O produto possui ${activeVariations.length} varia\xE7\xF5es distintas de cores/modelos anexadas nas fotos:
+${activeVariations.length === 2 ? `\u2022 Quadros 1, 2, 3 e 4 (metade inicial): O produto DEVE estar na Varia\xE7\xE3o 1 ("${activeVariations[0]?.name || "1\xAA Varia\xE7\xE3o"}"). Compare estes quadros EXCLUSIVAMENTE com a Foto de Refer\xEAncia da Varia\xE7\xE3o 1!
+\u2022 Quadros 5, 6, 7, 8 e 9 (segunda metade): O produto DEVE estar na Varia\xE7\xE3o 2 ("${activeVariations[1]?.name || "2\xAA Varia\xE7\xE3o"}"). Compare estes quadros EXCLUSIVAMENTE com a Foto de Refer\xEAncia da Varia\xE7\xE3o 2! NUNCA compare com a Varia\xE7\xE3o 1!` : `\u2022 Quadros 1, 2 e 3 (Linha 1): O produto DEVE estar na Varia\xE7\xE3o 1 ("${activeVariations[0]?.name || "1\xAA Varia\xE7\xE3o"}"). Compare estes quadros EXCLUSIVAMENTE com a Foto da Varia\xE7\xE3o 1!
+\u2022 Quadros 4, 5 e 6 (Linha 2): O produto DEVE estar na Varia\xE7\xE3o 2 ("${activeVariations[1]?.name || "2\xAA Varia\xE7\xE3o"}"). Compare estes quadros EXCLUSIVAMENTE com a Foto da Varia\xE7\xE3o 2! NUNCA compare com a Varia\xE7\xE3o 1! A cor esperada dos quadros 4, 5 e 6 \xC9 "${activeVariations[1]?.name || "2\xAA Varia\xE7\xE3o"}". Se o produto estiver em "${activeVariations[1]?.name}", est\xE1 100% CORRETO e APROVADO!
+\u2022 Quadros 7, 8 e 9 (Linha 3): O produto DEVE estar na Varia\xE7\xE3o 3 ("${activeVariations[2]?.name || "3\xAA Varia\xE7\xE3o"}"). Compare estes quadros EXCLUSIVAMENTE com a Foto da Varia\xE7\xE3o 3! NUNCA compare com a Varia\xE7\xE3o 1 ou 2! A cor esperada dos quadros 7, 8 e 9 \xC9 "${activeVariations[2]?.name || "3\xAA Varia\xE7\xE3o"}". Se o produto estiver em "${activeVariations[2]?.name}", est\xE1 100% CORRETO e APROVADO!`}
+REGRA ABSOLUTA CONTRA FALSOS POSITIVOS DE COR:
+- \xC9 EXPRESSAMENTE PROIBIDO esperar a cor da Varia\xE7\xE3o 1 nos quadros pertencentes \xE0 Varia\xE7\xE3o 2 ou Varia\xE7\xE3o 3!
+- Cada grupo de quadros deve ser comparado unicamente com a sua pr\xF3pria varia\xE7\xE3o.
+- Se o quadro 4, 5 ou 6 estiver na cor da Varia\xE7\xE3o 2, ele DEVE receber nota m\xE1xima (90 a 100).
+- Se o quadro 7, 8 ou 9 estiver na cor da Varia\xE7\xE3o 3, ele DEVE receber nota m\xE1xima (90 a 100).
+- D\xEA nota baixa (<60) APENAS se o quadro violar a sua respectiva varia\xE7\xE3o (por exemplo, se o quadro 4 ficou na cor da Varia\xE7\xE3o 1 em vez da Varia\xE7\xE3o 2, ou se todos os 9 quadros foram gerados na mesma cor).` : "";
     const auditSystemInstruction = `Voc\xEA \xE9 o Fiscal Rigoroso de Fidelidade Visual de Produtos (Storyboard 3x3 \u2014 9 Quadrantes).
 Sua miss\xE3o \xE9 inspecionar CADA UM DOS 9 QUADRANTES (numerados de 1 a 9, da esquerda para a direita, de cima para baixo: Linha 1 = Cenas 1, 2, 3; Linha 2 = Cenas 4, 5, 6; Linha 3 = Cenas 7, 8, 9) da imagem de Storyboard gerada e comparar o produto com as FOTOS REAIS DE REFER\xCANCIA do produto "${productName}".
 
@@ -3501,20 +3513,38 @@ O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "iss
         try {
           const client = openAIProvider.getClient();
           const contentBlocks = [];
-          photosList.slice(0, 4).forEach((photo, idx) => {
-            const varTag = activeVariations.length >= 2 ? ` \u2014 REFER\xCANCIA DA VARIA\xC7\xC3O ${idx + 1} (${activeVariations[idx]?.name || "Varia\xE7\xE3o " + (idx + 1)})` : "";
-            contentBlocks.push({
-              type: "text",
-              text: `[FOTO DE REFER\xCANCIA REAL DO PRODUTO #${idx + 1}${varTag} \u2014 OBSERVE ATENTAMENTE O FORMATO, COR E A LOGOMARCA DO FABRICANTE IMPRESSA NO PRODUTO]:`
-            });
-            contentBlocks.push({
-              type: "image_url",
-              image_url: {
-                url: photo.startsWith("data:") ? photo : `data:image/jpeg;base64,${photo}`,
-                detail: "high"
+          if (activeVariations.length >= 2) {
+            activeVariations.forEach((v, idx) => {
+              const photo = v.photos?.[0] || v.photo || photosList[idx];
+              if (photo) {
+                contentBlocks.push({
+                  type: "text",
+                  text: `[FOTO DE REFER\xCANCIA REAL DA VARIA\xC7\xC3O ${idx + 1} ("${v.name || "Varia\xE7\xE3o " + (idx + 1)}") \u2014 OBSERVE A COR E ACABAMENTO DESTA VARIA\xC7\xC3O]:`
+                });
+                contentBlocks.push({
+                  type: "image_url",
+                  image_url: {
+                    url: photo.startsWith("data:") ? photo : `data:image/jpeg;base64,${photo}`,
+                    detail: "high"
+                  }
+                });
               }
             });
-          });
+          } else {
+            photosList.slice(0, 4).forEach((photo, idx) => {
+              contentBlocks.push({
+                type: "text",
+                text: `[FOTO DE REFER\xCANCIA REAL DO PRODUTO #${idx + 1} \u2014 OBSERVE ATENTAMENTE O FORMATO, COR E A LOGOMARCA DO FABRICANTE IMPRESSA NO PRODUTO]:`
+              });
+              contentBlocks.push({
+                type: "image_url",
+                image_url: {
+                  url: photo.startsWith("data:") ? photo : `data:image/jpeg;base64,${photo}`,
+                  detail: "high"
+                }
+              });
+            });
+          }
           contentBlocks.push({
             type: "text",
             text: "[IMAGEM GERADA \u2014 STORYBOARD 3x3 COM 9 CENAS NUMERADAS DE 1 A 9 PARA FISCALIZA\xC7\xC3O]:"
@@ -3563,14 +3593,26 @@ O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "iss
       if (!rawQuadrants && provider === "gemini" && process.env.GEMINI_API_KEY) {
         try {
           const parts = [];
-          photosList.slice(0, 4).forEach((photo, idx) => {
-            const parsedRef = parseInlineImage(photo);
-            if (parsedRef) {
-              const varTag = activeVariations.length >= 2 ? ` \u2014 REFER\xCANCIA DA VARIA\xC7\xC3O ${idx + 1} (${activeVariations[idx]?.name || "Varia\xE7\xE3o " + (idx + 1)})` : "";
-              parts.push({ text: `[FOTO DE REFER\xCANCIA REAL DO PRODUTO #${idx + 1}${varTag} \u2014 OBSERVE A LOGOMARCA DO FABRICANTE, COR E DETALHES]:` });
-              parts.push({ inlineData: parsedRef });
-            }
-          });
+          if (activeVariations.length >= 2) {
+            activeVariations.forEach((v, idx) => {
+              const photo = v.photos?.[0] || v.photo || photosList[idx];
+              const parsedRef = photo ? parseInlineImage(photo) : null;
+              if (parsedRef) {
+                parts.push({
+                  text: `[FOTO DE REFER\xCANCIA REAL DA VARIA\xC7\xC3O ${idx + 1} ("${v.name || "Varia\xE7\xE3o " + (idx + 1)}") \u2014 OBSERVE A COR E ACABAMENTO DESTA VARIA\xC7\xC3O]:`
+                });
+                parts.push({ inlineData: parsedRef });
+              }
+            });
+          } else {
+            photosList.slice(0, 4).forEach((photo, idx) => {
+              const parsedRef = parseInlineImage(photo);
+              if (parsedRef) {
+                parts.push({ text: `[FOTO DE REFER\xCANCIA REAL DO PRODUTO #${idx + 1} \u2014 OBSERVE A LOGOMARCA DO FABRICANTE, COR E DETALHES]:` });
+                parts.push({ inlineData: parsedRef });
+              }
+            });
+          }
           const parsedStoryboard = parseInlineImage(storyboardImageBase64);
           if (parsedStoryboard) {
             parts.push({ text: "[IMAGEM GERADA \u2014 STORYBOARD 3x3 (9 CENAS NUMERADAS DE 1 A 9)]:" });
@@ -3632,9 +3674,30 @@ Analise cada um dos 9 quadrantes (Cena 1 a Cena 9) e retorne o JSON em portugu\x
           issue = `Na Cena ${sceneNum}, o produto est\xE1 diferente: a logomarca original do fabricante${logoRefText} foi removida ou n\xE3o aparece id\xEAntica na pe\xE7a.`;
         }
       }
-      const mentionsWrongVariation = lowerIssue.includes("varia\xE7\xE3o") && (lowerIssue.includes("incorret") || lowerIssue.includes("cor errada") || lowerIssue.includes("cor diferente") || lowerIssue.includes("deveria ser") || lowerIssue.includes("mesma cor"));
-      if (productVisible && mentionsWrongVariation) {
-        rawScore = Math.min(rawScore, 54);
+      let isFalsePositiveVariationMismatch = false;
+      if (activeVariations.length >= 2) {
+        const expectedVarIndex = activeVariations.length === 2 ? sceneNum <= 4 ? 0 : 1 : sceneNum <= 3 ? 0 : sceneNum <= 6 ? 1 : 2;
+        const expectedVar = activeVariations[expectedVarIndex];
+        const var1Name = (activeVariations[0]?.name || "").toLowerCase();
+        const var1Words = var1Name.split(/[\s/,-]+/).filter((w) => w.length >= 4);
+        if (expectedVarIndex > 0) {
+          const mentionsVar1 = var1Words.some((w) => lowerIssue.includes(w));
+          const hasDivergencePhrase = lowerIssue.includes("em vez de") || lowerIssue.includes("em lugar de") || lowerIssue.includes("diverge do produto esperado") || lowerIssue.includes("diverge da cor") || lowerIssue.includes("em vez do") || lowerIssue.includes("em vez da");
+          if (hasDivergencePhrase || mentionsVar1) {
+            isFalsePositiveVariationMismatch = true;
+          }
+        }
+      }
+      if (isFalsePositiveVariationMismatch) {
+        rawScore = Math.max(rawScore, 95);
+        const expectedVarIndex = activeVariations.length === 2 ? sceneNum <= 4 ? 0 : 1 : sceneNum <= 3 ? 0 : sceneNum <= 6 ? 1 : 2;
+        const expectedVarName = activeVariations[expectedVarIndex]?.name || `Varia\xE7\xE3o ${expectedVarIndex + 1}`;
+        issue = `Cena ${sceneNum}: Produto id\xEAntico \xE0 Varia\xE7\xE3o ${expectedVarName} (95%)`;
+      } else {
+        const mentionsWrongVariation = lowerIssue.includes("varia\xE7\xE3o") && (lowerIssue.includes("incorret") || lowerIssue.includes("cor errada") || lowerIssue.includes("cor diferente") || lowerIssue.includes("deveria ser") || lowerIssue.includes("mesma cor"));
+        if (productVisible && mentionsWrongVariation) {
+          rawScore = Math.min(rawScore, 54);
+        }
       }
       const score = Math.max(0, Math.min(100, Math.round(rawScore)));
       const status = getAuditColorStatus(score);

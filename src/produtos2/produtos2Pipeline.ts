@@ -21,6 +21,7 @@ import {
   buildProdutos2StoryboardImagePrompt,
   buildProdutos2VeoPrompt,
   getNineSceneTimings,
+  sanitizeProductLockForVariations,
   sanitizeScenarioDescriptionForMode,
 } from './produtos2Prompts';
 
@@ -253,6 +254,23 @@ export async function auditProdutos2Storyboard(params: {
       productPhotosBase64.slice(0, 4).map((p) => compressImageForPayload(p, 1400, 0.88))
     );
 
+    // Comprime a foto de referência de cada variação para auditoria precisa de cores
+    const compressedVariations = await Promise.all(
+      (variations || []).map(async (v) => {
+        const firstPhoto = (v.photos || []).find(Boolean);
+        const comp = firstPhoto ? await compressImageForPayload(firstPhoto, 1200, 0.86) : undefined;
+        return {
+          name: v.name,
+          photos: comp ? [comp] : [],
+        };
+      })
+    );
+
+    const sanitizedLock =
+      (variations || []).length >= 2
+        ? sanitizeProductLockForVariations(productLock, variations, productName)
+        : productLock;
+
     const res = await fetch('/api/produtos2-audit-storyboard', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -260,9 +278,9 @@ export async function auditProdutos2Storyboard(params: {
         storyboardImageBase64: compressedStoryboard,
         productPhotosBase64: compressedRefs,
         productName,
-        productLock,
+        productLock: sanitizedLock,
         scenes,
-        variations,
+        variations: compressedVariations,
         aiProfile,
       }),
     });
@@ -413,9 +431,13 @@ export async function runProdutos2Pipeline(params: {
         finalCopy = ensureLeadingNossaPrefix(copySelection.finalCopy);
 
         if (Array.isArray(d.productLock) && d.productLock.length >= 2) {
-          productLock = d.productLock
+          const rawLock = d.productLock
             .map((s: any) => stripTikTokOutsideSpeech(String(s).trim()))
             .filter(Boolean);
+          productLock =
+            (form.variations || []).length >= 2
+              ? sanitizeProductLockForVariations(rawLock, form.variations, finalProductName)
+              : rawLock;
         }
         if (
           typeof d.manufacturerLogoDescription === 'string' &&

@@ -107,7 +107,7 @@ export function getSceneVariationInfo(
 
 /**
  * Higieniza adjetivos de cores fixos do texto descritivo da ação quando o produto tem variações de cores ativas.
- * Isso evita que o modelo de vídeo (Veo) receba descrições de cor conflitantes no texto (ex: "rede azul-acinzentada")
+ * Isso evita que o modelo de vídeo (Veo) receba descrições de cor conflitantes no texto (ex: "rede azul-marinho", "franjas azul-marinho")
  * e priorize fielmente a cor de cada quadro numerado de 1 a 9 do Storyboard anexado.
  */
 export function sanitizeSceneColorAdjectivesForVeo(
@@ -120,15 +120,28 @@ export function sanitizeSceneColorAdjectivesForVeo(
 
   let cleaned = actionText;
 
-  // Se a ação tiver menções a cores/estampas específicas anexadas a palavras comuns de produtos
-  // ex: "rede azul-acinzentada listrada", "tecido azul-acinzentado", "banco preto", "tênis branco"
-  // mantemos "rede", "tecido", "banco", "tênis" sem a cor fixa conflitante que confunde o Veo
+  // Substitui cores compostas e hífenadas associadas ao produto (ex: "rede-marinho" -> "rede", "tecido-marinho" -> "tecido")
+  cleaned = cleaned.replace(/\b(rede|tecido|banco|tênis|franjas|algodão|cordas)-marinho\b/gi, '$1');
+
+  // Remove adjetivos de cores específicos anexados a substantivos comuns de produtos e suas partes
+  // ex: "rede azul-marinho", "franjas azul-marinho", "algodão azul-marinho", "tecido azul-marinho", "tecido vermelho", "rede preta"
   cleaned = cleaned.replace(
-    /\b(rede|tecido|banco|tênis|calçado|peça|camisa|camiseta|calça|bermuda|conjunto|produto|aparelho|equipamento)\s+((?:[a-záàâãéêíóôõúç-]+(?:\s+e\s+|\s+))*\b(?:azul-acinzentad[ao]s?|azul(?:es)?|vermelh[ao]s?|pret[ao]s?|branc[ao]s?|cinzas?|verdes?|amarel[ao]s?|laranjas?|rosas?|marrons?|beges?|rox[ao]s?|vinho|listrad[ao]s?|estampad[ao]s?)\b)/gi,
+    /\b(rede|tecido|algodão|franjas|cordas|banco|tênis|calçado|peça|camisa|camiseta|calça|bermuda|conjunto|produto|aparelho|equipamento)\s+((?:[a-záàâãéêíóôõúç-]+(?:\s+e\s+|\s+))*\b(?:azul(?:-marinho|-acinzentad[ao]s?|-petróleo|-celeste)?|vermelh[ao]s?|pret[ao]s?|branc[ao]s?|cinza(?:-claro|-escuro)?s?|verdes?|amarel[ao]s?|laranjas?|rosas?(?:-avermelhad[ao]s?)?|marrons?|beges?|rox[ao]s?|vinho|listrad[ao]s?|estampad[ao]s?)\b)/gi,
     '$1'
   );
 
-  // Coleta termos específicos das variações cadastradas (ex: nomes de cores informados)
+  // Se a cena pertencer à variação 2 ou 3 (cenas > 3 em 3 variações ou cenas > 4 em 2 variações),
+  // e contiver menção a listras exclusivas da variação 1 (ex: "listras finas em branco cinza-claro e rosa-avermelhado"),
+  // higieniza para não descrever listras na rede vermelha ou preta
+  const isAfterVar1 = activeVars.length === 2 ? sceneNumber > 4 : sceneNumber > 3;
+  if (isAfterVar1) {
+    cleaned = cleaned.replace(
+      /(?:com\s+)?listras(?:\s+longitudinais)?(?:\s+finas)?(?:\s+em\s+[a-záàâãéêíóôõúç,\s-]+)?(?:seguindo[^\n.,;]+)?/gi,
+      ''
+    );
+  }
+
+  // Coleta termos específicos das variações cadastradas
   const customVarTerms: string[] = [];
   activeVars.forEach((v) => {
     if (v.name && v.name.trim()) {
@@ -139,14 +152,109 @@ export function sanitizeSceneColorAdjectivesForVeo(
 
   customVarTerms.forEach((term) => {
     if (productName && productName.toLowerCase().includes(term.toLowerCase())) return;
+    if (/^(de|da|do|em|com|sem|para|por)$/i.test(term)) return;
     const reg = new RegExp(`\\b${term}\\b`, 'gi');
     cleaned = cleaned.replace(reg, '');
   });
 
-  // Limpa espaços extras
-  cleaned = cleaned.replace(/\s+/g, ' ').replace(/\s+([.,;:!?])/g, '$1').trim();
+  // Limpa espaços extras e pontuações soltas
+  cleaned = cleaned
+    .replace(/\s+/g, ' ')
+    .replace(/\s+([.,;:!?])/g, '$1')
+    .replace(/,\s*,/g, ',')
+    .trim();
 
   return cleaned;
+}
+
+/**
+ * Higieniza a lista do Product Lock quando o produto tem múltiplas variações cadastradas.
+ * Garante que nenhuma cor específica (ex: "azul-marinho", "listras finas em rosa") seja colocada
+ * como se fosse a cor única e universal do produto, pois todas as variações adicionadas são legítimas
+ * e cada uma é retratada no seu respectivo grupo de quadros do storyboard.
+ */
+export function sanitizeProductLockForVariations(
+  productLock: string[],
+  activeVars: { name?: string; photos?: string[] }[] = [],
+  productName: string = ''
+): string[] {
+  if (!Array.isArray(productLock) || productLock.length === 0) return productLock;
+  if (activeVars.length < 2) return productLock;
+
+  const varNamesList = activeVars.map((v) => v.name?.trim()).filter(Boolean).join(', ');
+
+  const result: string[] = [];
+  const seen = new Set<string>();
+
+  for (const rawItem of productLock) {
+    const item = String(rawItem).trim();
+    if (!item) continue;
+
+    // Se o item for sobre a logomarca do fabricante, preserva intacto
+    if (item.toLowerCase().includes('logomarca') || item.toLowerCase().includes('emblema')) {
+      if (!seen.has(item)) {
+        seen.add(item);
+        result.push(item);
+      }
+      continue;
+    }
+
+    // Se o item fala especificamente de "Cores/variações", atualiza para listar todas as variações oficiais
+    if (
+      item.toLowerCase().includes('cores/variações') ||
+      item.toLowerCase().includes('variações fiéis') ||
+      item.toLowerCase().includes('variações de cor')
+    ) {
+      const varEntry = `Variações de cor e estampa oficiais (${varNamesList}): todas adicionadas corretamente e retratadas em cada um dos seus respectivos quadros do storyboard.`;
+      if (!seen.has(varEntry)) {
+        seen.add(varEntry);
+        result.push(varEntry);
+      }
+      continue;
+    }
+
+    // Verifica se este bullet é EXCLUSIVAMENTE sobre a cor/estampa de apenas uma das variações
+    // ex: "Tecido azul-marinho com listras longitudinais finas em branco, cinza-claro e rosa-avermelhado..."
+    const isExclusivelyColorPattern =
+      /^(?:tecido|cor|estampa|versão)\s+(?:azul|vermelh|pret|branc|verde|amarel|cinza|listrad|estampad)/i.test(item) &&
+      !item.toLowerCase().includes('formato') &&
+      !item.toLowerCase().includes('dimens') &&
+      !item.toLowerCase().includes('costura') &&
+      !item.toLowerCase().includes('estrutura');
+
+    if (isExclusivelyColorPattern) {
+      const varEntry = `Variações de cor e estampa oficiais (${varNamesList}): manter as características de cada variação conforme fotos e quadros correspondentes do storyboard.`;
+      if (!seen.has(varEntry)) {
+        seen.add(varEntry);
+        result.push(varEntry);
+      }
+      continue;
+    }
+
+    // Se o item descreve características físicas reais mas tem menção a cor específica de uma das variações
+    // ex: "na versão azul-marinho", "franjas curtas azul-marinho", "tecido azul-marinho"
+    let cleaned = item
+      .replace(/\bna versão\s+([a-záàâãéêíóôõúç-]+)/gi, '')
+      .replace(/\b(?:tecido|franjas|detalhes|lateral|peça)\s+(?:azul-marinho|azul-acinzentado|azul|vermelh[ao]|pret[ao]|branc[ao]|cinza)\b/gi, (match) => {
+        return match.split(/\s+/)[0];
+      })
+      .replace(/rede-marinho/gi, 'rede')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (cleaned && !seen.has(cleaned)) {
+      seen.add(cleaned);
+      result.push(cleaned);
+    }
+  }
+
+  // Garante que exista um bullet explícito sobre as variações
+  const hasVarEntry = result.some((r) => r.toLowerCase().includes('variações'));
+  if (!hasVarEntry && varNamesList) {
+    result.push(`Variações oficiais do produto (${varNamesList}): todas adicionadas corretamente e retratadas em cada um dos seus respectivos quadros do storyboard.`);
+  }
+
+  return result;
 }
 
 /**
@@ -192,6 +300,11 @@ export function buildProdutos2StoryboardImagePrompt(params: {
     (v) => (v.name && v.name.trim().length > 0) || (v.photos && v.photos.length > 0)
   );
 
+  const sanitizedProductLock =
+    activeVars.length >= 2
+      ? sanitizeProductLockForVariations(productLock, activeVars, productName)
+      : productLock;
+
   let variationsBlock = '';
   if (activeVars.length >= 2) {
     variationsBlock = `
@@ -233,7 +346,7 @@ PROIBIÇÃO ABSOLUTA: NUNCA gere todos os 9 quadros na mesma cor! É expressamen
 
   return `Crie UMA ÚNICA IMAGEM VERTICAL 1080x1920 (9:16) de storyboard fotográfico ultra-realista em grade 3x3 (3 colunas x 3 linhas), com EXATAMENTE 9 cenas numeradas de 1 a 9 em ordem de leitura (esquerda para direita, de cima para baixo). Quadros de tamanho igual, cantos arredondados, separados por uma borda branca fina, fundo branco.${variationsBlock}
 
-Use as fotos anexadas como referência absoluta do produto. Preserve fielmente (PRODUCT LOCK): ${productLock.join('; ')}.
+Use as fotos anexadas como referência absoluta do produto. Preserve fielmente (PRODUCT LOCK): ${sanitizedProductLock.join('; ')}.
 ${productIdentityRule}
 REGRA OBRIGATÓRIA DE LOGOMARCA DO FABRICANTE NO PRODUTO: A marca, a logomarca, o emblema/símbolo e os textos originais do fabricante que estão impressos, estampados ou gravados no próprio produto nas fotos de referência DEVEM aparecer 100% idênticos (mesmo desenho, formato, cor, proporção e posição exata na peça, como no encosto, painel ou corpo do produto) em TODOS os quadros onde essa parte do produto estiver visível. JAMAIS remova, apague ou deixe lisa a área onde fica a logomarca original do fabricante no produto!
 A copy selecionada para este criativo é:
@@ -291,11 +404,26 @@ export function buildProdutos2VeoPrompt(params: {
   // Aplica o prefixo "Nossa! " se useSpeechIntro estiver ativo, ou remove se estiver desativado (Padrão)
   const safeSpeech = applySpeechIntro(finalCopy, Boolean(useSpeechIntro));
 
-  // Item 7.1: Frase do primeiro frame com letra minúscula e sem ponto no meio
-  const firstFrameClause = formatFirstFrameClause(scenes?.[0], productName);
+  const activeVars = (variations || []).filter((v) => v.photos && v.photos.length > 0);
+
+  // Item 7.1: Frase do primeiro frame com letra minúscula e sem ponto no meio (higienizada de cores fixas)
+  const firstFrameScene = scenes?.[0]
+    ? {
+        ...scenes[0],
+        action: activeVars.length >= 2
+          ? sanitizeSceneColorAdjectivesForVeo(scenes[0].action, 1, activeVars, productName)
+          : scenes[0].action,
+      }
+    : undefined;
+  const firstFrameClause = formatFirstFrameClause(firstFrameScene, productName);
+
+  // Higieniza o productLock para não fixar apenas uma das cores quando houver múltiplas variações
+  const sanitizedProductLock = activeVars.length >= 2
+    ? sanitizeProductLockForVariations(productLock, activeVars, productName)
+    : productLock;
 
   // Item 7.2: PRODUCT LOCK sempre igual no prompt da imagem e no prompt do Veo
-  const productLockBullets = productLock
+  const productLockBullets = sanitizedProductLock
     .map((item) => `- ${item.replace(/^[-•*]\s*/, '')}`)
     .join('\n');
 
@@ -310,7 +438,6 @@ export function buildProdutos2VeoPrompt(params: {
 
   // Item 7.3: Gerar o prompt a partir das MESMAS 9 descrições usadas para criar a imagem, sem reescrever as cenas
   // e orientando o Veo rigorosamente pelo número dos quadros (1 a 9) do storyboard anexado
-  const activeVars = (variations || []).filter((v) => v.photos && v.photos.length > 0);
   const scenesBlock = scenes
     .slice(0, 9)
     .map((sc, idx) => {
@@ -1036,7 +1163,11 @@ E retornar um JSON estrito com:
    - A fala no Veo deve ser pronunciada de forma RÁPIDA E EUFÓRICA (estilo contando uma novidade imperdível e urgente).
    - NUNCA use a palavra "menina" como vocativo; quando o público for feminino, use "Amiga" ou "Gente". Para masculino, use "Meu amigo", "Cara", "Irmão" ou "Gente".
    - NUNCA mencione "frete grátis" ou "frete gratuito" na fala, a menos que isso tenha sido informado expressamente nas Informações do Produto.
-3. "productLock": array de 4 a 6 strings detalhando fisicamente o produto visto nas fotos (1º item obrigatoriamente a descrição exata da logomarca/emblema/marca impressa no produto e sua posição exata; seguido de formato, cor exata, material, textura, proporção, botões/costuras/sola/cabos/detalhes).
+3. "productLock": array de 4 a 6 strings detalhando fisicamente o produto visto nas fotos (1º item obrigatoriamente a descrição exata da logomarca/emblema/marca impressa no produto e sua posição exata; seguido de formato, proporção, material, textura, botões/costuras/sola/cabos/detalhes).
+   - REGRA MANDATÓRIA DE VARIAÇÕES DE COR NO PRODUCT LOCK:
+     * Quando houver mais de 1 variação de cor/modelo, NUNCA fixe a cor ou estampa de apenas uma das fotos (ex.: NUNCA escreva "tecido azul-marinho com listras" ou "franjas azul-marinho" como se fosse o produto inteiro!).
+     * No "productLock", descreva apenas os aspectos físicos universais da peça (tecido 100% algodão, formato curvo, franjas nas laterais, cordas reforçadas nas pontas, acabamento).
+     * Para a cor, cite explicitamente: "Variações oficiais de cor: o produto possui as variações informadas ([listar todas]), todas corretas e representadas fielmente nos seus respectivos quadros do storyboard".
 4. "avatarDescription": descrição de 1 frase do consumidor brasileiro adulto que apresenta o produto (respeitando o gênero do Influencer e as Instruções Adicionais; se produto infantil, quem apresenta na cena 1 e 9 é sempre um adulto pai/mãe).
 5. "scenarioDescription":
    - Se o usuário escolheu "em_casa" ("Em casa"): "casa brasileira simples e aconchegante, [cômodo adequado ao produto]".
@@ -1056,6 +1187,7 @@ E retornar um JSON estrito com:
        - Se 2 variações: Cenas 1 a 4 na 1ª Cor; Cenas 5 a 9 na 2ª Cor.
        - Se 3 variações: Cenas 1 a 3 na 1ª Cor; Cenas 4 a 6 na 2ª Cor; Cenas 7 a 9 na 3ª Cor.
      * Todas as 9 cenas devem ter ações DIFERENTES, complementares e progressivas, acompanhando rigorosamente a locução!
+     * REGRA DE DESCRIÇÃO NEUTRA DE COR NAS CENAS: Quando houver variações, NUNCA descreva no texto da cena a cor de uma variação em cenas pertencentes a outra variação (ex.: proibido citar "azul-marinho" na Cena 4 a 9 se for vermelho ou preto!). Refira-se ao produto como "a rede", "o tecido da rede", "as franjas", permitindo que cada cena herde a cor do respectivo quadro do storyboard!
    - Todo "olha [detalhe]" na copy vira uma cena de close/macro daquele detalhe.
    - Variar enquadramentos (nunca duas cenas seguidas iguais): close, macro, POV de mãos, plano médio, plano aberto, uso real.
    - "storyboardDescription" DEVE ser idêntico a "{framing}. {action}" (mesma pessoa, mesma ação, mesmo enquadramento e mesmos objetos, sem inventar objetos extras ou mudar quem aparece entre um campo e outro).
