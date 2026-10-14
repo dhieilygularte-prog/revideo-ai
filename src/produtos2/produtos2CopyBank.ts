@@ -2432,7 +2432,7 @@ export function generateProdutos2DescriptionHashtags(params: {
   }
 
   // 2. Tags de nicho e categoria
-  if (subMode === 'vestuario_feminino' || normNiche.includes('feminino') || normNiche.includes('moda feminina')) {
+  if (normNiche.includes('feminino') || normNiche.includes('moda feminina')) {
     tags.push('#modafeminina', '#lookdodia', '#tendencia');
     if (normName.includes('vestido')) tags.push('#vestidofeminino');
     else if (normName.includes('calca')) tags.push('#calcafeminina');

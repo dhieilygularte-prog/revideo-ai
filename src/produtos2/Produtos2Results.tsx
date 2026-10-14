@@ -75,6 +75,7 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
   const [promptCopied, setPromptCopied] = useState(false);
   const [hasCopiedPromptOnce, setHasCopiedPromptOnce] = useState(false);
   const [copyCopied, setCopyCopied] = useState(false);
+  const [descriptionCopied, setDescriptionCopied] = useState(false);
   const [isExportingZip, setIsExportingZip] = useState(false);
 
   const safeFileName = sanitizeProductFileName(result.productName);
@@ -95,6 +96,14 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
     navigator.clipboard.writeText(result.finalCopy);
     setCopyCopied(true);
     setTimeout(() => setCopyCopied(false), 2000);
+  };
+
+  const handleCopyDescription = () => {
+    if (result.description) {
+      navigator.clipboard.writeText(result.description);
+      setDescriptionCopied(true);
+      setTimeout(() => setDescriptionCopied(false), 2000);
+    }
   };
 
   const handleEditCopyLive = (newCopy: string) => {
@@ -482,10 +491,10 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
 
             <button
               type="button"
-              onClick={() => handleCopy('post-description', result.description!)}
+              onClick={handleCopyDescription}
               className="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-xs font-bold text-zinc-200 hover:text-white rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer border border-zinc-700"
             >
-              {copiedKey === 'post-description' ? (
+              {descriptionCopied ? (
                 <>
                   <Check className="w-3.5 h-3.5 text-emerald-400" />
                   <span>Copiado!</span>
