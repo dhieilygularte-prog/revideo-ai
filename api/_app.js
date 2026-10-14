@@ -1016,14 +1016,20 @@ Mantenha o mesmo modelo/corte e caimento da pe\xE7a atual; troque somente cores 
       }
       return {
         success: false,
-        error: "Nenhuma imagem retornada pelo modelo gpt-image-2.5-sunburst.",
-        fallbackRequired: true
+        error: `Nenhuma imagem retornada pelo modelo OpenAI (${OPENAI_IMAGE_MODEL}).`,
+        fallbackRequired: false
       };
     } catch (err) {
+      let msg = err?.message || "";
+      if (msg.includes("credit_balance_exhausted") || msg.includes("no credits remaining") || msg.includes("billing") || err?.status === 429) {
+        msg = "Seus cr\xE9ditos na OpenAI est\xE3o zerados (Erro 429 - Saldo Esgotado). Recarregue seus cr\xE9ditos em https://platform.openai.com/settings/organization/billing/ para continuar gerando imagens.";
+      } else {
+        msg = `Erro ao gerar imagem com a OpenAI (${OPENAI_IMAGE_MODEL}): ${msg}`;
+      }
       return {
         success: false,
-        error: `Erro ao gerar imagem com ${OPENAI_IMAGE_MODEL}: ${err?.message}`,
-        fallbackRequired: true
+        error: msg,
+        fallbackRequired: false
       };
     }
   }
@@ -2620,7 +2626,13 @@ app.post("/api/generate-scene-image", async (req, res) => {
       return res.status(400).json({ success: false, error: "Prompt n\xE3o fornecido" });
     }
     const activeProfile = req.body?.aiProfile || getRequestAIProfile(req);
-    if (activeProfile === "openai" && openAIProvider.isConfigured()) {
+    if (activeProfile === "openai") {
+      if (!openAIProvider.isConfigured()) {
+        return res.json({
+          success: false,
+          error: "A chave da API da OpenAI n\xE3o est\xE1 configurada no ambiente. Adicione OPENAI_API_KEY no arquivo .env ou no painel da Vercel."
+        });
+      }
       try {
         const result = await openAIProvider.generateSceneImage({
           prompt,
@@ -2639,12 +2651,12 @@ app.post("/api/generate-scene-image", async (req, res) => {
           isCloneMode,
           preserveLocation
         });
-        if (result.success && result.imageUrl) {
-          return res.json(result);
-        }
-        console.warn(`OpenAI ${OPENAI_IMAGE_MODEL} n\xE3o retornou imagem, usando pipeline Gemini:`, result.error);
+        return res.json(result);
       } catch (oiErr) {
-        console.warn(`Exce\xE7\xE3o no modelo ${OPENAI_IMAGE_MODEL}, recorrendo ao pipeline Gemini:`, oiErr?.message || oiErr);
+        return res.json({
+          success: false,
+          error: oiErr?.message || "Erro na chamada \xE0 API da OpenAI."
+        });
       }
     }
     if (!process.env.GEMINI_API_KEY) {
@@ -3134,8 +3146,8 @@ Retorne APENAS um objeto JSON v\xE1lido com as chaves:
     }
   ]
 } (exatamente 9 cenas numeradas de 1 a 9 somando ${duration}.0s).`;
-    const activeProfile = getRequestAIProfile(req);
-    const tryOrder = activeProfile === "gemini" ? ["gemini", "openai"] : ["openai", "gemini"];
+    const activeProfile = req.body?.aiProfile || getRequestAIProfile(req);
+    const tryOrder = activeProfile === "gemini" ? ["gemini"] : ["openai"];
     for (const provider of tryOrder) {
       if (provider === "openai" && openAIProvider.isConfigured()) {
         const client = openAIProvider.getClient();
@@ -3316,11 +3328,17 @@ REGRA INEGOCI\xC1VEL: Em TODOS os quadrantes do storyboard 3x3 onde essa parte d
 CORRE\xC7\xC3O OBRIGAT\xD3RIA DE AUDITORIA DE FIDELIDADE DOS 9 QUADRANTES:
 ${correctionPrompt.trim()}
 ========================` : baseWithLogo;
-    const activeProfile = getRequestAIProfile(req);
-    const tryOrder = activeProfile === "gemini" ? ["gemini", "openai"] : ["openai", "gemini"];
+    const activeProfile = req.body?.aiProfile || getRequestAIProfile(req);
+    const tryOrder = activeProfile === "gemini" ? ["gemini"] : ["openai"];
     let lastErrorMessage = "";
     for (const provider of tryOrder) {
-      if (provider === "openai" && openAIProvider.isConfigured()) {
+      if (provider === "openai") {
+        if (!openAIProvider.isConfigured()) {
+          return res.json({
+            success: false,
+            error: "Chave da API da OpenAI n\xE3o configurada. Defina OPENAI_API_KEY no arquivo .env."
+          });
+        }
         try {
           const result = await openAIProvider.generateSceneImage({
             prompt: effectivePrompt,
@@ -3338,9 +3356,11 @@ ${correctionPrompt.trim()}
             return res.json(result);
           }
           if (result.error) lastErrorMessage = result.error;
+          return res.json({ success: false, error: lastErrorMessage || "Falha na gera\xE7\xE3o com OpenAI." });
         } catch (oiErr) {
           lastErrorMessage = oiErr?.message || "Erro OpenAI ao gerar storyboard";
           console.warn("Aviso OpenAI em produtos2-generate-storyboard:", lastErrorMessage);
+          return res.json({ success: false, error: lastErrorMessage });
         }
       }
       if (provider === "gemini" && process.env.GEMINI_API_KEY) {
@@ -3529,8 +3549,8 @@ Retorne ESTRITAMENTE um objeto JSON v\xE1lido EM PORTUGU\xCAS com este formato e
   ]
 }
 O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "issue" sempre em portugu\xEAs do Brasil.`;
-    const activeProfile = getRequestAIProfile(req);
-    const tryOrder = activeProfile === "gemini" ? ["gemini", "openai"] : ["openai", "gemini"];
+    const activeProfile = req.body?.aiProfile || getRequestAIProfile(req);
+    const tryOrder = activeProfile === "gemini" ? ["gemini"] : ["openai"];
     let rawQuadrants = null;
     let hasReferenceLogo = false;
     let referenceLogoDescription = "";

@@ -1632,7 +1632,13 @@ app.post('/api/generate-scene-image', async (req, res) => {
 
     // ─── ROTEAMENTO BASEADO NO PERFIL DE IA SELECIONADO ────────────────────
     const activeProfile = req.body?.aiProfile || getRequestAIProfile(req);
-    if (activeProfile === 'openai' && openAIProvider.isConfigured()) {
+    if (activeProfile === 'openai') {
+      if (!openAIProvider.isConfigured()) {
+        return res.json({
+          success: false,
+          error: 'A chave da API da OpenAI não está configurada no ambiente. Adicione OPENAI_API_KEY no arquivo .env ou no painel da Vercel.',
+        });
+      }
       try {
         const result = await openAIProvider.generateSceneImage({
           prompt,
@@ -1651,12 +1657,12 @@ app.post('/api/generate-scene-image', async (req, res) => {
           isCloneMode,
           preserveLocation,
         });
-        if (result.success && result.imageUrl) {
-          return res.json(result);
-        }
-        console.warn(`OpenAI ${OPENAI_IMAGE_MODEL} não retornou imagem, usando pipeline Gemini:`, result.error);
+        return res.json(result);
       } catch (oiErr: any) {
-        console.warn(`Exceção no modelo ${OPENAI_IMAGE_MODEL}, recorrendo ao pipeline Gemini:`, oiErr?.message || oiErr);
+        return res.json({
+          success: false,
+          error: oiErr?.message || 'Erro na chamada à API da OpenAI.',
+        });
       }
     }
     // ─── END OPENAI PROVIDER PATH ──────────────────────────────────────────
@@ -2251,9 +2257,9 @@ Retorne APENAS um objeto JSON válido com as chaves:
   ]
 } (exatamente 9 cenas numeradas de 1 a 9 somando ${duration}.0s).`;
 
-    const activeProfile = getRequestAIProfile(req);
+    const activeProfile = req.body?.aiProfile || getRequestAIProfile(req);
     const tryOrder: ('openai' | 'gemini')[] =
-      activeProfile === 'gemini' ? ['gemini', 'openai'] : ['openai', 'gemini'];
+      activeProfile === 'gemini' ? ['gemini'] : ['openai'];
 
     for (const provider of tryOrder) {
       if (provider === 'openai' && openAIProvider.isConfigured()) {
@@ -2463,15 +2469,21 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
       ? `${baseWithLogo}\n\n========================\nCORREÇÃO OBRIGATÓRIA DE AUDITORIA DE FIDELIDADE DOS 9 QUADRANTES:\n${correctionPrompt.trim()}\n========================`
       : baseWithLogo;
 
-    const activeProfile = getRequestAIProfile(req);
+    const activeProfile = req.body?.aiProfile || getRequestAIProfile(req);
     const tryOrder: ('openai' | 'gemini')[] =
-      activeProfile === 'gemini' ? ['gemini', 'openai'] : ['openai', 'gemini'];
+      activeProfile === 'gemini' ? ['gemini'] : ['openai'];
 
     let lastErrorMessage = '';
 
     for (const provider of tryOrder) {
       // 1. OpenAI Path
-      if (provider === 'openai' && openAIProvider.isConfigured()) {
+      if (provider === 'openai') {
+        if (!openAIProvider.isConfigured()) {
+          return res.json({
+            success: false,
+            error: 'Chave da API da OpenAI não configurada. Defina OPENAI_API_KEY no arquivo .env.',
+          });
+        }
         try {
           const result = await openAIProvider.generateSceneImage({
             prompt: effectivePrompt,
@@ -2488,9 +2500,11 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
             return res.json(result);
           }
           if (result.error) lastErrorMessage = result.error;
+          return res.json({ success: false, error: lastErrorMessage || 'Falha na geração com OpenAI.' });
         } catch (oiErr: any) {
           lastErrorMessage = oiErr?.message || 'Erro OpenAI ao gerar storyboard';
           console.warn('Aviso OpenAI em produtos2-generate-storyboard:', lastErrorMessage);
+          return res.json({ success: false, error: lastErrorMessage });
         }
       }
 
@@ -2735,9 +2749,9 @@ Retorne ESTRITAMENTE um objeto JSON válido EM PORTUGUÊS com este formato exato
 }
 O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "issue" sempre em português do Brasil.`;
 
-    const activeProfile = getRequestAIProfile(req);
+    const activeProfile = req.body?.aiProfile || getRequestAIProfile(req);
     const tryOrder: ('openai' | 'gemini')[] =
-      activeProfile === 'gemini' ? ['gemini', 'openai'] : ['openai', 'gemini'];
+      activeProfile === 'gemini' ? ['gemini'] : ['openai'];
 
     let rawQuadrants: any[] | null = null;
     let hasReferenceLogo = false;

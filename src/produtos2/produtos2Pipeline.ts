@@ -188,6 +188,9 @@ async function requestStoryboardImageGeneration(params: {
     if (imgData && imgData.success && imgData.imageUrl) {
       return { imageUrl: imgData.imageUrl };
     }
+    if (imgData && !imgData.success && imgData.error) {
+      return { error: imgData.error };
+    }
   } catch (err) {
     console.warn('Tentativa 1 (/api/produtos2-generate-storyboard) falhou, tentando fallback:', err);
   }

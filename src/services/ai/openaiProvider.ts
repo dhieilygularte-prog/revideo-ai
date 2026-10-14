@@ -696,14 +696,26 @@ Mantenha o mesmo modelo/corte e caimento da peça atual; troque somente cores (p
 
       return {
         success: false,
-        error: 'Nenhuma imagem retornada pelo modelo gpt-image-2.5-sunburst.',
-        fallbackRequired: true,
+        error: `Nenhuma imagem retornada pelo modelo OpenAI (${OPENAI_IMAGE_MODEL}).`,
+        fallbackRequired: false,
       };
     } catch (err: any) {
+      let msg = err?.message || '';
+      if (
+        msg.includes('credit_balance_exhausted') ||
+        msg.includes('no credits remaining') ||
+        msg.includes('billing') ||
+        err?.status === 429
+      ) {
+        msg =
+          'Seus créditos na OpenAI estão zerados (Erro 429 - Saldo Esgotado). Recarregue seus créditos em https://platform.openai.com/settings/organization/billing/ para continuar gerando imagens.';
+      } else {
+        msg = `Erro ao gerar imagem com a OpenAI (${OPENAI_IMAGE_MODEL}): ${msg}`;
+      }
       return {
         success: false,
-        error: `Erro ao gerar imagem com ${OPENAI_IMAGE_MODEL}: ${err?.message}`,
-        fallbackRequired: true,
+        error: msg,
+        fallbackRequired: false,
       };
     }
   }
