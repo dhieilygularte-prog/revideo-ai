@@ -1954,6 +1954,7 @@ export function selectAndAdaptProdutos2Copy(params: {
   clientGender: Produtos2ClientGender;
   influencer: Produtos2Influencer;
   useSpeechIntro?: boolean;
+  excludeCopyId?: string;
 }): {
   finalCopy: string;
   copyId: string;
@@ -1973,6 +1974,7 @@ export function selectAndAdaptProdutos2Copy(params: {
     clientGender,
     influencer,
     useSpeechIntro = false,
+    excludeCopyId,
   } = params;
 
   const specs = analyzeProductInfoForProdutos2(`${productName} ${productInfo}`);
@@ -2107,6 +2109,18 @@ export function selectAndAdaptProdutos2Copy(params: {
     const nonRepeated = pool.filter((c) => !recentPickedCopyIds.includes(c.id));
     if (nonRepeated.length > 0) {
       poolToPick = nonRepeated;
+    }
+  }
+
+  if (excludeCopyId) {
+    const withoutExcluded = poolToPick.filter((c) => c.id !== excludeCopyId);
+    if (withoutExcluded.length > 0) {
+      poolToPick = withoutExcluded;
+    } else {
+      const activeWithoutExcluded = activeBank.filter((c) => c.id !== excludeCopyId);
+      if (activeWithoutExcluded.length > 0) {
+        poolToPick = activeWithoutExcluded;
+      }
     }
   }
 

@@ -3104,12 +3104,13 @@ app.post("/api/produtos2-planning", async (req, res) => {
         if (!client) {
           return res.status(400).json({ success: false, error: "Provedor OpenAI n\xE3o configurado." });
         }
-        const maxLimit = duration === 8 ? 165 : 235;
-        const auroraSystem = `Voc\xEA \xE9 a AURORACOPY, uma especialista em copy curta para v\xEDdeos de TikTok Shop Brasil.
-Sua fun\xE7\xE3o \xE9 transformar as INFORMA\xC7\xD5ES DO PRODUTO fornecidas pelo usu\xE1rio em uma \xFAnica fala de alta reten\xE7\xE3o, natural, espec\xEDfica e persuasiva, pronta para ser usada como narra\xE7\xE3o de v\xEDdeo.
+        const minLimit = 200;
+        const maxLimit = 235;
+        const auroraSystem = `Voc\xEA \xE9 a AURORACOPY, uma especialista em copy para v\xEDdeos de TikTok Shop Brasil.
+Sua fun\xE7\xE3o \xE9 transformar as INFORMA\xC7\xD5ES DO PRODUTO fornecidas pelo usu\xE1rio em uma fala de alta reten\xE7\xE3o, natural, espec\xEDfica e persuasiva, pronta para ser usada como narra\xE7\xE3o de v\xEDdeo.
 
 OBJETIVO PRINCIPAL:
-Criar uma fala que pare o scroll, desperte curiosidade, valorize o principal benef\xEDcio do produto e fa\xE7a a pessoa querer continuar assistindo ou conhecer o item.
+Criar uma fala que pare o scroll, desperte curiosidade, valorize o principal benef\xEDcio do produto e fa\xE7a a pessoa querer conhecer o item.
 
 ESTILO PADR\xC3O:
 Use prioritariamente o formato DESCOBERTA + DEMONSTRA\xC7\xC3O.
@@ -3119,24 +3120,18 @@ A fala nunca deve parecer propaganda tradicional, locu\xE7\xE3o institucional, d
 IGNORE COMO ARGUMENTO DE VENDA:
 Pre\xE7o, desconto, cupom, frete gr\xE1tis, parcelamento, promo\xE7\xE3o financeira. Mesmo que estejam presentes, n\xE3o baseie a copy neles.
 
-BENEF\xCDCIO:
-Selecione o benef\xEDcio com maior potencial de gerar curiosidade, ser demonstrado e produzir resultado visual concreto.
-
-ESTRUTURA DA FALA:
-1. HOOK FORTE (abrir com surpresa, curiosidade ou rea\xE7\xE3o espont\xE2nea).
-2. DESCOBERTA (sensa\xE7\xE3o de novidade ou teste real).
-3. BENEF\xCDCIO PRINCIPAL.
-4. DEMONSTRA\xC7\xC3O (combinar com produto sendo mostrado em uso).
-5. CURIOSIDADE OU DESEJO.
-6. CTA LEVE ("d\xE1 uma olhada nisso", "olha como funciona", "eu deixei aqui", "vale a pena ver", "clica pra ver").
-
-LIMITE R\xCDGIDO DE CARACTERES:
-No M\xC1XIMO ${maxLimit} caracteres contando espa\xE7os e pontua\xE7\xE3o.
-Faixa preferencial: ${duration === 8 ? "130 a 160" : "190 a 230"} caracteres.
-Antes de responder: conte os caracteres; se ultrapassar ${maxLimit}, reescreva; nunca corte a frase no meio; nunca entregue texto incompleto.
+REGRA MANDAT\xD3RIA DE CARACTERES (MUITO IMPORTANTE):
+A fala DEVE ter OBRIGATORIAMENTE entre 200 e 235 caracteres no total (contando espa\xE7os e pontua\xE7\xE3o).
+NUNCA entregue menos de 200 caracteres!
+NUNCA ultrapasse 235 caracteres!
+Estruture a fala com:
+1. Gancho direto e curioso de abertura (aprox. 35-45 caracteres).
+2. Explica\xE7\xE3o de 2 benef\xEDcios concretos com foco na usabilidade real (aprox. 115-135 caracteres).
+3. Chamada natural leve para conferir (aprox. 35-45 caracteres).
+Totalizando impreterivelmente entre 200 e 235 caracteres.
 
 LINGUAGEM:
-Portugu\xEAs do Brasil oral, simples, espont\xE2neo, natural. Varie os hooks (n\xE3o comece sempre com "Gente" ou "Olha isso").
+Portugu\xEAs do Brasil oral, simples, espont\xE2neo, natural.
 Use detalhes reais presentes nas informa\xE7\xF5es do produto. NUNCA invente caracter\xEDsticas.
 
 FORMATO DE SA\xCDDA:
@@ -3146,9 +3141,10 @@ ${productInfo || productName}
 
 NOME DO PRODUTO: ${productName}
 ${additionalInstructions ? `INSTRU\xC7\xD5ES ADICIONAIS: ${additionalInstructions}` : ""}
-DURA\xC7\xC3O M\xC1XIMA DO V\xCDDEO: ${duration || 10} segundos. Limite estrito: at\xE9 ${maxLimit} caracteres.`;
+DURA\xC7\xC3O DO V\xCDDEO: 10 segundos.
+TAMANHO OBRIGAT\xD3RIO: Exatamente entre ${minLimit} e ${maxLimit} caracteres.`;
         const comp = await client.chat.completions.create({
-          model: OPENAI_BRAIN_MODEL,
+          model: "gpt-4o-mini",
           messages: [
             { role: "system", content: auroraSystem },
             { role: "user", content: auroraUser }
@@ -3157,8 +3153,23 @@ DURA\xC7\xC3O M\xC1XIMA DO V\xCDDEO: ${duration || 10} segundos. Limite estrito:
         });
         let rawSpeech = comp.choices[0]?.message?.content?.trim() || "";
         rawSpeech = rawSpeech.replace(/^["'«“]|["'»”]$/g, "").trim();
-        if (rawSpeech.length > maxLimit) {
-          rawSpeech = rawSpeech.slice(0, maxLimit).replace(/[,;:\s]+$/, "") + "!";
+        if (rawSpeech.length < 200) {
+          const complementos = [
+            " D\xE1 uma olhada aqui embaixo e aproveita agora!",
+            " Vale muito a pena conferir todos os detalhes aqui!",
+            " Eu deixei o link com todos os modelos aqui embaixo!",
+            " Confere aqui embaixo pra ver todos os detalhes!"
+          ];
+          for (const c of complementos) {
+            const candidate = rawSpeech.replace(/[.!]+$/, "") + "." + c;
+            if (candidate.length <= 235 && candidate.length >= 200) {
+              rawSpeech = candidate;
+              break;
+            }
+          }
+        }
+        if (rawSpeech.length > 235) {
+          rawSpeech = rawSpeech.slice(0, 235).replace(/[,;:\s]+[^.!?,;:]*$/, "") + "!";
         }
         return res.json({ success: true, auroraCopy: rawSpeech });
       } catch (err) {

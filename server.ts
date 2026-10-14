@@ -2199,19 +2199,20 @@ app.post('/api/produtos2-planning', async (req, res) => {
       productPhotosBase64 = [],
     } = req.body;
 
-    // Ação rápida: Gerar somente a fala com Aurora Copy (Item 1 & Item 3)
+    // Ação rápida: Gerar somente a fala com Aurora Copy (Rápido: ~1s via gpt-4o-mini e entre 200 e 235 caracteres)
     if (action === 'generate_aurora_copy') {
       try {
         const client = (openAIProvider as any).getClient();
         if (!client) {
           return res.status(400).json({ success: false, error: 'Provedor OpenAI não configurado.' });
         }
-        const maxLimit = duration === 8 ? 165 : 235;
-        const auroraSystem = `Você é a AURORACOPY, uma especialista em copy curta para vídeos de TikTok Shop Brasil.
-Sua função é transformar as INFORMAÇÕES DO PRODUTO fornecidas pelo usuário em uma única fala de alta retenção, natural, específica e persuasiva, pronta para ser usada como narração de vídeo.
+        const minLimit = 200;
+        const maxLimit = 235;
+        const auroraSystem = `Você é a AURORACOPY, uma especialista em copy para vídeos de TikTok Shop Brasil.
+Sua função é transformar as INFORMAÇÕES DO PRODUTO fornecidas pelo usuário em uma fala de alta retenção, natural, específica e persuasiva, pronta para ser usada como narração de vídeo.
 
 OBJETIVO PRINCIPAL:
-Criar uma fala que pare o scroll, desperte curiosidade, valorize o principal benefício do produto e faça a pessoa querer continuar assistindo ou conhecer o item.
+Criar uma fala que pare o scroll, desperte curiosidade, valorize o principal benefício do produto e faça a pessoa querer conhecer o item.
 
 ESTILO PADRÃO:
 Use prioritariamente o formato DESCOBERTA + DEMONSTRAÇÃO.
@@ -2221,24 +2222,18 @@ A fala nunca deve parecer propaganda tradicional, locução institucional, descr
 IGNORE COMO ARGUMENTO DE VENDA:
 Preço, desconto, cupom, frete grátis, parcelamento, promoção financeira. Mesmo que estejam presentes, não baseie a copy neles.
 
-BENEFÍCIO:
-Selecione o benefício com maior potencial de gerar curiosidade, ser demonstrado e produzir resultado visual concreto.
-
-ESTRUTURA DA FALA:
-1. HOOK FORTE (abrir com surpresa, curiosidade ou reação espontânea).
-2. DESCOBERTA (sensação de novidade ou teste real).
-3. BENEFÍCIO PRINCIPAL.
-4. DEMONSTRAÇÃO (combinar com produto sendo mostrado em uso).
-5. CURIOSIDADE OU DESEJO.
-6. CTA LEVE ("dá uma olhada nisso", "olha como funciona", "eu deixei aqui", "vale a pena ver", "clica pra ver").
-
-LIMITE RÍGIDO DE CARACTERES:
-No MÁXIMO ${maxLimit} caracteres contando espaços e pontuação.
-Faixa preferencial: ${duration === 8 ? '130 a 160' : '190 a 230'} caracteres.
-Antes de responder: conte os caracteres; se ultrapassar ${maxLimit}, reescreva; nunca corte a frase no meio; nunca entregue texto incompleto.
+REGRA MANDATÓRIA DE CARACTERES (MUITO IMPORTANTE):
+A fala DEVE ter OBRIGATORIAMENTE entre 200 e 235 caracteres no total (contando espaços e pontuação).
+NUNCA entregue menos de 200 caracteres!
+NUNCA ultrapasse 235 caracteres!
+Estruture a fala com:
+1. Gancho direto e curioso de abertura (aprox. 35-45 caracteres).
+2. Explicação de 2 benefícios concretos com foco na usabilidade real (aprox. 115-135 caracteres).
+3. Chamada natural leve para conferir (aprox. 35-45 caracteres).
+Totalizando impreterivelmente entre 200 e 235 caracteres.
 
 LINGUAGEM:
-Português do Brasil oral, simples, espontâneo, natural. Varie os hooks (não comece sempre com "Gente" ou "Olha isso").
+Português do Brasil oral, simples, espontâneo, natural.
 Use detalhes reais presentes nas informações do produto. NUNCA invente características.
 
 FORMATO DE SAÍDA:
@@ -2249,10 +2244,11 @@ ${productInfo || productName}
 
 NOME DO PRODUTO: ${productName}
 ${additionalInstructions ? `INSTRUÇÕES ADICIONAIS: ${additionalInstructions}` : ''}
-DURAÇÃO MÁXIMA DO VÍDEO: ${duration || 10} segundos. Limite estrito: até ${maxLimit} caracteres.`;
+DURAÇÃO DO VÍDEO: 10 segundos.
+TAMANHO OBRIGATÓRIO: Exatamente entre ${minLimit} e ${maxLimit} caracteres.`;
 
         const comp = await client.chat.completions.create({
-          model: OPENAI_BRAIN_MODEL,
+          model: 'gpt-4o-mini',
           messages: [
             { role: 'system', content: auroraSystem },
             { role: 'user', content: auroraUser },
@@ -2262,9 +2258,27 @@ DURAÇÃO MÁXIMA DO VÍDEO: ${duration || 10} segundos. Limite estrito: até ${
 
         let rawSpeech = comp.choices[0]?.message?.content?.trim() || '';
         rawSpeech = rawSpeech.replace(/^["'«“]|["'»”]$/g, '').trim();
-        if (rawSpeech.length > maxLimit) {
-          rawSpeech = rawSpeech.slice(0, maxLimit).replace(/[,;:\s]+$/, '') + '!';
+
+        // Garantia absoluta de faixa entre 200 e 235 caracteres
+        if (rawSpeech.length < 200) {
+          const complementos = [
+            ' Dá uma olhada aqui embaixo e aproveita agora!',
+            ' Vale muito a pena conferir todos os detalhes aqui!',
+            ' Eu deixei o link com todos os modelos aqui embaixo!',
+            ' Confere aqui embaixo pra ver todos os detalhes!',
+          ];
+          for (const c of complementos) {
+            const candidate = rawSpeech.replace(/[.!]+$/, '') + '.' + c;
+            if (candidate.length <= 235 && candidate.length >= 200) {
+              rawSpeech = candidate;
+              break;
+            }
+          }
         }
+        if (rawSpeech.length > 235) {
+          rawSpeech = rawSpeech.slice(0, 235).replace(/[,;:\s]+[^.!?,;:]*$/, '') + '!';
+        }
+
         return res.json({ success: true, auroraCopy: rawSpeech });
       } catch (err: any) {
         return res.status(500).json({ success: false, error: err?.message || 'Erro ao gerar Aurora Copy' });

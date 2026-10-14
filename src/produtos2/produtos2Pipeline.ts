@@ -332,17 +332,22 @@ export async function runProdutos2Pipeline(params: {
 
   // 2 & 3 & 4. Determinar a fala oficial com base na seleção do usuário (ou fallback)
   let finalCopy = '';
-  let copySourceLabel = 'Banco de Copies (Padrão Validado)';
+  let copySourceLabel = 'Banco de Copies';
   let copyId = 'BANCO-01';
 
-  // Se o usuário já gerou as 2 falas e selecionou uma (ou editou), adota rigorosamente a escolhida!
+  // Se o usuário já gerou as falas e selecionou uma (ou editou), adota rigorosamente a escolhida!
   if (form.selectedSpeechOption === 'aurora_copy' && (form.finalSelectedSpeech || form.auroraCopy)) {
     finalCopy = (form.finalSelectedSpeech || form.auroraCopy || '').trim();
-    copySourceLabel = 'Aurora Copy (IA Criativa · Ficha Técnica)';
+    copySourceLabel = 'Aurora Copy';
     copyId = 'AURORA-01';
+  } else if (form.selectedSpeechOption === 'banco2' && (form.finalSelectedSpeech || form.bancoCopy2)) {
+    finalCopy = (form.finalSelectedSpeech || form.bancoCopy2 || '').trim();
+    copySourceLabel = 'Banco de Copies (Opção 2)';
+    copyId = 'BANCO-02';
   } else if (form.bancoCopy || form.finalSelectedSpeech) {
     finalCopy = (form.finalSelectedSpeech || form.bancoCopy || '').trim();
-    copySourceLabel = 'Banco de Copies (Padrão Validado)';
+    copySourceLabel = 'Banco de Copies (Opção 1)';
+    copyId = 'BANCO-01';
   } else if (form.customCopy && form.customCopy.trim()) {
     finalCopy = form.customCopy.trim();
     copySourceLabel = 'Copy Personalizada';
@@ -668,15 +673,19 @@ export async function runProdutos2Pipeline(params: {
     finalCopy: applySpeechIntro(finalCopy, Boolean(form.useSpeechIntro)),
     copySourceLabel:
       form.selectedSpeechOption === 'aurora_copy'
-        ? 'Aurora Copy (IA Criativa · Ficha Técnica)'
-        : form.selectedSpeechOption === 'banco'
-        ? 'Banco de Copies (Padrão Validado)'
+        ? 'Aurora Copy'
+        : form.selectedSpeechOption === 'banco2'
+        ? 'Banco de Copies (Opção 2)'
+        : form.selectedSpeechOption === 'banco1'
+        ? 'Banco de Copies (Opção 1)'
         : copySourceLabel,
     copyId:
       form.selectedSpeechOption === 'aurora_copy'
         ? 'AURORA-01'
+        : form.selectedSpeechOption === 'banco2'
+        ? 'BANCO-02'
         : copyId,
-    copyEngine: form.selectedSpeechOption || form.copyEngine || 'banco',
+    copyEngine: form.selectedSpeechOption === 'aurora_copy' ? 'aurora_copy' : 'banco',
     productLock,
     avatarDescription,
     scenarioDescription,

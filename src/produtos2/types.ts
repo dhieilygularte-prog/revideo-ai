@@ -51,11 +51,12 @@ export interface Produtos2FormState {
   duration: Produtos2Duration;
   customCopy: string;
   copyEngine?: Produtos2CopyEngine;
-  // Novo fluxo: 2 falas simultâneas (Banco + Aurora Copy)
+  // Novo fluxo: 3 falas em linha (Banco 1 + Banco 2 + Aurora Copy)
   speechesGenerated?: boolean;
   bancoCopy?: string;
+  bancoCopy2?: string;
   auroraCopy?: string;
-  selectedSpeechOption?: 'banco' | 'aurora_copy';
+  selectedSpeechOption?: 'banco1' | 'banco2' | 'aurora_copy';
   finalSelectedSpeech?: string;
   additionalInstructions: string;
   influencer: Produtos2Influencer;
