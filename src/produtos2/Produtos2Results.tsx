@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   AlertTriangle,
   AlertCircle,
+  Tag,
 } from 'lucide-react';
 import { Produtos2AuditColorStatus, Produtos2ResultState } from './types';
 import {
@@ -469,6 +470,42 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
       </div>
 
       {/* ===================================================================== */}
+      {/* DESCRIÇÃO DO POST + HASHTAGS (Idêntico ao Modo Ania)                  */}
+      {/* ===================================================================== */}
+      {result.description && (
+        <div className="p-5 sm:p-6 bg-zinc-900 rounded-2xl border border-zinc-800 space-y-3 shadow-xl">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800 pb-3">
+            <div className="flex items-center gap-2">
+              <Tag className="w-4 h-4 text-emerald-400" />
+              <h3 className="text-sm font-bold text-white">Descrição do Post + Hashtags (TikTok & Reels)</h3>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => handleCopy('post-description', result.description!)}
+              className="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-xs font-bold text-zinc-200 hover:text-white rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer border border-zinc-700"
+            >
+              {copiedKey === 'post-description' ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Copiado!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Copiar Descrição</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          <div className="p-3.5 bg-zinc-950 rounded-xl border border-zinc-800/80 text-xs sm:text-sm text-zinc-200 font-sans leading-relaxed select-all">
+            {result.description}
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
       {/* BOTÃO BAIXAR TUDO (.ZIP COM NOME DO PRODUTO)                          */}
       {/* ===================================================================== */}
       <div className="p-5 rounded-2xl bg-zinc-900/90 border border-zinc-800 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -477,7 +514,7 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
             Pacote Completo ({safeFileName}.zip)
           </h4>
           <p className="text-xs text-zinc-400 mt-0.5">
-            Contém a imagem do storyboard (<span className="text-zinc-200 font-mono">{safeFileName}.png</span>) e o prompt completo do Veo 3 (<span className="text-zinc-200 font-mono">{safeFileName}.txt</span>).
+            Contém a imagem do storyboard (<span className="text-zinc-200 font-mono">{safeFileName}.png</span>), o prompt completo do Veo 3 (<span className="text-zinc-200 font-mono">{safeFileName}.txt</span>) e a descrição com hashtags (<span className="text-zinc-200 font-mono">descricao-{safeFileName}.txt</span>).
           </p>
         </div>
 

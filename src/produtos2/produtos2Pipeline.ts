@@ -13,6 +13,7 @@ import {
   enforceMaxChars,
   ensureLeadingNossaPrefix,
   evaluateCopyDnaChecklist,
+  generateProdutos2DescriptionHashtags,
   selectAndAdaptProdutos2Copy,
   stripLeadingNossaPrefix,
 } from './produtos2CopyBank';
@@ -606,6 +607,16 @@ export async function runProdutos2Pipeline(params: {
     variations: form.variations,
   });
 
+  // Gerar Descrição do Post + Hashtags para TikTok / Reels (Modo Ania portado para Produtos 2.0)
+  const { description, hashtags } = generateProdutos2DescriptionHashtags({
+    productName: finalProductName,
+    niche: detectedNiche,
+    subMode: form.subMode,
+    maleSubOption: form.maleSubOption,
+    clientGender: form.clientGender,
+    finalCopy,
+  });
+
   onProgress?.(100, 'Concluído! Storyboard 9 cenas auditado e Prompt do Veo 3 gerados com sucesso.');
 
   return {
@@ -634,6 +645,8 @@ export async function runProdutos2Pipeline(params: {
     storyboardAudit,
     veoPrompt,
     variations: form.variations,
+    description,
+    hashtags,
   };
 }
 

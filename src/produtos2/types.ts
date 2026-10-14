@@ -127,5 +127,7 @@ export interface Produtos2ResultState {
   storyboardAudit?: Produtos2StoryboardAudit;
   veoPrompt: string;
   variations?: Produtos2Variation[];
+  description?: string;
+  hashtags?: string[];
 }
 

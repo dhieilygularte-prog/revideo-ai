@@ -1162,18 +1162,31 @@ export function cleanTitleToShortName(firstLine: string): string {
   let cleaned = (firstLine || '')
     .replace(/^[-*#•\s]+/, '')
     .replace(/^(?:produto|nome|t[ií]tulo|item)\s*[:=-]\s*/i, '')
+    // Remove especificações de memória/conectividade/redes comuns em títulos de e-commerce
+    .replace(/\b\d+\s*(?:gb|tb|ram|rom|mah|hz|fps|mp|k)\b/gi, '')
+    .replace(/\b(?:5g|4g|3g|wifi|bluetooth|bivolt|original|lancamento|promocao)\b/gi, '')
     // Remove medidas técnicas e especificações comuns (ex: 2.40x1.40 metros, 100% algodão, 2000w, etc.)
     .replace(/\b\d+(?:[.,]\d+)?\s*(?:x|por)\s*\d+(?:[.,]\d+)?\s*(?:metros?|m|cm|mm)?\b/gi, '')
     .replace(/\b\d+(?:[.,]\d+)?\s*(?:metros?|m|cm|mm|kg|g|litros?|l|ml|watts?|w|volts?|v|polegadas?|pol)\b/gi, '')
     .replace(/\b(?:em|com|de)?\s*\d+%\s*[a-zà-ú]+\b/gi, '')
-    .replace(/\b(?:solteiro\s+e\s+casal|solteiro|casal|bivolt|original|premium|novo|lancamento)\b/gi, '')
+    .replace(/\b(?:solteiro\s+e\s+casal|solteiro|casal|premium|novo)\b/gi, '')
     .replace(/[,;:.!?\-–—]+.*$/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 
+  // Se começar com prefixos redundantes antes da marca/modelo real (ex: "Celular Xiaomi Poco X8 Pro" -> "Poco X8 Pro")
+  if (/^(?:celular|smartphone|aparelho)\s+(?:xiaomi\s+)?(poco\s+[a-z0-9\s]+)/i.test(cleaned)) {
+    const match = cleaned.match(/^(?:celular|smartphone|aparelho)\s+(?:xiaomi\s+)?(poco\s+[a-z0-9\s]+)/i);
+    if (match?.[1]) cleaned = match[1].trim();
+  } else if (/^(?:celular|smartphone)\s+/i.test(cleaned) && cleaned.split(/\s+/).length > 3) {
+    cleaned = cleaned.replace(/^(?:celular|smartphone)\s+/i, '');
+  }
+
   const words = cleaned.split(/\s+/).filter(Boolean);
   if (words.length >= 2) {
-    const candidate = words.slice(0, 3).join(' ');
+    // Permite até 4 palavras (ou 5 se curtas) para não cortar marcas e modelos como "Poco X8 Pro" ou "Monitor Gamer Gawfolk"
+    const maxWords = words.length <= 4 ? words.length : (words.slice(0, 4).join(' ').length <= 26 ? 4 : 3);
+    const candidate = words.slice(0, maxWords).join(' ');
     return candidate.charAt(0).toUpperCase() + candidate.slice(1);
   }
   return cleaned;
@@ -1337,8 +1350,8 @@ export function analyzeProductInfoForProdutos2(rawText: string): ProductSpecsExt
     [/\bsaia\s+(?:de\s+)?babado|\btoalha\s+decorativa/i, 'Saia de Mesa TNT'],
     [/\bcamera\s+digital|\bcamera\s+4k/i, 'Câmera Digital 4K'],
     [/\bsmartwatch|\bapple\s+watch|\brelogio\s+inteligente/i, 'Smartwatch'],
-    [/\bcelular|\bsmartphone|\bpoco\s+x\d+|\bs26\s+ultra/i, 'Smartphone'],
-    [/\bmonitor/i, 'Monitor Curvo'],
+    [/\bcelular|\bsmartphone/i, 'Smartphone'],
+    [/\bmonitor/i, 'Monitor'],
     [/\btablet/i, 'Tablet'],
     [/\bjipe\s+eletrico|\bcarrinho\s+eletrico|\bquadriciclo/i, 'Jipe Elétrico Infantil'],
     [/\btriciclo\s+eletrico|\btriciclo\s+drift/i, 'Triciclo Elétrico Drift'],
@@ -1363,21 +1376,22 @@ export function analyzeProductInfoForProdutos2(rawText: string): ProductSpecsExt
     [/\bcamisa/i, 'Camisa Masculina'],
   ];
 
-  // Prioridade 1: Verifica se o título do anúncio casa com algum produto conhecido
-  if (titleNorm) {
+  // Prioridade 1: Extrai o nome real e específico do produto diretamente da 1ª linha / título do anúncio
+  // preservando a marca e modelo exatos fornecidos pelo usuário (ex: "Poco X8 Pro", "Monitor Gamer Gawfolk", "Rede de Descanso")
+  if (titleLines.length > 0) {
+    const extractedFromTitle = cleanTitleToShortName(titleLines[0]);
+    if (extractedFromTitle && extractedFromTitle.length >= 3 && !/^(?:produto|item|anuncio|descricao)$/i.test(extractedFromTitle)) {
+      shortName = extractedFromTitle;
+    }
+  }
+
+  // Prioridade 2: Se não casou no título com termos reais, verifica se o título do anúncio casa com algum produto conhecido
+  if (!shortName && titleNorm) {
     for (const [regex, label] of specificShortNames) {
       if (regex.test(titleNorm)) {
         shortName = label;
         break;
       }
-    }
-  }
-
-  // Prioridade 2: Se não casou no título com termos fixos, extrai o nome do produto limpo da 1ª linha
-  if (!shortName && titleLines.length > 0) {
-    const extractedFromTitle = cleanTitleToShortName(titleLines[0]);
-    if (extractedFromTitle && extractedFromTitle.length >= 3) {
-      shortName = extractedFromTitle;
     }
   }
 
@@ -2097,20 +2111,71 @@ export function adaptBankCopyToProduct(
       ? isSameProductForce
       : Boolean(targetProdNorm && (entryProdNorm.includes(targetProdNorm) || targetProdNorm.includes(entryProdNorm)));
 
-  if (!isSameProductType && productName) {
-    const spokenName = productName
-      .trim()
-      .split(/\s+/)
-      .map((w) => (/^(4K|LED|RGB|USB|RMS|TNT|UV|GPS|BML|JBL|TV|HD|3D|5G)$/i.test(w) ? w.toUpperCase() : w.toLowerCase()))
-      .join(' ');
-    const isFem = isFeminineProductName(spokenName);
-    const esseProd = isFem ? `essa ${spokenName}` : `esse ${spokenName}`;
-    const EsseProd = isFem ? `Essa ${spokenName}` : `Esse ${spokenName}`;
-    const esteProd = isFem ? `esta ${spokenName}` : `este ${spokenName}`;
-    const desseProd = isFem ? `dessa ${spokenName}` : `desse ${spokenName}`;
-    const umProd = isFem ? `uma ${spokenName}` : `um ${spokenName}`;
-    const oSeu = isFem ? 'a sua' : 'o seu';
+  const spokenName = (productName || '')
+    .trim()
+    .split(/\s+/)
+    .map((w) => (/^(4K|LED|RGB|USB|RMS|TNT|UV|GPS|BML|JBL|TV|HD|3D|5G)$/i.test(w) ? w.toUpperCase() : w.toLowerCase()))
+    .join(' ');
+  const isFem = isFeminineProductName(spokenName);
+  const esseProd = isFem ? `essa ${spokenName}` : `esse ${spokenName}`;
+  const EsseProd = isFem ? `Essa ${spokenName}` : `Esse ${spokenName}`;
+  const esteProd = isFem ? `esta ${spokenName}` : `este ${spokenName}`;
+  const desseProd = isFem ? `dessa ${spokenName}` : `desse ${spokenName}`;
+  const umProd = isFem ? `uma ${spokenName}` : `um ${spokenName}`;
+  const oSeu = isFem ? 'a sua' : 'o seu';
 
+  // REGRA MESTRE DE MODELOS E MARCAS:
+  // Se a copy sorteada menciona um modelo/marca específico do banco (ex: BML S26 Ultra, Poco X8 Pro, monitor Valac Z18, Galfolk, etc.)
+  // e o produto atual do usuário NÃO for exatamente aquele modelo, substitui OBRIGATORIAMENTE pelo nome/modelo real do usuário,
+  // mesmo se o produto pertencer à mesma categoria (ex: Celular ou Monitor)!
+  if (productName && spokenName) {
+    if (!/bml|s26\s*ultra/i.test(targetProdNorm)) {
+      text = text
+        .replace(/\bmeu\s+BML\s+S26\s+Ultra\b/gi, `meu ${spokenName}`)
+        .replace(/\bBML\s+S26\s+Ultra\b/gi, spokenName);
+    }
+    if (!/poco\s*x8\s*pro/i.test(targetProdNorm)) {
+      text = text
+        .replace(/\bo\s+novo\s+Poco\s+X8\s+Pro\b/gi, `o novo ${spokenName}`)
+        .replace(/\bEsse\s+é\s+o\s+novo\s+Poco\s+X8\s+Pro\b/gi, `${EsseProd} é sensacional`)
+        .replace(/\bPoco\s+X8\s+Pro\b/gi, spokenName);
+    }
+    if (!/valac\s*z18/i.test(targetProdNorm)) {
+      text = text
+        .replace(/\bEsse\s+monitor\s+Valac\s+Z18\s+Maze\b/gi, EsseProd)
+        .replace(/\bmonitor\s+Valac\s+Z18\s+Maze\b/gi, spokenName)
+        .replace(/\bValac\s+Z18\s+Maze\b/gi, spokenName);
+    }
+    if (!/galfolk|gawfolk/i.test(targetProdNorm)) {
+      text = text
+        .replace(/\besse\s+monitor\s+Galfolk\b/gi, esseProd)
+        .replace(/\bmonitor\s+Galfolk\b/gi, spokenName)
+        .replace(/\bGalfolk\b/gi, spokenName);
+    }
+    if (!/bomber\s*bbx/i.test(targetProdNorm)) {
+      text = text.replace(/\bo\s+Bomber\s+BBX(?:\s+de\s+6\s+polegadas)?\b/gi, esseProd);
+    }
+    if (!/bravox/i.test(targetProdNorm)) {
+      text = text.replace(/\besse\s+kit\s+Bravox\b/gi, esseProd);
+    }
+    if (!/hurricane/i.test(targetProdNorm)) {
+      text = text.replace(/\besse\s+kit\s+com\s+4\s+alto-falantes\s+Hurricane(?:\s+de\s+6\s+polegadas)?\b/gi, esseProd);
+    }
+    if (!/jbl/i.test(targetProdNorm)) {
+      text = text.replace(/\bo\s+triaxial\s+da\s+JBL\b/gi, esseProd);
+    }
+    if (!/viniflex|vabani/i.test(targetProdNorm)) {
+      text = text.replace(/\bdessa\s+Viniflex\s+da\s+Vabani\b/gi, desseProd);
+    }
+    if (!/buffalo/i.test(targetProdNorm)) {
+      text = text.replace(/\bEsse\s+motocultivador\s+Buffalo(?:\s+de\s+7\s+cavalos)?\b/gi, EsseProd);
+    }
+    if (!/triciclo\s*drift/i.test(targetProdNorm)) {
+      text = text.replace(/\bo\s+meu\s+Triciclo\s+Drift\b/gi, esseProd);
+    }
+  }
+
+  if (!isSameProductType && productName) {
     const { conciseFeatureSentence, shortWithClause } = buildMinimalReplacementClauses(
       productName,
       productInfo,
@@ -2336,5 +2401,97 @@ export function adaptBankCopyToProduct(
   text = sanitizeFreeShippingMentions(text, freeShipping);
 
   return text;
+}
+
+/**
+ * Gera automaticamente a Descrição do Post + Hashtags para TikTok / Reels (Modo Produtos 2.0)
+ * baseado no nome do produto, nicho, categoria e palavras-chave de alta conversão.
+ */
+export function generateProdutos2DescriptionHashtags(params: {
+  productName: string;
+  niche?: string;
+  subMode?: Produtos2SubMode;
+  maleSubOption?: Produtos2MaleSubOption;
+  clientGender?: Produtos2ClientGender;
+  finalCopy?: string;
+}): { description: string; hashtags: string[] } {
+  const { productName, niche, subMode, maleSubOption } = params;
+  const rawName = (productName || 'Produto').trim();
+  const cleanTitle = rawName.replace(/[!.]+$/, '');
+  const normName = normalizeAccents(rawName.toLowerCase());
+  const normNiche = normalizeAccents((niche || '').toLowerCase());
+
+  const tags: string[] = [];
+
+  // 1. Tag específica limpa do produto (ex: #pocox8pro, #redededescanso, #tenismasculino)
+  const productTagSlug = normName
+    .replace(/[^a-z0-9]/g, '')
+    .slice(0, 24);
+  if (productTagSlug.length >= 3) {
+    tags.push(`#${productTagSlug}`);
+  }
+
+  // 2. Tags de nicho e categoria
+  if (subMode === 'vestuario_feminino' || normNiche.includes('feminino') || normNiche.includes('moda feminina')) {
+    tags.push('#modafeminina', '#lookdodia', '#tendencia');
+    if (normName.includes('vestido')) tags.push('#vestidofeminino');
+    else if (normName.includes('calca')) tags.push('#calcafeminina');
+    else if (normName.includes('conjunto')) tags.push('#conjuntofeminino');
+    else if (normName.includes('pijama') || normName.includes('camisola')) tags.push('#pijamafeminino');
+    else if (normName.includes('tenis') || normName.includes('sapato')) tags.push('#calcadosfemininos');
+  } else if (
+    subMode === 'vestuario_masculino' ||
+    maleSubOption === 'calcados' ||
+    maleSubOption === 'roupas' ||
+    normNiche.includes('masculino') ||
+    normNiche.includes('calcados masculinos') ||
+    normNiche.includes('roupas masculinas')
+  ) {
+    tags.push('#modamasculina', '#estilomasculino');
+    if (maleSubOption === 'calcados' || normName.includes('tenis') || normName.includes('sapato') || normName.includes('bota')) {
+      tags.push('#calcadosmasculinos', '#tenismasculino');
+    } else {
+      tags.push('#roupasmasculinas');
+      if (normName.includes('camisa') || normName.includes('camiseta')) tags.push('#camisetamasculina');
+      else if (normName.includes('bermuda') || normName.includes('short')) tags.push('#bermudamasculina');
+    }
+  } else if (normNiche.includes('eletron') || normName.includes('celular') || normName.includes('poco') || normName.includes('monitor') || normName.includes('fone')) {
+    tags.push('#eletronicos', '#tecnologia', '#tech', '#dicasdetecnologia');
+    if (normName.includes('celular') || normName.includes('poco') || normName.includes('smartphone')) {
+      tags.push('#celular', '#smartphone');
+    } else if (normName.includes('monitor')) {
+      tags.push('#setupgamer', '#monitorgamer');
+    }
+  } else if (normNiche.includes('casa') || normNiche.includes('cozinha') || normName.includes('rede') || normName.includes('ventilador') || normName.includes('garrafa')) {
+    tags.push('#achadinhosdecasa', '#dicasdecasa', '#utilidadesdomesticas', '#casaorganizada');
+    if (normName.includes('rede')) tags.push('#redededescanso', '#confortoemcasa');
+  } else if (normNiche.includes('ferramenta') || normNiche.includes('jardim') || normNiche.includes('agro') || normName.includes('rocadeira') || normName.includes('furadeira')) {
+    tags.push('#ferramentas', '#construcao', '#jardim', '#dicasuteis');
+  } else if (normNiche.includes('beleza') || normNiche.includes('saude') || normName.includes('escova') || normName.includes('cabelo') || normName.includes('skincare')) {
+    tags.push('#dicasdebeleza', '#beleza', '#autocuidado', '#skincare');
+  } else if (normNiche.includes('fitness') || normName.includes('esteira') || normName.includes('treino') || normName.includes('academia')) {
+    tags.push('#fitness', '#treinoemcasa', '#vidasaudavel', '#academia');
+  } else if (normNiche.includes('auto') || normNiche.includes('som') || normName.includes('alto-falante') || normName.includes('amplificador')) {
+    tags.push('#somautomotivo', '#carros', '#automotivo');
+  } else {
+    tags.push('#achadinhos', '#utilidades');
+  }
+
+  // 3. Tags universais virais de compras TikTok / Reels
+  const viralShoppingTags = ['#achadinhos', '#tiktokcompras', '#comprinhas', '#tiktokmademebuyit', '#review'];
+  for (const vTag of viralShoppingTags) {
+    if (!tags.includes(vTag) && tags.length < 8) {
+      tags.push(vTag);
+    }
+  }
+
+  // Limitar a 7-8 tags únicas
+  const uniqueTags = Array.from(new Set(tags)).slice(0, 8);
+  const fullDescription = `${cleanTitle}! ${uniqueTags.join(' ')}`;
+
+  return {
+    description: fullDescription,
+    hashtags: uniqueTags,
+  };
 }
 

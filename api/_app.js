@@ -2619,7 +2619,7 @@ app.post("/api/generate-scene-image", async (req, res) => {
     if (!prompt) {
       return res.status(400).json({ success: false, error: "Prompt n\xE3o fornecido" });
     }
-    const activeProfile = getRequestAIProfile(req);
+    const activeProfile = req.body?.aiProfile || getRequestAIProfile(req);
     if (activeProfile === "openai" && openAIProvider.isConfigured()) {
       try {
         const result = await openAIProvider.generateSceneImage({
@@ -2809,21 +2809,48 @@ DIRETIVA MESTRE 3: ZERO TATUAGENS. Pele 100% limpa, sem qualquer tatuagem em hom
         console.warn(`Tentativa com ${modelCandidate} falhou:`, imgError?.message);
         if (imgError?.status === 429 || imgError?.message?.includes("spending cap") || imgError?.message?.includes("monthly spending")) {
           lastErrorType = "SPENDING_CAP_EXCEEDED";
-          lastErrorMessage = "Seu projeto no Google AI Studio atingiu o Limite de Gastos Mensal (Spend Cap - Erro 429). Para permitir que o modelo Nano Banana Pro (gemini-3-pro-image) gere as imagens fotorrealistas da mulher cal\xC3\xA7ando o produto, ajuste ou aumente o limite em https://ai.studio/spend.";
+          lastErrorMessage = "Seu projeto no Google AI Studio atingiu o Limite de Gastos Mensal (Spend Cap - Erro 429). Para permitir que a IA gere as imagens fotorrealistas do produto, ajuste ou aumente o limite em https://ai.studio/spend ou alterne para o provedor OpenAI.";
         } else if (imgError?.status === 402 || imgError?.message?.includes("prepayment credits are depleted") || imgError?.message?.includes("402")) {
           lastErrorType = "CREDITS_DEPLETED";
-          lastErrorMessage = "Seus cr\xC3\xA9ditos pr\xC3\xA9-pagos da API Gemini se esgotaram (Erro 402). O modelo de alta qualidade Nano Banana Pro requer cr\xC3\xA9ditos ativos no Google AI Studio (https://ai.studio/projects).";
+          lastErrorMessage = "Seus cr\xE9ditos pr\xE9-pagos da API Gemini se esgotaram (Erro 402). O modelo fotorrealista requer cr\xE9ditos ativos no Google AI Studio (https://ai.studio/projects) ou alterne para o provedor OpenAI.";
         } else {
           lastErrorType = "AI_FAILED";
-          lastErrorMessage = imgError?.message || "Falha na gera\xC3\xA7\xC3\xA3o de imagem com a IA.";
+          lastErrorMessage = imgError?.message || "Falha na gera\xE7\xE3o de imagem com a IA.";
         }
+      }
+    }
+    if (!imageResultUrl && openAIProvider.isConfigured() && activeProfile !== "openai") {
+      try {
+        console.log("Gemini atingiu limite ou falhou. Tentando fallback autom\xE1tico para OpenAI...");
+        const result = await openAIProvider.generateSceneImage({
+          prompt,
+          productPhotoBase64,
+          productPhotosBase64,
+          modelReferenceBase64,
+          referenceFrameBase64,
+          variationName,
+          productType,
+          targetAngle,
+          location,
+          actionDescription,
+          correctionPrompt,
+          additionalInstructions,
+          hasUserProvidedModel,
+          isCloneMode,
+          preserveLocation
+        });
+        if (result.success && result.imageUrl) {
+          return res.json(result);
+        }
+      } catch (fbErr) {
+        console.warn("Fallback OpenAI tamb\xE9m falhou:", fbErr?.message || fbErr);
       }
     }
     if (!imageResultUrl) {
       return res.json({
         success: false,
         errorType: lastErrorType || "AI_FAILED",
-        error: lastErrorMessage || "N\xC3\xA3o foi poss\xC3\xADvel gerar a imagem no modelo de ponta Nano Banana Pro. Verifique sua chave e limites."
+        error: lastErrorMessage || "N\xE3o foi poss\xEDvel gerar a imagem no modelo fotorrealista. Verifique sua chave de API e limites de cota."
       });
     }
     return res.json({

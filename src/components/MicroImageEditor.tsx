@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { Upload, Mic, MicOff, Wand2, Download, AlertCircle, RefreshCw, X, Image as ImageIcon } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Upload, Mic, Square, Wand2, Download, AlertCircle, RefreshCw, X, Image as ImageIcon } from 'lucide-react';
 import { compressAndResizeImage } from '../ania/aniaLibrary';
 
 interface MicroImageEditorProps {
@@ -21,6 +21,26 @@ export const MicroImageEditor: React.FC<MicroImageEditorProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
   const streamRef = useRef<MediaStream | null>(null);
+
+  const stopMicrophone = () => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {}
+      recognitionRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+    setIsRecording(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      stopMicrophone();
+    };
+  }, []);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -54,15 +74,7 @@ export const MicroImageEditor: React.FC<MicroImageEditorProps> = ({
 
   const toggleRecording = async () => {
     if (isRecording) {
-      if (recognitionRef.current) {
-        try { recognitionRef.current.stop(); } catch {}
-        recognitionRef.current = null;
-      }
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop());
-        streamRef.current = null;
-      }
-      setIsRecording(false);
+      stopMicrophone();
       return;
     }
 
@@ -80,21 +92,21 @@ export const MicroImageEditor: React.FC<MicroImageEditorProps> = ({
         rec.continuous = true;
         rec.interimResults = true;
 
+        const initialText = instruction;
+
         rec.onresult = (evt: any) => {
-          let text = '';
+          let transcript = '';
           for (let i = 0; i < evt.results.length; i++) {
-            text += evt.results[i][0].transcript + ' ';
+            transcript += evt.results[i][0].transcript + ' ';
           }
-          setInstruction((prev) => (prev ? `${prev.trim()} ${text.trim()}` : text.trim()));
+          const combined = initialText
+            ? `${initialText.trim()} ${transcript.trim()}`
+            : transcript.trim();
+          setInstruction(combined);
         };
 
-        rec.onerror = () => {
-          setIsRecording(false);
-        };
-
-        rec.onend = () => {
-          setIsRecording(false);
-        };
+        rec.onerror = () => stopMicrophone();
+        rec.onend = () => stopMicrophone();
 
         rec.start();
         setIsRecording(true);
@@ -103,7 +115,7 @@ export const MicroImageEditor: React.FC<MicroImageEditorProps> = ({
       }
     } catch (err) {
       console.warn('Erro ao acessar microfone:', err);
-      setIsRecording(false);
+      stopMicrophone();
     }
   };
 
@@ -229,12 +241,16 @@ export const MicroImageEditor: React.FC<MicroImageEditorProps> = ({
                 onClick={toggleRecording}
                 className={`absolute right-2.5 top-2.5 p-2 rounded-lg text-xs transition-all cursor-pointer ${
                   isRecording
-                    ? 'bg-rose-600 text-white animate-pulse'
-                    : 'bg-zinc-800 hover:bg-zinc-700 text-purple-400'
+                    ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
+                    : 'bg-zinc-700 text-zinc-200 hover:text-white hover:bg-zinc-600 border border-zinc-500'
                 }`}
                 title={isRecording ? 'Parar gravação' : 'Ditar instrução por voz'}
               >
-                {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                {isRecording ? (
+                  <Square className="w-4 h-4 fill-white" />
+                ) : (
+                  <Mic className="w-4 h-4 text-zinc-300" />
+                )}
               </button>
             </div>
           </div>

@@ -1631,7 +1631,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
     }
 
     // ─── ROTEAMENTO BASEADO NO PERFIL DE IA SELECIONADO ────────────────────
-    const activeProfile = getRequestAIProfile(req);
+    const activeProfile = req.body?.aiProfile || getRequestAIProfile(req);
     if (activeProfile === 'openai' && openAIProvider.isConfigured()) {
       try {
         const result = await openAIProvider.generateSceneImage({
@@ -1872,7 +1872,7 @@ DIRETIVA MESTRE 3: ZERO TATUAGENS. Pele 100% limpa, sem qualquer tatuagem em hom
         ) {
           lastErrorType = 'SPENDING_CAP_EXCEEDED';
           lastErrorMessage =
-            'Seu projeto no Google AI Studio atingiu o Limite de Gastos Mensal (Spend Cap - Erro 429). Para permitir que o modelo Nano Banana Pro (gemini-3-pro-image) gere as imagens fotorrealistas da mulher calÃ§ando o produto, ajuste ou aumente o limite em https://ai.studio/spend.';
+            'Seu projeto no Google AI Studio atingiu o Limite de Gastos Mensal (Spend Cap - Erro 429). Para permitir que a IA gere as imagens fotorrealistas do produto, ajuste ou aumente o limite em https://ai.studio/spend ou alterne para o provedor OpenAI.';
         } else if (
           imgError?.status === 402 ||
           imgError?.message?.includes('prepayment credits are depleted') ||
@@ -1880,11 +1880,40 @@ DIRETIVA MESTRE 3: ZERO TATUAGENS. Pele 100% limpa, sem qualquer tatuagem em hom
         ) {
           lastErrorType = 'CREDITS_DEPLETED';
           lastErrorMessage =
-            'Seus crÃ©ditos prÃ©-pagos da API Gemini se esgotaram (Erro 402). O modelo de alta qualidade Nano Banana Pro requer crÃ©ditos ativos no Google AI Studio (https://ai.studio/projects).';
+            'Seus créditos pré-pagos da API Gemini se esgotaram (Erro 402). O modelo fotorrealista requer créditos ativos no Google AI Studio (https://ai.studio/projects) ou alterne para o provedor OpenAI.';
         } else {
           lastErrorType = 'AI_FAILED';
-          lastErrorMessage = imgError?.message || 'Falha na geraÃ§Ã£o de imagem com a IA.';
+          lastErrorMessage = imgError?.message || 'Falha na geração de imagem com a IA.';
         }
+      }
+    }
+
+    // Se Gemini falhou por cota/crédito e OpenAI estiver configurado, tenta fallback para OpenAI
+    if (!imageResultUrl && openAIProvider.isConfigured() && activeProfile !== 'openai') {
+      try {
+        console.log('Gemini atingiu limite ou falhou. Tentando fallback automático para OpenAI...');
+        const result = await openAIProvider.generateSceneImage({
+          prompt,
+          productPhotoBase64,
+          productPhotosBase64,
+          modelReferenceBase64,
+          referenceFrameBase64,
+          variationName,
+          productType,
+          targetAngle,
+          location,
+          actionDescription,
+          correctionPrompt,
+          additionalInstructions,
+          hasUserProvidedModel,
+          isCloneMode,
+          preserveLocation,
+        });
+        if (result.success && result.imageUrl) {
+          return res.json(result);
+        }
+      } catch (fbErr: any) {
+        console.warn('Fallback OpenAI também falhou:', fbErr?.message || fbErr);
       }
     }
 
@@ -1894,7 +1923,7 @@ DIRETIVA MESTRE 3: ZERO TATUAGENS. Pele 100% limpa, sem qualquer tatuagem em hom
         errorType: lastErrorType || 'AI_FAILED',
         error:
           lastErrorMessage ||
-          'NÃ£o foi possÃ­vel gerar a imagem no modelo de ponta Nano Banana Pro. Verifique sua chave e limites.',
+          'Não foi possível gerar a imagem no modelo fotorrealista. Verifique sua chave de API e limites de cota.',
       });
     }
 

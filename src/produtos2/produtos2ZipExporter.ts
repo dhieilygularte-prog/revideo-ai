@@ -68,7 +68,18 @@ export async function exportProdutos2Zip(result: Produtos2ResultState): Promise<
     }
   }
 
-  // 3. Gerar e baixar .zip com o nome do produto
+  // 3. Arquivo .txt com a Descrição do Post + Hashtags (Modo Ania portado para Produtos 2.0)
+  if (result.description) {
+    const descContent = `${result.description}
+
+---
+FALA USADA NO VÍDEO (${result.duration}s · ${result.copySourceLabel}):
+"${result.finalCopy}"
+`;
+    zip.file(`descricao-${baseName}.txt`, descContent);
+  }
+
+  // 4. Gerar e baixar .zip com o nome do produto
   try {
     const zipBlob = await zip.generateAsync({ type: 'blob' });
     downloadBlob(zipBlob, `${baseName}.zip`);
