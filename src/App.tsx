@@ -75,6 +75,11 @@ export default function App() {
     productName: '',
     duration: 10,
     customCopy: '',
+    speechesGenerated: false,
+    bancoCopy: '',
+    auroraCopy: '',
+    selectedSpeechOption: 'banco',
+    finalSelectedSpeech: '',
     additionalInstructions: '',
     influencer: null,
     clientGender: 'Unissex',
@@ -1310,6 +1315,7 @@ export default function App() {
                   onChange={setProdutos2Form}
                   onSubmit={handleStartProdutos2}
                   isProcessing={isProcessingProdutos2}
+                  aiProfile={aiProfile}
                 />
 
                 {isProcessingProdutos2 && (

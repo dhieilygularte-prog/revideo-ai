@@ -12,6 +12,8 @@ import {
   Shirt,
   Footprints,
   Lock,
+  Check,
+  Wand2,
 } from 'lucide-react';
 import {
   Produtos2FormState,
@@ -19,13 +21,18 @@ import {
   Produtos2SubMode,
   Produtos2MaleSubOption,
 } from './types';
-import { analyzeProductInfoForProdutos2 } from './produtos2CopyBank';
+import {
+  analyzeProductInfoForProdutos2,
+  selectAndAdaptProdutos2Copy,
+} from './produtos2CopyBank';
+import { AIProfile } from '../config/aiProfiles';
 
 interface Produtos2FormProps {
   form: Produtos2FormState;
   onChange: React.Dispatch<React.SetStateAction<Produtos2FormState>>;
   onSubmit: () => void;
   isProcessing: boolean;
+  aiProfile?: AIProfile;
 }
 
 /**
@@ -84,14 +91,81 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
   onChange,
   onSubmit,
   isProcessing,
+  aiProfile = 'openai',
 }) => {
-  const [activeMic, setActiveMic] = useState<'info' | 'copy' | 'instructions' | null>(null);
+  const [activeMic, setActiveMic] = useState<'info' | 'copy' | 'instructions' | 'banco' | 'aurora' | null>(null);
+  const [isGeneratingSpeeches, setIsGeneratingSpeeches] = useState(false);
+  const [speechesError, setSpeechesError] = useState<string | null>(null);
   const recognitionRef = useRef<any>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
   const debounceTimerRef = useRef<number | null>(null);
   const copyTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const instructionsTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const handleGenerateSpeeches = async () => {
+    setIsGeneratingSpeeches(true);
+    setSpeechesError(null);
+
+    try {
+      const finalProductName = (form.productName.trim() || 'Produto').trim();
+
+      // 1. Fala 1 — Banco de Copies (adaptada para o produto e duração)
+      const copySelection = selectAndAdaptProdutos2Copy({
+        subMode: form.subMode,
+        maleSubOption: form.maleSubOption,
+        productName: finalProductName,
+        productInfo: form.productInfo,
+        duration: form.duration,
+        customCopy: form.customCopy,
+        clientGender: form.clientGender,
+        influencer: form.influencer,
+        useSpeechIntro: form.useSpeechIntro,
+      });
+      const bancoResult = copySelection.finalCopy;
+
+      // 2. Fala 2 — Aurora Copy (gerada com IA estritamente nas especificações do produto)
+      let auroraResult = '';
+      try {
+        const res = await fetch('/api/produtos2-planning', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'generate_aurora_copy',
+            productName: finalProductName,
+            productInfo: form.productInfo || finalProductName,
+            duration: form.duration,
+            additionalInstructions: form.additionalInstructions,
+            aiProfile,
+          }),
+        });
+        const data = await res.json();
+        if (data.success && data.auroraCopy) {
+          auroraResult = data.auroraCopy;
+        } else {
+          auroraResult = `Gente, olha esse lançamento! O ${finalProductName} é super prático e perfeito para o dia a dia. Confere aqui embaixo!`;
+        }
+      } catch (err) {
+        console.warn('Erro ao requisitar Aurora Copy:', err);
+        auroraResult = `Gente, olha esse lançamento! O ${finalProductName} é super prático e perfeito para o dia a dia. Confere aqui embaixo!`;
+      }
+
+      onChange((prev) => ({
+        ...prev,
+        speechesGenerated: true,
+        bancoCopy: bancoResult,
+        auroraCopy: auroraResult,
+        selectedSpeechOption: 'banco', // Banco de copies selecionado por padrão (Item 8)
+        finalSelectedSpeech: bancoResult,
+        copyEngine: 'banco',
+      }));
+    } catch (err: any) {
+      console.error('Erro ao gerar falas:', err);
+      setSpeechesError(err?.message || 'Erro ao gerar as opções de fala.');
+    } finally {
+      setIsGeneratingSpeeches(false);
+    }
+  };
 
   // Auto-expansão dos campos de copy personalizada e instruções adicionais
   useEffect(() => {
@@ -178,7 +252,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
     setActiveMic(null);
   };
 
-  const toggleMic = async (field: 'info' | 'copy' | 'instructions') => {
+  const toggleMic = async (field: 'info' | 'copy' | 'instructions' | 'banco' | 'aurora') => {
     if (activeMic === field) {
       stopMicrophone();
       return;
@@ -206,7 +280,11 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
             ? form.productInfo
             : field === 'copy'
             ? form.customCopy
-            : form.additionalInstructions;
+            : field === 'instructions'
+            ? form.additionalInstructions
+            : field === 'banco'
+            ? form.bancoCopy || ''
+            : form.auroraCopy || '';
 
         rec.onresult = (evt: any) => {
           let transcript = '';
@@ -223,6 +301,18 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
             onChange((prev) => ({ ...prev, customCopy: combined }));
           } else if (field === 'instructions') {
             onChange((prev) => ({ ...prev, additionalInstructions: combined }));
+          } else if (field === 'banco') {
+            onChange((prev) => ({
+              ...prev,
+              bancoCopy: combined,
+              finalSelectedSpeech: prev.selectedSpeechOption === 'banco' ? combined : prev.finalSelectedSpeech,
+            }));
+          } else if (field === 'aurora') {
+            onChange((prev) => ({
+              ...prev,
+              auroraCopy: combined,
+              finalSelectedSpeech: prev.selectedSpeechOption === 'aurora_copy' ? combined : prev.finalSelectedSpeech,
+            }));
           }
         };
 
@@ -355,10 +445,24 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
 
   // Seção 2 item 13: Bloqueado se algum microfone estiver gravando ou se faltar "Informações do produto" ou imagens
   const isMicRecording = activeMic !== null;
-  const canGenerate =
+  const canGenerateSpeeches =
+    !isProcessing &&
+    !isGeneratingSpeeches &&
+    !isMicRecording &&
+    Boolean(form.productInfo.trim() || form.productName.trim());
+
+  const hasSelectedSpeech = Boolean(
+    (form.selectedSpeechOption === 'aurora_copy'
+      ? form.auroraCopy?.trim()
+      : form.bancoCopy?.trim()) ||
+    form.finalSelectedSpeech?.trim()
+  );
+
+  const canGenerateVideo =
     !isProcessing &&
     !isMicRecording &&
-    Boolean(form.productInfo.trim() || form.productName.trim()) &&
+    Boolean(form.speechesGenerated || form.bancoCopy || form.auroraCopy) &&
+    hasSelectedSpeech &&
     totalPhotosCount > 0;
 
   return (
@@ -784,124 +888,81 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
           )}
         </div>
 
-        {/* Coluna Central: 9. Enquadramento e 10. Cenário (Item 5: Cenário abaixo do Enquadramento) */}
-        <div className="md:col-span-4 space-y-3 flex flex-col justify-between">
-          {/* 9. Enquadramento (Com rosto / Sem rosto / POV) */}
-          <div className={`p-4 rounded-2xl space-y-2 flex-1 ${activeAutoCardClass}`}>
-            <label className="text-xs font-bold text-white block">9. Enquadramento</label>
-            <div className="grid grid-cols-3 gap-1.5 bg-slate-950/90 p-1 rounded-xl border border-zinc-700/60">
-              <button
-                type="button"
-                onClick={() => onChange((prev) => ({ ...prev, framing: 'com_rosto' }))}
-                className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  form.framing === 'com_rosto'
-                    ? accentBtnClass
-                    : 'text-zinc-400 hover:text-white'
-                }`}
-              >
-                Com rosto
-              </button>
-              <button
-                type="button"
-                onClick={() => onChange((prev) => ({ ...prev, framing: 'sem_rosto' }))}
-                className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  form.framing === 'sem_rosto'
-                    ? accentBtnClass
-                    : 'text-zinc-400 hover:text-white'
-                }`}
-              >
-                Sem rosto
-              </button>
-              <button
-                type="button"
-                onClick={() => onChange((prev) => ({ ...prev, framing: 'pov' }))}
-                className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  form.framing === 'pov'
-                    ? accentBtnClass
-                    : 'text-zinc-400 hover:text-white'
-                }`}
-              >
-                POV (Mãos)
-              </button>
-            </div>
-          </div>
-
-          {/* 10. Cenário (Item 5: reposicionado para baixo do Enquadramento) */}
-          <div className={`p-4 rounded-2xl space-y-2 flex-1 ${activeAutoCardClass}`}>
-            <label className="text-xs font-bold text-white block">10. Cenário</label>
-            <div className="grid grid-cols-2 gap-1.5 bg-slate-950/90 p-1 rounded-xl border border-zinc-700/60">
-              <button
-                type="button"
-                onClick={() => onChange((prev) => ({ ...prev, scenario: 'padrao_uso' }))}
-                className={`py-2 px-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  form.scenario === 'padrao_uso'
-                    ? accentBtnClass
-                    : 'text-zinc-400 hover:text-white'
-                }`}
-              >
-                Padrão de uso
-              </button>
-              <button
-                type="button"
-                onClick={() => onChange((prev) => ({ ...prev, scenario: 'em_casa' }))}
-                className={`py-2 px-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                  form.scenario === 'em_casa'
-                    ? accentBtnClass
-                    : 'text-zinc-400 hover:text-white'
-                }`}
-              >
-                Em casa
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* 11. Modo de Copy (Banco de Copies vs Aurora Copy) - Item 5 */}
-        <div className={`md:col-span-4 p-4 rounded-2xl space-y-2.5 flex flex-col justify-between ${activeAutoCardClass}`}>
+        {/* 9. Enquadramento (Com rosto / Sem rosto / POV) */}
+        <div className={`md:col-span-4 p-4 rounded-2xl space-y-2 flex flex-col justify-between ${activeAutoCardClass}`}>
           <div>
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-white block flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>11. Modo de Copy</span>
-              </label>
-              <span className="text-[10px] text-zinc-400">
-                {form.copyEngine === 'aurora_copy' ? 'IA Criativa' : 'Banco Validado'}
-              </span>
-            </div>
+            <label className="text-xs font-bold text-white block">9. Enquadramento</label>
             <p className="text-[11px] text-zinc-300 mt-1 leading-snug">
-              {form.copyEngine === 'aurora_copy'
-                ? 'Aurora Copy (IA Criativa): Cria uma copy inédita, curta e de alta retenção baseada 100% na ficha técnica do produto.'
-                : 'Banco de Copies (Padrão): Sorteia e adapta copies campeãs validadas já gravadas na memória do app.'}
+              Como a pessoa ou criador aparece no vídeo
             </p>
           </div>
-
-          <div className="grid grid-cols-2 gap-2 bg-slate-950/90 p-1.5 rounded-xl border border-zinc-700/60">
+          <div className="grid grid-cols-3 gap-1.5 bg-slate-950/90 p-1 rounded-xl border border-zinc-700/60">
             <button
               type="button"
-              onClick={() => onChange((prev) => ({ ...prev, copyEngine: 'banco' }))}
-              className={`py-2.5 px-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
-                form.copyEngine !== 'aurora_copy'
+              onClick={() => onChange((prev) => ({ ...prev, framing: 'com_rosto' }))}
+              className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                form.framing === 'com_rosto'
                   ? accentBtnClass
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
-              <span className="font-black">Banco de Copies</span>
-              <span className="text-[9px] opacity-80">(Padrão Validado)</span>
+              Com rosto
             </button>
             <button
               type="button"
-              onClick={() => onChange((prev) => ({ ...prev, copyEngine: 'aurora_copy' }))}
-              className={`py-2.5 px-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
-                form.copyEngine === 'aurora_copy'
-                  ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-zinc-950 font-black shadow-lg shadow-orange-950/50 ring-2 ring-amber-400/50'
+              onClick={() => onChange((prev) => ({ ...prev, framing: 'sem_rosto' }))}
+              className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                form.framing === 'sem_rosto'
+                  ? accentBtnClass
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
-              <span className="font-black flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-amber-300" />
-                <span>Aurora Copy</span>
-              </span>
-              <span className="text-[9px] opacity-80">(IA Criativa)</span>
+              Sem rosto
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange((prev) => ({ ...prev, framing: 'pov' }))}
+              className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                form.framing === 'pov'
+                  ? accentBtnClass
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              POV (Mãos)
+            </button>
+          </div>
+        </div>
+
+        {/* 10. Cenário */}
+        <div className={`md:col-span-4 p-4 rounded-2xl space-y-2 flex flex-col justify-between ${activeAutoCardClass}`}>
+          <div>
+            <label className="text-xs font-bold text-white block">10. Cenário</label>
+            <p className="text-[11px] text-zinc-300 mt-1 leading-snug">
+              Ambiente de gravação das cenas
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-1.5 bg-slate-950/90 p-1 rounded-xl border border-zinc-700/60">
+            <button
+              type="button"
+              onClick={() => onChange((prev) => ({ ...prev, scenario: 'padrao_uso' }))}
+              className={`py-2 px-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                form.scenario === 'padrao_uso'
+                  ? accentBtnClass
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              Padrão de uso
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange((prev) => ({ ...prev, scenario: 'em_casa' }))}
+              className={`py-2 px-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                form.scenario === 'em_casa'
+                  ? accentBtnClass
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              Em casa
             </button>
           </div>
         </div>
@@ -1193,12 +1254,326 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
         </div>
       </div>
 
-      {/* 13. Botão Gerar Vídeo */}
+      {/* ===================================================================== */}
+      {/* 13. BOTÃO GERAR FALAS (Banco de Copies + Aurora Copy)                  */}
+      {/* ===================================================================== */}
+      <div className="pt-2 space-y-2">
+        <button
+          type="button"
+          onClick={handleGenerateSpeeches}
+          disabled={!canGenerateSpeeches || isGeneratingSpeeches || isMicRecording}
+          className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-sky-600 hover:from-purple-500 hover:via-indigo-500 hover:to-sky-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black text-sm sm:text-base shadow-xl shadow-purple-950/50 flex items-center justify-center gap-3 transition-all cursor-pointer"
+        >
+          {isGeneratingSpeeches ? (
+            <>
+              <RefreshCw className="w-5 h-5 animate-spin" />
+              <span>Gerando 2 Opções de Fala (Banco de Copies + Aurora Copy)...</span>
+            </>
+          ) : (
+            <>
+              <Wand2 className="w-5 h-5" />
+              <span>
+                {form.speechesGenerated
+                  ? 'REGERAR FALAS (Banco de Copies + Aurora Copy)'
+                  : 'GERAR FALAS (Banco de Copies + Aurora Copy)'}
+              </span>
+            </>
+          )}
+        </button>
+
+        {!canGenerateSpeeches && (
+          <p className="text-center text-[11px] text-amber-300/90">
+            * Preencha as Informações do Produto ou o Nome do Produto acima para liberar a geração das falas.
+          </p>
+        )}
+
+        {speechesError && (
+          <p className="text-center text-xs text-rose-400 font-semibold">
+            {speechesError}
+          </p>
+        )}
+      </div>
+
+      {/* ===================================================================== */}
+      {/* 14. ESCOLHA SUA FALA PREFERIDA (Banco de Copies vs Aurora Copy)       */}
+      {/* ===================================================================== */}
+      {(form.speechesGenerated || form.bancoCopy || form.auroraCopy) && (
+        <div className="p-5 sm:p-6 rounded-2xl bg-zinc-950/90 border border-sky-500/40 shadow-2xl space-y-5 animate-fade-in">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-800 pb-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-sky-400" />
+                <h3 className="text-base sm:text-lg font-black text-white">
+                  Escolha sua fala preferida
+                </h3>
+              </div>
+              <p className="text-xs text-zinc-400 mt-1">
+                Ambas as falas são 100% editáveis. Edite diretamente no texto ou dite pelo microfone. Clique no card ou botão para selecionar a fala oficial do seu vídeo.
+              </p>
+            </div>
+            <div className="text-[11px] font-bold text-sky-300 bg-sky-500/10 border border-sky-400/30 px-3 py-1.5 rounded-xl self-start sm:self-auto shrink-0">
+              {form.selectedSpeechOption === 'aurora_copy' ? '✓ Aurora Copy Selecionada' : '✓ Banco de Copies Selecionado'}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* CARD 1 — BANCO DE COPIES */}
+            <div
+              onClick={() => {
+                onChange((prev) => ({
+                  ...prev,
+                  selectedSpeechOption: 'banco',
+                  copyEngine: 'banco',
+                  finalSelectedSpeech: prev.bancoCopy || '',
+                }));
+              }}
+              className={`p-4 sm:p-5 rounded-2xl transition-all cursor-pointer flex flex-col justify-between space-y-3 ${
+                form.selectedSpeechOption === 'banco'
+                  ? 'bg-gradient-to-br from-sky-950/70 via-blue-950/60 to-slate-900 border-2 border-sky-400 shadow-xl shadow-sky-950/50 ring-2 ring-sky-400/40'
+                  : 'bg-zinc-900/90 border border-zinc-800 hover:border-zinc-700 shadow-lg'
+              }`}
+            >
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
+                        form.selectedSpeechOption === 'banco'
+                          ? 'bg-sky-400 text-slate-950'
+                          : 'border-2 border-zinc-600 bg-zinc-800'
+                      }`}
+                    >
+                      {form.selectedSpeechOption === 'banco' && (
+                        <Check className="w-3.5 h-3.5 stroke-[3]" />
+                      )}
+                    </div>
+                    <div>
+                      <h4 className="text-xs sm:text-sm font-black text-white flex items-center gap-1.5">
+                        <span>Fala 1 — Banco de Copies</span>
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-500/40">
+                          Validada
+                        </span>
+                      </h4>
+                    </div>
+                  </div>
+
+                  <span
+                    className={`px-2 py-0.5 rounded text-[11px] font-mono font-bold ${
+                      (form.duration === 8 && (form.bancoCopy?.length || 0) > 165) ||
+                      (form.duration === 10 && (form.bancoCopy?.length || 0) > 235)
+                        ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                        : 'bg-zinc-800 text-zinc-300 border border-zinc-700'
+                    }`}
+                  >
+                    {form.bancoCopy?.length || 0} carac. ({form.duration}s · máx. {form.duration === 8 ? 165 : 235})
+                  </span>
+                </div>
+
+                <div className="relative" onClick={(e) => e.stopPropagation()}>
+                  <textarea
+                    rows={4}
+                    value={form.bancoCopy || ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      onChange((prev) => ({
+                        ...prev,
+                        bancoCopy: val,
+                        finalSelectedSpeech: prev.selectedSpeechOption === 'banco' ? val : prev.finalSelectedSpeech,
+                      }));
+                    }}
+                    placeholder="Fala adaptada do Banco de Copies..."
+                    className="w-full p-3.5 pr-12 rounded-xl bg-zinc-950/90 border border-zinc-700 text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-sky-400 leading-relaxed font-sans shadow-inner resize-y"
+                  />
+
+                  {/* Microfone Banco */}
+                  <button
+                    type="button"
+                    onClick={() => toggleMic('banco')}
+                    className={`absolute right-2.5 top-2.5 p-2 rounded-lg text-xs transition-all cursor-pointer ${
+                      activeMic === 'banco'
+                        ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
+                        : 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 border border-zinc-600'
+                    }`}
+                    title={activeMic === 'banco' ? 'Parar gravação' : 'Ditar fala por voz'}
+                  >
+                    {activeMic === 'banco' ? (
+                      <Square className="w-4 h-4 fill-white" />
+                    ) : (
+                      <Mic className="w-4 h-4 text-zinc-300" />
+                    )}
+                  </button>
+                </div>
+
+                {activeMic === 'banco' && (
+                  <p className="text-[11px] text-rose-400 flex items-center gap-1.5 font-semibold animate-pulse">
+                    <span className="w-2 h-2 rounded-full bg-rose-500" />
+                    Ouvindo sua voz para a Fala 1... clique no quadrado vermelho para parar.
+                  </p>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onChange((prev) => ({
+                    ...prev,
+                    selectedSpeechOption: 'banco',
+                    copyEngine: 'banco',
+                    finalSelectedSpeech: prev.bancoCopy || '',
+                  }));
+                }}
+                className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  form.selectedSpeechOption === 'banco'
+                    ? 'bg-sky-500 hover:bg-sky-400 text-slate-950 font-black shadow-md shadow-sky-950/40'
+                    : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700'
+                }`}
+              >
+                {form.selectedSpeechOption === 'banco' ? (
+                  <>
+                    <Check className="w-4 h-4 stroke-[3]" />
+                    <span>✓ Fala Selecionada para o Vídeo</span>
+                  </>
+                ) : (
+                  <span>Usar Esta Fala (Banco de Copies)</span>
+                )}
+              </button>
+            </div>
+
+            {/* CARD 2 — AURORA COPY */}
+            <div
+              onClick={() => {
+                onChange((prev) => ({
+                  ...prev,
+                  selectedSpeechOption: 'aurora_copy',
+                  copyEngine: 'aurora_copy',
+                  finalSelectedSpeech: prev.auroraCopy || '',
+                }));
+              }}
+              className={`p-4 sm:p-5 rounded-2xl transition-all cursor-pointer flex flex-col justify-between space-y-3 ${
+                form.selectedSpeechOption === 'aurora_copy'
+                  ? 'bg-gradient-to-br from-sky-950/70 via-blue-950/60 to-slate-900 border-2 border-sky-400 shadow-xl shadow-sky-950/50 ring-2 ring-sky-400/40'
+                  : 'bg-zinc-900/90 border border-zinc-800 hover:border-zinc-700 shadow-lg'
+              }`}
+            >
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
+                        form.selectedSpeechOption === 'aurora_copy'
+                          ? 'bg-sky-400 text-slate-950'
+                          : 'border-2 border-zinc-600 bg-zinc-800'
+                      }`}
+                    >
+                      {form.selectedSpeechOption === 'aurora_copy' && (
+                        <Check className="w-3.5 h-3.5 stroke-[3]" />
+                      )}
+                    </div>
+                    <div>
+                      <h4 className="text-xs sm:text-sm font-black text-white flex items-center gap-1.5">
+                        <span>Fala 2 — Aurora Copy</span>
+                        <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-[10px] font-bold border border-purple-500/40">
+                          IA Criativa
+                        </span>
+                      </h4>
+                    </div>
+                  </div>
+
+                  <span
+                    className={`px-2 py-0.5 rounded text-[11px] font-mono font-bold ${
+                      (form.duration === 8 && (form.auroraCopy?.length || 0) > 165) ||
+                      (form.duration === 10 && (form.auroraCopy?.length || 0) > 235)
+                        ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                        : 'bg-zinc-800 text-zinc-300 border border-zinc-700'
+                    }`}
+                  >
+                    {form.auroraCopy?.length || 0} carac. ({form.duration}s · máx. {form.duration === 8 ? 165 : 235})
+                  </span>
+                </div>
+
+                <div className="relative" onClick={(e) => e.stopPropagation()}>
+                  <textarea
+                    rows={4}
+                    value={form.auroraCopy || ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      onChange((prev) => ({
+                        ...prev,
+                        auroraCopy: val,
+                        finalSelectedSpeech: prev.selectedSpeechOption === 'aurora_copy' ? val : prev.finalSelectedSpeech,
+                      }));
+                    }}
+                    placeholder="Fala criada pela Aurora Copy..."
+                    className="w-full p-3.5 pr-12 rounded-xl bg-zinc-950/90 border border-zinc-700 text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-sky-400 leading-relaxed font-sans shadow-inner resize-y"
+                  />
+
+                  {/* Microfone Aurora */}
+                  <button
+                    type="button"
+                    onClick={() => toggleMic('aurora')}
+                    className={`absolute right-2.5 top-2.5 p-2 rounded-lg text-xs transition-all cursor-pointer ${
+                      activeMic === 'aurora'
+                        ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
+                        : 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 border border-zinc-600'
+                    }`}
+                    title={activeMic === 'aurora' ? 'Parar gravação' : 'Ditar fala por voz'}
+                  >
+                    {activeMic === 'aurora' ? (
+                      <Square className="w-4 h-4 fill-white" />
+                    ) : (
+                      <Mic className="w-4 h-4 text-zinc-300" />
+                    )}
+                  </button>
+                </div>
+
+                {activeMic === 'aurora' && (
+                  <p className="text-[11px] text-rose-400 flex items-center gap-1.5 font-semibold animate-pulse">
+                    <span className="w-2 h-2 rounded-full bg-rose-500" />
+                    Ouvindo sua voz para a Fala 2... clique no quadrado vermelho para parar.
+                  </p>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onChange((prev) => ({
+                    ...prev,
+                    selectedSpeechOption: 'aurora_copy',
+                    copyEngine: 'aurora_copy',
+                    finalSelectedSpeech: prev.auroraCopy || '',
+                  }));
+                }}
+                className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  form.selectedSpeechOption === 'aurora_copy'
+                    ? 'bg-sky-500 hover:bg-sky-400 text-slate-950 font-black shadow-md shadow-sky-950/40'
+                    : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700'
+                }`}
+              >
+                {form.selectedSpeechOption === 'aurora_copy' ? (
+                  <>
+                    <Check className="w-4 h-4 stroke-[3]" />
+                    <span>✓ Fala Selecionada para o Vídeo</span>
+                  </>
+                ) : (
+                  <span>Usar Esta Fala (Aurora Copy)</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===================================================================== */}
+      {/* 15. BOTÃO GERAR VÍDEO (Storyboard 9 Cenas + Prompt Veo 3)              */}
+      {/* ===================================================================== */}
       <div className="pt-2">
         <button
           type="button"
           onClick={onSubmit}
-          disabled={!canGenerate}
+          disabled={!canGenerateVideo}
           className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-sky-600 hover:from-emerald-500 hover:via-teal-500 hover:to-sky-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black text-sm sm:text-base shadow-xl shadow-emerald-950/50 flex items-center justify-center gap-3 transition-all cursor-pointer"
         >
           {isMicRecording ? (
@@ -1209,18 +1584,26 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
           ) : isProcessing ? (
             <>
               <RefreshCw className="w-5 h-5 animate-spin" />
-              <span>Gerando Copy + Storyboard 9 Cenas + Prompt do Veo 3...</span>
+              <span>Gerando Storyboard 9 Cenas + Prompt do Veo 3 com a Fala Escolhida...</span>
             </>
           ) : (
             <>
               <Sparkles className="w-5 h-5" />
-              <span>Gerar Vídeo (1 Storyboard 9 Cenas + 1 Prompt Veo 3)</span>
+              <span>
+                Gerar Vídeo com a Fala Selecionada ({form.selectedSpeechOption === 'aurora_copy' ? 'Aurora Copy' : 'Banco de Copies'})
+              </span>
             </>
           )}
         </button>
-        {!isPhotosFilled && (
+
+        {!form.speechesGenerated && !form.bancoCopy && !form.auroraCopy && (
+          <p className="text-center text-[11px] text-zinc-400 mt-2">
+            * Clique primeiro em <strong>"GERAR FALAS"</strong> acima para comparar e selecionar a fala preferida do seu vídeo.
+          </p>
+        )}
+        {(form.speechesGenerated || form.bancoCopy || form.auroraCopy) && !isPhotosFilled && (
           <p className="text-center text-[11px] text-amber-300/90 mt-2">
-            * Anexe pelo menos 1 foto do produto e preencha as Informações do Produto para liberar a geração.
+            * Anexe pelo menos 1 foto do produto nas variações para liberar a geração do vídeo.
           </p>
         )}
       </div>

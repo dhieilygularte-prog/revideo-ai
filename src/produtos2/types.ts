@@ -51,6 +51,12 @@ export interface Produtos2FormState {
   duration: Produtos2Duration;
   customCopy: string;
   copyEngine?: Produtos2CopyEngine;
+  // Novo fluxo: 2 falas simultâneas (Banco + Aurora Copy)
+  speechesGenerated?: boolean;
+  bancoCopy?: string;
+  auroraCopy?: string;
+  selectedSpeechOption?: 'banco' | 'aurora_copy';
+  finalSelectedSpeech?: string;
   additionalInstructions: string;
   influencer: Produtos2Influencer;
   influencerAutoFilled?: boolean;

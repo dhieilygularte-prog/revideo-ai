@@ -330,21 +330,42 @@ export async function runProdutos2Pipeline(params: {
 
   onProgress?.(18, '2/6 Sorteando e adaptando copy validada do banco...');
 
-  // 2 & 3 & 4. Escolher copy do banco (sorteio aleatório uniforme), adaptar com o mínimo de mudanças e ajustar à duração
-  const copySelection = selectAndAdaptProdutos2Copy({
-    subMode: form.subMode,
-    maleSubOption: form.maleSubOption,
-    productName: finalProductName,
-    productInfo: form.productInfo,
-    duration: form.duration,
-    customCopy: form.customCopy,
-    clientGender: form.clientGender,
-    influencer: form.influencer,
-    useSpeechIntro: form.useSpeechIntro,
-  });
+  // 2 & 3 & 4. Determinar a fala oficial com base na seleção do usuário (ou fallback)
+  let finalCopy = '';
+  let copySourceLabel = 'Banco de Copies (Padrão Validado)';
+  let copyId = 'BANCO-01';
 
-  let finalCopy = copySelection.finalCopy;
-  const resolvedInfluencer = copySelection.resolvedInfluencer;
+  // Se o usuário já gerou as 2 falas e selecionou uma (ou editou), adota rigorosamente a escolhida!
+  if (form.selectedSpeechOption === 'aurora_copy' && (form.finalSelectedSpeech || form.auroraCopy)) {
+    finalCopy = (form.finalSelectedSpeech || form.auroraCopy || '').trim();
+    copySourceLabel = 'Aurora Copy (IA Criativa · Ficha Técnica)';
+    copyId = 'AURORA-01';
+  } else if (form.bancoCopy || form.finalSelectedSpeech) {
+    finalCopy = (form.finalSelectedSpeech || form.bancoCopy || '').trim();
+    copySourceLabel = 'Banco de Copies (Padrão Validado)';
+  } else if (form.customCopy && form.customCopy.trim()) {
+    finalCopy = form.customCopy.trim();
+    copySourceLabel = 'Copy Personalizada';
+    copyId = 'CUSTOM';
+  } else {
+    const copySelection = selectAndAdaptProdutos2Copy({
+      subMode: form.subMode,
+      maleSubOption: form.maleSubOption,
+      productName: finalProductName,
+      productInfo: form.productInfo,
+      duration: form.duration,
+      customCopy: form.customCopy,
+      clientGender: form.clientGender,
+      influencer: form.influencer,
+      useSpeechIntro: form.useSpeechIntro,
+    });
+    finalCopy = copySelection.finalCopy;
+    copySourceLabel = copySelection.copySourceLabel;
+    copyId = copySelection.copyId;
+  }
+
+  const resolvedInfluencer: 'Homem' | 'Mulher' =
+    form.influencer || (form.subMode === 'vestuario_masculino' ? 'Homem' : 'Mulher');
 
   // Coletar todas as fotos anexadas nas variações priorizando a 1ª foto de CADA variação
   const variationNames: string[] = [];
@@ -431,13 +452,13 @@ export async function runProdutos2Pipeline(params: {
       if (planJson && planJson.success && planJson.data) {
         const d = planJson.data;
 
-        // Se o modo for Aurora Copy, adota a fala gerada pela IA conforme o documento oficial do usuário
-        if (form.copyEngine === 'aurora_copy' && d.finalCopy) {
+        // Se o usuário selecionou uma fala previamente (ou customCopy), preserva a fala escolhida!
+        if (form.speechesGenerated || form.bancoCopy || form.auroraCopy || (form.customCopy && form.customCopy.trim())) {
+          // Mantém estritamente a fala escolhida e editada pelo usuário!
+        } else if (form.copyEngine === 'aurora_copy' && d.finalCopy) {
           finalCopy = d.finalCopy;
-        } else if (form.customCopy && form.customCopy.trim()) {
-          finalCopy = form.customCopy.trim();
         } else {
-          finalCopy = ensureLeadingNossaPrefix(copySelection.finalCopy);
+          finalCopy = ensureLeadingNossaPrefix(finalCopy);
         }
 
         if (Array.isArray(d.productLock) && d.productLock.length >= 2) {
@@ -646,11 +667,16 @@ export async function runProdutos2Pipeline(params: {
     clientGender: form.clientGender,
     finalCopy: applySpeechIntro(finalCopy, Boolean(form.useSpeechIntro)),
     copySourceLabel:
-      form.copyEngine === 'aurora_copy'
+      form.selectedSpeechOption === 'aurora_copy'
         ? 'Aurora Copy (IA Criativa · Ficha Técnica)'
-        : copySelection.copySourceLabel,
-    copyId: form.copyEngine === 'aurora_copy' ? 'AURORA-01' : copySelection.copyId,
-    copyEngine: form.copyEngine || 'banco',
+        : form.selectedSpeechOption === 'banco'
+        ? 'Banco de Copies (Padrão Validado)'
+        : copySourceLabel,
+    copyId:
+      form.selectedSpeechOption === 'aurora_copy'
+        ? 'AURORA-01'
+        : copyId,
+    copyEngine: form.selectedSpeechOption || form.copyEngine || 'banco',
     productLock,
     avatarDescription,
     scenarioDescription,
