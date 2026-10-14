@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Copy,
   Check,
@@ -12,6 +12,11 @@ import {
   AlertTriangle,
   AlertCircle,
   Tag,
+  Edit3,
+  Wand2,
+  Mic,
+  Square,
+  RotateCcw,
 } from 'lucide-react';
 import { Produtos2AuditColorStatus, Produtos2ResultState } from './types';
 import {
@@ -77,6 +82,120 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
   const [copyCopied, setCopyCopied] = useState(false);
   const [descriptionCopied, setDescriptionCopied] = useState(false);
   const [isExportingZip, setIsExportingZip] = useState(false);
+
+  // Ajuste do prompt com IA (Item 4 - idêntico ao Modo Ania)
+  const [promptCorrection, setPromptCorrection] = useState('');
+  const [isRefiningPrompt, setIsRefiningPrompt] = useState(false);
+  const [isPromptVoiceRecording, setIsPromptVoiceRecording] = useState(false);
+  const [interimPromptCorrection, setInterimPromptCorrection] = useState('');
+  const promptRecRef = useRef<any>(null);
+  const promptStreamRef = useRef<MediaStream | null>(null);
+
+  const stopPromptVoiceRecording = () => {
+    if (promptRecRef.current) {
+      try {
+        promptRecRef.current.stop();
+      } catch {}
+      promptRecRef.current = null;
+    }
+    if (promptStreamRef.current) {
+      promptStreamRef.current.getTracks().forEach((t) => t.stop());
+      promptStreamRef.current = null;
+    }
+    setIsPromptVoiceRecording(false);
+  };
+
+  const togglePromptVoiceRecording = async () => {
+    if (isPromptVoiceRecording) {
+      stopPromptVoiceRecording();
+      return;
+    }
+
+    setIsPromptVoiceRecording(true);
+    setInterimPromptCorrection('');
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      promptStreamRef.current = stream;
+
+      const SpeechRecognition =
+        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+      if (SpeechRecognition) {
+        const rec = new SpeechRecognition();
+        promptRecRef.current = rec;
+        rec.lang = 'pt-BR';
+        rec.continuous = true;
+        rec.interimResults = true;
+
+        rec.onresult = (evt: any) => {
+          let interim = '';
+          let final = '';
+          for (let i = evt.resultIndex; i < evt.results.length; i++) {
+            const transcript = evt.results[i][0].transcript;
+            if (evt.results[i].isFinal) {
+              final += transcript + ' ';
+            } else {
+              interim += transcript;
+            }
+          }
+
+          if (final) {
+            setPromptCorrection((prev) => (prev ? `${prev} ${final}` : final).trim());
+          }
+          setInterimPromptCorrection(interim);
+        };
+
+        rec.onerror = () => {
+          stopPromptVoiceRecording();
+        };
+
+        rec.onend = () => {
+          stopPromptVoiceRecording();
+        };
+
+        rec.start();
+      }
+    } catch (err) {
+      console.warn('Erro ao acessar microfone para correção de prompt:', err);
+      stopPromptVoiceRecording();
+    }
+  };
+
+  const handleRefinePrompt = async () => {
+    const correction = (promptCorrection || interimPromptCorrection).trim();
+    if (!correction) return;
+    if (!result.veoPrompt) return;
+
+    stopPromptVoiceRecording();
+    setIsRefiningPrompt(true);
+
+    try {
+      const res = await fetch('/api/refine-video-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentPrompt: result.veoPrompt,
+          correctionInstruction: correction,
+          aiProfile,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success && data.refinedPrompt) {
+        onUpdateResult((prev) => (prev ? { ...prev, veoPrompt: data.refinedPrompt } : null));
+        setPromptCorrection('');
+        setInterimPromptCorrection('');
+      } else if (data.error) {
+        alert(`Erro ao refazer prompt: ${data.error}`);
+      }
+    } catch (err: any) {
+      console.error('Erro ao refazer prompt:', err);
+      alert(`Falha ao conectar com o serviço de refinamento: ${err?.message || err}`);
+    } finally {
+      setIsRefiningPrompt(false);
+    }
+  };
 
   const safeFileName = sanitizeProductFileName(result.productName);
   const audit = result.storyboardAudit;
@@ -154,7 +273,7 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
           <div className="flex items-center gap-2 flex-wrap">
             <Sparkles className="w-4 h-4 text-emerald-400" />
             <span className="text-xs sm:text-sm font-black text-white uppercase tracking-wide">
-              Copy Final Usada no Criativo
+              Copy Final Usada no Criativo · Editar Fala
             </span>
             <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-[11px] font-bold text-emerald-200">
               {result.copySourceLabel}
@@ -475,6 +594,93 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
                 : 'bg-zinc-950 border border-zinc-800 text-zinc-200'
             }`}
           />
+
+          {/* Ajustar ou Corrigir esse Prompt com IA (Item 4 - Idêntico ao Modo Ania) */}
+          <div
+            className={`p-3.5 sm:p-4 rounded-xl space-y-2.5 transition-all ${
+              hasCopiedPromptOnce
+                ? 'bg-slate-900/90 border border-sky-400/50'
+                : 'bg-zinc-900/95 border border-zinc-700/80 shadow-inner'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] font-bold text-zinc-200 flex items-center gap-1.5">
+                <Edit3 className="w-3.5 h-3.5 text-purple-400" />
+                <span>Ajustar ou Corrigir este Prompt com IA:</span>
+              </label>
+              {isPromptVoiceRecording && (
+                <span className="text-[10px] font-semibold text-rose-400 flex items-center gap-1 animate-pulse">
+                  <span className="w-2 h-2 rounded-full bg-rose-500" />
+                  Ouvindo sua correção...
+                </span>
+              )}
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-stretch gap-2">
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  value={promptCorrection}
+                  onChange={(e) => setPromptCorrection(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleRefinePrompt();
+                    }
+                  }}
+                  placeholder='Ex: "Remova termos sensíveis", "Mude o ângulo da câmera", "Troque o vocabulário"...'
+                  className="w-full pl-3 pr-10 py-2.5 bg-zinc-950 border border-zinc-700 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-400 transition-colors shadow-inner font-sans"
+                />
+
+                {/* Botão Microfone embutido */}
+                <button
+                  type="button"
+                  onClick={togglePromptVoiceRecording}
+                  className={`absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-all cursor-pointer ${
+                    isPromptVoiceRecording
+                      ? 'bg-rose-500/20 text-rose-400 animate-pulse ring-2 ring-rose-400'
+                      : 'text-zinc-400 hover:text-purple-300 hover:bg-zinc-800'
+                  }`}
+                  title={
+                    isPromptVoiceRecording
+                      ? 'Parar gravação'
+                      : 'Ditar correção do prompt por voz'
+                  }
+                >
+                  {isPromptVoiceRecording ? (
+                    <Square className="w-3.5 h-3.5 text-rose-400 fill-rose-400" />
+                  ) : (
+                    <Mic className="w-3.5 h-3.5" />
+                  )}
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleRefinePrompt}
+                disabled={isRefiningPrompt || !(promptCorrection.trim() || interimPromptCorrection.trim())}
+                className="px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md shrink-0"
+              >
+                {isRefiningPrompt ? (
+                  <>
+                    <RotateCcw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Refazendo...</span>
+                  </>
+                ) : (
+                  <>
+                    <Wand2 className="w-3.5 h-3.5" />
+                    <span>Refazer Prompt</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {isPromptVoiceRecording && interimPromptCorrection && (
+              <p className="text-[11px] text-purple-300 italic opacity-80 pl-1">
+                "{interimPromptCorrection}"
+              </p>
+            )}
+          </div>
         </div>
       </div>
 

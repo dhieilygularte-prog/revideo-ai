@@ -3086,6 +3086,7 @@ app.post("/api/produtos2-planning", async (req, res) => {
       maleClothStyle,
       baseCopy,
       isCustomCopy,
+      copyEngine,
       duration,
       influencer,
       clientGender,
@@ -3096,6 +3097,77 @@ app.post("/api/produtos2-planning", async (req, res) => {
       variations = [],
       productPhotosBase64 = []
     } = req.body;
+    let activeCopy = baseCopy;
+    let copySourceLabel = isCustomCopy ? "Copy Personalizada" : "Banco de Copies (Padr\xE3o)";
+    if (!isCustomCopy && copyEngine === "aurora_copy") {
+      try {
+        const client = openAIProvider.getClient();
+        if (client) {
+          const maxLimit = duration === 8 ? 165 : 235;
+          const auroraSystem = `Voc\xEA \xE9 a AURORACOPY, uma especialista em copy curta para v\xEDdeos de TikTok Shop Brasil.
+Sua fun\xE7\xE3o \xE9 transformar as INFORMA\xC7\xD5ES DO PRODUTO fornecidas pelo usu\xE1rio em uma \xFAnica fala de alta reten\xE7\xE3o, natural, espec\xEDfica e persuasiva, pronta para ser usada como narra\xE7\xE3o de v\xEDdeo.
+
+OBJETIVO PRINCIPAL:
+Criar uma fala que pare o scroll, desperte curiosidade, valorize o principal benef\xEDcio do produto e fa\xE7a a pessoa querer continuar assistindo ou conhecer o item.
+
+ESTILO PADR\xC3O:
+Use prioritariamente o formato DESCOBERTA + DEMONSTRA\xC7\xC3O.
+A sensa\xE7\xE3o deve ser de uma pessoa brasileira mostrando espontaneamente algo interessante que acabou de descobrir, testar ou perceber.
+A fala nunca deve parecer propaganda tradicional, locu\xE7\xE3o institucional, descri\xE7\xE3o de marketplace ou texto corporativo.
+
+IGNORE COMO ARGUMENTO DE VENDA:
+Pre\xE7o, desconto, cupom, frete gr\xE1tis, parcelamento, promo\xE7\xE3o financeira. Mesmo que estejam presentes, n\xE3o baseie a copy neles.
+
+BENEF\xCDCIO:
+Selecione o benef\xEDcio com maior potencial de gerar curiosidade, ser demonstrado e produzir resultado visual concreto.
+
+ESTRUTURA DA FALA:
+1. HOOK FORTE (abrir com surpresa, curiosidade ou rea\xE7\xE3o espont\xE2nea).
+2. DESCOBERTA (sensa\xE7\xE3o de novidade ou teste real).
+3. BENEF\xCDCIO PRINCIPAL.
+4. DEMONSTRA\xC7\xC3O (combinar com produto sendo mostrado em uso).
+5. CURIOSIDADE OU DESEJO.
+6. CTA LEVE ("d\xE1 uma olhada nisso", "olha como funciona", "eu deixei aqui", "vale a pena ver", "clica pra ver").
+
+LIMITE R\xCDGIDO DE CARACTERES:
+No M\xC1XIMO ${maxLimit} caracteres contando espa\xE7os e pontua\xE7\xE3o.
+Faixa preferencial: ${duration === 8 ? "130 a 160" : "190 a 230"} caracteres.
+Antes de responder: conte os caracteres; se ultrapassar ${maxLimit}, reescreva; nunca corte a frase no meio; nunca entregue texto incompleto.
+
+LINGUAGEM:
+Portugu\xEAs do Brasil oral, simples, espont\xE2neo, natural. Varie os hooks (n\xE3o comece sempre com "Gente" ou "Olha isso").
+Use detalhes reais presentes nas informa\xE7\xF5es do produto. NUNCA invente caracter\xEDsticas.
+
+FORMATO DE SA\xCDDA:
+Entregue SOMENTE a fala final, sem aspas, sem t\xEDtulos, sem explica\xE7\xF5es, sem contagem de caracteres.`;
+          const auroraUser = `INFORMA\xC7\xD5ES DO PRODUTO:
+${productInfo || productName}
+
+NOME DO PRODUTO: ${productName}
+${additionalInstructions ? `INSTRU\xC7\xD5ES ADICIONAIS: ${additionalInstructions}` : ""}
+DURA\xC7\xC3O M\xC1XIMA DO V\xCDDEO: ${duration} segundos. Limite estrito: at\xE9 ${maxLimit} caracteres.`;
+          const comp = await client.chat.completions.create({
+            model: OPENAI_BRAIN_MODEL,
+            messages: [
+              { role: "system", content: auroraSystem },
+              { role: "user", content: auroraUser }
+            ],
+            temperature: 0.7
+          });
+          let rawSpeech = comp.choices[0]?.message?.content?.trim() || "";
+          rawSpeech = rawSpeech.replace(/^["'«“]|["'»”]$/g, "").trim();
+          if (rawSpeech) {
+            if (rawSpeech.length > maxLimit) {
+              rawSpeech = rawSpeech.slice(0, maxLimit).replace(/[,;:\s]+$/, "") + "!";
+            }
+            activeCopy = rawSpeech;
+            copySourceLabel = "Aurora Copy (IA Criativa \xB7 Ficha T\xE9cnica)";
+          }
+        }
+      } catch (auroraErr) {
+        console.warn("Falha no motor Aurora Copy, fallback para copy-base:", auroraErr?.message || auroraErr);
+      }
+    }
     const activeReqVars = Array.isArray(variations) ? variations.filter((v) => v && (v.photosCount > 0 || v.name)) : [];
     const variationsClause = activeReqVars.length >= 2 ? `
 - Varia\xE7\xF5es de cor do produto: ${activeReqVars.map((v) => v.name).join(", ")}
@@ -3114,7 +3186,7 @@ app.post("/api/produtos2-planning", async (req, res) => {
 - Sub-modo: ${subMode === "vestuario_masculino" ? `Vestu\xE1rio Masculino (${maleSubOption} - estilo ${maleClothStyle})` : "Produtos (Geral)"}
 - Nicho detectado: ${niche}
 - Informa\xE7\xF5es do produto: ${productInfo || productName}
-- Copy-base selecionada (${isCustomCopy ? "PERSONALIZADA PELO USU\xC1RIO - N\xC3O ALTERAR" : "DO BANCO VALIDADO - ADAPTAR M\xCDNIMO POSS\xCDVEL"}): "${baseCopy}"
+- Copy-base selecionada (${isCustomCopy ? "PERSONALIZADA PELO USU\xC1RIO - N\xC3O ALTERAR" : copyEngine === "aurora_copy" ? "GERADA POR AURORA COPY (IA CRIATIVA)" : "DO BANCO VALIDADO - ADAPTAR M\xCDNIMO POSS\xCDVEL"}): "${activeCopy}"
 - Dura\xE7\xE3o no Veo: ${duration} segundos (${duration === 8 ? "M\xC1XIMO 199 CARACTERES COM ESPA\xC7OS" : "AT\xC9 250 CARACTERES COM ESPA\xC7OS"})
 - Influencer (quem aparece e voz): ${influencer}
 - G\xEAnero do cliente (vocativo): ${clientGender} (se feminino, usar "Amiga" ou "Gente", NUNCA usar "menina")
@@ -3189,6 +3261,8 @@ Retorne APENAS um objeto JSON v\xE1lido com as chaves:
                   ...existingLocks.filter((l) => !String(l).includes(parsed.manufacturerLogoDescription.trim()))
                 ];
               }
+              parsed.finalCopy = activeCopy;
+              parsed.copySourceLabel = copySourceLabel;
               return res.json({ success: true, data: parsed });
             }
           } catch (oiErr) {
@@ -3231,6 +3305,8 @@ Retorne APENAS um objeto JSON v\xE1lido com as chaves:
                   ...existingLocks.filter((l) => !String(l).includes(parsed.manufacturerLogoDescription.trim()))
                 ];
               }
+              parsed.finalCopy = activeCopy;
+              parsed.copySourceLabel = copySourceLabel;
               return res.json({ success: true, data: parsed });
             }
           } catch (gemErr) {

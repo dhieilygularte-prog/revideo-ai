@@ -2186,6 +2186,7 @@ app.post('/api/produtos2-planning', async (req, res) => {
       maleClothStyle,
       baseCopy,
       isCustomCopy,
+      copyEngine,
       duration,
       influencer,
       clientGender,
@@ -2196,6 +2197,83 @@ app.post('/api/produtos2-planning', async (req, res) => {
       variations = [],
       productPhotosBase64 = [],
     } = req.body;
+
+    // Item 5: Motor Aurora Copy (IA Criativa) baseado estritamente na ficha técnica do produto
+    let activeCopy = baseCopy;
+    let copySourceLabel = isCustomCopy ? 'Copy Personalizada' : 'Banco de Copies (Padrão)';
+
+    if (!isCustomCopy && copyEngine === 'aurora_copy') {
+      try {
+        const client = (openAIProvider as any).getClient();
+        if (client) {
+          const maxLimit = duration === 8 ? 165 : 235;
+          const auroraSystem = `Você é a AURORACOPY, uma especialista em copy curta para vídeos de TikTok Shop Brasil.
+Sua função é transformar as INFORMAÇÕES DO PRODUTO fornecidas pelo usuário em uma única fala de alta retenção, natural, específica e persuasiva, pronta para ser usada como narração de vídeo.
+
+OBJETIVO PRINCIPAL:
+Criar uma fala que pare o scroll, desperte curiosidade, valorize o principal benefício do produto e faça a pessoa querer continuar assistindo ou conhecer o item.
+
+ESTILO PADRÃO:
+Use prioritariamente o formato DESCOBERTA + DEMONSTRAÇÃO.
+A sensação deve ser de uma pessoa brasileira mostrando espontaneamente algo interessante que acabou de descobrir, testar ou perceber.
+A fala nunca deve parecer propaganda tradicional, locução institucional, descrição de marketplace ou texto corporativo.
+
+IGNORE COMO ARGUMENTO DE VENDA:
+Preço, desconto, cupom, frete grátis, parcelamento, promoção financeira. Mesmo que estejam presentes, não baseie a copy neles.
+
+BENEFÍCIO:
+Selecione o benefício com maior potencial de gerar curiosidade, ser demonstrado e produzir resultado visual concreto.
+
+ESTRUTURA DA FALA:
+1. HOOK FORTE (abrir com surpresa, curiosidade ou reação espontânea).
+2. DESCOBERTA (sensação de novidade ou teste real).
+3. BENEFÍCIO PRINCIPAL.
+4. DEMONSTRAÇÃO (combinar com produto sendo mostrado em uso).
+5. CURIOSIDADE OU DESEJO.
+6. CTA LEVE ("dá uma olhada nisso", "olha como funciona", "eu deixei aqui", "vale a pena ver", "clica pra ver").
+
+LIMITE RÍGIDO DE CARACTERES:
+No MÁXIMO ${maxLimit} caracteres contando espaços e pontuação.
+Faixa preferencial: ${duration === 8 ? '130 a 160' : '190 a 230'} caracteres.
+Antes de responder: conte os caracteres; se ultrapassar ${maxLimit}, reescreva; nunca corte a frase no meio; nunca entregue texto incompleto.
+
+LINGUAGEM:
+Português do Brasil oral, simples, espontâneo, natural. Varie os hooks (não comece sempre com "Gente" ou "Olha isso").
+Use detalhes reais presentes nas informações do produto. NUNCA invente características.
+
+FORMATO DE SAÍDA:
+Entregue SOMENTE a fala final, sem aspas, sem títulos, sem explicações, sem contagem de caracteres.`;
+
+          const auroraUser = `INFORMAÇÕES DO PRODUTO:
+${productInfo || productName}
+
+NOME DO PRODUTO: ${productName}
+${additionalInstructions ? `INSTRUÇÕES ADICIONAIS: ${additionalInstructions}` : ''}
+DURAÇÃO MÁXIMA DO VÍDEO: ${duration} segundos. Limite estrito: até ${maxLimit} caracteres.`;
+
+          const comp = await client.chat.completions.create({
+            model: OPENAI_BRAIN_MODEL,
+            messages: [
+              { role: 'system', content: auroraSystem },
+              { role: 'user', content: auroraUser },
+            ],
+            temperature: 0.7,
+          });
+
+          let rawSpeech = comp.choices[0]?.message?.content?.trim() || '';
+          rawSpeech = rawSpeech.replace(/^["'«“]|["'»”]$/g, '').trim();
+          if (rawSpeech) {
+            if (rawSpeech.length > maxLimit) {
+              rawSpeech = rawSpeech.slice(0, maxLimit).replace(/[,;:\s]+$/, '') + '!';
+            }
+            activeCopy = rawSpeech;
+            copySourceLabel = 'Aurora Copy (IA Criativa · Ficha Técnica)';
+          }
+        }
+      } catch (auroraErr: any) {
+        console.warn('Falha no motor Aurora Copy, fallback para copy-base:', auroraErr?.message || auroraErr);
+      }
+    }
 
     const activeReqVars = Array.isArray(variations)
       ? variations.filter((v: any) => v && (v.photosCount > 0 || v.name))
@@ -2224,7 +2302,7 @@ app.post('/api/produtos2-planning', async (req, res) => {
 - Sub-modo: ${subMode === 'vestuario_masculino' ? `Vestuário Masculino (${maleSubOption} - estilo ${maleClothStyle})` : 'Produtos (Geral)'}
 - Nicho detectado: ${niche}
 - Informações do produto: ${productInfo || productName}
-- Copy-base selecionada (${isCustomCopy ? 'PERSONALIZADA PELO USUÁRIO - NÃO ALTERAR' : 'DO BANCO VALIDADO - ADAPTAR MÍNIMO POSSÍVEL'}): "${baseCopy}"
+- Copy-base selecionada (${isCustomCopy ? 'PERSONALIZADA PELO USUÁRIO - NÃO ALTERAR' : copyEngine === 'aurora_copy' ? 'GERADA POR AURORA COPY (IA CRIATIVA)' : 'DO BANCO VALIDADO - ADAPTAR MÍNIMO POSSÍVEL'}): "${activeCopy}"
 - Duração no Veo: ${duration} segundos (${duration === 8 ? 'MÁXIMO 199 CARACTERES COM ESPAÇOS' : 'ATÉ 250 CARACTERES COM ESPAÇOS'})
 - Influencer (quem aparece e voz): ${influencer}
 - Gênero do cliente (vocativo): ${clientGender} (se feminino, usar "Amiga" ou "Gente", NUNCA usar "menina")
@@ -2306,6 +2384,8 @@ Retorne APENAS um objeto JSON válido com as chaves:
                   ...existingLocks.filter((l: string) => !String(l).includes(parsed.manufacturerLogoDescription.trim())),
                 ];
               }
+              parsed.finalCopy = activeCopy;
+              parsed.copySourceLabel = copySourceLabel;
               return res.json({ success: true, data: parsed });
             }
           } catch (oiErr: any) {
@@ -2353,6 +2433,8 @@ Retorne APENAS um objeto JSON válido com as chaves:
                   ...existingLocks.filter((l: string) => !String(l).includes(parsed.manufacturerLogoDescription.trim())),
                 ];
               }
+              parsed.finalCopy = activeCopy;
+              parsed.copySourceLabel = copySourceLabel;
               return res.json({ success: true, data: parsed });
             }
           } catch (gemErr: any) {

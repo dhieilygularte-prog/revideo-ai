@@ -108,30 +108,60 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
     }
   }, [form.additionalInstructions]);
 
-  // Reanalisa o texto de Informações do Produto (com debounce ~600ms e atualização inteligente)
+  // Reanalisa o texto de Informações do Produto (com debounce ~550ms e atualização inteligente)
   const applyAnalysisFromText = (text: string) => {
+    // Item 3: Ao limpar as informações do produto, reseta o nome do produto e reabilita o autopreenchimento
     if (!text.trim()) {
       onChange((prev) => ({
         ...prev,
         detectedNiche: undefined,
+        productName: '',
+        productNameAutoFilled: true,
       }));
       return;
     }
 
     const specs = analyzeProductInfoForProdutos2(text);
 
-    onChange((prev) => ({
-      ...prev,
-      subMode: specs.subMode,
-      maleSubOption: specs.maleSubOption,
-      detectedNiche: specs.niche,
-      productName: specs.shortName || prev.productName,
-      productNameAutoFilled: Boolean(specs.shortName),
-      influencer: specs.influencer,
-      influencerAutoFilled: specs.influencer !== null,
-      clientGender: specs.clientGender,
-      clientGenderAutoFilled: true,
-    }));
+    onChange((prev) => {
+      // Item 1: Se o texto mencionar calçado, tênis, sapato ou bota, muda automaticamente para a aba calçados
+      // Item 2: Se o usuário já estiver na aba vestuário masculino, NUNCA reverte para produto geral!
+      let nextSubMode = prev.subMode;
+      let nextMaleSubOption = prev.maleSubOption;
+
+      if ((specs as any).isFootwear || specs.maleSubOption === 'calcados') {
+        nextSubMode = 'vestuario_masculino';
+        nextMaleSubOption = 'calcados';
+      } else if (specs.subMode === 'vestuario_masculino') {
+        nextSubMode = 'vestuario_masculino';
+        nextMaleSubOption = specs.maleSubOption || 'calcados';
+      } else if (prev.subMode === 'vestuario_masculino') {
+        // NUNCA reverte para produtos_geral se já estiver em vestuário masculino!
+        nextSubMode = 'vestuario_masculino';
+        if (specs.maleSubOption) {
+          nextMaleSubOption = specs.maleSubOption;
+        }
+      } else {
+        nextSubMode = specs.subMode;
+        nextMaleSubOption = specs.maleSubOption;
+      }
+
+      // Item 3: Sempre que cola novas informações do produto, extrai e preenche o nome do produto
+      const newProductName = specs.shortName || prev.productName;
+
+      return {
+        ...prev,
+        subMode: nextSubMode,
+        maleSubOption: nextMaleSubOption,
+        detectedNiche: specs.niche,
+        productName: newProductName,
+        productNameAutoFilled: Boolean(specs.shortName),
+        influencer: specs.influencer,
+        influencerAutoFilled: specs.influencer !== null,
+        clientGender: specs.clientGender,
+        clientGenderAutoFilled: true,
+      };
+    });
   };
 
   const handleProductInfoChange = (text: string) => {
@@ -304,10 +334,33 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
     0
   );
 
-  // Estilo azul idêntico ao Modo Ania para campos preenchidos automaticamente
-  const blueAutoCardClass =
-    'bg-gradient-to-br from-sky-900/80 via-blue-900/75 to-slate-800/90 border-2 border-sky-400 shadow-lg shadow-sky-900/50 ring-2 ring-sky-400/40';
-  const normalCardClass = 'bg-zinc-900/80 border border-zinc-800/90';
+  const isMaleVestuario = form.subMode === 'vestuario_masculino';
+
+  // Item 12: Em Vestuário Masculino, toda a paleta vira verde escuro e destaques em verde esmeralda.
+  // Em Produto Geral, mantém o padrão azul.
+  const activeAutoCardClass = isMaleVestuario
+    ? 'bg-gradient-to-br from-emerald-950/90 via-emerald-900/80 to-zinc-950/95 border-2 border-emerald-500 shadow-xl shadow-emerald-950/60 ring-2 ring-emerald-500/35'
+    : 'bg-gradient-to-br from-sky-900/80 via-blue-900/75 to-slate-800/90 border-2 border-sky-400 shadow-lg shadow-sky-900/50 ring-2 ring-sky-400/40';
+
+  const normalCardClass = isMaleVestuario
+    ? 'bg-zinc-900/90 border border-emerald-900/50'
+    : 'bg-zinc-900/80 border border-zinc-800/90';
+
+  const accentBtnClass = isMaleVestuario
+    ? 'bg-emerald-600 text-white shadow shadow-emerald-950/60'
+    : 'bg-sky-500 text-white shadow shadow-sky-950/50';
+
+  const accentBadgeClass = isMaleVestuario
+    ? 'bg-emerald-500/30 border-emerald-400/60 text-emerald-100'
+    : 'bg-sky-500/30 border-sky-400/50 text-sky-100';
+
+  const accentBorderClass = isMaleVestuario
+    ? 'border-emerald-500/50'
+    : 'border-sky-400/50';
+
+  const accentTextClass = isMaleVestuario
+    ? 'text-emerald-300'
+    : 'text-sky-300';
 
   const isInfoFilled = Boolean(form.productInfo.trim().length > 0);
   const isNameFilled = Boolean(form.productName.trim().length > 0);
@@ -324,11 +377,23 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
     totalPhotosCount > 0;
 
   return (
-    <div className="space-y-6">
+    <div
+      className={`space-y-6 rounded-3xl transition-colors duration-500 ${
+        isMaleVestuario
+          ? 'bg-gradient-to-b from-emerald-950/30 via-zinc-950/80 to-zinc-950 p-3 sm:p-5 border border-emerald-600/30 shadow-2xl shadow-emerald-950/40'
+          : ''
+      }`}
+    >
       {/* ===================================================================== */}
       {/* SEÇÃO 1 — ESTRUTURA DOS MODOS (Produtos Geral vs Vestuário Masculino) */}
       {/* ===================================================================== */}
-      <div className="p-4 sm:p-5 rounded-2xl bg-zinc-900/90 border border-zinc-800 shadow-xl space-y-4">
+      <div
+        className={`p-4 sm:p-5 rounded-2xl border shadow-xl space-y-4 transition-colors ${
+          isMaleVestuario
+            ? 'bg-zinc-900/95 border-emerald-500/40'
+            : 'bg-zinc-900/90 border-zinc-800'
+        }`}
+      >
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-sm sm:text-base font-black text-white flex items-center gap-2">
@@ -340,8 +405,18 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
             </p>
           </div>
           {form.detectedNiche && (
-            <span className="px-3 py-1 rounded-full bg-sky-500/20 border border-sky-400/50 text-xs font-extrabold text-sky-200 flex items-center gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5 text-sky-300" />
+            <span
+              className={`px-3 py-1 rounded-full border text-xs font-extrabold flex items-center gap-1.5 ${
+                isMaleVestuario
+                  ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-200'
+                  : 'bg-sky-500/20 border-sky-400/50 text-sky-200'
+              }`}
+            >
+              <CheckCircle2
+                className={`w-3.5 h-3.5 ${
+                  isMaleVestuario ? 'text-emerald-300' : 'text-sky-300'
+                }`}
+              />
               Nicho: {form.detectedNiche}
             </span>
           )}
@@ -354,11 +429,11 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
             onClick={() => handleSubModeSelect('produtos_geral')}
             className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-3 ${
               form.subMode === 'produtos_geral'
-                ? 'bg-gradient-to-r from-emerald-600/90 to-teal-700/90 border-emerald-400 text-white shadow-lg shadow-emerald-950/50'
+                ? 'bg-gradient-to-r from-sky-600/90 to-blue-700/90 border-sky-400 text-white shadow-lg shadow-sky-950/50'
                 : 'bg-zinc-950/80 border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700'
             }`}
           >
-            <Package className="w-5 h-5 shrink-0 text-emerald-300" />
+            <Package className="w-5 h-5 shrink-0 text-sky-300" />
             <div>
               <div className="text-xs font-black uppercase tracking-wide">Produtos (Geral)</div>
               <div className="text-[11px] opacity-80">Banco 63 Copies Validadas + Fórmula</div>
@@ -370,11 +445,11 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
             onClick={() => handleSubModeSelect('vestuario_masculino', form.maleSubOption)}
             className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-3 ${
               form.subMode === 'vestuario_masculino'
-                ? 'bg-gradient-to-r from-sky-600/90 to-blue-700/90 border-sky-400 text-white shadow-lg shadow-sky-950/50'
+                ? 'bg-gradient-to-r from-emerald-600 to-green-700 border-emerald-400 text-white shadow-lg shadow-emerald-950/60 ring-2 ring-emerald-400/40'
                 : 'bg-zinc-950/80 border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700'
             }`}
           >
-            <Shirt className="w-5 h-5 shrink-0 text-sky-300" />
+            <Shirt className="w-5 h-5 shrink-0 text-emerald-300" />
             <div>
               <div className="text-xs font-black uppercase tracking-wide">Vestuário Masculino</div>
               <div className="text-[11px] opacity-80">Calçados Masculinos e Roupas</div>
@@ -398,17 +473,17 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
           </div>
         </div>
 
-        {/* Sub-opção de Vestuário Masculino: Calçados vs Roupas */}
+        {/* Sub-opção de Vestuário Masculino: Calçados vs Roupas (Item 12: verde em Vestuário Masculino) */}
         {form.subMode === 'vestuario_masculino' && (
-          <div className="pt-2 border-t border-zinc-800 flex flex-wrap items-center gap-3">
-            <span className="text-xs font-bold text-sky-300">Sub-opção Masculina:</span>
-            <div className="grid grid-cols-2 gap-2 bg-zinc-950 p-1 rounded-xl border border-zinc-800">
+          <div className="pt-2 border-t border-emerald-900/50 flex flex-wrap items-center gap-3">
+            <span className="text-xs font-bold text-emerald-300">Sub-opção Masculina:</span>
+            <div className="grid grid-cols-2 gap-2 bg-zinc-950 p-1 rounded-xl border border-emerald-800/60">
               <button
                 type="button"
                 onClick={() => handleSubModeSelect('vestuario_masculino', 'calcados')}
                 className={`px-4 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
                   form.maleSubOption === 'calcados'
-                    ? 'bg-sky-600 text-white shadow'
+                    ? 'bg-emerald-600 text-white shadow shadow-emerald-950/60'
                     : 'text-zinc-400 hover:text-white'
                 }`}
               >
@@ -420,7 +495,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                 onClick={() => handleSubModeSelect('vestuario_masculino', 'roupas')}
                 className={`px-4 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
                   form.maleSubOption === 'roupas'
-                    ? 'bg-sky-600 text-white shadow'
+                    ? 'bg-emerald-600 text-white shadow shadow-emerald-950/60'
                     : 'text-zinc-400 hover:text-white'
                 }`}
               >
@@ -439,7 +514,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
         {/* 1. Informações do Produto */}
         <div
           className={`md:col-span-12 p-4 rounded-2xl transition-all duration-300 space-y-2 ${
-            isInfoFilled ? blueAutoCardClass : normalCardClass
+            isInfoFilled ? activeAutoCardClass : normalCardClass
           }`}
         >
           <label className="text-xs font-bold flex items-center justify-between">
@@ -486,7 +561,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
         {/* 2. Nome do Produto (curto e falável) */}
         <div
           className={`md:col-span-6 p-4 rounded-2xl transition-all duration-300 space-y-2 ${
-            isNameFilled ? blueAutoCardClass : normalCardClass
+            isNameFilled ? activeAutoCardClass : normalCardClass
           }`}
         >
           <label className="text-xs font-bold flex items-center justify-between">
@@ -521,7 +596,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
         </div>
 
         {/* 3. Duração no Veo (10 s padrão | 8 s) */}
-        <div className={`md:col-span-6 p-4 rounded-2xl space-y-2 ${blueAutoCardClass}`}>
+        <div className={`md:col-span-6 p-4 rounded-2xl space-y-2 ${activeAutoCardClass}`}>
           <label className="text-xs font-bold text-white flex items-center justify-between">
             <span>3. Duração no Veo</span>
             <span className="text-[10px] text-sky-200 font-semibold">
@@ -557,7 +632,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
         {/* 6. Influencer (Homem / Mulher / vazio quando ambíguo) */}
         <div
           className={`md:col-span-6 p-4 rounded-2xl transition-all duration-300 space-y-2 ${
-            isInfluencerFilled ? blueAutoCardClass : normalCardClass
+            isInfluencerFilled ? activeAutoCardClass : normalCardClass
           }`}
         >
           <label className="text-xs font-bold flex items-center justify-between">
@@ -618,7 +693,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
         </div>
 
         {/* 7. Gênero do Cliente (Masculino / Feminino / Unissex) */}
-        <div className={`md:col-span-6 p-4 rounded-2xl transition-all duration-300 space-y-2 ${blueAutoCardClass}`}>
+        <div className={`md:col-span-6 p-4 rounded-2xl transition-all duration-300 space-y-2 ${activeAutoCardClass}`}>
           <label className="text-xs font-bold flex items-center justify-between">
             <span className="flex items-center gap-1.5">
               <span className="text-white">7. Gênero do cliente (Vocativo da fala)</span>
@@ -655,18 +730,18 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
         </div>
 
         {/* 8. Fala (Com fala / Sem fala) e Opção de Intro */}
-        <div className={`md:col-span-4 p-4 rounded-2xl space-y-2.5 ${blueAutoCardClass}`}>
+        <div className={`md:col-span-4 p-4 rounded-2xl space-y-2.5 ${activeAutoCardClass}`}>
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold text-white block">8. Fala</label>
             <span className="text-[10px] text-zinc-400">Locução Veo 3</span>
           </div>
-          <div className="grid grid-cols-2 gap-2 bg-slate-950/90 p-1 rounded-xl border border-sky-400/50">
+          <div className="grid grid-cols-2 gap-2 bg-slate-950/90 p-1 rounded-xl border border-zinc-700/60">
             <button
               type="button"
               onClick={() => onChange((prev) => ({ ...prev, speechMode: 'com_fala' }))}
               className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                 form.speechMode === 'com_fala'
-                  ? 'bg-sky-500 text-white shadow'
+                  ? accentBtnClass
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
@@ -677,7 +752,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
               onClick={() => onChange((prev) => ({ ...prev, speechMode: 'sem_fala' }))}
               className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                 form.speechMode === 'sem_fala'
-                  ? 'bg-sky-500 text-white shadow'
+                  ? accentBtnClass
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
@@ -687,20 +762,20 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
 
           {/* Opção Intro ("Nossa!") */}
           {form.speechMode === 'com_fala' && (
-            <div className="pt-2 border-t border-sky-500/20 space-y-1.5">
+            <div className="pt-2 border-t border-white/10 space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="text-[11px] font-bold text-sky-200">Intro da Fala</label>
+                <label className={`text-[11px] font-bold ${accentTextClass}`}>Intro da Fala</label>
                 <span className="text-[10px] text-zinc-400">
                   {form.useSpeechIntro ? 'Com palavra extra ("Nossa!")' : 'Sem palavra extra (Direto)'}
                 </span>
               </div>
-              <div className="grid grid-cols-2 gap-2 bg-slate-950/90 p-1 rounded-xl border border-sky-400/40">
+              <div className="grid grid-cols-2 gap-2 bg-slate-950/90 p-1 rounded-xl border border-white/10">
                 <button
                   type="button"
                   onClick={() => onChange((prev) => ({ ...prev, useSpeechIntro: false }))}
                   className={`py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                     !form.useSpeechIntro
-                      ? 'bg-sky-500 text-white shadow'
+                      ? accentBtnClass
                       : 'text-zinc-400 hover:text-white'
                   }`}
                   title="Não adiciona 'Nossa!' no início da fala (fala direta)"
@@ -712,7 +787,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                   onClick={() => onChange((prev) => ({ ...prev, useSpeechIntro: true }))}
                   className={`py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                     form.useSpeechIntro
-                      ? 'bg-sky-500 text-white shadow'
+                      ? accentBtnClass
                       : 'text-zinc-400 hover:text-white'
                   }`}
                   title="Adiciona 'Nossa!' no início de todas as falas para margem de corte"
@@ -724,78 +799,131 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
           )}
         </div>
 
-        {/* 9. Enquadramento (Com rosto / Sem rosto / POV) */}
-        <div className={`md:col-span-4 p-4 rounded-2xl space-y-2 ${blueAutoCardClass}`}>
-          <label className="text-xs font-bold text-white block">9. Enquadramento</label>
-          <div className="grid grid-cols-3 gap-1.5 bg-slate-950/90 p-1 rounded-xl border border-sky-400/50">
-            <button
-              type="button"
-              onClick={() => onChange((prev) => ({ ...prev, framing: 'com_rosto' }))}
-              className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                form.framing === 'com_rosto'
-                  ? 'bg-sky-500 text-white shadow'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              Com rosto
-            </button>
-            <button
-              type="button"
-              onClick={() => onChange((prev) => ({ ...prev, framing: 'sem_rosto' }))}
-              className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                form.framing === 'sem_rosto'
-                  ? 'bg-sky-500 text-white shadow'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              Sem rosto
-            </button>
-            <button
-              type="button"
-              onClick={() => onChange((prev) => ({ ...prev, framing: 'pov' }))}
-              className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                form.framing === 'pov'
-                  ? 'bg-sky-500 text-white shadow'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              POV (Mãos)
-            </button>
+        {/* Coluna Central: 9. Enquadramento e 10. Cenário (Item 5: Cenário abaixo do Enquadramento) */}
+        <div className="md:col-span-4 space-y-3 flex flex-col justify-between">
+          {/* 9. Enquadramento (Com rosto / Sem rosto / POV) */}
+          <div className={`p-4 rounded-2xl space-y-2 flex-1 ${activeAutoCardClass}`}>
+            <label className="text-xs font-bold text-white block">9. Enquadramento</label>
+            <div className="grid grid-cols-3 gap-1.5 bg-slate-950/90 p-1 rounded-xl border border-zinc-700/60">
+              <button
+                type="button"
+                onClick={() => onChange((prev) => ({ ...prev, framing: 'com_rosto' }))}
+                className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  form.framing === 'com_rosto'
+                    ? accentBtnClass
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                Com rosto
+              </button>
+              <button
+                type="button"
+                onClick={() => onChange((prev) => ({ ...prev, framing: 'sem_rosto' }))}
+                className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  form.framing === 'sem_rosto'
+                    ? accentBtnClass
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                Sem rosto
+              </button>
+              <button
+                type="button"
+                onClick={() => onChange((prev) => ({ ...prev, framing: 'pov' }))}
+                className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  form.framing === 'pov'
+                    ? accentBtnClass
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                POV (Mãos)
+              </button>
+            </div>
+          </div>
+
+          {/* 10. Cenário (Item 5: reposicionado para baixo do Enquadramento) */}
+          <div className={`p-4 rounded-2xl space-y-2 flex-1 ${activeAutoCardClass}`}>
+            <label className="text-xs font-bold text-white block">10. Cenário</label>
+            <div className="grid grid-cols-2 gap-1.5 bg-slate-950/90 p-1 rounded-xl border border-zinc-700/60">
+              <button
+                type="button"
+                onClick={() => onChange((prev) => ({ ...prev, scenario: 'padrao_uso' }))}
+                className={`py-2 px-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  form.scenario === 'padrao_uso'
+                    ? accentBtnClass
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                Padrão de uso
+              </button>
+              <button
+                type="button"
+                onClick={() => onChange((prev) => ({ ...prev, scenario: 'em_casa' }))}
+                className={`py-2 px-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  form.scenario === 'em_casa'
+                    ? accentBtnClass
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                Em casa
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* 10. Cenário (Cenário padrão de uso / Em casa) */}
-        <div className={`md:col-span-4 p-4 rounded-2xl space-y-2 ${blueAutoCardClass}`}>
-          <label className="text-xs font-bold text-white block">10. Cenário</label>
-          <div className="grid grid-cols-2 gap-1.5 bg-slate-950/90 p-1 rounded-xl border border-sky-400/50">
+        {/* 11. Modo de Copy (Banco de Copies vs Aurora Copy) - Item 5 */}
+        <div className={`md:col-span-4 p-4 rounded-2xl space-y-2.5 flex flex-col justify-between ${activeAutoCardClass}`}>
+          <div>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-white block flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                <span>11. Modo de Copy</span>
+              </label>
+              <span className="text-[10px] text-zinc-400">
+                {form.copyEngine === 'aurora_copy' ? 'IA Criativa' : 'Banco Validado'}
+              </span>
+            </div>
+            <p className="text-[11px] text-zinc-300 mt-1 leading-snug">
+              {form.copyEngine === 'aurora_copy'
+                ? 'Aurora Copy (IA Criativa): Cria uma copy inédita, curta e de alta retenção baseada 100% na ficha técnica do produto.'
+                : 'Banco de Copies (Padrão): Sorteia e adapta copies campeãs validadas já gravadas na memória do app.'}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 bg-slate-950/90 p-1.5 rounded-xl border border-zinc-700/60">
             <button
               type="button"
-              onClick={() => onChange((prev) => ({ ...prev, scenario: 'padrao_uso' }))}
-              className={`py-2 px-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                form.scenario === 'padrao_uso'
-                  ? 'bg-sky-500 text-white shadow'
+              onClick={() => onChange((prev) => ({ ...prev, copyEngine: 'banco' }))}
+              className={`py-2.5 px-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
+                form.copyEngine !== 'aurora_copy'
+                  ? accentBtnClass
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
-              Padrão de uso
+              <span className="font-black">Banco de Copies</span>
+              <span className="text-[9px] opacity-80">(Padrão Validado)</span>
             </button>
             <button
               type="button"
-              onClick={() => onChange((prev) => ({ ...prev, scenario: 'em_casa' }))}
-              className={`py-2 px-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                form.scenario === 'em_casa'
-                  ? 'bg-sky-500 text-white shadow'
+              onClick={() => onChange((prev) => ({ ...prev, copyEngine: 'aurora_copy' }))}
+              className={`py-2.5 px-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
+                form.copyEngine === 'aurora_copy'
+                  ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-zinc-950 font-black shadow-lg shadow-orange-950/50 ring-2 ring-amber-400/50'
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
-              Em casa
+              <span className="font-black flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-amber-300" />
+                <span>Aurora Copy</span>
+              </span>
+              <span className="text-[9px] opacity-80">(IA Criativa)</span>
             </button>
           </div>
         </div>
 
         {/* 12. Estilo (Só Vestuário Masculino -> Roupas) */}
         {form.subMode === 'vestuario_masculino' && form.maleSubOption === 'roupas' && (
-          <div className={`md:col-span-12 p-4 rounded-2xl space-y-2 ${blueAutoCardClass}`}>
+          <div className={`md:col-span-12 p-4 rounded-2xl space-y-2 ${activeAutoCardClass}`}>
             <label className="text-xs font-bold text-white flex items-center justify-between">
               <span>12. Estilo (Vestuário Masculino — Roupas)</span>
               <span className="text-[11px] text-sky-200 font-normal">
@@ -843,7 +971,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
         {/* 11. Imagens do Produto (Upload múltiplo + Variações/Cores) */}
         <div
           className={`md:col-span-12 p-4 rounded-2xl transition-all duration-300 space-y-3 ${
-            isPhotosFilled ? blueAutoCardClass : normalCardClass
+            isPhotosFilled ? activeAutoCardClass : normalCardClass
           }`}
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -975,7 +1103,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
         {/* 5. Instruções Adicionais (Opcional, tem prioridade sobre padrões) */}
         <div
           className={`md:col-span-12 p-4 rounded-2xl transition-all duration-300 space-y-2 ${
-            isInstructionsFilled ? blueAutoCardClass : normalCardClass
+            isInstructionsFilled ? activeAutoCardClass : normalCardClass
           }`}
         >
           <label className="text-xs font-bold flex items-center justify-between">

@@ -7,6 +7,7 @@ export type Produtos2SpeechMode = 'com_fala' | 'sem_fala';
 export type Produtos2Framing = 'com_rosto' | 'sem_rosto' | 'pov';
 export type Produtos2Scenario = 'padrao_uso' | 'em_casa';
 export type Produtos2MaleClothStyle = 'storyboard' | 'pov' | 'espelho';
+export type Produtos2CopyEngine = 'banco' | 'aurora_copy';
 
 export type CopyArchetype =
   | 'Achado/Demonstração'
@@ -49,6 +50,7 @@ export interface Produtos2FormState {
   detectedNiche?: string;
   duration: Produtos2Duration;
   customCopy: string;
+  copyEngine?: Produtos2CopyEngine;
   additionalInstructions: string;
   influencer: Produtos2Influencer;
   influencerAutoFilled?: boolean;
@@ -114,6 +116,7 @@ export interface Produtos2ResultState {
   finalCopy: string;
   copySourceLabel: string;
   copyId: string;
+  copyEngine?: Produtos2CopyEngine;
   productLock: string[];
   avatarDescription: string;
   scenarioDescription: string;

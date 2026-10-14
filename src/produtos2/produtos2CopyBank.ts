@@ -222,6 +222,30 @@ export const COPIES_PRODUTOS_GERAIS: CopyBankEntry[] = [
     fits8s: true,
     text: 'Esse é o kit que vai mudar o som do seu carro, com Bluetooth, USB, SD e rádio FM. Conecte o celular e curta suas músicas favoritas. Estoque limitado. Garanta já o seu.',
   },
+  {
+    id: 'SOM-10',
+    bank: 'geral',
+    niche: 'Som automotivo',
+    productType: 'Caixa de som bluetooth / Alto-falante',
+    keywords: ['caixa de som', 'caixa bluetooth', 'alto-falante', 'alto falante', 'autofalante', 'speaker', 'som portatil'],
+    archetype: 'Achado/Demonstração',
+    audience: 'Unissex',
+    charCount: 160,
+    fits8s: true,
+    text: 'Olha a potência desse alto-falante portátil! Grave pesado, bateria que dura horas e conecta no bluetooth num segundo. Leva sua música para qualquer lugar, garanta o seu.',
+  },
+  {
+    id: 'SOM-11',
+    bank: 'geral',
+    niche: 'Som automotivo',
+    productType: 'Caixa de som potente',
+    keywords: ['caixa de som', 'alto-falante', 'alto falante', 'autofalante', 'soundbar', 'subwoofer'],
+    archetype: 'Especificação',
+    audience: 'Unissex',
+    charCount: 155,
+    fits8s: true,
+    text: 'Som limpo, sem distorção e com aquele grave que faz tremer tudo. Esse alto-falante entrega qualidade profissional num design compacto. Clica no link e aproveite!',
+  },
 
   // Nicho: Mobilidade elétrica
   {
@@ -1251,8 +1275,29 @@ export function analyzeProductInfoForProdutos2(rawText: string): ProductSpecsExt
   const foundMaterial = materialCandidates.find((m) => norm.includes(m));
 
   // 2. Detectar se é Calçado Masculino ou Roupa Masculina vs Produto Geral
-  const footwearTerms = ['tenis', 'sapato', 'sapatenis', 'bota', 'coturno', 'chuteira', 'chinelo', 'sandalia', 'papete', 'mocassim'];
-  const maleApparelTerms = ['camiseta', 'camisa', 'bermuda', 'short', 'shorts', 'calca jogger', 'jogger', 'moletom', 'jaqueta', 'cueca', 'sunga', 'camisa termica', 'camiseta termica'];
+  const footwearTerms = [
+    'tenis',
+    'sapato',
+    'sapatenis',
+    'bota',
+    'coturno',
+    'chuteira',
+    'chinelo',
+    'sandalia',
+    'papete',
+    'mocassim',
+    'calcado',
+    'calcados',
+    'sneaker',
+    'sneakers',
+    'sapatilha',
+    'rasteirinha',
+    'peep toe',
+    'oxford',
+    'mule',
+    'loafer',
+  ];
+  const maleApparelTerms = ['camiseta', 'camisa', 'bermuda', 'short', 'shorts', 'calca jogger', 'jogger', 'moletom', 'jaqueta', 'cueca', 'sunga', 'camisa termica', 'camiseta termica', 'regata', 'polo', 'calca jeans', 'calca sarja', 'agasalho'];
   const femaleOnlyApparelTerms = ['saia', 'cropped', 'baby doll', 'babydoll', 'camisola', 'sutia', 'calcinha', 'lingerie', 'biquini', 'maio', 'rasteirinha', 'scarpin', 'salto alto'];
   const isVestidoGarment = /(?<!\bbem\s+|\bmal\s+)\bvestido(?:s)?\b/i.test(norm) && !norm.includes('bem vestido') && !norm.includes('mal vestido');
 
@@ -1267,9 +1312,13 @@ export function analyzeProductInfoForProdutos2(rawText: string): ProductSpecsExt
   let subMode: Produtos2SubMode = 'produtos_geral';
   let maleSubOption: Produtos2MaleSubOption = 'calcados';
 
-  if ((isFootwear || isApparel) && !isFemaleExplicit) {
+  // REGRA MESTRA (Item 1): Qualquer menção a calçado/tênis/sapato entra no modo calçado automaticamente!
+  if (isFootwear) {
     subMode = 'vestuario_masculino';
-    maleSubOption = isFootwear ? 'calcados' : 'roupas';
+    maleSubOption = 'calcados';
+  } else if (isApparel && !isFemaleExplicit) {
+    subMode = 'vestuario_masculino';
+    maleSubOption = 'roupas';
   }
 
   // 3. Extrair Nome Curto e Falável
@@ -1515,6 +1564,7 @@ export function analyzeProductInfoForProdutos2(rawText: string): ProductSpecsExt
     shortName,
     subMode,
     maleSubOption,
+    isFootwear,
     niche,
     influencer,
     clientGender,
@@ -1891,6 +1941,9 @@ export function calibrateCopyToTargetWindow(params: {
  *   escolhe no banco de ~62 copies a copy real que melhor combina com o perfil do produto e adapta o mínimo possível.
  * NUNCA tenta criar copy do zero.
  */
+// Histórico recente para evitar sorteios repetidos da mesma copy consecutivamente (Item 11)
+const recentPickedCopyIds: string[] = [];
+
 export function selectAndAdaptProdutos2Copy(params: {
   subMode: Produtos2SubMode;
   maleSubOption: Produtos2MaleSubOption;
@@ -2041,12 +2094,28 @@ export function selectAndAdaptProdutos2Copy(params: {
   let pool = candidates;
   if (duration === 8) {
     const shortPool = candidates.filter((c) => c.fits8s || c.charCount <= 165 || c.text.length <= 165);
-    if (shortPool.length > 0) {
+    // Só restringe se houver pelo menos 2 opções curtas; se houver apenas 1, mantém a lista completa
+    // para não viciar sempre na mesma copy única (Item 11)
+    if (shortPool.length >= 2) {
       pool = shortPool;
     }
   }
 
-  const chosen = pickUniformRandom(pool);
+  // Anti-repetição inteligente (Item 11): se houver 2 ou mais opções, evita repetir as últimas escolhidas
+  let poolToPick = pool;
+  if (pool.length > 1) {
+    const nonRepeated = pool.filter((c) => !recentPickedCopyIds.includes(c.id));
+    if (nonRepeated.length > 0) {
+      poolToPick = nonRepeated;
+    }
+  }
+
+  const chosen = pickUniformRandom(poolToPick);
+  recentPickedCopyIds.push(chosen.id);
+  if (recentPickedCopyIds.length > 10) {
+    recentPickedCopyIds.shift();
+  }
+
   const resolvedInf: 'Homem' | 'Mulher' =
     influencer ||
     specs.influencer ||

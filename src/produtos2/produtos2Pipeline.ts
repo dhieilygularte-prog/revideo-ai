@@ -412,6 +412,7 @@ export async function runProdutos2Pipeline(params: {
         maleClothStyle: form.maleClothStyle,
         baseCopy: finalCopy,
         isCustomCopy: Boolean(form.customCopy && form.customCopy.trim()),
+        copyEngine: form.copyEngine || 'banco',
         duration: form.duration,
         influencer: resolvedInfluencer,
         clientGender: form.clientGender,
@@ -430,9 +431,14 @@ export async function runProdutos2Pipeline(params: {
       if (planJson && planJson.success && planJson.data) {
         const d = planJson.data;
 
-        // REGRA DO USUÁRIO: Trabalhar SEMPRE com as copies validadas que já estão na memória (selectAndAdaptProdutos2Copy),
-        // mudando o mínimo possível, sem deixar a IA inventar copy do zero, e sempre com "Nossa! " no início.
-        finalCopy = ensureLeadingNossaPrefix(copySelection.finalCopy);
+        // Se o modo for Aurora Copy, adota a fala gerada pela IA conforme o documento oficial do usuário
+        if (form.copyEngine === 'aurora_copy' && d.finalCopy) {
+          finalCopy = d.finalCopy;
+        } else if (form.customCopy && form.customCopy.trim()) {
+          finalCopy = form.customCopy.trim();
+        } else {
+          finalCopy = ensureLeadingNossaPrefix(copySelection.finalCopy);
+        }
 
         if (Array.isArray(d.productLock) && d.productLock.length >= 2) {
           const rawLock = d.productLock
@@ -532,14 +538,17 @@ export async function runProdutos2Pipeline(params: {
   }
 
   // Checklist: garantir calibragem exata de caracteres (<=165 em 8s, <=235 em 10s), vocativo e prefixo de intro se selecionado
-  finalCopy = calibrateCopyToTargetWindow({
-    copy: finalCopy,
-    duration: form.duration,
-    isSameProductBankCopy: copySelection.isSameProductBankCopy,
-    clientGender: form.clientGender,
-    influencer: resolvedInfluencer,
-    useSpeechIntro: form.useSpeechIntro,
-  });
+  // 7. Calibrar e sanitizar a copy final (se for Banco de Copies)
+  if (form.copyEngine !== 'aurora_copy' && !(form.customCopy && form.customCopy.trim())) {
+    finalCopy = calibrateCopyToTargetWindow({
+      copy: finalCopy,
+      duration: form.duration,
+      isSameProductBankCopy: copySelection.isSameProductBankCopy,
+      clientGender: form.clientGender,
+      influencer: resolvedInfluencer,
+      useSpeechIntro: form.useSpeechIntro,
+    });
+  }
   finalCopy = applySpeechIntro(finalCopy, Boolean(form.useSpeechIntro));
 
   // Garantir que a última cena termine exatamente em 10.0 ou 8.0
@@ -635,8 +644,12 @@ export async function runProdutos2Pipeline(params: {
     influencerResolved: resolvedInfluencer,
     clientGender: form.clientGender,
     finalCopy: applySpeechIntro(finalCopy, Boolean(form.useSpeechIntro)),
-    copySourceLabel: copySelection.copySourceLabel,
-    copyId: copySelection.copyId,
+    copySourceLabel:
+      form.copyEngine === 'aurora_copy'
+        ? 'Aurora Copy (IA Criativa · Ficha Técnica)'
+        : copySelection.copySourceLabel,
+    copyId: form.copyEngine === 'aurora_copy' ? 'AURORA-01' : copySelection.copyId,
+    copyEngine: form.copyEngine || 'banco',
     productLock,
     avatarDescription,
     scenarioDescription,
