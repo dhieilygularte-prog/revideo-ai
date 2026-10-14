@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Copy,
   Check,
@@ -83,7 +83,146 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
   const [descriptionCopied, setDescriptionCopied] = useState(false);
   const [isExportingZip, setIsExportingZip] = useState(false);
 
-  // Ajuste do prompt com IA (Item 4 - idêntico ao Modo Ania)
+  // Trocar fala / Corrigir fala com Aurora Copy e Refazer Prompt
+  const [speechInput, setSpeechInput] = useState(result.finalCopy || '');
+  const [isGeneratingAuroraCopy, setIsGeneratingAuroraCopy] = useState(false);
+  const [isSpeechMicRecording, setIsSpeechMicRecording] = useState(false);
+  const [speechAppliedSuccess, setSpeechAppliedSuccess] = useState(false);
+  const speechRecRef = useRef<any>(null);
+  const speechStreamRef = useRef<MediaStream | null>(null);
+
+  useEffect(() => {
+    setSpeechInput(result.finalCopy || '');
+  }, [result.finalCopy]);
+
+  const stopSpeechMicrophone = () => {
+    if (speechRecRef.current) {
+      try {
+        speechRecRef.current.stop();
+      } catch {}
+      speechRecRef.current = null;
+    }
+    if (speechStreamRef.current) {
+      speechStreamRef.current.getTracks().forEach((track) => track.stop());
+      speechStreamRef.current = null;
+    }
+    setIsSpeechMicRecording(false);
+  };
+
+  const toggleSpeechMicrophone = async () => {
+    if (isSpeechMicRecording) {
+      stopSpeechMicrophone();
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      speechStreamRef.current = stream;
+
+      const SpeechRecognition =
+        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+      if (SpeechRecognition) {
+        const rec = new SpeechRecognition();
+        speechRecRef.current = rec;
+        rec.lang = 'pt-BR';
+        rec.continuous = true;
+        rec.interimResults = true;
+
+        const initialText = speechInput;
+
+        rec.onresult = (evt: any) => {
+          let transcript = '';
+          for (let i = 0; i < evt.results.length; i++) {
+            transcript += evt.results[i][0].transcript + ' ';
+          }
+          const combined = initialText
+            ? `${initialText.trim()} ${transcript.trim()}`
+            : transcript.trim();
+          setSpeechInput(combined);
+        };
+
+        rec.onerror = () => stopSpeechMicrophone();
+        rec.onend = () => stopSpeechMicrophone();
+        rec.start();
+        setIsSpeechMicRecording(true);
+      }
+    } catch (err) {
+      console.warn('Erro ao acessar microfone para fala:', err);
+      stopSpeechMicrophone();
+    }
+  };
+
+  const applyNewSpeech = (newSpeech: string, isAuroraCopy = false) => {
+    const trimmed = newSpeech.trim();
+    if (!trimmed) return;
+
+    onUpdateResult((prev) => {
+      if (!prev) return null;
+
+      let updatedPrompt = prev.veoPrompt;
+      const speechRegex = /(FALAR EXATAMENTE UMA VEZ:\s*\n)("[^"]*"|'[^']*'|[^\n]+)/i;
+      if (speechRegex.test(updatedPrompt)) {
+        updatedPrompt = updatedPrompt.replace(speechRegex, `$1"${trimmed}"`);
+      } else {
+        updatedPrompt = buildProdutos2VeoPrompt({
+          productName: prev.productName,
+          duration: prev.duration,
+          speechMode: prev.speechMode,
+          finalCopy: trimmed,
+          influencerResolved: prev.influencerResolved,
+          framing: prev.framing,
+          productLock: prev.productLock,
+          avatarDescription: prev.avatarDescription,
+          scenarioDescription: prev.scenarioDescription,
+          scenes: prev.scenes,
+          variations: prev.variations,
+        });
+      }
+
+      return {
+        ...prev,
+        finalCopy: trimmed,
+        copySourceLabel: isAuroraCopy ? 'Criada por IA (Aurora Copy)' : 'Personalizada / Editada',
+        veoPrompt: updatedPrompt,
+      };
+    });
+
+    setSpeechAppliedSuccess(true);
+    setTimeout(() => setSpeechAppliedSuccess(false), 3000);
+  };
+
+  const handleGenerateAuroraCopy = async () => {
+    setIsGeneratingAuroraCopy(true);
+    try {
+      const res = await fetch('/api/produtos2-planning', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'generate_aurora_copy',
+          productName: result.productName,
+          productInfo: result.productInfo || result.productName,
+          duration: result.duration,
+          aiProfile,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success && data.auroraCopy) {
+        setSpeechInput(data.auroraCopy);
+        applyNewSpeech(data.auroraCopy, true);
+      } else {
+        alert(`Erro ao gerar fala com Aurora Copy: ${data.error || 'Erro desconhecido'}`);
+      }
+    } catch (err: any) {
+      console.error('Erro ao chamar Aurora Copy:', err);
+      alert(`Falha de conexão com a Aurora Copy: ${err?.message || err}`);
+    } finally {
+      setIsGeneratingAuroraCopy(false);
+    }
+  };
+
+  // Ajuste do prompt com IA (Refinamento geral de prompt / cenas)
   const [promptCorrection, setPromptCorrection] = useState('');
   const [isRefiningPrompt, setIsRefiningPrompt] = useState(false);
   const [isPromptVoiceRecording, setIsPromptVoiceRecording] = useState(false);
@@ -128,22 +267,17 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
         rec.continuous = true;
         rec.interimResults = true;
 
-        rec.onresult = (evt: any) => {
-          let interim = '';
-          let final = '';
-          for (let i = evt.resultIndex; i < evt.results.length; i++) {
-            const transcript = evt.results[i][0].transcript;
-            if (evt.results[i].isFinal) {
-              final += transcript + ' ';
-            } else {
-              interim += transcript;
-            }
-          }
+        const initialText = promptCorrection;
 
-          if (final) {
-            setPromptCorrection((prev) => (prev ? `${prev} ${final}` : final).trim());
+        rec.onresult = (evt: any) => {
+          let transcript = '';
+          for (let i = 0; i < evt.results.length; i++) {
+            transcript += evt.results[i][0].transcript + ' ';
           }
-          setInterimPromptCorrection(interim);
+          const combined = initialText
+            ? `${initialText.trim()} ${transcript.trim()}`
+            : transcript.trim();
+          setPromptCorrection(combined);
         };
 
         rec.onerror = () => {
@@ -161,6 +295,13 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
       stopPromptVoiceRecording();
     }
   };
+
+  useEffect(() => {
+    return () => {
+      stopSpeechMicrophone();
+      stopPromptVoiceRecording();
+    };
+  }, []);
 
   const handleRefinePrompt = async () => {
     const correction = (promptCorrection || interimPromptCorrection).trim();
@@ -273,7 +414,7 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
           <div className="flex items-center gap-2 flex-wrap">
             <Sparkles className="w-4 h-4 text-emerald-400" />
             <span className="text-xs sm:text-sm font-black text-white uppercase tracking-wide">
-              Copy Final Usada no Criativo · Editar Fala
+              Copy Final Usada no Criativo
             </span>
             <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-[11px] font-bold text-emerald-200">
               {result.copySourceLabel}
@@ -309,15 +450,111 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
           </button>
         </div>
 
-        <textarea
-          rows={2}
-          value={result.finalCopy}
-          onChange={(e) => handleEditCopyLive(e.target.value)}
-          className="w-full p-3 rounded-xl bg-zinc-950 border border-zinc-700/80 text-xs sm:text-sm text-emerald-100 font-medium leading-relaxed focus:outline-none focus:border-emerald-400 resize-none"
-        />
-        <p className="text-[11px] text-zinc-400">
-          * Se você editar qualquer palavra desta fala acima, o prompt do Veo 3 abaixo é atualizado automaticamente em tempo real.
+        <div className="p-3.5 rounded-xl bg-zinc-950 border border-zinc-700/80 text-xs sm:text-sm text-emerald-100 font-medium leading-relaxed select-text">
+          {result.finalCopy}
+        </div>
+      </div>
+
+      {/* ===================================================================== */}
+      {/* NOVO CARD: TROCAR FALA / REFAZER PROMPT COM IA OU AURORA COPY        */}
+      {/* ===================================================================== */}
+      <div className="p-4 sm:p-5 rounded-2xl bg-zinc-900/95 border border-purple-500/40 shadow-xl space-y-3.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Edit3 className="w-4 h-4 text-purple-400" />
+            <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-wide">
+              Trocar Fala · Ajustar com IA
+            </h3>
+          </div>
+
+          {speechAppliedSuccess && (
+            <span className="px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-xs font-bold text-emerald-300 flex items-center gap-1.5 animate-fade-in">
+              <Check className="w-3.5 h-3.5 text-emerald-400" />
+              Prompt do Veo 3 e fala atualizados com sucesso!
+            </span>
+          )}
+        </div>
+
+        <p className="text-xs text-zinc-400 leading-relaxed">
+          Digite a nova fala, use o microfone para ditar ou clique em{' '}
+          <strong className="text-purple-300">"Corrigir fala com Aurora Copy"</strong> para gerar uma copy nova de alta conversão. Em seguida, clique em{' '}
+          <strong className="text-emerald-300">"Refazer Prompt"</strong> para atualizar o prompt do Veo 3.
         </p>
+
+        <div className="relative">
+          <textarea
+            rows={3}
+            value={speechInput}
+            onChange={(e) => setSpeechInput(e.target.value)}
+            placeholder="Digite aqui a nova fala do vídeo, use o microfone ou clique em 'Corrigir fala com Aurora Copy'..."
+            className="w-full p-3.5 pr-12 rounded-xl bg-zinc-950 border border-zinc-700 text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-purple-400 leading-relaxed font-sans shadow-inner resize-y"
+          />
+
+          {/* Botão Microfone no mesmo padrão da aba Adicionar Copy Personalizada */}
+          <button
+            type="button"
+            onClick={toggleSpeechMicrophone}
+            className={`absolute right-2.5 top-2.5 p-2 rounded-lg text-xs transition-all cursor-pointer ${
+              isSpeechMicRecording
+                ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
+                : 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 border border-zinc-600'
+            }`}
+            title={isSpeechMicRecording ? 'Parar gravação' : 'Ditar fala por voz'}
+          >
+            {isSpeechMicRecording ? (
+              <Square className="w-4 h-4 fill-white" />
+            ) : (
+              <Mic className="w-4 h-4 text-zinc-300" />
+            )}
+          </button>
+        </div>
+
+        {isSpeechMicRecording && (
+          <p className="text-[11px] text-rose-400 flex items-center gap-1.5 font-semibold animate-pulse">
+            <span className="w-2 h-2 rounded-full bg-rose-500" />
+            Gravando sua fala... fale normalmente e clique no botão vermelho para parar.
+          </p>
+        )}
+
+        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1">
+          <div className="text-[11px] font-mono text-zinc-400">
+            {speechInput.trim().length} caracteres ({result.duration}s · máx.{' '}
+            {result.duration === 8 ? 165 : 235})
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Botão Corrigir fala com Aurora Copy */}
+            <button
+              type="button"
+              onClick={handleGenerateAuroraCopy}
+              disabled={isGeneratingAuroraCopy}
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-purple-950/40"
+            >
+              {isGeneratingAuroraCopy ? (
+                <>
+                  <RotateCcw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Aurora Copy criando fala...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3.5 h-3.5 text-purple-200" />
+                  <span>Corrigir fala com Aurora Copy</span>
+                </>
+              )}
+            </button>
+
+            {/* Botão Refazer Prompt */}
+            <button
+              type="button"
+              onClick={() => applyNewSpeech(speechInput, false)}
+              disabled={!speechInput.trim()}
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-emerald-950/40"
+            >
+              <Wand2 className="w-3.5 h-3.5" />
+              <span>Refazer Prompt</span>
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* ===================================================================== */}

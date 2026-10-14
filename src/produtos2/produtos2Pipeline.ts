@@ -633,6 +633,7 @@ export async function runProdutos2Pipeline(params: {
 
   return {
     productName: finalProductName,
+    productInfo: form.productInfo,
     detectedNiche,
     subMode: form.subMode,
     maleSubOption: form.maleSubOption,

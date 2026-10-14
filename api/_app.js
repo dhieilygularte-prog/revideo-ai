@@ -3078,6 +3078,7 @@ REGRA FUNDAMENTAL E ABSOLUTA:
 app.post("/api/produtos2-planning", async (req, res) => {
   try {
     const {
+      action,
       productName,
       productInfo,
       niche,
@@ -3097,6 +3098,73 @@ app.post("/api/produtos2-planning", async (req, res) => {
       variations = [],
       productPhotosBase64 = []
     } = req.body;
+    if (action === "generate_aurora_copy") {
+      try {
+        const client = openAIProvider.getClient();
+        if (!client) {
+          return res.status(400).json({ success: false, error: "Provedor OpenAI n\xE3o configurado." });
+        }
+        const maxLimit = duration === 8 ? 165 : 235;
+        const auroraSystem = `Voc\xEA \xE9 a AURORACOPY, uma especialista em copy curta para v\xEDdeos de TikTok Shop Brasil.
+Sua fun\xE7\xE3o \xE9 transformar as INFORMA\xC7\xD5ES DO PRODUTO fornecidas pelo usu\xE1rio em uma \xFAnica fala de alta reten\xE7\xE3o, natural, espec\xEDfica e persuasiva, pronta para ser usada como narra\xE7\xE3o de v\xEDdeo.
+
+OBJETIVO PRINCIPAL:
+Criar uma fala que pare o scroll, desperte curiosidade, valorize o principal benef\xEDcio do produto e fa\xE7a a pessoa querer continuar assistindo ou conhecer o item.
+
+ESTILO PADR\xC3O:
+Use prioritariamente o formato DESCOBERTA + DEMONSTRA\xC7\xC3O.
+A sensa\xE7\xE3o deve ser de uma pessoa brasileira mostrando espontaneamente algo interessante que acabou de descobrir, testar ou perceber.
+A fala nunca deve parecer propaganda tradicional, locu\xE7\xE3o institucional, descri\xE7\xE3o de marketplace ou texto corporativo.
+
+IGNORE COMO ARGUMENTO DE VENDA:
+Pre\xE7o, desconto, cupom, frete gr\xE1tis, parcelamento, promo\xE7\xE3o financeira. Mesmo que estejam presentes, n\xE3o baseie a copy neles.
+
+BENEF\xCDCIO:
+Selecione o benef\xEDcio com maior potencial de gerar curiosidade, ser demonstrado e produzir resultado visual concreto.
+
+ESTRUTURA DA FALA:
+1. HOOK FORTE (abrir com surpresa, curiosidade ou rea\xE7\xE3o espont\xE2nea).
+2. DESCOBERTA (sensa\xE7\xE3o de novidade ou teste real).
+3. BENEF\xCDCIO PRINCIPAL.
+4. DEMONSTRA\xC7\xC3O (combinar com produto sendo mostrado em uso).
+5. CURIOSIDADE OU DESEJO.
+6. CTA LEVE ("d\xE1 uma olhada nisso", "olha como funciona", "eu deixei aqui", "vale a pena ver", "clica pra ver").
+
+LIMITE R\xCDGIDO DE CARACTERES:
+No M\xC1XIMO ${maxLimit} caracteres contando espa\xE7os e pontua\xE7\xE3o.
+Faixa preferencial: ${duration === 8 ? "130 a 160" : "190 a 230"} caracteres.
+Antes de responder: conte os caracteres; se ultrapassar ${maxLimit}, reescreva; nunca corte a frase no meio; nunca entregue texto incompleto.
+
+LINGUAGEM:
+Portugu\xEAs do Brasil oral, simples, espont\xE2neo, natural. Varie os hooks (n\xE3o comece sempre com "Gente" ou "Olha isso").
+Use detalhes reais presentes nas informa\xE7\xF5es do produto. NUNCA invente caracter\xEDsticas.
+
+FORMATO DE SA\xCDDA:
+Entregue SOMENTE a fala final, sem aspas, sem t\xEDtulos, sem explica\xE7\xF5es, sem contagem de caracteres.`;
+        const auroraUser = `INFORMA\xC7\xD5ES DO PRODUTO:
+${productInfo || productName}
+
+NOME DO PRODUTO: ${productName}
+${additionalInstructions ? `INSTRU\xC7\xD5ES ADICIONAIS: ${additionalInstructions}` : ""}
+DURA\xC7\xC3O M\xC1XIMA DO V\xCDDEO: ${duration || 10} segundos. Limite estrito: at\xE9 ${maxLimit} caracteres.`;
+        const comp = await client.chat.completions.create({
+          model: OPENAI_BRAIN_MODEL,
+          messages: [
+            { role: "system", content: auroraSystem },
+            { role: "user", content: auroraUser }
+          ],
+          temperature: 0.7
+        });
+        let rawSpeech = comp.choices[0]?.message?.content?.trim() || "";
+        rawSpeech = rawSpeech.replace(/^["'«“]|["'»”]$/g, "").trim();
+        if (rawSpeech.length > maxLimit) {
+          rawSpeech = rawSpeech.slice(0, maxLimit).replace(/[,;:\s]+$/, "") + "!";
+        }
+        return res.json({ success: true, auroraCopy: rawSpeech });
+      } catch (err) {
+        return res.status(500).json({ success: false, error: err?.message || "Erro ao gerar Aurora Copy" });
+      }
+    }
     let activeCopy = baseCopy;
     let copySourceLabel = isCustomCopy ? "Copy Personalizada" : "Banco de Copies (Padr\xE3o)";
     if (!isCustomCopy && copyEngine === "aurora_copy") {

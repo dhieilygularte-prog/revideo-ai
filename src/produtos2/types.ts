@@ -103,6 +103,7 @@ export interface Produtos2StoryboardAudit {
 
 export interface Produtos2ResultState {
   productName: string;
+  productInfo?: string;
   detectedNiche: string;
   subMode: Produtos2SubMode;
   maleSubOption: Produtos2MaleSubOption;

@@ -124,27 +124,12 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
     const specs = analyzeProductInfoForProdutos2(text);
 
     onChange((prev) => {
-      // Item 1: Se o texto mencionar calçado, tênis, sapato ou bota, muda automaticamente para a aba calçados
-      // Item 2: Se o usuário já estiver na aba vestuário masculino, NUNCA reverte para produto geral!
-      let nextSubMode = prev.subMode;
-      let nextMaleSubOption = prev.maleSubOption;
-
-      if ((specs as any).isFootwear || specs.maleSubOption === 'calcados') {
-        nextSubMode = 'vestuario_masculino';
-        nextMaleSubOption = 'calcados';
-      } else if (specs.subMode === 'vestuario_masculino') {
-        nextSubMode = 'vestuario_masculino';
-        nextMaleSubOption = specs.maleSubOption || 'calcados';
-      } else if (prev.subMode === 'vestuario_masculino') {
-        // NUNCA reverte para produtos_geral se já estiver em vestuário masculino!
-        nextSubMode = 'vestuario_masculino';
-        if (specs.maleSubOption) {
-          nextMaleSubOption = specs.maleSubOption;
-        }
-      } else {
-        nextSubMode = specs.subMode;
-        nextMaleSubOption = specs.maleSubOption;
-      }
+      // Decisão manual do usuário (Item 2): NUNCA muda o subMode automaticamente.
+      // Se o usuário selecionou Produtos Geral, fica Produtos Geral. Se selecionou Vestuário, fica Vestuário.
+      const nextSubMode = prev.subMode;
+      const nextMaleSubOption = prev.subMode === 'vestuario_masculino'
+        ? (specs.maleSubOption || prev.maleSubOption)
+        : prev.maleSubOption;
 
       // Item 3: Sempre que cola novas informações do produto, extrai e preenche o nome do produto
       const newProductName = specs.shortName || prev.productName;
