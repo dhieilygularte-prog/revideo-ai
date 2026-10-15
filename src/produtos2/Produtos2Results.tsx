@@ -381,6 +381,36 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
     };
   }, []);
 
+  // Referência e efeito de rolagem automática suave até a imagem do storyboard gerada
+  const storyboardSectionRef = useRef<HTMLDivElement>(null);
+  const prevImgUrlRef = useRef<string | undefined>(undefined);
+  const prevIsRegenRef = useRef<boolean>(Boolean(result.isRegeneratingStoryboard));
+
+  useEffect(() => {
+    const hasImageNow = Boolean(result.storyboardImageUrl);
+    const hadNoImageBefore = !prevImgUrlRef.current;
+    const imageChanged = Boolean(
+      result.storyboardImageUrl && result.storyboardImageUrl !== prevImgUrlRef.current
+    );
+    const finishedRegenerating = prevIsRegenRef.current && !result.isRegeneratingStoryboard;
+
+    if (hasImageNow && (hadNoImageBefore || imageChanged || finishedRegenerating)) {
+      const timer = setTimeout(() => {
+        storyboardSectionRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+      }, 300);
+
+      prevImgUrlRef.current = result.storyboardImageUrl;
+      prevIsRegenRef.current = Boolean(result.isRegeneratingStoryboard);
+      return () => clearTimeout(timer);
+    }
+
+    prevImgUrlRef.current = result.storyboardImageUrl;
+    prevIsRegenRef.current = Boolean(result.isRegeneratingStoryboard);
+  }, [result.storyboardImageUrl, result.isRegeneratingStoryboard]);
+
   const handleRefinePrompt = async () => {
     const correction = (promptCorrection || interimPromptCorrection).trim();
     if (!correction) return;
@@ -650,7 +680,10 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
       {/* ===================================================================== */}
       {/* LADO A LADO: IMAGEM DO STORYBOARD (1080x1920) + PROMPT DO VEO 3       */}
       {/* ===================================================================== */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div
+        ref={storyboardSectionRef}
+        className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start scroll-mt-6"
+      >
         {/* COLUNA ESQUERDA: IMAGEM DO STORYBOARD 9 CENAS (1080x1920) + FISCALIZAÇÃO */}
         <div className="lg:col-span-5 p-4 rounded-2xl bg-zinc-900/90 border border-zinc-800 shadow-xl space-y-3.5">
           <div className="flex items-center justify-between gap-2">
