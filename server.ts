@@ -2971,6 +2971,7 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
             productPhotoBase64: photosList[0] || '',
             productPhotosBase64: photosList,
             modelReferenceBase64: undefined, // Sempre usa as fotos reais do produto como referência primária no storyboard 3x3
+            referenceFrameBase64: previousStoryboardImageBase64 || undefined,
             variationName: productName,
             productType: productName,
             additionalInstructions: [additionalInstructions, correctionPrompt].filter(Boolean).join(' | '),
@@ -3029,7 +3030,7 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
           if (parsedPrev) {
             parts.push({ inlineData: parsedPrev });
             parts.push({
-              text: `[STORYBOARD ANTERIOR PARA CORREÇÃO DOS QUADRANTES COM ERRO]: Mantenha os quadros que já estavam corretos e CORRIJA rigorosamente os quadros apontados na instrução de correção para que o produto (incluindo sua logomarca original do fabricante e a cor correta da variação) fique 100% idêntico às fotos reais de referência.`,
+              text: `[STORYBOARD ANTERIOR ENVIADO COMO REFERÊNCIA DE BASE]: Esta imagem acima é o storyboard 3x3 gerado anteriormente. REGRA OBRIGATÓRIA: Mantenha RIGOROSAMENTE IDÊNTICOS todos os quadros que não foram solicitados para alteração. Altere EXCLUSIVAMENTE os quadros apontados na instrução de correção (especialmente as ordens do usuário com prioridade soberana), aplicando a modificação solicitada mantendo as demais cenas iguais.`,
             });
           }
         }

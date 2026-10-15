@@ -625,14 +625,21 @@ Retorne estritamente um JSON estruturado:
 
 ÚNICA ALTERAÇÃO: substitua a roupa/produto (${productType}) que ela veste por uma peça com exatamente estas características (variante "${variationName}"): ${garmentSpec || `cor ${variationName}`}.
 Mantenha o mesmo modelo/corte e caimento da peça atual; troque somente cores (peça principal, debruns/acabamentos, botões) e detalhes conforme descrito, preservando fielmente qualquer logomarca ou estampa original do fabricante presente na peça. Tudo que não for a peça permanece pixel a pixel igual à imagem enviada. Proibido adicionar textos flutuantes, logos de redes sociais (TikTok/@) ou marcas d'água externas.`;
+      } else if (referenceFrameBase64) {
+        try {
+          baseImageFile = toImageFile(referenceFrameBase64, 'previous_storyboard');
+        } catch {
+          baseImageFile = imageFiles[0] || null;
+        }
       } else if (imageFiles.length > 0 && !isCloneMode) {
         baseImageFile = imageFiles[0];
       }
 
       // Se temos arquivo de imagem de base válido para edição, usamos client.images.edit
       if (baseImageFile) {
-        const editImageInput: any =
-          !modelReferenceBase64 && imageFiles.length > 1 ? imageFiles : baseImageFile;
+        const editImageInput: any = referenceFrameBase64
+          ? baseImageFile
+          : (!modelReferenceBase64 && imageFiles.length > 1 ? imageFiles : baseImageFile);
         const editResponse = await client.images.edit({
           model: OPENAI_IMAGE_MODEL,
           image: editImageInput,

@@ -760,11 +760,28 @@ export async function regenerateProdutos2Storyboard(params: {
   });
   const allPhotos: string[] = [...prioritizedPhotos, ...otherPhotos];
 
-  // Combina a correção automática dos quadrantes que deram erro com qualquer instrução adicional
+  // Combina a ordem mandatória do usuário com qualquer observação secundária de auditoria
   const auditCorrection = result.storyboardAudit?.correctionPrompt || '';
-  const combinedCorrection = [customCorrection?.trim(), auditCorrection.trim()]
-    .filter(Boolean)
-    .join('\n');
+  let combinedCorrection = '';
+
+  if (customCorrection && customCorrection.trim()) {
+    const trimmedCustom = customCorrection.trim();
+    combinedCorrection = `========================
+ORDEM MANDATÓRIA DO USUÁRIO (PRIORIDADE MÁXIMA E SOBERANA):
+"${trimmedCustom}"
+
+REGRAS ESTRITAS DE PRESERVAÇÃO E EXECUÇÃO:
+1. O QUE O USUÁRIO DETERMINOU ACIMA É A PRIORIDADE MÁXIMA E INEGOCIÁVEL.
+2. PRESERVAÇÃO RIGOROSA DOS DEMAIS QUADROS: Se o usuário solicitou refazer, trocar ou modificar quadros específicos (ex: "refaz a imagem 5 do storyboard", "refaz a imagem 1 do storyboard e mantém as outras iguais", etc.), você DEVE OBRIGATORIAMENTE MANTER RIGOROSAMENTE IDÊNTICOS TODOS OS DEMAIS QUADROS do storyboard anterior enviado como referência.
+3. MODIFICAÇÃO FOCADA: Altere EXCLUSIVAMENTE o(s) quadro(s) indicado(s) pelo usuário, aplicando com fidelidade cirúrgica a alteração exata que ele pediu.
+4. Mantenha as mesmas pessoas, poses, cenários, iluminação e cores nos quadros que o usuário NÃO mandou alterar.
+========================`;
+    if (auditCorrection.trim()) {
+      combinedCorrection += `\n\n[Observação secundária de auditoria das fotos reais do produto, para aplicar somente onde não conflitar com a ordem soberana do usuário]:\n${auditCorrection.trim()}`;
+    }
+  } else {
+    combinedCorrection = auditCorrection.trim();
+  }
 
   const genRes = await requestStoryboardImageGeneration({
     prompt: result.storyboardPrompt,

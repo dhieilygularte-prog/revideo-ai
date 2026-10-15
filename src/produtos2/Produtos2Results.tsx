@@ -300,10 +300,84 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
     }
   };
 
+  // Ajuste do Storyboard por voz ou texto (Instrução direta do usuário para alterar quadros específicos)
+  const [storyboardCorrection, setStoryboardCorrection] = useState('');
+  const [isStoryboardVoiceRecording, setIsStoryboardVoiceRecording] = useState(false);
+  const [interimStoryboardCorrection, setInterimStoryboardCorrection] = useState('');
+  const storyboardRecRef = useRef<any>(null);
+  const storyboardStreamRef = useRef<MediaStream | null>(null);
+
+  const stopStoryboardVoiceRecording = () => {
+    if (storyboardRecRef.current) {
+      try {
+        storyboardRecRef.current.stop();
+      } catch {}
+      storyboardRecRef.current = null;
+    }
+    if (storyboardStreamRef.current) {
+      storyboardStreamRef.current.getTracks().forEach((t) => t.stop());
+      storyboardStreamRef.current = null;
+    }
+    setIsStoryboardVoiceRecording(false);
+  };
+
+  const toggleStoryboardVoiceRecording = async () => {
+    if (isStoryboardVoiceRecording) {
+      stopStoryboardVoiceRecording();
+      return;
+    }
+
+    setIsStoryboardVoiceRecording(true);
+    setInterimStoryboardCorrection('');
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      storyboardStreamRef.current = stream;
+
+      const SpeechRecognition =
+        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+      if (SpeechRecognition) {
+        const rec = new SpeechRecognition();
+        storyboardRecRef.current = rec;
+        rec.lang = 'pt-BR';
+        rec.continuous = true;
+        rec.interimResults = true;
+
+        const initialText = storyboardCorrection;
+
+        rec.onresult = (evt: any) => {
+          let transcript = '';
+          for (let i = 0; i < evt.results.length; i++) {
+            transcript += evt.results[i][0].transcript + ' ';
+          }
+          const combined = initialText
+            ? `${initialText.trim()} ${transcript.trim()}`
+            : transcript.trim();
+          setStoryboardCorrection(combined);
+        };
+
+        rec.onerror = () => {
+          stopStoryboardVoiceRecording();
+        };
+
+        rec.onend = () => {
+          stopStoryboardVoiceRecording();
+        };
+
+        rec.start();
+      }
+    } catch (err) {
+      console.warn('Erro ao acessar microfone para alteração do storyboard:', err);
+      stopStoryboardVoiceRecording();
+    }
+  };
+
   useEffect(() => {
     return () => {
       stopSpeechMicrophone();
       stopPromptVoiceRecording();
+      stopStoryboardVoiceRecording();
     };
   }, []);
 
@@ -591,7 +665,7 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
 
             <button
               type="button"
-              onClick={() => onRegenerateStoryboard()}
+              onClick={() => onRegenerateStoryboard(storyboardCorrection.trim() || undefined)}
               disabled={Boolean(result.isRegeneratingStoryboard)}
               className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 border border-zinc-700 text-xs font-bold text-zinc-200 flex items-center gap-1.5 transition-all cursor-pointer"
               title="Corrigir e gerar novamente a imagem do storyboard"
@@ -666,7 +740,7 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
                 </p>
                 <button
                   type="button"
-                  onClick={() => onRegenerateStoryboard()}
+                  onClick={() => onRegenerateStoryboard(storyboardCorrection.trim() || undefined)}
                   className="mt-2 px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold cursor-pointer"
                 >
                   Tentar Novamente
@@ -678,7 +752,7 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
           {/* ================================================================= */}
           {/* PAINEL DE FISCALIZAÇÃO DE FIDELIDADE DOS 9 QUADRANTES (3x3)       */}
           {/* ================================================================= */}
-          {audit && (
+          {audit ? (
             <div className={`p-3.5 rounded-xl border space-y-3 ${auditStyles.box}`}>
               {/* Cabeçalho com Nota Geral e Semáforo de 4 Cores */}
               <div className="flex items-center justify-between gap-2">
@@ -759,13 +833,77 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
                 <span className="text-rose-300 font-bold">● &lt;60% Vermelho</span>
               </div>
 
-              {/* Botão de Refazer Inteligente (corrige os frames apontados com erro) */}
+              {/* CAMPO DE ALTERAÇÃO PERSONALIZADA DO STORYBOARD (VOZ OU TEXTO) */}
+              <div className="pt-2.5 border-t border-white/10 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-[11px] font-black uppercase tracking-wider text-white flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Deseja mudar alguma imagem do Storyboard? (Voz ou Texto)</span>
+                  </label>
+                  {storyboardCorrection && (
+                    <button
+                      type="button"
+                      onClick={() => setStoryboardCorrection('')}
+                      className="text-[10px] text-zinc-400 hover:text-rose-400 font-bold transition-colors cursor-pointer"
+                    >
+                      Limpar
+                    </button>
+                  )}
+                </div>
+
+                <div className="relative">
+                  <textarea
+                    rows={2}
+                    value={storyboardCorrection}
+                    onChange={(e) => setStoryboardCorrection(e.target.value)}
+                    placeholder='Dite ou digite o que mudar (ex: "Refaz a imagem 5 do storyboard e mantém as outras iguais" ou "Na imagem 1 coloque o homem sorrindo com o produto")...'
+                    className="w-full p-2.5 pr-11 bg-black/40 border border-white/15 focus:border-amber-400/80 rounded-xl text-xs text-white placeholder-zinc-400/80 focus:outline-none resize-none leading-relaxed transition-all shadow-inner"
+                  />
+
+                  {/* Botão de microfone para gravação de voz */}
+                  <button
+                    type="button"
+                    onClick={toggleStoryboardVoiceRecording}
+                    className={`absolute right-2 top-2.5 p-2 rounded-lg transition-all cursor-pointer shadow-md flex items-center justify-center ${
+                      isStoryboardVoiceRecording
+                        ? 'bg-rose-500 text-white animate-pulse'
+                        : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white border border-white/10'
+                    }`}
+                    title={
+                      isStoryboardVoiceRecording
+                        ? 'Parar gravação de voz'
+                        : 'Ditar mudança do storyboard por voz'
+                    }
+                  >
+                    {isStoryboardVoiceRecording ? (
+                      <Square className="w-3.5 h-3.5 text-white fill-white" />
+                    ) : (
+                      <Mic className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                </div>
+
+                {isStoryboardVoiceRecording && (
+                  <p className="text-[10px] text-rose-300 font-bold animate-pulse flex items-center gap-1.5 pl-0.5">
+                    <span className="w-2 h-2 rounded-full bg-rose-400 inline-block animate-ping" />
+                    Gravando voz... Fale a mudança desejada e clique no botão vermelho para parar.
+                  </p>
+                )}
+
+                <p className="text-[10px] text-zinc-400/90 leading-tight">
+                  <span className="text-amber-300 font-bold">Prioridade Máxima:</span> A IA manterá todas as outras imagens rigorosamente iguais e alterará apenas o que você solicitar.
+                </p>
+              </div>
+
+              {/* Botão de Refazer Inteligente (corrige os frames apontados com erro ou com a instrução do usuário) */}
               <button
                 type="button"
-                onClick={() => onRegenerateStoryboard()}
+                onClick={() => onRegenerateStoryboard(storyboardCorrection.trim() || undefined)}
                 disabled={Boolean(result.isRegeneratingStoryboard)}
                 className={`w-full py-2.5 px-3 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md disabled:opacity-50 ${
-                  problemQuadrants.length > 0
+                  storyboardCorrection.trim()
+                    ? 'bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-zinc-950 font-black'
+                    : problemQuadrants.length > 0
                     ? 'bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-zinc-950'
                     : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-100 border border-zinc-700'
                 }`}
@@ -775,7 +913,9 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
                 />
                 <span>
                   {result.isRegeneratingStoryboard
-                    ? 'Refazendo e Corrigindo Cenas...'
+                    ? 'Refazendo Storyboard com sua Alteração...'
+                    : storyboardCorrection.trim()
+                    ? 'Refazer Storyboard com Minha Alteração'
                     : problemQuadrants.length > 0
                     ? `Refazer Corrigindo Cena${problemQuadrants.length > 1 ? 's' : ''} ${problemQuadrants
                         .map((q) => q.sceneNumber)
@@ -784,7 +924,92 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
                 </span>
               </button>
             </div>
-          )}
+          ) : result.storyboardImageUrl ? (
+            <div className="p-3.5 rounded-xl border border-zinc-800 bg-zinc-900/90 space-y-3 shadow-lg">
+              {/* CAMPO DE ALTERAÇÃO PERSONALIZADA DO STORYBOARD (VOZ OU TEXTO) */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-[11px] font-black uppercase tracking-wider text-white flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Deseja mudar alguma imagem do Storyboard? (Voz ou Texto)</span>
+                  </label>
+                  {storyboardCorrection && (
+                    <button
+                      type="button"
+                      onClick={() => setStoryboardCorrection('')}
+                      className="text-[10px] text-zinc-400 hover:text-rose-400 font-bold transition-colors cursor-pointer"
+                    >
+                      Limpar
+                    </button>
+                  )}
+                </div>
+
+                <div className="relative">
+                  <textarea
+                    rows={2}
+                    value={storyboardCorrection}
+                    onChange={(e) => setStoryboardCorrection(e.target.value)}
+                    placeholder='Dite ou digite o que mudar (ex: "Refaz a imagem 5 do storyboard e mantém as outras iguais" ou "Na imagem 1 coloque o homem sorrindo com o produto")...'
+                    className="w-full p-2.5 pr-11 bg-black/40 border border-white/15 focus:border-amber-400/80 rounded-xl text-xs text-white placeholder-zinc-400/80 focus:outline-none resize-none leading-relaxed transition-all shadow-inner"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={toggleStoryboardVoiceRecording}
+                    className={`absolute right-2 top-2.5 p-2 rounded-lg transition-all cursor-pointer shadow-md flex items-center justify-center ${
+                      isStoryboardVoiceRecording
+                        ? 'bg-rose-500 text-white animate-pulse'
+                        : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white border border-white/10'
+                    }`}
+                    title={
+                      isStoryboardVoiceRecording
+                        ? 'Parar gravação de voz'
+                        : 'Ditar mudança do storyboard por voz'
+                    }
+                  >
+                    {isStoryboardVoiceRecording ? (
+                      <Square className="w-3.5 h-3.5 text-white fill-white" />
+                    ) : (
+                      <Mic className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                </div>
+
+                {isStoryboardVoiceRecording && (
+                  <p className="text-[10px] text-rose-300 font-bold animate-pulse flex items-center gap-1.5 pl-0.5">
+                    <span className="w-2 h-2 rounded-full bg-rose-400 inline-block animate-ping" />
+                    Gravando voz... Fale a mudança desejada e clique no botão vermelho para parar.
+                  </p>
+                )}
+
+                <p className="text-[10px] text-zinc-400/90 leading-tight">
+                  <span className="text-amber-300 font-bold">Prioridade Máxima:</span> A IA manterá todas as outras imagens rigorosamente iguais e alterará apenas o que você solicitar.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => onRegenerateStoryboard(storyboardCorrection.trim() || undefined)}
+                disabled={Boolean(result.isRegeneratingStoryboard)}
+                className={`w-full py-2.5 px-3 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md disabled:opacity-50 ${
+                  storyboardCorrection.trim()
+                    ? 'bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-zinc-950 font-black'
+                    : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-100 border border-zinc-700'
+                }`}
+              >
+                <RefreshCw
+                  className={`w-3.5 h-3.5 ${result.isRegeneratingStoryboard ? 'animate-spin' : ''}`}
+                />
+                <span>
+                  {result.isRegeneratingStoryboard
+                    ? 'Refazendo Storyboard com sua Alteração...'
+                    : storyboardCorrection.trim()
+                    ? 'Refazer Storyboard com Minha Alteração'
+                    : 'Refazer Imagem do Storyboard'}
+                </span>
+              </button>
+            </div>
+          ) : null}
         </div>
 
         {/* COLUNA DIREITA: PROMPT COMPLETO DO VEO 3 (Fica com fundo azul ao copiar!) */}

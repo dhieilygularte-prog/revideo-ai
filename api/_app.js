@@ -956,11 +956,17 @@ ${prompt}` : prompt;
 
 \xDANICA ALTERA\xC7\xC3O: substitua a roupa/produto (${productType}) que ela veste por uma pe\xE7a com exatamente estas caracter\xEDsticas (variante "${variationName}"): ${garmentSpec || `cor ${variationName}`}.
 Mantenha o mesmo modelo/corte e caimento da pe\xE7a atual; troque somente cores (pe\xE7a principal, debruns/acabamentos, bot\xF5es) e detalhes conforme descrito, preservando fielmente qualquer logomarca ou estampa original do fabricante presente na pe\xE7a. Tudo que n\xE3o for a pe\xE7a permanece pixel a pixel igual \xE0 imagem enviada. Proibido adicionar textos flutuantes, logos de redes sociais (TikTok/@) ou marcas d'\xE1gua externas.`;
+      } else if (referenceFrameBase64) {
+        try {
+          baseImageFile = toImageFile(referenceFrameBase64, "previous_storyboard");
+        } catch {
+          baseImageFile = imageFiles[0] || null;
+        }
       } else if (imageFiles.length > 0 && !isCloneMode) {
         baseImageFile = imageFiles[0];
       }
       if (baseImageFile) {
-        const editImageInput = !modelReferenceBase64 && imageFiles.length > 1 ? imageFiles : baseImageFile;
+        const editImageInput = referenceFrameBase64 ? baseImageFile : !modelReferenceBase64 && imageFiles.length > 1 ? imageFiles : baseImageFile;
         const editResponse = await client.images.edit({
           model: OPENAI_IMAGE_MODEL,
           image: editImageInput,
@@ -2756,7 +2762,7 @@ app.post("/api/generate-scene-image", async (req, res) => {
       productPhotoBase64,
       productPhotosBase64 = [],
       modelReferenceBase64,
-      referenceFrameBase64,
+      referenceFrameBase64: referenceFrameBase642,
       variationName = "Varia\xE7\xE3o 1",
       productType = "produto comercial",
       targetAngle = "front",
@@ -2785,7 +2791,7 @@ app.post("/api/generate-scene-image", async (req, res) => {
           productPhotoBase64,
           productPhotosBase64,
           modelReferenceBase64,
-          referenceFrameBase64,
+          referenceFrameBase64: referenceFrameBase642,
           variationName,
           productType,
           targetAngle,
@@ -2985,7 +2991,7 @@ DIRETIVA MESTRE 3: ZERO TATUAGENS. Pele 100% limpa, sem qualquer tatuagem em hom
           productPhotoBase64,
           productPhotosBase64,
           modelReferenceBase64,
-          referenceFrameBase64,
+          referenceFrameBase64: referenceFrameBase642,
           variationName,
           productType,
           targetAngle,
@@ -3907,6 +3913,7 @@ ${correctionPrompt.trim()}
             productPhotosBase64: photosList,
             modelReferenceBase64: void 0,
             // Sempre usa as fotos reais do produto como referência primária no storyboard 3x3
+            referenceFrameBase64: previousStoryboardImageBase64 || void 0,
             variationName: productName,
             productType: productName,
             additionalInstructions: [additionalInstructions, correctionPrompt].filter(Boolean).join(" | "),
@@ -3952,7 +3959,7 @@ ${correctionPrompt.trim()}
           if (parsedPrev) {
             parts.push({ inlineData: parsedPrev });
             parts.push({
-              text: `[STORYBOARD ANTERIOR PARA CORRE\xC7\xC3O DOS QUADRANTES COM ERRO]: Mantenha os quadros que j\xE1 estavam corretos e CORRIJA rigorosamente os quadros apontados na instru\xE7\xE3o de corre\xE7\xE3o para que o produto (incluindo sua logomarca original do fabricante e a cor correta da varia\xE7\xE3o) fique 100% id\xEAntico \xE0s fotos reais de refer\xEAncia.`
+              text: `[STORYBOARD ANTERIOR ENVIADO COMO REFER\xCANCIA DE BASE]: Esta imagem acima \xE9 o storyboard 3x3 gerado anteriormente. REGRA OBRIGAT\xD3RIA: Mantenha RIGOROSAMENTE ID\xCANTICOS todos os quadros que n\xE3o foram solicitados para altera\xE7\xE3o. Altere EXCLUSIVAMENTE os quadros apontados na instru\xE7\xE3o de corre\xE7\xE3o (especialmente as ordens do usu\xE1rio com prioridade soberana), aplicando a modifica\xE7\xE3o solicitada mantendo as demais cenas iguais.`
             });
           }
         }
