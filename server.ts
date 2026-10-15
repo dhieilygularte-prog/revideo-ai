@@ -2230,6 +2230,76 @@ app.post('/api/produtos2-planning', async (req, res) => {
       return out.replace(/\s+/g, ' ').trim();
     };
 
+    // Helper de alta performance para chamadas de texto IA (OpenAI gpt-4o-mini com fallback automático para Gemini 2.5 Flash)
+    const executeFastAIText = async (opts: {
+      systemPrompt: string;
+      userPrompt: string;
+      jsonMode?: boolean;
+      temperature?: number;
+    }): Promise<string> => {
+      const { systemPrompt, userPrompt, jsonMode = false, temperature = 0.3 } = opts;
+      const client = (openAIProvider as any).getClient();
+
+      // 1. Tentar OpenAI gpt-4o-mini (se configurado)
+      if (client && (activeProfile === 'openai' || !process.env.GEMINI_API_KEY)) {
+        try {
+          const comp = await client.chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt },
+            ],
+            ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
+            temperature,
+          });
+          const content = comp.choices[0]?.message?.content?.trim();
+          if (content) return content;
+        } catch (err: any) {
+          console.warn('Erro na chamada OpenAI gpt-4o-mini, tentando fallback:', err?.message || err);
+        }
+      }
+
+      // 2. Tentar Gemini 2.5 Flash se configurado ou como fallback
+      if (process.env.GEMINI_API_KEY) {
+        try {
+          const genAI = getGenAI();
+          const gemRes = await genAI.models.generateContent({
+            model: GEMINI_VISION_FAST_MODEL || 'gemini-2.5-flash',
+            contents: [
+              {
+                role: 'user',
+                parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }],
+              },
+            ],
+            config: {
+              temperature,
+              ...(jsonMode ? { responseMimeType: 'application/json' } : {}),
+            },
+          });
+          const text = gemRes.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+          if (text) return text;
+        } catch (gemErr: any) {
+          console.warn('Erro na chamada Gemini:', gemErr?.message || gemErr);
+        }
+      }
+
+      // 3. Se Gemini não funcionou e OpenAI está disponível, tenta OpenAI
+      if (client) {
+        const comp = await client.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt },
+          ],
+          ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
+          temperature,
+        });
+        return comp.choices[0]?.message?.content?.trim() || '';
+      }
+
+      throw new Error('Nenhum provedor de IA disponível para geração de texto.');
+    };
+
     // Ação 1: Detectar fala explícita do usuário dentro de "Instruções Adicionais" com revisão conservadora
     if (action === 'detect_and_review_user_speech') {
       try {
@@ -2238,67 +2308,82 @@ app.post('/api/produtos2-planning', async (req, res) => {
           return res.json({ success: true, hasUserSpeech: false, userSpeech: '' });
         }
 
-        const client = (openAIProvider as any).getClient();
-        if (!client) {
-          return res.status(400).json({ success: false, error: 'Provedor OpenAI não configurado.' });
-        }
+        const detectSystem = `Você é um especialista em roteiro e extração de falas de vídeos para TikTok Shop.
+Sua missão é analisar o texto de "Instruções Adicionais" fornecido pelo usuário e identificar se existe uma FALA OU DIÁLOGO destinado ao personagem ou criador falar em cena.
 
-        const detectSystem = `Você é um especialista em análise de instruções de roteiro para vídeos de TikTok Shop.
-Sua missão é estritamente identificar se o usuário forneceu uma FALA EXPLÍCITA destinada ao personagem falar em cena.
-Exemplos que SÃO fala explícita:
-- "Homem de 45 anos na oficina. Ele pega o produto e fala: Gente, olha o que acabou de chegar pra mim."
-- "Ela mostra o sapato e diz assim: Gente do céu, esse tênis é o mais confortável que já usei!"
-- "dizendo que esse organizador mudou a rotina da casa dela..."
+QUANDO CONSIDERAR QUE EXISTE FALA (hasUserSpeech: true):
+- O usuário colocou uma fala direta ou indireta (ex: "ele fala...", "ela fala...", "ele diz...", "dizendo que...", "fala pra comprar...", "fala isso: ...", falas entre aspas).
+- O usuário descreveu uma encenação/diálogo onde o personagem fala sobre o produto ou convida a comprar (mesmo que haja descrição de cenário, jantar romântico, encontro, oficina, loja, etc.).
+- Extraia a fala do personagem principal focada na apresentação do produto e na chamada para ação (CTA).
+- NUNCA invente novos hooks ou argumentos que o usuário não citou.
+- Se houver diálogo entre dois personagens (ex: ela pergunta e ele responde), una e sintetize o que o personagem principal fala sobre o produto para caber em uma narração natural do vídeo.
 
-Exemplos que NÃO são falas (são apenas orientações de tom, sotaque, ambiente ou comportamento):
-- "Homem em uma oficina mecânica falando com sotaque mineiro."
-- "Mulher falando devagar com voz acolhedora."
-- "Falando com entusiasmo e energia."
-- "Voz masculina grave do interior."
-- "Cenário de cozinha com iluminação suave."
+QUANDO CONSIDERAR QUE NÃO EXISTE FALA (hasUserSpeech: false):
+- O texto contém APENAS descrição de ambiente, iluminação, etnia, roupas, sotaque ou tom de voz, SEM NENHUM CONTEÚDO DE FALA (ex: "homem de 30 anos falando rápido com sotaque carioca dentro de um carro").
 
-REGRAS DE PROCESSAMENTO:
-1. Se NÃO existir fala textual para o personagem falar, retorne {"hasUserSpeech": false, "userSpeech": ""}.
-2. Se EXISTIR fala explícita:
-   - Extraia SOMENTE o texto que o personagem fala (remova "ele fala:", "ela diz:", etc.).
-   - Execute uma REVISÃO CONSERVADORA (NUNCA recrie a copy, NUNCA invente Hook ou CTA):
-     a) Corrija pontuação, digitação, ortografia e concordância.
-     b) Normalize termos técnicos, números e medidas para voz (ex: "800 W" -> "800 watts", "23 pol" -> "23 polegadas", "%" -> "por cento").
-     c) Se tiver 225 caracteres ou menos: PRESERVE O MÁXIMO POSSÍVEL, sem resumir.
-     d) Se tiver mais de 225 caracteres: reduza conservadoramente para garantir no máximo 225 caracteres.
+REVISÃO CONSERVADORA OBRIGATÓRIA DA FALA EXTRAÍDA:
+- Corrija pontuação para narração natural por IA.
+- Corrija erros de digitação, ortografia e concordância (ex: "pó pouco X8 pro" -> "Poco X8 Pro", "não Tik Tok Shop" -> "na TikTok Shop").
+- Escreva números e unidades por extenso para voz (ex: "800 W" -> "800 watts").
+- LIMITE ESTRITO: No máximo 225 caracteres! Se a fala extraída passar de 225 caracteres, ajuste mantendo a fala principal e a chamada para ação com no máximo 225 caracteres.
 
-Responda ESTRITAMENTE em JSON válido no formato:
+FORMATO DE RESPOSTA (JSON):
 {"hasUserSpeech": boolean, "userSpeech": string}`;
 
-        const comp = await client.chat.completions.create({
-          model: 'gpt-4o-mini',
-          messages: [
-            { role: 'system', content: detectSystem },
-            { role: 'user', content: `INSTRUÇÕES ADICIONAIS:\n${textToAnalyze}` },
-          ],
-          response_format: { type: 'json_object' },
+        const raw = await executeFastAIText({
+          systemPrompt: detectSystem,
+          userPrompt: `INSTRUÇÕES ADICIONAIS:\n${textToAnalyze}`,
+          jsonMode: true,
           temperature: 0.2,
         });
 
-        const raw = comp.choices[0]?.message?.content?.trim() || '{}';
         let parsed: any = {};
         try {
           parsed = JSON.parse(raw);
         } catch {
-          parsed = { hasUserSpeech: false, userSpeech: '' };
+          const match = raw.match(/\{[\s\S]*\}/);
+          if (match) {
+            try { parsed = JSON.parse(match[0]); } catch {}
+          }
         }
 
-        let userSpeech = (parsed.userSpeech || '').trim();
+        let userSpeech = (
+          parsed.userSpeech ||
+          parsed.user_speech ||
+          parsed.speech ||
+          parsed.fala ||
+          parsed.fala_usuario ||
+          parsed.texto_fala ||
+          ''
+        ).trim();
+
+        // Fallback heurístico se o modelo não gerou o JSON esperado mas há fala clara no texto
+        if (!userSpeech && /(?:fala|falando|diz|dizendo|responde|olha pra câmera e fala|comprei|toca no carrinho)/i.test(textToAnalyze)) {
+          const dialogMatches = textToAnalyze.match(/(?:fala|diz|responde)[:\s]+([^.]+)/gi);
+          if (dialogMatches && dialogMatches.length > 0) {
+            userSpeech = dialogMatches.map((m) => m.replace(/^(?:fala|diz|responde)[:\s]+/i, '').trim()).join('. ');
+          }
+        }
+
         userSpeech = normalizeVoiceText(userSpeech);
         if (userSpeech.length > 225) {
           userSpeech = userSpeech.slice(0, 225).replace(/[,;:\s]+[^.!?,;:]*$/, '') + '!';
         }
 
+        const hasUserSpeech = Boolean(
+          userSpeech &&
+          userSpeech.length >= 8 &&
+          (parsed.hasUserSpeech === true ||
+           parsed.has_user_speech === true ||
+           String(parsed.hasUserSpeech).toLowerCase() === 'true' ||
+           String(parsed.has_user_speech).toLowerCase() === 'true' ||
+           Boolean(userSpeech))
+        );
+
         return res.json({
           success: true,
-          hasUserSpeech: Boolean(parsed.hasUserSpeech && userSpeech),
-          userSpeech: parsed.hasUserSpeech ? userSpeech : '',
-          usage: comp.usage,
+          hasUserSpeech,
+          userSpeech: hasUserSpeech ? userSpeech : '',
         });
       } catch (err: any) {
         console.warn('Erro ao detectar fala do usuário:', err);
@@ -2312,11 +2397,6 @@ Responda ESTRITAMENTE em JSON válido no formato:
         const inputSpeech = (req.body.text || req.body.speech || baseCopy || '').trim();
         if (!inputSpeech) {
           return res.status(400).json({ success: false, error: 'Texto não fornecido para revisão.' });
-        }
-
-        const client = (openAIProvider as any).getClient();
-        if (!client) {
-          return res.status(400).json({ success: false, error: 'Provedor OpenAI não configurado.' });
         }
 
         const reviewSystem = `Você é um REVISOR EDITORIAL CONSERVADOR para narração de vídeos por IA no TikTok Shop Brasil.
@@ -2338,16 +2418,12 @@ REGRAS MANDATÓRIAS:
    - Se o texto ultrapassar 225 caracteres: faça a menor intervenção conservadora possível para caber em no máximo 225 caracteres contando espaços.
 6. FORMATO DE SAÍDA: Entregue SOMENTE o texto final revisado, sem aspas, sem títulos, sem explicações.`;
 
-        const comp = await client.chat.completions.create({
-          model: 'gpt-4o-mini',
-          messages: [
-            { role: 'system', content: reviewSystem },
-            { role: 'user', content: `TEXTO PARA REVISÃO:\n${inputSpeech}` },
-          ],
+        let reviewed = await executeFastAIText({
+          systemPrompt: reviewSystem,
+          userPrompt: `TEXTO PARA REVISÃO:\n${inputSpeech}`,
           temperature: 0.2,
         });
 
-        let reviewed = comp.choices[0]?.message?.content?.trim() || inputSpeech;
         reviewed = reviewed.replace(/^["'«“]|["'»”]$/g, '').trim();
         reviewed = normalizeVoiceText(reviewed);
 
@@ -2358,7 +2434,6 @@ REGRAS MANDATÓRIAS:
         return res.json({
           success: true,
           reviewedSpeech: reviewed,
-          usage: comp.usage,
         });
       } catch (err: any) {
         return res.status(500).json({ success: false, error: err?.message || 'Erro na revisão de texto' });
@@ -2368,10 +2443,6 @@ REGRAS MANDATÓRIAS:
     // Ação 3: Gerar somente a fala com Aurora Copy (Rápido: ~1s via gpt-4o-mini e estritamente até 225 caracteres)
     if (action === 'generate_aurora_copy') {
       try {
-        const client = (openAIProvider as any).getClient();
-        if (!client) {
-          return res.status(400).json({ success: false, error: 'Provedor OpenAI não configurado.' });
-        }
         const minLimit = 190;
         const maxLimit = 225;
         const auroraSystem = `Você é a AURORACOPY, uma especialista em copy para vídeos de TikTok Shop Brasil.
@@ -2414,16 +2485,12 @@ ${additionalInstructions ? `INSTRUÇÕES ADICIONAIS: ${additionalInstructions}` 
 DURAÇÃO DO VÍDEO: 10 segundos.
 TAMANHO OBRIGATÓRIO: Exatamente entre ${minLimit} e ${maxLimit} caracteres.`;
 
-        const comp = await client.chat.completions.create({
-          model: 'gpt-4o-mini',
-          messages: [
-            { role: 'system', content: auroraSystem },
-            { role: 'user', content: auroraUser },
-          ],
+        let rawSpeech = await executeFastAIText({
+          systemPrompt: auroraSystem,
+          userPrompt: auroraUser,
           temperature: 0.7,
         });
 
-        let rawSpeech = comp.choices[0]?.message?.content?.trim() || '';
         rawSpeech = rawSpeech.replace(/^["'«“]|["'»”]$/g, '').trim();
         rawSpeech = normalizeVoiceText(rawSpeech);
 
@@ -2447,7 +2514,7 @@ TAMANHO OBRIGATÓRIO: Exatamente entre ${minLimit} e ${maxLimit} caracteres.`;
           rawSpeech = rawSpeech.slice(0, 225).replace(/[,;:\s]+[^.!?,;:]*$/, '') + '!';
         }
 
-        return res.json({ success: true, auroraCopy: rawSpeech, usage: comp.usage });
+        return res.json({ success: true, auroraCopy: rawSpeech });
       } catch (err: any) {
         return res.status(500).json({ success: false, error: err?.message || 'Erro ao gerar Aurora Copy' });
       }

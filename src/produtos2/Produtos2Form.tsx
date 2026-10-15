@@ -160,13 +160,11 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
 
     try {
       const finalProductName = (form.productName.trim() || 'Produto').trim();
+      const hasInstructions = Boolean(form.additionalInstructions && form.additionalInstructions.trim());
 
-      // 1. Identificar fala explícita dentro de "Instruções Adicionais" com revisão conservadora (Item 2 e 4)
-      let detectedUserSpeech = '';
-      let hasUserSpeech = false;
-      if (form.additionalInstructions && form.additionalInstructions.trim()) {
-        try {
-          const userRes = await fetch('/api/produtos2-planning', {
+      // 1. Executa requisições de IA em paralelo para geração ultra-rápida
+      const detectPromise = hasInstructions
+        ? fetch('/api/produtos2-planning', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -175,18 +173,33 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
               productName: finalProductName,
               aiProfile,
             }),
-          });
-          const userData = await userRes.json();
-          if (userData.success && userData.hasUserSpeech && userData.userSpeech) {
-            hasUserSpeech = true;
-            detectedUserSpeech = userData.userSpeech;
-          }
-        } catch (err) {
-          console.warn('Erro ao detectar fala do usuário:', err);
-        }
-      }
+          })
+            .then((res) => res.json())
+            .catch((err) => {
+              console.warn('Erro ao detectar fala do usuário:', err);
+              return { success: false, hasUserSpeech: false, userSpeech: '' };
+            })
+        : Promise.resolve({ success: true, hasUserSpeech: false, userSpeech: '' });
 
-      // 2. Fala 1 — Banco de Copies (baseada no produto)
+      const auroraPromise = fetch('/api/produtos2-planning', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'generate_aurora_copy',
+          productName: finalProductName,
+          productInfo: form.productInfo || finalProductName,
+          duration: 10,
+          additionalInstructions: form.additionalInstructions,
+          aiProfile,
+        }),
+      })
+        .then((res) => res.json())
+        .catch((err) => {
+          console.warn('Erro ao requisitar Aurora Copy:', err);
+          return { success: false };
+        });
+
+      // 2. Banco de Copies 1 e 2 geradas instantaneamente (0ms)
       const copy1 = selectAndAdaptProdutos2Copy({
         subMode: form.subMode,
         maleSubOption: form.maleSubOption,
@@ -195,11 +208,9 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
         duration: 10,
         clientGender: form.clientGender,
         influencer: form.influencer,
-        useSpeechIntro: form.useSpeechIntro,
       });
       const banco1Result = copy1.finalCopy;
 
-      // 3. Fala 2 — Banco de Copies (outra opção do banco adaptada ao produto)
       const copy2 = selectAndAdaptProdutos2Copy({
         subMode: form.subMode,
         maleSubOption: form.maleSubOption,
@@ -208,34 +219,20 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
         duration: 10,
         clientGender: form.clientGender,
         influencer: form.influencer,
-        useSpeechIntro: form.useSpeechIntro,
         excludeCopyId: copy1.copyId,
       });
       const banco2Result = copy2.finalCopy;
 
-      // 4. Fala 3 — Aurora Copy (super rápida via gpt-4o-mini, até 225 caracteres)
+      // 3. Aguarda o término das requisições paralelas
+      const [userData, auroraData] = await Promise.all([detectPromise, auroraPromise]);
+
+      const hasUserSpeech = Boolean(userData?.success && userData?.hasUserSpeech && userData?.userSpeech);
+      const detectedUserSpeech = hasUserSpeech ? userData.userSpeech : '';
+
       let auroraResult = '';
-      try {
-        const res = await fetch('/api/produtos2-planning', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'generate_aurora_copy',
-            productName: finalProductName,
-            productInfo: form.productInfo || finalProductName,
-            duration: 10,
-            additionalInstructions: form.additionalInstructions,
-            aiProfile,
-          }),
-        });
-        const data = await res.json();
-        if (data.success && data.auroraCopy) {
-          auroraResult = data.auroraCopy;
-        } else {
-          auroraResult = `Gente, olha esse lançamento imperdível! O ${finalProductName} foi desenvolvido com material resistente e tecnologia pensada para o seu conforto diário, super fácil de usar. Confere todos os detalhes aqui embaixo!`;
-        }
-      } catch (err) {
-        console.warn('Erro ao requisitar Aurora Copy:', err);
+      if (auroraData?.success && auroraData?.auroraCopy) {
+        auroraResult = auroraData.auroraCopy;
+      } else {
         auroraResult = `Gente, olha esse lançamento imperdível! O ${finalProductName} foi desenvolvido com material resistente e tecnologia pensada para o seu conforto diário, super fácil de usar. Confere todos os detalhes aqui embaixo!`;
       }
 
@@ -791,7 +788,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
 
         {/* 6. Influencer (Homem / Mulher / vazio quando ambíguo) */}
         <div
-          className={`md:col-span-6 p-4 rounded-2xl transition-all duration-300 space-y-2 ${
+          className={`md:col-span-4 p-4 rounded-2xl transition-all duration-300 space-y-2 flex flex-col justify-between ${
             isInfluencerFilled ? activeAutoCardClass : normalCardClass
           }`}
         >
@@ -804,12 +801,12 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                 </span>
               ) : (
                 <span className="text-[10px] text-amber-300 font-bold bg-amber-950/80 px-2 py-0.5 rounded border border-amber-500/40">
-                  Ambíguo (Escolha ou automático pela copy)
+                  Ambíguo
                 </span>
               )}
             </span>
           </label>
-          <div className="grid grid-cols-3 gap-2 bg-slate-950/90 p-1 rounded-xl border border-zinc-700/80">
+          <div className="grid grid-cols-3 gap-1.5 bg-slate-950/90 p-1 rounded-xl border border-zinc-700/80">
             <button
               type="button"
               onClick={() =>
@@ -853,7 +850,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
         </div>
 
         {/* 7. Gênero do Cliente (Masculino / Feminino / Unissex) */}
-        <div className={`md:col-span-6 p-4 rounded-2xl transition-all duration-300 space-y-2 ${activeAutoCardClass}`}>
+        <div className={`md:col-span-4 p-4 rounded-2xl transition-all duration-300 space-y-2 flex flex-col justify-between ${activeAutoCardClass}`}>
           <label className="text-xs font-bold flex items-center justify-between">
             <span className="flex items-center gap-1.5">
               <span className="text-white">7. Gênero do cliente (Vocativo da fala)</span>
@@ -861,15 +858,8 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                 <CheckCircle2 className="w-3 h-3 text-sky-300" /> {form.clientGender} ✓
               </span>
             </span>
-            <span className="text-[10px] text-sky-200/80 font-normal">
-              {form.clientGender === 'Feminino'
-                ? 'Usa "Amiga" / "Gente"'
-                : form.clientGender === 'Masculino'
-                ? 'Usa "Meu amigo" / "Cara"'
-                : 'Usa "Gente" (Neutro)'}
-            </span>
           </label>
-          <div className="grid grid-cols-3 gap-2 bg-slate-950/90 p-1 rounded-xl border border-sky-400/50">
+          <div className="grid grid-cols-3 gap-1.5 bg-slate-950/90 p-1 rounded-xl border border-sky-400/50">
             {(['Masculino', 'Feminino', 'Unissex'] as const).map((g) => (
               <button
                 key={g}
@@ -889,13 +879,13 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
           </div>
         </div>
 
-        {/* 8. Fala (Com fala / Sem fala) e Opção de Intro */}
-        <div className={`md:col-span-4 p-4 rounded-2xl space-y-2.5 ${activeAutoCardClass}`}>
+        {/* 8. Fala (Com fala / Sem fala) */}
+        <div className={`md:col-span-4 p-4 rounded-2xl space-y-2 transition-all duration-300 flex flex-col justify-between ${activeAutoCardClass}`}>
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold text-white block">8. Fala</label>
             <span className="text-[10px] text-zinc-400">Locução Veo 3</span>
           </div>
-          <div className="grid grid-cols-2 gap-2 bg-slate-950/90 p-1 rounded-xl border border-zinc-700/60">
+          <div className="grid grid-cols-2 gap-1.5 bg-slate-950/90 p-1 rounded-xl border border-zinc-700/60">
             <button
               type="button"
               onClick={() => onChange((prev) => ({ ...prev, speechMode: 'com_fala' }))}
@@ -919,48 +909,10 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
               Sem fala
             </button>
           </div>
-
-          {/* Opção Intro ("Nossa!") */}
-          {form.speechMode === 'com_fala' && (
-            <div className="pt-2 border-t border-white/10 space-y-1.5">
-              <div className="flex items-center justify-between">
-                <label className={`text-[11px] font-bold ${accentTextClass}`}>Intro da Fala</label>
-                <span className="text-[10px] text-zinc-400">
-                  {form.useSpeechIntro ? 'Com palavra extra ("Nossa!")' : 'Sem palavra extra (Direto)'}
-                </span>
-              </div>
-              <div className="grid grid-cols-2 gap-2 bg-slate-950/90 p-1 rounded-xl border border-white/10">
-                <button
-                  type="button"
-                  onClick={() => onChange((prev) => ({ ...prev, useSpeechIntro: false }))}
-                  className={`py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                    !form.useSpeechIntro
-                      ? accentBtnClass
-                      : 'text-zinc-400 hover:text-white'
-                  }`}
-                  title="Não adiciona 'Nossa!' no início da fala (fala direta)"
-                >
-                  Não Usar intro (Padrão)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onChange((prev) => ({ ...prev, useSpeechIntro: true }))}
-                  className={`py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                    form.useSpeechIntro
-                      ? accentBtnClass
-                      : 'text-zinc-400 hover:text-white'
-                  }`}
-                  title="Adiciona 'Nossa!' no início de todas as falas para margem de corte"
-                >
-                  Usar Intro
-                </button>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* 9. Enquadramento (Com rosto / Sem rosto / POV) */}
-        <div className={`md:col-span-4 p-4 rounded-2xl space-y-2 flex flex-col justify-between ${activeAutoCardClass}`}>
+        <div className={`md:col-span-6 p-4 rounded-2xl space-y-2 flex flex-col justify-between ${activeAutoCardClass}`}>
           <div>
             <label className="text-xs font-bold text-white block">9. Enquadramento</label>
             <p className="text-[11px] text-zinc-300 mt-1 leading-snug">
@@ -1005,7 +957,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
         </div>
 
         {/* 10. Cenário */}
-        <div className={`md:col-span-4 p-4 rounded-2xl space-y-2 flex flex-col justify-between ${activeAutoCardClass}`}>
+        <div className={`md:col-span-6 p-4 rounded-2xl space-y-2 flex flex-col justify-between ${activeAutoCardClass}`}>
           <div>
             <label className="text-xs font-bold text-white block">10. Cenário</label>
             <p className="text-[11px] text-zinc-300 mt-1 leading-snug">

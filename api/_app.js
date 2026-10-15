@@ -3127,69 +3127,128 @@ app.post("/api/produtos2-planning", async (req, res) => {
       out = out.replace(/\s*\+\s*/g, " mais ");
       return out.replace(/\s+/g, " ").trim();
     };
+    const executeFastAIText = async (opts) => {
+      const { systemPrompt, userPrompt: userPrompt2, jsonMode = false, temperature = 0.3 } = opts;
+      const client = openAIProvider.getClient();
+      if (client && (activeProfile === "openai" || !process.env.GEMINI_API_KEY)) {
+        try {
+          const comp = await client.chat.completions.create({
+            model: "gpt-4o-mini",
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt2 }
+            ],
+            ...jsonMode ? { response_format: { type: "json_object" } } : {},
+            temperature
+          });
+          const content = comp.choices[0]?.message?.content?.trim();
+          if (content) return content;
+        } catch (err) {
+          console.warn("Erro na chamada OpenAI gpt-4o-mini, tentando fallback:", err?.message || err);
+        }
+      }
+      if (process.env.GEMINI_API_KEY) {
+        try {
+          const genAI = getGenAI();
+          const gemRes = await genAI.models.generateContent({
+            model: GEMINI_VISION_FAST_MODEL || "gemini-2.5-flash",
+            contents: [
+              {
+                role: "user",
+                parts: [{ text: `${systemPrompt}
+
+${userPrompt2}` }]
+              }
+            ],
+            config: {
+              temperature,
+              ...jsonMode ? { responseMimeType: "application/json" } : {}
+            }
+          });
+          const text = gemRes.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+          if (text) return text;
+        } catch (gemErr) {
+          console.warn("Erro na chamada Gemini:", gemErr?.message || gemErr);
+        }
+      }
+      if (client) {
+        const comp = await client.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt2 }
+          ],
+          ...jsonMode ? { response_format: { type: "json_object" } } : {},
+          temperature
+        });
+        return comp.choices[0]?.message?.content?.trim() || "";
+      }
+      throw new Error("Nenhum provedor de IA dispon\xEDvel para gera\xE7\xE3o de texto.");
+    };
     if (action === "detect_and_review_user_speech") {
       try {
         const textToAnalyze = (additionalInstructions || req.body.text || "").trim();
         if (!textToAnalyze) {
           return res.json({ success: true, hasUserSpeech: false, userSpeech: "" });
         }
-        const client = openAIProvider.getClient();
-        if (!client) {
-          return res.status(400).json({ success: false, error: "Provedor OpenAI n\xE3o configurado." });
-        }
-        const detectSystem = `Voc\xEA \xE9 um especialista em an\xE1lise de instru\xE7\xF5es de roteiro para v\xEDdeos de TikTok Shop.
-Sua miss\xE3o \xE9 estritamente identificar se o usu\xE1rio forneceu uma FALA EXPL\xCDCITA destinada ao personagem falar em cena.
-Exemplos que S\xC3O fala expl\xEDcita:
-- "Homem de 45 anos na oficina. Ele pega o produto e fala: Gente, olha o que acabou de chegar pra mim."
-- "Ela mostra o sapato e diz assim: Gente do c\xE9u, esse t\xEAnis \xE9 o mais confort\xE1vel que j\xE1 usei!"
-- "dizendo que esse organizador mudou a rotina da casa dela..."
+        const detectSystem = `Voc\xEA \xE9 um especialista em roteiro e extra\xE7\xE3o de falas de v\xEDdeos para TikTok Shop.
+Sua miss\xE3o \xE9 analisar o texto de "Instru\xE7\xF5es Adicionais" fornecido pelo usu\xE1rio e identificar se existe uma FALA OU DI\xC1LOGO destinado ao personagem ou criador falar em cena.
 
-Exemplos que N\xC3O s\xE3o falas (s\xE3o apenas orienta\xE7\xF5es de tom, sotaque, ambiente ou comportamento):
-- "Homem em uma oficina mec\xE2nica falando com sotaque mineiro."
-- "Mulher falando devagar com voz acolhedora."
-- "Falando com entusiasmo e energia."
-- "Voz masculina grave do interior."
-- "Cen\xE1rio de cozinha com ilumina\xE7\xE3o suave."
+QUANDO CONSIDERAR QUE EXISTE FALA (hasUserSpeech: true):
+- O usu\xE1rio colocou uma fala direta ou indireta (ex: "ele fala...", "ela fala...", "ele diz...", "dizendo que...", "fala pra comprar...", "fala isso: ...", falas entre aspas).
+- O usu\xE1rio descreveu uma encena\xE7\xE3o/di\xE1logo onde o personagem fala sobre o produto ou convida a comprar (mesmo que haja descri\xE7\xE3o de cen\xE1rio, jantar rom\xE2ntico, encontro, oficina, loja, etc.).
+- Extraia a fala do personagem principal focada na apresenta\xE7\xE3o do produto e na chamada para a\xE7\xE3o (CTA).
+- NUNCA invente novos hooks ou argumentos que o usu\xE1rio n\xE3o citou.
+- Se houver di\xE1logo entre dois personagens (ex: ela pergunta e ele responde), una e sintetize o que o personagem principal fala sobre o produto para caber em uma narra\xE7\xE3o natural do v\xEDdeo.
 
-REGRAS DE PROCESSAMENTO:
-1. Se N\xC3O existir fala textual para o personagem falar, retorne {"hasUserSpeech": false, "userSpeech": ""}.
-2. Se EXISTIR fala expl\xEDcita:
-   - Extraia SOMENTE o texto que o personagem fala (remova "ele fala:", "ela diz:", etc.).
-   - Execute uma REVIS\xC3O CONSERVADORA (NUNCA recrie a copy, NUNCA invente Hook ou CTA):
-     a) Corrija pontua\xE7\xE3o, digita\xE7\xE3o, ortografia e concord\xE2ncia.
-     b) Normalize termos t\xE9cnicos, n\xFAmeros e medidas para voz (ex: "800 W" -> "800 watts", "23 pol" -> "23 polegadas", "%" -> "por cento").
-     c) Se tiver 225 caracteres ou menos: PRESERVE O M\xC1XIMO POSS\xCDVEL, sem resumir.
-     d) Se tiver mais de 225 caracteres: reduza conservadoramente para garantir no m\xE1ximo 225 caracteres.
+QUANDO CONSIDERAR QUE N\xC3O EXISTE FALA (hasUserSpeech: false):
+- O texto cont\xE9m APENAS descri\xE7\xE3o de ambiente, ilumina\xE7\xE3o, etnia, roupas, sotaque ou tom de voz, SEM NENHUM CONTE\xDADO DE FALA (ex: "homem de 30 anos falando r\xE1pido com sotaque carioca dentro de um carro").
 
-Responda ESTRITAMENTE em JSON v\xE1lido no formato:
+REVIS\xC3O CONSERVADORA OBRIGAT\xD3RIA DA FALA EXTRA\xCDDA:
+- Corrija pontua\xE7\xE3o para narra\xE7\xE3o natural por IA.
+- Corrija erros de digita\xE7\xE3o, ortografia e concord\xE2ncia (ex: "p\xF3 pouco X8 pro" -> "Poco X8 Pro", "n\xE3o Tik Tok Shop" -> "na TikTok Shop").
+- Escreva n\xFAmeros e unidades por extenso para voz (ex: "800 W" -> "800 watts").
+- LIMITE ESTRITO: No m\xE1ximo 225 caracteres! Se a fala extra\xEDda passar de 225 caracteres, ajuste mantendo a fala principal e a chamada para a\xE7\xE3o com no m\xE1ximo 225 caracteres.
+
+FORMATO DE RESPOSTA (JSON):
 {"hasUserSpeech": boolean, "userSpeech": string}`;
-        const comp = await client.chat.completions.create({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: detectSystem },
-            { role: "user", content: `INSTRU\xC7\xD5ES ADICIONAIS:
-${textToAnalyze}` }
-          ],
-          response_format: { type: "json_object" },
+        const raw = await executeFastAIText({
+          systemPrompt: detectSystem,
+          userPrompt: `INSTRU\xC7\xD5ES ADICIONAIS:
+${textToAnalyze}`,
+          jsonMode: true,
           temperature: 0.2
         });
-        const raw = comp.choices[0]?.message?.content?.trim() || "{}";
         let parsed = {};
         try {
           parsed = JSON.parse(raw);
         } catch {
-          parsed = { hasUserSpeech: false, userSpeech: "" };
+          const match = raw.match(/\{[\s\S]*\}/);
+          if (match) {
+            try {
+              parsed = JSON.parse(match[0]);
+            } catch {
+            }
+          }
         }
-        let userSpeech = (parsed.userSpeech || "").trim();
+        let userSpeech = (parsed.userSpeech || parsed.user_speech || parsed.speech || parsed.fala || parsed.fala_usuario || parsed.texto_fala || "").trim();
+        if (!userSpeech && /(?:fala|falando|diz|dizendo|responde|olha pra câmera e fala|comprei|toca no carrinho)/i.test(textToAnalyze)) {
+          const dialogMatches = textToAnalyze.match(/(?:fala|diz|responde)[:\s]+([^.]+)/gi);
+          if (dialogMatches && dialogMatches.length > 0) {
+            userSpeech = dialogMatches.map((m) => m.replace(/^(?:fala|diz|responde)[:\s]+/i, "").trim()).join(". ");
+          }
+        }
         userSpeech = normalizeVoiceText(userSpeech);
         if (userSpeech.length > 225) {
           userSpeech = userSpeech.slice(0, 225).replace(/[,;:\s]+[^.!?,;:]*$/, "") + "!";
         }
+        const hasUserSpeech = Boolean(
+          userSpeech && userSpeech.length >= 8 && (parsed.hasUserSpeech === true || parsed.has_user_speech === true || String(parsed.hasUserSpeech).toLowerCase() === "true" || String(parsed.has_user_speech).toLowerCase() === "true" || Boolean(userSpeech))
+        );
         return res.json({
           success: true,
-          hasUserSpeech: Boolean(parsed.hasUserSpeech && userSpeech),
-          userSpeech: parsed.hasUserSpeech ? userSpeech : "",
-          usage: comp.usage
+          hasUserSpeech,
+          userSpeech: hasUserSpeech ? userSpeech : ""
         });
       } catch (err) {
         console.warn("Erro ao detectar fala do usu\xE1rio:", err);
@@ -3201,10 +3260,6 @@ ${textToAnalyze}` }
         const inputSpeech = (req.body.text || req.body.speech || baseCopy || "").trim();
         if (!inputSpeech) {
           return res.status(400).json({ success: false, error: "Texto n\xE3o fornecido para revis\xE3o." });
-        }
-        const client = openAIProvider.getClient();
-        if (!client) {
-          return res.status(400).json({ success: false, error: "Provedor OpenAI n\xE3o configurado." });
         }
         const reviewSystem = `Voc\xEA \xE9 um REVISOR EDITORIAL CONSERVADOR para narra\xE7\xE3o de v\xEDdeos por IA no TikTok Shop Brasil.
 Sua fun\xE7\xE3o \xE9 EXCLUSIVAMENTE revisar, corrigir e normalizar o texto fornecido pelo usu\xE1rio.
@@ -3224,16 +3279,12 @@ REGRAS MANDAT\xD3RIAS:
    - Se o texto tiver 225 caracteres ou menos: N\xC3O resuma e N\xC3O reescreva. Apenas corrija e normalize.
    - Se o texto ultrapassar 225 caracteres: fa\xE7a a menor interven\xE7\xE3o conservadora poss\xEDvel para caber em no m\xE1ximo 225 caracteres contando espa\xE7os.
 6. FORMATO DE SA\xCDDA: Entregue SOMENTE o texto final revisado, sem aspas, sem t\xEDtulos, sem explica\xE7\xF5es.`;
-        const comp = await client.chat.completions.create({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: reviewSystem },
-            { role: "user", content: `TEXTO PARA REVIS\xC3O:
-${inputSpeech}` }
-          ],
+        let reviewed = await executeFastAIText({
+          systemPrompt: reviewSystem,
+          userPrompt: `TEXTO PARA REVIS\xC3O:
+${inputSpeech}`,
           temperature: 0.2
         });
-        let reviewed = comp.choices[0]?.message?.content?.trim() || inputSpeech;
         reviewed = reviewed.replace(/^["'«“]|["'»”]$/g, "").trim();
         reviewed = normalizeVoiceText(reviewed);
         if (reviewed.length > 225) {
@@ -3241,8 +3292,7 @@ ${inputSpeech}` }
         }
         return res.json({
           success: true,
-          reviewedSpeech: reviewed,
-          usage: comp.usage
+          reviewedSpeech: reviewed
         });
       } catch (err) {
         return res.status(500).json({ success: false, error: err?.message || "Erro na revis\xE3o de texto" });
@@ -3250,10 +3300,6 @@ ${inputSpeech}` }
     }
     if (action === "generate_aurora_copy") {
       try {
-        const client = openAIProvider.getClient();
-        if (!client) {
-          return res.status(400).json({ success: false, error: "Provedor OpenAI n\xE3o configurado." });
-        }
         const minLimit = 190;
         const maxLimit = 225;
         const auroraSystem = `Voc\xEA \xE9 a AURORACOPY, uma especialista em copy para v\xEDdeos de TikTok Shop Brasil.
@@ -3294,15 +3340,11 @@ NOME DO PRODUTO: ${productName}
 ${additionalInstructions ? `INSTRU\xC7\xD5ES ADICIONAIS: ${additionalInstructions}` : ""}
 DURA\xC7\xC3O DO V\xCDDEO: 10 segundos.
 TAMANHO OBRIGAT\xD3RIO: Exatamente entre ${minLimit} e ${maxLimit} caracteres.`;
-        const comp = await client.chat.completions.create({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: auroraSystem },
-            { role: "user", content: auroraUser }
-          ],
+        let rawSpeech = await executeFastAIText({
+          systemPrompt: auroraSystem,
+          userPrompt: auroraUser,
           temperature: 0.7
         });
-        let rawSpeech = comp.choices[0]?.message?.content?.trim() || "";
         rawSpeech = rawSpeech.replace(/^["'«“]|["'»”]$/g, "").trim();
         rawSpeech = normalizeVoiceText(rawSpeech);
         if (rawSpeech.length < 190) {
@@ -3323,7 +3365,7 @@ TAMANHO OBRIGAT\xD3RIO: Exatamente entre ${minLimit} e ${maxLimit} caracteres.`;
         if (rawSpeech.length > 225) {
           rawSpeech = rawSpeech.slice(0, 225).replace(/[,;:\s]+[^.!?,;:]*$/, "") + "!";
         }
-        return res.json({ success: true, auroraCopy: rawSpeech, usage: comp.usage });
+        return res.json({ success: true, auroraCopy: rawSpeech });
       } catch (err) {
         return res.status(500).json({ success: false, error: err?.message || "Erro ao gerar Aurora Copy" });
       }

@@ -85,7 +85,6 @@ export default function App() {
     influencer: null,
     clientGender: 'Unissex',
     speechMode: 'com_fala',
-    useSpeechIntro: false,
     framing: 'com_rosto',
     scenario: 'padrao_uso',
     variations: [
@@ -1270,7 +1269,6 @@ export default function App() {
       influencer: null,
       clientGender: 'Unissex',
       speechMode: 'com_fala',
-      useSpeechIntro: false,
       framing: 'com_rosto',
       scenario: 'padrao_uso',
       variations: [
