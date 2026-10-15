@@ -334,6 +334,7 @@ export async function runProdutos2Pipeline(params: {
   let finalCopy = '';
   let copySourceLabel = 'Banco de Copies';
   let copyId = 'BANCO-01';
+  let isSameProductBankCopy = false;
 
   // Se o usuário já gerou as falas e selecionou uma (ou editou), adota rigorosamente a escolhida!
   if (form.selectedSpeechOption === 'user_speech' && (form.finalSelectedSpeech || form.userSpeech)) {
@@ -371,6 +372,7 @@ export async function runProdutos2Pipeline(params: {
     finalCopy = copySelection.finalCopy;
     copySourceLabel = copySelection.copySourceLabel;
     copyId = copySelection.copyId;
+    isSameProductBankCopy = Boolean(copySelection.isSameProductBankCopy);
   }
 
   const resolvedInfluencer: 'Homem' | 'Mulher' =
@@ -568,18 +570,21 @@ export async function runProdutos2Pipeline(params: {
   }
 
   // Checklist: garantir calibragem exata de caracteres (<=165 em 8s, <=235 em 10s), vocativo e prefixo de intro se selecionado
-  // 7. Calibrar e sanitizar a copy final (se for Banco de Copies)
-  if (form.copyEngine !== 'aurora_copy' && !(form.customCopy && form.customCopy.trim())) {
+  // 7. Calibrar e sanitizar a copy final (apenas se for Banco de Copies e não for Fala do Usuário nem Aurora Copy)
+  const isUserCopy = form.selectedSpeechOption === 'user_speech' || Boolean(form.customCopy && form.customCopy.trim());
+  const isAurora = form.selectedSpeechOption === 'aurora_copy' || form.copyEngine === 'aurora_copy';
+
+  if (!isUserCopy && !isAurora) {
     finalCopy = calibrateCopyToTargetWindow({
       copy: finalCopy,
       duration: form.duration,
-      isSameProductBankCopy: copySelection.isSameProductBankCopy,
+      isSameProductBankCopy,
       clientGender: form.clientGender,
       influencer: resolvedInfluencer,
       useSpeechIntro: form.useSpeechIntro,
     });
+    finalCopy = applySpeechIntro(finalCopy, Boolean(form.useSpeechIntro));
   }
-  finalCopy = applySpeechIntro(finalCopy, Boolean(form.useSpeechIntro));
 
   // Garantir que a última cena termine exatamente em 10.0 ou 8.0
   if (scenes.length === 9) {
