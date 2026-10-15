@@ -3244,6 +3244,7 @@ app.post("/api/produtos2-planning", async (req, res) => {
       variations = [],
       productPhotosBase64 = []
     } = req.body;
+    const activeProfile = req.body?.aiProfile || getRequestAIProfile(req);
     const normalizeVoiceText = (text) => {
       if (!text) return "";
       let out = text;
@@ -3478,17 +3479,17 @@ Sua fun\xE7\xE3o \xE9 EXCLUSIVAMENTE revisar, corrigir e normalizar o texto forn
 Voc\xEA NUNCA deve transformar a mensagem em uma copy diferente e NUNCA deve inventar argumentos criativos.
 
 REGRAS MANDAT\xD3RIAS:
-1. Corrija pontua\xE7\xE3o para narra\xE7\xE3o natural (v\xEDrgulas nos pontos de respira\xE7\xE3o, pontos finais firmes).
-2. Corrija ortografia, erros de digita\xE7\xE3o e concord\xE2ncia em portugu\xEAs brasileiro.
+1. CORRE\xC7\xC3O GRAMATICAL E ORTOGR\xC1FICA RIGOROSA: Corrija todos os erros de ortografia, palavras escritas errado, concord\xE2ncia nominal e verbal, acentua\xE7\xE3o e digita\xE7\xE3o em portugu\xEAs brasileiro (ex: "comprar\xE3o" -> "compraram", "mais" -> "mas", "agente" -> "a gente", "pre\xE7o" -> "pre\xE7o", etc.). O texto resultante deve estar em portugu\xEAs culto e impec\xE1vel.
+2. PONTUA\xC7\xC3O PARA VOZ IA: Ajuste a pontua\xE7\xE3o para que a IA narre com ritmo natural, fluido e sem atropelos (v\xEDrgulas nos pontos de respira\xE7\xE3o natural, exclama\xE7\xF5es em frases empolgantes, pontos finais firmes).
 3. Normalize unidades, pot\xEAncia, medidas e n\xFAmeros para narra\xE7\xE3o por IA:
    - "800 W" -> "800 watts"
    - "23 pol" -> "23 polegadas"
    - "50%" -> "50 por cento"
    - "AMOLED" -> "Am\xF3led"
    - O "X" em modelos de produtos (como "X8", "Poco X8 Pro", "iPhone X") NUNCA deve ser trocado por "vezes". Mantenha sempre a letra "X".
-4. PRESERVA\xC7\xC3O: Preserve o vocabul\xE1rio e o sentido original do usu\xE1rio. NUNCA invente Hook, nunca adicione CTA que o usu\xE1rio n\xE3o escreveu.
+4. PRESERVA\xC7\xC3O: Preserve o vocabul\xE1rio, o tom e a mensagem original do usu\xE1rio. N\xC3O invente ganchos novos e N\xC3O adicione chamadas para a\xE7\xE3o que o usu\xE1rio n\xE3o escreveu.
 5. LIMITE DE 225 CARACTERES:
-   - Se o texto tiver 225 caracteres ou menos: N\xC3O resuma e N\xC3O reescreva. Apenas corrija e normalize.
+   - Se o texto tiver 225 caracteres ou menos: N\xC3O resuma e N\xC3O reescreva. Apenas corrija ortografia, gram\xE1tica e normalize.
    - Se o texto ultrapassar 225 caracteres: encurte de forma conservadora mantendo o mais pr\xF3ximo poss\xEDvel do limite de 225 (entre 220 e 225 caracteres com espa\xE7os), sem cortar conte\xFAdo em excesso.
 6. FORMATO DE SA\xCDDA: Entregue SOMENTE o texto final revisado, sem aspas, sem t\xEDtulos, sem explica\xE7\xF5es.`;
         let reviewed = await executeFastAIText({
@@ -3703,7 +3704,6 @@ Retorne APENAS um objeto JSON v\xE1lido com as chaves:
     }
   ]
 } (exatamente 9 cenas numeradas de 1 a 9 somando ${duration}.0s).`;
-    const activeProfile = req.body?.aiProfile || getRequestAIProfile(req);
     const tryOrder = activeProfile === "gemini" ? ["gemini"] : ["openai"];
     for (const provider of tryOrder) {
       if (provider === "openai" && openAIProvider.isConfigured()) {

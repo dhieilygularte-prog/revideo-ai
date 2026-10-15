@@ -148,9 +148,12 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
           }
           return next;
         });
+      } else {
+        alert(`Erro ao revisar fala: ${data.error || 'Não foi possível revisar o texto.'}`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.warn('Erro ao revisar fala:', err);
+      alert(`Falha de conexão ao revisar fala: ${err?.message || err}`);
     } finally {
       setIsReviewingCard(null);
     }

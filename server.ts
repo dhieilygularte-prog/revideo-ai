@@ -2199,6 +2199,8 @@ app.post('/api/produtos2-planning', async (req, res) => {
       productPhotosBase64 = [],
     } = req.body;
 
+    const activeProfile = req.body?.aiProfile || getRequestAIProfile(req);
+
     // Normalizador de texto para narração por voz IA (expandindo unidades, medidas e siglas)
     const normalizeVoiceText = (text: string): string => {
       if (!text) return '';
@@ -2480,17 +2482,17 @@ Sua função é EXCLUSIVAMENTE revisar, corrigir e normalizar o texto fornecido 
 Você NUNCA deve transformar a mensagem em uma copy diferente e NUNCA deve inventar argumentos criativos.
 
 REGRAS MANDATÓRIAS:
-1. Corrija pontuação para narração natural (vírgulas nos pontos de respiração, pontos finais firmes).
-2. Corrija ortografia, erros de digitação e concordância em português brasileiro.
+1. CORREÇÃO GRAMATICAL E ORTOGRÁFICA RIGOROSA: Corrija todos os erros de ortografia, palavras escritas errado, concordância nominal e verbal, acentuação e digitação em português brasileiro (ex: "comprarão" -> "compraram", "mais" -> "mas", "agente" -> "a gente", "preço" -> "preço", etc.). O texto resultante deve estar em português culto e impecável.
+2. PONTUAÇÃO PARA VOZ IA: Ajuste a pontuação para que a IA narre com ritmo natural, fluido e sem atropelos (vírgulas nos pontos de respiração natural, exclamações em frases empolgantes, pontos finais firmes).
 3. Normalize unidades, potência, medidas e números para narração por IA:
    - "800 W" -> "800 watts"
    - "23 pol" -> "23 polegadas"
    - "50%" -> "50 por cento"
    - "AMOLED" -> "Amóled"
    - O "X" em modelos de produtos (como "X8", "Poco X8 Pro", "iPhone X") NUNCA deve ser trocado por "vezes". Mantenha sempre a letra "X".
-4. PRESERVAÇÃO: Preserve o vocabulário e o sentido original do usuário. NUNCA invente Hook, nunca adicione CTA que o usuário não escreveu.
+4. PRESERVAÇÃO: Preserve o vocabulário, o tom e a mensagem original do usuário. NÃO invente ganchos novos e NÃO adicione chamadas para ação que o usuário não escreveu.
 5. LIMITE DE 225 CARACTERES:
-   - Se o texto tiver 225 caracteres ou menos: NÃO resuma e NÃO reescreva. Apenas corrija e normalize.
+   - Se o texto tiver 225 caracteres ou menos: NÃO resuma e NÃO reescreva. Apenas corrija ortografia, gramática e normalize.
    - Se o texto ultrapassar 225 caracteres: encurte de forma conservadora mantendo o mais próximo possível do limite de 225 (entre 220 e 225 caracteres com espaços), sem cortar conteúdo em excesso.
 6. FORMATO DE SAÍDA: Entregue SOMENTE o texto final revisado, sem aspas, sem títulos, sem explicações.`;
 
@@ -2733,7 +2735,6 @@ Retorne APENAS um objeto JSON válido com as chaves:
   ]
 } (exatamente 9 cenas numeradas de 1 a 9 somando ${duration}.0s).`;
 
-    const activeProfile = req.body?.aiProfile || getRequestAIProfile(req);
     const tryOrder: ('openai' | 'gemini')[] =
       activeProfile === 'gemini' ? ['gemini'] : ['openai'];
 
