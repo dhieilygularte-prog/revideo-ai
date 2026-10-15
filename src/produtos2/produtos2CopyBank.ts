@@ -2525,6 +2525,7 @@ export function adaptBankCopyToProduct(
 /**
  * Gera automaticamente a Descrição do Post + Hashtags para TikTok / Reels (Modo Produtos 2.0)
  * baseado no nome do produto, nicho, categoria e palavras-chave de alta conversão.
+ * NUNCA injeta tags de categorias cruzadas (ex: moda masculina em celulares/eletrônicos).
  */
 export function generateProdutos2DescriptionHashtags(params: {
   productName: string;
@@ -2550,54 +2551,147 @@ export function generateProdutos2DescriptionHashtags(params: {
     tags.push(`#${productTagSlug}`);
   }
 
-  // 2. Tags de nicho e categoria
-  if (normNiche.includes('feminino') || normNiche.includes('moda feminina')) {
-    tags.push('#modafeminina', '#lookdodia', '#tendencia');
-    if (normName.includes('vestido')) tags.push('#vestidofeminino');
-    else if (normName.includes('calca')) tags.push('#calcafeminina');
-    else if (normName.includes('conjunto')) tags.push('#conjuntofeminino');
-    else if (normName.includes('pijama') || normName.includes('camisola')) tags.push('#pijamafeminino');
-    else if (normName.includes('tenis') || normName.includes('sapato')) tags.push('#calcadosfemininos');
+  // 2. Detecção precisa de Categoria e Nicho
+  const isVestuarioMasculino = subMode === 'vestuario_masculino';
+  const isVestuarioFeminino = normNiche.includes('feminino') || normNiche.includes('moda feminina');
+
+  // Detecção de Eletrônicos / Celulares / Smartphones / Tecnologia / Gamers
+  const isTechOrPhone =
+    normNiche.includes('eletron') ||
+    normNiche.includes('celular') ||
+    normNiche.includes('smartphone') ||
+    normNiche.includes('tecnologia') ||
+    normNiche.includes('tech') ||
+    /\b(poco|xiaomi|redmi|iphone|samsung|galaxy|motorola|realme|smartphone|celular|tablet|ipad|smartwatch|relogio inteligente|fone|headphone|headset|earbuds|airpods|airpod|bluetooth|carregador|powerbank|cabo|monitor|computador|notebook|laptop|pc gamer|teclado gamer|mouse gamer|gamer)\b/i.test(normName);
+
+  // Detecção de Casa / Cozinha / Conforto / Decoração / Organização
+  const isCasaCozinha =
+    normNiche.includes('casa') ||
+    normNiche.includes('cozinha') ||
+    normNiche.includes('organizacao') ||
+    normNiche.includes('limpeza') ||
+    normNiche.includes('climatizacao') ||
+    normNiche.includes('descanso') ||
+    /\b(panela|airfryer|liquidificador|batedeira|garrafa|copo termico|stanley|rede de descanso|rede|ventilador|climatizador|umidificador|aspirador|mop|luminaria|decoracao|almofada|travesseiro|toalha|tapete|cozinha|banheiro)\b/i.test(normName);
+
+  // Detecção de Ferramentas / Jardim / Agro / Construção
+  const isFerramentasJardim =
+    normNiche.includes('ferramenta') ||
+    normNiche.includes('jardim') ||
+    normNiche.includes('agro') ||
+    normNiche.includes('construcao') ||
+    /\b(furadeira|parafusadeira|rocadeira|motosserra|trena|alicate|chave de fenda|lavadora de alta pressao|cortador de grama|jardinagem)\b/i.test(normName);
+
+  // Detecção de Beleza / Cuidados Pessoais / Cabelo / Skincare
+  const isBelezaCuidado =
+    normNiche.includes('beleza') ||
+    normNiche.includes('cabelo') ||
+    normNiche.includes('skincare') ||
+    normNiche.includes('saude') ||
+    /\b(escova secadora|secador|prancha|modelador|chapinha|perfume|hidratante|maquiagem|batom|sabonete|depilador|skincare)\b/i.test(normName);
+
+  // Detecção de Fitness / Academia / Treino
+  const isFitness =
+    normNiche.includes('fitness') ||
+    normNiche.includes('treino') ||
+    normNiche.includes('academia') ||
+    /\b(esteira|bicicleta ergometrica|haltere|halter|kettlebell|elastico|whey|creatina|suplemento|treino|academia|corda de pular)\b/i.test(normName);
+
+  // Detecção de Automotivo / Som / Moto
+  const isAutoMoto =
+    normNiche.includes('auto') ||
+    normNiche.includes('moto') ||
+    normNiche.includes('som automotivo') ||
+    /\b(som automotivo|alto-falante|amplificador|multimidia|suporte celular carro|capa de moto|capacete|farol|pneu)\b/i.test(normName);
+
+  // Detecção de Brinquedos / Infantil
+  const isInfantil =
+    normNiche.includes('infantil') ||
+    normNiche.includes('brinquedo') ||
+    /\b(brinquedo|bebe|crianca|carrinho infantil|boneca|jogo infantil|educativo)\b/i.test(normName);
+
+  // Detecção de Pet
+  const isPet =
+    normNiche.includes('pet') ||
+    /\b(cachorro|gato|racao|coleira|arranhador|caminha pet|bebedouro pet)\b/i.test(normName);
+
+  // 3. Tags por nicho (com prioridade estrita — eletrônicos e outros nunca recebem moda)
+  if (isTechOrPhone) {
+    const isPhone =
+      /\b(celular|smartphone|poco|xiaomi|redmi|iphone|samsung|galaxy|motorola|realme)\b/i.test(normName) ||
+      normNiche.includes('celular') ||
+      normNiche.includes('smartphone');
+    if (isPhone) {
+      tags.push('#celular', '#smartphone', '#tecnologia', '#tech');
+    } else if (normName.includes('monitor') || normName.includes('gamer') || normName.includes('pc')) {
+      tags.push('#setupgamer', '#gamers', '#tecnologia', '#eletronicos');
+    } else if (normName.includes('fone') || normName.includes('headset') || normName.includes('airpod') || normName.includes('earbud')) {
+      tags.push('#fonebluetooth', '#headset', '#tecnologia', '#eletronicos');
+    } else if (normName.includes('smartwatch') || normName.includes('relogio')) {
+      tags.push('#smartwatch', '#relogiointeligente', '#tecnologia', '#tech');
+    } else {
+      tags.push('#eletronicos', '#tecnologia', '#tech', '#dicasdetecnologia');
+    }
   } else if (
-    subMode === 'vestuario_masculino' ||
-    maleSubOption === 'calcados' ||
-    maleSubOption === 'roupas' ||
-    normNiche.includes('masculino') ||
-    normNiche.includes('calcados masculinos') ||
-    normNiche.includes('roupas masculinas')
+    isVestuarioMasculino ||
+    (
+      (normNiche.includes('masculino') || normNiche.includes('calcados masculinos') || normNiche.includes('roupas masculinas')) &&
+      /\b(tenis|sapato|bota|chinelo|camisa|camiseta|bermuda|calca|cueca|jaqueta|polo|moletom|roupa|calcado|coturno)\b/i.test(normName)
+    )
   ) {
     tags.push('#modamasculina', '#estilomasculino');
-    if (maleSubOption === 'calcados' || normName.includes('tenis') || normName.includes('sapato') || normName.includes('bota')) {
+    const isShoes =
+      (isVestuarioMasculino && maleSubOption === 'calcados') ||
+      /\b(tenis|sapato|bota|chinelo|calcado|coturno)\b/i.test(normName);
+    if (isShoes) {
       tags.push('#calcadosmasculinos', '#tenismasculino');
     } else {
       tags.push('#roupasmasculinas');
       if (normName.includes('camisa') || normName.includes('camiseta')) tags.push('#camisetamasculina');
       else if (normName.includes('bermuda') || normName.includes('short')) tags.push('#bermudamasculina');
+      else if (normName.includes('calca')) tags.push('#calcamasculina');
     }
-  } else if (normNiche.includes('eletron') || normName.includes('celular') || normName.includes('poco') || normName.includes('monitor') || normName.includes('fone')) {
-    tags.push('#eletronicos', '#tecnologia', '#tech', '#dicasdetecnologia');
-    if (normName.includes('celular') || normName.includes('poco') || normName.includes('smartphone')) {
-      tags.push('#celular', '#smartphone');
-    } else if (normName.includes('monitor')) {
-      tags.push('#setupgamer', '#monitorgamer');
-    }
-  } else if (normNiche.includes('casa') || normNiche.includes('cozinha') || normName.includes('rede') || normName.includes('ventilador') || normName.includes('garrafa')) {
+  } else if (
+    isVestuarioFeminino ||
+    /\b(vestido|saia|cropped|biquini|lingerie|calca feminina|camisa feminina|blusa feminina)\b/i.test(normName)
+  ) {
+    tags.push('#modafeminina', '#lookdodia', '#tendencia');
+    if (normName.includes('vestido')) tags.push('#vestidofeminino');
+    else if (normName.includes('calca')) tags.push('#calcafeminina');
+    else if (normName.includes('conjunto')) tags.push('#conjuntofeminino');
+    else if (normName.includes('pijama') || normName.includes('camisola')) tags.push('#pijamafeminino');
+    else if (normName.includes('tenis') || normName.includes('sapato') || normName.includes('sandalia')) tags.push('#calcadosfemininos');
+  } else if (isCasaCozinha) {
     tags.push('#achadinhosdecasa', '#dicasdecasa', '#utilidadesdomesticas', '#casaorganizada');
     if (normName.includes('rede')) tags.push('#redededescanso', '#confortoemcasa');
-  } else if (normNiche.includes('ferramenta') || normNiche.includes('jardim') || normNiche.includes('agro') || normName.includes('rocadeira') || normName.includes('furadeira')) {
+    else if (normName.includes('garrafa') || normName.includes('copo')) tags.push('#copotermico', '#garrafatermica');
+    else if (normName.includes('ventilador') || normName.includes('climatizador')) tags.push('#ventilador', '#verao');
+  } else if (isFerramentasJardim) {
     tags.push('#ferramentas', '#construcao', '#jardim', '#dicasuteis');
-  } else if (normNiche.includes('beleza') || normNiche.includes('saude') || normName.includes('escova') || normName.includes('cabelo') || normName.includes('skincare')) {
+  } else if (isBelezaCuidado) {
     tags.push('#dicasdebeleza', '#beleza', '#autocuidado', '#skincare');
-  } else if (normNiche.includes('fitness') || normName.includes('esteira') || normName.includes('treino') || normName.includes('academia')) {
+  } else if (isFitness) {
     tags.push('#fitness', '#treinoemcasa', '#vidasaudavel', '#academia');
-  } else if (normNiche.includes('auto') || normNiche.includes('som') || normName.includes('alto-falante') || normName.includes('amplificador')) {
-    tags.push('#somautomotivo', '#carros', '#automotivo');
+  } else if (isAutoMoto) {
+    tags.push('#automotivo', '#carros', '#motos');
+    if (normName.includes('som') || normName.includes('alto-falante')) tags.push('#somautomotivo');
+  } else if (isInfantil) {
+    tags.push('#brinquedos', '#maesnotiktok', '#brinquedoinfantil', '#infantil');
+  } else if (isPet) {
+    tags.push('#petsoftiktok', '#cachorros', '#gatos', '#dicaspet');
   } else {
     tags.push('#achadinhos', '#utilidades');
   }
 
-  // 3. Tags universais virais de compras TikTok / Reels
-  const viralShoppingTags = ['#achadinhos', '#tiktokcompras', '#comprinhas', '#tiktokmademebuyit', '#review'];
+  // 4. Tags universais virais de compras TikTok / Reels (ex: #viraltiktok, #fypviral, #tiktokcompras)
+  const viralShoppingTags = [
+    '#viraltiktok',
+    '#fypviral',
+    '#tiktokcompras',
+    '#achadinhos',
+    '#comprinhas',
+    '#foryou',
+  ];
   for (const vTag of viralShoppingTags) {
     if (!tags.includes(vTag) && tags.length < 8) {
       tags.push(vTag);
