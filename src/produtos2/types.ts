@@ -1,3 +1,5 @@
+import { TokenUsageStats } from '../types';
+
 export type Produtos2SubMode = 'produtos_geral' | 'vestuario_masculino';
 export type Produtos2MaleSubOption = 'calcados' | 'roupas';
 export type Produtos2Duration = 8 | 10;
@@ -75,6 +77,7 @@ export interface Produtos2FormState {
   scenario: Produtos2Scenario;
   variations: Produtos2Variation[];
   maleClothStyle: Produtos2MaleClothStyle;
+  speechTokenUsage?: TokenUsageStats;
 }
 
 export interface Produtos2VisualMapItem {
@@ -151,5 +154,6 @@ export interface Produtos2ResultState {
   speakers?: Array<{ speaker: string; gender?: string; speech: string }>;
   description?: string;
   hashtags?: string[];
+  tokenUsage?: TokenUsageStats;
 }
 

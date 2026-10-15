@@ -1170,6 +1170,9 @@ export default function App() {
         },
       });
       setProdutos2Result(res);
+      if (res.tokenUsage) {
+        setSessionTokenStats(res.tokenUsage);
+      }
       playCompletionSound();
     } catch (err: any) {
       setProdutos2ErrorMessage(err.message || 'Erro ao processar o Modo Produtos 2.0.');
@@ -1192,12 +1195,63 @@ export default function App() {
       });
       setProdutos2Result((prev) => {
         if (!prev) return null;
+        let updatedTokenUsage = prev.tokenUsage;
+        if (regen.incrementalUsage) {
+          const inc = regen.incrementalUsage;
+          const curr = prev.tokenUsage || {
+            promptTokens: 0,
+            candidateTokens: 0,
+            totalTokens: 0,
+            estimatedCostBRL: 0,
+            totalCostUSD: 0,
+            breakdown: {
+              videoAnalysisTokens: 0,
+              videoAnalysisCostBRL: 0,
+              speechTokens: 0,
+              speechCostBRL: 0,
+              imagesCount: 0,
+              imagesCostBRL: 0,
+              promptsTokens: 0,
+              promptsCostBRL: 0,
+            },
+            detailedSteps: [],
+            modelsUsed: [],
+          };
+
+          const newDetailedSteps = [
+            ...(curr.detailedSteps || []),
+            ...(inc.detailedSteps || []),
+          ];
+          const newModelsUsed = Array.from(
+            new Set([...(curr.modelsUsed || []), ...(inc.modelsUsed || [])])
+          );
+
+          updatedTokenUsage = {
+            ...curr,
+            promptTokens: curr.promptTokens + inc.promptTokens,
+            candidateTokens: curr.candidateTokens + inc.candidateTokens,
+            totalTokens: curr.totalTokens + inc.totalTokens,
+            totalCostUSD: Math.round(((curr.totalCostUSD || 0) + inc.costUSD) * 1000) / 1000,
+            estimatedCostBRL: Math.round((curr.estimatedCostBRL + inc.costBRL) * 100) / 100,
+            breakdown: {
+              ...curr.breakdown,
+              imagesCount: (curr.breakdown?.imagesCount || 0) + 1,
+              imagesCostBRL: Math.round(((curr.breakdown?.imagesCostBRL || 0) + inc.costBRL) * 100) / 100,
+            },
+            detailedSteps: newDetailedSteps,
+            modelsUsed: newModelsUsed,
+            totalCalls: (curr.totalCalls || (curr.detailedSteps?.length || 0)) + (inc.detailedSteps?.length || 2),
+          };
+          setSessionTokenStats(updatedTokenUsage);
+        }
+
         return {
           ...prev,
           isRegeneratingStoryboard: false,
           storyboardImageUrl: regen.imageUrl || prev.storyboardImageUrl,
           storyboardAudit: regen.storyboardAudit || prev.storyboardAudit,
           storyboardError: regen.error,
+          tokenUsage: updatedTokenUsage,
         };
       });
       if (regen.imageUrl) {
@@ -1301,7 +1355,9 @@ export default function App() {
     }`}>
       <Header
         tokenStats={
-          appMode === 'ania'
+          appMode === 'produtos2'
+            ? (produtos2Result?.tokenUsage || (sessionTokenStats.totalTokens > 0 ? sessionTokenStats : undefined))
+            : appMode === 'ania'
             ? (aniaResult?.tokenUsage || sessionTokenStats)
             : (analysisResult?.tokenUsage || sessionTokenStats)
         }
@@ -1335,6 +1391,7 @@ export default function App() {
                   onSubmit={handleStartProdutos2}
                   isProcessing={isProcessingProdutos2}
                   aiProfile={aiProfile}
+                  onTokenUsageChange={setSessionTokenStats}
                 />
 
                 {isProcessingProdutos2 && (
@@ -1375,6 +1432,7 @@ export default function App() {
                   onRegenerateStoryboard={handleRegenerateProdutos2Storyboard}
                   onOpenPreview={(url, title) => setPreviewModal({ isOpen: true, url, title })}
                   aiProfile={aiProfile}
+                  onTokenUsageChange={setSessionTokenStats}
                 />
               </div>
             )}

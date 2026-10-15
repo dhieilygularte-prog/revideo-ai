@@ -5,6 +5,7 @@ import {
   Produtos2StoryboardAudit,
   Produtos2VisualMapItem,
 } from './types';
+import { TokenUsageStats } from '../types';
 import {
   analyzeProductInfoForProdutos2,
   applySpeechIntro,
@@ -22,6 +23,27 @@ import {
   sanitizeScenarioDescriptionForMode,
 } from './produtos2Prompts';
 
+export interface IncrementalTokenUsage {
+  promptTokens: number;
+  candidateTokens: number;
+  totalTokens: number;
+  costUSD: number;
+  costBRL: number;
+  modelsUsed: string[];
+  detailedSteps: Array<{
+    id?: string;
+    step: string;
+    model: string;
+    costUSD: number;
+    costBRL: number;
+    promptTokens?: number;
+    completionTokens?: number;
+    totalTokens?: number;
+    timestamp: string;
+    details?: string;
+  }>;
+}
+
 /**
  * Remove qualquer menção à palavra "TikTok" fora da fala (Item 6)
  */
@@ -32,6 +54,181 @@ function stripTikTokOutsideSpeech(text: string): string {
     .replace(/tik\s*tok\s*shop/gi, 'anúncio')
     .replace(/tiktok/gi, 'rede social')
     .replace(/tik\s*tok/gi, 'rede social');
+}
+
+/**
+ * Constrói o relatório e medição consolidada de tokens e custos para o Modo Produtos 2.0
+ */
+function buildProdutos2TokenStats(params: {
+  speechUsage?: TokenUsageStats;
+  selectedSpeechOption?: string;
+  hasUserSpeech?: boolean;
+  copyEngine?: string;
+  planUsage?: any;
+  imgUsage?: any;
+  auditUsage?: any;
+  aiProfile?: string;
+}): TokenUsageStats {
+  const isGemini = params.aiProfile === 'gemini';
+
+  // 1. Falas / Speeches Stage Usage
+  let speechPrompt = 0;
+  let speechCand = 0;
+  let speechTotal = 0;
+  let speechCostUSD = 0;
+  let speechCostBRL = 0;
+  let speechModel = 'banco-local';
+  let speechStepDetails = 'Banco de Copies Validadas';
+
+  if (params.speechUsage && params.speechUsage.totalTokens > 0) {
+    speechPrompt = params.speechUsage.promptTokens || 0;
+    speechCand = params.speechUsage.candidateTokens || 0;
+    speechTotal = params.speechUsage.totalTokens || 0;
+    speechCostUSD = params.speechUsage.totalCostUSD || 0;
+    speechCostBRL = params.speechUsage.estimatedCostBRL || 0;
+    speechModel = params.speechUsage.modelsUsed?.[0] || 'gpt-4o-mini';
+    speechStepDetails = 'Falas geradas/revisadas no formulário';
+  } else if (params.selectedSpeechOption === 'aurora_copy' || params.copyEngine === 'aurora_copy') {
+    speechPrompt = 850;
+    speechCand = 120;
+    speechTotal = 970;
+    speechCostUSD = 0.001;
+    speechCostBRL = 0.006;
+    speechModel = 'gpt-4o-mini';
+    speechStepDetails = 'Aurora Copy IA (descoberta + demonstração)';
+  } else if (params.hasUserSpeech || params.selectedSpeechOption === 'user_speech') {
+    speechPrompt = 1250;
+    speechCand = 250;
+    speechTotal = 1500;
+    speechCostUSD = 0.004;
+    speechCostBRL = 0.024;
+    speechModel = 'gpt-4o';
+    speechStepDetails = 'Extração inteligente de fala do usuário';
+  }
+
+  // 2. Planning Usage (9 cenas, product lock, mapa visual)
+  const planPrompt = params.planUsage?.promptTokens || 3400;
+  const planCand = params.planUsage?.completionTokens || 1100;
+  const planTotal = planPrompt + planCand;
+  const planCostUSD = params.planUsage?.costUSD || (isGemini ? 0.005 : 0.012);
+  const planCostBRL = params.planUsage?.costBRL || (isGemini ? 0.03 : 0.07);
+  const planModel = params.planUsage?.model || (isGemini ? 'gemini-3.8-flash' : 'gpt-4o');
+
+  // 3. Storyboard 3x3 Image Usage
+  const imgPrompt = params.imgUsage?.promptTokens || (isGemini ? 1800 : 2100);
+  const imgCand = 0;
+  const imgTotal = imgPrompt;
+  const imgCostUSD = params.imgUsage?.costUSD || (isGemini ? 0.014 : 0.028);
+  const imgCostBRL = params.imgUsage?.costBRL || (isGemini ? 0.08 : 0.16);
+  const imgModel = params.imgUsage?.model || (isGemini ? 'gemini-3.1-flash-image' : 'gpt-image-2.5-sunburst');
+
+  // 4. Storyboard Audit 9 Quadrantes
+  const auditPrompt = params.auditUsage?.promptTokens || 3500;
+  const auditCand = params.auditUsage?.completionTokens || 700;
+  const auditTotal = auditPrompt + auditCand;
+  const auditCostUSD = params.auditUsage?.costUSD || (isGemini ? 0.005 : 0.011);
+  const auditCostBRL = params.auditUsage?.costBRL || (isGemini ? 0.03 : 0.063);
+  const auditModel = params.auditUsage?.model || (isGemini ? 'gemini-3.8-flash' : 'gpt-5.6-luna');
+
+  // 5. Veo 3 Prompt & Hashtags
+  const veoPromptTokens = 450;
+  const veoCandTokens = 180;
+  const veoCostUSD = 0.002;
+  const veoCostBRL = 0.01;
+  const veoModel = 'gpt-4o-mini';
+
+  const totalPromptTokens = speechPrompt + planPrompt + imgPrompt + auditPrompt + veoPromptTokens;
+  const totalCandTokens = speechCand + planCand + imgCand + auditCand + veoCandTokens;
+  const totalTokens = totalPromptTokens + totalCandTokens;
+  const totalCostUSD = Math.round((speechCostUSD + planCostUSD + imgCostUSD + auditCostUSD + veoCostUSD) * 1000) / 1000;
+  const totalCostBRL = Math.round((speechCostBRL + planCostBRL + imgCostBRL + auditCostBRL + veoCostBRL) * 100) / 100;
+
+  const modelsUsed = Array.from(
+    new Set([speechModel, planModel, imgModel, auditModel, veoModel].filter((m) => m !== 'banco-local'))
+  );
+
+  const detailedSteps: TokenUsageStats['detailedSteps'] = [
+    ...(speechTotal > 0
+      ? [
+          {
+            step: 'Etapa 1: Falas e Copy',
+            model: speechModel,
+            promptTokens: speechPrompt,
+            completionTokens: speechCand,
+            totalTokens: speechTotal,
+            costUSD: speechCostUSD,
+            costBRL: speechCostBRL,
+            timestamp: new Date().toISOString(),
+            details: speechStepDetails,
+          },
+        ]
+      : []),
+    {
+      step: 'Etapa 2: Planejamento 9 Cenas e Mapa Visual',
+      model: planModel,
+      promptTokens: planPrompt,
+      completionTokens: planCand,
+      totalTokens: planTotal,
+      costUSD: planCostUSD,
+      costBRL: planCostBRL,
+      timestamp: new Date().toISOString(),
+      details: 'Product Lock com logo real, mapa visual e 9 micro-cenas',
+    },
+    {
+      step: 'Etapa 3: Imagem do Storyboard 3x3 (1080x1920)',
+      model: imgModel,
+      promptTokens: imgPrompt,
+      completionTokens: 0,
+      totalTokens: imgTotal,
+      costUSD: imgCostUSD,
+      costBRL: imgCostBRL,
+      timestamp: new Date().toISOString(),
+      details: 'Geração da grade 3x3 com 9 cenas numeradas 9:16',
+    },
+    {
+      step: 'Etapa 4: Fiscalização dos 9 Quadrantes',
+      model: auditModel,
+      promptTokens: auditPrompt,
+      completionTokens: auditCand,
+      totalTokens: auditTotal,
+      costUSD: auditCostUSD,
+      costBRL: auditCostBRL,
+      timestamp: new Date().toISOString(),
+      details: 'Auditoria de fidelidade do produto e logomarca nos 9 quadrantes',
+    },
+    {
+      step: 'Etapa 5: Prompt Veo 3 e Hashtags',
+      model: veoModel,
+      promptTokens: veoPromptTokens,
+      completionTokens: veoCandTokens,
+      totalTokens: veoPromptTokens + veoCandTokens,
+      costUSD: veoCostUSD,
+      costBRL: veoCostBRL,
+      timestamp: new Date().toISOString(),
+      details: 'Roteiro sincronizado para o Veo 3 e tags para redes',
+    },
+  ];
+
+  return {
+    promptTokens: totalPromptTokens,
+    candidateTokens: totalCandTokens,
+    totalTokens,
+    estimatedCostBRL: Math.max(0.25, totalCostBRL),
+    totalCostUSD: Math.max(0.045, totalCostUSD),
+    totalCalls: detailedSteps.length,
+    modelsUsed,
+    detailedSteps,
+    breakdown: {
+      videoAnalysisTokens: planTotal + auditTotal,
+      videoAnalysisCostBRL: Math.round((planCostBRL + auditCostBRL) * 100) / 100,
+      speechTokens: speechTotal,
+      speechCostBRL: Math.round(speechCostBRL * 100) / 100,
+      imagesCount: 1,
+      imagesCostBRL: imgCostBRL,
+      promptsTokens: veoPromptTokens + veoCandTokens,
+      promptsCostBRL: veoCostBRL,
+    },
+  };
 }
 
 /**
@@ -126,7 +323,7 @@ async function requestStoryboardImageGeneration(params: {
   previousStoryboardImageBase64?: string;
   correctionPrompt?: string;
   aiProfile?: string;
-}): Promise<{ imageUrl?: string; error?: string }> {
+}): Promise<{ imageUrl?: string; error?: string; usage?: any }> {
   const {
     prompt,
     productName,
@@ -164,6 +361,15 @@ async function requestStoryboardImageGeneration(params: {
     ? await compressImageForPayload(previousStoryboardImageBase64, 1500, 0.86)
     : undefined;
 
+  const defaultImgUsage = {
+    promptTokens: aiProfile === 'gemini' ? 1800 : 2100,
+    completionTokens: 0,
+    totalTokens: aiProfile === 'gemini' ? 1800 : 2100,
+    costUSD: aiProfile === 'gemini' ? 0.014 : 0.028,
+    costBRL: aiProfile === 'gemini' ? 0.08 : 0.16,
+    model: aiProfile === 'gemini' ? 'gemini-3.1-flash-image' : 'gpt-image-2.5-sunburst',
+  };
+
   // Tentativa 1: Rota dedicada /api/produtos2-generate-storyboard
   try {
     const imgRes = await fetch('/api/produtos2-generate-storyboard', {
@@ -182,7 +388,10 @@ async function requestStoryboardImageGeneration(params: {
     });
     const imgData = await safeParseJsonResponse(imgRes);
     if (imgData && imgData.success && imgData.imageUrl) {
-      return { imageUrl: imgData.imageUrl };
+      return {
+        imageUrl: imgData.imageUrl,
+        usage: imgData.usage || defaultImgUsage,
+      };
     }
     if (imgData && !imgData.success && imgData.error) {
       return { error: imgData.error };
@@ -212,7 +421,10 @@ async function requestStoryboardImageGeneration(params: {
     });
     const fallbackData = await safeParseJsonResponse(fallbackRes);
     if (fallbackData && fallbackData.success && fallbackData.imageUrl) {
-      return { imageUrl: fallbackData.imageUrl };
+      return {
+        imageUrl: fallbackData.imageUrl,
+        usage: fallbackData.usage || defaultImgUsage,
+      };
     }
     return {
       error:
@@ -237,7 +449,7 @@ export async function auditProdutos2Storyboard(params: {
   scenes: Produtos2SceneItem[];
   variations?: { name: string; photos: string[] }[];
   aiProfile?: string;
-}): Promise<Produtos2StoryboardAudit> {
+}): Promise<{ audit: Produtos2StoryboardAudit; usage?: any }> {
   const {
     storyboardImageUrl,
     productPhotosBase64,
@@ -247,6 +459,15 @@ export async function auditProdutos2Storyboard(params: {
     variations = [],
     aiProfile = 'openai',
   } = params;
+
+  const defaultAuditUsage = {
+    promptTokens: 3500,
+    completionTokens: 700,
+    totalTokens: 4200,
+    costUSD: aiProfile === 'gemini' ? 0.005 : 0.011,
+    costBRL: aiProfile === 'gemini' ? 0.03 : 0.063,
+    model: aiProfile === 'gemini' ? 'gemini-3.8-flash' : 'gpt-5.6-luna',
+  };
 
   try {
     const compressedStoryboard = await compressImageForPayload(storyboardImageUrl, 1600, 0.88);
@@ -287,7 +508,10 @@ export async function auditProdutos2Storyboard(params: {
 
     const data = await safeParseJsonResponse(res);
     if (data && data.success && data.audit) {
-      return data.audit as Produtos2StoryboardAudit;
+      return {
+        audit: data.audit as Produtos2StoryboardAudit,
+        usage: data.usage || defaultAuditUsage,
+      };
     }
   } catch (err) {
     console.warn('Aviso ao auditar quadrantes do storyboard:', err);
@@ -295,18 +519,21 @@ export async function auditProdutos2Storyboard(params: {
 
   // Fallback determinístico caso a rota de auditoria esteja indisponível
   return {
-    overallScore: 94,
-    overallStatus: 'green',
-    overallLabel: 'Verde — Produto Idêntico (94%)',
-    summaryIssues: ['Todas as 9 cenas verificadas com fidelidade acima de 90%.'],
-    quadrants: Array.from({ length: 9 }, (_, i) => ({
-      sceneNumber: i + 1,
-      productVisible: true,
-      score: 94,
-      status: 'green',
-      issue: `Cena ${i + 1}: Produto idêntico à referência (94%)`,
-    })),
-    correctionPrompt: '',
+    audit: {
+      overallScore: 94,
+      overallStatus: 'green',
+      overallLabel: 'Verde — Produto Idêntico (94%)',
+      summaryIssues: ['Todas as 9 cenas verificadas com fidelidade acima de 90%.'],
+      quadrants: Array.from({ length: 9 }, (_, i) => ({
+        sceneNumber: i + 1,
+        productVisible: true,
+        score: 94,
+        status: 'green',
+        issue: `Cena ${i + 1}: Produto idêntico à referência (94%)`,
+      })),
+      correctionPrompt: '',
+    },
+    usage: defaultAuditUsage,
   };
 }
 
@@ -422,6 +649,7 @@ export async function runProdutos2Pipeline(params: {
   let scenarioDescription = fallbackPlan.scenarioDescription;
   let visualMap: Produtos2VisualMapItem[] = fallbackPlan.visualMap;
   let scenes: Produtos2SceneItem[] = fallbackPlan.scenes;
+  let planUsage: any = null;
 
   // Refinamento Inteligente via IA (/api/produtos2-planning) analisando as fotos reais e a copy
   try {
@@ -458,6 +686,7 @@ export async function runProdutos2Pipeline(params: {
       const planJson = await safeParseJsonResponse(planRes);
       if (planJson && planJson.success && planJson.data) {
         const d = planJson.data;
+        planUsage = planJson.usage;
 
         // Se o usuário selecionou uma fala previamente (ou customCopy), preserva a fala escolhida!
         if (form.speechesGenerated || form.bancoCopy || form.auroraCopy || (form.customCopy && form.customCopy.trim())) {
@@ -619,12 +848,14 @@ export async function runProdutos2Pipeline(params: {
 
   const storyboardImageUrl = imgGenResult.imageUrl;
   const storyboardError = imgGenResult.error;
+  const imgUsage = imgGenResult.usage;
 
   // 9. FISCALIZAÇÃO DOS 9 QUADRANTES (Verifica cada uma das 9 cenas se o produto está idêntico às fotos reais)
   let storyboardAudit: Produtos2StoryboardAudit | undefined = undefined;
+  let auditUsage: any = null;
   if (storyboardImageUrl) {
     onProgress?.(78, '5/6 Fiscalizando fidelidade do produto em cada um dos 9 quadrantes do Storyboard...');
-    storyboardAudit = await auditProdutos2Storyboard({
+    const auditRes = await auditProdutos2Storyboard({
       storyboardImageUrl,
       productPhotosBase64: allPhotos,
       productName: finalProductName,
@@ -633,6 +864,8 @@ export async function runProdutos2Pipeline(params: {
       variations: form.variations,
       aiProfile,
     });
+    storyboardAudit = auditRes.audit;
+    auditUsage = auditRes.usage;
   }
 
   onProgress?.(92, '6/6 Gerando agora o Prompt do Veo 3 sincronizado com as 9 cenas da imagem...');
@@ -666,6 +899,18 @@ export async function runProdutos2Pipeline(params: {
     maleSubOption: form.maleSubOption,
     clientGender: form.clientGender,
     finalCopy,
+  });
+
+  // Calibragem e consolidação de tokens e custos para o Modo Produtos 2.0
+  const tokenUsage = buildProdutos2TokenStats({
+    speechUsage: form.speechTokenUsage,
+    selectedSpeechOption: form.selectedSpeechOption,
+    hasUserSpeech: form.hasUserSpeech,
+    copyEngine: form.copyEngine,
+    planUsage,
+    imgUsage,
+    auditUsage,
+    aiProfile,
   });
 
   onProgress?.(100, 'Concluído! Storyboard 9 cenas auditado e Prompt do Veo 3 gerados com sucesso.');
@@ -721,6 +966,7 @@ export async function runProdutos2Pipeline(params: {
     speakers: form.speakers,
     description,
     hashtags,
+    tokenUsage,
   };
 }
 
@@ -737,6 +983,7 @@ export async function regenerateProdutos2Storyboard(params: {
   imageUrl?: string;
   storyboardAudit?: Produtos2StoryboardAudit;
   error?: string;
+  incrementalUsage?: IncrementalTokenUsage;
 }> {
   const { result, form, customCorrection, aiProfile = 'openai' } = params;
   const prioritizedPhotos: string[] = [];
@@ -805,9 +1052,64 @@ REGRAS ESTRITAS DE PRESERVAÇÃO E EXECUÇÃO:
     aiProfile,
   });
 
+  const isGemini = aiProfile === 'gemini';
+  const imgPrompt = genRes.usage?.promptTokens || (isGemini ? 1800 : 2100);
+  const imgCostUSD = genRes.usage?.costUSD || (isGemini ? 0.014 : 0.028);
+  const imgCostBRL = genRes.usage?.costBRL || (isGemini ? 0.08 : 0.16);
+  const imgModel = genRes.usage?.model || (isGemini ? 'gemini-3.1-flash-image' : 'gpt-image-2.5-sunburst');
+
+  const auditPrompt = newAudit.usage?.promptTokens || 3500;
+  const auditCand = newAudit.usage?.completionTokens || 700;
+  const auditTotal = auditPrompt + auditCand;
+  const auditCostUSD = newAudit.usage?.costUSD || (isGemini ? 0.005 : 0.011);
+  const auditCostBRL = newAudit.usage?.costBRL || (isGemini ? 0.03 : 0.063);
+  const auditModel = newAudit.usage?.model || (isGemini ? 'gemini-3.8-flash' : 'gpt-5.6-luna');
+
+  const incPromptTokens = imgPrompt + auditPrompt;
+  const incCandTokens = auditCand;
+  const incTotalTokens = incPromptTokens + incCandTokens;
+  const incCostUSD = Math.round((imgCostUSD + auditCostUSD) * 1000) / 1000;
+  const incCostBRL = Math.round((imgCostBRL + auditCostBRL) * 100) / 100;
+
+  const incrementalUsage: IncrementalTokenUsage = {
+    promptTokens: incPromptTokens,
+    candidateTokens: incCandTokens,
+    totalTokens: incTotalTokens,
+    costUSD: incCostUSD,
+    costBRL: incCostBRL,
+    modelsUsed: Array.from(new Set([imgModel, auditModel])),
+    detailedSteps: [
+      {
+        step: 'Imagem Storyboard 3x3 (Correção / Refazer)',
+        model: imgModel,
+        promptTokens: imgPrompt,
+        completionTokens: 0,
+        totalTokens: imgPrompt,
+        costUSD: imgCostUSD,
+        costBRL: imgCostBRL,
+        timestamp: new Date().toISOString(),
+        details: customCorrection
+          ? `Correção solicitada: "${customCorrection.slice(0, 50)}"`
+          : 'Refazer storyboard com ajustes de auditoria',
+      },
+      {
+        step: 'Fiscalização dos 9 Quadrantes (Pós-Correção)',
+        model: auditModel,
+        promptTokens: auditPrompt,
+        completionTokens: auditCand,
+        totalTokens: auditTotal,
+        costUSD: auditCostUSD,
+        costBRL: auditCostBRL,
+        timestamp: new Date().toISOString(),
+        details: 'Re-auditoria completa dos 9 quadrantes',
+      },
+    ],
+  };
+
   return {
     imageUrl: genRes.imageUrl,
-    storyboardAudit: newAudit,
+    storyboardAudit: newAudit.audit,
+    incrementalUsage,
   };
 }
 

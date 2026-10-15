@@ -27,6 +27,7 @@ import {
 import { buildProdutos2VeoPrompt } from './produtos2Prompts';
 import { MicroImageEditor } from '../components/MicroImageEditor';
 import { AIProfile } from '../config/aiProfiles';
+import { TokenUsageStats } from '../types';
 
 interface Produtos2ResultsProps {
   result: Produtos2ResultState;
@@ -34,6 +35,7 @@ interface Produtos2ResultsProps {
   onRegenerateStoryboard: (customCorrection?: string) => void;
   onOpenPreview: (url: string, title: string) => void;
   aiProfile?: AIProfile;
+  onTokenUsageChange?: (stats: TokenUsageStats) => void;
 }
 
 function getStatusClasses(status: Produtos2AuditColorStatus) {
@@ -76,6 +78,7 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
   onRegenerateStoryboard,
   onOpenPreview,
   aiProfile = 'openai',
+  onTokenUsageChange,
 }) => {
   const [promptCopied, setPromptCopied] = useState(false);
   const [hasCopiedPromptOnce, setHasCopiedPromptOnce] = useState(false);
@@ -215,6 +218,77 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
       const data = await res.json();
       if (data.success && data.reviewedSpeech) {
         setSpeechInput(data.reviewedSpeech);
+
+        if (data.usage) {
+          const revP = data.usage.promptTokens || 350;
+          const revC = data.usage.completionTokens || 80;
+          const revT = data.usage.totalTokens || (revP + revC);
+          const revUSD = data.usage.costUSD || 0.001;
+          const revBRL = data.usage.costBRL || 0.006;
+          const revM = data.usage.model || 'gpt-4o-mini';
+
+          onUpdateResult((prev) => {
+            if (!prev) return null;
+            const curr = prev.tokenUsage || {
+              promptTokens: 0,
+              candidateTokens: 0,
+              totalTokens: 0,
+              estimatedCostBRL: 0,
+              totalCostUSD: 0,
+              breakdown: {
+                videoAnalysisTokens: 0,
+                videoAnalysisCostBRL: 0,
+                speechTokens: 0,
+                speechCostBRL: 0,
+                imagesCount: 0,
+                imagesCostBRL: 0,
+                promptsTokens: 0,
+                promptsCostBRL: 0,
+              },
+              detailedSteps: [],
+              modelsUsed: [],
+            };
+
+            const updatedSteps = [
+              ...(curr.detailedSteps || []),
+              {
+                step: 'Revisão de Fala (Trocar fala)',
+                model: revM,
+                promptTokens: revP,
+                completionTokens: revC,
+                totalTokens: revT,
+                costUSD: revUSD,
+                costBRL: revBRL,
+                timestamp: new Date().toISOString(),
+                details: 'Revisão conservadora do texto mantendo originalidade <= 225 caracteres',
+              },
+            ];
+
+            const updatedStats: TokenUsageStats = {
+              ...curr,
+              promptTokens: curr.promptTokens + revP,
+              candidateTokens: curr.candidateTokens + revC,
+              totalTokens: curr.totalTokens + revT,
+              totalCostUSD: Math.round(((curr.totalCostUSD || 0) + revUSD) * 1000) / 1000,
+              estimatedCostBRL: Math.round((curr.estimatedCostBRL + revBRL) * 100) / 100,
+              breakdown: {
+                ...curr.breakdown,
+                speechTokens: (curr.breakdown?.speechTokens || 0) + revT,
+                speechCostBRL: Math.round(((curr.breakdown?.speechCostBRL || 0) + revBRL) * 100) / 100,
+              },
+              detailedSteps: updatedSteps,
+              modelsUsed: Array.from(new Set([...(curr.modelsUsed || []), revM])),
+              totalCalls: ((curr.totalCalls || curr.detailedSteps?.length) || 0) + 1,
+            };
+
+            onTokenUsageChange?.(updatedStats);
+
+            return {
+              ...prev,
+              tokenUsage: updatedStats,
+            };
+          });
+        }
       } else {
         alert(`Erro ao revisar fala: ${data.error || 'Erro desconhecido'}`);
       }

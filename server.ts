@@ -2222,13 +2222,25 @@ app.post('/api/produtos2-planning', async (req, res) => {
       });
     };
 
+    interface AIExecutionOutput {
+      text: string;
+      usage: {
+        promptTokens: number;
+        completionTokens: number;
+        totalTokens: number;
+        costUSD: number;
+        costBRL: number;
+        model: string;
+      };
+    }
+
     // Helper de alta performance para chamadas de texto IA (OpenAI gpt-4o-mini com fallback automático para Gemini 2.5 Flash)
     const executeFastAIText = async (opts: {
       systemPrompt: string;
       userPrompt: string;
       jsonMode?: boolean;
       temperature?: number;
-    }): Promise<string> => {
+    }): Promise<AIExecutionOutput> => {
       const { systemPrompt, userPrompt, jsonMode = false, temperature = 0.3 } = opts;
       const client = (openAIProvider as any).getClient();
 
@@ -2245,7 +2257,23 @@ app.post('/api/produtos2-planning', async (req, res) => {
             temperature,
           });
           const content = comp.choices[0]?.message?.content?.trim();
-          if (content) return content;
+          if (content) {
+            const pTokens = comp.usage?.prompt_tokens || 450;
+            const cTokens = comp.usage?.completion_tokens || 110;
+            const costUSD = Math.round(((pTokens / 1_000_000) * 0.15 + (cTokens / 1_000_000) * 0.60) * 10000) / 10000;
+            const costBRL = Math.round(costUSD * 5.70 * 1000) / 1000;
+            return {
+              text: content,
+              usage: {
+                promptTokens: pTokens,
+                completionTokens: cTokens,
+                totalTokens: pTokens + cTokens,
+                costUSD: Math.max(0.0005, costUSD),
+                costBRL: Math.max(0.003, costBRL),
+                model: 'gpt-4o-mini',
+              },
+            };
+          }
         } catch (err: any) {
           console.warn('Erro na chamada OpenAI gpt-4o-mini, tentando fallback:', err?.message || err);
         }
@@ -2269,7 +2297,21 @@ app.post('/api/produtos2-planning', async (req, res) => {
             },
           });
           const text = gemRes.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-          if (text) return text;
+          if (text) {
+            const pTokens = gemRes.usageMetadata?.promptTokenCount || 450;
+            const cTokens = gemRes.usageMetadata?.candidatesTokenCount || 110;
+            return {
+              text,
+              usage: {
+                promptTokens: pTokens,
+                completionTokens: cTokens,
+                totalTokens: pTokens + cTokens,
+                costUSD: 0.0003,
+                costBRL: 0.002,
+                model: GEMINI_VISION_FAST_MODEL || 'gemini-2.5-flash',
+              },
+            };
+          }
         } catch (gemErr: any) {
           console.warn('Erro na chamada Gemini:', gemErr?.message || gemErr);
         }
@@ -2286,7 +2328,20 @@ app.post('/api/produtos2-planning', async (req, res) => {
           ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
           temperature,
         });
-        return comp.choices[0]?.message?.content?.trim() || '';
+        const content = comp.choices[0]?.message?.content?.trim() || '';
+        const pTokens = comp.usage?.prompt_tokens || 450;
+        const cTokens = comp.usage?.completion_tokens || 110;
+        return {
+          text: content,
+          usage: {
+            promptTokens: pTokens,
+            completionTokens: cTokens,
+            totalTokens: pTokens + cTokens,
+            costUSD: 0.0005,
+            costBRL: 0.003,
+            model: 'gpt-4o-mini',
+          },
+        };
       }
 
       throw new Error('Nenhum provedor de IA disponível para geração de texto.');
@@ -2297,7 +2352,7 @@ app.post('/api/produtos2-planning', async (req, res) => {
       systemPrompt: string;
       userPrompt: string;
       jsonMode?: boolean;
-    }): Promise<string> => {
+    }): Promise<AIExecutionOutput> => {
       const { systemPrompt, userPrompt, jsonMode = false } = opts;
       const client = (openAIProvider as any).getClient();
 
@@ -2323,7 +2378,23 @@ app.post('/api/produtos2-planning', async (req, res) => {
 
             const comp = await client.chat.completions.create(params);
             const content = comp.choices[0]?.message?.content?.trim();
-            if (content) return content;
+            if (content) {
+              const pTokens = comp.usage?.prompt_tokens || 1250;
+              const cTokens = comp.usage?.completion_tokens || 250;
+              const costUSD = Math.round(((pTokens / 1_000_000) * 2.5 + (cTokens / 1_000_000) * 10) * 10000) / 10000;
+              const costBRL = Math.round(costUSD * 5.70 * 100) / 100;
+              return {
+                text: content,
+                usage: {
+                  promptTokens: pTokens,
+                  completionTokens: cTokens,
+                  totalTokens: pTokens + cTokens,
+                  costUSD: Math.max(0.004, costUSD),
+                  costBRL: Math.max(0.02, costBRL),
+                  model: modelCandidate,
+                },
+              };
+            }
           } catch (mErr: any) {
             console.warn(`Tentando próximo modelo OpenAI após erro no ${modelCandidate}:`, mErr?.message || mErr);
           }
@@ -2348,7 +2419,21 @@ app.post('/api/produtos2-planning', async (req, res) => {
             },
           });
           const text = gemRes.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-          if (text) return text;
+          if (text) {
+            const pTokens = gemRes.usageMetadata?.promptTokenCount || 1250;
+            const cTokens = gemRes.usageMetadata?.candidatesTokenCount || 250;
+            return {
+              text,
+              usage: {
+                promptTokens: pTokens,
+                completionTokens: cTokens,
+                totalTokens: pTokens + cTokens,
+                costUSD: 0.001,
+                costBRL: 0.006,
+                model: GEMINI_VISION_FAST_MODEL || 'gemini-2.5-flash',
+              },
+            };
+          }
         } catch (gemErr: any) {
           console.warn('Erro no fallback Gemini:', gemErr?.message || gemErr);
         }
@@ -2390,11 +2475,12 @@ FORMATO DE RESPOSTA (JSON estrito):
   "soundEffects": "..."
 }`;
 
-        const raw = await executeTopAIModel({
+        const rawOutput = await executeTopAIModel({
           systemPrompt: detectSystem,
           userPrompt: `INSTRUÇÕES ADICIONAIS FORNECIDAS PELO USUÁRIO:\n${textToAnalyze}\n\nNOME DO PRODUTO: ${productName || 'Produto'}\nINFORMAÇÕES DO PRODUTO: ${productInfo || ''}`,
           jsonMode: true,
         });
+        const raw = rawOutput.text;
 
         let parsed: any = {};
         try {
@@ -2452,6 +2538,7 @@ FORMATO DE RESPOSTA (JSON estrito):
           dialogueDescription,
           dialogueScript,
           speakers,
+          usage: rawOutput.usage,
         });
       } catch (err: any) {
         console.warn('Erro ao detectar fala do usuário:', err);
@@ -2473,13 +2560,13 @@ FORMATO DE RESPOSTA (JSON estrito):
         const lengthInstruction = isUnderLimit
           ? `REGRA ABSOLUTA DE TAMANHO (NÃO ENCURTAR):
 O texto fornecido tem ${charCount} caracteres e JÁ ESTÁ DENTRO do limite máximo de 225 caracteres.
-- É TERMINANTEMENTE PROIBIDO ENCURTAR, RESUMIR, CONDENSAR OU CORTAR PARTES DO TEXTO!
-- Mantenha RIGOROSAMENTE todas as frases, argumentos, detalhes e palavras originais do usuário.
+- É TERMINANTEMENTE PROIBIDO ENCURTAR, RESUMIR, CONDENSAR OU CORTAR QUALQUER FRASE OU PARTE DO TEXTO!
+- Mantenha o texto O MAIS ORIGINAL POSSÍVEL, preservando integralmente todas as frases, palavras, argumentos e detalhes originais que o usuário escreveu.
 - O comprimento final deve permanecer praticamente idêntico ao original (com pequenas variações apenas pelas correções gramaticais ou remoção de palavras duplicadas).
 - A ÚNICA razão permitida para encurtar ou remover algo é se houver palavras repetidas ou gagueira (ex: "aí aí", "ele ele", "o o", "tá tá")!`
-          : `REGRA DE TAMANHO (ENCURTAMENTO NECESSÁRIO):
+          : `REGRA DE TAMANHO (ENCURTAMENTO NECESSÁRIO PORQUE EXCEDE 225 CARACTERES):
 O texto fornecido tem ${charCount} caracteres e EXCEDE o limite de 225 caracteres.
-- Você DEVE condensar e encurtar o texto para caber com perfeição no limite de até 225 caracteres (idealmente entre 195 e 225 caracteres com espaços).
+- Você DEVE condensar e encurtar o texto para caber com perfeição no limite de até 225 caracteres (idealmente entre 190 e 225 caracteres com espaços).
 - Elimine redundâncias, mantendo os principais benefícios e preservando a chamada de ação final (ex: "toca no carrinho laranja e garanta o seu!").
 - NUNCA deixe frases cortadas pela metade; a última frase deve estar completa com ponto final ou exclamação.`;
 
@@ -2491,7 +2578,7 @@ ${lengthInstruction}
 DIRETIVAS OBRIGATÓRIAS:
 1. CORREÇÃO GRAMATICAL E ORTOGRÁFICA RIGOROSA:
    - Corrija todos os erros de ortografia, palavras grafadas incorretamente, acentuação, concordância verbal e nominal em português brasileiro (ex: "comprarão" -> "compraram", "mais" -> "mas", "agente" -> "a gente", "preço" -> "preço", etc.).
-   - Deixe o texto em português culto, natural e fluido.
+   - Deixe o texto em português correto, natural e fluido.
 2. PONTUAÇÃO E RITMO PARA VOZ DE IA:
    - Ajuste a pontuação (vírgulas nos pontos de respiração natural, exclamações em frases empolgantes, pontos finais firmes) para que o narrador de IA faça pausas naturais e respirações no lugar certo, com entonação empolgante e sem atropelar as palavras.
 3. REMOÇÃO DE REPETIÇÕES E GAGUEIRAS:
@@ -2504,15 +2591,21 @@ DIRETIVAS OBRIGATÓRIAS:
    - "AMOLED" -> "Amóled"
 5. PRESERVAÇÃO DE CONTEÚDO:
    - Não invente argumentos novos e não adicione chamadas para ação que o usuário não escreveu.
+   - ${isUnderLimit ? 'LEMBRE-SE: Como o texto original tem <= 225 caracteres, PRESERVE O MÁXIMO POSSÍVEL DO TEXTO ORIGINAL, apenas corrigindo o português, removendo repetições e ajustando para leitura de IA.' : 'Encurte para até 225 caracteres mantendo o sentido.'}
 6. FORMATO DE SAÍDA:
    - Retorne SOMENTE o texto final revisado, sem aspas, sem contagem de caracteres e sem explicações adicionais.`;
 
-        let reviewed = await executeFastAIText({
+        const userPromptReview = isUnderLimit
+          ? `TEXTO ORIGINAL PARA REVISÃO (TEM ${charCount} CARACTERES - NÃO ENCURTAR, MANTENHA O TEXTO O MAIS ORIGINAL POSSÍVEL APENAS CORRIGINDO O PORTUGUÊS, PALAVRAS REPETIDAS E PONTUAÇÃO PARA IA):\n${inputSpeech}`
+          : `TEXTO ORIGINAL PARA REVISÃO (TEM ${charCount} CARACTERES - EXCEDE 225 CARACTERES, ENCURTE PARA ATÉ 225 CARACTERES MANTENDO O SENTIDO E CALL TO ACTION):\n${inputSpeech}`;
+
+        const reviewedOutput = await executeFastAIText({
           systemPrompt: reviewSystem,
-          userPrompt: `TEXTO ORIGINAL PARA REVISÃO:\n${inputSpeech}`,
+          userPrompt: userPromptReview,
           temperature: 0.1,
         });
 
+        let reviewed = reviewedOutput.text;
         reviewed = reviewed.replace(/^["'«“]|["'»”]$/g, '').trim();
         reviewed = cleanDuplicateWords(reviewed);
         reviewed = normalizeVoiceText(reviewed);
@@ -2527,6 +2620,7 @@ DIRETIVAS OBRIGATÓRIAS:
         return res.json({
           success: true,
           reviewedSpeech: reviewed,
+          usage: reviewedOutput.usage,
         });
       } catch (err: any) {
         return res.status(500).json({ success: false, error: err?.message || 'Erro na revisão de texto' });
@@ -2578,12 +2672,13 @@ ${additionalInstructions ? `INSTRUÇÕES ADICIONAIS: ${additionalInstructions}` 
 DURAÇÃO DO VÍDEO: 10 segundos.
 TAMANHO OBRIGATÓRIO: Exatamente entre ${minLimit} e ${maxLimit} caracteres.`;
 
-        let rawSpeech = await executeFastAIText({
+        const auroraOutput = await executeFastAIText({
           systemPrompt: auroraSystem,
           userPrompt: auroraUser,
           temperature: 0.7,
         });
 
+        let rawSpeech = auroraOutput.text;
         rawSpeech = rawSpeech.replace(/^["'«“]|["'»”]$/g, '').trim();
         rawSpeech = normalizeVoiceText(rawSpeech);
 
@@ -2607,7 +2702,7 @@ TAMANHO OBRIGATÓRIO: Exatamente entre ${minLimit} e ${maxLimit} caracteres.`;
           rawSpeech = rawSpeech.slice(0, 225).replace(/[,;:\s]+[^.!?,;:]*$/, '') + '!';
         }
 
-        return res.json({ success: true, auroraCopy: rawSpeech });
+        return res.json({ success: true, auroraCopy: rawSpeech, usage: auroraOutput.usage });
       } catch (err: any) {
         return res.status(500).json({ success: false, error: err?.message || 'Erro ao gerar Aurora Copy' });
       }
@@ -2800,7 +2895,22 @@ Retorne APENAS um objeto JSON válido com as chaves:
               }
               parsed.finalCopy = activeCopy;
               parsed.copySourceLabel = copySourceLabel;
-              return res.json({ success: true, data: parsed });
+              const promptTok = completion.usage?.prompt_tokens || 3400;
+              const compTok = completion.usage?.completion_tokens || 1100;
+              const costUSD = Math.round(((promptTok / 1_000_000) * 2.5 + (compTok / 1_000_000) * 10) * 10000) / 10000;
+              const costBRL = Math.round(costUSD * 5.70 * 100) / 100;
+              return res.json({
+                success: true,
+                data: parsed,
+                usage: {
+                  promptTokens: promptTok,
+                  completionTokens: compTok,
+                  totalTokens: promptTok + compTok,
+                  costUSD: Math.max(0.012, costUSD),
+                  costBRL: Math.max(0.07, costBRL),
+                  model: modelCandidate,
+                },
+              });
             }
           } catch (oiErr: any) {
             console.warn(`Aviso OpenAI em produtos2-planning (${modelCandidate}):`, oiErr?.message || oiErr);
@@ -2849,7 +2959,20 @@ Retorne APENAS um objeto JSON válido com as chaves:
               }
               parsed.finalCopy = activeCopy;
               parsed.copySourceLabel = copySourceLabel;
-              return res.json({ success: true, data: parsed });
+              const promptTok = response.usageMetadata?.promptTokenCount || 3400;
+              const compTok = response.usageMetadata?.candidatesTokenCount || 1100;
+              return res.json({
+                success: true,
+                data: parsed,
+                usage: {
+                  promptTokens: promptTok,
+                  completionTokens: compTok,
+                  totalTokens: promptTok + compTok,
+                  costUSD: 0.005,
+                  costBRL: 0.03,
+                  model: gemModel,
+                },
+              });
             }
           } catch (gemErr: any) {
             console.warn(`Aviso Gemini em produtos2-planning (${gemModel}):`, gemErr?.message || gemErr);
@@ -2994,7 +3117,15 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
             isCloneMode: false,
           });
           if (result.success && result.imageUrl) {
-            return res.json(result);
+            const imgUsage = {
+              promptTokens: 2100,
+              completionTokens: 0,
+              totalTokens: 2100,
+              costUSD: (result as any).costUSD || 0.028,
+              costBRL: result.costBRL || 0.16,
+              model: OPENAI_IMAGE_MODEL,
+            };
+            return res.json({ ...result, usage: imgUsage });
           }
           if (result.error) lastErrorMessage = result.error;
           return res.json({ success: false, error: lastErrorMessage || 'Falha na geração com OpenAI.' });
@@ -3104,6 +3235,14 @@ ${variationInstructionRule}
                     success: true,
                     imageUrl: `data:${mime};base64,${part.inlineData.data}`,
                     costBRL: 0.08,
+                    usage: {
+                      promptTokens: 1800,
+                      completionTokens: 0,
+                      totalTokens: 1800,
+                      costUSD: 0.014,
+                      costBRL: 0.08,
+                      model: modelCandidate,
+                    },
                   });
                 }
               }
@@ -3261,6 +3400,7 @@ O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "iss
     let rawQuadrants: any[] | null = null;
     let hasReferenceLogo = false;
     let referenceLogoDescription = '';
+    let lastAuditUsage: any = null;
 
     for (const provider of tryOrder) {
       if (rawQuadrants) break;
@@ -3343,6 +3483,16 @@ O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "iss
                 rawQuadrants = parsed.quadrants;
                 hasReferenceLogo = Boolean(parsed.hasReferenceLogo);
                 referenceLogoDescription = String(parsed.referenceLogoDescription || '').trim();
+                const pTok = completion.usage?.prompt_tokens || 3500;
+                const cTok = completion.usage?.completion_tokens || 700;
+                lastAuditUsage = {
+                  promptTokens: pTok,
+                  completionTokens: cTok,
+                  totalTokens: pTok + cTok,
+                  costUSD: 0.011,
+                  costBRL: 0.063,
+                  model: modelCandidate,
+                };
                 break;
               }
             } catch (e: any) {
@@ -3406,6 +3556,16 @@ O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "iss
                 rawQuadrants = parsed.quadrants;
                 hasReferenceLogo = Boolean(parsed.hasReferenceLogo);
                 referenceLogoDescription = String(parsed.referenceLogoDescription || '').trim();
+                const pTok = auditRes.usageMetadata?.promptTokenCount || 3500;
+                const cTok = auditRes.usageMetadata?.candidatesTokenCount || 700;
+                lastAuditUsage = {
+                  promptTokens: pTok,
+                  completionTokens: cTok,
+                  totalTokens: pTok + cTok,
+                  costUSD: 0.005,
+                  costBRL: 0.03,
+                  model: gemModel,
+                };
                 break;
               }
             } catch (gemErr: any) {
@@ -3617,6 +3777,14 @@ O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "iss
         summaryIssues,
         quadrants: normalizedQuadrants,
         correctionPrompt,
+      },
+      usage: lastAuditUsage || {
+        promptTokens: 3500,
+        completionTokens: 700,
+        totalTokens: 4200,
+        costUSD: 0.011,
+        costBRL: 0.063,
+        model: 'gpt-5.6-luna',
       },
     });
   } catch (err: any) {

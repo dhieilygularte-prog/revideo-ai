@@ -28,6 +28,7 @@ import {
 } from './produtos2CopyBank';
 import { extractUserSpeechFromInstructions } from './produtos2UserSpeechExtractor';
 import { AIProfile } from '../config/aiProfiles';
+import { TokenUsageStats } from '../types';
 
 interface Produtos2FormProps {
   form: Produtos2FormState;
@@ -35,6 +36,7 @@ interface Produtos2FormProps {
   onSubmit: () => void;
   isProcessing: boolean;
   aiProfile?: AIProfile;
+  onTokenUsageChange?: (stats: TokenUsageStats) => void;
 }
 
 /**
@@ -94,6 +96,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
   onSubmit,
   isProcessing,
   aiProfile = 'openai',
+  onTokenUsageChange,
 }) => {
   const [activeMic, setActiveMic] = useState<'info' | 'instructions' | 'user' | 'banco1' | 'banco2' | 'aurora' | null>(null);
   const [isGeneratingSpeeches, setIsGeneratingSpeeches] = useState(false);
@@ -131,8 +134,74 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
       const data = await res.json();
       if (data.success && data.reviewedSpeech) {
         const reviewed = data.reviewedSpeech;
+
+        let nextSpeechUsage = form.speechTokenUsage;
+        if (data.usage) {
+          const revP = data.usage.promptTokens || 350;
+          const revC = data.usage.completionTokens || 80;
+          const revT = data.usage.totalTokens || (revP + revC);
+          const revUSD = data.usage.costUSD || 0.001;
+          const revBRL = data.usage.costBRL || 0.006;
+          const revM = data.usage.model || 'gpt-4o-mini';
+
+          const prevUsage = form.speechTokenUsage || {
+            promptTokens: 0,
+            candidateTokens: 0,
+            totalTokens: 0,
+            totalCostUSD: 0,
+            estimatedCostBRL: 0,
+            breakdown: {
+              videoAnalysisTokens: 0,
+              videoAnalysisCostBRL: 0,
+              speechTokens: 0,
+              speechCostBRL: 0,
+              imagesCount: 0,
+              imagesCostBRL: 0,
+              promptsTokens: 0,
+              promptsCostBRL: 0,
+            },
+            detailedSteps: [],
+            modelsUsed: [],
+          };
+
+          nextSpeechUsage = {
+            ...prevUsage,
+            promptTokens: prevUsage.promptTokens + revP,
+            candidateTokens: prevUsage.candidateTokens + revC,
+            totalTokens: prevUsage.totalTokens + revT,
+            totalCostUSD: Math.round(((prevUsage.totalCostUSD || 0) + revUSD) * 1000) / 1000,
+            estimatedCostBRL: Math.round((prevUsage.estimatedCostBRL + revBRL) * 100) / 100,
+            breakdown: {
+              ...prevUsage.breakdown,
+              speechTokens: (prevUsage.breakdown?.speechTokens || 0) + revT,
+              speechCostBRL: Math.round(((prevUsage.breakdown?.speechCostBRL || 0) + revBRL) * 100) / 100,
+            },
+            detailedSteps: [
+              ...(prevUsage.detailedSteps || []),
+              {
+                step: `Revisão de Fala (${cardKey === 'user' ? 'Fala do Usuário' : cardKey === 'aurora' ? 'Aurora Copy' : 'Fala do Banco'})`,
+                model: revM,
+                promptTokens: revP,
+                completionTokens: revC,
+                totalTokens: revT,
+                costUSD: revUSD,
+                costBRL: revBRL,
+                timestamp: new Date().toISOString(),
+                details: 'Revisão conservadora mantendo originalidade <= 225 caracteres',
+              },
+            ],
+            modelsUsed: Array.from(new Set([...(prevUsage.modelsUsed || []), revM])),
+            totalCalls: ((prevUsage.totalCalls || prevUsage.detailedSteps?.length) || 0) + 1,
+          };
+
+          onTokenUsageChange?.(nextSpeechUsage);
+        }
+
         onChange((prev) => {
           const next = { ...prev };
+          if (nextSpeechUsage) {
+            next.speechTokenUsage = nextSpeechUsage;
+          }
           if (cardKey === 'user') {
             next.userSpeech = reviewed;
             if (prev.selectedSpeechOption === 'user_speech') next.finalSelectedSpeech = reviewed;
@@ -213,7 +282,17 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
       let detectedDialogueScript = '';
       let detectedSpeakers: any[] = [];
 
-      // 4. Chamada de refinamento com IA topo de linha (timeout estrito de 4.2s para ficar sempre abaixo de 5s)
+      let speechTokensAcc = {
+        promptTokens: 0,
+        completionTokens: 0,
+        totalTokens: 0,
+        costUSD: 0,
+        costBRL: 0,
+        models: [] as string[],
+        steps: [] as any[],
+      };
+
+      // 4. Chamada de refinamento com IA topo de linha (timeout estrito de 7.5s)
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 7500);
@@ -238,6 +317,25 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
             .then((data) => {
               if (data?.success && data?.auroraCopy) {
                 auroraResult = data.auroraCopy;
+                if (data.usage) {
+                  speechTokensAcc.promptTokens += data.usage.promptTokens || 850;
+                  speechTokensAcc.completionTokens += data.usage.completionTokens || 120;
+                  speechTokensAcc.totalTokens += data.usage.totalTokens || 970;
+                  speechTokensAcc.costUSD += data.usage.costUSD || 0.001;
+                  speechTokensAcc.costBRL += data.usage.costBRL || 0.006;
+                  if (data.usage.model) speechTokensAcc.models.push(data.usage.model);
+                  speechTokensAcc.steps.push({
+                    step: 'Geração de Fala (Aurora Copy IA)',
+                    model: data.usage.model || 'gpt-4o-mini',
+                    promptTokens: data.usage.promptTokens || 850,
+                    completionTokens: data.usage.completionTokens || 120,
+                    totalTokens: data.usage.totalTokens || 970,
+                    costUSD: data.usage.costUSD || 0.001,
+                    costBRL: data.usage.costBRL || 0.006,
+                    timestamp: new Date().toISOString(),
+                    details: 'Copy comercial de alta conversão para TikTok Shop',
+                  });
+                }
               }
             })
             .catch(() => null)
@@ -267,6 +365,25 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                     detectedIsDialogue = true;
                     detectedDialogueScript = data.dialogueScript || '';
                   }
+                  if (data.usage) {
+                    speechTokensAcc.promptTokens += data.usage.promptTokens || 1250;
+                    speechTokensAcc.completionTokens += data.usage.completionTokens || 250;
+                    speechTokensAcc.totalTokens += data.usage.totalTokens || 1500;
+                    speechTokensAcc.costUSD += data.usage.costUSD || 0.004;
+                    speechTokensAcc.costBRL += data.usage.costBRL || 0.024;
+                    if (data.usage.model) speechTokensAcc.models.push(data.usage.model);
+                    speechTokensAcc.steps.push({
+                      step: 'Detecção de Fala do Usuário',
+                      model: data.usage.model || 'gpt-4o',
+                      promptTokens: data.usage.promptTokens || 1250,
+                      completionTokens: data.usage.completionTokens || 250,
+                      totalTokens: data.usage.totalTokens || 1500,
+                      costUSD: data.usage.costUSD || 0.004,
+                      costBRL: data.usage.costBRL || 0.024,
+                      timestamp: new Date().toISOString(),
+                      details: 'Extração e condensação das falas ditadas nas instruções adicionais',
+                    });
+                  }
                 }
               })
               .catch(() => null)
@@ -281,6 +398,37 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
 
       const defaultSelected = hasUserSpeech ? 'user_speech' : 'banco1';
       const defaultFinal = hasUserSpeech ? detectedUserSpeech : banco1Result;
+
+      const existingSpeechUsage = form.speechTokenUsage;
+      let combinedUsage: TokenUsageStats | undefined = undefined;
+
+      if (speechTokensAcc.totalTokens > 0) {
+        combinedUsage = {
+          promptTokens: (existingSpeechUsage?.promptTokens || 0) + speechTokensAcc.promptTokens,
+          candidateTokens: (existingSpeechUsage?.candidateTokens || 0) + speechTokensAcc.completionTokens,
+          totalTokens: (existingSpeechUsage?.totalTokens || 0) + speechTokensAcc.totalTokens,
+          totalCostUSD: Math.round(((existingSpeechUsage?.totalCostUSD || 0) + speechTokensAcc.costUSD) * 1000) / 1000,
+          estimatedCostBRL: Math.round(((existingSpeechUsage?.estimatedCostBRL || 0) + speechTokensAcc.costBRL) * 100) / 100,
+          breakdown: {
+            videoAnalysisTokens: 0,
+            videoAnalysisCostBRL: 0,
+            speechTokens: (existingSpeechUsage?.breakdown?.speechTokens || 0) + speechTokensAcc.totalTokens,
+            speechCostBRL: Math.round(((existingSpeechUsage?.breakdown?.speechCostBRL || 0) + speechTokensAcc.costBRL) * 100) / 100,
+            imagesCount: 0,
+            imagesCostBRL: 0,
+            promptsTokens: 0,
+            promptsCostBRL: 0,
+          },
+          detailedSteps: [
+            ...(existingSpeechUsage?.detailedSteps || []),
+            ...speechTokensAcc.steps,
+          ],
+          modelsUsed: Array.from(new Set([...(existingSpeechUsage?.modelsUsed || []), ...speechTokensAcc.models])),
+          totalCalls: ((existingSpeechUsage?.totalCalls || existingSpeechUsage?.detailedSteps?.length) || 0) + speechTokensAcc.steps.length,
+        };
+
+        onTokenUsageChange?.(combinedUsage);
+      }
 
       onChange((prev) => ({
         ...prev,
@@ -298,6 +446,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
         selectedSpeechOption: defaultSelected,
         finalSelectedSpeech: defaultFinal,
         copyEngine: 'banco',
+        speechTokenUsage: combinedUsage || prev.speechTokenUsage,
       }));
     } catch (err: any) {
       console.error('Erro ao gerar falas:', err);

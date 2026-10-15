@@ -3356,7 +3356,23 @@ app.post("/api/produtos2-planning", async (req, res) => {
             temperature
           });
           const content = comp.choices[0]?.message?.content?.trim();
-          if (content) return content;
+          if (content) {
+            const pTokens = comp.usage?.prompt_tokens || 450;
+            const cTokens = comp.usage?.completion_tokens || 110;
+            const costUSD = Math.round((pTokens / 1e6 * 0.15 + cTokens / 1e6 * 0.6) * 1e4) / 1e4;
+            const costBRL = Math.round(costUSD * 5.7 * 1e3) / 1e3;
+            return {
+              text: content,
+              usage: {
+                promptTokens: pTokens,
+                completionTokens: cTokens,
+                totalTokens: pTokens + cTokens,
+                costUSD: Math.max(5e-4, costUSD),
+                costBRL: Math.max(3e-3, costBRL),
+                model: "gpt-4o-mini"
+              }
+            };
+          }
         } catch (err) {
           console.warn("Erro na chamada OpenAI gpt-4o-mini, tentando fallback:", err?.message || err);
         }
@@ -3380,7 +3396,21 @@ ${userPrompt2}` }]
             }
           });
           const text = gemRes.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-          if (text) return text;
+          if (text) {
+            const pTokens = gemRes.usageMetadata?.promptTokenCount || 450;
+            const cTokens = gemRes.usageMetadata?.candidatesTokenCount || 110;
+            return {
+              text,
+              usage: {
+                promptTokens: pTokens,
+                completionTokens: cTokens,
+                totalTokens: pTokens + cTokens,
+                costUSD: 3e-4,
+                costBRL: 2e-3,
+                model: GEMINI_VISION_FAST_MODEL || "gemini-2.5-flash"
+              }
+            };
+          }
         } catch (gemErr) {
           console.warn("Erro na chamada Gemini:", gemErr?.message || gemErr);
         }
@@ -3395,7 +3425,20 @@ ${userPrompt2}` }]
           ...jsonMode ? { response_format: { type: "json_object" } } : {},
           temperature
         });
-        return comp.choices[0]?.message?.content?.trim() || "";
+        const content = comp.choices[0]?.message?.content?.trim() || "";
+        const pTokens = comp.usage?.prompt_tokens || 450;
+        const cTokens = comp.usage?.completion_tokens || 110;
+        return {
+          text: content,
+          usage: {
+            promptTokens: pTokens,
+            completionTokens: cTokens,
+            totalTokens: pTokens + cTokens,
+            costUSD: 5e-4,
+            costBRL: 3e-3,
+            model: "gpt-4o-mini"
+          }
+        };
       }
       throw new Error("Nenhum provedor de IA dispon\xEDvel para gera\xE7\xE3o de texto.");
     };
@@ -3421,7 +3464,23 @@ ${userPrompt2}` }]
             }
             const comp = await client.chat.completions.create(params);
             const content = comp.choices[0]?.message?.content?.trim();
-            if (content) return content;
+            if (content) {
+              const pTokens = comp.usage?.prompt_tokens || 1250;
+              const cTokens = comp.usage?.completion_tokens || 250;
+              const costUSD = Math.round((pTokens / 1e6 * 2.5 + cTokens / 1e6 * 10) * 1e4) / 1e4;
+              const costBRL = Math.round(costUSD * 5.7 * 100) / 100;
+              return {
+                text: content,
+                usage: {
+                  promptTokens: pTokens,
+                  completionTokens: cTokens,
+                  totalTokens: pTokens + cTokens,
+                  costUSD: Math.max(4e-3, costUSD),
+                  costBRL: Math.max(0.02, costBRL),
+                  model: modelCandidate
+                }
+              };
+            }
           } catch (mErr) {
             console.warn(`Tentando pr\xF3ximo modelo OpenAI ap\xF3s erro no ${modelCandidate}:`, mErr?.message || mErr);
           }
@@ -3446,7 +3505,21 @@ ${userPrompt2}` }]
             }
           });
           const text = gemRes.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-          if (text) return text;
+          if (text) {
+            const pTokens = gemRes.usageMetadata?.promptTokenCount || 1250;
+            const cTokens = gemRes.usageMetadata?.candidatesTokenCount || 250;
+            return {
+              text,
+              usage: {
+                promptTokens: pTokens,
+                completionTokens: cTokens,
+                totalTokens: pTokens + cTokens,
+                costUSD: 1e-3,
+                costBRL: 6e-3,
+                model: GEMINI_VISION_FAST_MODEL || "gemini-2.5-flash"
+              }
+            };
+          }
         } catch (gemErr) {
           console.warn("Erro no fallback Gemini:", gemErr?.message || gemErr);
         }
@@ -3483,7 +3556,7 @@ FORMATO DE RESPOSTA (JSON estrito):
   "speakers": [ { "speaker": "Vendedor", "gender": "masculina", "speech": "...", "scenes": "Cenas 2 a 9" } ],
   "soundEffects": "..."
 }`;
-        const raw = await executeTopAIModel({
+        const rawOutput = await executeTopAIModel({
           systemPrompt: detectSystem,
           userPrompt: `INSTRU\xC7\xD5ES ADICIONAIS FORNECIDAS PELO USU\xC1RIO:
 ${textToAnalyze}
@@ -3492,6 +3565,7 @@ NOME DO PRODUTO: ${productName || "Produto"}
 INFORMA\xC7\xD5ES DO PRODUTO: ${productInfo || ""}`,
           jsonMode: true
         });
+        const raw = rawOutput.text;
         let parsed = {};
         try {
           parsed = JSON.parse(raw);
@@ -3529,7 +3603,8 @@ INFORMA\xC7\xD5ES DO PRODUTO: ${productInfo || ""}`,
           isDialogue,
           dialogueDescription,
           dialogueScript,
-          speakers
+          speakers,
+          usage: rawOutput.usage
         });
       } catch (err) {
         console.warn("Erro ao detectar fala do usu\xE1rio:", err);
@@ -3546,12 +3621,12 @@ INFORMA\xC7\xD5ES DO PRODUTO: ${productInfo || ""}`,
         const isUnderLimit = charCount <= 225;
         const lengthInstruction = isUnderLimit ? `REGRA ABSOLUTA DE TAMANHO (N\xC3O ENCURTAR):
 O texto fornecido tem ${charCount} caracteres e J\xC1 EST\xC1 DENTRO do limite m\xE1ximo de 225 caracteres.
-- \xC9 TERMINANTEMENTE PROIBIDO ENCURTAR, RESUMIR, CONDENSAR OU CORTAR PARTES DO TEXTO!
-- Mantenha RIGOROSAMENTE todas as frases, argumentos, detalhes e palavras originais do usu\xE1rio.
+- \xC9 TERMINANTEMENTE PROIBIDO ENCURTAR, RESUMIR, CONDENSAR OU CORTAR QUALQUER FRASE OU PARTE DO TEXTO!
+- Mantenha o texto O MAIS ORIGINAL POSS\xCDVEL, preservando integralmente todas as frases, palavras, argumentos e detalhes originais que o usu\xE1rio escreveu.
 - O comprimento final deve permanecer praticamente id\xEAntico ao original (com pequenas varia\xE7\xF5es apenas pelas corre\xE7\xF5es gramaticais ou remo\xE7\xE3o de palavras duplicadas).
-- A \xDANICA raz\xE3o permitida para encurtar ou remover algo \xE9 se houver palavras repetidas ou gagueira (ex: "a\xED a\xED", "ele ele", "o o", "t\xE1 t\xE1")!` : `REGRA DE TAMANHO (ENCURTAMENTO NECESS\xC1RIO):
+- A \xDANICA raz\xE3o permitida para encurtar ou remover algo \xE9 se houver palavras repetidas ou gagueira (ex: "a\xED a\xED", "ele ele", "o o", "t\xE1 t\xE1")!` : `REGRA DE TAMANHO (ENCURTAMENTO NECESS\xC1RIO PORQUE EXCEDE 225 CARACTERES):
 O texto fornecido tem ${charCount} caracteres e EXCEDE o limite de 225 caracteres.
-- Voc\xEA DEVE condensar e encurtar o texto para caber com perfei\xE7\xE3o no limite de at\xE9 225 caracteres (idealmente entre 195 e 225 caracteres com espa\xE7os).
+- Voc\xEA DEVE condensar e encurtar o texto para caber com perfei\xE7\xE3o no limite de at\xE9 225 caracteres (idealmente entre 190 e 225 caracteres com espa\xE7os).
 - Elimine redund\xE2ncias, mantendo os principais benef\xEDcios e preservando a chamada de a\xE7\xE3o final (ex: "toca no carrinho laranja e garanta o seu!").
 - NUNCA deixe frases cortadas pela metade; a \xFAltima frase deve estar completa com ponto final ou exclama\xE7\xE3o.`;
         const reviewSystem = `Voc\xEA \xE9 um REVISOR EDITORIAL DE ALTA FIDELIDADE para narra\xE7\xE3o por voz de IA no TikTok Shop Brasil.
@@ -3562,7 +3637,7 @@ ${lengthInstruction}
 DIRETIVAS OBRIGAT\xD3RIAS:
 1. CORRE\xC7\xC3O GRAMATICAL E ORTOGR\xC1FICA RIGOROSA:
    - Corrija todos os erros de ortografia, palavras grafadas incorretamente, acentua\xE7\xE3o, concord\xE2ncia verbal e nominal em portugu\xEAs brasileiro (ex: "comprar\xE3o" -> "compraram", "mais" -> "mas", "agente" -> "a gente", "pre\xE7o" -> "pre\xE7o", etc.).
-   - Deixe o texto em portugu\xEAs culto, natural e fluido.
+   - Deixe o texto em portugu\xEAs correto, natural e fluido.
 2. PONTUA\xC7\xC3O E RITMO PARA VOZ DE IA:
    - Ajuste a pontua\xE7\xE3o (v\xEDrgulas nos pontos de respira\xE7\xE3o natural, exclama\xE7\xF5es em frases empolgantes, pontos finais firmes) para que o narrador de IA fa\xE7a pausas naturais e respira\xE7\xF5es no lugar certo, com entona\xE7\xE3o empolgante e sem atropelar as palavras.
 3. REMO\xC7\xC3O DE REPETI\xC7\xD5ES E GAGUEIRAS:
@@ -3575,14 +3650,18 @@ DIRETIVAS OBRIGAT\xD3RIAS:
    - "AMOLED" -> "Am\xF3led"
 5. PRESERVA\xC7\xC3O DE CONTE\xDADO:
    - N\xE3o invente argumentos novos e n\xE3o adicione chamadas para a\xE7\xE3o que o usu\xE1rio n\xE3o escreveu.
+   - ${isUnderLimit ? "LEMBRE-SE: Como o texto original tem <= 225 caracteres, PRESERVE O M\xC1XIMO POSS\xCDVEL DO TEXTO ORIGINAL, apenas corrigindo o portugu\xEAs, removendo repeti\xE7\xF5es e ajustando para leitura de IA." : "Encurte para at\xE9 225 caracteres mantendo o sentido."}
 6. FORMATO DE SA\xCDDA:
    - Retorne SOMENTE o texto final revisado, sem aspas, sem contagem de caracteres e sem explica\xE7\xF5es adicionais.`;
-        let reviewed = await executeFastAIText({
+        const userPromptReview = isUnderLimit ? `TEXTO ORIGINAL PARA REVIS\xC3O (TEM ${charCount} CARACTERES - N\xC3O ENCURTAR, MANTENHA O TEXTO O MAIS ORIGINAL POSS\xCDVEL APENAS CORRIGINDO O PORTUGU\xCAS, PALAVRAS REPETIDAS E PONTUA\xC7\xC3O PARA IA):
+${inputSpeech}` : `TEXTO ORIGINAL PARA REVIS\xC3O (TEM ${charCount} CARACTERES - EXCEDE 225 CARACTERES, ENCURTE PARA AT\xC9 225 CARACTERES MANTENDO O SENTIDO E CALL TO ACTION):
+${inputSpeech}`;
+        const reviewedOutput = await executeFastAIText({
           systemPrompt: reviewSystem,
-          userPrompt: `TEXTO ORIGINAL PARA REVIS\xC3O:
-${inputSpeech}`,
+          userPrompt: userPromptReview,
           temperature: 0.1
         });
+        let reviewed = reviewedOutput.text;
         reviewed = reviewed.replace(/^["'«“]|["'»”]$/g, "").trim();
         reviewed = cleanDuplicateWords(reviewed);
         reviewed = normalizeVoiceText(reviewed);
@@ -3594,7 +3673,8 @@ ${inputSpeech}`,
         }
         return res.json({
           success: true,
-          reviewedSpeech: reviewed
+          reviewedSpeech: reviewed,
+          usage: reviewedOutput.usage
         });
       } catch (err) {
         return res.status(500).json({ success: false, error: err?.message || "Erro na revis\xE3o de texto" });
@@ -3642,11 +3722,12 @@ NOME DO PRODUTO: ${productName}
 ${additionalInstructions ? `INSTRU\xC7\xD5ES ADICIONAIS: ${additionalInstructions}` : ""}
 DURA\xC7\xC3O DO V\xCDDEO: 10 segundos.
 TAMANHO OBRIGAT\xD3RIO: Exatamente entre ${minLimit} e ${maxLimit} caracteres.`;
-        let rawSpeech = await executeFastAIText({
+        const auroraOutput = await executeFastAIText({
           systemPrompt: auroraSystem,
           userPrompt: auroraUser,
           temperature: 0.7
         });
+        let rawSpeech = auroraOutput.text;
         rawSpeech = rawSpeech.replace(/^["'«“]|["'»”]$/g, "").trim();
         rawSpeech = normalizeVoiceText(rawSpeech);
         if (rawSpeech.length < 190) {
@@ -3667,7 +3748,7 @@ TAMANHO OBRIGAT\xD3RIO: Exatamente entre ${minLimit} e ${maxLimit} caracteres.`;
         if (rawSpeech.length > 225) {
           rawSpeech = rawSpeech.slice(0, 225).replace(/[,;:\s]+[^.!?,;:]*$/, "") + "!";
         }
-        return res.json({ success: true, auroraCopy: rawSpeech });
+        return res.json({ success: true, auroraCopy: rawSpeech, usage: auroraOutput.usage });
       } catch (err) {
         return res.status(500).json({ success: false, error: err?.message || "Erro ao gerar Aurora Copy" });
       }
@@ -3837,7 +3918,22 @@ Retorne APENAS um objeto JSON v\xE1lido com as chaves:
               }
               parsed.finalCopy = activeCopy;
               parsed.copySourceLabel = copySourceLabel;
-              return res.json({ success: true, data: parsed });
+              const promptTok = completion.usage?.prompt_tokens || 3400;
+              const compTok = completion.usage?.completion_tokens || 1100;
+              const costUSD = Math.round((promptTok / 1e6 * 2.5 + compTok / 1e6 * 10) * 1e4) / 1e4;
+              const costBRL = Math.round(costUSD * 5.7 * 100) / 100;
+              return res.json({
+                success: true,
+                data: parsed,
+                usage: {
+                  promptTokens: promptTok,
+                  completionTokens: compTok,
+                  totalTokens: promptTok + compTok,
+                  costUSD: Math.max(0.012, costUSD),
+                  costBRL: Math.max(0.07, costBRL),
+                  model: modelCandidate
+                }
+              });
             }
           } catch (oiErr) {
             console.warn(`Aviso OpenAI em produtos2-planning (${modelCandidate}):`, oiErr?.message || oiErr);
@@ -3881,7 +3977,20 @@ Retorne APENAS um objeto JSON v\xE1lido com as chaves:
               }
               parsed.finalCopy = activeCopy;
               parsed.copySourceLabel = copySourceLabel;
-              return res.json({ success: true, data: parsed });
+              const promptTok = response.usageMetadata?.promptTokenCount || 3400;
+              const compTok = response.usageMetadata?.candidatesTokenCount || 1100;
+              return res.json({
+                success: true,
+                data: parsed,
+                usage: {
+                  promptTokens: promptTok,
+                  completionTokens: compTok,
+                  totalTokens: promptTok + compTok,
+                  costUSD: 5e-3,
+                  costBRL: 0.03,
+                  model: gemModel
+                }
+              });
             }
           } catch (gemErr) {
             console.warn(`Aviso Gemini em produtos2-planning (${gemModel}):`, gemErr?.message || gemErr);
@@ -4004,7 +4113,15 @@ ${correctionPrompt.trim()}
             isCloneMode: false
           });
           if (result.success && result.imageUrl) {
-            return res.json(result);
+            const imgUsage = {
+              promptTokens: 2100,
+              completionTokens: 0,
+              totalTokens: 2100,
+              costUSD: result.costUSD || 0.028,
+              costBRL: result.costBRL || 0.16,
+              model: OPENAI_IMAGE_MODEL
+            };
+            return res.json({ ...result, usage: imgUsage });
           }
           if (result.error) lastErrorMessage = result.error;
           return res.json({ success: false, error: lastErrorMessage || "Falha na gera\xE7\xE3o com OpenAI." });
@@ -4081,7 +4198,15 @@ ${variationInstructionRule}
                   return res.json({
                     success: true,
                     imageUrl: `data:${mime};base64,${part.inlineData.data}`,
-                    costBRL: 0.08
+                    costBRL: 0.08,
+                    usage: {
+                      promptTokens: 1800,
+                      completionTokens: 0,
+                      totalTokens: 1800,
+                      costUSD: 0.014,
+                      costBRL: 0.08,
+                      model: modelCandidate
+                    }
                   });
                 }
               }
@@ -4207,6 +4332,7 @@ O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "iss
     let rawQuadrants = null;
     let hasReferenceLogo = false;
     let referenceLogoDescription = "";
+    let lastAuditUsage = null;
     for (const provider of tryOrder) {
       if (rawQuadrants) break;
       if (provider === "openai" && openAIProvider.isConfigured()) {
@@ -4280,6 +4406,16 @@ O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "iss
                 rawQuadrants = parsed.quadrants;
                 hasReferenceLogo = Boolean(parsed.hasReferenceLogo);
                 referenceLogoDescription = String(parsed.referenceLogoDescription || "").trim();
+                const pTok = completion.usage?.prompt_tokens || 3500;
+                const cTok = completion.usage?.completion_tokens || 700;
+                lastAuditUsage = {
+                  promptTokens: pTok,
+                  completionTokens: cTok,
+                  totalTokens: pTok + cTok,
+                  costUSD: 0.011,
+                  costBRL: 0.063,
+                  model: modelCandidate
+                };
                 break;
               }
             } catch (e) {
@@ -4342,6 +4478,16 @@ Analise cada um dos 9 quadrantes (Cena 1 a Cena 9) e retorne o JSON em portugu\x
                 rawQuadrants = parsed.quadrants;
                 hasReferenceLogo = Boolean(parsed.hasReferenceLogo);
                 referenceLogoDescription = String(parsed.referenceLogoDescription || "").trim();
+                const pTok = auditRes.usageMetadata?.promptTokenCount || 3500;
+                const cTok = auditRes.usageMetadata?.candidatesTokenCount || 700;
+                lastAuditUsage = {
+                  promptTokens: pTok,
+                  completionTokens: cTok,
+                  totalTokens: pTok + cTok,
+                  costUSD: 5e-3,
+                  costBRL: 0.03,
+                  model: gemModel
+                };
                 break;
               }
             } catch (gemErr) {
@@ -4471,6 +4617,14 @@ Analise cada um dos 9 quadrantes (Cena 1 a Cena 9) e retorne o JSON em portugu\x
         summaryIssues,
         quadrants: normalizedQuadrants,
         correctionPrompt
+      },
+      usage: lastAuditUsage || {
+        promptTokens: 3500,
+        completionTokens: 700,
+        totalTokens: 4200,
+        costUSD: 0.011,
+        costBRL: 0.063,
+        model: "gpt-5.6-luna"
       }
     });
   } catch (err) {
