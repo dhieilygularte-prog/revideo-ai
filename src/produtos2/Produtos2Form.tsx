@@ -122,7 +122,8 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'normalize_speech_for_ai',
+          action: cardKey === 'user' ? 'review_user_speech' : 'normalize_speech_for_ai',
+          cardKey,
           text: speechText,
           aiProfile,
         }),
@@ -204,10 +205,10 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
       // 3. Aurora Copy imediata (0ms) como base
       let auroraResult = `Gente, olha esse lançamento imperdível! O ${finalProductName} foi desenvolvido com material resistente e tecnologia pensada para o seu conforto diário, super fácil de usar. Confere todos os detalhes aqui embaixo!`;
 
-      // 4. Chamada de refinamento com timeout ultra-curto (1.8s) para nunca demorar
+      // 4. Chamada de refinamento com IA topo de linha (timeout estrito de 4.2s para ficar sempre abaixo de 5s)
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 1800);
+        const timeoutId = setTimeout(() => controller.abort(), 4200);
 
         const apiPromises: Promise<any>[] = [];
 

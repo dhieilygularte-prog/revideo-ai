@@ -1261,6 +1261,55 @@ E retornar um JSON estrito com:
    - Proibido texto flutuante externo, legenda, pre\xE7o, n\xFAmero escrito, carrinho, marca d'\xE1gua de rede social, @ ou interface de aplicativo dentro das cenas (mas OBRIGAT\xD3RIO manter a logomarca original do fabricante impressa no pr\xF3prio produto).`;
 }
 
+// src/produtos2/produtos2UserSpeechExtractor.ts
+function fitSpeechCloseToLimit(text, maxLen = 225, minTarget = 218) {
+  let s = text.replace(/\s+/g, " ").trim();
+  if (s.length <= maxLen && s.length >= minTarget) {
+    return s;
+  }
+  if (s.length <= maxLen) {
+    return s;
+  }
+  const slice225 = s.slice(0, maxLen);
+  for (let i = maxLen; i >= minTarget; i--) {
+    const ch = slice225[i - 1];
+    if (ch === "." || ch === "!" || ch === "?") {
+      return slice225.slice(0, i).trim();
+    }
+  }
+  for (let i = maxLen - 1; i >= minTarget; i--) {
+    const ch = slice225[i - 1];
+    if (ch === "," || ch === ";") {
+      let candidate = slice225.slice(0, i - 1).trim();
+      candidate = cleanDanglingEnds(candidate);
+      return candidate + "!";
+    }
+  }
+  for (let i = maxLen - 1; i >= minTarget; i--) {
+    if (slice225[i - 1] === " ") {
+      let candidate = slice225.slice(0, i - 1).trim();
+      candidate = cleanDanglingEnds(candidate);
+      if (!/[.!?]$/.test(candidate)) candidate += "!";
+      if (candidate.length <= maxLen && candidate.length >= minTarget) {
+        return candidate;
+      }
+    }
+  }
+  const lastSpace = slice225.lastIndexOf(" ");
+  if (lastSpace > 0) {
+    let candidate = slice225.slice(0, lastSpace).trim();
+    candidate = cleanDanglingEnds(candidate);
+    if (!/[.!?]$/.test(candidate)) candidate += "!";
+    return candidate;
+  }
+  return cleanDanglingEnds(slice225.trim()) + "!";
+}
+function cleanDanglingEnds(text) {
+  let s = text.trim();
+  s = s.replace(/\s+(?:e|de|do|da|dos|das|o|a|os|as|com|em|no|na|nos|nas|que|para|pra|por|um|uma)\s*([.!?,;:]*)$/i, "$1");
+  return s.trim();
+}
+
 // server.ts
 dotenv3.config();
 dotenv3.config();
@@ -3117,8 +3166,7 @@ app.post("/api/produtos2-planning", async (req, res) => {
       out = out.replace(/\b(\d+)\s*(?:tb|TB)\b/g, "$1 teras");
       out = out.replace(/\b(\d+)\s*(?:mb|MB)\b/g, "$1 megas");
       out = out.replace(/\b(\d+)\s*%/g, "$1 por cento");
-      out = out.replace(/\b(\d+)\s*[xX]\b/g, "$1 vezes");
-      out = out.replace(/\b[xX]\s*(\d+)\b/g, "$1 vezes");
+      out = out.replace(/\b([Pp]oco)\s+(?:\d+\s+)?vezes\b/g, "$1 X8");
       out = out.replace(/\bAMOLED\b/g, "Am\xF3led");
       out = out.replace(/\bOLED\b/g, "\xD3led");
       out = out.replace(/\bLED\b/g, "L\xE9d");
@@ -3185,39 +3233,104 @@ ${userPrompt2}` }]
       }
       throw new Error("Nenhum provedor de IA dispon\xEDvel para gera\xE7\xE3o de texto.");
     };
+    const executeTopAIModel = async (opts) => {
+      const { systemPrompt, userPrompt: userPrompt2, jsonMode = false } = opts;
+      const client = openAIProvider.getClient();
+      if (client) {
+        const topModels = [OPENAI_BRAIN_MODEL, "gpt-4o", "gpt-5.6-luna", "gpt-4o-mini"];
+        for (const modelCandidate of topModels) {
+          try {
+            const params = {
+              model: modelCandidate,
+              messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userPrompt2 }
+              ],
+              ...jsonMode ? { response_format: { type: "json_object" } } : {}
+            };
+            if (modelCandidate.startsWith("gpt-5") || modelCandidate.startsWith("o")) {
+              params.reasoning_effort = "medium";
+            } else {
+              params.temperature = 0.3;
+            }
+            const comp = await client.chat.completions.create(params);
+            const content = comp.choices[0]?.message?.content?.trim();
+            if (content) return content;
+          } catch (mErr) {
+            console.warn(`Tentando pr\xF3ximo modelo OpenAI ap\xF3s erro no ${modelCandidate}:`, mErr?.message || mErr);
+          }
+        }
+      }
+      if (process.env.GEMINI_API_KEY) {
+        try {
+          const genAI = getGenAI();
+          const gemRes = await genAI.models.generateContent({
+            model: GEMINI_VISION_FAST_MODEL || "gemini-2.5-flash",
+            contents: [
+              {
+                role: "user",
+                parts: [{ text: `${systemPrompt}
+
+${userPrompt2}` }]
+              }
+            ],
+            config: {
+              temperature: 0.3,
+              ...jsonMode ? { responseMimeType: "application/json" } : {}
+            }
+          });
+          const text = gemRes.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+          if (text) return text;
+        } catch (gemErr) {
+          console.warn("Erro no fallback Gemini:", gemErr?.message || gemErr);
+        }
+      }
+      throw new Error("Nenhum provedor de IA dispon\xEDvel para a fala do usu\xE1rio.");
+    };
     if (action === "detect_and_review_user_speech") {
       try {
         const textToAnalyze = (additionalInstructions || req.body.text || "").trim();
         if (!textToAnalyze) {
           return res.json({ success: true, hasUserSpeech: false, userSpeech: "" });
         }
-        const detectSystem = `Voc\xEA \xE9 um especialista em roteiro e extra\xE7\xE3o de falas de v\xEDdeos para TikTok Shop.
-Sua miss\xE3o \xE9 analisar o texto de "Instru\xE7\xF5es Adicionais" fornecido pelo usu\xE1rio e identificar se existe uma FALA OU DI\xC1LOGO destinado ao personagem ou criador falar em cena.
+        const detectSystem = `Voc\xEA \xE9 o MODELO MAIS AVAN\xC7ADO E INTELIGENTE DA OPENAI, operando integrado com toda a mem\xF3ria, intelig\xEAncia e diretrizes da AURORA COPY especialista em roteiros e copies virais de alta convers\xE3o para o TikTok Shop Brasil.
 
-QUANDO CONSIDERAR QUE EXISTE FALA (hasUserSpeech: true):
-- O usu\xE1rio colocou uma fala direta ou indireta (ex: "ele fala...", "ela fala...", "ele diz...", "dizendo que...", "fala pra comprar...", "fala isso: ...", falas entre aspas).
-- O usu\xE1rio descreveu uma encena\xE7\xE3o/di\xE1logo onde o personagem fala sobre o produto ou convida a comprar (mesmo que haja descri\xE7\xE3o de cen\xE1rio, jantar rom\xE2ntico, encontro, oficina, loja, etc.).
-- Extraia a fala do personagem principal focada na apresenta\xE7\xE3o do produto e na chamada para a\xE7\xE3o (CTA).
-- NUNCA invente novos hooks ou argumentos que o usu\xE1rio n\xE3o citou.
-- Se houver di\xE1logo entre dois personagens (ex: ela pergunta e ele responde), una e sintetize o que o personagem principal fala sobre o produto para caber em uma narra\xE7\xE3o natural do v\xEDdeo.
+SUA MISS\xC3O:
+O usu\xE1rio preencheu o campo de "Instru\xE7\xF5es Adicionais" com o que ele deseja para o v\xEDdeo. Muitas vezes o usu\xE1rio explica bastante, inclui di\xE1logos informais entre personagens, descri\xE7\xF5es de cen\xE1rio, rea\xE7\xF5es ou fala o que gostaria que fosse dito.
+Sua miss\xE3o \xE9 compreender com profundidade a ideia que o usu\xE1rio quis transmitir e CONDENSAR / ENXUGAR tudo isso em UMA COPY DE AN\xDANCIO DE ALTO IMPACTO PARA O TIKTOK SHOP, pronta para narra\xE7\xE3o em v\xEDdeo de 10 segundos.
 
-QUANDO CONSIDERAR QUE N\xC3O EXISTE FALA (hasUserSpeech: false):
-- O texto cont\xE9m APENAS descri\xE7\xE3o de ambiente, ilumina\xE7\xE3o, etnia, roupas, sotaque ou tom de voz, SEM NENHUM CONTE\xDADO DE FALA (ex: "homem de 30 anos falando r\xE1pido com sotaque carioca dentro de um carro").
+MEM\xD3RIA E PRINC\xCDPIOS DA AURORA COPY QUE VOC\xCA DEVE APLICAR:
+1. FORMATO VIRAL (DESCOBERTA + DEMONSTRA\xC7\xC3O):
+   - Hook Magn\xE9tico de Abertura (0-3s): Capture a aten\xE7\xE3o imediatamente com o espanto, elogio ou pergunta inicial do di\xE1logo (ex: "Nossa, que celular bonito!").
+   - Demonstra\xE7\xE3o dos Benef\xEDcios Reais: Apresente o produto com naturalidade e entusiasmo comercial, destacando os diferenciais mencionados (c\xE2mera de alta qualidade, custo-benef\xEDcio, desempenho).
+   - Chamada para A\xE7\xE3o (CTA): Finalize de forma espont\xE2nea e convincente convidando para o TikTok Shop (ex: "Eu comprei na TikTok Shop, toca no carrinho laranja e garanta j\xE1 o seu!").
 
-REVIS\xC3O CONSERVADORA OBRIGAT\xD3RIA DA FALA EXTRA\xCDDA:
-- Corrija pontua\xE7\xE3o para narra\xE7\xE3o natural por IA.
-- Corrija erros de digita\xE7\xE3o, ortografia e concord\xE2ncia (ex: "p\xF3 pouco X8 pro" -> "Poco X8 Pro", "n\xE3o Tik Tok Shop" -> "na TikTok Shop").
-- Escreva n\xFAmeros e unidades por extenso para voz (ex: "800 W" -> "800 watts").
-- LIMITE ESTRITO: No m\xE1ximo 225 caracteres! Se a fala extra\xEDda passar de 225 caracteres, ajuste mantendo a fala principal e a chamada para a\xE7\xE3o com no m\xE1ximo 225 caracteres.
+2. CONDENSA\xC7\xC3O INTELIGENTE (SEM PERDER O SENTIDO):
+   - Enxugue repeti\xE7\xF5es e descri\xE7\xF5es de bastidores (ex: "o cen\xE1rio vai ser assim", "um jantar rom\xE2ntico", "primeiro frame do criativo").
+   - Sintetize o di\xE1logo na fala viva do criador do v\xEDdeo com ritmo din\xE2mico.
+   - NUNCA invente caracter\xEDsticas que contradigam o produto.
 
-FORMATO DE RESPOSTA (JSON):
-{"hasUserSpeech": boolean, "userSpeech": string}`;
-        const raw = await executeFastAIText({
+3. REGRA CR\xCDTICA DE CARACTERES (MANDAT\xD3RIO):
+   - LIMITE M\xC1XIMO ESTRITO: 225 CARACTERES contando espa\xE7os e pontua\xE7\xE3o.
+   - META DE PREENCHIMENTO: A fala DEVE FICAR O MAIS PR\xD3XIMO POSS\xCDVEL DE 225 CARACTERES, idealmente entre 220 e 225 caracteres!
+   - NUNCA encurte em excesso para 180 ou 190 caracteres se houver conte\xFAdo do usu\xE1rio para aproveitar. Mantenha o m\xE1ximo da ideia original at\xE9 encostar na margem de 220 a 225 caracteres.
+   - NUNCA ultrapasse 225 caracteres.
+
+4. PRESERVA\xC7\xC3O DE MODELOS E PRON\xDANCIA:
+   - O "X" em modelos de produtos (como "X8", "Poco X8 Pro", "iPhone X") NUNCA deve ser trocado por "vezes". Mantenha sempre como letra "X" mai\xFAscula.
+   - Corrija falhas de digita\xE7\xE3o por voz (ex: "p\xF3 pouco" -> "Poco", "n\xE3o Tik Tok Shop" -> "na TikTok Shop").
+   - Escreva n\xFAmeros e unidades por extenso para voz quando apropriado (ex: "800 watts", "23 polegadas").
+
+FORMATO DE RESPOSTA OBRIGAT\xD3RIO (JSON):
+{"hasUserSpeech": true, "userSpeech": "sua copy condensada de 220 a 225 caracteres aqui"}`;
+        const raw = await executeTopAIModel({
           systemPrompt: detectSystem,
-          userPrompt: `INSTRU\xC7\xD5ES ADICIONAIS:
-${textToAnalyze}`,
-          jsonMode: true,
-          temperature: 0.2
+          userPrompt: `INSTRU\xC7\xD5ES ADICIONAIS FORNECIDAS PELO USU\xC1RIO:
+${textToAnalyze}
+
+NOME DO PRODUTO: ${productName || "Produto"}
+INFORMA\xC7\xD5ES DO PRODUTO: ${productInfo || ""}`,
+          jsonMode: true
         });
         let parsed = {};
         try {
@@ -3240,7 +3353,7 @@ ${textToAnalyze}`,
         }
         userSpeech = normalizeVoiceText(userSpeech);
         if (userSpeech.length > 225) {
-          userSpeech = userSpeech.slice(0, 225).replace(/[,;:\s]+[^.!?,;:]*$/, "") + "!";
+          userSpeech = fitSpeechCloseToLimit(userSpeech, 225, 218);
         }
         const hasUserSpeech = Boolean(
           userSpeech && userSpeech.length >= 8 && (parsed.hasUserSpeech === true || parsed.has_user_speech === true || String(parsed.hasUserSpeech).toLowerCase() === "true" || String(parsed.has_user_speech).toLowerCase() === "true" || Boolean(userSpeech))
@@ -3272,12 +3385,12 @@ REGRAS MANDAT\xD3RIAS:
    - "800 W" -> "800 watts"
    - "23 pol" -> "23 polegadas"
    - "50%" -> "50 por cento"
-   - "10x" -> "10 vezes"
    - "AMOLED" -> "Am\xF3led"
+   - O "X" em modelos de produtos (como "X8", "Poco X8 Pro", "iPhone X") NUNCA deve ser trocado por "vezes". Mantenha sempre a letra "X".
 4. PRESERVA\xC7\xC3O: Preserve o vocabul\xE1rio e o sentido original do usu\xE1rio. NUNCA invente Hook, nunca adicione CTA que o usu\xE1rio n\xE3o escreveu.
 5. LIMITE DE 225 CARACTERES:
    - Se o texto tiver 225 caracteres ou menos: N\xC3O resuma e N\xC3O reescreva. Apenas corrija e normalize.
-   - Se o texto ultrapassar 225 caracteres: fa\xE7a a menor interven\xE7\xE3o conservadora poss\xEDvel para caber em no m\xE1ximo 225 caracteres contando espa\xE7os.
+   - Se o texto ultrapassar 225 caracteres: encurte de forma conservadora mantendo o mais pr\xF3ximo poss\xEDvel do limite de 225 (entre 220 e 225 caracteres com espa\xE7os), sem cortar conte\xFAdo em excesso.
 6. FORMATO DE SA\xCDDA: Entregue SOMENTE o texto final revisado, sem aspas, sem t\xEDtulos, sem explica\xE7\xF5es.`;
         let reviewed = await executeFastAIText({
           systemPrompt: reviewSystem,

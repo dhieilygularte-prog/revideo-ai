@@ -1611,8 +1611,8 @@ export function normalizeTextForNarration(text: string): string {
   out = out.replace(/\b(\d+)\s*(?:mb|MB)\b/g, '$1 megas');
   // Porcentagem e multiplicadores
   out = out.replace(/\b(\d+)\s*%/g, '$1 por cento');
-  out = out.replace(/\b(\d+)\s*[xX]\b/g, '$1 vezes');
-  out = out.replace(/\b[xX]\s*(\d+)\b/g, '$1 vezes');
+  // O X (como em X8, Poco X8 Pro, etc.) permanece como X para pronúncia correta
+
   // Telas e tecnologias
   out = out.replace(/\bAMOLED\b/g, 'Amóled');
   out = out.replace(/\bOLED\b/g, 'Óled');

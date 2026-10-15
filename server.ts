@@ -28,6 +28,7 @@ import {
 import { AIProfile, AI_PROFILES } from './src/config/aiProfiles';
 import { buildAniaPlanningSystemPrompt } from './src/ania/aniaPrompts';
 import { buildProdutos2PlanningSystemPrompt } from './src/produtos2/produtos2Prompts';
+import { fitSpeechCloseToLimit } from './src/produtos2/produtos2UserSpeechExtractor';
 
 dotenv.config();
 
@@ -2219,8 +2220,8 @@ app.post('/api/produtos2-planning', async (req, res) => {
       out = out.replace(/\b(\d+)\s*(?:tb|TB)\b/g, '$1 teras');
       out = out.replace(/\b(\d+)\s*(?:mb|MB)\b/g, '$1 megas');
       out = out.replace(/\b(\d+)\s*%/g, '$1 por cento');
-      out = out.replace(/\b(\d+)\s*[xX]\b/g, '$1 vezes');
-      out = out.replace(/\b[xX]\s*(\d+)\b/g, '$1 vezes');
+      // O X (como em X8, Poco X8 Pro, etc.) permanece como X para pronúncia correta de modelos
+      out = out.replace(/\b([Pp]oco)\s+(?:\d+\s+)?vezes\b/g, '$1 X8');
       out = out.replace(/\bAMOLED\b/g, 'Amóled');
       out = out.replace(/\bOLED\b/g, 'Óled');
       out = out.replace(/\bLED\b/g, 'Léd');
@@ -2300,7 +2301,72 @@ app.post('/api/produtos2-planning', async (req, res) => {
       throw new Error('Nenhum provedor de IA disponível para geração de texto.');
     };
 
-    // Ação 1: Detectar fala explícita do usuário dentro de "Instruções Adicionais" com revisão conservadora
+    // Helper de altíssimo desempenho e inteligência máxima da OpenAI (gpt-5.6-terra / gpt-4o com Aurora Copy Brain)
+    const executeTopAIModel = async (opts: {
+      systemPrompt: string;
+      userPrompt: string;
+      jsonMode?: boolean;
+    }): Promise<string> => {
+      const { systemPrompt, userPrompt, jsonMode = false } = opts;
+      const client = (openAIProvider as any).getClient();
+
+      if (client) {
+        // Tenta os modelos mais avançados da OpenAI (Brain / GPT-4o / Luna / Mini)
+        const topModels = [OPENAI_BRAIN_MODEL, 'gpt-4o', 'gpt-5.6-luna', 'gpt-4o-mini'];
+        for (const modelCandidate of topModels) {
+          try {
+            const params: any = {
+              model: modelCandidate,
+              messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt },
+              ],
+              ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
+            };
+
+            if (modelCandidate.startsWith('gpt-5') || modelCandidate.startsWith('o')) {
+              params.reasoning_effort = 'medium';
+            } else {
+              params.temperature = 0.3;
+            }
+
+            const comp = await client.chat.completions.create(params);
+            const content = comp.choices[0]?.message?.content?.trim();
+            if (content) return content;
+          } catch (mErr: any) {
+            console.warn(`Tentando próximo modelo OpenAI após erro no ${modelCandidate}:`, mErr?.message || mErr);
+          }
+        }
+      }
+
+      // Fallback para Gemini 2.5 Flash se OpenAI falhar
+      if (process.env.GEMINI_API_KEY) {
+        try {
+          const genAI = getGenAI();
+          const gemRes = await genAI.models.generateContent({
+            model: GEMINI_VISION_FAST_MODEL || 'gemini-2.5-flash',
+            contents: [
+              {
+                role: 'user',
+                parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }],
+              },
+            ],
+            config: {
+              temperature: 0.3,
+              ...(jsonMode ? { responseMimeType: 'application/json' } : {}),
+            },
+          });
+          const text = gemRes.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+          if (text) return text;
+        } catch (gemErr: any) {
+          console.warn('Erro no fallback Gemini:', gemErr?.message || gemErr);
+        }
+      }
+
+      throw new Error('Nenhum provedor de IA disponível para a fala do usuário.');
+    };
+
+    // Ação 1: Detectar e condensar com inteligência máxima a fala do usuário a partir das Instruções Adicionais
     if (action === 'detect_and_review_user_speech') {
       try {
         const textToAnalyze = (additionalInstructions || req.body.text || '').trim();
@@ -2308,33 +2374,41 @@ app.post('/api/produtos2-planning', async (req, res) => {
           return res.json({ success: true, hasUserSpeech: false, userSpeech: '' });
         }
 
-        const detectSystem = `Você é um especialista em roteiro e extração de falas de vídeos para TikTok Shop.
-Sua missão é analisar o texto de "Instruções Adicionais" fornecido pelo usuário e identificar se existe uma FALA OU DIÁLOGO destinado ao personagem ou criador falar em cena.
+        const detectSystem = `Você é o MODELO MAIS AVANÇADO E INTELIGENTE DA OPENAI, operando integrado com toda a memória, inteligência e diretrizes da AURORA COPY especialista em roteiros e copies virais de alta conversão para o TikTok Shop Brasil.
 
-QUANDO CONSIDERAR QUE EXISTE FALA (hasUserSpeech: true):
-- O usuário colocou uma fala direta ou indireta (ex: "ele fala...", "ela fala...", "ele diz...", "dizendo que...", "fala pra comprar...", "fala isso: ...", falas entre aspas).
-- O usuário descreveu uma encenação/diálogo onde o personagem fala sobre o produto ou convida a comprar (mesmo que haja descrição de cenário, jantar romântico, encontro, oficina, loja, etc.).
-- Extraia a fala do personagem principal focada na apresentação do produto e na chamada para ação (CTA).
-- NUNCA invente novos hooks ou argumentos que o usuário não citou.
-- Se houver diálogo entre dois personagens (ex: ela pergunta e ele responde), una e sintetize o que o personagem principal fala sobre o produto para caber em uma narração natural do vídeo.
+SUA MISSÃO:
+O usuário preencheu o campo de "Instruções Adicionais" com o que ele deseja para o vídeo. Muitas vezes o usuário explica bastante, inclui diálogos informais entre personagens, descrições de cenário, reações ou fala o que gostaria que fosse dito.
+Sua missão é compreender com profundidade a ideia que o usuário quis transmitir e CONDENSAR / ENXUGAR tudo isso em UMA COPY DE ANÚNCIO DE ALTO IMPACTO PARA O TIKTOK SHOP, pronta para narração em vídeo de 10 segundos.
 
-QUANDO CONSIDERAR QUE NÃO EXISTE FALA (hasUserSpeech: false):
-- O texto contém APENAS descrição de ambiente, iluminação, etnia, roupas, sotaque ou tom de voz, SEM NENHUM CONTEÚDO DE FALA (ex: "homem de 30 anos falando rápido com sotaque carioca dentro de um carro").
+MEMÓRIA E PRINCÍPIOS DA AURORA COPY QUE VOCÊ DEVE APLICAR:
+1. FORMATO VIRAL (DESCOBERTA + DEMONSTRAÇÃO):
+   - Hook Magnético de Abertura (0-3s): Capture a atenção imediatamente com o espanto, elogio ou pergunta inicial do diálogo (ex: "Nossa, que celular bonito!").
+   - Demonstração dos Benefícios Reais: Apresente o produto com naturalidade e entusiasmo comercial, destacando os diferenciais mencionados (câmera de alta qualidade, custo-benefício, desempenho).
+   - Chamada para Ação (CTA): Finalize de forma espontânea e convincente convidando para o TikTok Shop (ex: "Eu comprei na TikTok Shop, toca no carrinho laranja e garanta já o seu!").
 
-REVISÃO CONSERVADORA OBRIGATÓRIA DA FALA EXTRAÍDA:
-- Corrija pontuação para narração natural por IA.
-- Corrija erros de digitação, ortografia e concordância (ex: "pó pouco X8 pro" -> "Poco X8 Pro", "não Tik Tok Shop" -> "na TikTok Shop").
-- Escreva números e unidades por extenso para voz (ex: "800 W" -> "800 watts").
-- LIMITE ESTRITO: No máximo 225 caracteres! Se a fala extraída passar de 225 caracteres, ajuste mantendo a fala principal e a chamada para ação com no máximo 225 caracteres.
+2. CONDENSAÇÃO INTELIGENTE (SEM PERDER O SENTIDO):
+   - Enxugue repetições e descrições de bastidores (ex: "o cenário vai ser assim", "um jantar romântico", "primeiro frame do criativo").
+   - Sintetize o diálogo na fala viva do criador do vídeo com ritmo dinâmico.
+   - NUNCA invente características que contradigam o produto.
 
-FORMATO DE RESPOSTA (JSON):
-{"hasUserSpeech": boolean, "userSpeech": string}`;
+3. REGRA CRÍTICA DE CARACTERES (MANDATÓRIO):
+   - LIMITE MÁXIMO ESTRITO: 225 CARACTERES contando espaços e pontuação.
+   - META DE PREENCHIMENTO: A fala DEVE FICAR O MAIS PRÓXIMO POSSÍVEL DE 225 CARACTERES, idealmente entre 220 e 225 caracteres!
+   - NUNCA encurte em excesso para 180 ou 190 caracteres se houver conteúdo do usuário para aproveitar. Mantenha o máximo da ideia original até encostar na margem de 220 a 225 caracteres.
+   - NUNCA ultrapasse 225 caracteres.
 
-        const raw = await executeFastAIText({
+4. PRESERVAÇÃO DE MODELOS E PRONÚNCIA:
+   - O "X" em modelos de produtos (como "X8", "Poco X8 Pro", "iPhone X") NUNCA deve ser trocado por "vezes". Mantenha sempre como letra "X" maiúscula.
+   - Corrija falhas de digitação por voz (ex: "pó pouco" -> "Poco", "não Tik Tok Shop" -> "na TikTok Shop").
+   - Escreva números e unidades por extenso para voz quando apropriado (ex: "800 watts", "23 polegadas").
+
+FORMATO DE RESPOSTA OBRIGATÓRIO (JSON):
+{"hasUserSpeech": true, "userSpeech": "sua copy condensada de 220 a 225 caracteres aqui"}`;
+
+        const raw = await executeTopAIModel({
           systemPrompt: detectSystem,
-          userPrompt: `INSTRUÇÕES ADICIONAIS:\n${textToAnalyze}`,
+          userPrompt: `INSTRUÇÕES ADICIONAIS FORNECIDAS PELO USUÁRIO:\n${textToAnalyze}\n\nNOME DO PRODUTO: ${productName || 'Produto'}\nINFORMAÇÕES DO PRODUTO: ${productInfo || ''}`,
           jsonMode: true,
-          temperature: 0.2,
         });
 
         let parsed: any = {};
@@ -2367,7 +2441,7 @@ FORMATO DE RESPOSTA (JSON):
 
         userSpeech = normalizeVoiceText(userSpeech);
         if (userSpeech.length > 225) {
-          userSpeech = userSpeech.slice(0, 225).replace(/[,;:\s]+[^.!?,;:]*$/, '') + '!';
+          userSpeech = fitSpeechCloseToLimit(userSpeech, 225, 218);
         }
 
         const hasUserSpeech = Boolean(
@@ -2410,12 +2484,12 @@ REGRAS MANDATÓRIAS:
    - "800 W" -> "800 watts"
    - "23 pol" -> "23 polegadas"
    - "50%" -> "50 por cento"
-   - "10x" -> "10 vezes"
    - "AMOLED" -> "Amóled"
+   - O "X" em modelos de produtos (como "X8", "Poco X8 Pro", "iPhone X") NUNCA deve ser trocado por "vezes". Mantenha sempre a letra "X".
 4. PRESERVAÇÃO: Preserve o vocabulário e o sentido original do usuário. NUNCA invente Hook, nunca adicione CTA que o usuário não escreveu.
 5. LIMITE DE 225 CARACTERES:
    - Se o texto tiver 225 caracteres ou menos: NÃO resuma e NÃO reescreva. Apenas corrija e normalize.
-   - Se o texto ultrapassar 225 caracteres: faça a menor intervenção conservadora possível para caber em no máximo 225 caracteres contando espaços.
+   - Se o texto ultrapassar 225 caracteres: encurte de forma conservadora mantendo o mais próximo possível do limite de 225 (entre 220 e 225 caracteres com espaços), sem cortar conteúdo em excesso.
 6. FORMATO DE SAÍDA: Entregue SOMENTE o texto final revisado, sem aspas, sem títulos, sem explicações.`;
 
         let reviewed = await executeFastAIText({
