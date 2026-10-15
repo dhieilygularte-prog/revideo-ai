@@ -2984,7 +2984,15 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
           if (result.error) lastErrorMessage = result.error;
           return res.json({ success: false, error: lastErrorMessage || 'Falha na geração com OpenAI.' });
         } catch (oiErr: any) {
-          lastErrorMessage = oiErr?.message || 'Erro OpenAI ao gerar storyboard';
+          const rawMsg = oiErr?.message || '';
+          const isQuota =
+            oiErr?.status === 429 ||
+            oiErr?.code === 'insufficient_quota' ||
+            oiErr?.type === 'insufficient_quota' ||
+            /credit_balance_exhausted|no credits remaining|billing|quota|balance/i.test(rawMsg);
+          lastErrorMessage = isQuota
+            ? 'Acabou o Saldo de sua Chave API da Openai faça uma recarga para continuar gerando.'
+            : oiErr?.message || 'Erro OpenAI ao gerar storyboard';
           console.warn('Aviso OpenAI em produtos2-generate-storyboard:', lastErrorMessage);
           return res.json({ success: false, error: lastErrorMessage });
         }

@@ -509,6 +509,7 @@ Retorne estritamente um JSON estruturado:
       productPhotoBase64,
       productPhotosBase64 = [],
       modelReferenceBase64,
+      referenceFrameBase64,
       variationName = 'Variação 1',
       productType = 'produto comercial',
       targetAngle = 'front',
@@ -708,14 +709,14 @@ Mantenha o mesmo modelo/corte e caimento da peça atual; troque somente cores (p
       };
     } catch (err: any) {
       let msg = err?.message || '';
-      if (
-        msg.includes('credit_balance_exhausted') ||
-        msg.includes('no credits remaining') ||
-        msg.includes('billing') ||
-        err?.status === 429
-      ) {
-        msg =
-          'Seus créditos na OpenAI estão zerados (Erro 429 - Saldo Esgotado). Recarregue seus créditos em https://platform.openai.com/settings/organization/billing/ para continuar gerando imagens.';
+      const isQuota =
+        err?.status === 429 ||
+        err?.code === 'insufficient_quota' ||
+        err?.type === 'insufficient_quota' ||
+        /credit_balance_exhausted|no credits remaining|billing|quota|balance/i.test(msg);
+
+      if (isQuota) {
+        msg = 'Acabou o Saldo de sua Chave API da Openai faça uma recarga para continuar gerando.';
       } else {
         msg = `Erro ao gerar imagem com a OpenAI (${OPENAI_IMAGE_MODEL}): ${msg}`;
       }

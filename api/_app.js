@@ -866,6 +866,7 @@ Retorne estritamente um JSON estruturado:
       productPhotoBase64,
       productPhotosBase64 = [],
       modelReferenceBase64,
+      referenceFrameBase64,
       variationName = "Varia\xE7\xE3o 1",
       productType = "produto comercial",
       targetAngle = "front",
@@ -1027,8 +1028,9 @@ Mantenha o mesmo modelo/corte e caimento da pe\xE7a atual; troque somente cores 
       };
     } catch (err) {
       let msg = err?.message || "";
-      if (msg.includes("credit_balance_exhausted") || msg.includes("no credits remaining") || msg.includes("billing") || err?.status === 429) {
-        msg = "Seus cr\xE9ditos na OpenAI est\xE3o zerados (Erro 429 - Saldo Esgotado). Recarregue seus cr\xE9ditos em https://platform.openai.com/settings/organization/billing/ para continuar gerando imagens.";
+      const isQuota = err?.status === 429 || err?.code === "insufficient_quota" || err?.type === "insufficient_quota" || /credit_balance_exhausted|no credits remaining|billing|quota|balance/i.test(msg);
+      if (isQuota) {
+        msg = "Acabou o Saldo de sua Chave API da Openai fa\xE7a uma recarga para continuar gerando.";
       } else {
         msg = `Erro ao gerar imagem com a OpenAI (${OPENAI_IMAGE_MODEL}): ${msg}`;
       }
@@ -2762,7 +2764,7 @@ app.post("/api/generate-scene-image", async (req, res) => {
       productPhotoBase64,
       productPhotosBase64 = [],
       modelReferenceBase64,
-      referenceFrameBase64: referenceFrameBase642,
+      referenceFrameBase64,
       variationName = "Varia\xE7\xE3o 1",
       productType = "produto comercial",
       targetAngle = "front",
@@ -2791,7 +2793,7 @@ app.post("/api/generate-scene-image", async (req, res) => {
           productPhotoBase64,
           productPhotosBase64,
           modelReferenceBase64,
-          referenceFrameBase64: referenceFrameBase642,
+          referenceFrameBase64,
           variationName,
           productType,
           targetAngle,
@@ -2991,7 +2993,7 @@ DIRETIVA MESTRE 3: ZERO TATUAGENS. Pele 100% limpa, sem qualquer tatuagem em hom
           productPhotoBase64,
           productPhotosBase64,
           modelReferenceBase64,
-          referenceFrameBase64: referenceFrameBase642,
+          referenceFrameBase64,
           variationName,
           productType,
           targetAngle,
@@ -3926,7 +3928,9 @@ ${correctionPrompt.trim()}
           if (result.error) lastErrorMessage = result.error;
           return res.json({ success: false, error: lastErrorMessage || "Falha na gera\xE7\xE3o com OpenAI." });
         } catch (oiErr) {
-          lastErrorMessage = oiErr?.message || "Erro OpenAI ao gerar storyboard";
+          const rawMsg = oiErr?.message || "";
+          const isQuota = oiErr?.status === 429 || oiErr?.code === "insufficient_quota" || oiErr?.type === "insufficient_quota" || /credit_balance_exhausted|no credits remaining|billing|quota|balance/i.test(rawMsg);
+          lastErrorMessage = isQuota ? "Acabou o Saldo de sua Chave API da Openai fa\xE7a uma recarga para continuar gerando." : oiErr?.message || "Erro OpenAI ao gerar storyboard";
           console.warn("Aviso OpenAI em produtos2-generate-storyboard:", lastErrorMessage);
           return res.json({ success: false, error: lastErrorMessage });
         }
