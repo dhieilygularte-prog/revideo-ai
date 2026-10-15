@@ -1196,72 +1196,20 @@ REGRAS CR\xCDTICAS:
 - "peca": substantivo curto do produto em min\xFAsculas (ex: pijama, calca, bermuda, tenis, sandalia, vestido).`;
 }
 
-// src/produtos2/produtos2Prompts.ts
-function buildProdutos2PlanningSystemPrompt() {
-  return `Voc\xEA \xE9 o Diretor Criativo Copy-First do Modo Produtos 2.0.
-REGRA-M\xC3E: A COPY VENDE. O STORYBOARD PROVA VISUALMENTE A COPY. O V\xCDDEO ANIMA O STORYBOARD SEM NUNCA MOSTRAR A PR\xD3PRIA FOLHA DO STORYBOARD.
-
-REGRA DE OURO INVIOL\xC1VEL \u2014 LOGOMARCA DO FABRICANTE NO PRODUTO vs ELEMENTOS DE REDE SOCIAL:
-- DIFERENCIE TOTALMENTE:
-  1) PROIBIDO: Logotipo do TikTok, marca d'\xE1gua de rede social, @usu\xE1rio, bot\xF5es ou \xEDcone de carrinho flutuantes na tela. A palavra "TikTok" NUNCA pode aparecer em "productLock", "avatarDescription", "scenarioDescription", "visualMap" nem em "scenes" (somente dentro de "adaptedCopy" se j\xE1 fizer parte da fala).
-  2) OBRIGAT\xD3RIO E SAGRADO: A logomarca, o emblema, o escudo/s\xEDmbolo e o nome da marca DO PR\xD3PRIO FABRICANTE que est\xE3o impressos, bordados ou estampados NO PRODUTO nas fotos de refer\xEAncia DEVEM SER FIELMENTE REPRESENTADOS E PRESERVADOS 100% ID\xCANTICOS!
-- Inspecione minuciosamente as fotos de refer\xEAncia anexadas procurando qualquer logomarca, emblema, s\xEDmbolo gr\xE1fico ou texto de marca no produto (por exemplo: logo branca no encosto de um banco de exerc\xEDcios, logo na lateral de um t\xEAnis, marca no painel de um eletr\xF4nico, r\xF3tulo de um frasco, etc.).
-- Preencha obrigatoriamente o campo "manufacturerLogoDescription" descrevendo com precis\xE3o cir\xFArgica a logomarca/marca vis\xEDvel no produto (formato, desenho, letras/s\xEDmbolo, cor exata e localiza\xE7\xE3o exata na pe\xE7a, ex.: "Logomarca geom\xE9trica branca em formato de escudo hexagonal com 'W' estilizado centralizada na parte superior do encosto preto do banco").
-- O 1\xBA item do array "productLock" DEVE ser essa descri\xE7\xE3o exata da logomarca do fabricante e a exig\xEAncia de que ela apare\xE7a id\xEAntica em todas as cenas onde aquela parte do produto estiver vis\xEDvel.
-- Nas descri\xE7\xF5es das cenas ("scenes") em que a parte do produto com a logomarca aparece, mencione explicitamente a presen\xE7a da logomarca original no local exato (ex.: "...exibindo o encosto preto com a logomarca branca original do fabricante no topo").
-
-Sua tarefa \xE9 receber:
-1) As fotos reais do produto;
-2) As "Informa\xE7\xF5es do produto" e "Nome do produto";
-3) A "Copy-base selecionada do banco" (ou copy nova/adaptada do molde do nicho);
-4) As configura\xE7\xF5es (dura\xE7\xE3o 10s ou 8s, influencer, g\xEAnero do cliente, fala, enquadramento, cen\xE1rio, instru\xE7\xF5es adicionais, varia\xE7\xF5es anexadas).
-
-E retornar um JSON estrito com:
-1. "manufacturerLogoDescription": string detalhando exatamente a logomarca/emblema/texto do fabricante vis\xEDvel no produto nas fotos anexadas (cor, formato, desenho e onde fica no produto).
-2. "adaptedCopy":
-   - REGRA ABSOLUTA: NUNCA crie copy do zero! O aplicativo trabalha EXCLUSIVAMENTE com as ~62 copies vencedoras validadas que j\xE1 est\xE3o na mem\xF3ria (ou copy do mesmo produto, ou copy de outro produto do mesmo nicho adaptada, ou outra copy do banco adaptada).
-   - A "baseCopy" recebida j\xE1 \xE9 a copy do banco adaptada com o m\xEDnimo de mudan\xE7as e j\xE1 come\xE7a obrigatoriamente com "Nossa! ". MANTENHA A "baseCopy" EXATAMENTE COMO EST\xC1!
-   - A fala no Veo deve ser pronunciada de forma R\xC1PIDA E EUF\xD3RICA (estilo contando uma novidade imperd\xEDvel e urgente).
-   - NUNCA use a palavra "menina" como vocativo; quando o p\xFAblico for feminino, use "Amiga" ou "Gente". Para masculino, use "Meu amigo", "Cara", "Irm\xE3o" ou "Gente".
-   - NUNCA mencione "frete gr\xE1tis" ou "frete gratuito" na fala, a menos que isso tenha sido informado expressamente nas Informa\xE7\xF5es do Produto.
-3. "productLock": array de 4 a 6 strings detalhando fisicamente o produto visto nas fotos (1\xBA item obrigatoriamente a descri\xE7\xE3o exata da logomarca/emblema/marca impressa no produto e sua posi\xE7\xE3o exata; seguido de formato, propor\xE7\xE3o, material, textura, bot\xF5es/costuras/sola/cabos/detalhes).
-   - REGRA MANDAT\xD3RIA DE VARIA\xC7\xD5ES DE COR NO PRODUCT LOCK:
-     * Quando houver mais de 1 varia\xE7\xE3o de cor/modelo, NUNCA fixe a cor ou estampa de apenas uma das fotos (ex.: NUNCA escreva "tecido azul-marinho com listras" ou "franjas azul-marinho" como se fosse o produto inteiro!).
-     * No "productLock", descreva apenas os aspectos f\xEDsicos universais da pe\xE7a (tecido 100% algod\xE3o, formato curvo, franjas nas laterais, cordas refor\xE7adas nas pontas, acabamento).
-     * Para a cor, cite explicitamente: "Varia\xE7\xF5es oficiais de cor: o produto possui as varia\xE7\xF5es informadas ([listar todas]), todas corretas e representadas fielmente nos seus respectivos quadros do storyboard".
-4. "avatarDescription": descri\xE7\xE3o de 1 frase do consumidor brasileiro adulto que apresenta o produto (respeitando o g\xEAnero do Influencer e as Instru\xE7\xF5es Adicionais; se produto infantil, quem apresenta na cena 1 e 9 \xE9 sempre um adulto pai/m\xE3e).
-5. "scenarioDescription":
-   - Se o usu\xE1rio escolheu "em_casa" ("Em casa"): "casa brasileira simples e aconchegante, [c\xF4modo adequado ao produto]".
-   - Se o usu\xE1rio escolheu "padrao_uso" ("Cen\xE1rio padr\xE3o de uso"): descreva o LUGAR REAL onde o produto \xE9 usado, SEM mencionar "casa", "caseiro" ou "casa brasileira" (ex.: academia ou espa\xE7o de treino para banco de exerc\xEDcios; jardim gramado ao ar livre para cortador de grama; margem de represa para vara de pesca; interior de um carro para som automotivo; rua/parque em corrida ao ar livre para t\xEAnis).
-   - Se o usu\xE1rio escreveu um local nas Instru\xE7\xF5es adicionais (ex.: "na praia"), essa instru\xE7\xE3o tem prioridade.
-6. "visualMap": array de 4 objetos { "excerpt", "intent", "visualProof", "scenes" } mapeando os trechos da copy para provas visuais nas cenas 1 a 9.
-7. "scenes": array de EXATAMENTE 9 objetos { "number": 1..9, "startTime", "endTime", "framing", "action", "cameraMovement", "storyboardDescription" }:
-   - REGRA MANDAT\xD3RIA E INEGOCI\xC1VEL \u2014 SEQU\xCANCIA PROGRESSIVA CONT\xCDNUA (NUNCA REPETIR CENAS):
-     * As 9 cenas formam UMA \xDANICA HIST\xD3RIA PROGRESSIVA DE DEMONSTRA\xC7\xC3O DO PRODUTO acompanhando a copy do in\xEDcio ao fim (Cena 1 a 9 \xE9 um fluxo cont\xEDnuo e sem repeti\xE7\xF5es).
-     * \xC9 EXPRESSAMENTE PROIBIDO REPETIR AS MESMAS CENAS PARA CADA COR! (Por exemplo: NUNCA crie cena 1 apresentando cor 1, cena 2 balan\xE7ando produto cor 1, cena 3 tocando tecido cor 1, e depois na cena 4 reiniciar com a apresentadora sorrindo com cor 2, cena 5 balan\xE7ando cor 2... ISSO \xC9 TOTALMENTE PROIBIDO!).
-     * A demonstra\xE7\xE3o do produto segue seu fluxo narrativo normal, din\xE2mico e progressivo de 1 a 9:
-       - Cenas 1\u20132: Gancho inicial, primeiro impacto e revela\xE7\xE3o do produto;
-       - Cenas 3\u20135: Demonstra\xE7\xE3o pr\xE1tica, funcionamento ativo, teste real e prova do benef\xEDcio central;
-       - Cenas 6\u20138: Macro de costuras/acabamento/material ("Olha..."), prova f\xEDsica de resist\xEAncia e vis\xE3o ampla de uso no cen\xE1rio;
-       - Cena 9: Fechamento com alta convers\xE3o e CTA.
-     * A \xDANICA DIFEREN\xC7A quando h\xE1 varia\xE7\xF5es de cor adicionadas \xE9 que o produto, nas cenas em que ele aparece, \xE9 retratado na cor correspondente \xE0quele grupo de quadros:
-       - Se 2 varia\xE7\xF5es: Cenas 1 a 4 na 1\xAA Cor; Cenas 5 a 9 na 2\xAA Cor.
-       - Se 3 varia\xE7\xF5es: Cenas 1 a 3 na 1\xAA Cor; Cenas 4 a 6 na 2\xAA Cor; Cenas 7 a 9 na 3\xAA Cor.
-     * Todas as 9 cenas devem ter a\xE7\xF5es DIFERENTES, complementares e progressivas, acompanhando rigorosamente a locu\xE7\xE3o!
-     * REGRA DE DESCRI\xC7\xC3O NEUTRA DE COR NAS CENAS: Quando houver varia\xE7\xF5es, NUNCA descreva no texto da cena a cor de uma varia\xE7\xE3o em cenas pertencentes a outra varia\xE7\xE3o (ex.: proibido citar "azul-marinho" na Cena 4 a 9 se for vermelho ou preto!). Refira-se ao produto como "a rede", "o tecido da rede", "as franjas", permitindo que cada cena herde a cor do respectivo quadro do storyboard!
-   - Todo "olha [detalhe]" na copy vira uma cena de close/macro daquele detalhe.
-   - Variar enquadramentos (nunca duas cenas seguidas iguais): close, macro, POV de m\xE3os, plano m\xE9dio, plano aberto, uso real.
-   - "storyboardDescription" DEVE ser id\xEAntico a "{framing}. {action}" (mesma pessoa, mesma a\xE7\xE3o, mesmo enquadramento e mesmos objetos, sem inventar objetos extras ou mudar quem aparece entre um campo e outro).
-   - Sempre que a parte do produto onde fica a logomarca do fabricante estiver vis\xEDvel na cena, inclua na descri\xE7\xE3o da cena que a logomarca original est\xE1 vis\xEDvel e id\xEAntica \xE0 foto.
-   - Na Cena 1, escreva "action" de forma direta e objetiva (sem retic\xEAncias e sem ponto no meio da frase).
-   - Respeitar estritamente o Enquadramento:
-     * "com_rosto": rosto aparece em algumas cenas (especialmente gancho e cena 9).
-     * "sem_rosto": nunca mostrar o rosto; sempre do pesco\xE7o para baixo.
-     * "pov": mostrar somente as m\xE3os em primeira pessoa; nunca rosto ou corpo.
-   - Proibido texto flutuante externo, legenda, pre\xE7o, n\xFAmero escrito, carrinho, marca d'\xE1gua de rede social, @ ou interface de aplicativo dentro das cenas (mas OBRIGAT\xD3RIO manter a logomarca original do fabricante impressa no pr\xF3prio produto).`;
-}
-
 // src/produtos2/produtos2UserSpeechExtractor.ts
+function fixCommonSlips(str) {
+  let s = str;
+  s = s.replace(/\bp[óo]\s*pouco\b/gi, "Poco");
+  s = s.replace(/\bpopouco\b/gi, "Poco");
+  s = s.replace(/\bpoco\s+(?:\d+\s+)?vezes\b/gi, "Poco X8");
+  s = s.replace(/\bn[ãa]o\s+(tik\s*tok\s*shop|tiktok\s*shop)\b/gi, "na TikTok Shop");
+  s = s.replace(/\btik\s*tok\s*shop\b/gi, "TikTok Shop");
+  s = s.replace(/\btoca\s+no\s+carrinho\b/gi, "toca no carrinho");
+  s = s.replace(/\b800\s*w\b/gi, "800 watts");
+  s = s.replace(/\b23\s*pol\b/gi, "23 polegadas");
+  s = s.replace(/\s+/g, " ").trim();
+  return s;
+}
 function fitSpeechCloseToLimit(text, maxLen = 225, minTarget = 218) {
   let s = text.replace(/\s+/g, " ").trim();
   if (s.length <= maxLen && s.length >= minTarget) {
@@ -1308,6 +1256,137 @@ function cleanDanglingEnds(text) {
   let s = text.trim();
   s = s.replace(/\s+(?:e|de|do|da|dos|das|o|a|os|as|com|em|no|na|nos|nas|que|para|pra|por|um|uma)\s*([.!?,;:]*)$/i, "$1");
   return s.trim();
+}
+function extractUserSpeechFromInstructions(rawText, productName = "") {
+  if (!rawText || !rawText.trim()) {
+    return { hasSpeech: false, speech: "" };
+  }
+  const text = rawText.trim();
+  const quoteMatches = [];
+  const quoteRegex = /["'«“]([^"'»”]{8,350})["'»”]/g;
+  let qm;
+  while ((qm = quoteRegex.exec(text)) !== null) {
+    if (qm[1]?.trim()) {
+      quoteMatches.push(qm[1].trim());
+    }
+  }
+  if (quoteMatches.length > 0) {
+    let combined = quoteMatches.join(" ");
+    combined = fixCommonSlips(combined);
+    return {
+      hasSpeech: true,
+      speech: formatFinalSpeech(combined)
+    };
+  }
+  const isDialoguePattern = (text.toLowerCase().includes("homem") || text.toLowerCase().includes("rapaz")) && (text.toLowerCase().includes("mulher") || text.toLowerCase().includes("mo\xE7a")) && /(?:fala|diz|falou|pergunt)/i.test(text);
+  if (isDialoguePattern) {
+    const womanMatch = text.match(
+      /(?:ela|mulher|moça)\s+(?:vira\s+(?:e\s+)?|olha\s+(?:e\s+)?|no\s+encontro\s+)?(?:fala|diz|falou|pergunta)[:\s]+([^.]+?)(?=\s+(?:a[íi]|ele|homem|rapaz)\s+(?:ele\s+)?(?:vira\s+(?:e\s+)?|olha\s+(?:e\s+)?|pega\s+)?(?:fala|diz|falou|responde)|$)/i
+    );
+    const manMatch = text.match(
+      /(?:ele|homem|rapaz)\s+(?:vira\s+(?:e\s+)?|olha\s+(?:e\s+)?|pega\s+o\s+celular\s+(?:dele\s+)?(?:e\s+)?)?(?:fala|diz|falou|responde)[:\s]+([^.]+?)(?=\s+(?:e\s+nessas\s+falas|nessas\s+falas|essa\s+vai\s+terminar|como\s+eu\s+disse|o\s+cen[áa]rio|e\s+[ée]\s+isso)|$)/i
+    );
+    let womanSpeech = womanMatch ? womanMatch[1].trim() : "";
+    let manSpeech = manMatch ? manMatch[1].trim() : "";
+    womanSpeech = fixCommonSlips(womanSpeech).replace(/^[.!?,;:\s]+|[.!?,;:\s]+$/g, "");
+    manSpeech = fixCommonSlips(manSpeech).replace(/^[.!?,;:\s]+|[.!?,;:\s]+$/g, "");
+    manSpeech = manSpeech.replace(/\s+(?:e\s+nessas\s+falas|nessas\s+falas|essa\s+vai\s+terminar|como\s+eu\s+disse)[\s\S]*$/i, "").trim();
+    if (womanSpeech && manSpeech) {
+      womanSpeech = womanSpeech.charAt(0).toUpperCase() + womanSpeech.slice(1);
+      manSpeech = manSpeech.charAt(0).toUpperCase() + manSpeech.slice(1);
+      const combined = `${womanSpeech}! ${manSpeech}!`;
+      return {
+        hasSpeech: true,
+        speech: formatFinalSpeech(combined)
+      };
+    }
+  }
+  const regex = /(?:ele\s+termina\s+n[ée]\s+ele\s+olha\s+para\s+c[âa]mera\s+e\s+fala|olha\s+(?:para|pra)\s+c[âa]mera\s+e\s+fala|olha\s+e\s+fala|(?:ele|ela)\s+(?:fala|diz|falou|disse|vai falar|vai dizer)|falando|dizendo)[:\s]+([\s\S]*?)(?=(?:a[íi]\s+(?:ele|ela|j[áa])|ela\s+fala|ele\s+fala|ele\s+falou|ele\s+termina|ela\s+termina|e\s+[ée]\s+um\s+homem|e\s+acontece|$|\.))/gi;
+  let m;
+  const segments = [];
+  while ((m = regex.exec(text)) !== null) {
+    let seg = m[1]?.trim();
+    if (seg) {
+      seg = seg.replace(/^(?:assim|que|isso)[:\s]*/i, "").trim();
+      seg = seg.replace(/^(?:ele|ela)\s+(?:fala|diz|falou|disse)[:\s]*/i, "").trim();
+      seg = fixCommonSlips(seg);
+      if (seg.length >= 8) {
+        segments.push(seg);
+      }
+    }
+  }
+  if (segments.length > 0) {
+    const rawHook = segments.find(
+      (s) => /que\s+celular|bonito|lindo|incr[íi]vel|maravilhoso|nossa|olha\s+s[óo]|olha\s+isso/i.test(s) && !/comprei|carrinho|adquir|shop/i.test(s)
+    );
+    let hookSeg = "";
+    if (rawHook) {
+      const firstSentence = rawHook.split(/(?<=[.!?])\s+/)[0] || rawHook;
+      hookSeg = firstSentence.replace(/[.!?,;:\s]+$/, "").trim();
+    }
+    const productSeg = segments.find(
+      (s) => /esse\s+aqui|novo|lan[çc]amento|celular|qualidade|benef[íi]cio|poco/i.test(s) && s !== rawHook
+    );
+    const fullCta = segments.find((s) => /comprei|compra/i.test(s) && /carrinho/i.test(s));
+    const ctaSeg = fullCta || segments.slice().reverse().find(
+      (s) => /comprei|compra|carrinho|adquir|shop|link/i.test(s)
+    );
+    let combined = "";
+    if (hookSeg && productSeg && ctaSeg) {
+      let p = productSeg.replace(/^[.!?,;:\s]+|[.!?,;:\s]+$/g, "").trim();
+      let c = ctaSeg.replace(/^[.!?,;:\s]+/, "").trim();
+      p = p.charAt(0).toUpperCase() + p.slice(1);
+      c = c.charAt(0).toUpperCase() + c.slice(1);
+      combined = `${hookSeg}! ${p}. ${c}`;
+    } else if (productSeg && ctaSeg) {
+      let p = productSeg.replace(/[.!?,;:\s]+$/, "").trim();
+      let c = ctaSeg.replace(/^[.!?,;:\s]+/, "").trim();
+      p = p.charAt(0).toUpperCase() + p.slice(1);
+      c = c.charAt(0).toUpperCase() + c.slice(1);
+      combined = `${p}. ${c}`;
+    } else {
+      combined = segments.join(". ");
+    }
+    return {
+      hasSpeech: true,
+      speech: formatFinalSpeech(combined)
+    };
+  }
+  const ctaMatch = text.match(/(?:compra|comprei|toca no carrinho|adquira|pega o seu|aproveita)[^.!?]+(?:carrinho|shop|link|aqui)[^.!?]*/i);
+  if (ctaMatch) {
+    let speechCandidate = fixCommonSlips(ctaMatch[0].trim());
+    speechCandidate = speechCandidate.replace(/\s+(?:e\s+nessas\s+falas|nessas\s+falas|essa\s+vai\s+terminar|como\s+eu\s+disse|o\s+cen[áa]rio|e\s+[ée]\s+isso)[\s\S]*$/i, "").trim();
+    return {
+      hasSpeech: true,
+      speech: formatFinalSpeech(speechCandidate)
+    };
+  }
+  if (text.length >= 10) {
+    let cleaned = text.replace(/o cenário vai ser assim/gi, "").replace(/eu quero um homem/gi, "").replace(/num jantar romântico/gi, "").replace(/restaurante/gi, "").replace(/tudo ultra realista/gi, "").replace(/e acontece toda essa situação/gi, "").trim();
+    cleaned = fixCommonSlips(cleaned);
+    if (cleaned.length >= 15) {
+      return {
+        hasSpeech: true,
+        speech: formatFinalSpeech(cleaned)
+      };
+    }
+  }
+  return { hasSpeech: false, speech: "" };
+}
+function formatFinalSpeech(raw) {
+  let s = raw.trim();
+  if (!s) return "";
+  s = s.replace(/^["'«“]|["'»”]$/g, "").trim();
+  s = s.charAt(0).toUpperCase() + s.slice(1);
+  s = s.replace(/\.{2,}/g, ".");
+  s = s.replace(/\s+([.,!?])/g, "$1");
+  if (s.length > 225) {
+    s = fitSpeechCloseToLimit(s, 225, 218);
+  }
+  if (!/[.!?]$/.test(s)) {
+    s += "!";
+  }
+  return s;
 }
 
 // server.ts
@@ -3237,7 +3316,7 @@ ${userPrompt2}` }]
       const { systemPrompt, userPrompt: userPrompt2, jsonMode = false } = opts;
       const client = openAIProvider.getClient();
       if (client) {
-        const topModels = [OPENAI_BRAIN_MODEL, "gpt-4o", "gpt-5.6-luna", "gpt-4o-mini"];
+        const topModels = ["gpt-4o", OPENAI_BRAIN_MODEL, "gpt-4o-mini"];
         for (const modelCandidate of topModels) {
           try {
             const params = {
@@ -3251,7 +3330,7 @@ ${userPrompt2}` }]
             if (modelCandidate.startsWith("gpt-5") || modelCandidate.startsWith("o")) {
               params.reasoning_effort = "medium";
             } else {
-              params.temperature = 0.3;
+              params.temperature = 0.2;
             }
             const comp = await client.chat.completions.create(params);
             const content = comp.choices[0]?.message?.content?.trim();
@@ -3293,51 +3372,31 @@ ${userPrompt2}` }]
         if (!textToAnalyze) {
           return res.json({ success: true, hasUserSpeech: false, userSpeech: "" });
         }
-        const detectSystem = `Voc\xEA \xE9 o MODELO MAIS AVAN\xC7ADO E INTELIGENTE DA OPENAI, operando integrado com toda a mem\xF3ria, intelig\xEAncia e diretrizes da AURORA COPY especialista em roteiros e copies virais de alta convers\xE3o para o TikTok Shop Brasil.
+        const detectSystem = `Voc\xEA \xE9 o modelo mais avan\xE7ado da OpenAI especializado em roteiros e copies para v\xEDdeos do TikTok Shop Brasil.
+O usu\xE1rio preencheu o campo de "Instru\xE7\xF5es Adicionais" com um texto que mistura descri\xE7\xE3o do cen\xE1rio, dos personagens e falas/di\xE1logos que ele quer que sejam ditas no v\xEDdeo.
 
-SUA MISS\xC3O:
-O usu\xE1rio preencheu o campo de "Instru\xE7\xF5es Adicionais" com o que ele deseja para o v\xEDdeo. Muitas vezes o usu\xE1rio explica bastante, inclui di\xE1logos informais entre personagens, descri\xE7\xF5es de cen\xE1rio, rea\xE7\xF5es ou fala o que gostaria que fosse dito.
-Sua miss\xE3o \xE9 compreender com profundidade a ideia que o usu\xE1rio quis transmitir e CONDENSAR / ENXUGAR tudo isso em UMA COPY DE AN\xDANCIO DE ALTO IMPACTO PARA O TIKTOK SHOP, pronta para narra\xE7\xE3o em v\xEDdeo de 10 segundos.
-
-MEM\xD3RIA E PRINC\xCDPIOS DA AURORA COPY QUE VOC\xCA DEVE APLICAR:
-1. FORMATO VIRAL (DESCOBERTA + DEMONSTRA\xC7\xC3O):
-   - Hook Magn\xE9tico de Abertura (0-3s): Capture a aten\xE7\xE3o imediatamente com o espanto, elogio ou pergunta inicial do di\xE1logo (ex: "Nossa, que celular bonito!").
-   - Demonstra\xE7\xE3o dos Benef\xEDcios Reais: Apresente o produto com naturalidade e entusiasmo comercial, destacando os diferenciais mencionados (c\xE2mera de alta qualidade, custo-benef\xEDcio, desempenho).
-   - Chamada para A\xE7\xE3o (CTA): Finalize de forma espont\xE2nea e convincente convidando para o TikTok Shop (ex: "Eu comprei na TikTok Shop, toca no carrinho laranja e garanta j\xE1 o seu!").
-
-2. CONDENSA\xC7\xC3O INTELIGENTE (SEM PERDER O SENTIDO):
-   - Enxugue repeti\xE7\xF5es e descri\xE7\xF5es de bastidores (ex: "o cen\xE1rio vai ser assim", "um jantar rom\xE2ntico", "primeiro frame do criativo").
-   - Sintetize o di\xE1logo na fala viva do criador do v\xEDdeo com ritmo din\xE2mico.
-   - NUNCA invente caracter\xEDsticas que contradigam o produto.
-
-3. REGRA CR\xCDTICA DE CARACTERES (MANDAT\xD3RIO):
-   - LIMITE M\xC1XIMO ESTRITO: 225 CARACTERES contando espa\xE7os e pontua\xE7\xE3o.
-   - META DE PREENCHIMENTO: A fala DEVE FICAR O MAIS PR\xD3XIMO POSS\xCDVEL DE 225 CARACTERES, idealmente entre 220 e 225 caracteres!
-   - NUNCA encurte em excesso para 180 ou 190 caracteres se houver conte\xFAdo do usu\xE1rio para aproveitar. Mantenha o m\xE1ximo da ideia original at\xE9 encostar na margem de 220 a 225 caracteres.
-   - NUNCA ultrapasse 225 caracteres.
-
-4. PRESERVA\xC7\xC3O DE MODELOS E PRON\xDANCIA:
-   - O "X" em modelos de produtos (como "X8", "Poco X8 Pro", "iPhone X") NUNCA deve ser trocado por "vezes". Mantenha sempre como letra "X" mai\xFAscula.
-   - Corrija falhas de digita\xE7\xE3o por voz (ex: "p\xF3 pouco" -> "Poco", "n\xE3o Tik Tok Shop" -> "na TikTok Shop").
-   - Escreva n\xFAmeros e unidades por extenso para voz quando apropriado (ex: "800 watts", "23 polegadas").
-
-5. DI\xC1LOGOS E M\xDALTIPLOS PERSONAGENS (MANDAT\xD3RIO):
-   - Se o usu\xE1rio descreveu falas para mais de uma pessoa (ex: mulher e homem conversando em um encontro, coro de pessoas, amigos, vendedor e cliente):
-     * Identifique com clareza quem fala cada trecho.
-     * Mantenha no userSpeech o texto completo e fluido.
-     * Preencha os campos isDialogue (true), dialogueDescription, dialogueScript e speakers com o mapeamento exato de cada fala e personagem.
+SUA MISS\xC3O OBRIGAT\xD3RIA:
+1. Extrair EXCLUSIVAMENTE o que \xE9 fala/di\xE1logo das pessoas no v\xEDdeo, eliminando totalmente metanarrativa, explica\xE7\xF5es e descri\xE7\xF5es visuais/de cen\xE1rio (ex: "e nessas falas n\xE9", "como eu disse numa cafeteria", "s\xE3o casal realista", "o primeiro frame come\xE7a assim", "cen\xE1rio vai ser assim", etc. JAMAIS inclua essas frases na fala!).
+2. No campo "userSpeech", coloque a FALA COMPLETA que ser\xE1 narrada/falada no v\xEDdeo, unindo as falas de todos os personagens de forma cont\xEDnua, fluida e natural (sem nomes de personagens no texto da fala), totalizando estritamente at\xE9 225 caracteres.
+3. Se houver mais de um personagem falando (ex: mulher e homem conversando em um encontro, ou v\xE1rias pessoas):
+   - Defina "isDialogue": true
+   - "dialogueDescription": resumo claro da cena e dos personagens (ex: "Encontro em uma cafeteria ao p\xF4r do sol entre um rapaz e uma mo\xE7a negros brasileiros.")
+   - "dialogueScript": roteiro formatado com cada personagem (ex: "Mulher: "Nossa, que celular bonito!"
+Homem: "Esse aqui \xE9 o novo Poco X8 Pro, ele tem fotos incr\xEDveis! Comprei no TikTok Shop, s\xF3 tocar no carrinho laranja que voc\xEA tamb\xE9m garante o seu!"")
+   - "speakers": lista estruturada com os personagens, seus pap\xE9is, g\xEAnero da voz, em quais cenas falam (ex: Cenas 1 e 2 para Mulher, Cenas 3 a 9 para Homem) e suas falas exatas.
+4. O "X" em modelos de produtos (como "X8", "Poco X8 Pro") NUNCA deve ser trocado por "vezes". Mantenha a letra X mai\xFAscula.
 
 FORMATO DE RESPOSTA OBRIGAT\xD3RIO (JSON):
 {
   "hasUserSpeech": true,
-  "userSpeech": "sua copy condensada de 220 a 225 caracteres aqui",
+  "userSpeech": "Nossa, que celular bonito! Esse aqui \xE9 o novo Poco X8 Pro, ele tem fotos incr\xEDveis! Comprei aqui no TikTok Shop, s\xF3 tocar no carrinho laranja que voc\xEA tamb\xE9m garante o seu!",
   "isDialogue": true,
-  "dialogueDescription": "Di\xE1logo entre Mulher (admira\xE7\xE3o/pergunta) e Homem (apresenta\xE7\xE3o e indica\xE7\xE3o de compra)",
-  "dialogueScript": "Mulher: "Que celular bonito! Que celular \xE9 esse?"
-Homem: "Esse aqui \xE9 o novo Poco X8 Pro, ele \xE9 um celular custo-benef\xEDcio com uma c\xE2mera de alta qualidade e um \xF3timo custo-benef\xEDcio. Eu comprei na TikTok Shop, toca no carrinho laranja e adquira o seu!"",
+  "dialogueDescription": "Encontro em cafeteria ao p\xF4r do sol entre um rapaz e uma mo\xE7a negros brasileiros.",
+  "dialogueScript": "Mulher: "Nossa, que celular bonito!"
+Homem: "Esse aqui \xE9 o novo Poco X8 Pro, ele tem fotos incr\xEDveis! Comprei no TikTok Shop, s\xF3 tocar no carrinho laranja que voc\xEA tamb\xE9m garante o seu!"",
   "speakers": [
-    { "speaker": "Mulher", "gender": "feminina", "speech": "Que celular bonito! Que celular \xE9 esse?" },
-    { "speaker": "Homem", "gender": "masculina", "speech": "Esse aqui \xE9 o novo Poco X8 Pro, ele \xE9 um celular custo-benef\xEDcio com uma c\xE2mera de alta qualidade e um \xF3timo custo-benef\xEDcio. Eu comprei na TikTok Shop, toca no carrinho laranja e adquira o seu!" }
+    { "speaker": "Mulher", "gender": "feminina", "speech": "Nossa, que celular bonito!", "scenes": "Cenas 1 e 2" },
+    { "speaker": "Homem", "gender": "masculina", "speech": "Esse aqui \xE9 o novo Poco X8 Pro, ele tem fotos incr\xEDveis! Comprei no TikTok Shop, s\xF3 tocar no carrinho laranja que voc\xEA tamb\xE9m garante o seu!", "scenes": "Cenas 3 a 9" }
   ]
 }`;
         const raw = await executeTopAIModel({
@@ -3362,10 +3421,10 @@ INFORMA\xC7\xD5ES DO PRODUTO: ${productInfo || ""}`,
           }
         }
         let userSpeech = (parsed.userSpeech || parsed.user_speech || parsed.speech || parsed.fala || parsed.fala_usuario || parsed.texto_fala || "").trim();
-        if (!userSpeech && /(?:fala|falando|diz|dizendo|responde|olha pra câmera e fala|comprei|toca no carrinho)/i.test(textToAnalyze)) {
-          const dialogMatches = textToAnalyze.match(/(?:fala|diz|responde)[:\s]+([^.]+)/gi);
-          if (dialogMatches && dialogMatches.length > 0) {
-            userSpeech = dialogMatches.map((m) => m.replace(/^(?:fala|diz|responde)[:\s]+/i, "").trim()).join(". ");
+        if (!userSpeech) {
+          const syncExt = extractUserSpeechFromInstructions(textToAnalyze, productName);
+          if (syncExt.hasSpeech && syncExt.speech) {
+            userSpeech = syncExt.speech;
           }
         }
         userSpeech = normalizeVoiceText(userSpeech);

@@ -27,8 +27,7 @@ import {
 } from './src/config/openaiModels';
 import { AIProfile, AI_PROFILES } from './src/config/aiProfiles';
 import { buildAniaPlanningSystemPrompt } from './src/ania/aniaPrompts';
-import { buildProdutos2PlanningSystemPrompt } from './src/produtos2/produtos2Prompts';
-import { fitSpeechCloseToLimit } from './src/produtos2/produtos2UserSpeechExtractor';
+import { fitSpeechCloseToLimit, extractUserSpeechFromInstructions } from './src/produtos2/produtos2UserSpeechExtractor';
 
 dotenv.config();
 
@@ -2311,8 +2310,8 @@ app.post('/api/produtos2-planning', async (req, res) => {
       const client = (openAIProvider as any).getClient();
 
       if (client) {
-        // Tenta os modelos mais avançados da OpenAI (Brain / GPT-4o / Luna / Mini)
-        const topModels = [OPENAI_BRAIN_MODEL, 'gpt-4o', 'gpt-5.6-luna', 'gpt-4o-mini'];
+        // Tenta gpt-4o primeiro pela altíssima inteligência e velocidade recorde (~2s), com fallback
+        const topModels = ['gpt-4o', OPENAI_BRAIN_MODEL, 'gpt-4o-mini'];
         for (const modelCandidate of topModels) {
           try {
             const params: any = {
@@ -2327,7 +2326,7 @@ app.post('/api/produtos2-planning', async (req, res) => {
             if (modelCandidate.startsWith('gpt-5') || modelCandidate.startsWith('o')) {
               params.reasoning_effort = 'medium';
             } else {
-              params.temperature = 0.3;
+              params.temperature = 0.2;
             }
 
             const comp = await client.chat.completions.create(params);
@@ -2374,50 +2373,29 @@ app.post('/api/produtos2-planning', async (req, res) => {
           return res.json({ success: true, hasUserSpeech: false, userSpeech: '' });
         }
 
-        const detectSystem = `Você é o MODELO MAIS AVANÇADO E INTELIGENTE DA OPENAI, operando integrado com toda a memória, inteligência e diretrizes da AURORA COPY especialista em roteiros e copies virais de alta conversão para o TikTok Shop Brasil.
+        const detectSystem = `Você é o modelo mais avançado da OpenAI especializado em roteiros e copies para vídeos do TikTok Shop Brasil.
+O usuário preencheu o campo de "Instruções Adicionais" com um texto que mistura descrição do cenário, dos personagens e falas/diálogos que ele quer que sejam ditas no vídeo.
 
-SUA MISSÃO:
-O usuário preencheu o campo de "Instruções Adicionais" com o que ele deseja para o vídeo. Muitas vezes o usuário explica bastante, inclui diálogos informais entre personagens, descrições de cenário, reações ou fala o que gostaria que fosse dito.
-Sua missão é compreender com profundidade a ideia que o usuário quis transmitir e CONDENSAR / ENXUGAR tudo isso em UMA COPY DE ANÚNCIO DE ALTO IMPACTO PARA O TIKTOK SHOP, pronta para narração em vídeo de 10 segundos.
-
-MEMÓRIA E PRINCÍPIOS DA AURORA COPY QUE VOCÊ DEVE APLICAR:
-1. FORMATO VIRAL (DESCOBERTA + DEMONSTRAÇÃO):
-   - Hook Magnético de Abertura (0-3s): Capture a atenção imediatamente com o espanto, elogio ou pergunta inicial do diálogo (ex: "Nossa, que celular bonito!").
-   - Demonstração dos Benefícios Reais: Apresente o produto com naturalidade e entusiasmo comercial, destacando os diferenciais mencionados (câmera de alta qualidade, custo-benefício, desempenho).
-   - Chamada para Ação (CTA): Finalize de forma espontânea e convincente convidando para o TikTok Shop (ex: "Eu comprei na TikTok Shop, toca no carrinho laranja e garanta já o seu!").
-
-2. CONDENSAÇÃO INTELIGENTE (SEM PERDER O SENTIDO):
-   - Enxugue repetições e descrições de bastidores (ex: "o cenário vai ser assim", "um jantar romântico", "primeiro frame do criativo").
-   - Sintetize o diálogo na fala viva do criador do vídeo com ritmo dinâmico.
-   - NUNCA invente características que contradigam o produto.
-
-3. REGRA CRÍTICA DE CARACTERES (MANDATÓRIO):
-   - LIMITE MÁXIMO ESTRITO: 225 CARACTERES contando espaços e pontuação.
-   - META DE PREENCHIMENTO: A fala DEVE FICAR O MAIS PRÓXIMO POSSÍVEL DE 225 CARACTERES, idealmente entre 220 e 225 caracteres!
-   - NUNCA encurte em excesso para 180 ou 190 caracteres se houver conteúdo do usuário para aproveitar. Mantenha o máximo da ideia original até encostar na margem de 220 a 225 caracteres.
-   - NUNCA ultrapasse 225 caracteres.
-
-4. PRESERVAÇÃO DE MODELOS E PRONÚNCIA:
-   - O "X" em modelos de produtos (como "X8", "Poco X8 Pro", "iPhone X") NUNCA deve ser trocado por "vezes". Mantenha sempre como letra "X" maiúscula.
-   - Corrija falhas de digitação por voz (ex: "pó pouco" -> "Poco", "não Tik Tok Shop" -> "na TikTok Shop").
-   - Escreva números e unidades por extenso para voz quando apropriado (ex: "800 watts", "23 polegadas").
-
-5. DIÁLOGOS E MÚLTIPLOS PERSONAGENS (MANDATÓRIO):
-   - Se o usuário descreveu falas para mais de uma pessoa (ex: mulher e homem conversando em um encontro, coro de pessoas, amigos, vendedor e cliente):
-     * Identifique com clareza quem fala cada trecho.
-     * Mantenha no userSpeech o texto completo e fluido.
-     * Preencha os campos isDialogue (true), dialogueDescription, dialogueScript e speakers com o mapeamento exato de cada fala e personagem.
+SUA MISSÃO OBRIGATÓRIA:
+1. Extrair EXCLUSIVAMENTE o que é fala/diálogo das pessoas no vídeo, eliminando totalmente metanarrativa, explicações e descrições visuais/de cenário (ex: "e nessas falas né", "como eu disse numa cafeteria", "são casal realista", "o primeiro frame começa assim", "cenário vai ser assim", etc. JAMAIS inclua essas frases na fala!).
+2. No campo "userSpeech", coloque a FALA COMPLETA que será narrada/falada no vídeo, unindo as falas de todos os personagens de forma contínua, fluida e natural (sem nomes de personagens no texto da fala), totalizando estritamente até 225 caracteres.
+3. Se houver mais de um personagem falando (ex: mulher e homem conversando em um encontro, ou várias pessoas):
+   - Defina "isDialogue": true
+   - "dialogueDescription": resumo claro da cena e dos personagens (ex: "Encontro em uma cafeteria ao pôr do sol entre um rapaz e uma moça negros brasileiros.")
+   - "dialogueScript": roteiro formatado com cada personagem (ex: "Mulher: \"Nossa, que celular bonito!\"\nHomem: \"Esse aqui é o novo Poco X8 Pro, ele tem fotos incríveis! Comprei no TikTok Shop, só tocar no carrinho laranja que você também garante o seu!\"")
+   - "speakers": lista estruturada com os personagens, seus papéis, gênero da voz, em quais cenas falam (ex: Cenas 1 e 2 para Mulher, Cenas 3 a 9 para Homem) e suas falas exatas.
+4. O "X" em modelos de produtos (como "X8", "Poco X8 Pro") NUNCA deve ser trocado por "vezes". Mantenha a letra X maiúscula.
 
 FORMATO DE RESPOSTA OBRIGATÓRIO (JSON):
 {
   "hasUserSpeech": true,
-  "userSpeech": "sua copy condensada de 220 a 225 caracteres aqui",
+  "userSpeech": "Nossa, que celular bonito! Esse aqui é o novo Poco X8 Pro, ele tem fotos incríveis! Comprei aqui no TikTok Shop, só tocar no carrinho laranja que você também garante o seu!",
   "isDialogue": true,
-  "dialogueDescription": "Diálogo entre Mulher (admiração/pergunta) e Homem (apresentação e indicação de compra)",
-  "dialogueScript": "Mulher: \"Que celular bonito! Que celular é esse?\"\nHomem: \"Esse aqui é o novo Poco X8 Pro, ele é um celular custo-benefício com uma câmera de alta qualidade e um ótimo custo-benefício. Eu comprei na TikTok Shop, toca no carrinho laranja e adquira o seu!\"",
+  "dialogueDescription": "Encontro em cafeteria ao pôr do sol entre um rapaz e uma moça negros brasileiros.",
+  "dialogueScript": "Mulher: \"Nossa, que celular bonito!\"\nHomem: \"Esse aqui é o novo Poco X8 Pro, ele tem fotos incríveis! Comprei no TikTok Shop, só tocar no carrinho laranja que você também garante o seu!\"",
   "speakers": [
-    { "speaker": "Mulher", "gender": "feminina", "speech": "Que celular bonito! Que celular é esse?" },
-    { "speaker": "Homem", "gender": "masculina", "speech": "Esse aqui é o novo Poco X8 Pro, ele é um celular custo-benefício com uma câmera de alta qualidade e um ótimo custo-benefício. Eu comprei na TikTok Shop, toca no carrinho laranja e adquira o seu!" }
+    { "speaker": "Mulher", "gender": "feminina", "speech": "Nossa, que celular bonito!", "scenes": "Cenas 1 e 2" },
+    { "speaker": "Homem", "gender": "masculina", "speech": "Esse aqui é o novo Poco X8 Pro, ele tem fotos incríveis! Comprei no TikTok Shop, só tocar no carrinho laranja que você também garante o seu!", "scenes": "Cenas 3 a 9" }
   ]
 }`;
 
@@ -2447,11 +2425,11 @@ FORMATO DE RESPOSTA OBRIGATÓRIO (JSON):
           ''
         ).trim();
 
-        // Fallback heurístico se o modelo não gerou o JSON esperado mas há fala clara no texto
-        if (!userSpeech && /(?:fala|falando|diz|dizendo|responde|olha pra câmera e fala|comprei|toca no carrinho)/i.test(textToAnalyze)) {
-          const dialogMatches = textToAnalyze.match(/(?:fala|diz|responde)[:\s]+([^.]+)/gi);
-          if (dialogMatches && dialogMatches.length > 0) {
-            userSpeech = dialogMatches.map((m) => m.replace(/^(?:fala|diz|responde)[:\s]+/i, '').trim()).join('. ');
+        // Fallback heurístico limpo se o modelo de IA não retornou fala
+        if (!userSpeech) {
+          const syncExt = extractUserSpeechFromInstructions(textToAnalyze, productName);
+          if (syncExt.hasSpeech && syncExt.speech) {
+            userSpeech = syncExt.speech;
           }
         }
 

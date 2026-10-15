@@ -111,6 +111,40 @@ export function extractUserSpeechFromInstructions(
     };
   }
 
+  // 1.5. Detecção e Extração Limpa de Diálogo entre Personagens (ex: mulher e homem, encontro)
+  const isDialoguePattern =
+    (text.toLowerCase().includes('homem') || text.toLowerCase().includes('rapaz')) &&
+    (text.toLowerCase().includes('mulher') || text.toLowerCase().includes('moça')) &&
+    /(?:fala|diz|falou|pergunt)/i.test(text);
+
+  if (isDialoguePattern) {
+    const womanMatch = text.match(
+      /(?:ela|mulher|moça)\s+(?:vira\s+(?:e\s+)?|olha\s+(?:e\s+)?|no\s+encontro\s+)?(?:fala|diz|falou|pergunta)[:\s]+([^.]+?)(?=\s+(?:a[íi]|ele|homem|rapaz)\s+(?:ele\s+)?(?:vira\s+(?:e\s+)?|olha\s+(?:e\s+)?|pega\s+)?(?:fala|diz|falou|responde)|$)/i
+    );
+    const manMatch = text.match(
+      /(?:ele|homem|rapaz)\s+(?:vira\s+(?:e\s+)?|olha\s+(?:e\s+)?|pega\s+o\s+celular\s+(?:dele\s+)?(?:e\s+)?)?(?:fala|diz|falou|responde)[:\s]+([^.]+?)(?=\s+(?:e\s+nessas\s+falas|nessas\s+falas|essa\s+vai\s+terminar|como\s+eu\s+disse|o\s+cen[áa]rio|e\s+[ée]\s+isso)|$)/i
+    );
+
+    let womanSpeech = womanMatch ? womanMatch[1].trim() : '';
+    let manSpeech = manMatch ? manMatch[1].trim() : '';
+
+    womanSpeech = fixCommonSlips(womanSpeech).replace(/^[.!?,;:\s]+|[.!?,;:\s]+$/g, '');
+    manSpeech = fixCommonSlips(manSpeech).replace(/^[.!?,;:\s]+|[.!?,;:\s]+$/g, '');
+
+    // Limpa metanarrativas internas se sobrarem
+    manSpeech = manSpeech.replace(/\s+(?:e\s+nessas\s+falas|nessas\s+falas|essa\s+vai\s+terminar|como\s+eu\s+disse)[\s\S]*$/i, '').trim();
+
+    if (womanSpeech && manSpeech) {
+      womanSpeech = womanSpeech.charAt(0).toUpperCase() + womanSpeech.slice(1);
+      manSpeech = manSpeech.charAt(0).toUpperCase() + manSpeech.slice(1);
+      const combined = `${womanSpeech}! ${manSpeech}!`;
+      return {
+        hasSpeech: true,
+        speech: formatFinalSpeech(combined),
+      };
+    }
+  }
+
   // 2. Extração semântica de falas por marcadores verbais e diálogos
   const regex = /(?:ele\s+termina\s+n[ée]\s+ele\s+olha\s+para\s+c[âa]mera\s+e\s+fala|olha\s+(?:para|pra)\s+c[âa]mera\s+e\s+fala|olha\s+e\s+fala|(?:ele|ela)\s+(?:fala|diz|falou|disse|vai falar|vai dizer)|falando|dizendo)[:\s]+([\s\S]*?)(?=(?:a[íi]\s+(?:ele|ela|j[áa])|ela\s+fala|ele\s+fala|ele\s+falou|ele\s+termina|ela\s+termina|e\s+[ée]\s+um\s+homem|e\s+acontece|$|\.))/gi;
 
@@ -182,7 +216,8 @@ export function extractUserSpeechFromInstructions(
   // 3. Menção direta a CTA ou recomendação
   const ctaMatch = text.match(/(?:compra|comprei|toca no carrinho|adquira|pega o seu|aproveita)[^.!?]+(?:carrinho|shop|link|aqui)[^.!?]*/i);
   if (ctaMatch) {
-    const speechCandidate = fixCommonSlips(ctaMatch[0].trim());
+    let speechCandidate = fixCommonSlips(ctaMatch[0].trim());
+    speechCandidate = speechCandidate.replace(/\s+(?:e\s+nessas\s+falas|nessas\s+falas|essa\s+vai\s+terminar|como\s+eu\s+disse|o\s+cen[áa]rio|e\s+[ée]\s+isso)[\s\S]*$/i, '').trim();
     return {
       hasSpeech: true,
       speech: formatFinalSpeech(speechCandidate),

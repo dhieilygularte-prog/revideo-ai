@@ -305,7 +305,7 @@ export function detectDialogueInfo(params: {
   const lower = fullText.toLowerCase();
 
   const mentionsBoth =
-    (lower.includes('homem') && lower.includes('mulher')) ||
+    ((lower.includes('homem') || lower.includes('rapaz')) && (lower.includes('mulher') || lower.includes('moça'))) ||
     (lower.includes('ele') && lower.includes('ela') && (lower.includes('fala') || lower.includes('diz') || lower.includes('responde'))) ||
     lower.includes('diálogo') ||
     lower.includes('dialogo') ||
@@ -313,18 +313,18 @@ export function detectDialogueInfo(params: {
     lower.includes('casal');
 
   const hasSpeakingVerb =
-    /(?:fala|diz|responde|pergunt|vai falar|vai dizer|olha e fala)/i.test(fullText);
+    /(?:fala|diz|responde|pergunt|vai falar|vai dizer|olha e fala|vira e fala|vira e diz)/i.test(fullText);
 
   if (mentionsBoth && hasSpeakingVerb) {
     const speakers: Array<{ speaker: string; gender?: string; speech: string }> = [];
 
-    // Tenta extrair a fala da mulher
+    // Tenta extrair a fala da mulher/moça
     const womanMatch = fullText.match(
-      /(?:ela|mulher)\s+(?:olha\s+(?:e\s+)?|vira\s+(?:e\s+)?|no\s+restaurante\s+)?(?:fala|diz|pergunta|falou)[:\s]+([^"'\n]+?)(?=\s+(?:aí|ai|depois|então|ele|homem)\s+(?:ele\s+)?(?:fala|diz|vai dizer|responde|falou)|$)/i
+      /(?:ela|mulher|moça)\s+(?:vira\s+(?:e\s+)?|olha\s+(?:e\s+)?|no\s+restaurante\s+|no\s+encontro\s+)?(?:fala|diz|pergunta|falou)[:\s]+([^.]+?)(?=\s+(?:aí|ai|depois|então|ele|homem|rapaz)\s+(?:ele\s+)?(?:vira\s+(?:e\s+)?|olha\s+(?:e\s+)?|pega\s+)?(?:fala|diz|vai dizer|responde|falou)|$)/i
     );
-    // Tenta extrair a fala do homem
+    // Tenta extrair a fala do homem/rapaz
     const manMatch = fullText.match(
-      /(?:ele|homem)\s+(?:olha\s+(?:e\s+)?|pega\s+o\s+celular\s+(?:e\s+)?|para\s+a\s+câmera\s+)?(?:fala|diz|vai dizer|responde|falou)[:\s]+([^"'\n]+?)(?=\s+(?:aí|ai|depois|então|ela|mulher)\s+(?:ela\s+)?(?:fala|diz|falou)|$)/i
+      /(?:ele|homem|rapaz)\s+(?:vira\s+(?:e\s+)?|olha\s+(?:e\s+)?|pega\s+o\s+celular\s+(?:dele\s+)?(?:e\s+)?|para\s+a\s+câmera\s+)?(?:fala|diz|vai dizer|responde|falou)[:\s]+([^.]+?)(?=\s+(?:e\s+nessas\s+falas|nessas\s+falas|essa\s+vai\s+terminar|como\s+eu\s+disse|aí|ai|depois|então|ela|mulher|moça|\.|$))/i
     );
 
     let womanSpeech = womanMatch ? womanMatch[1].trim() : '';
@@ -332,6 +332,9 @@ export function detectDialogueInfo(params: {
 
     womanSpeech = womanSpeech.replace(/^["'«“]+|["'»”]+$/g, '').trim();
     manSpeech = manSpeech.replace(/^["'«“]+|["'»”]+$/g, '').trim();
+
+    // Remove metanarrativa remanescente
+    manSpeech = manSpeech.replace(/\s+(?:e\s+nessas\s+falas|nessas\s+falas|essa\s+vai\s+terminar|como\s+eu\s+disse)[\s\S]*$/i, '').trim();
 
     if (womanSpeech) {
       speakers.push({
@@ -569,7 +572,15 @@ export function buildProdutos2VeoPrompt(params: {
           : scenes[0].action,
       }
     : undefined;
-  const firstFrameClause = formatFirstFrameClause(firstFrameScene, productName);
+  let firstFrameClause = formatFirstFrameClause(firstFrameScene, productName);
+  if (isDialogueActive) {
+    if (!firstFrameClause.toLowerCase().includes('mulher') && !firstFrameClause.toLowerCase().includes('moça')) {
+      const isDining = /jantar|restaurante|cafeteria|mesa|encontro/i.test(`${scenarioDescription} ${additionalInstructions || ''}`);
+      firstFrameClause = isDining
+        ? `da mulher sentada à mesa vendo o ${productName} do homem e reagindo surpresa, apontando para ele`
+        : `da mulher vendo o ${productName} do homem e reagindo surpresa, apontando para ele`;
+    }
+  }
 
   // Higieniza o productLock para não fixar apenas uma das cores quando houver múltiplas variações
   const sanitizedProductLock = activeVars.length >= 2
@@ -593,14 +604,43 @@ export function buildProdutos2VeoPrompt(params: {
       : `POV: mostrar somente as mãos em primeira pessoa interagindo com ${productName}; nunca mostrar rosto ou corpo.`;
 
   const womanSpeaker = dialogueInfo.speakers?.find(
-    (s) => s.gender === 'feminina' || /mulher|ela|feminina/i.test(s.speaker)
+    (s) => s.gender === 'feminina' || /mulher|moça|ela|feminina/i.test(s.speaker)
   );
   const manSpeaker = dialogueInfo.speakers?.find(
-    (s) => s.gender === 'masculina' || /homem|ele|masculin/i.test(s.speaker)
+    (s) => s.gender === 'masculina' || /homem|rapaz|ele|masculin/i.test(s.speaker)
   );
 
-  const womanSpeechSnippet = womanSpeaker?.speech || 'Que celular bonito! Que celular é esse?';
-  const manSpeechSnippet = manSpeaker?.speech || safeSpeech;
+  let womanSpeech = womanSpeaker?.speech?.trim() || '';
+  let manSpeech = manSpeaker?.speech?.trim() || '';
+
+  if (!womanSpeech || !manSpeech) {
+    const scriptMatchMulher = (dialogueInfo.dialogueScript || '').match(/mulher[:\s]+["'«“]?([^"\n»”]+)["'»”]?/i);
+    const scriptMatchHomem = (dialogueInfo.dialogueScript || '').match(/homem[:\s]+["'«“]?([^"\n»”]+)["'»”]?/i);
+    if (!womanSpeech && scriptMatchMulher) womanSpeech = scriptMatchMulher[1].trim();
+    if (!manSpeech && scriptMatchHomem) manSpeech = scriptMatchHomem[1].trim();
+  }
+
+  if (!womanSpeech && safeSpeech) {
+    const splitMatch = safeSpeech.match(/^([^?!]+[?!]+(?:\s+[^?!]+[?!]+)?)\s+([\s\S]+)$/);
+    if (splitMatch) {
+      womanSpeech = splitMatch[1].trim();
+      if (!manSpeech) manSpeech = splitMatch[2].trim();
+    }
+  }
+
+  if (!womanSpeech) womanSpeech = 'Que celular bonito! Que celular é esse?';
+  if (!manSpeech) manSpeech = safeSpeech;
+
+  // Quebra a fala da mulher e do homem para harmonizar as 9 micro-cenas
+  const womanSentences = womanSpeech.match(/[^.!?]+[.!?]*/g)?.map((s) => s.trim()).filter(Boolean) || [womanSpeech];
+  const womanP1 = womanSentences[0] || womanSpeech;
+  const womanP2 = womanSentences.length > 1 ? womanSentences.slice(1).join(' ') : womanP1;
+
+  const manSentences = manSpeech.match(/[^.!?]+[.!?]*/g)?.map((s) => s.trim()).filter(Boolean) || [manSpeech];
+  const manP1 = manSentences[0] || manSpeech;
+  const manP2 = manSentences.length > 2 ? manSentences[1] : '';
+  const manTikTokSentence = manSentences.find((s) => /tiktok|comprei/i.test(s)) || (manSentences.length >= 3 ? manSentences[manSentences.length - 2] : '');
+  const manCtaSentence = manSentences.find((s) => /carrinho|adquir|garant|toque|toca/i.test(s)) || manSentences[manSentences.length - 1] || '';
 
   // Item 7.3: Gerar o prompt a partir das MESMAS 9 descrições usadas para criar a imagem, sem reescrever as cenas
   // e orientando o Veo rigorosamente pelo número dos quadros (1 a 9) do storyboard anexado
@@ -626,15 +666,31 @@ export function buildProdutos2VeoPrompt(params: {
         actionText = sanitizeSceneColorAdjectivesForVeo(actionText, num, activeVars, productName);
       }
 
-      // Se for diálogo ativo, explicita as atuações e sincronia labial dos personagens
+      // Se for diálogo ativo, harmoniza a atuação dos personagens e distribuição da fala em micro-cenas conforme padrão ouro
       if (isDialogueActive) {
-        if (num === 1) {
-          actionText += `\n[Atuação e sincronia labial: Mulher olha com admiração para o aparelho e fala diretamente para o homem: "${womanSpeechSnippet}"]`;
-        } else if (num === 2) {
-          const previewSpeech = manSpeechSnippet.length > 90 ? `${manSpeechSnippet.slice(0, 90)}...` : manSpeechSnippet;
-          actionText += `\n[Atuação e sincronia labial: Homem segura o produto ${productName}, responde entusiasmado para a mulher e mostra detalhes: "${previewSpeech}"]`;
-        } else if (isLast) {
-          actionText += `\n[Atuação e sincronia labial: Homem olha para a câmera recomendando com energia e finaliza a indicação do TikTok Shop]`;
+        const cam = sc.cameraMovement ? `\n${sc.cameraMovement.trim()}` : '';
+        const hasCustomDialogue = (/mulher|moça/i.test(actionText) || /homem|rapaz/i.test(actionText)) && /["'«“]/.test(actionText);
+
+        if (!hasCustomDialogue) {
+          if (num === 1) {
+            actionText = `Plano médio com rosto. A mulher vê o ${productName} do homem, reage surpresa apontando para ele e fala com admiração: “${womanP1}”${cam || '\nPush-in rápido até a reação dela.'}`;
+          } else if (num === 2) {
+            actionText = `Close com rosto. O homem ergue o ${productName} entre os dois enquanto a mulher o observa admirada e pergunta: “${womanP2}”${cam || '\nTravelling lateral curto acompanhando o produto.'}`;
+          } else if (num === 3) {
+            actionText = `Close do produto. O homem gira o ${productName} para a mulher, exibindo os detalhes da peça, e inicia sua resposta: “${manP1}”${cam || '\nÓrbita curta e suave ao redor do produto.'}`;
+          } else if (num === 4) {
+            actionText = `Plano sobre o ombro. A mulher pega o ${productName} e inclina para admirar os detalhes.${manP2 ? `\nO homem continua falando: “${manP2}”` : '\nO homem continua a fala com segurança.'}${cam || '\nAproximação suave por trás do ombro dela.'}`;
+          } else if (num === 5) {
+            actionText = `POV de mãos. As mãos do homem seguram o ${productName} demonstrando o produto na prática.\nO homem continua a explicação com entusiasmo.${cam || '\nLeve estabilização de primeira pessoa com avanço sutil.'}`;
+          } else if (num === 6) {
+            actionText = `Macro. Detalhes construtivos, textura e acabamento de ${productName}.\nDeslizamento macro suave.\nO homem continua sua fala de forma natural e rápida.${cam ? `\n${cam.trim()}` : ''}`;
+          } else if (num === 7) {
+            actionText = `Close lateral. O homem manuseia o ${productName} revelando a construção e acabamento.\nO homem fala: “${manTikTokSentence || 'Eu comprei na TikTok Shop...'}”${cam || '\nPan curto acompanhando os detalhes.'}`;
+          } else if (num === 8) {
+            actionText = `Plano aberto com rosto. O casal sorri enquanto o homem apoia o ${productName} ao lado com satisfação.\nAfastamento suave revelando o ambiente.\nO homem prepara o encerramento da fala.${cam ? `\n${cam.trim()}` : ''}`;
+          } else if (isLast) {
+            actionText = `Plano médio com rosto. O homem olha para a câmera e apresenta o ${productName} em destaque.\nEle conclui diretamente para a câmera: “${manCtaSentence || '...toca no carrinho laranja!'}”${cam || '\nPush-in final curto e firme.'}`;
+          }
         }
       }
 
@@ -648,8 +704,7 @@ export function buildProdutos2VeoPrompt(params: {
   const accentMatch = additionalInstructions?.match(/sotaque\s+([a-záàâãéêíóôõúç]+)/i);
   const accentClause = accentMatch ? `, com sotaque ${accentMatch[1]}` : '';
 
-  // Item 3: Novo bloco logo depois de "Tom da voz: …" (só quando tiver fala)
-  // Inclui somente as linhas que se aplicam à copy usada
+  // Item 3: Bloco de palavras da fala exclusivas do áudio
   const speechWordsAudioOnlyLines: string[] = [];
   const lowerCopy = safeSpeech.toLowerCase();
 
@@ -678,41 +733,39 @@ export function buildProdutos2VeoPrompt(params: {
 
   const speechWordsOnlyBlock = `\n\nAS PALAVRAS DA FALA EXISTEM SOMENTE NO ÁUDIO:\n${speechWordsAudioOnlyLines.join('\n')}`;
 
-  const dialogueSpeakersList = (dialogueInfo.speakers && dialogueInfo.speakers.length > 0)
-    ? dialogueInfo.speakers.map((s) => `• ${s.speaker} (${s.gender === 'masculina' ? 'Voz Masculina natural' : 'Voz Feminina natural'} em português do Brasil): "${s.speech}"`).join('\n')
-    : `• Mulher (Voz Feminina em português do Brasil): "Que celular bonito! Que celular é esse?"\n• Homem (Voz Masculina em português do Brasil): "${safeSpeech}"`;
-
-  const dialogueScriptFormatted = dialogueInfo.dialogueScript || (
-    dialogueInfo.speakers && dialogueInfo.speakers.length > 0
-      ? dialogueInfo.speakers.map((s) => `${s.speaker}: "${s.speech}"`).join('\n')
-      : `Mulher: "Que celular bonito! Que celular é esse?"\nHomem: "${safeSpeech}"`
-  );
-
   const audioSection =
     speechMode === 'com_fala'
       ? isDialogueActive
         ? `========================
-LOCUÇÃO E DIÁLOGO DOS PERSONAGENS — MUITO IMPORTANTE
+LOCUÇÃO E DIÁLOGO — MUITO IMPORTANTE
 ========================
-ATENÇÃO: ESTE VÍDEO POSSUI UM DIÁLOGO REAL ENTRE DOIS PERSONAGENS EM CENA.
-NÃO USAR UMA ÚNICA VOZ NARRADORA. As falas DEVEM ser divididas com total clareza entre os personagens com vozes distintas em português do Brasil${accentClause}:
+Usar DUAS VOZES naturais em português do Brasil:
+- Uma voz feminina para a mulher, somente nas Cenas 1 e 2.
+- Uma voz masculina para o homem, a partir da Cena 3 até o final.
 
-DISTRIBUIÇÃO DE VOZES E PERSONAGENS:
-${dialogueSpeakersList}
+O diálogo deve acontecer UMA ÚNICA VEZ durante todo o vídeo, em fluxo contínuo, sem reiniciar falas a cada corte.
+NÃO repetir o começo.
+NÃO repetir nenhuma frase.
+NÃO criar narradores extras.
+NÃO usar uma única voz feminina para todo o vídeo.
+NÃO fazer a mulher falar a parte do homem.
+NÃO fazer o homem repetir a pergunta inicial da mulher.
 
-ROTEIRO COMPLETO DO DIÁLOGO (CADA PERSONAGEM FALA EXATAMENTE SUA PARTE UMA VEZ):
-${dialogueScriptFormatted}
+FALAR EXATAMENTE UMA VEZ, COM ESTA DIVISÃO DE PERSONAGENS:
 
-REGRAS DE VOZ E SINCRONIA LABIAL:
-1. Voz feminina jovem, natural e espontânea para a Mulher quando ela fala.
-2. Voz masculina jovem, entusiasmada e clara para o Homem quando ele fala.
-3. Sincronia labial (lip-sync) rigorosa: quando a mulher fala, os lábios dela se movem com sincronia perfeita; quando o homem fala, os lábios dele se movem com sincronia perfeita.
-4. O diálogo deve ser dinâmico, contínuo e integrado à ação do vídeo, sem sobreposição caótica e sem repetir falas.
-5. NÃO reiniciar a fala a cada corte. NÃO repetir nenhuma frase.
+MULHER:
+“${womanSpeech}”
 
-RITMO E TOM DA FALA (PRIORIDADE ABSOLUTA):
-A fala DEVE ser RÁPIDA, DINÂMICA E EMPOLGANTE, com tom entusiasmado e espontâneo de duas pessoas compartilhando uma descoberta imperdível.
-Locução ágil, sem arrastar e sem pausas desnecessárias, garantindo que todo o texto seja pronunciado com total clareza e emoção dentro do tempo do vídeo sem cortes.${speechWordsOnlyBlock}`
+HOMEM:
+“${manSpeech}”
+
+RITMO E TOM DA FALA:
+A fala da mulher deve ser espontânea, curiosa, admirada e energética, como alguém que acabou de notar um ${productName} muito bonito.
+A fala do homem deve ser rápida, segura, entusiasmada, natural e expressiva, como alguém recomendando uma novidade imperdível.
+Todo o diálogo deve ser compreensível dentro dos ${duration} segundos, com ritmo acelerado, fluido e sem pausas desnecessárias.
+Não cortar palavras.
+Não acelerar de forma robótica.
+Manter dicção clara, sincronização labial natural e energia comercial de UGC premium.${speechWordsOnlyBlock}`
         : `========================
 LOCUÇÃO — MUITO IMPORTANTE
 ========================
@@ -744,13 +797,22 @@ Usar apenas som ambiente natural do cenário e uma trilha instrumental animada e
     ? 'respeitar a copy validada, falada exatamente uma vez começando obrigatoriamente com "Nossa! ";'
     : 'respeitar a copy validada, falada exatamente uma vez sem introduções extras;';
 
-  const rule10 = isDialogueActive
-    ? '10. respeitar a distribuição exata do diálogo entre os personagens (voz feminina para a mulher e voz masculina para o homem), com sincronia labial natural de cada um nas cenas em que falam.'
-    : '10. usar uma única locução contínua, sem repetições.';
-
   const prioritySection =
     speechMode === 'com_fala'
-      ? `PRIORIDADE MÁXIMA:
+      ? isDialogueActive
+        ? `PRIORIDADE MÁXIMA:
+1. Vídeo limpo, sem marca d'água, sem logo do TikTok, sem @, sem carrinho e sem nenhum texto adicionado; a marca/logo que já está impressa no produto aparece idêntica às fotos de referência.
+2. A mulher fala exclusivamente: “${womanSpeech}”
+3. O homem fala exclusivamente o restante da copy: “${manSpeech}”
+4. O diálogo completo é falado exatamente uma vez, sem introduções extras, sem reinícios e sem repetições.
+5. Locução rápida, natural, eufórica e clara, com sincronização labial correta para cada personagem.
+6. Usar as cenas como tradução visual do diálogo.
+7. Fidelidade absoluta ao produto e às cores retratadas em cada um dos quadros de 1 a 9 do storyboard anexado.
+8. Usar o storyboard somente como guia visual e nunca exibi-lo.
+9. Começar diretamente com uma nova cena real em movimento.
+10. Recriar as 9 cenas na ordem dos números correspondentes aos quadros de 1 a 9 do storyboard anexado.
+11. Fazer um vídeo rápido, realista e muito dinâmico.`
+        : `PRIORIDADE MÁXIMA:
 1. vídeo limpo: sem marca d'água, sem logo do TikTok, sem @, sem carrinho e sem nenhum texto adicionado; a marca/logo que já está impressa no produto aparece idêntica às fotos;
 2. ${copyStartClause}
 3. locução RÁPIDA E EUFÓRICA (estilo contando uma novidade imperdível), garantindo ritmo ágil para falar todo o texto com clareza sem cortes;
@@ -760,7 +822,7 @@ Usar apenas som ambiente natural do cenário e uma trilha instrumental animada e
 7. começar diretamente com uma nova cena real em movimento;
 8. recriar as 9 cenas na ordem dos números correspondentes aos quadros 1 a 9 do storyboard anexado;
 9. fazer um vídeo rápido e muito dinâmico;
-${rule10}`
+10. usar uma única locução contínua, sem repetições.`
       : `PRIORIDADE MÁXIMA:
 1. vídeo limpo: sem marca d'água, sem logo do TikTok, sem @, sem carrinho e sem nenhum texto adicionado; a marca/logo que já está impressa no produto aparece idêntica às fotos;
 2. seguir a ordem das cenas definida pela copy;
@@ -777,15 +839,20 @@ ${rule10}`
       ? `Manter o modelo, acabamento, textura, proporções e costuras do produto idênticos em todas as cenas. Nas cenas onde o produto alternar de cor ou modelo entre os quadros do storyboard (quadros 1 a 9), reproduza com total fidelidade em cada cena a cor exata retratada no respectivo Quadro correspondente do storyboard anexado.`
       : `Não alterar a aparência do produto entre as cenas. Não redesenhar, não trocar cor, não acrescentar peças e não simplificar detalhes.`;
 
+  const coupleDescription = dialogueInfo.dialogueDescription?.trim()
+    ? dialogueInfo.dialogueDescription.trim()
+    : avatarDescription;
+
   const charactersSection = isDialogueActive
     ? `========================
-PERSONAGENS EM CENA E ATUAÇÃO DO DIÁLOGO
+PERSONAGENS
 ========================
-Dois personagens principais em cena com continuidade rigorosa em todas as 9 cenas:
-${avatarDescription}
-- Mulher: participa ativamente no jantar/encontro, expressa curiosidade e admiração sobre o produto, com voz feminina natural e sincronia labial perfeita.
-- Homem: apresenta o ${productName}, responde com entusiasmo e indica a compra no TikTok Shop, com voz masculina natural e sincronia labial perfeita.
-${framingPersonRule}`
+${coupleDescription}
+Os dois são os mesmos em todas as cenas, mantendo roupas, aparência e continuidade visual idênticas ao storyboard.
+
+A mulher fala somente no início, nas Cenas 1 e 2, com expressão natural de surpresa e admiração.
+O homem fala o restante da locução a partir da Cena 3, com expressão segura, espontânea e entusiasmada.
+Nas cenas em que cada personagem estiver falando com o rosto visível, os lábios devem acompanhar a fala com sincronia natural em português do Brasil.`
     : `========================
 PERSONAGEM
 ========================
@@ -883,7 +950,6 @@ NÃO adicionar nome de usuário ou @.
 NÃO adicionar logotipo do TikTok nem de nenhuma rede social ou aplicativo.
 NÃO adicionar interface de aplicativo.
 NÃO adicionar carrinho, ícone de carrinho ou desenho de carrinho.
-NÃO adicionar ícone de carrinho.
 NÃO adicionar botão de compra.
 NÃO adicionar stickers.
 
@@ -927,6 +993,29 @@ export function getNineSceneTimings(duration: Produtos2Duration): { start: strin
  *   (a menos que o uso real seja exclusivamente dentro de um cômodo doméstico como cozinha/banheiro).
  * - Se o usuário informou um local nas Instruções adicionais (ex: "na praia"), essa instrução tem prioridade.
  */
+export function extractCleanScenarioFromInstructions(instructions?: string): string | null {
+  if (!instructions || !instructions.trim()) return null;
+  const raw = instructions.trim();
+  // Se for uma instrução curta puramente de local, ex: "na praia", "no quintal", "em um sítio"
+  if (raw.length < 60 && !/(?:fala|diz|falou|responde|comprei|carrinho|rapaz|homem|mulher|moça)/i.test(raw)) {
+    return raw;
+  }
+  // Se for um texto longo misto com falas e personagens, extrai apenas o cenário
+  if (/cafeteria/i.test(raw)) {
+    const sunSet = /p[ôo]r\s+do\s+sol/i.test(raw) ? ' ao pôr do sol' : '';
+    return `cafeteria brasileira acolhedora${sunSet}`;
+  }
+  if (/restaurante/i.test(raw)) {
+    const romantic = /rom[âa]ntic/i.test(raw) ? ' para jantar romântico' : '';
+    return `restaurante brasileiro intimista${romantic}, com mesa bem posta e iluminação suave`;
+  }
+  if (/praia/i.test(raw)) return 'praia ao ar livre com luz solar natural';
+  if (/oficina/i.test(raw)) return 'oficina mecânica bem iluminada';
+  if (/academia|treino/i.test(raw)) return 'academia ou espaço de treino bem iluminado';
+  if (/parque|praça/i.test(raw)) return 'parque arborizado ao ar livre com luz natural';
+  return null;
+}
+
 export function resolveProdutos2ScenarioDescription(params: {
   scenario: Produtos2Scenario;
   niche: string;
@@ -936,6 +1025,7 @@ export function resolveProdutos2ScenarioDescription(params: {
 }): string {
   const { scenario, niche, productName, productInfo, additionalInstructions } = params;
   const combined = `${productName} ${productInfo}`.toLowerCase();
+  const cleanExtraScenario = extractCleanScenarioFromInstructions(additionalInstructions);
 
   if (scenario === 'em_casa') {
     let room = 'sala bem iluminada';
@@ -951,8 +1041,8 @@ export function resolveProdutos2ScenarioDescription(params: {
       room = 'sala espaçosa com área de treino e luz natural';
     }
     const baseHome = `casa brasileira simples e aconchegante, ${room}`;
-    if (additionalInstructions && additionalInstructions.trim()) {
-      return `${baseHome} (${additionalInstructions.trim()})`;
+    if (cleanExtraScenario) {
+      return `${baseHome} (${cleanExtraScenario})`;
     }
     return baseHome;
   }
@@ -1004,8 +1094,8 @@ export function resolveProdutos2ScenarioDescription(params: {
     }
   }
 
-  if (additionalInstructions && additionalInstructions.trim()) {
-    return `${resolved} (${additionalInstructions.trim()})`;
+  if (cleanExtraScenario) {
+    return cleanExtraScenario;
   }
   return resolved;
 }
@@ -1117,6 +1207,13 @@ export function buildDefaultProdutos2Plan(params: {
   let avatarDescription = isAdultMale
     ? `Homem brasileiro adulto comum (~28 a 38 anos), aparência autêntica e natural, vestindo roupa casual do dia a dia compatível com o uso do produto, pele limpa sem tatuagens`
     : `Mulher brasileira adulta comum (~26 a 36 anos), aparência autêntica e simpática, vestindo roupa casual do dia a dia, pele limpa sem tatuagens`;
+
+  const dInfo = detectDialogueInfo({ additionalInstructions, finalCopy });
+  if (dInfo.isDialogue) {
+    const isBlackCouple = /negros?|negras?/i.test(additionalInstructions || '');
+    const coupleEthnicity = isBlackCouple ? 'negros ' : '';
+    avatarDescription = `Casal brasileiro autêntico, homem e mulher ${coupleEthnicity}jovens de aproximadamente 22 a 28 anos, elegantes e espontâneos em um encontro agradável`;
+  }
 
   if (additionalInstructions && additionalInstructions.trim()) {
     avatarDescription += ` (Prioridade de instrução do usuário: ${additionalInstructions.trim()})`;
@@ -1423,6 +1520,10 @@ E retornar um JSON estrito com:
      * "com_rosto": rosto aparece em algumas cenas (especialmente gancho e cena 9).
      * "sem_rosto": nunca mostrar o rosto; sempre do pescoço para baixo.
      * "pov": mostrar somente as mãos em primeira pessoa; nunca rosto ou corpo.
+   - DIÁLOGOS E CASAL (quando as Instruções Adicionais descreverem encontro, casal ou diálogo entre homem e mulher):
+     * "avatarDescription": Descreva com riqueza os dois personagens (Mulher e Homem), suas idades aproximadas, etnia (se informada) e continuidade de roupas.
+     * "scenarioDescription": Dê prioridade ao ambiente de encontro/interação informado (ex: cafeteria, restaurante intimista ao pôr do sol).
+     * "scenes": As Cenas 1 e 2 devem ilustrar a mulher reagindo/admirando o produto e perguntando ao homem; a partir da Cena 3 o homem responde, apresenta o produto, demonstra as funções e na Cena 9 conclui com o CTA.
    - Proibido texto flutuante externo, legenda, preço, número escrito, carrinho, marca d'água de rede social, @ ou interface de aplicativo dentro das cenas (mas OBRIGATÓRIO manter a logomarca original do fabricante impressa no próprio produto).`;
 }
 

@@ -213,7 +213,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
       // 4. Chamada de refinamento com IA topo de linha (timeout estrito de 4.2s para ficar sempre abaixo de 5s)
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 4200);
+        const timeoutId = setTimeout(() => controller.abort(), 7500);
 
         const apiPromises: Promise<any>[] = [];
 
