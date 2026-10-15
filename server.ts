@@ -2233,6 +2233,14 @@ app.post('/api/produtos2-planning', async (req, res) => {
       return out.replace(/\s+/g, ' ').trim();
     };
 
+    const cleanDuplicateWords = (text: string): string => {
+      if (!text) return '';
+      return text.replace(/\b([a-zA-ZÀ-ÿ0-9]+)([\s,]+)\1\b/gi, (match, word) => {
+        if (word.toLowerCase() === 'já') return match;
+        return word;
+      });
+    };
+
     // Helper de alta performance para chamadas de texto IA (OpenAI gpt-4o-mini com fallback automático para Gemini 2.5 Flash)
     const executeFastAIText = async (opts: {
       systemPrompt: string;
@@ -2478,36 +2486,61 @@ FORMATO DE RESPOSTA (JSON estrito):
           return res.status(400).json({ success: false, error: 'Texto não fornecido para revisão.' });
         }
 
-        const reviewSystem = `Você é um REVISOR EDITORIAL CONSERVADOR para narração de vídeos por IA no TikTok Shop Brasil.
-Sua função é EXCLUSIVAMENTE revisar, corrigir e normalizar o texto fornecido pelo usuário.
-Você NUNCA deve transformar a mensagem em uma copy diferente e NUNCA deve inventar argumentos criativos.
+        const charCount = inputSpeech.length;
+        const isUnderLimit = charCount <= 225;
 
-REGRAS MANDATÓRIAS:
-1. CORREÇÃO GRAMATICAL E ORTOGRÁFICA RIGOROSA: Corrija todos os erros de ortografia, palavras escritas errado, concordância nominal e verbal, acentuação e digitação em português brasileiro (ex: "comprarão" -> "compraram", "mais" -> "mas", "agente" -> "a gente", "preço" -> "preço", etc.). O texto resultante deve estar em português culto e impecável.
-2. PONTUAÇÃO PARA VOZ IA: Ajuste a pontuação para que a IA narre com ritmo natural, fluido e sem atropelos (vírgulas nos pontos de respiração natural, exclamações em frases empolgantes, pontos finais firmes).
-3. Normalize unidades, potência, medidas e números para narração por IA:
+        const lengthInstruction = isUnderLimit
+          ? `REGRA ABSOLUTA DE TAMANHO (NÃO ENCURTAR):
+O texto fornecido tem ${charCount} caracteres e JÁ ESTÁ DENTRO do limite máximo de 225 caracteres.
+- É TERMINANTEMENTE PROIBIDO ENCURTAR, RESUMIR, CONDENSAR OU CORTAR PARTES DO TEXTO!
+- Mantenha RIGOROSAMENTE todas as frases, argumentos, detalhes e palavras originais do usuário.
+- O comprimento final deve permanecer praticamente idêntico ao original (com pequenas variações apenas pelas correções gramaticais ou remoção de palavras duplicadas).
+- A ÚNICA razão permitida para encurtar ou remover algo é se houver palavras repetidas ou gagueira (ex: "aí aí", "ele ele", "o o", "tá tá")!`
+          : `REGRA DE TAMANHO (ENCURTAMENTO NECESSÁRIO):
+O texto fornecido tem ${charCount} caracteres e EXCEDE o limite de 225 caracteres.
+- Você DEVE condensar e encurtar o texto para caber com perfeição no limite de até 225 caracteres (idealmente entre 195 e 225 caracteres com espaços).
+- Elimine redundâncias, mantendo os principais benefícios e preservando a chamada de ação final (ex: "toca no carrinho laranja e garanta o seu!").
+- NUNCA deixe frases cortadas pela metade; a última frase deve estar completa com ponto final ou exclamação.`;
+
+        const reviewSystem = `Você é um REVISOR EDITORIAL DE ALTA FIDELIDADE para narração por voz de IA no TikTok Shop Brasil.
+Sua missão é aperfeiçoar o texto do usuário mantendo fidelidade absoluta ao que ele escreveu ou ditou.
+
+${lengthInstruction}
+
+DIRETIVAS OBRIGATÓRIAS:
+1. CORREÇÃO GRAMATICAL E ORTOGRÁFICA RIGOROSA:
+   - Corrija todos os erros de ortografia, palavras grafadas incorretamente, acentuação, concordância verbal e nominal em português brasileiro (ex: "comprarão" -> "compraram", "mais" -> "mas", "agente" -> "a gente", "preço" -> "preço", etc.).
+   - Deixe o texto em português culto, natural e fluido.
+2. PONTUAÇÃO E RITMO PARA VOZ DE IA:
+   - Ajuste a pontuação (vírgulas nos pontos de respiração natural, exclamações em frases empolgantes, pontos finais firmes) para que o narrador de IA faça pausas naturais e respirações no lugar certo, com entonação empolgante e sem atropelar as palavras.
+3. REMOÇÃO DE REPETIÇÕES E GAGUEIRAS:
+   - Elimine palavras duplicadas consecutivas ou vícios de fala decorrentes de digitação ou ditado por voz (ex: "aí aí" -> "aí", "ele ele" -> "ele", "o o" -> "o", "que que" -> "que", "comprei comprei" -> "comprei").
+4. PRONÚNCIA CORRETA DE PRODUTOS E MEDIDAS:
+   - Modelos com "X" (ex: "Poco X8 Pro", "iPhone X", "X8"): NUNCA substitua "X" por "vezes". O "X" refere-se ao nome/modelo do produto e deve permanecer como a letra "X".
    - "800 W" -> "800 watts"
    - "23 pol" -> "23 polegadas"
    - "50%" -> "50 por cento"
    - "AMOLED" -> "Amóled"
-   - O "X" em modelos de produtos (como "X8", "Poco X8 Pro", "iPhone X") NUNCA deve ser trocado por "vezes". Mantenha sempre a letra "X".
-4. PRESERVAÇÃO: Preserve o vocabulário, o tom e a mensagem original do usuário. NÃO invente ganchos novos e NÃO adicione chamadas para ação que o usuário não escreveu.
-5. LIMITE DE 225 CARACTERES:
-   - Se o texto tiver 225 caracteres ou menos: NÃO resuma e NÃO reescreva. Apenas corrija ortografia, gramática e normalize.
-   - Se o texto ultrapassar 225 caracteres: encurte de forma conservadora mantendo o mais próximo possível do limite de 225 (entre 220 e 225 caracteres com espaços), sem cortar conteúdo em excesso.
-6. FORMATO DE SAÍDA: Entregue SOMENTE o texto final revisado, sem aspas, sem títulos, sem explicações.`;
+5. PRESERVAÇÃO DE CONTEÚDO:
+   - Não invente argumentos novos e não adicione chamadas para ação que o usuário não escreveu.
+6. FORMATO DE SAÍDA:
+   - Retorne SOMENTE o texto final revisado, sem aspas, sem contagem de caracteres e sem explicações adicionais.`;
 
         let reviewed = await executeFastAIText({
           systemPrompt: reviewSystem,
-          userPrompt: `TEXTO PARA REVISÃO:\n${inputSpeech}`,
-          temperature: 0.2,
+          userPrompt: `TEXTO ORIGINAL PARA REVISÃO:\n${inputSpeech}`,
+          temperature: 0.1,
         });
 
         reviewed = reviewed.replace(/^["'«“]|["'»”]$/g, '').trim();
+        reviewed = cleanDuplicateWords(reviewed);
         reviewed = normalizeVoiceText(reviewed);
 
         if (reviewed.length > 225) {
-          reviewed = reviewed.slice(0, 225).replace(/[,;:\s]+[^.!?,;:]*$/, '') + '!';
+          reviewed = reviewed.slice(0, 225).replace(/[,;:\s]+[^.!?,;:]*$/, '').trim();
+          if (!/[.!?]$/.test(reviewed)) {
+            reviewed += '!';
+          }
         }
 
         return res.json({

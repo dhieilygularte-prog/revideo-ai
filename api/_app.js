@@ -3350,6 +3350,13 @@ app.post("/api/produtos2-planning", async (req, res) => {
       out = out.replace(/\s*\+\s*/g, " mais ");
       return out.replace(/\s+/g, " ").trim();
     };
+    const cleanDuplicateWords = (text) => {
+      if (!text) return "";
+      return text.replace(/\b([a-zA-ZÀ-ÿ0-9]+)([\s,]+)\1\b/gi, (match, word) => {
+        if (word.toLowerCase() === "j\xE1") return match;
+        return word;
+      });
+    };
     const executeFastAIText = async (opts) => {
       const { systemPrompt, userPrompt: userPrompt2, jsonMode = false, temperature = 0.3 } = opts;
       const client = openAIProvider.getClient();
@@ -3551,34 +3558,55 @@ INFORMA\xC7\xD5ES DO PRODUTO: ${productInfo || ""}`,
         if (!inputSpeech) {
           return res.status(400).json({ success: false, error: "Texto n\xE3o fornecido para revis\xE3o." });
         }
-        const reviewSystem = `Voc\xEA \xE9 um REVISOR EDITORIAL CONSERVADOR para narra\xE7\xE3o de v\xEDdeos por IA no TikTok Shop Brasil.
-Sua fun\xE7\xE3o \xE9 EXCLUSIVAMENTE revisar, corrigir e normalizar o texto fornecido pelo usu\xE1rio.
-Voc\xEA NUNCA deve transformar a mensagem em uma copy diferente e NUNCA deve inventar argumentos criativos.
+        const charCount = inputSpeech.length;
+        const isUnderLimit = charCount <= 225;
+        const lengthInstruction = isUnderLimit ? `REGRA ABSOLUTA DE TAMANHO (N\xC3O ENCURTAR):
+O texto fornecido tem ${charCount} caracteres e J\xC1 EST\xC1 DENTRO do limite m\xE1ximo de 225 caracteres.
+- \xC9 TERMINANTEMENTE PROIBIDO ENCURTAR, RESUMIR, CONDENSAR OU CORTAR PARTES DO TEXTO!
+- Mantenha RIGOROSAMENTE todas as frases, argumentos, detalhes e palavras originais do usu\xE1rio.
+- O comprimento final deve permanecer praticamente id\xEAntico ao original (com pequenas varia\xE7\xF5es apenas pelas corre\xE7\xF5es gramaticais ou remo\xE7\xE3o de palavras duplicadas).
+- A \xDANICA raz\xE3o permitida para encurtar ou remover algo \xE9 se houver palavras repetidas ou gagueira (ex: "a\xED a\xED", "ele ele", "o o", "t\xE1 t\xE1")!` : `REGRA DE TAMANHO (ENCURTAMENTO NECESS\xC1RIO):
+O texto fornecido tem ${charCount} caracteres e EXCEDE o limite de 225 caracteres.
+- Voc\xEA DEVE condensar e encurtar o texto para caber com perfei\xE7\xE3o no limite de at\xE9 225 caracteres (idealmente entre 195 e 225 caracteres com espa\xE7os).
+- Elimine redund\xE2ncias, mantendo os principais benef\xEDcios e preservando a chamada de a\xE7\xE3o final (ex: "toca no carrinho laranja e garanta o seu!").
+- NUNCA deixe frases cortadas pela metade; a \xFAltima frase deve estar completa com ponto final ou exclama\xE7\xE3o.`;
+        const reviewSystem = `Voc\xEA \xE9 um REVISOR EDITORIAL DE ALTA FIDELIDADE para narra\xE7\xE3o por voz de IA no TikTok Shop Brasil.
+Sua miss\xE3o \xE9 aperfei\xE7oar o texto do usu\xE1rio mantendo fidelidade absoluta ao que ele escreveu ou ditou.
 
-REGRAS MANDAT\xD3RIAS:
-1. CORRE\xC7\xC3O GRAMATICAL E ORTOGR\xC1FICA RIGOROSA: Corrija todos os erros de ortografia, palavras escritas errado, concord\xE2ncia nominal e verbal, acentua\xE7\xE3o e digita\xE7\xE3o em portugu\xEAs brasileiro (ex: "comprar\xE3o" -> "compraram", "mais" -> "mas", "agente" -> "a gente", "pre\xE7o" -> "pre\xE7o", etc.). O texto resultante deve estar em portugu\xEAs culto e impec\xE1vel.
-2. PONTUA\xC7\xC3O PARA VOZ IA: Ajuste a pontua\xE7\xE3o para que a IA narre com ritmo natural, fluido e sem atropelos (v\xEDrgulas nos pontos de respira\xE7\xE3o natural, exclama\xE7\xF5es em frases empolgantes, pontos finais firmes).
-3. Normalize unidades, pot\xEAncia, medidas e n\xFAmeros para narra\xE7\xE3o por IA:
+${lengthInstruction}
+
+DIRETIVAS OBRIGAT\xD3RIAS:
+1. CORRE\xC7\xC3O GRAMATICAL E ORTOGR\xC1FICA RIGOROSA:
+   - Corrija todos os erros de ortografia, palavras grafadas incorretamente, acentua\xE7\xE3o, concord\xE2ncia verbal e nominal em portugu\xEAs brasileiro (ex: "comprar\xE3o" -> "compraram", "mais" -> "mas", "agente" -> "a gente", "pre\xE7o" -> "pre\xE7o", etc.).
+   - Deixe o texto em portugu\xEAs culto, natural e fluido.
+2. PONTUA\xC7\xC3O E RITMO PARA VOZ DE IA:
+   - Ajuste a pontua\xE7\xE3o (v\xEDrgulas nos pontos de respira\xE7\xE3o natural, exclama\xE7\xF5es em frases empolgantes, pontos finais firmes) para que o narrador de IA fa\xE7a pausas naturais e respira\xE7\xF5es no lugar certo, com entona\xE7\xE3o empolgante e sem atropelar as palavras.
+3. REMO\xC7\xC3O DE REPETI\xC7\xD5ES E GAGUEIRAS:
+   - Elimine palavras duplicadas consecutivas ou v\xEDcios de fala decorrentes de digita\xE7\xE3o ou ditado por voz (ex: "a\xED a\xED" -> "a\xED", "ele ele" -> "ele", "o o" -> "o", "que que" -> "que", "comprei comprei" -> "comprei").
+4. PRON\xDANCIA CORRETA DE PRODUTOS E MEDIDAS:
+   - Modelos com "X" (ex: "Poco X8 Pro", "iPhone X", "X8"): NUNCA substitua "X" por "vezes". O "X" refere-se ao nome/modelo do produto e deve permanecer como a letra "X".
    - "800 W" -> "800 watts"
    - "23 pol" -> "23 polegadas"
    - "50%" -> "50 por cento"
    - "AMOLED" -> "Am\xF3led"
-   - O "X" em modelos de produtos (como "X8", "Poco X8 Pro", "iPhone X") NUNCA deve ser trocado por "vezes". Mantenha sempre a letra "X".
-4. PRESERVA\xC7\xC3O: Preserve o vocabul\xE1rio, o tom e a mensagem original do usu\xE1rio. N\xC3O invente ganchos novos e N\xC3O adicione chamadas para a\xE7\xE3o que o usu\xE1rio n\xE3o escreveu.
-5. LIMITE DE 225 CARACTERES:
-   - Se o texto tiver 225 caracteres ou menos: N\xC3O resuma e N\xC3O reescreva. Apenas corrija ortografia, gram\xE1tica e normalize.
-   - Se o texto ultrapassar 225 caracteres: encurte de forma conservadora mantendo o mais pr\xF3ximo poss\xEDvel do limite de 225 (entre 220 e 225 caracteres com espa\xE7os), sem cortar conte\xFAdo em excesso.
-6. FORMATO DE SA\xCDDA: Entregue SOMENTE o texto final revisado, sem aspas, sem t\xEDtulos, sem explica\xE7\xF5es.`;
+5. PRESERVA\xC7\xC3O DE CONTE\xDADO:
+   - N\xE3o invente argumentos novos e n\xE3o adicione chamadas para a\xE7\xE3o que o usu\xE1rio n\xE3o escreveu.
+6. FORMATO DE SA\xCDDA:
+   - Retorne SOMENTE o texto final revisado, sem aspas, sem contagem de caracteres e sem explica\xE7\xF5es adicionais.`;
         let reviewed = await executeFastAIText({
           systemPrompt: reviewSystem,
-          userPrompt: `TEXTO PARA REVIS\xC3O:
+          userPrompt: `TEXTO ORIGINAL PARA REVIS\xC3O:
 ${inputSpeech}`,
-          temperature: 0.2
+          temperature: 0.1
         });
         reviewed = reviewed.replace(/^["'«“]|["'»”]$/g, "").trim();
+        reviewed = cleanDuplicateWords(reviewed);
         reviewed = normalizeVoiceText(reviewed);
         if (reviewed.length > 225) {
-          reviewed = reviewed.slice(0, 225).replace(/[,;:\s]+[^.!?,;:]*$/, "") + "!";
+          reviewed = reviewed.slice(0, 225).replace(/[,;:\s]+[^.!?,;:]*$/, "").trim();
+          if (!/[.!?]$/.test(reviewed)) {
+            reviewed += "!";
+          }
         }
         return res.json({
           success: true,
