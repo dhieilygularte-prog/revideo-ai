@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import {
   Download,
   Copy,
@@ -14,18 +14,12 @@ import {
   Wand2,
   FileText,
   Mic,
-  Sliders,
   Square,
   Edit3,
   Trash2,
-  Upload,
-  Image as ImageIcon,
-  Plus,
-  X,
 } from 'lucide-react';
 import { AniaResultState } from './types';
 import { exportAniaAssetsZip } from './aniaZipExporter';
-import { compressAndResizeImage } from './aniaLibrary';
 import { MicroImageEditor } from '../components/MicroImageEditor';
 
 interface AniaResultsProps {
@@ -90,7 +84,7 @@ export function AniaResults({
     }
 
     setActiveSpeechRecordingIndex(idx);
-    setActiveImageRecordingIndex(null);
+    setActivePromptRecordingIndex(null);
     setInterimSpeechDraft('');
 
     try {
@@ -170,7 +164,6 @@ export function AniaResults({
     }
 
     setActivePromptRecordingIndex(idx);
-    setActiveImageRecordingIndex(null);
     setActiveSpeechRecordingIndex(null);
     setInterimPromptCorrection('');
 

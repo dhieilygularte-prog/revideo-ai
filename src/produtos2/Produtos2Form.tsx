@@ -569,18 +569,6 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
     ? 'bg-emerald-600 text-white shadow shadow-emerald-950/60'
     : 'bg-sky-500 text-white shadow shadow-sky-950/50';
 
-  const accentBadgeClass = isMaleVestuario
-    ? 'bg-emerald-500/30 border-emerald-400/60 text-emerald-100'
-    : 'bg-sky-500/30 border-sky-400/50 text-sky-100';
-
-  const accentBorderClass = isMaleVestuario
-    ? 'border-emerald-500/50'
-    : 'border-sky-400/50';
-
-  const accentTextClass = isMaleVestuario
-    ? 'text-emerald-300'
-    : 'text-sky-300';
-
   const isInfoFilled = Boolean(form.productInfo.trim().length > 0);
   const isNameFilled = Boolean(form.productName.trim().length > 0);
   const isInfluencerFilled = form.influencer !== null;

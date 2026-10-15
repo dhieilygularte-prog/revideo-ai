@@ -26,7 +26,6 @@ export async function downloadAllGeneratedImagesZip(analysis: VideoAnalysisResul
   const zip = new JSZip();
   let count = 0;
   const prodSlug = getCleanProductName(analysis.productType);
-  const totalScenes = analysis.scenes.length;
 
   for (const scene of analysis.scenes) {
     scene.images.forEach((img, imgIdx) => {
@@ -145,15 +144,15 @@ Produto: ${analysis.productType || 'Produto Comercial'}
 ========================================================
 
 --- FALA COMPLETA / LOCUÇÃO ADAPTADA ---
-${analysis.speechData?.adaptedSpeech || analysis.speechData?.originalTranscription || 'Nenhuma locução gravada'}
+${analysis.speechData?.adaptedScript || analysis.speechData?.originalTranscript || 'Nenhuma locução gravada'}
 
 --- ROTEIRO POR CENA ---
 `;
 
   analysis.scenes.forEach((sc) => {
     adContent += `\n[CENA ${sc.sceneNumber}] (${sc.timeRangeText})\nAção: ${sc.actionSummary}\n`;
-    if (sc.speechVoiceover) {
-      adContent += `Locução: "${sc.speechVoiceover}"\n`;
+    if (sc.sceneSpeech) {
+      adContent += `Locução: "${sc.sceneSpeech}"\n`;
     }
   });
 

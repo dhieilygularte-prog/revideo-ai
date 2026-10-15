@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Sparkles, Sliders, Film, ChevronDown, Check, X, ShieldCheck, Package } from 'lucide-react';
+import { Sparkles, Sliders, Film, ChevronDown, Check, X, Package } from 'lucide-react';
 import { TokenCostBadge } from './TokenCostBadge';
 import { TokenUsageStats } from '../types';
 import { AIProfile, AI_PROFILES } from '../config/aiProfiles';

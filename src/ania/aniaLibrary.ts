@@ -165,7 +165,7 @@ export async function compressAndResizeImage(fileOrBase64: File | Blob | string,
 
     if (typeof fileOrBase64 === 'string') {
       processDataUrl(fileOrBase64);
-    } else if (fileOrBase64 instanceof Blob || (typeof File !== 'undefined' && fileOrBase64 instanceof File)) {
+    } else if (typeof Blob !== 'undefined' && ((fileOrBase64 as unknown) instanceof Blob)) {
       const reader = new FileReader();
       reader.onload = (e) => {
         const rawBase64 = e.target?.result as string;
@@ -1401,7 +1401,7 @@ export function generateDescriptionHashtags(params: {
   subtype: AniaCalcaSubtype;
   productName: string;
 }): { description: string; hashtags: string[] } {
-  const { titulo, category, gender, body, subtype, productName } = params;
+  const { titulo, category, gender, body, productName } = params;
   const normName = removeAccents(productName || '');
 
   let baseType = HASHTAG_TIPO[category] || 'look';

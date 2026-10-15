@@ -3,19 +3,15 @@ import {
   Sparkles,
   Mic,
   MicOff,
-  CheckCircle2,
   Package,
   Plus,
   Trash2,
   Upload,
-  Image as ImageIcon,
   X,
 } from 'lucide-react';
 import {
   ProdutoFormState,
-  ProdutoFraming,
   ProdutoScenario,
-  ProdutoSceneCount,
   ProdutoVariation,
 } from './types';
 import { detectGender, extractShortProductName, compressAndResizeImage } from '../ania/aniaLibrary';

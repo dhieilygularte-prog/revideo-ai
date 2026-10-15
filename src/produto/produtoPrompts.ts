@@ -1,4 +1,3 @@
-import { ProdutoFormState } from './types';
 
 export function getScenarioDescription(scenario: string): string {
   switch (scenario) {

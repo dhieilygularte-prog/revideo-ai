@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Type, Copy, Check, Scissors, Sparkles, Clock, Palette } from 'lucide-react';
+import { Copy, Check, Scissors, Clock } from 'lucide-react';
 import { OnScreenTextItem } from '../types';
 
 interface OnScreenTextCardProps {
@@ -7,7 +7,6 @@ interface OnScreenTextCardProps {
 }
 
 export const OnScreenTextCard: React.FC<OnScreenTextCardProps> = ({ texts }) => {
-  const [copiedAll, setCopiedAll] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
   // Filtra headlines válidas, removendo vazias ou com apenas aspas/espaços
@@ -18,19 +17,6 @@ export const OnScreenTextCard: React.FC<OnScreenTextCardProps> = ({ texts }) => 
   });
 
   if (validTexts.length === 0) return null;
-
-  const handleCopyAll = () => {
-    const formatted = validTexts
-      .map(
-        (t, idx) =>
-          `[HEADLINE ${idx + 1}] (${t.timestamp})\nTexto: ${t.text.trim().replace(/^["']+|["']+$/g, '').trim()}\nEstilo da Fonte: ${t.fontStyle}\nCor: ${t.color}\nPosição na tela: ${t.position}\n`
-      )
-      .join('\n-------------------------\n');
-
-    navigator.clipboard.writeText(formatted);
-    setCopiedAll(true);
-    setTimeout(() => setCopiedAll(false), 2500);
-  };
 
   const handleCopySingle = (text: string, index: number) => {
     const clean = text.trim().replace(/^["']+|["']+$/g, '').trim();

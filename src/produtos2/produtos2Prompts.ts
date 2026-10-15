@@ -10,7 +10,7 @@ import {
   Produtos2SubMode,
   Produtos2VisualMapItem,
 } from './types';
-import { applySpeechIntro, ensureLeadingNossaPrefix, stripLeadingNossaPrefix } from './produtos2CopyBank';
+import { applySpeechIntro } from './produtos2CopyBank';
 
 /**
  * Retorna a descrição canônica unificada de uma cena (mesma pessoa, mesma ação e mesmo enquadramento

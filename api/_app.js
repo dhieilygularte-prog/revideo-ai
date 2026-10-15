@@ -37,10 +37,8 @@ function buildVeoSingleParagraphPrompt(opts) {
     sceneNumber,
     totalScenes = 1,
     durationSeconds = 8,
-    productType = "commercial product",
     variations = ["Varia\xE7\xE3o 1"],
     environment = "commercial setting matching reference video",
-    interactionStyle = "presented, worn, or demonstrated naturally with organic movement, highlighting key features, textures, and quality",
     cameraType = "handheld smartphone POV camera style at eye level, 24mm mobile lens with authentic organic breathing sway",
     lighting = "clean bright commercial daylight with natural soft specular highlights on materials and authentic reflections",
     secondTimeline,
@@ -869,14 +867,10 @@ Retorne estritamente um JSON estruturado:
       referenceFrameBase64,
       variationName = "Varia\xE7\xE3o 1",
       productType = "produto comercial",
-      targetAngle = "front",
-      location,
-      actionDescription,
       correctionPrompt,
       additionalInstructions = "",
       hasUserProvidedModel = false,
-      isCloneMode = false,
-      preserveLocation = false
+      isCloneMode = false
     } = params;
     const client = this.getClient();
     let stepName = "imagem 1";
@@ -917,19 +911,11 @@ ${prompt}` : prompt;
         }
       });
       let baseImageFile = null;
-      let swatchFile = null;
       let effectivePrompt = cleanPrompt;
       const isStoryboardGrid = prompt.includes("grade 3x3") || prompt.includes("9 cenas numeradas") || prompt.includes("STORYBOARD");
       if (modelReferenceBase64 && !isCloneMode && !isStoryboardGrid) {
         baseImageFile = toImageFile(modelReferenceBase64, "imagem_1_base");
         const swatchStr = productPhotoBase64 || productPhotosBase64[0];
-        if (swatchStr) {
-          try {
-            swatchFile = toImageFile(swatchStr, "amostra_cor");
-          } catch {
-            swatchFile = null;
-          }
-        }
         let garmentSpec = "";
         if (swatchStr) {
           try {
@@ -2459,7 +2445,7 @@ Gere o JSON com exatamente ${calculatedScenes} cena(s) de 8 segundos para o Veo 
 });
 app.post("/api/ania-planning", async (req, res) => {
   try {
-    const { primaryPhotoBase64, userPrompt, productName, category, estica } = req.body;
+    const { primaryPhotoBase64, userPrompt } = req.body;
     if (!userPrompt) {
       return res.status(400).json({ success: false, error: "userPrompt n\xE3o fornecido" });
     }
@@ -2980,8 +2966,6 @@ app.post("/api/generate-scene-image", async (req, res) => {
         });
       }
     }
-    const normalizedAngle = String(targetAngle || "").toLowerCase().trim();
-    const angleInstruction = normalizedAngle.includes("back") || normalizedAngle.includes("rear") || normalizedAngle.includes("costas") || normalizedAngle.includes("verso") ? "TARGET ANGLE: REAR/BACK VIEW. The person/product must be shown from behind, faithfully reproducing the back/verso required by the reference-video storyboard. Do NOT turn the subject toward the camera and do NOT substitute a front view." : normalizedAngle === "side" || normalizedAngle.includes("lateral") ? "TARGET ANGLE: SIDE VIEW. Faithfully reproduce the side/lateral orientation required by the reference-video storyboard." : normalizedAngle === "front_side" || normalizedAngle.includes("three-quarter") ? "TARGET ANGLE: FRONT THREE-QUARTER VIEW. Faithfully reproduce the front-three-quarter orientation required by the reference-video storyboard." : normalizedAngle === "front_detail" || normalizedAngle.includes("detail") || normalizedAngle.includes("close") ? "TARGET ANGLE: DETAIL/CLOSE-UP VIEW. Faithfully reproduce the detail framing required by the reference-video storyboard." : "TARGET ANGLE: FRONT VIEW. Show the front only when the reference-video storyboard requires a frontal view.";
     const correctionBlock = correctionPrompt && correctionPrompt.trim() ? `
 CRITICAL QUALITY AUDIT OVERRIDE: ${correctionPrompt.trim()}. You MUST strictly fix the previous discrepancies and match the user reference photos 100% identically!
 ` : "";
@@ -4393,7 +4377,6 @@ Analise cada um dos 9 quadrantes (Cena 1 a Cena 9) e retorne o JSON em portugu\x
       let isFalsePositiveVariationMismatch = false;
       if (activeVariations.length >= 2) {
         const expectedVarIndex = activeVariations.length === 2 ? sceneNum <= 4 ? 0 : 1 : sceneNum <= 3 ? 0 : sceneNum <= 6 ? 1 : 2;
-        const expectedVar = activeVariations[expectedVarIndex];
         const var1Name = (activeVariations[0]?.name || "").toLowerCase();
         const var1Words = var1Name.split(/[\s/,-]+/).filter((w) => w.length >= 4);
         if (expectedVarIndex > 0) {

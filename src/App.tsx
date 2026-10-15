@@ -1,9 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   Sparkles,
-  Package,
-  Layers,
-  Download,
   AlertCircle,
   RefreshCw,
   CheckCircle2,
@@ -20,7 +17,6 @@ import {
 } from './types';
 import { extractVideoFrames } from './utils/frameExtractor';
 import { extractAudioFromVideoFile } from './utils/audioExtractor';
-import { generateSneakerEnvironmentComposite } from './utils/sneakerCompositeGenerator';
 import { exportAllClonedAssets, downloadAllGeneratedImagesZip } from './utils/zipExporter';
 import { buildVeoSingleParagraphPrompt, buildUniversalSceneImagePrompt } from './utils/veoPromptBuilder';
 import { distributeSpeechAcrossScenes } from './utils/speechDistributor';
@@ -51,7 +47,7 @@ import { Produtos2Form } from './produtos2/Produtos2Form';
 import { Produtos2Results } from './produtos2/Produtos2Results';
 import { runProdutos2Pipeline, regenerateProdutos2Storyboard } from './produtos2/produtos2Pipeline';
 import { Produtos2FormState, Produtos2ResultState } from './produtos2/types';
-import { AIProfile, AI_PROFILES } from './config/aiProfiles';
+import { AIProfile } from './config/aiProfiles';
 
 export default function App() {
   // Mode Selection State ('produtos2' default por padrão no APP, opções: 'produtos2' | 'ania' | 'clone' | 'produto')
@@ -313,26 +309,6 @@ export default function App() {
     );
   };
 
-  // Demo Product (Snack/Crisps package example)
-  const handleLoadDemo = () => {
-    const snackSvg1 = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="750" viewBox="0 0 600 750"><defs><linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%23ea580c"/><stop offset="100%" stop-color="%23c2410c"/></linearGradient></defs><rect width="600" height="750" fill="%2318181b"/><path d="M120 120 L480 120 L460 630 L140 630 Z" fill="url(%23g1)" rx="20"/><path d="M110 110 L490 110 L480 135 L120 135 Z" fill="%239a3412"/><path d="M130 620 L470 620 L460 645 L140 645 Z" fill="%239a3412"/><circle cx="300" cy="340" r="110" fill="%23fef08a"/><text x="300" y="325" fill="%237c2d12" font-size="34" font-family="sans-serif" text-anchor="middle" font-weight="900">CRISPY</text><text x="300" y="365" fill="%23c2410c" font-size="24" font-family="sans-serif" text-anchor="middle" font-weight="bold">CHEDDAR & ONION</text><text x="300" y="530" fill="%23ffffff" font-size="28" font-family="sans-serif" text-anchor="middle" font-weight="bold">VARIAÇÃO 1 • CEBOLA</text></svg>`;
-
-    const snackSvg2 = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="750" viewBox="0 0 600 750"><defs><linearGradient id="g2" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%23dc2626"/><stop offset="100%" stop-color="%23991b1b"/></linearGradient></defs><rect width="600" height="750" fill="%2318181b"/><path d="M120 120 L480 120 L460 630 L140 630 Z" fill="url(%23g2)" rx="20"/><path d="M110 110 L490 110 L480 135 L120 135 Z" fill="%237f1d1d"/><path d="M130 620 L470 620 L460 645 L140 645 Z" fill="%237f1d1d"/><circle cx="300" cy="340" r="110" fill="%23fef08a"/><text x="300" y="325" fill="%237f1d1d" font-size="34" font-family="sans-serif" text-anchor="middle" font-weight="900">CRISPY</text><text x="300" y="365" fill="%23dc2626" font-size="24" font-family="sans-serif" text-anchor="middle" font-weight="bold">SPICY BARBECUE</text><text x="300" y="530" fill="%23ffffff" font-size="28" font-family="sans-serif" text-anchor="middle" font-weight="bold">VARIAÇÃO 2 • PICANTE</text></svg>`;
-
-    setVariations([
-      {
-        id: 'var-1',
-        name: 'Variação 1',
-        photos: [snackSvg1],
-      },
-      {
-        id: 'var-2',
-        name: 'Variação 2',
-        photos: [snackSvg2],
-      },
-    ]);
-  };
-
   // Pipeline Execution (Optimized for low tokens with gemini-2.5-flash)
   const handleAnalyzeAndGenerate = async () => {
     if (!videoData) {
@@ -414,9 +390,6 @@ export default function App() {
       let newImagesCostBRL = 0;
 
       const updatedScenes: SceneDetail[] = [];
-
-      // MASTER MODEL CONTINUITY: Keep the exact same person/model and environment across ALL scenes in the video
-      let masterModelImage = '';
 
       // Garante que cada cena possua sua fala contínua correspondente (sem repetição global)
       // Se for música ou não tiver locução comercial real do produto, NUNCA use letras de música como fala
@@ -804,11 +777,6 @@ export default function App() {
 
     const effectiveCorrection = customCorrection || targetImage.fidelityAudit?.correctionPrompt || undefined;
 
-    // Use a primeira imagem gerada da Cena 1 como âncora de modelo para manter a mesma pessoa e ambiente
-    const anchorModelImage = (slot === 1 && targetScene.sceneNumber === 1)
-      ? undefined
-      : (analysisResult.scenes[0]?.images[0]?.imageUrl || undefined);
-
     let newUrl = '';
     let newAudit = targetImage.fidelityAudit;
 
@@ -1152,7 +1120,7 @@ export default function App() {
 
       const updatedPrompt = buildAniaVideoPrompt({
         durationSeconds: vp.durationSec || durationSec,
-        gender: aniaForm.gender,
+        gender: aniaForm.gender || 'Mulher',
         body: aniaForm.body,
         category,
         productMode,

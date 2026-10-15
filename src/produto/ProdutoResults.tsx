@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Download, Copy, Check, Eye, AlertCircle, RotateCcw, Sparkles } from 'lucide-react';
+import { useState } from 'react';
+import { Download, Copy, Check, Eye, AlertCircle, Sparkles } from 'lucide-react';
 import { ProdutoResultState } from './types';
 import { exportProdutoZip } from './produtoZipExporter';
 import { MicroImageEditor } from '../components/MicroImageEditor';

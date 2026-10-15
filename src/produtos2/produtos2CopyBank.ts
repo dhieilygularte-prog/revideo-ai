@@ -1163,6 +1163,7 @@ export interface ProductSpecsExtracted {
   shortName: string;
   subMode: Produtos2SubMode;
   maleSubOption: Produtos2MaleSubOption;
+  isFootwear?: boolean;
   niche: string;
   influencer: Produtos2Influencer;
   clientGender: Produtos2ClientGender;

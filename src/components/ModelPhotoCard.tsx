@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { User, Upload, X, CheckCircle2, Sparkles, Image as ImageIcon } from 'lucide-react';
+import { User, Upload, CheckCircle2, Sparkles } from 'lucide-react';
 
 interface ModelPhotoCardProps {
   modelPhotoUrl: string | null;

@@ -1,5 +1,4 @@
-import React from 'react';
-import { X, Download, Maximize2 } from 'lucide-react';
+import { X, Download } from 'lucide-react';
 
 interface ImageViewerModalProps {
   isOpen: boolean;

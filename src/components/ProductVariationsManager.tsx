@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import { Package, Plus, Trash2, Upload, Image as ImageIcon } from 'lucide-react';
+import { useRef } from 'react';
+import { Package, Trash2, Upload } from 'lucide-react';
 import { ProductVariation } from '../types';
 
 interface ProductVariationsManagerProps {

@@ -9,7 +9,6 @@ import {
   pickFalas,
   splitFala,
   ensureProductNameInSpeech,
-  generateDescriptionHashtags,
   FALAS,
 } from '../src/ania/aniaLibrary';
 import {

@@ -17,13 +17,12 @@ import {
   OPENAI_AUDIO_MODEL,
   OPENAI_IMAGE_MODEL,
   OPENAI_IMAGE_QUALITY,
-  OPENAI_IMAGE_FIDELITY,
   OPENAI_IMAGE_SIZE,
   OPENAI_AUDIT_MODEL,
   OPENAI_PRICING,
 } from '../../config/openaiModels';
 import { calculateSceneCount } from '../../config/models';
-import { buildUniversalSceneImagePrompt, buildVeoSingleParagraphPrompt } from '../../utils/veoPromptBuilder';
+import { buildVeoSingleParagraphPrompt } from '../../utils/veoPromptBuilder';
 import { distributeSpeechAcrossScenes } from '../../utils/speechDistributor';
 import { selectRepresentativeKeyframes } from '../../utils/frameSampler';
 import { globalCostTracker, CloningStepName } from './costTracker';
@@ -512,14 +511,10 @@ Retorne estritamente um JSON estruturado:
       referenceFrameBase64,
       variationName = 'Variação 1',
       productType = 'produto comercial',
-      targetAngle = 'front',
-      location,
-      actionDescription,
       correctionPrompt,
       additionalInstructions = '',
       hasUserProvidedModel = false,
       isCloneMode = false,
-      preserveLocation = false,
     } = params;
 
     const client = this.getClient();
@@ -574,7 +569,6 @@ Retorne estritamente um JSON estruturado:
       });
 
       let baseImageFile: File | null = null;
-      let swatchFile: File | null = null;
       let effectivePrompt = cleanPrompt;
       const isStoryboardGrid =
         prompt.includes('grade 3x3') ||
@@ -590,14 +584,6 @@ Retorne estritamente um JSON estruturado:
 
         // 2ª imagem = amostra COR 2 / COR 3 (somente referência do produto)
         const swatchStr = productPhotoBase64 || productPhotosBase64[0];
-        if (swatchStr) {
-          try {
-            swatchFile = toImageFile(swatchStr, 'amostra_cor');
-          } catch {
-            swatchFile = null;
-          }
-        }
-
         let garmentSpec = '';
         if (swatchStr) {
           try {

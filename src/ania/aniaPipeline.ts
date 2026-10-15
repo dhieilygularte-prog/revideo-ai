@@ -4,6 +4,7 @@ import {
   AniaPlanningResult,
   AniaGeneratedImage,
   AniaGeneratedVideoPrompt,
+  AniaGender,
 } from './types';
 import {
   detectCategory,
@@ -84,6 +85,7 @@ export async function runAniaPipeline(
 
   const productMode = form.productMode || detectProductMode(form.productName, form.productInfo);
   const ageMode = form.ageMode || 'adult';
+  const resolvedGender: AniaGender = form.gender || 'Mulher';
 
   const detected = detectCategory(form.productName, form.productInfo);
   const category = form.category !== 'AUTO' ? form.category : (productMode === 'footwear' ? 'CALCADO' : detected.category);
@@ -143,7 +145,7 @@ export async function runAniaPipeline(
       productMode,
       ageMode,
       subtype,
-      gender: form.gender,
+      gender: resolvedGender,
       body: form.body,
       colors: normalizedColors,
       estica,
@@ -168,7 +170,7 @@ export async function runAniaPipeline(
 
       if (planJson.success && planJson.data) {
         const rawFala = planJson.data.fala || falasSelection.selected.t;
-        const adaptedFala = ensureProductNameInSpeech(rawFala, form.productName, normalizedColors, form.gender);
+        const adaptedFala = ensureProductNameInSpeech(rawFala, form.productName, normalizedColors, resolvedGender);
         return {
           ...planJson.data,
           fala: adaptedFala,
@@ -188,7 +190,7 @@ export async function runAniaPipeline(
       form.customSpeech?.trim() || falasSelection.selected.t,
       form.productName,
       normalizedColors,
-      form.gender
+      resolvedGender
     );
     return {
       categoria: category,
@@ -213,7 +215,7 @@ export async function runAniaPipeline(
     category,
     productMode,
     ageMode,
-    gender: form.gender,
+    gender: resolvedGender,
     body: form.body,
     colorName: normalizedColors[0].name,
     fabricDescription: fabricObj.description,
@@ -269,7 +271,7 @@ export async function runAniaPipeline(
   const img1Url = img1Data.url;
 
   const rawSpeechText = form.customSpeech?.trim() || planningResult.fala || falasSelection.selected.t;
-  const speechText = ensureProductNameInSpeech(rawSpeechText, form.productName, normalizedColors, form.gender);
+  const speechText = ensureProductNameInSpeech(rawSpeechText, form.productName, normalizedColors, resolvedGender);
   const maxCharsPerPart = form.veoModelMode === 'veo3_omniflash_10s' ? 250 : 200;
   const speechParts = splitFala(speechText, maxCharsPerPart);
 
@@ -287,7 +289,7 @@ export async function runAniaPipeline(
       durationSec,
       prompt: buildAniaVideoPrompt({
         durationSeconds: durationSec,
-        gender: form.gender,
+        gender: resolvedGender,
         body: form.body,
         category,
         productMode,
@@ -310,7 +312,7 @@ export async function runAniaPipeline(
       durationSec,
       prompt: buildAniaVideoPrompt({
         durationSeconds: durationSec,
-        gender: form.gender,
+        gender: resolvedGender,
         body: form.body,
         category,
         productMode,
@@ -333,7 +335,7 @@ export async function runAniaPipeline(
       durationSec: 8,
       prompt: buildAniaVideoPrompt({
         durationSeconds: 8,
-        gender: form.gender,
+        gender: resolvedGender,
         body: form.body,
         category,
         productMode,
@@ -354,7 +356,7 @@ export async function runAniaPipeline(
     titulo: planningResult.titulo,
     category,
     peca: planningResult.peca || form.productName,
-    gender: form.gender,
+    gender: resolvedGender,
     body: form.body,
     subtype,
     productName: form.productName,
@@ -433,7 +435,7 @@ export async function runAniaPipeline(
       productMode,
       ageMode,
       scenarioDescription: scenarioDesc,
-      gender: form.gender,
+      gender: resolvedGender,
       body: form.body,
       category: planningResult.categoria,
     });
@@ -563,6 +565,7 @@ export async function regenerateAniaSingleImage(params: {
   const ageMode = form.ageMode || result.planning.ageMode || 'adult';
   const fabricObj = detectFabric(form.productName, form.fabric, form.productInfo);
   const isImage1 = imageIndex === 0;
+  const resolvedGender: AniaGender = form.gender || 'Mulher';
 
   const scenarioKey = result.planning.scenarioKey || detectScenarioKey(form.productName, form.productInfo, result.planning.categoria);
   const scenarioDesc = getScenarioDescription(scenarioKey, Boolean(form.naturalEnvironment));
@@ -578,7 +581,7 @@ export async function regenerateAniaSingleImage(params: {
         category: result.planning.categoria,
         productMode,
         ageMode,
-        gender: form.gender,
+        gender: resolvedGender,
         body: form.body,
         colorName: col.name,
         fabricDescription: fabricObj.description,
@@ -594,7 +597,7 @@ export async function regenerateAniaSingleImage(params: {
         productMode,
         ageMode,
         scenarioDescription: scenarioDesc,
-        gender: form.gender,
+        gender: resolvedGender,
         body: form.body,
         category: result.planning.categoria,
       });

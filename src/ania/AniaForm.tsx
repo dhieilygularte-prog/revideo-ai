@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   Sparkles,
   Plus,
@@ -9,18 +9,15 @@ import {
   TreePine,
   Footprints,
   Shirt,
-  User,
-  Users,
   Mic,
   MicOff,
 } from 'lucide-react';
 import {
   AniaFormState,
   AniaCategory,
-  AniaGender,
   AniaBody,
   ProductMode,
-  AgeMode,
+  ValueSource,
 } from './types';
 import {
   detectStretch,
@@ -34,7 +31,6 @@ import {
   extractDominantColorFromImage,
   compressAndResizeImage,
 } from './aniaLibrary';
-import { VeoModelMode } from '../types';
 
 interface AniaFormProps {
   form: AniaFormState;
@@ -138,7 +134,6 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
     onChange((prev) => {
       const detectedProdMode = detectProductMode(val, prev.productInfo);
       const isFootwear = (prev.productModeSource === 'manual' ? prev.productMode : (detectedProdMode || prev.productMode)) === 'footwear';
-      const defaultBody = isFootwear && prev.body === 'Plus size' ? 'Normal' : prev.body;
       const detectedGen = detectGender(val, prev.productInfo);
       const detectedAge = detectAgeMode(val, prev.productInfo);
       const detectedBodyVal = detectBody(val, prev.productInfo);
@@ -175,9 +170,9 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
         naturalEnvironment: isFootwear && prev.naturalEnvSource !== 'manual' ? true : prev.naturalEnvironment,
         naturalEnvSource: isFootwear && prev.naturalEnvSource !== 'manual' ? 'local_detect' : prev.naturalEnvSource,
         stretch: prev.stretchSource === 'manual' ? prev.stretch : (isFootwear ? false : (detectedAutoStretch !== null ? detectedAutoStretch : prev.stretch)),
-        stretchSource: prev.stretchSource === 'manual' ? 'manual' : (isFootwear ? 'local_detect' : (detectedAutoStretch !== null ? 'local_detect' : undefined)),
+        stretchSource: (prev.stretchSource === 'manual' ? 'manual' : (isFootwear ? 'local_detect' : (detectedAutoStretch !== null ? 'local_detect' : undefined))) as ValueSource | undefined,
         fabric: prev.fabricSource === 'manual' ? prev.fabric : (detectedFabricObj.detected ? detectedFabricObj.key : prev.fabric),
-        fabricSource: prev.fabricSource === 'manual' ? 'manual' : (detectedFabricObj.detected ? 'product_info' : undefined),
+        fabricSource: (prev.fabricSource === 'manual' ? 'manual' : (detectedFabricObj.detected ? 'product_info' : undefined)) as ValueSource | undefined,
       };
     });
   };
@@ -193,13 +188,13 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
       // 2. Detecta Tipo de Produto (Calçados vs Roupas)
       const detectedProdMode = detectProductMode(autoProductName, val);
       let newProductMode: ProductMode = detectedProdMode !== null ? detectedProdMode : 'apparel';
-      let newProductModeSource = detectedProdMode !== null ? 'product_info' : undefined;
+      let newProductModeSource: ValueSource | undefined = detectedProdMode !== null ? 'product_info' : undefined;
       const isFootwear = newProductMode === 'footwear';
 
       // 3. Detecta Categoria
       const detectedCatResult = detectCategory(autoProductName, val);
       let newCategory = prev.category;
-      let newCategorySource = prev.categorySource;
+      let newCategorySource: ValueSource | undefined = prev.categorySource;
       if (detectedCatResult.category !== 'AUTO' && detectedCatResult.category !== 'CALCADO') {
         newCategory = detectedCatResult.category;
         newCategorySource = 'product_info';
@@ -214,35 +209,35 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
       // 4. Detecta Gênero (Regra 13: Unissex explícito fica null/desmarcado)
       const detectedGen = detectGender(autoProductName, val);
       let newGender = detectedGen;
-      let newGenderSource = detectedGen !== null ? 'product_info' : undefined;
+      let newGenderSource: ValueSource | undefined = detectedGen !== null ? 'product_info' : undefined;
 
       // 5. Detecta Faixa Etária (Regra 9: Baby doll é sempre adulto)
       const detectedAge = detectAgeMode(autoProductName, val);
       let newAgeMode = detectedAge || 'adult';
-      let newAgeModeSource = detectedAge !== null ? 'product_info' : undefined;
+      let newAgeModeSource: ValueSource | undefined = detectedAge !== null ? 'product_info' : undefined;
 
       // 6. Detecta Tipo de Corpo (Regras 5, 8, 9: Se for roupa, Plus Size deve começar marcado por padrão)
       const detectedBodyVal = detectBody(autoProductName, val);
-      let newBody = isFootwear ? 'Normal' : 'Plus size';
-      let newBodySource = 'product_info';
+      let newBody: AniaBody = isFootwear ? 'Normal' : 'Plus size';
+      let newBodySource: ValueSource | undefined = 'product_info';
       if (!isFootwear) {
         // Para roupas (feminino, masculino ou infantil), Plus Size é o padrão obrigatório
-        newBody = detectedBodyVal || 'Plus size';
+        newBody = (detectedBodyVal as AniaBody) || 'Plus size';
       }
 
       // 7. Detecta Cenário Natural
       let newNaturalEnv = isFootwear;
-      let newNaturalEnvSource = isFootwear ? 'product_info' : undefined;
+      let newNaturalEnvSource: ValueSource | undefined = isFootwear ? 'product_info' : undefined;
 
       // 8. Detecta Elasticidade
       const detectedAutoStretch = isFootwear ? false : detectStretch(`${autoProductName} ${val}`);
       let newStretch = isFootwear ? false : (detectedAutoStretch !== null ? detectedAutoStretch : null);
-      let newStretchSource = detectedAutoStretch !== null || isFootwear ? 'product_info' : undefined;
+      let newStretchSource: ValueSource | undefined = detectedAutoStretch !== null || isFootwear ? 'product_info' : undefined;
 
       // 9. Detecta Tecido
       const detectedFabricObj = detectFabric(autoProductName, undefined, val);
       let newFabric = '';
-      let newFabricSource = undefined;
+      let newFabricSource: ValueSource | undefined = undefined;
       if (detectedFabricObj.detected && detectedFabricObj.key !== 'padrao') {
         newFabric = detectedFabricObj.key;
         newFabricSource = 'product_info';
@@ -410,7 +405,6 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
   const isGenderIdentified = form.genderSource === 'manual' || (form.genderSource === 'local_detect' && detectGender(form.productName, form.productInfo) !== null);
   const isBodyIdentified = form.bodySource === 'manual' || (form.bodySource === 'local_detect' && (form.productMode === 'footwear' || detectBody(form.productName, form.productInfo) !== null));
   const isNaturalEnvIdentified = form.naturalEnvSource === 'manual' || (form.naturalEnvSource === 'local_detect' && form.naturalEnvironment);
-  const isStretchIdentified = form.stretch !== null && (form.stretchSource === 'manual' || form.stretchSource === 'local_detect' || form.stretchSource === 'product_info');
   const isFabricIdentified = form.fabric.trim().length > 0 && (form.fabricSource === 'manual' || form.fabricSource === 'product_info' || form.fabricSource === 'local_detect');
   const isInstructionsIdentified = form.additionalInstructions.trim().length > 0;
   const isCustomSpeechIdentified = form.customSpeech.trim().length > 0;

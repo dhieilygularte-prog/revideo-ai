@@ -303,7 +303,6 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
   // Ajuste do Storyboard por voz ou texto (Instrução direta do usuário para alterar quadros específicos)
   const [storyboardCorrection, setStoryboardCorrection] = useState('');
   const [isStoryboardVoiceRecording, setIsStoryboardVoiceRecording] = useState(false);
-  const [interimStoryboardCorrection, setInterimStoryboardCorrection] = useState('');
   const storyboardRecRef = useRef<any>(null);
   const storyboardStreamRef = useRef<MediaStream | null>(null);
 
@@ -328,7 +327,6 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
     }
 
     setIsStoryboardVoiceRecording(true);
-    setInterimStoryboardCorrection('');
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -472,36 +470,6 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
       setDescriptionCopied(true);
       setTimeout(() => setDescriptionCopied(false), 2000);
     }
-  };
-
-  const handleEditCopyLive = (newCopy: string) => {
-    onUpdateResult((prev) => {
-      if (!prev) return null;
-      const updatedVeoPrompt = buildProdutos2VeoPrompt({
-        productName: prev.productName,
-        duration: prev.duration,
-        speechMode: prev.speechMode,
-        useSpeechIntro: prev.useSpeechIntro,
-        finalCopy: newCopy,
-        influencerResolved: prev.influencerResolved,
-        framing: prev.framing,
-        productLock: prev.productLock,
-        avatarDescription: prev.avatarDescription,
-        scenarioDescription: prev.scenarioDescription,
-        scenes: prev.scenes,
-        additionalInstructions: prev.additionalInstructions,
-        variations: prev.variations,
-        isDialogue: prev.isDialogue,
-        dialogueDescription: prev.dialogueDescription,
-        dialogueScript: prev.dialogueScript,
-        speakers: prev.speakers,
-      });
-      return {
-        ...prev,
-        finalCopy: newCopy,
-        veoPrompt: updatedVeoPrompt,
-      };
-    });
   };
 
   const handleDownloadZip = async () => {

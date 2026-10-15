@@ -1,6 +1,6 @@
 export type Produtos2SubMode = 'produtos_geral' | 'vestuario_masculino';
 export type Produtos2MaleSubOption = 'calcados' | 'roupas';
-export type Produtos2Duration = 10;
+export type Produtos2Duration = 8 | 10;
 export type Produtos2Influencer = 'Homem' | 'Mulher' | null;
 export type Produtos2ClientGender = 'Masculino' | 'Feminino' | 'Unissex';
 export type Produtos2SpeechMode = 'com_fala' | 'sem_fala';

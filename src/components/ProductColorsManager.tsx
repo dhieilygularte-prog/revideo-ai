@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import { Package, Plus, Trash2, Upload, Image as ImageIcon, CheckCircle2, AlertCircle } from 'lucide-react';
+import React from 'react';
+import { Package, Plus, Trash2, Upload, AlertCircle } from 'lucide-react';
 import { ProductColor } from '../types';
 import { MAX_PRODUCT_COLORS } from '../config/models';
 

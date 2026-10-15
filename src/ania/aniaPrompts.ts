@@ -4,10 +4,9 @@ import {
   AniaBody,
   ProductMode,
   AgeMode,
-  ScenarioKey,
   PocketState,
 } from './types';
-import { FalaItem, getCategoryFramingType, getScenarioDescription } from './aniaLibrary';
+import { FalaItem, getCategoryFramingType } from './aniaLibrary';
 
 // ─── 1. PROMPT IMAGEM 1 ─────────────────────────────────────────────────────
 export function buildAniaImage1Prompt(params: {

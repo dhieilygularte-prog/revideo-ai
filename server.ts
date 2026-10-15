@@ -12,7 +12,6 @@ import {
   GEMINI_VISION_FAST_MODEL,
   GEMINI_IMAGE_MODEL,
   GEMINI_IMAGE_FAST_MODEL,
-  FIDELITY_BLOCK_TEXT,
   calculateSceneCount,
 } from './src/config/models';
 import { buildVeoSingleParagraphPrompt, buildUniversalSceneImagePrompt } from './src/utils/veoPromptBuilder';
@@ -25,7 +24,7 @@ import {
   OPENAI_IMAGE_MODEL,
   OPENAI_AUDIT_MODEL,
 } from './src/config/openaiModels';
-import { AIProfile, AI_PROFILES } from './src/config/aiProfiles';
+import { AIProfile } from './src/config/aiProfiles';
 import { buildAniaPlanningSystemPrompt } from './src/ania/aniaPrompts';
 import { buildProdutos2PlanningSystemPrompt } from './src/produtos2/produtos2Prompts';
 import { fitSpeechCloseToLimit, extractUserSpeechFromInstructions } from './src/produtos2/produtos2UserSpeechExtractor';
@@ -1190,7 +1189,7 @@ Gere o JSON com exatamente ${calculatedScenes} cena(s) de 8 segundos para o Veo 
 // Endpoint: Planning for Modo Ania (Single text/vision AI call per product)
 app.post('/api/ania-planning', async (req, res) => {
   try {
-    const { primaryPhotoBase64, userPrompt, productName, category, estica } = req.body;
+    const { primaryPhotoBase64, userPrompt } = req.body;
 
     if (!userPrompt) {
       return res.status(400).json({ success: false, error: 'userPrompt não fornecido' });
@@ -1782,24 +1781,6 @@ app.post('/api/generate-scene-image', async (req, res) => {
         });
       }
     }
-
-    // The reference-video analysis determines the required view.
-    // Never force a frontal view when the storyboard requests back, side or detail.
-    const normalizedAngle = String(targetAngle || '').toLowerCase().trim();
-
-    const angleInstruction =
-      normalizedAngle.includes('back') ||
-      normalizedAngle.includes('rear') ||
-      normalizedAngle.includes('costas') ||
-      normalizedAngle.includes('verso')
-        ? 'TARGET ANGLE: REAR/BACK VIEW. The person/product must be shown from behind, faithfully reproducing the back/verso required by the reference-video storyboard. Do NOT turn the subject toward the camera and do NOT substitute a front view.'
-        : normalizedAngle === 'side' || normalizedAngle.includes('lateral')
-        ? 'TARGET ANGLE: SIDE VIEW. Faithfully reproduce the side/lateral orientation required by the reference-video storyboard.'
-        : normalizedAngle === 'front_side' || normalizedAngle.includes('three-quarter')
-        ? 'TARGET ANGLE: FRONT THREE-QUARTER VIEW. Faithfully reproduce the front-three-quarter orientation required by the reference-video storyboard.'
-        : normalizedAngle === 'front_detail' || normalizedAngle.includes('detail') || normalizedAngle.includes('close')
-        ? 'TARGET ANGLE: DETAIL/CLOSE-UP VIEW. Faithfully reproduce the detail framing required by the reference-video storyboard.'
-        : 'TARGET ANGLE: FRONT VIEW. Show the front only when the reference-video storyboard requires a frontal view.';
 
     const correctionBlock = correctionPrompt && correctionPrompt.trim()
       ? `\nCRITICAL QUALITY AUDIT OVERRIDE: ${correctionPrompt.trim()}. You MUST strictly fix the previous discrepancies and match the user reference photos 100% identically!\n`
@@ -3484,7 +3465,6 @@ O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "iss
           activeVariations.length === 2
             ? (sceneNum <= 4 ? 0 : 1)
             : (sceneNum <= 3 ? 0 : sceneNum <= 6 ? 1 : 2);
-        const expectedVar = activeVariations[expectedVarIndex];
         const var1Name = (activeVariations[0]?.name || '').toLowerCase();
         const var1Words = var1Name.split(/[\s/,-]+/).filter((w: string) => w.length >= 4);
 

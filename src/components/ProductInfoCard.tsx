@@ -1,5 +1,4 @@
-import React from 'react';
-import { FileText, HelpCircle, Sparkles } from 'lucide-react';
+import { FileText, Sparkles } from 'lucide-react';
 
 interface ProductInfoCardProps {
   productInfo: string;

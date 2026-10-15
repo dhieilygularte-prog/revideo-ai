@@ -1,5 +1,5 @@
-﻿import React, { useState } from 'react';
-import { Coins, X, ChevronDown, Sparkles, Film, Image as ImageIcon, Mic, Activity, Layers, Cpu } from 'lucide-react';
+import { useState } from 'react';
+import { Coins, X, ChevronDown, Image as ImageIcon, Mic, Activity, Layers, Cpu } from 'lucide-react';
 import { TokenUsageStats } from '../types';
 
 interface TokenCostBadgeProps {

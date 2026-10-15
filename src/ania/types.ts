@@ -53,7 +53,7 @@ export interface AniaFormState {
   category: AniaCategory;
   productMode: ProductMode;
   ageMode: AgeMode;
-  gender: AniaGender;
+  gender: AniaGender | null;
   body: AniaBody;
   colors: AniaColorItem[];
   stretch: boolean | null; // null = unselected/auto, true = Sim, false = Não

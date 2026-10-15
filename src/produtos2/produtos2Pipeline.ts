@@ -7,15 +7,11 @@ import {
 } from './types';
 import {
   analyzeProductInfoForProdutos2,
-  applyGenderAndVocativeRules,
   applySpeechIntro,
   calibrateCopyToTargetWindow,
-  enforceMaxChars,
   ensureLeadingNossaPrefix,
-  evaluateCopyDnaChecklist,
   generateProdutos2DescriptionHashtags,
   selectAndAdaptProdutos2Copy,
-  stripLeadingNossaPrefix,
 } from './produtos2CopyBank';
 import {
   buildDefaultProdutos2Plan,
