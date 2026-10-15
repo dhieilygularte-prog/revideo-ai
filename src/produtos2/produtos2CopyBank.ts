@@ -1582,93 +1582,125 @@ export function analyzeProductInfoForProdutos2(rawText: string): ProductSpecsExt
 }
 
 /**
- * Encurta copy longa caso ultrapasse o limite de caracteres:
- * - Para vídeos de 8s: no máximo 165 caracteres com espaço
- * - Para vídeos de 10s: no máximo 235 caracteres com espaço
- * MEXENDO O MÍNIMO POSSÍVEL:
- * - Evita mexer no início ("hook" dos primeiros 3 segundos que possui o "Nossa!" e as palavras seguintes)
- * - Evita mexer no final (o "CTA", chamada para ação que é parte vital da conversão)
- * - Mexe exclusivamente no MEIO (o "corpo" da fala), enxugando orações ou frases secundárias
+ * Normaliza termos técnicos, medidas, potências e siglas para narração por IA (Item 5)
  */
-export function enforceMaxChars(copyText: string, maxChars: number, minTargetChars = 120): string {
-  const clean = copyText.replace(/\s+/g, ' ').trim();
+export function normalizeTextForNarration(text: string): string {
+  if (!text) return '';
+  let out = text;
+  // Potência e frequência
+  out = out.replace(/\b(\d+)\s*[wW]\b/g, '$1 watts');
+  out = out.replace(/\b(\d+)\s*[kK][wW]\b/g, '$1 quilowatts');
+  out = out.replace(/\b(\d+)\s*[hH][zZ]\b/g, '$1 hertz');
+  out = out.replace(/\b(\d+)\s*[kK][hH][zZ]\b/g, '$1 quilohertz');
+  out = out.replace(/\b(\d+)\s*[mM][hH][zZ]\b/g, '$1 megahertz');
+  out = out.replace(/\b(\d+)\s*[gG][hH][zZ]\b/g, '$1 gigahertz');
+  // Medidas, distâncias e dimensões
+  out = out.replace(/\b(\d+)\s*(?:pol|pol\.)\b/gi, '$1 polegadas');
+  out = out.replace(/\b(\d+)\s*(?:cm|cm\.)\b/gi, '$1 centímetros');
+  out = out.replace(/\b(\d+)\s*(?:mm|mm\.)\b/gi, '$1 milímetros');
+  out = out.replace(/\b(\d+)\s*(?:km|km\.)\b/gi, '$1 quilômetros');
+  out = out.replace(/\b(\d+)\s*(?:kg|kg\.)\b/gi, '$1 quilos');
+  out = out.replace(/\b(\d+)\s*(?:g|g\.)\b/gi, '$1 gramas');
+  out = out.replace(/\b(\d+)\s*(?:ml|ml\.)\b/gi, '$1 mililitros');
+  out = out.replace(/\b(\d+)\s*(?:l|l\.)\b/gi, '$1 litros');
+  out = out.replace(/\b(\d+)\s*[vV]\b/g, '$1 volts');
+  out = out.replace(/\b(\d+)\s*(?:mah|mAh)\b/gi, '$1 miliamperes');
+  out = out.replace(/\b(\d+)\s*(?:fps|FPS)\b/g, '$1 quadros por segundo');
+  out = out.replace(/\b(\d+)\s*(?:gb|GB)\b/g, '$1 gigas');
+  out = out.replace(/\b(\d+)\s*(?:tb|TB)\b/g, '$1 teras');
+  out = out.replace(/\b(\d+)\s*(?:mb|MB)\b/g, '$1 megas');
+  // Porcentagem e multiplicadores
+  out = out.replace(/\b(\d+)\s*%/g, '$1 por cento');
+  out = out.replace(/\b(\d+)\s*[xX]\b/g, '$1 vezes');
+  out = out.replace(/\b[xX]\s*(\d+)\b/g, '$1 vezes');
+  // Telas e tecnologias
+  out = out.replace(/\bAMOLED\b/g, 'Amóled');
+  out = out.replace(/\bOLED\b/g, 'Óled');
+  out = out.replace(/\bLED\b/g, 'Léd');
+  out = out.replace(/\bQLED\b/g, 'Q-Léd');
+  // Símbolos
+  out = out.replace(/\s*&\s*/g, ' e ');
+  out = out.replace(/\s*\+\s*/g, ' mais ');
+  return out.replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Encurta copy caso ultrapasse 225 caracteres com espaço (Item 6 e 7):
+ * - Protege obrigatoriamente as 4 PRIMEIRAS PALAVRAS do Hook
+ * - Protege obrigatoriamente as 5 ÚLTIMAS PALAVRAS da CTA
+ * - Modifica exclusivamente o CORPO da fala
+ * - Aplica normalização para narração por IA
+ * - Garante estritamente que length <= 225
+ */
+export function enforceMaxChars(copyText: string, maxChars = 225, minTargetChars = 120): string {
+  let clean = normalizeTextForNarration(copyText.replace(/\s+/g, ' ').trim());
   if (clean.length <= maxChars) return clean;
 
-  const sentences = clean.match(/[^.!?]+[.!?]+/g)?.map((s) => s.trim()) || [clean];
-  if (sentences.length <= 1) {
-    // Frase única: preserva os primeiros 3 segundos ("Nossa!" + palavras do início)
-    const words = clean.split(' ');
-    const hookWords = words.slice(0, 5).join(' ');
-    const rest = words.slice(5).join(' ');
-    const available = maxChars - hookWords.length - 1;
-    if (available > 15) {
-      return `${hookWords} ${rest.slice(0, available).replace(/[,;:\s]+$/, '')}!`;
-    }
+  const words = clean.split(' ');
+  if (words.length <= 9) {
+    // Frase muito curta com poucas palavras: fatia conservadoramente até maxChars
     return clean.slice(0, maxChars - 1).replace(/[,;:\s]+$/, '') + '!';
   }
 
-  const hook = sentences[0]; // Início intacto (Hook com "Nossa!")
-  const cta = sentences[sentences.length - 1]; // Final intacto (CTA)
-  const middle = sentences.slice(1, -1);
+  // 4 primeiras palavras = protegidas (Hook)
+  const protectedHook = words.slice(0, 4).join(' ');
+  // 5 últimas palavras = protegidas (CTA)
+  const protectedCta = words.slice(-5).join(' ');
+  // Corpo = palavras intermediárias
+  const bodyWords = words.slice(4, -5);
 
-  if (middle.length > 0) {
-    // Prioriza manter as frases do meio mais ricas em benefício ("olha", números)
-    const sortedMiddle = [...middle].sort((a, b) => {
-      const scoreA = (/olha/i.test(a) ? 3 : 0) + (/\d/.test(a) ? 1 : 0);
-      const scoreB = (/olha/i.test(b) ? 3 : 0) + (/\d/.test(b) ? 1 : 0);
-      return scoreB - scoreA;
-    });
+  const sentences = clean.match(/[^.!?]+[.!?]+/g)?.map((s) => s.trim()) || [clean];
 
+  if (sentences.length > 2) {
+    const hookSentence = sentences[0];
+    const ctaSentence = sentences[sentences.length - 1];
+    const middleSentences = sentences.slice(1, -1);
+
+    // Tenta manter frases do meio que caibam no limite
     const keptMiddle: string[] = [];
-    let currentLen = hook.length + 1 + cta.length;
+    let currentLen = hookSentence.length + 1 + ctaSentence.length;
 
-    for (const m of sortedMiddle) {
+    for (const m of middleSentences) {
       if (currentLen + 1 + m.length <= maxChars) {
         keptMiddle.push(m);
         currentLen += 1 + m.length;
       }
     }
 
-    const orderedMiddle = middle.filter((m) => keptMiddle.includes(m));
-    let candidate = [hook, ...orderedMiddle, cta].join(' ').replace(/\s+/g, ' ').trim();
-
-    if (candidate.length <= maxChars && candidate.length >= minTargetChars) {
-      return candidate;
-    }
-
-    if (candidate.length <= maxChars && orderedMiddle.length > 0) {
-      return candidate;
-    }
-
-    // Se ficou curto ou sobrou espaço para uma oração parcial de uma frase descartada do meio:
-    const remainingMiddle = middle.find((m) => !keptMiddle.includes(m));
-    if (remainingMiddle) {
-      const clauses = remainingMiddle.split(/[,;–—]+/).map((c) => c.trim()).filter(Boolean);
-      for (let k = clauses.length - 1; k >= 1; k--) {
-        const partialMid = clauses.slice(0, k).join(', ') + '.';
-        const testCand = [hook, ...orderedMiddle, partialMid, cta].join(' ').replace(/\s+/g, ' ').trim();
-        if (testCand.length <= maxChars) {
-          return testCand;
-        }
+    if (keptMiddle.length > 0) {
+      const candidate = [hookSentence, ...keptMiddle, ctaSentence].join(' ').replace(/\s+/g, ' ').trim();
+      const normCand = normalizeTextForNarration(candidate);
+      if (normCand.length <= maxChars) {
+        return normCand;
       }
     }
+  }
 
-    if (candidate.length <= maxChars) {
-      return candidate;
+  // Se precisar enxugar o corpo palavra por palavra preservando Hook (4 palavras) e CTA (5 palavras):
+  const maxBodyLength = maxChars - protectedHook.length - protectedCta.length - 2;
+  if (maxBodyLength > 10 && bodyWords.length > 0) {
+    let currentBody = '';
+    for (const w of bodyWords) {
+      const testBody = currentBody ? `${currentBody} ${w}` : w;
+      if (testBody.length <= maxBodyLength) {
+        currentBody = testBody;
+      } else {
+        break;
+      }
+    }
+    if (currentBody) {
+      const candidate = `${protectedHook} ${currentBody}. ${protectedCta}`.replace(/\s+/g, ' ').trim();
+      const normCand = normalizeTextForNarration(candidate);
+      if (normCand.length <= maxChars) {
+        return normCand;
+      }
     }
   }
 
-  // Se mesmo sem nenhuma frase do meio a soma de hook + cta couber no limite:
-  const baseHookCta = `${hook} ${cta}`.replace(/\s+/g, ' ').trim();
-  if (baseHookCta.length <= maxChars) {
-    return baseHookCta;
-  }
-
-  // Se até hook + cta exceder: preserva 100% o hook ("Nossa!" + primeiras palavras) e enxuga a cauda do CTA
-  const allowedCtaLen = maxChars - hook.length - 1;
-  if (allowedCtaLen > 15) {
-    const trimmedCta = cta.slice(0, allowedCtaLen).replace(/[,;:\s]+$/, '') + '!';
-    return `${hook} ${trimmedCta}`;
+  // Se até hook + cta excederem (caso extremo): garante os primeiros caracteres até maxChars
+  const minimal = `${protectedHook} ${protectedCta}`.replace(/\s+/g, ' ').trim();
+  if (minimal.length <= maxChars) {
+    return minimal;
   }
 
   return clean.slice(0, maxChars - 1).replace(/[,;:\s]+$/, '') + '!';
@@ -1888,7 +1920,7 @@ export function evaluateCopyDnaChecklist(copy: string, duration: Produtos2Durati
   const hasCompleteCta = /\b(carrinho|aqui embaixo|link|garante|aproveita|estoque|oferta|promoção|desconto|parcela|confira|confere|compre|adquira|pra você)\b/i.test(
     clean.slice(-95)
   );
-  const maxAllowed = duration === 8 ? 165 : 235;
+  const maxAllowed = 225;
   const isWithinWindow = clean.length >= 80 && clean.length <= maxAllowed;
 
   let score = 100;
@@ -1906,28 +1938,34 @@ export function evaluateCopyDnaChecklist(copy: string, duration: Produtos2Durati
 }
 
 /**
- * Garante o prefixo "Nossa, ", concordância de gênero/vocativo e o respeito ao limite de caracteres (<= 165 em 8s, <= 235 em 10s)
- * sem alterar o texto original validado do banco além do estritamente necessário.
+ * Garante o prefixo "Nossa, ", concordância de gênero/vocativo, normalização para narração por IA
+ * e o respeito estrito ao limite de caracteres (<= 225) sem alterar o texto original validado do banco além do estritamente necessário.
  */
 export function calibrateCopyToTargetWindow(params: {
   copy: string;
-  duration: Produtos2Duration;
+  duration?: Produtos2Duration;
   isSameProductBankCopy: boolean;
   clientGender: Produtos2ClientGender;
   influencer: 'Homem' | 'Mulher';
   useSpeechIntro?: boolean;
 }): string {
-  const { duration, clientGender, influencer, useSpeechIntro = false } = params;
+  const { clientGender, influencer, useSpeechIntro = false } = params;
   let text = applySpeechIntro(
     applyGenderAndVocativeRules(params.copy.replace(/\s+/g, ' ').trim(), clientGender, influencer),
     useSpeechIntro
   );
 
-  const maxAllowed = duration === 8 ? 165 : 235;
-  const minTarget = duration === 8 ? 110 : 160;
+  text = normalizeTextForNarration(text);
+  const maxAllowed = 225;
+  const minTarget = 150;
 
   if (text.length > maxAllowed) {
     text = applySpeechIntro(enforceMaxChars(text, maxAllowed, minTarget), useSpeechIntro);
+    text = normalizeTextForNarration(text);
+  }
+
+  if (text.length > maxAllowed) {
+    text = text.slice(0, maxAllowed - 1).replace(/[,;:\s]+$/, '') + '!';
   }
 
   return text;
@@ -1985,11 +2023,9 @@ export function selectAndAdaptProdutos2Copy(params: {
   if (customCopy && customCopy.trim().length > 0) {
     const resolvedInf: 'Homem' | 'Mulher' =
       influencer || specs.influencer || (clientGender === 'Masculino' ? 'Homem' : 'Mulher');
-    let finalCustom = applySpeechIntro(customCopy.trim(), Boolean(useSpeechIntro));
-    if (duration === 8 && finalCustom.length > 165) {
-      finalCustom = applySpeechIntro(enforceMaxChars(finalCustom, 165, 110), Boolean(useSpeechIntro));
-    } else if (duration === 10 && finalCustom.length > 235) {
-      finalCustom = applySpeechIntro(enforceMaxChars(finalCustom, 235, 160), Boolean(useSpeechIntro));
+    let finalCustom = applySpeechIntro(normalizeTextForNarration(customCopy.trim()), Boolean(useSpeechIntro));
+    if (finalCustom.length > 225) {
+      finalCustom = applySpeechIntro(enforceMaxChars(finalCustom, 225, 150), Boolean(useSpeechIntro));
     }
     const customFreeShipping = hasExplicitFreeShipping(`${productName} ${productInfo} ${customCopy}`);
     finalCustom = sanitizeFreeShippingMentions(finalCustom, customFreeShipping);

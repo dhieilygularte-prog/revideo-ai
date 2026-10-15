@@ -1,6 +1,6 @@
 export type Produtos2SubMode = 'produtos_geral' | 'vestuario_masculino';
 export type Produtos2MaleSubOption = 'calcados' | 'roupas';
-export type Produtos2Duration = 10 | 8;
+export type Produtos2Duration = 10;
 export type Produtos2Influencer = 'Homem' | 'Mulher' | null;
 export type Produtos2ClientGender = 'Masculino' | 'Feminino' | 'Unissex';
 export type Produtos2SpeechMode = 'com_fala' | 'sem_fala';
@@ -28,7 +28,7 @@ export interface CopyBankEntry {
   archetype: CopyArchetype;
   audience: Produtos2ClientGender;
   charCount: number;
-  fits8s: boolean;
+  fits8s?: boolean;
   isStarred?: boolean;
   notes?: string;
   text: string;
@@ -49,14 +49,16 @@ export interface Produtos2FormState {
   productNameAutoFilled?: boolean;
   detectedNiche?: string;
   duration: Produtos2Duration;
-  customCopy: string;
+  customCopy?: string;
   copyEngine?: Produtos2CopyEngine;
-  // Novo fluxo: 3 falas em linha (Banco 1 + Banco 2 + Aurora Copy)
+  // Fluxo de falas: Fala do usuário (se fornecida) + Banco 1 + Banco 2 + Aurora Copy
   speechesGenerated?: boolean;
+  hasUserSpeech?: boolean;
+  userSpeech?: string;
   bancoCopy?: string;
   bancoCopy2?: string;
   auroraCopy?: string;
-  selectedSpeechOption?: 'banco1' | 'banco2' | 'aurora_copy';
+  selectedSpeechOption?: 'user_speech' | 'banco1' | 'banco2' | 'aurora_copy';
   finalSelectedSpeech?: string;
   additionalInstructions: string;
   influencer: Produtos2Influencer;

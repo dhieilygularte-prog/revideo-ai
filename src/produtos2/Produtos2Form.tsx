@@ -94,15 +94,15 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
   isProcessing,
   aiProfile = 'openai',
 }) => {
-  const [activeMic, setActiveMic] = useState<'info' | 'copy' | 'instructions' | 'banco1' | 'banco2' | 'aurora' | null>(null);
+  const [activeMic, setActiveMic] = useState<'info' | 'instructions' | 'user' | 'banco1' | 'banco2' | 'aurora' | null>(null);
   const [isGeneratingSpeeches, setIsGeneratingSpeeches] = useState(false);
+  const [isReviewingCard, setIsReviewingCard] = useState<string | null>(null);
   const [speechesError, setSpeechesError] = useState<string | null>(null);
   const [copiedSpeechKey, setCopiedSpeechKey] = useState<string | null>(null);
   const recognitionRef = useRef<any>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
   const debounceTimerRef = useRef<number | null>(null);
-  const copyTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const instructionsTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const handleCopySpeech = (text: string, key: string) => {
@@ -112,6 +112,48 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
     setTimeout(() => setCopiedSpeechKey(null), 2000);
   };
 
+  // Botão "Revisar texto" com função conservadora (Item 9 e 11)
+  const handleReviewSpeech = async (speechText: string, cardKey: 'user' | 'banco1' | 'banco2' | 'aurora') => {
+    if (!speechText.trim() || isReviewingCard) return;
+    setIsReviewingCard(cardKey);
+    try {
+      const res = await fetch('/api/produtos2-planning', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'normalize_speech_for_ai',
+          text: speechText,
+          aiProfile,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.reviewedSpeech) {
+        const reviewed = data.reviewedSpeech;
+        onChange((prev) => {
+          const next = { ...prev };
+          if (cardKey === 'user') {
+            next.userSpeech = reviewed;
+            if (prev.selectedSpeechOption === 'user_speech') next.finalSelectedSpeech = reviewed;
+          } else if (cardKey === 'banco1') {
+            next.bancoCopy = reviewed;
+            if (prev.selectedSpeechOption === 'banco1') next.finalSelectedSpeech = reviewed;
+          } else if (cardKey === 'banco2') {
+            next.bancoCopy2 = reviewed;
+            if (prev.selectedSpeechOption === 'banco2') next.finalSelectedSpeech = reviewed;
+          } else if (cardKey === 'aurora') {
+            next.auroraCopy = reviewed;
+            if (prev.selectedSpeechOption === 'aurora_copy') next.finalSelectedSpeech = reviewed;
+          }
+          return next;
+        });
+      }
+    } catch (err) {
+      console.warn('Erro ao revisar fala:', err);
+    } finally {
+      setIsReviewingCard(null);
+    }
+  };
+
   const handleGenerateSpeeches = async () => {
     setIsGeneratingSpeeches(true);
     setSpeechesError(null);
@@ -119,28 +161,51 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
     try {
       const finalProductName = (form.productName.trim() || 'Produto').trim();
 
-      // 1. Fala 1 — Banco de Copies (baseada no produto)
+      // 1. Identificar fala explícita dentro de "Instruções Adicionais" com revisão conservadora (Item 2 e 4)
+      let detectedUserSpeech = '';
+      let hasUserSpeech = false;
+      if (form.additionalInstructions && form.additionalInstructions.trim()) {
+        try {
+          const userRes = await fetch('/api/produtos2-planning', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'detect_and_review_user_speech',
+              additionalInstructions: form.additionalInstructions,
+              productName: finalProductName,
+              aiProfile,
+            }),
+          });
+          const userData = await userRes.json();
+          if (userData.success && userData.hasUserSpeech && userData.userSpeech) {
+            hasUserSpeech = true;
+            detectedUserSpeech = userData.userSpeech;
+          }
+        } catch (err) {
+          console.warn('Erro ao detectar fala do usuário:', err);
+        }
+      }
+
+      // 2. Fala 1 — Banco de Copies (baseada no produto)
       const copy1 = selectAndAdaptProdutos2Copy({
         subMode: form.subMode,
         maleSubOption: form.maleSubOption,
         productName: finalProductName,
         productInfo: form.productInfo,
-        duration: form.duration,
-        customCopy: form.customCopy,
+        duration: 10,
         clientGender: form.clientGender,
         influencer: form.influencer,
         useSpeechIntro: form.useSpeechIntro,
       });
       const banco1Result = copy1.finalCopy;
 
-      // 2. Fala 2 — Banco de Copies (outra opção do banco adaptada ao produto)
+      // 3. Fala 2 — Banco de Copies (outra opção do banco adaptada ao produto)
       const copy2 = selectAndAdaptProdutos2Copy({
         subMode: form.subMode,
         maleSubOption: form.maleSubOption,
         productName: finalProductName,
         productInfo: form.productInfo,
-        duration: form.duration,
-        customCopy: form.customCopy,
+        duration: 10,
         clientGender: form.clientGender,
         influencer: form.influencer,
         useSpeechIntro: form.useSpeechIntro,
@@ -148,7 +213,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
       });
       const banco2Result = copy2.finalCopy;
 
-      // 3. Fala 3 — Aurora Copy (super rápida via gpt-4o-mini, 200 a 235 caracteres)
+      // 4. Fala 3 — Aurora Copy (super rápida via gpt-4o-mini, até 225 caracteres)
       let auroraResult = '';
       try {
         const res = await fetch('/api/produtos2-planning', {
@@ -158,7 +223,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
             action: 'generate_aurora_copy',
             productName: finalProductName,
             productInfo: form.productInfo || finalProductName,
-            duration: form.duration,
+            duration: 10,
             additionalInstructions: form.additionalInstructions,
             aiProfile,
           }),
@@ -174,14 +239,20 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
         auroraResult = `Gente, olha esse lançamento imperdível! O ${finalProductName} foi desenvolvido com material resistente e tecnologia pensada para o seu conforto diário, super fácil de usar. Confere todos os detalhes aqui embaixo!`;
       }
 
+      const defaultSelected = hasUserSpeech ? 'user_speech' : 'banco1';
+      const defaultFinal = hasUserSpeech ? detectedUserSpeech : banco1Result;
+
       onChange((prev) => ({
         ...prev,
+        duration: 10,
         speechesGenerated: true,
+        hasUserSpeech,
+        userSpeech: detectedUserSpeech,
         bancoCopy: banco1Result,
         bancoCopy2: banco2Result,
         auroraCopy: auroraResult,
-        selectedSpeechOption: 'banco1', // Fala 1 selecionada por padrão (Item 8)
-        finalSelectedSpeech: banco1Result,
+        selectedSpeechOption: defaultSelected,
+        finalSelectedSpeech: defaultFinal,
         copyEngine: 'banco',
       }));
     } catch (err: any) {
@@ -191,14 +262,6 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
       setIsGeneratingSpeeches(false);
     }
   };
-
-  // Auto-expansão dos campos de copy personalizada e instruções adicionais
-  useEffect(() => {
-    if (copyTextareaRef.current) {
-      copyTextareaRef.current.style.height = 'auto';
-      copyTextareaRef.current.style.height = `${Math.max(68, copyTextareaRef.current.scrollHeight)}px`;
-    }
-  }, [form.customCopy]);
 
   useEffect(() => {
     if (instructionsTextareaRef.current) {
@@ -277,7 +340,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
     setActiveMic(null);
   };
 
-  const toggleMic = async (field: 'info' | 'copy' | 'instructions' | 'banco' | 'aurora') => {
+  const toggleMic = async (field: 'info' | 'instructions' | 'user' | 'banco1' | 'banco2' | 'aurora') => {
     if (activeMic === field) {
       stopMicrophone();
       return;
@@ -303,10 +366,10 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
         const initialText =
           field === 'info'
             ? form.productInfo
-            : field === 'copy'
-            ? form.customCopy
             : field === 'instructions'
             ? form.additionalInstructions
+            : field === 'user'
+            ? form.userSpeech || ''
             : field === 'banco1'
             ? form.bancoCopy || ''
             : field === 'banco2'
@@ -324,10 +387,14 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
 
           if (field === 'info') {
             handleProductInfoChange(combined);
-          } else if (field === 'copy') {
-            onChange((prev) => ({ ...prev, customCopy: combined }));
           } else if (field === 'instructions') {
             onChange((prev) => ({ ...prev, additionalInstructions: combined }));
+          } else if (field === 'user') {
+            onChange((prev) => ({
+              ...prev,
+              userSpeech: combined,
+              finalSelectedSpeech: prev.selectedSpeechOption === 'user_speech' ? combined : prev.finalSelectedSpeech,
+            }));
           } else if (field === 'banco1') {
             onChange((prev) => ({
               ...prev,
@@ -485,7 +552,9 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
     Boolean(form.productInfo.trim() || form.productName.trim());
 
   const hasSelectedSpeech = Boolean(
-    (form.selectedSpeechOption === 'aurora_copy'
+    (form.selectedSpeechOption === 'user_speech'
+      ? form.userSpeech?.trim()
+      : form.selectedSpeechOption === 'aurora_copy'
       ? form.auroraCopy?.trim()
       : form.selectedSpeechOption === 'banco2'
       ? form.bancoCopy2?.trim()
@@ -496,7 +565,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
   const canGenerateVideo =
     !isProcessing &&
     !isMicRecording &&
-    Boolean(form.speechesGenerated || form.bancoCopy || form.bancoCopy2 || form.auroraCopy) &&
+    Boolean(form.speechesGenerated || form.userSpeech || form.bancoCopy || form.bancoCopy2 || form.auroraCopy) &&
     hasSelectedSpeech &&
     totalPhotosCount > 0;
 
@@ -719,39 +788,6 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
           />
         </div>
 
-        {/* 3. Duração no Veo (10 s padrão | 8 s) */}
-        <div className={`md:col-span-6 p-4 rounded-2xl space-y-2 ${activeAutoCardClass}`}>
-          <label className="text-xs font-bold text-white flex items-center justify-between">
-            <span>3. Duração no Veo</span>
-            <span className="text-[10px] text-sky-200 font-semibold">
-              {form.duration === 10 ? '10 s (Máx. 235 caracteres c/ espaços)' : '8 s (Máx. 165 caracteres c/ espaços)'}
-            </span>
-          </label>
-          <div className="grid grid-cols-2 gap-2 bg-slate-950/90 p-1 rounded-xl border border-sky-400/50">
-            <button
-              type="button"
-              onClick={() => onChange((prev) => ({ ...prev, duration: 10 }))}
-              className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                form.duration === 10
-                  ? 'bg-sky-500 text-white shadow'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              10 s (Até 235 caracteres)
-            </button>
-            <button
-              type="button"
-              onClick={() => onChange((prev) => ({ ...prev, duration: 8 }))}
-              className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                form.duration === 8
-                  ? 'bg-sky-500 text-white shadow'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              8 s (Até 165 caracteres)
-            </button>
-          </div>
-        </div>
 
         {/* 6. Influencer (Homem / Mulher / vazio quando ambíguo) */}
         <div
@@ -1197,7 +1233,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
               )}
             </span>
             <span className="text-[11px] text-zinc-400 font-normal">
-              Ex.: "vídeo na praia", "pessoa idosa falando", "roupa vermelha", "sotaque nordestino"
+              Ambiente, avatar, sotaque ou fala desejada (ex.: "ele fala: Gente, olha...")
             </span>
           </label>
           <div className="relative">
@@ -1208,7 +1244,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
               onChange={(e) =>
                 onChange((prev) => ({ ...prev, additionalInstructions: e.target.value }))
               }
-              placeholder="Digite ou dite instruções específicas de cenário, idade do avatar, roupa ou sotaque..."
+              placeholder='Ex.: "Homem de 45 anos na oficina. Ele pega o produto e fala: Gente, olha esse equipamento que acabou de chegar pra mim..." (ou apenas ambiente, estilo, idade, sotaque)'
               className={`w-full p-3 pr-12 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-sky-400 resize-none overflow-hidden font-sans ${
                 isInstructionsFilled
                   ? 'bg-slate-950/85 border border-sky-400/60'
@@ -1230,59 +1266,6 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                 <Square className="w-4 h-4 fill-white" />
               ) : (
                 <Mic className="w-4 h-4" />
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* 4. Adicionar Copy Personalizada (Com fundo cinza claro e aviso de não mexer por engano) */}
-        <div className="md:col-span-12 p-4 rounded-2xl bg-zinc-700/60 hover:bg-zinc-700/75 border-2 border-zinc-500/80 shadow-lg space-y-2.5 transition-all">
-          <div className="flex items-center justify-between gap-2 border-b border-zinc-600/70 pb-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-black text-zinc-100 uppercase tracking-wide">
-                4. Adicionar Copy Personalizada (Personalizar Copy do Vídeo ou seja o que é falado nele) (Opcional)
-              </span>
-              {form.customCopy.trim().length > 0 && (
-                <span className="text-[10px] text-zinc-900 font-extrabold bg-zinc-300 px-2 py-0.5 rounded-md border border-zinc-400">
-                  {form.customCopy.trim().length} caracteres
-                </span>
-              )}
-            </div>
-            <span className="px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-400/40 text-[10px] font-bold text-amber-200 shrink-0">
-              ⚠️ NÃO MEXER
-            </span>
-          </div>
-
-          <p className="text-[11px] text-zinc-300 leading-tight font-medium">
-            Deixe esta caixa em branco para o aplicativo sortear e adaptar automaticamente uma <strong>copy campeã validada do banco</strong>. Só preencha se quiser substituir o banco pela sua própria fala.
-          </p>
-
-          <div className="relative">
-            <textarea
-              ref={copyTextareaRef}
-              rows={2}
-              value={form.customCopy}
-              onChange={(e) =>
-                onChange((prev) => ({ ...prev, customCopy: e.target.value }))
-              }
-              placeholder="Deixe vazio para usar o Banco de Copies Validadas automaticamente (não precisa mexer aqui)..."
-              className="w-full p-3 pr-12 rounded-xl bg-zinc-800/95 border border-zinc-500/80 text-xs text-zinc-100 placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-400 resize-none overflow-hidden font-sans"
-              style={{ minHeight: '68px' }}
-            />
-            <button
-              type="button"
-              onClick={() => toggleMic('copy')}
-              className={`absolute right-2.5 top-2.5 p-2 rounded-lg text-xs transition-all cursor-pointer ${
-                activeMic === 'copy'
-                  ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
-                  : 'bg-zinc-700 text-zinc-200 hover:text-white hover:bg-zinc-600 border border-zinc-500'
-              }`}
-              title={activeMic === 'copy' ? 'Parar gravação' : 'Ditar copy personalizada'}
-            >
-              {activeMic === 'copy' ? (
-                <Square className="w-4 h-4 fill-white" />
-              ) : (
-                <Mic className="w-4 h-4 text-zinc-300" />
               )}
             </button>
           </div>
@@ -1328,9 +1311,9 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
       </div>
 
       {/* ===================================================================== */}
-      {/* 14. ESCOLHA SUA FALA PREFERIDA (3 LINHAS HORIZONTAIS)                  */}
+      {/* 14. ESCOLHA SUA FALA PREFERIDA                                        */}
       {/* ===================================================================== */}
-      {(form.speechesGenerated || form.bancoCopy || form.bancoCopy2 || form.auroraCopy) && (
+      {(form.speechesGenerated || form.userSpeech || form.bancoCopy || form.bancoCopy2 || form.auroraCopy) && (
         <div className="p-5 sm:p-6 rounded-2xl bg-zinc-950/95 border border-emerald-500/40 shadow-2xl space-y-4 animate-fade-in">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-800 pb-3">
             <div>
@@ -1341,13 +1324,15 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                 </h3>
               </div>
               <p className="text-xs text-zinc-400 mt-1">
-                Todas as falas são 100% editáveis. Edite diretamente no texto ou dite pelo microfone. Clique no card ou botão para selecionar a fala oficial do seu vídeo.
+                Todas as falas são 100% editáveis. Edite diretamente no texto, dite pelo microfone ou clique em "Revisar texto". Máximo de 225 caracteres.
               </p>
             </div>
             <div className="text-[11px] font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-400/30 px-3 py-1.5 rounded-xl self-start sm:self-auto shrink-0 flex items-center gap-1.5">
               <Check className="w-3.5 h-3.5 stroke-[3]" />
               <span>
-                {form.selectedSpeechOption === 'banco1'
+                {form.selectedSpeechOption === 'user_speech'
+                  ? 'Fala do Usuário Selecionada'
+                  : form.selectedSpeechOption === 'banco1'
                   ? 'Fala 1 Selecionada'
                   : form.selectedSpeechOption === 'banco2'
                   ? 'Fala 2 Selecionada'
@@ -1357,7 +1342,174 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
           </div>
 
           <div className="space-y-4">
-            {/* LINHA 1 — FALA 1 BANCO DE COPIES */}
+            {/* OPÇÃO 1 — FALA DO USUÁRIO (Quando fornecida nas Instruções Adicionais) */}
+            {Boolean(form.hasUserSpeech || form.userSpeech) && (
+              <div
+                onClick={() => {
+                  onChange((prev) => ({
+                    ...prev,
+                    selectedSpeechOption: 'user_speech',
+                    copyEngine: 'banco',
+                    finalSelectedSpeech: prev.userSpeech || '',
+                  }));
+                }}
+                className={`p-4 sm:p-5 rounded-2xl transition-all cursor-pointer flex flex-col justify-between space-y-3 ${
+                  form.selectedSpeechOption === 'user_speech'
+                    ? 'bg-zinc-900/95 border-2 border-amber-400 shadow-xl shadow-amber-950/50 ring-1 ring-amber-500/40'
+                    : 'bg-zinc-900/80 border border-amber-500/40 hover:border-amber-400/60 shadow-lg'
+                }`}
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
+                          form.selectedSpeechOption === 'user_speech'
+                            ? 'bg-amber-400 text-slate-950'
+                            : 'border-2 border-zinc-600 bg-zinc-800'
+                        }`}
+                      >
+                        {form.selectedSpeechOption === 'user_speech' && (
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        )}
+                      </div>
+                      <h4 className="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wide flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4 text-amber-400" />
+                        <span>FALA DO USUÁRIO</span>
+                      </h4>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* Contador de caracteres (Item 8: vermelho se > 225) */}
+                      <span
+                        className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-colors ${
+                          (form.userSpeech?.length || 0) > 225
+                            ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse'
+                            : 'bg-zinc-800 text-amber-300 border border-amber-500/30'
+                        }`}
+                      >
+                        {form.userSpeech?.length || 0} / 225
+                      </span>
+
+                      {/* Botão Revisar Texto (Item 9) */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleReviewSpeech(form.userSpeech || '', 'user');
+                        }}
+                        disabled={isReviewingCard === 'user' || !(form.userSpeech || '').trim()}
+                        className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 font-black text-xs flex items-center gap-1 transition-all cursor-pointer shadow-sm shadow-amber-950/40"
+                        title="Revisar texto com IA (corrige português, pontuação, medidas e limita a 225 caracteres)"
+                      >
+                        {isReviewingCard === 'user' ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-950" />
+                            <span>Revisando...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Wand2 className="w-3.5 h-3.5 text-slate-950" />
+                            <span>Revisar texto</span>
+                          </>
+                        )}
+                      </button>
+
+                      {/* Botão Copiar */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCopySpeech(form.userSpeech || '', 'user');
+                        }}
+                        className="p-1.5 px-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white border border-zinc-700 flex items-center gap-1 text-xs transition-colors cursor-pointer"
+                        title="Copiar fala do usuário"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        {copiedSpeechKey === 'user' && (
+                          <span className="text-[10px] text-amber-300 font-bold">Copiado!</span>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="relative" onClick={(e) => e.stopPropagation()}>
+                    <textarea
+                      rows={3}
+                      value={form.userSpeech || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        onChange((prev) => ({
+                          ...prev,
+                          userSpeech: val,
+                          finalSelectedSpeech: prev.selectedSpeechOption === 'user_speech' ? val : prev.finalSelectedSpeech,
+                        }));
+                      }}
+                      placeholder="Fala extraída das Instruções Adicionais..."
+                      className={`w-full p-3.5 pr-12 rounded-xl bg-zinc-950/90 text-xs sm:text-sm leading-relaxed font-sans shadow-inner resize-y transition-colors ${
+                        (form.userSpeech?.length || 0) > 225
+                          ? 'text-rose-400 border-2 border-rose-500 focus:border-rose-400'
+                          : 'text-zinc-100 border border-zinc-700 focus:border-amber-400'
+                      }`}
+                    />
+
+                    {/* Microfone Fala do Usuário */}
+                    <button
+                      type="button"
+                      onClick={() => toggleMic('user')}
+                      className={`absolute right-2.5 top-2.5 p-2 rounded-lg text-xs transition-all cursor-pointer ${
+                        activeMic === 'user'
+                          ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
+                          : 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 border border-zinc-600'
+                      }`}
+                      title={activeMic === 'user' ? 'Parar gravação' : 'Ditar fala por voz'}
+                    >
+                      {activeMic === 'user' ? (
+                        <Square className="w-4 h-4 fill-white" />
+                      ) : (
+                        <Mic className="w-4 h-4 text-zinc-300" />
+                      )}
+                    </button>
+                  </div>
+
+                  {activeMic === 'user' && (
+                    <p className="text-[11px] text-rose-400 flex items-center gap-1.5 font-semibold animate-pulse">
+                      <span className="w-2 h-2 rounded-full bg-rose-500" />
+                      Ouvindo sua voz para a Fala do Usuário... clique no quadrado vermelho para parar.
+                    </p>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onChange((prev) => ({
+                      ...prev,
+                      selectedSpeechOption: 'user_speech',
+                      copyEngine: 'banco',
+                      finalSelectedSpeech: prev.userSpeech || '',
+                    }));
+                  }}
+                  className={`w-full py-2.5 px-4 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    form.selectedSpeechOption === 'user_speech'
+                      ? 'bg-amber-400 hover:bg-amber-300 text-slate-950 font-black shadow-md shadow-amber-950/40'
+                      : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 font-bold'
+                  }`}
+                >
+                  {form.selectedSpeechOption === 'user_speech' ? (
+                    <>
+                      <Check className="w-4 h-4 stroke-[3]" />
+                      <span>Fala Selecionada para o Vídeo</span>
+                    </>
+                  ) : (
+                    <span>Usar Esta Fala (Fala do Usuário)</span>
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* FALA 1 — BANCO DE COPIES */}
             <div
               onClick={() => {
                 onChange((prev) => ({
@@ -1374,7 +1526,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
               }`}
             >
               <div className="space-y-3">
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2">
                     <div
                       className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
@@ -1392,18 +1544,43 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                     </h4>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {/* Contador de caracteres (Item 8: vermelho se > 225) */}
                     <span
-                      className={`px-2 py-0.5 rounded text-[11px] font-mono font-bold ${
-                        (form.duration === 8 && (form.bancoCopy?.length || 0) > 165) ||
-                        (form.duration === 10 && (form.bancoCopy?.length || 0) > 235)
-                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                      className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-colors ${
+                        (form.bancoCopy?.length || 0) > 225
+                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse'
                           : 'bg-zinc-800 text-emerald-300 border border-emerald-500/30'
                       }`}
                     >
-                      {form.bancoCopy?.length || 0} carac. ({form.duration}s · máx. {form.duration === 8 ? 165 : 235})
+                      {form.bancoCopy?.length || 0} / 225
                     </span>
 
+                    {/* Botão Revisar Texto (Item 9) */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleReviewSpeech(form.bancoCopy || '', 'banco1');
+                      }}
+                      disabled={isReviewingCard === 'banco1' || !(form.bancoCopy || '').trim()}
+                      className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 font-black text-xs flex items-center gap-1 transition-all cursor-pointer shadow-sm shadow-amber-950/40"
+                      title="Revisar texto com IA (corrige português, pontuação, medidas e limita a 225 caracteres)"
+                    >
+                      {isReviewingCard === 'banco1' ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-950" />
+                          <span>Revisando...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Wand2 className="w-3.5 h-3.5 text-slate-950" />
+                          <span>Revisar texto</span>
+                        </>
+                      )}
+                    </button>
+
+                    {/* Botão Copiar */}
                     <button
                       type="button"
                       onClick={(e) => {
@@ -1434,7 +1611,11 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                       }));
                     }}
                     placeholder="Fala 1 adaptada do Banco de Copies..."
-                    className="w-full p-3.5 pr-12 rounded-xl bg-zinc-950/90 border border-zinc-700 text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-emerald-400 leading-relaxed font-sans shadow-inner resize-y"
+                    className={`w-full p-3.5 pr-12 rounded-xl bg-zinc-950/90 text-xs sm:text-sm leading-relaxed font-sans shadow-inner resize-y transition-colors ${
+                      (form.bancoCopy?.length || 0) > 225
+                        ? 'text-rose-400 border-2 border-rose-500 focus:border-rose-400'
+                        : 'text-zinc-100 border border-zinc-700 focus:border-emerald-400'
+                    }`}
                   />
 
                   {/* Microfone Banco 1 */}
@@ -1492,7 +1673,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
               </button>
             </div>
 
-            {/* LINHA 2 — FALA 2 BANCO DE COPIES */}
+            {/* FALA 2 — BANCO DE COPIES */}
             <div
               onClick={() => {
                 onChange((prev) => ({
@@ -1509,7 +1690,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
               }`}
             >
               <div className="space-y-3">
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2">
                     <div
                       className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
@@ -1527,18 +1708,43 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                     </h4>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {/* Contador de caracteres (Item 8: vermelho se > 225) */}
                     <span
-                      className={`px-2 py-0.5 rounded text-[11px] font-mono font-bold ${
-                        (form.duration === 8 && (form.bancoCopy2?.length || 0) > 165) ||
-                        (form.duration === 10 && (form.bancoCopy2?.length || 0) > 235)
-                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                      className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-colors ${
+                        (form.bancoCopy2?.length || 0) > 225
+                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse'
                           : 'bg-zinc-800 text-emerald-300 border border-emerald-500/30'
                       }`}
                     >
-                      {form.bancoCopy2?.length || 0} carac. ({form.duration}s · máx. {form.duration === 8 ? 165 : 235})
+                      {form.bancoCopy2?.length || 0} / 225
                     </span>
 
+                    {/* Botão Revisar Texto (Item 9) */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleReviewSpeech(form.bancoCopy2 || '', 'banco2');
+                      }}
+                      disabled={isReviewingCard === 'banco2' || !(form.bancoCopy2 || '').trim()}
+                      className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 font-black text-xs flex items-center gap-1 transition-all cursor-pointer shadow-sm shadow-amber-950/40"
+                      title="Revisar texto com IA (corrige português, pontuação, medidas e limita a 225 caracteres)"
+                    >
+                      {isReviewingCard === 'banco2' ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-950" />
+                          <span>Revisando...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Wand2 className="w-3.5 h-3.5 text-slate-950" />
+                          <span>Revisar texto</span>
+                        </>
+                      )}
+                    </button>
+
+                    {/* Botão Copiar */}
                     <button
                       type="button"
                       onClick={(e) => {
@@ -1569,7 +1775,11 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                       }));
                     }}
                     placeholder="Fala 2 adaptada do Banco de Copies..."
-                    className="w-full p-3.5 pr-12 rounded-xl bg-zinc-950/90 border border-zinc-700 text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-emerald-400 leading-relaxed font-sans shadow-inner resize-y"
+                    className={`w-full p-3.5 pr-12 rounded-xl bg-zinc-950/90 text-xs sm:text-sm leading-relaxed font-sans shadow-inner resize-y transition-colors ${
+                      (form.bancoCopy2?.length || 0) > 225
+                        ? 'text-rose-400 border-2 border-rose-500 focus:border-rose-400'
+                        : 'text-zinc-100 border border-zinc-700 focus:border-emerald-400'
+                    }`}
                   />
 
                   {/* Microfone Banco 2 */}
@@ -1627,7 +1837,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
               </button>
             </div>
 
-            {/* LINHA 3 — FALA 3 AURORA COPY */}
+            {/* FALA 3 — AURORA COPY */}
             <div
               onClick={() => {
                 onChange((prev) => ({
@@ -1644,7 +1854,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
               }`}
             >
               <div className="space-y-3">
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center justify-between gap-2 flex-wrap">
                   <div className="flex items-center gap-2">
                     <div
                       className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
@@ -1662,18 +1872,43 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                     </h4>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {/* Contador de caracteres (Item 8: vermelho se > 225) */}
                     <span
-                      className={`px-2 py-0.5 rounded text-[11px] font-mono font-bold ${
-                        (form.duration === 8 && (form.auroraCopy?.length || 0) > 165) ||
-                        (form.duration === 10 && (form.auroraCopy?.length || 0) > 235)
-                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                      className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-colors ${
+                        (form.auroraCopy?.length || 0) > 225
+                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse'
                           : 'bg-zinc-800 text-emerald-300 border border-emerald-500/30'
                       }`}
                     >
-                      {form.auroraCopy?.length || 0} carac. ({form.duration}s · máx. {form.duration === 8 ? 165 : 235})
+                      {form.auroraCopy?.length || 0} / 225
                     </span>
 
+                    {/* Botão Revisar Texto (Item 9) */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleReviewSpeech(form.auroraCopy || '', 'aurora');
+                      }}
+                      disabled={isReviewingCard === 'aurora' || !(form.auroraCopy || '').trim()}
+                      className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 font-black text-xs flex items-center gap-1 transition-all cursor-pointer shadow-sm shadow-amber-950/40"
+                      title="Revisar texto com IA (corrige português, pontuação, medidas e limita a 225 caracteres)"
+                    >
+                      {isReviewingCard === 'aurora' ? (
+                        <>
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-950" />
+                          <span>Revisando...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Wand2 className="w-3.5 h-3.5 text-slate-950" />
+                          <span>Revisar texto</span>
+                        </>
+                      )}
+                    </button>
+
+                    {/* Botão Copiar */}
                     <button
                       type="button"
                       onClick={(e) => {
@@ -1704,7 +1939,11 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                       }));
                     }}
                     placeholder="Fala 3 criada pela Aurora Copy..."
-                    className="w-full p-3.5 pr-12 rounded-xl bg-zinc-950/90 border border-zinc-700 text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-emerald-400 leading-relaxed font-sans shadow-inner resize-y"
+                    className={`w-full p-3.5 pr-12 rounded-xl bg-zinc-950/90 text-xs sm:text-sm leading-relaxed font-sans shadow-inner resize-y transition-colors ${
+                      (form.auroraCopy?.length || 0) > 225
+                        ? 'text-rose-400 border-2 border-rose-500 focus:border-rose-400'
+                        : 'text-zinc-100 border border-zinc-700 focus:border-emerald-400'
+                    }`}
                   />
 
                   {/* Microfone Aurora */}
@@ -1790,7 +2029,9 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
               <Sparkles className="w-5 h-5" />
               <span>
                 Gerar Vídeo com a Fala Selecionada (
-                {form.selectedSpeechOption === 'banco1'
+                {form.selectedSpeechOption === 'user_speech'
+                  ? 'Fala do Usuário'
+                  : form.selectedSpeechOption === 'banco1'
                   ? 'Fala 1 — Banco'
                   : form.selectedSpeechOption === 'banco2'
                   ? 'Fala 2 — Banco'
@@ -1801,12 +2042,12 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
           )}
         </button>
 
-        {!form.speechesGenerated && !form.bancoCopy && !form.bancoCopy2 && !form.auroraCopy && (
+        {!form.speechesGenerated && !form.userSpeech && !form.bancoCopy && !form.bancoCopy2 && !form.auroraCopy && (
           <p className="text-center text-[11px] text-zinc-400 mt-2">
             * Clique primeiro em <strong>"GERAR FALAS"</strong> acima para comparar e selecionar a fala preferida do seu vídeo.
           </p>
         )}
-        {(form.speechesGenerated || form.bancoCopy || form.bancoCopy2 || form.auroraCopy) && !isPhotosFilled && (
+        {(form.speechesGenerated || form.userSpeech || form.bancoCopy || form.bancoCopy2 || form.auroraCopy) && !isPhotosFilled && (
           <p className="text-center text-[11px] text-amber-300/90 mt-2">
             * Anexe pelo menos 1 foto do produto nas variações para liberar a geração do vídeo.
           </p>

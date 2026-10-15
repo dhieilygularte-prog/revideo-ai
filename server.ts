@@ -2199,15 +2199,181 @@ app.post('/api/produtos2-planning', async (req, res) => {
       productPhotosBase64 = [],
     } = req.body;
 
-    // Ação rápida: Gerar somente a fala com Aurora Copy (Rápido: ~1s via gpt-4o-mini e entre 200 e 235 caracteres)
+    // Normalizador de texto para narração por voz IA (expandindo unidades, medidas e siglas)
+    const normalizeVoiceText = (text: string): string => {
+      if (!text) return '';
+      let out = text;
+      out = out.replace(/\b(\d+)\s*[wW]\b/g, '$1 watts');
+      out = out.replace(/\b(\d+)\s*[kK][wW]\b/g, '$1 quilowatts');
+      out = out.replace(/\b(\d+)\s*[hH][zZ]\b/g, '$1 hertz');
+      out = out.replace(/\b(\d+)\s*(?:pol|pol\.)\b/gi, '$1 polegadas');
+      out = out.replace(/\b(\d+)\s*(?:cm|cm\.)\b/gi, '$1 centímetros');
+      out = out.replace(/\b(\d+)\s*(?:mm|mm\.)\b/gi, '$1 milímetros');
+      out = out.replace(/\b(\d+)\s*(?:km|km\.)\b/gi, '$1 quilômetros');
+      out = out.replace(/\b(\d+)\s*(?:kg|kg\.)\b/gi, '$1 quilos');
+      out = out.replace(/\b(\d+)\s*(?:ml|ml\.)\b/gi, '$1 mililitros');
+      out = out.replace(/\b(\d+)\s*[vV]\b/g, '$1 volts');
+      out = out.replace(/\b(\d+)\s*(?:mah|mAh)\b/gi, '$1 miliamperes');
+      out = out.replace(/\b(\d+)\s*(?:fps|FPS)\b/g, '$1 quadros por segundo');
+      out = out.replace(/\b(\d+)\s*(?:gb|GB)\b/g, '$1 gigas');
+      out = out.replace(/\b(\d+)\s*(?:tb|TB)\b/g, '$1 teras');
+      out = out.replace(/\b(\d+)\s*(?:mb|MB)\b/g, '$1 megas');
+      out = out.replace(/\b(\d+)\s*%/g, '$1 por cento');
+      out = out.replace(/\b(\d+)\s*[xX]\b/g, '$1 vezes');
+      out = out.replace(/\b[xX]\s*(\d+)\b/g, '$1 vezes');
+      out = out.replace(/\bAMOLED\b/g, 'Amóled');
+      out = out.replace(/\bOLED\b/g, 'Óled');
+      out = out.replace(/\bLED\b/g, 'Léd');
+      out = out.replace(/\bQLED\b/g, 'Q-Léd');
+      out = out.replace(/\s*&\s*/g, ' e ');
+      out = out.replace(/\s*\+\s*/g, ' mais ');
+      return out.replace(/\s+/g, ' ').trim();
+    };
+
+    // Ação 1: Detectar fala explícita do usuário dentro de "Instruções Adicionais" com revisão conservadora
+    if (action === 'detect_and_review_user_speech') {
+      try {
+        const textToAnalyze = (additionalInstructions || req.body.text || '').trim();
+        if (!textToAnalyze) {
+          return res.json({ success: true, hasUserSpeech: false, userSpeech: '' });
+        }
+
+        const client = (openAIProvider as any).getClient();
+        if (!client) {
+          return res.status(400).json({ success: false, error: 'Provedor OpenAI não configurado.' });
+        }
+
+        const detectSystem = `Você é um especialista em análise de instruções de roteiro para vídeos de TikTok Shop.
+Sua missão é estritamente identificar se o usuário forneceu uma FALA EXPLÍCITA destinada ao personagem falar em cena.
+Exemplos que SÃO fala explícita:
+- "Homem de 45 anos na oficina. Ele pega o produto e fala: Gente, olha o que acabou de chegar pra mim."
+- "Ela mostra o sapato e diz assim: Gente do céu, esse tênis é o mais confortável que já usei!"
+- "dizendo que esse organizador mudou a rotina da casa dela..."
+
+Exemplos que NÃO são falas (são apenas orientações de tom, sotaque, ambiente ou comportamento):
+- "Homem em uma oficina mecânica falando com sotaque mineiro."
+- "Mulher falando devagar com voz acolhedora."
+- "Falando com entusiasmo e energia."
+- "Voz masculina grave do interior."
+- "Cenário de cozinha com iluminação suave."
+
+REGRAS DE PROCESSAMENTO:
+1. Se NÃO existir fala textual para o personagem falar, retorne {"hasUserSpeech": false, "userSpeech": ""}.
+2. Se EXISTIR fala explícita:
+   - Extraia SOMENTE o texto que o personagem fala (remova "ele fala:", "ela diz:", etc.).
+   - Execute uma REVISÃO CONSERVADORA (NUNCA recrie a copy, NUNCA invente Hook ou CTA):
+     a) Corrija pontuação, digitação, ortografia e concordância.
+     b) Normalize termos técnicos, números e medidas para voz (ex: "800 W" -> "800 watts", "23 pol" -> "23 polegadas", "%" -> "por cento").
+     c) Se tiver 225 caracteres ou menos: PRESERVE O MÁXIMO POSSÍVEL, sem resumir.
+     d) Se tiver mais de 225 caracteres: reduza conservadoramente para garantir no máximo 225 caracteres.
+
+Responda ESTRITAMENTE em JSON válido no formato:
+{"hasUserSpeech": boolean, "userSpeech": string}`;
+
+        const comp = await client.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: detectSystem },
+            { role: 'user', content: `INSTRUÇÕES ADICIONAIS:\n${textToAnalyze}` },
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.2,
+        });
+
+        const raw = comp.choices[0]?.message?.content?.trim() || '{}';
+        let parsed: any = {};
+        try {
+          parsed = JSON.parse(raw);
+        } catch {
+          parsed = { hasUserSpeech: false, userSpeech: '' };
+        }
+
+        let userSpeech = (parsed.userSpeech || '').trim();
+        userSpeech = normalizeVoiceText(userSpeech);
+        if (userSpeech.length > 225) {
+          userSpeech = userSpeech.slice(0, 225).replace(/[,;:\s]+[^.!?,;:]*$/, '') + '!';
+        }
+
+        return res.json({
+          success: true,
+          hasUserSpeech: Boolean(parsed.hasUserSpeech && userSpeech),
+          userSpeech: parsed.hasUserSpeech ? userSpeech : '',
+          usage: comp.usage,
+        });
+      } catch (err: any) {
+        console.warn('Erro ao detectar fala do usuário:', err);
+        return res.json({ success: true, hasUserSpeech: false, userSpeech: '' });
+      }
+    }
+
+    // Ação 2: Revisão conservadora de texto (Botão "Revisar texto" na geração e na tela final do storyboard)
+    if (action === 'normalize_speech_for_ai' || action === 'review_user_speech') {
+      try {
+        const inputSpeech = (req.body.text || req.body.speech || baseCopy || '').trim();
+        if (!inputSpeech) {
+          return res.status(400).json({ success: false, error: 'Texto não fornecido para revisão.' });
+        }
+
+        const client = (openAIProvider as any).getClient();
+        if (!client) {
+          return res.status(400).json({ success: false, error: 'Provedor OpenAI não configurado.' });
+        }
+
+        const reviewSystem = `Você é um REVISOR EDITORIAL CONSERVADOR para narração de vídeos por IA no TikTok Shop Brasil.
+Sua função é EXCLUSIVAMENTE revisar, corrigir e normalizar o texto fornecido pelo usuário.
+Você NUNCA deve transformar a mensagem em uma copy diferente e NUNCA deve inventar argumentos criativos.
+
+REGRAS MANDATÓRIAS:
+1. Corrija pontuação para narração natural (vírgulas nos pontos de respiração, pontos finais firmes).
+2. Corrija ortografia, erros de digitação e concordância em português brasileiro.
+3. Normalize unidades, potência, medidas e números para narração por IA:
+   - "800 W" -> "800 watts"
+   - "23 pol" -> "23 polegadas"
+   - "50%" -> "50 por cento"
+   - "10x" -> "10 vezes"
+   - "AMOLED" -> "Amóled"
+4. PRESERVAÇÃO: Preserve o vocabulário e o sentido original do usuário. NUNCA invente Hook, nunca adicione CTA que o usuário não escreveu.
+5. LIMITE DE 225 CARACTERES:
+   - Se o texto tiver 225 caracteres ou menos: NÃO resuma e NÃO reescreva. Apenas corrija e normalize.
+   - Se o texto ultrapassar 225 caracteres: faça a menor intervenção conservadora possível para caber em no máximo 225 caracteres contando espaços.
+6. FORMATO DE SAÍDA: Entregue SOMENTE o texto final revisado, sem aspas, sem títulos, sem explicações.`;
+
+        const comp = await client.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: reviewSystem },
+            { role: 'user', content: `TEXTO PARA REVISÃO:\n${inputSpeech}` },
+          ],
+          temperature: 0.2,
+        });
+
+        let reviewed = comp.choices[0]?.message?.content?.trim() || inputSpeech;
+        reviewed = reviewed.replace(/^["'«“]|["'»”]$/g, '').trim();
+        reviewed = normalizeVoiceText(reviewed);
+
+        if (reviewed.length > 225) {
+          reviewed = reviewed.slice(0, 225).replace(/[,;:\s]+[^.!?,;:]*$/, '') + '!';
+        }
+
+        return res.json({
+          success: true,
+          reviewedSpeech: reviewed,
+          usage: comp.usage,
+        });
+      } catch (err: any) {
+        return res.status(500).json({ success: false, error: err?.message || 'Erro na revisão de texto' });
+      }
+    }
+
+    // Ação 3: Gerar somente a fala com Aurora Copy (Rápido: ~1s via gpt-4o-mini e estritamente até 225 caracteres)
     if (action === 'generate_aurora_copy') {
       try {
         const client = (openAIProvider as any).getClient();
         if (!client) {
           return res.status(400).json({ success: false, error: 'Provedor OpenAI não configurado.' });
         }
-        const minLimit = 200;
-        const maxLimit = 235;
+        const minLimit = 190;
+        const maxLimit = 225;
         const auroraSystem = `Você é a AURORACOPY, uma especialista em copy para vídeos de TikTok Shop Brasil.
 Sua função é transformar as INFORMAÇÕES DO PRODUTO fornecidas pelo usuário em uma fala de alta retenção, natural, específica e persuasiva, pronta para ser usada como narração de vídeo.
 
@@ -2223,17 +2389,18 @@ IGNORE COMO ARGUMENTO DE VENDA:
 Preço, desconto, cupom, frete grátis, parcelamento, promoção financeira. Mesmo que estejam presentes, não baseie a copy neles.
 
 REGRA MANDATÓRIA DE CARACTERES (MUITO IMPORTANTE):
-A fala DEVE ter OBRIGATORIAMENTE entre 200 e 235 caracteres no total (contando espaços e pontuação).
-NUNCA entregue menos de 200 caracteres!
-NUNCA ultrapasse 235 caracteres!
+A fala DEVE ter OBRIGATORIAMENTE entre 190 e 225 caracteres no total (contando espaços e pontuação).
+NUNCA entregue menos de 190 caracteres!
+NUNCA ultrapasse 225 caracteres!
 Estruture a fala com:
-1. Gancho direto e curioso de abertura (aprox. 35-45 caracteres).
-2. Explicação de 2 benefícios concretos com foco na usabilidade real (aprox. 115-135 caracteres).
-3. Chamada natural leve para conferir (aprox. 35-45 caracteres).
-Totalizando impreterivelmente entre 200 e 235 caracteres.
+1. Gancho direto e curioso de abertura (aprox. 35-40 caracteres).
+2. Explicação de 2 benefícios concretos com foco na usabilidade real (aprox. 110-125 caracteres).
+3. Chamada natural leve para conferir (aprox. 30-40 caracteres).
+Totalizando impreterivelmente entre 190 e 225 caracteres.
 
-LINGUAGEM:
+LINGUAGEM E VOZ IA:
 Português do Brasil oral, simples, espontâneo, natural.
+Escreva palavras por extenso para narração por IA (ex: "800 watts", "23 polegadas", "por cento").
 Use detalhes reais presentes nas informações do produto. NUNCA invente características.
 
 FORMATO DE SAÍDA:
@@ -2258,28 +2425,29 @@ TAMANHO OBRIGATÓRIO: Exatamente entre ${minLimit} e ${maxLimit} caracteres.`;
 
         let rawSpeech = comp.choices[0]?.message?.content?.trim() || '';
         rawSpeech = rawSpeech.replace(/^["'«“]|["'»”]$/g, '').trim();
+        rawSpeech = normalizeVoiceText(rawSpeech);
 
-        // Garantia absoluta de faixa entre 200 e 235 caracteres
-        if (rawSpeech.length < 200) {
+        // Garantia absoluta de faixa até 225 caracteres
+        if (rawSpeech.length < 190) {
           const complementos = [
-            ' Dá uma olhada aqui embaixo e aproveita agora!',
-            ' Vale muito a pena conferir todos os detalhes aqui!',
-            ' Eu deixei o link com todos os modelos aqui embaixo!',
             ' Confere aqui embaixo pra ver todos os detalhes!',
+            ' Vale muito a pena conferir todos os detalhes!',
+            ' Dá uma olhada aqui embaixo e aproveita!',
+            ' Deixei todos os modelos disponíveis aqui embaixo!',
           ];
           for (const c of complementos) {
             const candidate = rawSpeech.replace(/[.!]+$/, '') + '.' + c;
-            if (candidate.length <= 235 && candidate.length >= 200) {
+            if (candidate.length <= 225 && candidate.length >= 190) {
               rawSpeech = candidate;
               break;
             }
           }
         }
-        if (rawSpeech.length > 235) {
-          rawSpeech = rawSpeech.slice(0, 235).replace(/[,;:\s]+[^.!?,;:]*$/, '') + '!';
+        if (rawSpeech.length > 225) {
+          rawSpeech = rawSpeech.slice(0, 225).replace(/[,;:\s]+[^.!?,;:]*$/, '') + '!';
         }
 
-        return res.json({ success: true, auroraCopy: rawSpeech });
+        return res.json({ success: true, auroraCopy: rawSpeech, usage: comp.usage });
       } catch (err: any) {
         return res.status(500).json({ success: false, error: err?.message || 'Erro ao gerar Aurora Copy' });
       }

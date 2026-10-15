@@ -336,7 +336,11 @@ export async function runProdutos2Pipeline(params: {
   let copyId = 'BANCO-01';
 
   // Se o usuário já gerou as falas e selecionou uma (ou editou), adota rigorosamente a escolhida!
-  if (form.selectedSpeechOption === 'aurora_copy' && (form.finalSelectedSpeech || form.auroraCopy)) {
+  if (form.selectedSpeechOption === 'user_speech' && (form.finalSelectedSpeech || form.userSpeech)) {
+    finalCopy = (form.finalSelectedSpeech || form.userSpeech || '').trim();
+    copySourceLabel = 'Fala do Usuário';
+    copyId = 'USER-SPEECH';
+  } else if (form.selectedSpeechOption === 'aurora_copy' && (form.finalSelectedSpeech || form.auroraCopy)) {
     finalCopy = (form.finalSelectedSpeech || form.auroraCopy || '').trim();
     copySourceLabel = 'Aurora Copy';
     copyId = 'AURORA-01';
@@ -350,8 +354,8 @@ export async function runProdutos2Pipeline(params: {
     copyId = 'BANCO-01';
   } else if (form.customCopy && form.customCopy.trim()) {
     finalCopy = form.customCopy.trim();
-    copySourceLabel = 'Copy Personalizada';
-    copyId = 'CUSTOM';
+    copySourceLabel = 'Fala do Usuário';
+    copyId = 'USER-SPEECH';
   } else {
     const copySelection = selectAndAdaptProdutos2Copy({
       subMode: form.subMode,
@@ -672,7 +676,9 @@ export async function runProdutos2Pipeline(params: {
     clientGender: form.clientGender,
     finalCopy: applySpeechIntro(finalCopy, Boolean(form.useSpeechIntro)),
     copySourceLabel:
-      form.selectedSpeechOption === 'aurora_copy'
+      form.selectedSpeechOption === 'user_speech'
+        ? 'Fala do Usuário'
+        : form.selectedSpeechOption === 'aurora_copy'
         ? 'Aurora Copy'
         : form.selectedSpeechOption === 'banco2'
         ? 'Banco de Copies (Opção 2)'
@@ -680,7 +686,9 @@ export async function runProdutos2Pipeline(params: {
         ? 'Banco de Copies (Opção 1)'
         : copySourceLabel,
     copyId:
-      form.selectedSpeechOption === 'aurora_copy'
+      form.selectedSpeechOption === 'user_speech'
+        ? 'USER-SPEECH'
+        : form.selectedSpeechOption === 'aurora_copy'
         ? 'AURORA-01'
         : form.selectedSpeechOption === 'banco2'
         ? 'BANCO-02'

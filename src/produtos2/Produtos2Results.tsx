@@ -83,9 +83,9 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
   const [descriptionCopied, setDescriptionCopied] = useState(false);
   const [isExportingZip, setIsExportingZip] = useState(false);
 
-  // Trocar fala / Corrigir fala com Aurora Copy e Refazer Prompt
+  // Trocar fala / Revisar texto e Refazer Prompt
   const [speechInput, setSpeechInput] = useState(result.finalCopy || '');
-  const [isGeneratingAuroraCopy, setIsGeneratingAuroraCopy] = useState(false);
+  const [isReviewingSpeech, setIsReviewingSpeech] = useState(false);
   const [isSpeechMicRecording, setIsSpeechMicRecording] = useState(false);
   const [speechAppliedSuccess, setSpeechAppliedSuccess] = useState(false);
   const speechRecRef = useRef<any>(null);
@@ -192,33 +192,32 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
     setTimeout(() => setSpeechAppliedSuccess(false), 3000);
   };
 
-  const handleGenerateAuroraCopy = async () => {
-    setIsGeneratingAuroraCopy(true);
+  const handleReviewSpeech = async () => {
+    const trimmed = speechInput.trim();
+    if (!trimmed || isReviewingSpeech) return;
+    setIsReviewingSpeech(true);
     try {
       const res = await fetch('/api/produtos2-planning', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          action: 'generate_aurora_copy',
-          productName: result.productName,
-          productInfo: result.productInfo || result.productName,
-          duration: result.duration,
+          action: 'normalize_speech_for_ai',
+          text: trimmed,
           aiProfile,
         }),
       });
 
       const data = await res.json();
-      if (data.success && data.auroraCopy) {
-        setSpeechInput(data.auroraCopy);
-        applyNewSpeech(data.auroraCopy, true);
+      if (data.success && data.reviewedSpeech) {
+        setSpeechInput(data.reviewedSpeech);
       } else {
-        alert(`Erro ao gerar fala com Aurora Copy: ${data.error || 'Erro desconhecido'}`);
+        alert(`Erro ao revisar fala: ${data.error || 'Erro desconhecido'}`);
       }
     } catch (err: any) {
-      console.error('Erro ao chamar Aurora Copy:', err);
-      alert(`Falha de conexão com a Aurora Copy: ${err?.message || err}`);
+      console.error('Erro ao revisar fala:', err);
+      alert(`Falha de conexão ao revisar fala: ${err?.message || err}`);
     } finally {
-      setIsGeneratingAuroraCopy(false);
+      setIsReviewingSpeech(false);
     }
   };
 
@@ -421,13 +420,12 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
             </span>
             <span
               className={`px-2 py-0.5 rounded text-[11px] font-mono font-bold ${
-                (result.duration === 8 && result.finalCopy.length > 165) ||
-                (result.duration === 10 && result.finalCopy.length > 235)
+                result.finalCopy.length > 225
                   ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
                   : 'bg-zinc-800 text-zinc-300 border border-zinc-700'
               }`}
             >
-              {result.finalCopy.length} caracteres ({result.duration}s · máx. {result.duration === 8 ? 165 : 235})
+              {result.finalCopy.length} / 225 caracteres (máx. 225)
             </span>
           </div>
 
@@ -456,14 +454,14 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
       </div>
 
       {/* ===================================================================== */}
-      {/* NOVO CARD: TROCAR FALA / REFAZER PROMPT COM IA OU AURORA COPY        */}
+      {/* NOVO CARD: TROCAR FALA · REVISAR TEXTO E REFAZER PROMPT              */}
       {/* ===================================================================== */}
       <div className="p-4 sm:p-5 rounded-2xl bg-zinc-900/95 border border-purple-500/40 shadow-xl space-y-3.5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Edit3 className="w-4 h-4 text-purple-400" />
             <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-wide">
-              Trocar Fala · Ajustar com IA
+              Trocar Fala
             </h3>
           </div>
 
@@ -477,7 +475,7 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
 
         <p className="text-xs text-zinc-400 leading-relaxed">
           Digite a nova fala, use o microfone para ditar ou clique em{' '}
-          <strong className="text-purple-300">"Corrigir fala com Aurora Copy"</strong> para gerar uma copy nova de alta conversão. Em seguida, clique em{' '}
+          <strong className="text-amber-400">"Revisar texto"</strong> para normalizar gramática, pontuação e unidades para locução de IA (máx. 225 caracteres). Em seguida, clique em{' '}
           <strong className="text-emerald-300">"Refazer Prompt"</strong> para atualizar o prompt do Veo 3.
         </p>
 
@@ -486,11 +484,15 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
             rows={3}
             value={speechInput}
             onChange={(e) => setSpeechInput(e.target.value)}
-            placeholder="Digite aqui a nova fala do vídeo, use o microfone ou clique em 'Corrigir fala com Aurora Copy'..."
-            className="w-full p-3.5 pr-12 rounded-xl bg-zinc-950 border border-zinc-700 text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-purple-400 leading-relaxed font-sans shadow-inner resize-y"
+            placeholder="Digite aqui a nova fala do vídeo ou use o microfone..."
+            className={`w-full p-3.5 pr-12 rounded-xl bg-zinc-950 border text-xs sm:text-sm placeholder-zinc-500 focus:outline-none leading-relaxed font-sans shadow-inner resize-y transition-colors ${
+              speechInput.length > 225
+                ? 'text-rose-400 border-rose-500 focus:border-rose-400 font-semibold'
+                : 'text-zinc-100 border-zinc-700 focus:border-purple-400'
+            }`}
           />
 
-          {/* Botão Microfone no mesmo padrão da aba Adicionar Copy Personalizada */}
+          {/* Botão Microfone */}
           <button
             type="button"
             onClick={toggleSpeechMicrophone}
@@ -517,28 +519,31 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
         )}
 
         <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1">
-          <div className="text-[11px] font-mono text-zinc-400">
-            {speechInput.trim().length} caracteres ({result.duration}s · máx.{' '}
-            {result.duration === 8 ? 165 : 235})
+          <div
+            className={`text-[11px] font-mono ${
+              speechInput.length > 225 ? 'text-rose-400 font-bold' : 'text-zinc-400'
+            }`}
+          >
+            {speechInput.length} / 225 caracteres (máx. 225)
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {/* Botão Corrigir fala com Aurora Copy */}
+            {/* Botão Revisar texto (Amarelo) */}
             <button
               type="button"
-              onClick={handleGenerateAuroraCopy}
-              disabled={isGeneratingAuroraCopy}
-              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-purple-950/40"
+              onClick={handleReviewSpeech}
+              disabled={isReviewingSpeech || !speechInput.trim()}
+              className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 text-xs font-black flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-amber-950/20"
             >
-              {isGeneratingAuroraCopy ? (
+              {isReviewingSpeech ? (
                 <>
-                  <RotateCcw className="w-3.5 h-3.5 animate-spin" />
-                  <span>Aurora Copy criando fala...</span>
+                  <RotateCcw className="w-3.5 h-3.5 animate-spin text-slate-950" />
+                  <span>Revisando texto...</span>
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-3.5 h-3.5 text-purple-200" />
-                  <span>Corrigir fala com Aurora Copy</span>
+                  <Sparkles className="w-3.5 h-3.5 text-slate-950 fill-slate-950" />
+                  <span>Revisar texto</span>
                 </>
               )}
             </button>

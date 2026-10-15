@@ -1249,6 +1249,58 @@ export default function App() {
     }
   };
 
+  const handleCreateNewProdutos2 = () => {
+    setProdutos2Result(null);
+    setProdutos2Form({
+      subMode: 'produtos_geral',
+      maleSubOption: 'calcados',
+      productInfo: '',
+      productName: '',
+      duration: 10,
+      customCopy: '',
+      speechesGenerated: false,
+      bancoCopy: '',
+      bancoCopy2: '',
+      auroraCopy: '',
+      userSpeech: undefined,
+      hasUserSpeech: false,
+      selectedSpeechOption: 'banco1',
+      finalSelectedSpeech: '',
+      additionalInstructions: '',
+      influencer: null,
+      clientGender: 'Unissex',
+      speechMode: 'com_fala',
+      useSpeechIntro: false,
+      framing: 'com_rosto',
+      scenario: 'padrao_uso',
+      variations: [
+        {
+          id: 'p2-var-1',
+          name: 'Cor / Variação 1',
+          photos: [],
+        },
+      ],
+      maleClothStyle: 'storyboard',
+    });
+  };
+
+  const handleContinueWithSameProduct = () => {
+    setProdutos2Result(null);
+    setProdutos2Form((prev) => ({
+      ...prev,
+      additionalInstructions: '',
+      speechesGenerated: false,
+      bancoCopy: '',
+      bancoCopy2: '',
+      auroraCopy: '',
+      userSpeech: undefined,
+      hasUserSpeech: false,
+      selectedSpeechOption: 'banco1',
+      finalSelectedSpeech: '',
+      customCopy: '',
+    }));
+  };
+
   // Modo Produto OLD Pipeline Trigger
   const handleStartProduto = async () => {
     setIsProcessingProduto(true);
@@ -1329,15 +1381,26 @@ export default function App() {
               </>
             ) : (
               <div className="space-y-6">
-                <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
-                  <button
-                    type="button"
-                    onClick={() => setProdutos2Result(null)}
-                    className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-xs font-bold text-emerald-300 hover:text-white rounded-xl flex items-center gap-2 transition-colors cursor-pointer border border-zinc-700"
-                  >
-                    <RotateCcw className="w-4 h-4 text-emerald-400" />
-                    <span>Criar Novo no Modo Produtos 2.0</span>
-                  </button>
+                <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-zinc-800">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={handleCreateNewProdutos2}
+                      className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-xs font-bold text-emerald-300 hover:text-white rounded-xl flex items-center gap-2 transition-colors cursor-pointer border border-zinc-700"
+                    >
+                      <RotateCcw className="w-4 h-4 text-emerald-400" />
+                      <span>Criar Novo no Modo Produtos 2.0</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleContinueWithSameProduct}
+                      className="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-amber-950/20"
+                    >
+                      <Sparkles className="w-4 h-4 text-slate-950 fill-slate-950" />
+                      <span>Continuar no produto</span>
+                    </button>
+                  </div>
                 </div>
 
                 <Produtos2Results
