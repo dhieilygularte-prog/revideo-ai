@@ -604,6 +604,10 @@ export async function runProdutos2Pipeline(params: {
     scenes,
     additionalInstructions: form.additionalInstructions,
     variations: form.variations,
+    isDialogue: form.isDialogue,
+    dialogueDescription: form.dialogueDescription,
+    dialogueScript: form.dialogueScript,
+    speakers: form.speakers,
   });
 
   onProgress?.(52, '4/6 Gerando PRIMEIRO a imagem do Storyboard 3x3 (9 cenas numeradas 1080x1920)...');
@@ -652,6 +656,10 @@ export async function runProdutos2Pipeline(params: {
     scenes,
     additionalInstructions: form.additionalInstructions,
     variations: form.variations,
+    isDialogue: form.isDialogue,
+    dialogueDescription: form.dialogueDescription,
+    dialogueScript: form.dialogueScript,
+    speakers: form.speakers,
   });
 
   // Gerar Descrição do Post + Hashtags para TikTok / Reels (Modo Ania portado para Produtos 2.0)
@@ -710,6 +718,11 @@ export async function runProdutos2Pipeline(params: {
     storyboardAudit,
     veoPrompt,
     variations: form.variations,
+    additionalInstructions: form.additionalInstructions,
+    isDialogue: form.isDialogue,
+    dialogueDescription: form.dialogueDescription,
+    dialogueScript: form.dialogueScript,
+    speakers: form.speakers,
     description,
     hashtags,
   };

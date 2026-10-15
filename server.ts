@@ -2402,8 +2402,24 @@ MEMÓRIA E PRINCÍPIOS DA AURORA COPY QUE VOCÊ DEVE APLICAR:
    - Corrija falhas de digitação por voz (ex: "pó pouco" -> "Poco", "não Tik Tok Shop" -> "na TikTok Shop").
    - Escreva números e unidades por extenso para voz quando apropriado (ex: "800 watts", "23 polegadas").
 
+5. DIÁLOGOS E MÚLTIPLOS PERSONAGENS (MANDATÓRIO):
+   - Se o usuário descreveu falas para mais de uma pessoa (ex: mulher e homem conversando em um encontro, coro de pessoas, amigos, vendedor e cliente):
+     * Identifique com clareza quem fala cada trecho.
+     * Mantenha no userSpeech o texto completo e fluido.
+     * Preencha os campos isDialogue (true), dialogueDescription, dialogueScript e speakers com o mapeamento exato de cada fala e personagem.
+
 FORMATO DE RESPOSTA OBRIGATÓRIO (JSON):
-{"hasUserSpeech": true, "userSpeech": "sua copy condensada de 220 a 225 caracteres aqui"}`;
+{
+  "hasUserSpeech": true,
+  "userSpeech": "sua copy condensada de 220 a 225 caracteres aqui",
+  "isDialogue": true,
+  "dialogueDescription": "Diálogo entre Mulher (admiração/pergunta) e Homem (apresentação e indicação de compra)",
+  "dialogueScript": "Mulher: \"Que celular bonito! Que celular é esse?\"\nHomem: \"Esse aqui é o novo Poco X8 Pro, ele é um celular custo-benefício com uma câmera de alta qualidade e um ótimo custo-benefício. Eu comprei na TikTok Shop, toca no carrinho laranja e adquira o seu!\"",
+  "speakers": [
+    { "speaker": "Mulher", "gender": "feminina", "speech": "Que celular bonito! Que celular é esse?" },
+    { "speaker": "Homem", "gender": "masculina", "speech": "Esse aqui é o novo Poco X8 Pro, ele é um celular custo-benefício com uma câmera de alta qualidade e um ótimo custo-benefício. Eu comprei na TikTok Shop, toca no carrinho laranja e adquira o seu!" }
+  ]
+}`;
 
         const raw = await executeTopAIModel({
           systemPrompt: detectSystem,
@@ -2454,10 +2470,19 @@ FORMATO DE RESPOSTA OBRIGATÓRIO (JSON):
            Boolean(userSpeech))
         );
 
+        const isDialogue = Boolean(parsed.isDialogue || (parsed.speakers && parsed.speakers.length > 1));
+        const dialogueDescription = parsed.dialogueDescription || '';
+        const dialogueScript = parsed.dialogueScript || '';
+        const speakers = Array.isArray(parsed.speakers) ? parsed.speakers : [];
+
         return res.json({
           success: true,
           hasUserSpeech,
           userSpeech: hasUserSpeech ? userSpeech : '',
+          isDialogue,
+          dialogueDescription,
+          dialogueScript,
+          speakers,
         });
       } catch (err: any) {
         console.warn('Erro ao detectar fala do usuário:', err);

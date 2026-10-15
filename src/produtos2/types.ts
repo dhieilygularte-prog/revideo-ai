@@ -60,6 +60,10 @@ export interface Produtos2FormState {
   auroraCopy?: string;
   selectedSpeechOption?: 'user_speech' | 'banco1' | 'banco2' | 'aurora_copy';
   finalSelectedSpeech?: string;
+  isDialogue?: boolean;
+  dialogueDescription?: string;
+  dialogueScript?: string;
+  speakers?: Array<{ speaker: string; gender?: string; speech: string }>;
   additionalInstructions: string;
   influencer: Produtos2Influencer;
   influencerAutoFilled?: boolean;
@@ -140,6 +144,11 @@ export interface Produtos2ResultState {
   storyboardAudit?: Produtos2StoryboardAudit;
   veoPrompt: string;
   variations?: Produtos2Variation[];
+  additionalInstructions?: string;
+  isDialogue?: boolean;
+  dialogueDescription?: string;
+  dialogueScript?: string;
+  speakers?: Array<{ speaker: string; gender?: string; speech: string }>;
   description?: string;
   hashtags?: string[];
 }

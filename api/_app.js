@@ -3321,8 +3321,25 @@ MEM\xD3RIA E PRINC\xCDPIOS DA AURORA COPY QUE VOC\xCA DEVE APLICAR:
    - Corrija falhas de digita\xE7\xE3o por voz (ex: "p\xF3 pouco" -> "Poco", "n\xE3o Tik Tok Shop" -> "na TikTok Shop").
    - Escreva n\xFAmeros e unidades por extenso para voz quando apropriado (ex: "800 watts", "23 polegadas").
 
+5. DI\xC1LOGOS E M\xDALTIPLOS PERSONAGENS (MANDAT\xD3RIO):
+   - Se o usu\xE1rio descreveu falas para mais de uma pessoa (ex: mulher e homem conversando em um encontro, coro de pessoas, amigos, vendedor e cliente):
+     * Identifique com clareza quem fala cada trecho.
+     * Mantenha no userSpeech o texto completo e fluido.
+     * Preencha os campos isDialogue (true), dialogueDescription, dialogueScript e speakers com o mapeamento exato de cada fala e personagem.
+
 FORMATO DE RESPOSTA OBRIGAT\xD3RIO (JSON):
-{"hasUserSpeech": true, "userSpeech": "sua copy condensada de 220 a 225 caracteres aqui"}`;
+{
+  "hasUserSpeech": true,
+  "userSpeech": "sua copy condensada de 220 a 225 caracteres aqui",
+  "isDialogue": true,
+  "dialogueDescription": "Di\xE1logo entre Mulher (admira\xE7\xE3o/pergunta) e Homem (apresenta\xE7\xE3o e indica\xE7\xE3o de compra)",
+  "dialogueScript": "Mulher: "Que celular bonito! Que celular \xE9 esse?"
+Homem: "Esse aqui \xE9 o novo Poco X8 Pro, ele \xE9 um celular custo-benef\xEDcio com uma c\xE2mera de alta qualidade e um \xF3timo custo-benef\xEDcio. Eu comprei na TikTok Shop, toca no carrinho laranja e adquira o seu!"",
+  "speakers": [
+    { "speaker": "Mulher", "gender": "feminina", "speech": "Que celular bonito! Que celular \xE9 esse?" },
+    { "speaker": "Homem", "gender": "masculina", "speech": "Esse aqui \xE9 o novo Poco X8 Pro, ele \xE9 um celular custo-benef\xEDcio com uma c\xE2mera de alta qualidade e um \xF3timo custo-benef\xEDcio. Eu comprei na TikTok Shop, toca no carrinho laranja e adquira o seu!" }
+  ]
+}`;
         const raw = await executeTopAIModel({
           systemPrompt: detectSystem,
           userPrompt: `INSTRU\xC7\xD5ES ADICIONAIS FORNECIDAS PELO USU\xC1RIO:
@@ -3358,10 +3375,18 @@ INFORMA\xC7\xD5ES DO PRODUTO: ${productInfo || ""}`,
         const hasUserSpeech = Boolean(
           userSpeech && userSpeech.length >= 8 && (parsed.hasUserSpeech === true || parsed.has_user_speech === true || String(parsed.hasUserSpeech).toLowerCase() === "true" || String(parsed.has_user_speech).toLowerCase() === "true" || Boolean(userSpeech))
         );
+        const isDialogue = Boolean(parsed.isDialogue || parsed.speakers && parsed.speakers.length > 1);
+        const dialogueDescription = parsed.dialogueDescription || "";
+        const dialogueScript = parsed.dialogueScript || "";
+        const speakers = Array.isArray(parsed.speakers) ? parsed.speakers : [];
         return res.json({
           success: true,
           hasUserSpeech,
-          userSpeech: hasUserSpeech ? userSpeech : ""
+          userSpeech: hasUserSpeech ? userSpeech : "",
+          isDialogue,
+          dialogueDescription,
+          dialogueScript,
+          speakers
         });
       } catch (err) {
         console.warn("Erro ao detectar fala do usu\xE1rio:", err);

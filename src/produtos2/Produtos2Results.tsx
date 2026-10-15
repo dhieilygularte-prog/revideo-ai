@@ -164,11 +164,11 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
       const speechRegex = /(FALAR EXATAMENTE UMA VEZ:\s*\n)("[^"]*"|'[^']*'|[^\n]+)/i;
       if (speechRegex.test(updatedPrompt)) {
         updatedPrompt = updatedPrompt.replace(speechRegex, `$1"${trimmed}"`);
-      } else {
         updatedPrompt = buildProdutos2VeoPrompt({
           productName: prev.productName,
           duration: prev.duration,
           speechMode: prev.speechMode,
+          useSpeechIntro: prev.useSpeechIntro,
           finalCopy: trimmed,
           influencerResolved: prev.influencerResolved,
           framing: prev.framing,
@@ -176,7 +176,12 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
           avatarDescription: prev.avatarDescription,
           scenarioDescription: prev.scenarioDescription,
           scenes: prev.scenes,
+          additionalInstructions: prev.additionalInstructions,
           variations: prev.variations,
+          isDialogue: prev.isDialogue,
+          dialogueDescription: prev.dialogueDescription,
+          dialogueScript: prev.dialogueScript,
+          speakers: prev.speakers,
         });
       }
 
@@ -372,6 +377,7 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
         productName: prev.productName,
         duration: prev.duration,
         speechMode: prev.speechMode,
+        useSpeechIntro: prev.useSpeechIntro,
         finalCopy: newCopy,
         influencerResolved: prev.influencerResolved,
         framing: prev.framing,
@@ -379,7 +385,12 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
         avatarDescription: prev.avatarDescription,
         scenarioDescription: prev.scenarioDescription,
         scenes: prev.scenes,
+        additionalInstructions: prev.additionalInstructions,
         variations: prev.variations,
+        isDialogue: prev.isDialogue,
+        dialogueDescription: prev.dialogueDescription,
+        dialogueScript: prev.dialogueScript,
+        speakers: prev.speakers,
       });
       return {
         ...prev,

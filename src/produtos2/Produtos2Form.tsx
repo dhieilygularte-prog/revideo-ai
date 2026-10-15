@@ -205,6 +205,11 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
       // 3. Aurora Copy imediata (0ms) como base
       let auroraResult = `Gente, olha esse lançamento imperdível! O ${finalProductName} foi desenvolvido com material resistente e tecnologia pensada para o seu conforto diário, super fácil de usar. Confere todos os detalhes aqui embaixo!`;
 
+      let detectedIsDialogue = false;
+      let detectedDialogueDescription = '';
+      let detectedDialogueScript = '';
+      let detectedSpeakers: any[] = [];
+
       // 4. Chamada de refinamento com IA topo de linha (timeout estrito de 4.2s para ficar sempre abaixo de 5s)
       try {
         const controller = new AbortController();
@@ -253,6 +258,12 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                 if (data?.success && data?.hasUserSpeech && data?.userSpeech) {
                   hasUserSpeech = true;
                   detectedUserSpeech = data.userSpeech;
+                  if (data.isDialogue) {
+                    detectedIsDialogue = true;
+                    detectedDialogueDescription = data.dialogueDescription || '';
+                    detectedDialogueScript = data.dialogueScript || '';
+                    detectedSpeakers = data.speakers || [];
+                  }
                 }
               })
               .catch(() => null)
@@ -274,6 +285,10 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
         speechesGenerated: true,
         hasUserSpeech,
         userSpeech: detectedUserSpeech,
+        isDialogue: detectedIsDialogue,
+        dialogueDescription: detectedDialogueDescription,
+        dialogueScript: detectedDialogueScript,
+        speakers: detectedSpeakers,
         bancoCopy: banco1Result,
         bancoCopy2: banco2Result,
         auroraCopy: auroraResult,
