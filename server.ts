@@ -2374,29 +2374,28 @@ app.post('/api/produtos2-planning', async (req, res) => {
         }
 
         const detectSystem = `Você é o modelo mais avançado da OpenAI especializado em roteiros e copies para vídeos do TikTok Shop Brasil.
-O usuário preencheu o campo de "Instruções Adicionais" com um texto que mistura descrição do cenário, dos personagens e falas/diálogos que ele quer que sejam ditas no vídeo.
+O usuário preencheu o campo "Instruções Adicionais" com um texto ditado por voz (informal, repetitivo, com hesitações) que mistura descrição de cenário, personagens, ações e as FALAS que ele quer no vídeo.
 
 SUA MISSÃO OBRIGATÓRIA:
-1. Extrair EXCLUSIVAMENTE o que é fala/diálogo das pessoas no vídeo, eliminando totalmente metanarrativa, explicações e descrições visuais/de cenário (ex: "e nessas falas né", "como eu disse numa cafeteria", "são casal realista", "o primeiro frame começa assim", "cenário vai ser assim", etc. JAMAIS inclua essas frases na fala!).
-2. No campo "userSpeech", coloque a FALA COMPLETA que será narrada/falada no vídeo, unindo as falas de todos os personagens de forma contínua, fluida e natural (sem nomes de personagens no texto da fala), totalizando estritamente até 225 caracteres.
-3. Se houver mais de um personagem falando (ex: mulher e homem conversando em um encontro, ou várias pessoas):
-   - Defina "isDialogue": true
-   - "dialogueDescription": resumo claro da cena e dos personagens (ex: "Encontro em uma cafeteria ao pôr do sol entre um rapaz e uma moça negros brasileiros.")
-   - "dialogueScript": roteiro formatado com cada personagem (ex: "Mulher: \"Nossa, que celular bonito!\"\nHomem: \"Esse aqui é o novo Poco X8 Pro, ele tem fotos incríveis! Comprei no TikTok Shop, só tocar no carrinho laranja que você também garante o seu!\"")
-   - "speakers": lista estruturada com os personagens, seus papéis, gênero da voz, em quais cenas falam (ex: Cenas 1 e 2 para Mulher, Cenas 3 a 9 para Homem) e suas falas exatas.
-4. O "X" em modelos de produtos (como "X8", "Poco X8 Pro") NUNCA deve ser trocado por "vezes". Mantenha a letra X maiúscula.
+1. Identifique TODAS as falas que algum personagem diz em voz alta no vídeo (marcadores típicos: "fala", "diz", "vira e fala", "fala assim", "ele já fala assim", "dizendo", "grita", "todos falam em coro", etc.).
+2. O usuário frequentemente repete a mesma fala duas vezes com pequenas variações (ditado por voz). Nesse caso, FUNDA as versões numa única fala, mantendo os elementos mais fortes de cada uma (ex.: urgência "só até hoje à meia-noite", "menos da metade do preço", "preço de banana"). NUNCA pegue só o final da fala; a fala começa no gancho (ex.: "Gente, o gerente ficou doido...").
+3. Elimine totalmente metanarrativa e descrição (ex.: "a cena é o seguinte", "o primeiro frame é essa", "pronto, essa vai ser a questão", "é isso", "e aí termina com...", descrições de roupas, aparência e lugar). JAMAIS inclua isso na fala.
+4. Sons não verbais de personagens (ex.: "au au au" de alguém imitando cachorro) NÃO entram em "userSpeech"; descreva-os em "soundEffects".
+5. "userSpeech": a FALA COMPLETA falada no vídeo, unindo todas as falas de todos os personagens em ordem, fluida, natural, persuasiva para TikTok Shop, sem nomes de personagens, com no máximo 225 caracteres (idealmente entre 170 e 225). Corrija a transcrição (ex.: "pó pouco"/"pouco" -> "Poco", "Tik Tok" -> "TikTok Shop"). O "X" em modelos (X8, Poco X8 Pro) NUNCA vira "vezes".
+6. "speakers": lista de TODOS os personagens que falam, na ordem, com { "speaker": papel (ex.: "Vendedor", "Mulher", "Homem", "Gerente", "Clientes em coro"), "gender": "masculina" | "feminina" | "coro", "speech": fala exata dele (trecho de userSpeech), "scenes": em quais cenas de 1 a 9 fala }.
+7. "isDialogue": true SOMENTE se 2 ou mais personagens/grupos diferentes falam. Se apenas um personagem fala, "isDialogue": false (mas preencha "speakers" com esse único personagem e seu gênero).
+8. "dialogueDescription": resumo curto da cena e dos personagens (sem as falas). "dialogueScript": roteiro "Papel: \\"fala\\"" por linha.
+9. Se não houver nenhuma fala explícita, "hasUserSpeech": false e "userSpeech": "".
 
-FORMATO DE RESPOSTA OBRIGATÓRIO (JSON):
+FORMATO DE RESPOSTA (JSON estrito):
 {
   "hasUserSpeech": true,
-  "userSpeech": "Nossa, que celular bonito! Esse aqui é o novo Poco X8 Pro, ele tem fotos incríveis! Comprei aqui no TikTok Shop, só tocar no carrinho laranja que você também garante o seu!",
-  "isDialogue": true,
-  "dialogueDescription": "Encontro em cafeteria ao pôr do sol entre um rapaz e uma moça negros brasileiros.",
-  "dialogueScript": "Mulher: \"Nossa, que celular bonito!\"\nHomem: \"Esse aqui é o novo Poco X8 Pro, ele tem fotos incríveis! Comprei no TikTok Shop, só tocar no carrinho laranja que você também garante o seu!\"",
-  "speakers": [
-    { "speaker": "Mulher", "gender": "feminina", "speech": "Nossa, que celular bonito!", "scenes": "Cenas 1 e 2" },
-    { "speaker": "Homem", "gender": "masculina", "speech": "Esse aqui é o novo Poco X8 Pro, ele tem fotos incríveis! Comprei no TikTok Shop, só tocar no carrinho laranja que você também garante o seu!", "scenes": "Cenas 3 a 9" }
-  ]
+  "userSpeech": "...",
+  "isDialogue": false,
+  "dialogueDescription": "...",
+  "dialogueScript": "Vendedor: \\"...\\"",
+  "speakers": [ { "speaker": "Vendedor", "gender": "masculina", "speech": "...", "scenes": "Cenas 2 a 9" } ],
+  "soundEffects": "..."
 }`;
 
         const raw = await executeTopAIModel({

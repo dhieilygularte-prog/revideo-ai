@@ -111,6 +111,31 @@ export function extractUserSpeechFromInstructions(
     };
   }
 
+  // 1.2. Falas introduzidas por verbo + dois-pontos (texto ditado: "o vendedor vira e diz assim: Gente, ...")
+  const colonRegex = /\b(?:fala|diz|disse|falou|grita|gritam|falam|dizem|responde|pergunta)(?:\s+assim)?\s*:\s*([\s\S]+?)(?=\s+(?:E\s+a[íi]\s+termina|E\s+a[íi]\s+j[áa]\s+corta|E\s+a[íi]\s+corta|Pronto\b|[ÉE]\s+isso\b|Ent[ãa]o\s+come[çc]a|A[íi]\s+a\s+primeira\s+cena|[ÉE]\s+uma\s+loja|O\s+cen[áa]rio|E\s+nessas\s+falas)|$)/gi;
+  const colonSegments: string[] = [];
+  let cm: RegExpExecArray | null;
+  while ((cm = colonRegex.exec(text)) !== null) {
+    let seg = (cm[1] || '').trim();
+    // Se houver um novo marcador dentro do trecho ("Gente, gente... ele já fala assim: Gente, ..."), fica com o que vem depois do último
+    const inner = seg.split(/\b(?:fala|diz|disse|falou)(?:\s+assim)?\s*:\s*/i);
+    seg = inner[inner.length - 1].trim();
+    seg = seg
+      .replace(/,?\s*n[ée]\?/gi, '!')
+      .replace(/\s+/g, ' ')
+      .trim();
+    seg = fixCommonSlips(seg);
+    // Ignora onomatopeias ("au au au") e trechos curtos demais
+    if (seg.length >= 25 && !/^(?:au\s*)+/i.test(seg)) {
+      colonSegments.push(seg);
+    }
+  }
+  if (colonSegments.length > 0) {
+    // A última reformulação do usuário costuma ser a versão final desejada
+    const chosen = colonSegments[colonSegments.length - 1];
+    return { hasSpeech: true, speech: formatFinalSpeech(chosen) };
+  }
+
   // 1.5. Detecção e Extração Limpa de Diálogo entre Personagens (ex: mulher e homem, encontro)
   const isDialoguePattern =
     (text.toLowerCase().includes('homem') || text.toLowerCase().includes('rapaz')) &&
@@ -254,6 +279,7 @@ export function formatFinalSpeech(raw: string): string {
   s = s.charAt(0).toUpperCase() + s.slice(1);
   s = s.replace(/\.{2,}/g, '.');
   s = s.replace(/\s+([.,!?])/g, '$1');
+  s = s.replace(/([.!?]\s+)([a-záàâãéêíóôõúç])/g, (_m, p, c) => p + c.toUpperCase());
 
   // Se ultrapassar 225 caracteres, ajusta para ficar o mais próximo possível de 225 (entre 220 e 225)
   if (s.length > 225) {

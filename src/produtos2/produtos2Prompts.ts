@@ -300,6 +300,11 @@ export function detectDialogueInfo(params: {
     };
   }
 
+  // 1.5. A IA já analisou e concluiu que há apenas um personagem falando: não aplicar heurística
+  if (params.isDialogue === false && rawSpeakers.length > 0) {
+    return { isDialogue: false };
+  }
+
   // 2. Análise heurística das instruções adicionais ou da copy final
   const fullText = `${params.additionalInstructions || ''}\n${params.finalCopy || ''}`;
   const lower = fullText.toLowerCase();
@@ -700,7 +705,12 @@ export function buildProdutos2VeoPrompt(params: {
     })
     .join('\n\n');
 
-  const voiceGender = influencerResolved === 'Homem' ? 'MASCULINA' : 'FEMININA';
+  const singleSpeaker = !isDialogueActive && Array.isArray(speakers) && speakers.length === 1 ? speakers[0] : undefined;
+  const voiceGender = singleSpeaker?.gender === 'masculina'
+    ? 'MASCULINA'
+    : singleSpeaker?.gender === 'feminina'
+    ? 'FEMININA'
+    : influencerResolved === 'Homem' ? 'MASCULINA' : 'FEMININA';
   const accentMatch = additionalInstructions?.match(/sotaque\s+([a-záàâãéêíóôõúç]+)/i);
   const accentClause = accentMatch ? `, com sotaque ${accentMatch[1]}` : '';
 

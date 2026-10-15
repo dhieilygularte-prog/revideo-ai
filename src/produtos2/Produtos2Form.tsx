@@ -258,11 +258,11 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                 if (data?.success && data?.hasUserSpeech && data?.userSpeech) {
                   hasUserSpeech = true;
                   detectedUserSpeech = data.userSpeech;
+                  detectedSpeakers = Array.isArray(data.speakers) ? data.speakers : [];
+                  detectedDialogueDescription = data.dialogueDescription || '';
                   if (data.isDialogue) {
                     detectedIsDialogue = true;
-                    detectedDialogueDescription = data.dialogueDescription || '';
                     detectedDialogueScript = data.dialogueScript || '';
-                    detectedSpeakers = data.speakers || [];
                   }
                 }
               })

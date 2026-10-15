@@ -1278,6 +1278,23 @@ function extractUserSpeechFromInstructions(rawText, productName = "") {
       speech: formatFinalSpeech(combined)
     };
   }
+  const colonRegex = /\b(?:fala|diz|disse|falou|grita|gritam|falam|dizem|responde|pergunta)(?:\s+assim)?\s*:\s*([\s\S]+?)(?=\s+(?:E\s+a[íi]\s+termina|E\s+a[íi]\s+j[áa]\s+corta|E\s+a[íi]\s+corta|Pronto\b|[ÉE]\s+isso\b|Ent[ãa]o\s+come[çc]a|A[íi]\s+a\s+primeira\s+cena|[ÉE]\s+uma\s+loja|O\s+cen[áa]rio|E\s+nessas\s+falas)|$)/gi;
+  const colonSegments = [];
+  let cm;
+  while ((cm = colonRegex.exec(text)) !== null) {
+    let seg = (cm[1] || "").trim();
+    const inner = seg.split(/\b(?:fala|diz|disse|falou)(?:\s+assim)?\s*:\s*/i);
+    seg = inner[inner.length - 1].trim();
+    seg = seg.replace(/,?\s*n[ée]\?/gi, "!").replace(/\s+/g, " ").trim();
+    seg = fixCommonSlips(seg);
+    if (seg.length >= 25 && !/^(?:au\s*)+/i.test(seg)) {
+      colonSegments.push(seg);
+    }
+  }
+  if (colonSegments.length > 0) {
+    const chosen = colonSegments[colonSegments.length - 1];
+    return { hasSpeech: true, speech: formatFinalSpeech(chosen) };
+  }
   const isDialoguePattern = (text.toLowerCase().includes("homem") || text.toLowerCase().includes("rapaz")) && (text.toLowerCase().includes("mulher") || text.toLowerCase().includes("mo\xE7a")) && /(?:fala|diz|falou|pergunt)/i.test(text);
   if (isDialoguePattern) {
     const womanMatch = text.match(
@@ -1380,6 +1397,7 @@ function formatFinalSpeech(raw) {
   s = s.charAt(0).toUpperCase() + s.slice(1);
   s = s.replace(/\.{2,}/g, ".");
   s = s.replace(/\s+([.,!?])/g, "$1");
+  s = s.replace(/([.!?]\s+)([a-záàâãéêíóôõúç])/g, (_m, p, c) => p + c.toUpperCase());
   if (s.length > 225) {
     s = fitSpeechCloseToLimit(s, 225, 218);
   }
@@ -3373,31 +3391,28 @@ ${userPrompt2}` }]
           return res.json({ success: true, hasUserSpeech: false, userSpeech: "" });
         }
         const detectSystem = `Voc\xEA \xE9 o modelo mais avan\xE7ado da OpenAI especializado em roteiros e copies para v\xEDdeos do TikTok Shop Brasil.
-O usu\xE1rio preencheu o campo de "Instru\xE7\xF5es Adicionais" com um texto que mistura descri\xE7\xE3o do cen\xE1rio, dos personagens e falas/di\xE1logos que ele quer que sejam ditas no v\xEDdeo.
+O usu\xE1rio preencheu o campo "Instru\xE7\xF5es Adicionais" com um texto ditado por voz (informal, repetitivo, com hesita\xE7\xF5es) que mistura descri\xE7\xE3o de cen\xE1rio, personagens, a\xE7\xF5es e as FALAS que ele quer no v\xEDdeo.
 
 SUA MISS\xC3O OBRIGAT\xD3RIA:
-1. Extrair EXCLUSIVAMENTE o que \xE9 fala/di\xE1logo das pessoas no v\xEDdeo, eliminando totalmente metanarrativa, explica\xE7\xF5es e descri\xE7\xF5es visuais/de cen\xE1rio (ex: "e nessas falas n\xE9", "como eu disse numa cafeteria", "s\xE3o casal realista", "o primeiro frame come\xE7a assim", "cen\xE1rio vai ser assim", etc. JAMAIS inclua essas frases na fala!).
-2. No campo "userSpeech", coloque a FALA COMPLETA que ser\xE1 narrada/falada no v\xEDdeo, unindo as falas de todos os personagens de forma cont\xEDnua, fluida e natural (sem nomes de personagens no texto da fala), totalizando estritamente at\xE9 225 caracteres.
-3. Se houver mais de um personagem falando (ex: mulher e homem conversando em um encontro, ou v\xE1rias pessoas):
-   - Defina "isDialogue": true
-   - "dialogueDescription": resumo claro da cena e dos personagens (ex: "Encontro em uma cafeteria ao p\xF4r do sol entre um rapaz e uma mo\xE7a negros brasileiros.")
-   - "dialogueScript": roteiro formatado com cada personagem (ex: "Mulher: "Nossa, que celular bonito!"
-Homem: "Esse aqui \xE9 o novo Poco X8 Pro, ele tem fotos incr\xEDveis! Comprei no TikTok Shop, s\xF3 tocar no carrinho laranja que voc\xEA tamb\xE9m garante o seu!"")
-   - "speakers": lista estruturada com os personagens, seus pap\xE9is, g\xEAnero da voz, em quais cenas falam (ex: Cenas 1 e 2 para Mulher, Cenas 3 a 9 para Homem) e suas falas exatas.
-4. O "X" em modelos de produtos (como "X8", "Poco X8 Pro") NUNCA deve ser trocado por "vezes". Mantenha a letra X mai\xFAscula.
+1. Identifique TODAS as falas que algum personagem diz em voz alta no v\xEDdeo (marcadores t\xEDpicos: "fala", "diz", "vira e fala", "fala assim", "ele j\xE1 fala assim", "dizendo", "grita", "todos falam em coro", etc.).
+2. O usu\xE1rio frequentemente repete a mesma fala duas vezes com pequenas varia\xE7\xF5es (ditado por voz). Nesse caso, FUNDA as vers\xF5es numa \xFAnica fala, mantendo os elementos mais fortes de cada uma (ex.: urg\xEAncia "s\xF3 at\xE9 hoje \xE0 meia-noite", "menos da metade do pre\xE7o", "pre\xE7o de banana"). NUNCA pegue s\xF3 o final da fala; a fala come\xE7a no gancho (ex.: "Gente, o gerente ficou doido...").
+3. Elimine totalmente metanarrativa e descri\xE7\xE3o (ex.: "a cena \xE9 o seguinte", "o primeiro frame \xE9 essa", "pronto, essa vai ser a quest\xE3o", "\xE9 isso", "e a\xED termina com...", descri\xE7\xF5es de roupas, apar\xEAncia e lugar). JAMAIS inclua isso na fala.
+4. Sons n\xE3o verbais de personagens (ex.: "au au au" de algu\xE9m imitando cachorro) N\xC3O entram em "userSpeech"; descreva-os em "soundEffects".
+5. "userSpeech": a FALA COMPLETA falada no v\xEDdeo, unindo todas as falas de todos os personagens em ordem, fluida, natural, persuasiva para TikTok Shop, sem nomes de personagens, com no m\xE1ximo 225 caracteres (idealmente entre 170 e 225). Corrija a transcri\xE7\xE3o (ex.: "p\xF3 pouco"/"pouco" -> "Poco", "Tik Tok" -> "TikTok Shop"). O "X" em modelos (X8, Poco X8 Pro) NUNCA vira "vezes".
+6. "speakers": lista de TODOS os personagens que falam, na ordem, com { "speaker": papel (ex.: "Vendedor", "Mulher", "Homem", "Gerente", "Clientes em coro"), "gender": "masculina" | "feminina" | "coro", "speech": fala exata dele (trecho de userSpeech), "scenes": em quais cenas de 1 a 9 fala }.
+7. "isDialogue": true SOMENTE se 2 ou mais personagens/grupos diferentes falam. Se apenas um personagem fala, "isDialogue": false (mas preencha "speakers" com esse \xFAnico personagem e seu g\xEAnero).
+8. "dialogueDescription": resumo curto da cena e dos personagens (sem as falas). "dialogueScript": roteiro "Papel: \\"fala\\"" por linha.
+9. Se n\xE3o houver nenhuma fala expl\xEDcita, "hasUserSpeech": false e "userSpeech": "".
 
-FORMATO DE RESPOSTA OBRIGAT\xD3RIO (JSON):
+FORMATO DE RESPOSTA (JSON estrito):
 {
   "hasUserSpeech": true,
-  "userSpeech": "Nossa, que celular bonito! Esse aqui \xE9 o novo Poco X8 Pro, ele tem fotos incr\xEDveis! Comprei aqui no TikTok Shop, s\xF3 tocar no carrinho laranja que voc\xEA tamb\xE9m garante o seu!",
-  "isDialogue": true,
-  "dialogueDescription": "Encontro em cafeteria ao p\xF4r do sol entre um rapaz e uma mo\xE7a negros brasileiros.",
-  "dialogueScript": "Mulher: "Nossa, que celular bonito!"
-Homem: "Esse aqui \xE9 o novo Poco X8 Pro, ele tem fotos incr\xEDveis! Comprei no TikTok Shop, s\xF3 tocar no carrinho laranja que voc\xEA tamb\xE9m garante o seu!"",
-  "speakers": [
-    { "speaker": "Mulher", "gender": "feminina", "speech": "Nossa, que celular bonito!", "scenes": "Cenas 1 e 2" },
-    { "speaker": "Homem", "gender": "masculina", "speech": "Esse aqui \xE9 o novo Poco X8 Pro, ele tem fotos incr\xEDveis! Comprei no TikTok Shop, s\xF3 tocar no carrinho laranja que voc\xEA tamb\xE9m garante o seu!", "scenes": "Cenas 3 a 9" }
-  ]
+  "userSpeech": "...",
+  "isDialogue": false,
+  "dialogueDescription": "...",
+  "dialogueScript": "Vendedor: \\"...\\"",
+  "speakers": [ { "speaker": "Vendedor", "gender": "masculina", "speech": "...", "scenes": "Cenas 2 a 9" } ],
+  "soundEffects": "..."
 }`;
         const raw = await executeTopAIModel({
           systemPrompt: detectSystem,
