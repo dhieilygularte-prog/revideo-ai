@@ -26,6 +26,7 @@ import {
   analyzeProductInfoForProdutos2,
   selectAndAdaptProdutos2Copy,
 } from './produtos2CopyBank';
+import { extractUserSpeechFromInstructions } from './produtos2UserSpeechExtractor';
 import { AIProfile } from '../config/aiProfiles';
 
 interface Produtos2FormProps {
@@ -162,42 +163,19 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
       const finalProductName = (form.productName.trim() || 'Produto').trim();
       const hasInstructions = Boolean(form.additionalInstructions && form.additionalInstructions.trim());
 
-      // 1. Executa requisições de IA em paralelo para geração ultra-rápida
-      const detectPromise = hasInstructions
-        ? fetch('/api/produtos2-planning', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              action: 'detect_and_review_user_speech',
-              additionalInstructions: form.additionalInstructions,
-              productName: finalProductName,
-              aiProfile,
-            }),
-          })
-            .then((res) => res.json())
-            .catch((err) => {
-              console.warn('Erro ao detectar fala do usuário:', err);
-              return { success: false, hasUserSpeech: false, userSpeech: '' };
-            })
-        : Promise.resolve({ success: true, hasUserSpeech: false, userSpeech: '' });
-
-      const auroraPromise = fetch('/api/produtos2-planning', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'generate_aurora_copy',
-          productName: finalProductName,
-          productInfo: form.productInfo || finalProductName,
-          duration: 10,
-          additionalInstructions: form.additionalInstructions,
-          aiProfile,
-        }),
-      })
-        .then((res) => res.json())
-        .catch((err) => {
-          console.warn('Erro ao requisitar Aurora Copy:', err);
-          return { success: false };
-        });
+      // 1. Extração IMEDIATA (0ms) da Fala do Usuário a partir de Instruções Adicionais
+      let detectedUserSpeech = form.userSpeech || '';
+      let hasUserSpeech = Boolean(form.userSpeech?.trim());
+      if (hasInstructions) {
+        const ext = extractUserSpeechFromInstructions(form.additionalInstructions, finalProductName);
+        if (ext.hasSpeech && ext.speech) {
+          hasUserSpeech = true;
+          detectedUserSpeech = ext.speech;
+        } else if (ext.speech) {
+          hasUserSpeech = true;
+          detectedUserSpeech = ext.speech;
+        }
+      }
 
       // 2. Banco de Copies 1 e 2 geradas instantaneamente (0ms)
       const copy1 = selectAndAdaptProdutos2Copy({
@@ -223,17 +201,67 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
       });
       const banco2Result = copy2.finalCopy;
 
-      // 3. Aguarda o término das requisições paralelas
-      const [userData, auroraData] = await Promise.all([detectPromise, auroraPromise]);
+      // 3. Aurora Copy imediata (0ms) como base
+      let auroraResult = `Gente, olha esse lançamento imperdível! O ${finalProductName} foi desenvolvido com material resistente e tecnologia pensada para o seu conforto diário, super fácil de usar. Confere todos os detalhes aqui embaixo!`;
 
-      const hasUserSpeech = Boolean(userData?.success && userData?.hasUserSpeech && userData?.userSpeech);
-      const detectedUserSpeech = hasUserSpeech ? userData.userSpeech : '';
+      // 4. Chamada de refinamento com timeout ultra-curto (1.8s) para nunca demorar
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 1800);
 
-      let auroraResult = '';
-      if (auroraData?.success && auroraData?.auroraCopy) {
-        auroraResult = auroraData.auroraCopy;
-      } else {
-        auroraResult = `Gente, olha esse lançamento imperdível! O ${finalProductName} foi desenvolvido com material resistente e tecnologia pensada para o seu conforto diário, super fácil de usar. Confere todos os detalhes aqui embaixo!`;
+        const apiPromises: Promise<any>[] = [];
+
+        apiPromises.push(
+          fetch('/api/produtos2-planning', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'generate_aurora_copy',
+              productName: finalProductName,
+              productInfo: form.productInfo || finalProductName,
+              duration: 10,
+              additionalInstructions: form.additionalInstructions,
+              aiProfile,
+            }),
+            signal: controller.signal,
+          })
+            .then((r) => r.json())
+            .then((data) => {
+              if (data?.success && data?.auroraCopy) {
+                auroraResult = data.auroraCopy;
+              }
+            })
+            .catch(() => null)
+        );
+
+        if (hasInstructions) {
+          apiPromises.push(
+            fetch('/api/produtos2-planning', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'detect_and_review_user_speech',
+                additionalInstructions: form.additionalInstructions,
+                productName: finalProductName,
+                aiProfile,
+              }),
+              signal: controller.signal,
+            })
+              .then((r) => r.json())
+              .then((data) => {
+                if (data?.success && data?.hasUserSpeech && data?.userSpeech) {
+                  hasUserSpeech = true;
+                  detectedUserSpeech = data.userSpeech;
+                }
+              })
+              .catch(() => null)
+          );
+        }
+
+        await Promise.all(apiPromises);
+        clearTimeout(timeoutId);
+      } catch {
+        // Prossegue com os dados locais instantâneos
       }
 
       const defaultSelected = hasUserSpeech ? 'user_speech' : 'banco1';
@@ -1294,173 +1322,6 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
           </div>
 
           <div className="space-y-4">
-            {/* OPÇÃO 1 — FALA DO USUÁRIO (Quando fornecida nas Instruções Adicionais) */}
-            {Boolean(form.hasUserSpeech || form.userSpeech) && (
-              <div
-                onClick={() => {
-                  onChange((prev) => ({
-                    ...prev,
-                    selectedSpeechOption: 'user_speech',
-                    copyEngine: 'banco',
-                    finalSelectedSpeech: prev.userSpeech || '',
-                  }));
-                }}
-                className={`p-4 sm:p-5 rounded-2xl transition-all cursor-pointer flex flex-col justify-between space-y-3 ${
-                  form.selectedSpeechOption === 'user_speech'
-                    ? 'bg-zinc-900/95 border-2 border-amber-400 shadow-xl shadow-amber-950/50 ring-1 ring-amber-500/40'
-                    : 'bg-zinc-900/80 border border-amber-500/40 hover:border-amber-400/60 shadow-lg'
-                }`}
-              >
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
-                          form.selectedSpeechOption === 'user_speech'
-                            ? 'bg-amber-400 text-slate-950'
-                            : 'border-2 border-zinc-600 bg-zinc-800'
-                        }`}
-                      >
-                        {form.selectedSpeechOption === 'user_speech' && (
-                          <Check className="w-3.5 h-3.5 stroke-[3]" />
-                        )}
-                      </div>
-                      <h4 className="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wide flex items-center gap-1.5">
-                        <Sparkles className="w-4 h-4 text-amber-400" />
-                        <span>FALA DO USUÁRIO</span>
-                      </h4>
-                    </div>
-
-                    <div className="flex items-center gap-2 flex-wrap">
-                      {/* Contador de caracteres (Item 8: vermelho se > 225) */}
-                      <span
-                        className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-colors ${
-                          (form.userSpeech?.length || 0) > 225
-                            ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse'
-                            : 'bg-zinc-800 text-amber-300 border border-amber-500/30'
-                        }`}
-                      >
-                        {form.userSpeech?.length || 0} / 225
-                      </span>
-
-                      {/* Botão Revisar Texto (Item 9) */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleReviewSpeech(form.userSpeech || '', 'user');
-                        }}
-                        disabled={isReviewingCard === 'user' || !(form.userSpeech || '').trim()}
-                        className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 font-black text-xs flex items-center gap-1 transition-all cursor-pointer shadow-sm shadow-amber-950/40"
-                        title="Revisar texto com IA (corrige português, pontuação, medidas e limita a 225 caracteres)"
-                      >
-                        {isReviewingCard === 'user' ? (
-                          <>
-                            <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-950" />
-                            <span>Revisando...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Wand2 className="w-3.5 h-3.5 text-slate-950" />
-                            <span>Revisar texto</span>
-                          </>
-                        )}
-                      </button>
-
-                      {/* Botão Copiar */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleCopySpeech(form.userSpeech || '', 'user');
-                        }}
-                        className="p-1.5 px-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white border border-zinc-700 flex items-center gap-1 text-xs transition-colors cursor-pointer"
-                        title="Copiar fala do usuário"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                        {copiedSpeechKey === 'user' && (
-                          <span className="text-[10px] text-amber-300 font-bold">Copiado!</span>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="relative" onClick={(e) => e.stopPropagation()}>
-                    <textarea
-                      rows={3}
-                      value={form.userSpeech || ''}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        onChange((prev) => ({
-                          ...prev,
-                          userSpeech: val,
-                          finalSelectedSpeech: prev.selectedSpeechOption === 'user_speech' ? val : prev.finalSelectedSpeech,
-                        }));
-                      }}
-                      placeholder="Fala extraída das Instruções Adicionais..."
-                      className={`w-full p-3.5 pr-12 rounded-xl bg-zinc-950/90 text-xs sm:text-sm leading-relaxed font-sans shadow-inner resize-y transition-colors ${
-                        (form.userSpeech?.length || 0) > 225
-                          ? 'text-rose-400 border-2 border-rose-500 focus:border-rose-400'
-                          : 'text-zinc-100 border border-zinc-700 focus:border-amber-400'
-                      }`}
-                    />
-
-                    {/* Microfone Fala do Usuário */}
-                    <button
-                      type="button"
-                      onClick={() => toggleMic('user')}
-                      className={`absolute right-2.5 top-2.5 p-2 rounded-lg text-xs transition-all cursor-pointer ${
-                        activeMic === 'user'
-                          ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
-                          : 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 border border-zinc-600'
-                      }`}
-                      title={activeMic === 'user' ? 'Parar gravação' : 'Ditar fala por voz'}
-                    >
-                      {activeMic === 'user' ? (
-                        <Square className="w-4 h-4 fill-white" />
-                      ) : (
-                        <Mic className="w-4 h-4 text-zinc-300" />
-                      )}
-                    </button>
-                  </div>
-
-                  {activeMic === 'user' && (
-                    <p className="text-[11px] text-rose-400 flex items-center gap-1.5 font-semibold animate-pulse">
-                      <span className="w-2 h-2 rounded-full bg-rose-500" />
-                      Ouvindo sua voz para a Fala do Usuário... clique no quadrado vermelho para parar.
-                    </p>
-                  )}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onChange((prev) => ({
-                      ...prev,
-                      selectedSpeechOption: 'user_speech',
-                      copyEngine: 'banco',
-                      finalSelectedSpeech: prev.userSpeech || '',
-                    }));
-                  }}
-                  className={`w-full py-2.5 px-4 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                    form.selectedSpeechOption === 'user_speech'
-                      ? 'bg-amber-400 hover:bg-amber-300 text-slate-950 font-black shadow-md shadow-amber-950/40'
-                      : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 font-bold'
-                  }`}
-                >
-                  {form.selectedSpeechOption === 'user_speech' ? (
-                    <>
-                      <Check className="w-4 h-4 stroke-[3]" />
-                      <span>Fala Selecionada para o Vídeo</span>
-                    </>
-                  ) : (
-                    <span>Usar Esta Fala (Fala do Usuário)</span>
-                  )}
-                </button>
-              </div>
-            )}
-
             {/* FALA 1 — BANCO DE COPIES */}
             <div
               onClick={() => {
@@ -1952,6 +1813,173 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                 )}
               </button>
             </div>
+
+            {/* FALA 4 — FALA DO USUÁRIO */}
+            {Boolean(form.hasUserSpeech || form.userSpeech || (form.additionalInstructions && form.additionalInstructions.trim())) && (
+              <div
+                onClick={() => {
+                  onChange((prev) => ({
+                    ...prev,
+                    selectedSpeechOption: 'user_speech',
+                    copyEngine: 'banco',
+                    finalSelectedSpeech: prev.userSpeech || '',
+                  }));
+                }}
+                className={`p-4 sm:p-5 rounded-2xl transition-all cursor-pointer flex flex-col justify-between space-y-3 ${
+                  form.selectedSpeechOption === 'user_speech'
+                    ? 'bg-zinc-900/95 border-2 border-amber-400 shadow-xl shadow-amber-950/50 ring-1 ring-amber-500/40'
+                    : 'bg-zinc-900/80 border border-zinc-800 hover:border-zinc-700 shadow-lg'
+                }`}
+              >
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
+                          form.selectedSpeechOption === 'user_speech'
+                            ? 'bg-amber-400 text-slate-950'
+                            : 'border-2 border-zinc-600 bg-zinc-800'
+                        }`}
+                      >
+                        {form.selectedSpeechOption === 'user_speech' && (
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        )}
+                      </div>
+                      <h4 className="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wide flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4 text-amber-400" />
+                        <span>Fala 4 — Fala do Usuário</span>
+                      </h4>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* Contador de caracteres (vermelho se > 225) */}
+                      <span
+                        className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-colors ${
+                          (form.userSpeech?.length || 0) > 225
+                            ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse'
+                            : 'bg-zinc-800 text-amber-300 border border-amber-500/30'
+                        }`}
+                      >
+                        {form.userSpeech?.length || 0} / 225
+                      </span>
+
+                      {/* Botão Revisar Texto */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleReviewSpeech(form.userSpeech || '', 'user');
+                        }}
+                        disabled={isReviewingCard === 'user' || !(form.userSpeech || '').trim()}
+                        className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 font-black text-xs flex items-center gap-1 transition-all cursor-pointer shadow-sm shadow-amber-950/40"
+                        title="Revisar texto com IA (corrige português, pontuação, medidas e limita a 225 caracteres)"
+                      >
+                        {isReviewingCard === 'user' ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-950" />
+                            <span>Revisando...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Wand2 className="w-3.5 h-3.5 text-slate-950" />
+                            <span>Revisar texto</span>
+                          </>
+                        )}
+                      </button>
+
+                      {/* Botão Copiar */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCopySpeech(form.userSpeech || '', 'user');
+                        }}
+                        className="p-1.5 px-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white border border-zinc-700 flex items-center gap-1 text-xs transition-colors cursor-pointer"
+                        title="Copiar fala do usuário"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        {copiedSpeechKey === 'user' && (
+                          <span className="text-[10px] text-amber-300 font-bold">Copiado!</span>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="relative" onClick={(e) => e.stopPropagation()}>
+                    <textarea
+                      rows={3}
+                      value={form.userSpeech || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        onChange((prev) => ({
+                          ...prev,
+                          userSpeech: val,
+                          finalSelectedSpeech: prev.selectedSpeechOption === 'user_speech' ? val : prev.finalSelectedSpeech,
+                        }));
+                      }}
+                      placeholder="Fala extraída das Instruções Adicionais..."
+                      className={`w-full p-3.5 pr-12 rounded-xl bg-zinc-950/90 text-xs sm:text-sm leading-relaxed font-sans shadow-inner resize-y transition-colors ${
+                        (form.userSpeech?.length || 0) > 225
+                          ? 'text-rose-400 border-2 border-rose-500 focus:border-rose-400'
+                          : 'text-zinc-100 border border-zinc-700 focus:border-amber-400'
+                      }`}
+                    />
+
+                    {/* Microfone Fala do Usuário */}
+                    <button
+                      type="button"
+                      onClick={() => toggleMic('user')}
+                      className={`absolute right-2.5 top-2.5 p-2 rounded-lg text-xs transition-all cursor-pointer ${
+                        activeMic === 'user'
+                          ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
+                          : 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 border border-zinc-600'
+                      }`}
+                      title={activeMic === 'user' ? 'Parar gravação' : 'Ditar fala por voz'}
+                    >
+                      {activeMic === 'user' ? (
+                        <Square className="w-4 h-4 fill-white" />
+                      ) : (
+                        <Mic className="w-4 h-4 text-zinc-300" />
+                      )}
+                    </button>
+                  </div>
+
+                  {activeMic === 'user' && (
+                    <p className="text-[11px] text-rose-400 flex items-center gap-1.5 font-semibold animate-pulse">
+                      <span className="w-2 h-2 rounded-full bg-rose-500" />
+                      Ouvindo sua voz para a Fala 4... clique no quadrado vermelho para parar.
+                    </p>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onChange((prev) => ({
+                      ...prev,
+                      selectedSpeechOption: 'user_speech',
+                      copyEngine: 'banco',
+                      finalSelectedSpeech: prev.userSpeech || '',
+                    }));
+                  }}
+                  className={`w-full py-2.5 px-4 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    form.selectedSpeechOption === 'user_speech'
+                      ? 'bg-amber-400 hover:bg-amber-300 text-slate-950 font-black shadow-md shadow-amber-950/40'
+                      : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 font-bold'
+                  }`}
+                >
+                  {form.selectedSpeechOption === 'user_speech' ? (
+                    <>
+                      <Check className="w-4 h-4 stroke-[3]" />
+                      <span>Fala Selecionada para o Vídeo</span>
+                    </>
+                  ) : (
+                    <span>Usar Esta Fala (Fala do Usuário)</span>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
