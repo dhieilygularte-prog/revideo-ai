@@ -27,6 +27,7 @@ import {
 } from './src/config/openaiModels';
 import { AIProfile, AI_PROFILES } from './src/config/aiProfiles';
 import { buildAniaPlanningSystemPrompt } from './src/ania/aniaPrompts';
+import { buildProdutos2PlanningSystemPrompt } from './src/produtos2/produtos2Prompts';
 import { fitSpeechCloseToLimit, extractUserSpeechFromInstructions } from './src/produtos2/produtos2UserSpeechExtractor';
 
 dotenv.config();
