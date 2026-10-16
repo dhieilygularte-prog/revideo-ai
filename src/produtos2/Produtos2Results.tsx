@@ -25,6 +25,7 @@ import {
   sanitizeProductFileName,
 } from './produtos2ZipExporter';
 import { buildProdutos2VeoPrompt } from './produtos2Prompts';
+import { VideoFidelityAuditor } from './VideoFidelityAuditor';
 import { MicroImageEditor } from '../components/MicroImageEditor';
 import { AIProfile } from '../config/aiProfiles';
 import { TokenUsageStats } from '../types';
@@ -36,6 +37,7 @@ interface Produtos2ResultsProps {
   onOpenPreview: (url: string, title: string) => void;
   aiProfile?: AIProfile;
   onTokenUsageChange?: (stats: TokenUsageStats) => void;
+  referencePhotos?: string[];
 }
 
 function getStatusClasses(status: Produtos2AuditColorStatus) {
@@ -79,7 +81,17 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
   onOpenPreview,
   aiProfile = 'openai',
   onTokenUsageChange,
+  referencePhotos = [],
 }) => {
+  const allReferencePhotos = React.useMemo(() => {
+    if (referencePhotos && referencePhotos.length > 0) return referencePhotos;
+    if (result.variations && result.variations.length > 0) {
+      const list = result.variations.flatMap((v) => v.photos || []).filter(Boolean);
+      if (list.length > 0) return list;
+    }
+    return [];
+  }, [referencePhotos, result.variations]);
+
   const [promptCopied, setPromptCopied] = useState(false);
   const [hasCopiedPromptOnce, setHasCopiedPromptOnce] = useState(false);
   const [copyCopied, setCopyCopied] = useState(false);
@@ -1234,6 +1246,19 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
               </p>
             )}
           </div>
+
+          {/* VERIFICAÇÃO DE FIDELIDADE DO VÍDEO DO VEO (5 FRAMES · 1 A CADA 2S) */}
+          <VideoFidelityAuditor
+            productName={result.productName}
+            productLock={result.productLock}
+            referencePhotos={allReferencePhotos}
+            initialAudit={result.videoAudit}
+            onAuditChange={(vAudit) => {
+              onUpdateResult((prev) => (prev ? { ...prev, videoAudit: vAudit } : null));
+            }}
+            onOpenPreview={onOpenPreview}
+            onTokenUsageChange={onTokenUsageChange}
+          />
         </div>
       </div>
 

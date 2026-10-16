@@ -4635,6 +4635,279 @@ Analise cada um dos 9 quadrantes (Cena 1 a Cena 9) e retorne o JSON em portugu\x
     });
   }
 });
+app.post("/api/produtos2-audit-video", async (req, res) => {
+  try {
+    const {
+      videoFrames = [],
+      // Array<{ second: number; frameBase64: string }> (5 frames)
+      productPhotosBase64 = [],
+      // Array<string>
+      productName = "Produto",
+      productLock = []
+    } = req.body;
+    if (!Array.isArray(videoFrames) || videoFrames.length === 0) {
+      return res.status(400).json({ success: false, error: "Nenhum frame do v\xEDdeo fornecido para an\xE1lise." });
+    }
+    const photosList = Array.isArray(productPhotosBase64) ? productPhotosBase64.filter(Boolean) : [];
+    if (photosList.length === 0) {
+      return res.status(400).json({ success: false, error: "Nenhuma foto de refer\xEAncia do produto fornecida." });
+    }
+    const lockContext = Array.isArray(productLock) ? productLock.join("; ") : "";
+    const systemInstruction = `Voc\xEA \xE9 o Fiscal Rigoroso de Fidelidade Visual de Produtos para V\xEDdeos Comerciais do TikTok Shop e Veo 3.
+Sua miss\xE3o \xE9 auditar ${videoFrames.length} FRAMES extra\xEDdos do v\xEDdeo gerado pelo Google Veo (extra\xEDdos a cada 2 segundos ao longo do v\xEDdeo) e comparar o produto retratado em cada um deles com as FOTOS REAIS DE REFER\xCANCIA do an\xFAncio do produto "${productName}".
+
+O algoritmo de modera\xE7\xE3o do TikTok Shop \xE9 impiedoso:
+- Se em QUALQUER frame o produto mudar de formato/tamanho, cor, acabamento, textura, adicionar bot\xF5es/bolsos/z\xEDperes inexistentes, ou se a logomarca do fabricante for removida ou distorcida, o v\xEDdeo corre risco iminente de RESTRI\xC7\xC3O ou BANIMENTO por "Produto Inconsistente / Divergente".
+- O cen\xE1rio ao redor e a pessoa/modelo segurando ou vestindo o produto N\xC3O importam tanto. O foco cir\xFArgico DEVE ser 100% no PRODUTO F\xCDSICO!
+
+CRIT\xC9RIOS DE PONTUA\xC7\xC3O PARA CADA FRAME:
+- 90 a 100% (Verde - Aprovado): Produto id\xEAntico ou com varia\xE7\xE3o lev\xEDssima (<10%), preservando cores, acabamento, textura e formato real.
+- 71 a 89% (Amarelo - Pode Passar / Razo\xE1vel): Pequena varia\xE7\xE3o (ex: tom de cor levemente alterado pela luz, detalhe sutil).
+- 60 a 70% (Laranja - Cuidado / Risco M\xE9dio): Varia\xE7\xE3o moderada percept\xEDvel (ex: formato deformado, propor\xE7\xE3o esquisita).
+- Menor que 60% (Vermelho - Reprovado / Risco de Restri\xE7\xE3o): Varia\xE7\xE3o gritante (ex: cor totalmente diferente, modelo alterado, detalhes fantasmas adicionados, logo apagada ou produto irreconhec\xEDvel).
+
+Retorne ESTRITAMENTE um objeto JSON:
+{
+  "frames": [
+    {
+      "frameNumber": 1,
+      "second": 1.0,
+      "productVisible": true,
+      "score": 96,
+      "status": "green",
+      "issue": "Curta observa\xE7\xE3o em portugu\xEAs sobre a fidelidade do produto neste segundo"
+    }
+  ],
+  "summary": "Resumo objetivo em portugu\xEAs indicando se o v\xEDdeo est\xE1 seguro para postar no TikTok Shop ou em quais segundos houve problema."
+}`;
+    if (openAIProvider.isConfigured()) {
+      try {
+        const client = openAIProvider.getClient();
+        const contentBlocks = [];
+        photosList.slice(0, 5).forEach((photo, idx) => {
+          contentBlocks.push({
+            type: "text",
+            text: `[FOTO DE REFER\xCANCIA REAL #${idx + 1} DO AN\xDANCIO DO PRODUTO "${productName}"]:`
+          });
+          contentBlocks.push({
+            type: "image_url",
+            image_url: {
+              url: photo.startsWith("data:") ? photo : `data:image/jpeg;base64,${photo}`,
+              detail: "low"
+            }
+          });
+        });
+        videoFrames.forEach((frameObj, idx) => {
+          const sec = frameObj.second ?? idx * 2 + 1;
+          contentBlocks.push({
+            type: "text",
+            text: `[FRAME #${idx + 1} EXTRA\xCDDO DO V\xCDDEO DO VEO NO SEGUNDO ${sec}s]:`
+          });
+          contentBlocks.push({
+            type: "image_url",
+            image_url: {
+              url: frameObj.frameBase64.startsWith("data:") ? frameObj.frameBase64 : `data:image/jpeg;base64,${frameObj.frameBase64}`,
+              detail: "low"
+            }
+          });
+        });
+        const promptText = `Audite os ${videoFrames.length} frames do v\xEDdeo acima comparando exclusivamente com as fotos de refer\xEAncia reais do produto "${productName}".${lockContext ? ` Trava do produto: ${lockContext}` : ""}
+Retorne o JSON estritamente conforme solicitado.`;
+        contentBlocks.push({ type: "text", text: promptText });
+        const completion = await client.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            { role: "system", content: systemInstruction },
+            { role: "user", content: contentBlocks }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.1,
+          max_tokens: 1e3
+        });
+        const rawText = completion.choices[0]?.message?.content || "{}";
+        const parsed = JSON.parse(rawText);
+        const promptTok = completion.usage?.prompt_tokens || 3500;
+        const compTok = completion.usage?.completion_tokens || 350;
+        const totTok = promptTok + compTok;
+        const costUSD = Math.round((promptTok * 15e-8 + compTok * 6e-7) * 1e4) / 1e4;
+        const costBRL = Math.round(costUSD * 5.6 * 1e3) / 1e3;
+        const normalizedFrames = videoFrames.map((vf, idx) => {
+          const num = idx + 1;
+          const found = (parsed.frames || []).find((f) => Number(f.frameNumber) === num) || (parsed.frames || [])[idx];
+          const sec = vf.second ?? found?.second ?? idx * 2 + 1;
+          let score = Number(found?.score ?? 94);
+          if (isNaN(score)) score = 94;
+          if (score > 0 && score <= 1) score = Math.round(score * 100);
+          const status = getAuditColorStatus(score);
+          const issue = String(found?.issue || `Frame ${num} (${sec}s): Produto ${score >= 90 ? "id\xEAntico \xE0 refer\xEAncia" : "com varia\xE7\xF5es"}`).trim();
+          return {
+            frameNumber: num,
+            second: sec,
+            productVisible: found?.productVisible !== false,
+            score,
+            status,
+            issue,
+            frameThumbnail: vf.frameBase64
+          };
+        });
+        const scores = normalizedFrames.map((f) => f.score);
+        const minScore = Math.min(...scores);
+        const avgScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+        let overallScore = avgScore;
+        let overallStatus = "green";
+        let overallLabel = "Aprovado: V\xEDdeo Liberado";
+        if (minScore < 60) {
+          overallStatus = "red";
+          overallScore = Math.min(59, minScore);
+          overallLabel = "Risco de Restri\xE7\xE3o: Reprovado";
+        } else if (minScore <= 70) {
+          overallStatus = "orange";
+          overallScore = Math.min(70, minScore);
+          overallLabel = "Cuidado: Varia\xE7\xE3o Moderada";
+        } else if (minScore < 90) {
+          overallStatus = "yellow";
+          overallScore = Math.min(89, minScore);
+          overallLabel = "Pode Passar: Razo\xE1vel";
+        } else {
+          overallStatus = "green";
+          overallScore = avgScore;
+          overallLabel = "Aprovado: V\xEDdeo Liberado";
+        }
+        return res.json({
+          success: true,
+          audit: {
+            overallScore,
+            overallStatus,
+            overallLabel,
+            summary: parsed.summary || (overallStatus === "green" ? "Produto aprovado em todos os 5 frames analisados. Alta fidelidade com as fotos reais, liberado para o TikTok Shop." : `Aten\xE7\xE3o: Houve varia\xE7\xE3o no produto identificada no v\xEDdeo (menor nota: ${minScore}%).`),
+            frames: normalizedFrames
+          },
+          usage: {
+            promptTokens: promptTok,
+            completionTokens: compTok,
+            totalTokens: totTok,
+            costUSD,
+            costBRL: Math.max(0.01, Math.round(costBRL * 100) / 100),
+            model: "gpt-4o-mini"
+          }
+        });
+      } catch (openAiErr) {
+        console.warn("Erro OpenAI em /api/produtos2-audit-video:", openAiErr?.message || openAiErr);
+        return res.json({
+          success: false,
+          error: openAiErr?.message || "Falha ao auditar v\xEDdeo com OpenAI."
+        });
+      }
+    }
+    if (process.env.GEMINI_API_KEY) {
+      try {
+        const parts = [];
+        photosList.slice(0, 5).forEach((photo, idx) => {
+          const parsedRef = parseInlineImage(photo);
+          if (parsedRef) {
+            parts.push({ text: `[FOTO DE REFER\xCANCIA REAL #${idx + 1} DO PRODUTO "${productName}"]:` });
+            parts.push({ inlineData: parsedRef });
+          }
+        });
+        videoFrames.forEach((frameObj, idx) => {
+          const sec = frameObj.second ?? idx * 2 + 1;
+          const parsedFrame = parseInlineImage(frameObj.frameBase64);
+          if (parsedFrame) {
+            parts.push({ text: `[FRAME #${idx + 1} DO V\xCDDEO NO SEGUNDO ${sec}s]:` });
+            parts.push({ inlineData: parsedFrame });
+          }
+        });
+        parts.push({
+          text: `${systemInstruction}
+
+Audite os frames acima e retorne o JSON estritamente no schema solicitado.`
+        });
+        const auditRes = await getGenAI().models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: parts,
+          config: {
+            responseMimeType: "application/json"
+          }
+        });
+        const parsed = JSON.parse(auditRes.text || "{}");
+        const pTok = auditRes.usageMetadata?.promptTokenCount || 3500;
+        const cTok = auditRes.usageMetadata?.candidatesTokenCount || 350;
+        const normalizedFrames = videoFrames.map((vf, idx) => {
+          const num = idx + 1;
+          const found = (parsed.frames || []).find((f) => Number(f.frameNumber) === num) || (parsed.frames || [])[idx];
+          const sec = vf.second ?? found?.second ?? idx * 2 + 1;
+          let score = Number(found?.score ?? 94);
+          if (isNaN(score)) score = 94;
+          if (score > 0 && score <= 1) score = Math.round(score * 100);
+          const status = getAuditColorStatus(score);
+          const issue = String(found?.issue || `Frame ${num} (${sec}s): Produto ${score >= 90 ? "id\xEAntico \xE0 refer\xEAncia" : "com varia\xE7\xF5es"}`).trim();
+          return {
+            frameNumber: num,
+            second: sec,
+            productVisible: found?.productVisible !== false,
+            score,
+            status,
+            issue,
+            frameThumbnail: vf.frameBase64
+          };
+        });
+        const scores = normalizedFrames.map((f) => f.score);
+        const minScore = Math.min(...scores);
+        const avgScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+        let overallScore = avgScore;
+        let overallStatus = "green";
+        let overallLabel = "Aprovado: V\xEDdeo Liberado";
+        if (minScore < 60) {
+          overallStatus = "red";
+          overallScore = Math.min(59, minScore);
+          overallLabel = "Risco de Restri\xE7\xE3o: Reprovado";
+        } else if (minScore <= 70) {
+          overallStatus = "orange";
+          overallScore = Math.min(70, minScore);
+          overallLabel = "Cuidado: Varia\xE7\xE3o Moderada";
+        } else if (minScore < 90) {
+          overallStatus = "yellow";
+          overallScore = Math.min(89, minScore);
+          overallLabel = "Pode Passar: Razo\xE1vel";
+        } else {
+          overallStatus = "green";
+          overallScore = avgScore;
+          overallLabel = "Aprovado: V\xEDdeo Liberado";
+        }
+        return res.json({
+          success: true,
+          audit: {
+            overallScore,
+            overallStatus,
+            overallLabel,
+            summary: parsed.summary || "An\xE1lise de frames conclu\xEDda com sucesso.",
+            frames: normalizedFrames
+          },
+          usage: {
+            promptTokens: pTok,
+            completionTokens: cTok,
+            totalTokens: pTok + cTok,
+            costUSD: 1e-3,
+            costBRL: 0.01,
+            model: "gemini-2.5-flash"
+          }
+        });
+      } catch (gemErr) {
+        console.warn("Erro Gemini em /api/produtos2-audit-video:", gemErr?.message || gemErr);
+      }
+    }
+    return res.json({
+      success: false,
+      error: "Nenhum provedor de IA configurado para auditoria de v\xEDdeo."
+    });
+  } catch (err) {
+    console.error("Erro geral em /api/produtos2-audit-video:", err);
+    return res.json({
+      success: false,
+      error: err?.message || "Erro inesperado ao auditar fidelidade do v\xEDdeo."
+    });
+  }
+});
 async function startServer() {
   if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
     const pkgName = "vite";

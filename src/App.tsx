@@ -1466,6 +1466,7 @@ export default function App() {
                   onOpenPreview={(url, title) => setPreviewModal({ isOpen: true, url, title })}
                   aiProfile={aiProfile}
                   onTokenUsageChange={setSessionTokenStats}
+                  referencePhotos={produtos2Form.variations.flatMap((v) => v.photos).filter(Boolean)}
                 />
               </div>
             )}

@@ -155,5 +155,24 @@ export interface Produtos2ResultState {
   description?: string;
   hashtags?: string[];
   tokenUsage?: TokenUsageStats;
+  videoAudit?: VideoFidelityAudit;
+}
+
+export interface VideoAuditFrameItem {
+  frameNumber: number;
+  second: number;
+  productVisible: boolean;
+  score: number;
+  status: Produtos2AuditColorStatus;
+  issue: string;
+  frameThumbnail?: string;
+}
+
+export interface VideoFidelityAudit {
+  overallScore: number;
+  overallStatus: Produtos2AuditColorStatus;
+  overallLabel: string;
+  summary: string;
+  frames: VideoAuditFrameItem[];
 }
 
