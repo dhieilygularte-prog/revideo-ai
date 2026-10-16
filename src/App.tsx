@@ -5,6 +5,7 @@ import {
   RefreshCw,
   CheckCircle2,
   RotateCcw,
+  History,
 } from 'lucide-react';
 import {
   ReferenceVideoData,
@@ -66,6 +67,9 @@ const ProdutoForm = lazy(() =>
 );
 const ProdutoResults = lazy(() =>
   import('./produto/ProdutoResults').then((m) => ({ default: m.ProdutoResults }))
+);
+const GenerationHistoryModal = lazy(() =>
+  import('./produtos2/GenerationHistoryModal').then((m) => ({ default: m.GenerationHistoryModal }))
 );
 
 export default function App() {
@@ -224,6 +228,9 @@ export default function App() {
     url: '',
     title: '',
   });
+
+  // Modal Histórico de Gerações
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   // Handle Video Selection and Automated Frame + Audio Extraction
   const handleVideoSelected = async (file: File) => {
@@ -1204,6 +1211,11 @@ export default function App() {
         setSessionTokenStats(res.tokenUsage);
       }
       playCompletionSound();
+      import('./utils/historyStorage')
+        .then(({ saveCreativeToHistory }) => {
+          saveCreativeToHistory(res);
+        })
+        .catch(() => {});
     } catch (err: any) {
       setProdutos2ErrorMessage(err.message || 'Erro ao processar o Modo Produtos 2.0.');
     } finally {
@@ -1276,7 +1288,7 @@ export default function App() {
           setSessionTokenStats(updatedTokenUsage);
         }
 
-        return {
+        const updatedResult = {
           ...prev,
           isRegeneratingStoryboard: false,
           storyboardImageUrl: regen.imageUrl || prev.storyboardImageUrl,
@@ -1284,6 +1296,12 @@ export default function App() {
           storyboardError: regen.error,
           tokenUsage: updatedTokenUsage,
         };
+        import('./utils/historyStorage')
+          .then(({ saveCreativeToHistory }) => {
+            saveCreativeToHistory(updatedResult);
+          })
+          .catch(() => {});
+        return updatedResult;
       });
       if (regen.imageUrl) {
         playCompletionSound();
@@ -1352,6 +1370,37 @@ export default function App() {
     }));
   };
 
+  const handleReopenFromHistory = (item: any) => {
+    if (!item?.result) return;
+    setProdutos2Result(item.result);
+    setProdutos2Form((prev) => ({
+      ...prev,
+      productName: item.result.productName || prev.productName,
+      productInfo: item.result.productInfo || prev.productInfo,
+      detectedNiche: item.result.detectedNiche || prev.detectedNiche,
+      subMode: item.result.subMode || prev.subMode,
+      maleSubOption: item.result.maleSubOption || prev.maleSubOption,
+      duration: item.result.duration || prev.duration,
+      speechMode: item.result.speechMode || prev.speechMode,
+      useSpeechIntro: item.result.useSpeechIntro ?? prev.useSpeechIntro,
+      framing: item.result.framing || prev.framing,
+      scenario: item.result.scenario || prev.scenario,
+      clientGender: item.result.clientGender || prev.clientGender,
+      finalSelectedSpeech: item.result.finalCopy || prev.finalSelectedSpeech,
+      customCopy: item.result.finalCopy || prev.customCopy,
+      variations:
+        item.result.variations && item.result.variations.length > 0 ? item.result.variations : prev.variations,
+      additionalInstructions: item.result.additionalInstructions || prev.additionalInstructions,
+    }));
+    if (item.result.tokenUsage) {
+      setSessionTokenStats(item.result.tokenUsage);
+    }
+    if (appMode !== 'produtos2') {
+      setAppMode('produtos2');
+    }
+    setIsHistoryOpen(false);
+  };
+
   // Modo Produto OLD Pipeline Trigger
   const handleStartProduto = async () => {
     setIsProcessingProduto(true);
@@ -1418,6 +1467,18 @@ export default function App() {
 
             {!produtos2Result ? (
               <>
+                <div className="flex justify-end mb-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsHistoryOpen(true)}
+                    className="px-3 py-1.5 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border border-zinc-800 hover:border-zinc-700 text-xs font-medium rounded-xl flex items-center gap-2 transition-colors cursor-pointer shadow-sm"
+                    title="Ver histórico dos últimos criativos gerados"
+                  >
+                    <History className="w-3.5 h-3.5 text-zinc-400" />
+                    <span>Histórico de Gerações</span>
+                  </button>
+                </div>
+
                 <Produtos2Form
                   form={produtos2Form}
                   onChange={setProdutos2Form}
@@ -1457,6 +1518,16 @@ export default function App() {
                       <span>Continuar no produto</span>
                     </button>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsHistoryOpen(true)}
+                    className="px-3.5 py-2 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border border-zinc-800 hover:border-zinc-700 text-xs font-medium rounded-xl flex items-center gap-2 transition-colors cursor-pointer shadow-sm"
+                    title="Ver histórico dos últimos criativos gerados"
+                  >
+                    <History className="w-3.5 h-3.5 text-zinc-400" />
+                    <span>Histórico de Gerações</span>
+                  </button>
                 </div>
 
                 <Produtos2Results
@@ -1781,6 +1852,18 @@ export default function App() {
         imageUrl={previewModal.url}
         title={previewModal.title}
       />
+
+      {/* Modal Histórico Recente de Criativos */}
+      <Suspense fallback={null}>
+        {isHistoryOpen && (
+          <GenerationHistoryModal
+            isOpen={isHistoryOpen}
+            onClose={() => setIsHistoryOpen(false)}
+            onSelectCreative={handleReopenFromHistory}
+            onOpenPreview={(url, title) => setPreviewModal({ isOpen: true, url, title })}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }
