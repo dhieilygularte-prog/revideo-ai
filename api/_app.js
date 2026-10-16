@@ -4722,7 +4722,7 @@ Retorne o JSON estritamente conforme solicitado.`;
           ],
           response_format: { type: "json_object" },
           temperature: 0.1,
-          max_tokens: 1e3
+          max_tokens: 2500
         });
         const rawText = completion.choices[0]?.message?.content || "{}";
         const parsed = JSON.parse(rawText);

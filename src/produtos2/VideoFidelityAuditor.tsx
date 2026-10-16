@@ -12,7 +12,6 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { VideoFidelityAudit, Produtos2AuditColorStatus } from './types';
-import { TokenUsageStats } from '../types';
 
 interface VideoFidelityAuditorProps {
   productName: string;
@@ -20,8 +19,8 @@ interface VideoFidelityAuditorProps {
   referencePhotos: string[];
   initialAudit?: VideoFidelityAudit;
   onAuditChange?: (audit: VideoFidelityAudit) => void;
+  onAuditComplete?: (audit: VideoFidelityAudit, usage: any) => void;
   onOpenPreview?: (url: string, title: string) => void;
-  onTokenUsageChange?: (stats: TokenUsageStats) => void;
 }
 
 function getAuditBoxClasses(status: Produtos2AuditColorStatus) {
@@ -63,10 +62,10 @@ function getAuditBoxClasses(status: Produtos2AuditColorStatus) {
 }
 
 /**
- * Extrai 5 frames pontuais do vídeo de forma ultra-otimizada (max 512px)
- * cobrindo 10%, 30%, 50%, 70% e 90% da duração total (~a cada 2 segundos em vídeos de 10s).
+ * Extrai 1 frame a cada 2 segundos ao longo de todo o vídeo (ex: 10s = 5 frames, 15s = 8 frames, 20s = 10 frames, 30s = 15 frames)
+ * de forma ultra-otimizada (max 512px) para manter custo mínimo de API e auditoria completa do vídeo.
  */
-async function extract5VideoFrames(videoFile: File): Promise<{ second: number; frameBase64: string }[]> {
+async function extractVideoFramesEvery2s(videoFile: File): Promise<{ second: number; frameBase64: string }[]> {
   return new Promise((resolve, reject) => {
     const video = document.createElement('video');
     video.preload = 'auto';
@@ -79,13 +78,22 @@ async function extract5VideoFrames(videoFile: File): Promise<{ second: number; f
 
     video.onloadedmetadata = async () => {
       const duration = video.duration || 10;
-      const targetTimes = [
-        Math.max(0.5, Math.round(duration * 0.1 * 10) / 10),
-        Math.round(duration * 0.3 * 10) / 10,
-        Math.round(duration * 0.5 * 10) / 10,
-        Math.round(duration * 0.7 * 10) / 10,
-        Math.min(duration - 0.3, Math.round(duration * 0.9 * 10) / 10),
-      ];
+      const targetTimes: number[] = [];
+
+      // Gera capturas a cada 2 segundos a partir do segundo 1 até o final do vídeo
+      for (let sec = 1; sec < duration; sec += 2) {
+        targetTimes.push(sec);
+      }
+      // Se a sobra entre o último frame e o final do vídeo for >= 1.5s, captura também perto do fim
+      if (duration >= 2 && targetTimes.length > 0) {
+        const lastTarget = targetTimes[targetTimes.length - 1];
+        if (duration - lastTarget >= 1.5) {
+          targetTimes.push(Math.round((duration - 0.4) * 10) / 10);
+        }
+      }
+      if (targetTimes.length === 0) {
+        targetTimes.push(Math.max(0.5, Math.round((duration / 2) * 10) / 10));
+      }
 
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
@@ -161,8 +169,8 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
   referencePhotos,
   initialAudit,
   onAuditChange,
+  onAuditComplete,
   onOpenPreview,
-  onTokenUsageChange,
 }) => {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
@@ -218,16 +226,16 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
 
     setIsProcessing(true);
     setErrorMessage(null);
-    setStatusMessage('Extraindo 5 frames do vídeo (1 a cada 2s)...');
+    setStatusMessage('Extraindo frames a cada 2 segundos do vídeo...');
 
     try {
-      // 1. Extração no cliente dos 5 frames
-      const frames = await extract5VideoFrames(videoFile);
+      // 1. Extração no cliente de 1 frame a cada 2s
+      const frames = await extractVideoFramesEvery2s(videoFile);
       if (frames.length === 0) {
         throw new Error('Falha ao extrair frames do vídeo.');
       }
 
-      setStatusMessage('Fiscalizando fidelidade com OpenAI (gpt-4o-mini)...');
+      setStatusMessage(`Fiscalizando ${frames.length} frames com OpenAI (gpt-4o-mini)...`);
 
       // 2. Envio para a rota de auditoria
       const res = await fetch('/api/produtos2-audit-video', {
@@ -248,27 +256,7 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
 
       setAudit(data.audit);
       onAuditChange?.(data.audit);
-
-      // Atualiza token usage se retornado
-      if (data.usage && onTokenUsageChange) {
-        onTokenUsageChange({
-          promptTokens: data.usage.promptTokens || 3500,
-          candidateTokens: data.usage.completionTokens || 350,
-          totalTokens: data.usage.totalTokens || 3850,
-          estimatedCostBRL: data.usage.costBRL || 0.01,
-          totalCostUSD: data.usage.costUSD || 0.001,
-          breakdown: {
-            videoAnalysisTokens: 0,
-            videoAnalysisCostBRL: 0,
-            speechTokens: 0,
-            speechCostBRL: 0,
-            imagesCount: 0,
-            imagesCostBRL: 0,
-            promptsTokens: 0,
-            promptsCostBRL: 0,
-          },
-        });
-      }
+      onAuditComplete?.(data.audit, data.usage);
     } catch (err: any) {
       console.error('Erro na auditoria de vídeo:', err);
       setErrorMessage(err?.message || 'Erro durante a auditoria do vídeo.');
@@ -304,7 +292,7 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
               )}
             </h3>
             <p className="text-[11px] text-zinc-400">
-              Audita 5 frames do vídeo (1 a cada 2s) comparando com as fotos reais do produto.
+              Audita o vídeo frame a frame (1 captura a cada 2s — ex: 10s = 5 frames, 20s = 10 frames, 30s = 15 frames) comparando com as fotos reais do produto.
             </p>
           </div>
         </div>
@@ -447,16 +435,16 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
                 </div>
               </div>
 
-              {/* Grade com os 5 Frames Analisados */}
+              {/* Grade com os Frames Analisados a cada 2s */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between text-[11px] font-bold text-zinc-300 px-0.5">
-                  <span>5 Frames Analisados (A cada 2 segundos):</span>
+                  <span>{audit.frames.length} Frames Analisados (1 a cada 2 segundos):</span>
                   <span className="text-[10px] text-zinc-400 font-normal">
                     Meta rigorosa TikTok Shop &ge; 90%
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5">
                   {audit.frames.map((frame) => {
                     const fStyles = getAuditBoxClasses(frame.status);
                     return (

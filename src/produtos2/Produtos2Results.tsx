@@ -18,7 +18,7 @@ import {
   Square,
   RotateCcw,
 } from 'lucide-react';
-import { Produtos2AuditColorStatus, Produtos2ResultState } from './types';
+import { Produtos2AuditColorStatus, Produtos2ResultState, VideoFidelityAudit } from './types';
 import {
   downloadProdutos2StoryboardImage,
   exportProdutos2Zip,
@@ -528,6 +528,77 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
     } finally {
       setIsRefiningPrompt(false);
     }
+  };
+
+  const handleVideoAuditComplete = (vAudit: VideoFidelityAudit, usageData: any) => {
+    onUpdateResult((prev) => {
+      if (!prev) return null;
+
+      const curr = prev.tokenUsage || {
+        promptTokens: 0,
+        candidateTokens: 0,
+        totalTokens: 0,
+        estimatedCostBRL: 0,
+        totalCostUSD: 0,
+        breakdown: {
+          videoAnalysisTokens: 0,
+          videoAnalysisCostBRL: 0,
+          speechTokens: 0,
+          speechCostBRL: 0,
+          imagesCount: 0,
+          imagesCostBRL: 0,
+          promptsTokens: 0,
+          promptsCostBRL: 0,
+        },
+        detailedSteps: [],
+        modelsUsed: [],
+      };
+
+      const pTok = usageData?.promptTokens || 3500;
+      const cTok = usageData?.completionTokens || 350;
+      const tTok = usageData?.totalTokens || (pTok + cTok);
+      const cUSD = usageData?.costUSD || 0.001;
+      const cBRL = usageData?.costBRL || 0.01;
+      const mUsed = usageData?.model || 'gpt-4o-mini';
+
+      const newStep = {
+        step: 'Auditoria de Fidelidade do Vídeo',
+        model: mUsed,
+        promptTokens: pTok,
+        completionTokens: cTok,
+        totalTokens: tTok,
+        costUSD: cUSD,
+        costBRL: cBRL,
+        timestamp: new Date().toISOString(),
+        details: `Auditoria de ${vAudit.frames.length} frames (1 a cada 2s) contra fotos reais`,
+      };
+
+      const updatedStats: TokenUsageStats = {
+        ...curr,
+        promptTokens: curr.promptTokens + pTok,
+        candidateTokens: curr.candidateTokens + cTok,
+        totalTokens: curr.totalTokens + tTok,
+        totalCostUSD: Math.round(((curr.totalCostUSD || 0) + cUSD) * 1000) / 1000,
+        estimatedCostBRL: Math.round((curr.estimatedCostBRL + cBRL) * 100) / 100,
+        breakdown: {
+          ...curr.breakdown,
+          videoAnalysisTokens: (curr.breakdown?.videoAnalysisTokens || 0) + tTok,
+          videoAnalysisCostBRL: Math.round(((curr.breakdown?.videoAnalysisCostBRL || 0) + cBRL) * 100) / 100,
+        },
+        detailedSteps: [...(curr.detailedSteps || []), newStep],
+        modelsUsed: Array.from(new Set([...(curr.modelsUsed || []), mUsed])),
+        totalCalls: ((curr.totalCalls || curr.detailedSteps?.length) || 0) + 1,
+      };
+
+      // Atualiza imediatamente o SessionTokenStats que alimenta o Header do topo
+      onTokenUsageChange?.(updatedStats);
+
+      return {
+        ...prev,
+        videoAudit: vAudit,
+        tokenUsage: updatedStats,
+      };
+    });
   };
 
   const safeFileName = sanitizeProductFileName(result.productName);
@@ -1247,7 +1318,7 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
             )}
           </div>
 
-          {/* VERIFICAÇÃO DE FIDELIDADE DO VÍDEO DO VEO (5 FRAMES · 1 A CADA 2S) */}
+          {/* VERIFICAÇÃO DE FIDELIDADE DO VÍDEO DO VEO (1 CAPTURA A CADA 2S) */}
           <VideoFidelityAuditor
             productName={result.productName}
             productLock={result.productLock}
@@ -1256,8 +1327,8 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
             onAuditChange={(vAudit) => {
               onUpdateResult((prev) => (prev ? { ...prev, videoAudit: vAudit } : null));
             }}
+            onAuditComplete={handleVideoAuditComplete}
             onOpenPreview={onOpenPreview}
-            onTokenUsageChange={onTokenUsageChange}
           />
         </div>
       </div>
