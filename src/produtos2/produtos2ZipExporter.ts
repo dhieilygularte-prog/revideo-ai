@@ -1,4 +1,3 @@
-import JSZip from 'jszip';
 import { Produtos2ResultState } from './types';
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -52,6 +51,7 @@ export function downloadProdutos2StoryboardImage(imageUrl: string, productName: 
  * O .zip também leva o nome do produto.
  */
 export async function exportProdutos2Zip(result: Produtos2ResultState): Promise<void> {
+  const { default: JSZip } = await import('jszip');
   const zip = new JSZip();
   const baseName = sanitizeProductFileName(result.productName);
 

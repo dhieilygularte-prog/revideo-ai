@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import {
   Sparkles,
   AlertCircle,
@@ -15,39 +15,58 @@ import {
   TokenUsageStats,
   VeoModelMode,
 } from './types';
-import { extractVideoFrames } from './utils/frameExtractor';
-import { extractAudioFromVideoFile } from './utils/audioExtractor';
-import { exportAllClonedAssets, downloadAllGeneratedImagesZip } from './utils/zipExporter';
-import { buildVeoSingleParagraphPrompt, buildUniversalSceneImagePrompt } from './utils/veoPromptBuilder';
-import { distributeSpeechAcrossScenes } from './utils/speechDistributor';
 import { playCompletionSound } from './utils/audioAlert';
 import { Header } from './components/Header';
-import { VideoInputCard } from './components/VideoInputCard';
-import { ProductVariationsManager } from './components/ProductVariationsManager';
-import { ModelPhotoCard } from './components/ModelPhotoCard';
-import { ProductInfoCard } from './components/ProductInfoCard';
-import { AdditionalInstructionsCard } from './components/AdditionalInstructionsCard';
 import { ProgressBar } from './components/ProgressBar';
-import { OnScreenTextCard } from './components/OnScreenTextCard';
-import { SpeechTranscriptionCard } from './components/SpeechTranscriptionCard';
-import { SceneCard } from './components/SceneCard';
 import { ImageViewerModal } from './components/ImageViewerModal';
-import { AniaForm } from './ania/AniaForm';
-import { AniaResults } from './ania/AniaResults';
-import { runAniaPipeline, regenerateAniaSingleImage } from './ania/aniaPipeline';
-import { buildAniaVideoPrompt } from './ania/aniaPrompts';
-import { detectFabric, filterMoves, detectScenarioKey, getScenarioDescription } from './ania/aniaLibrary';
 import { AniaFormState, AniaResultState } from './ania/types';
-import { MicroImageEditor } from './components/MicroImageEditor';
-import { ProdutoForm } from './produto/ProdutoForm';
-import { ProdutoResults } from './produto/ProdutoResults';
-import { runProdutoPipeline } from './produto/produtoPipeline';
 import { ProdutoFormState, ProdutoResultState } from './produto/types';
 import { Produtos2Form } from './produtos2/Produtos2Form';
-import { Produtos2Results } from './produtos2/Produtos2Results';
-import { runProdutos2Pipeline, regenerateProdutos2Storyboard } from './produtos2/produtos2Pipeline';
 import { Produtos2FormState, Produtos2ResultState } from './produtos2/types';
 import { AIProfile } from './config/aiProfiles';
+
+const VideoInputCard = lazy(() =>
+  import('./components/VideoInputCard').then((m) => ({ default: m.VideoInputCard }))
+);
+const ProductVariationsManager = lazy(() =>
+  import('./components/ProductVariationsManager').then((m) => ({ default: m.ProductVariationsManager }))
+);
+const ModelPhotoCard = lazy(() =>
+  import('./components/ModelPhotoCard').then((m) => ({ default: m.ModelPhotoCard }))
+);
+const ProductInfoCard = lazy(() =>
+  import('./components/ProductInfoCard').then((m) => ({ default: m.ProductInfoCard }))
+);
+const AdditionalInstructionsCard = lazy(() =>
+  import('./components/AdditionalInstructionsCard').then((m) => ({ default: m.AdditionalInstructionsCard }))
+);
+const OnScreenTextCard = lazy(() =>
+  import('./components/OnScreenTextCard').then((m) => ({ default: m.OnScreenTextCard }))
+);
+const SpeechTranscriptionCard = lazy(() =>
+  import('./components/SpeechTranscriptionCard').then((m) => ({ default: m.SpeechTranscriptionCard }))
+);
+const SceneCard = lazy(() =>
+  import('./components/SceneCard').then((m) => ({ default: m.SceneCard }))
+);
+const MicroImageEditor = lazy(() =>
+  import('./components/MicroImageEditor').then((m) => ({ default: m.MicroImageEditor }))
+);
+const Produtos2Results = lazy(() =>
+  import('./produtos2/Produtos2Results').then((m) => ({ default: m.Produtos2Results }))
+);
+const AniaForm = lazy(() =>
+  import('./ania/AniaForm').then((m) => ({ default: m.AniaForm }))
+);
+const AniaResults = lazy(() =>
+  import('./ania/AniaResults').then((m) => ({ default: m.AniaResults }))
+);
+const ProdutoForm = lazy(() =>
+  import('./produto/ProdutoForm').then((m) => ({ default: m.ProdutoForm }))
+);
+const ProdutoResults = lazy(() =>
+  import('./produto/ProdutoResults').then((m) => ({ default: m.ProdutoResults }))
+);
 
 export default function App() {
   // Mode Selection State ('produtos2' default por padrão no APP, opções: 'produtos2' | 'ania' | 'clone' | 'produto')
@@ -215,6 +234,11 @@ export default function App() {
     const previewUrl = URL.createObjectURL(file);
 
     try {
+      const [{ extractVideoFrames }, { extractAudioFromVideoFile }] = await Promise.all([
+        import('./utils/frameExtractor'),
+        import('./utils/audioExtractor'),
+      ]);
+
       // 1. Extract Frames
       const { duration, frames } = await extractVideoFrames(file, (current, total) => {
         setExtractionProgress({ current, total });
@@ -390,6 +414,14 @@ export default function App() {
       let newImagesCostBRL = 0;
 
       const updatedScenes: SceneDetail[] = [];
+
+      const [
+        { distributeSpeechAcrossScenes },
+        { buildUniversalSceneImagePrompt, buildVeoSingleParagraphPrompt },
+      ] = await Promise.all([
+        import('./utils/speechDistributor'),
+        import('./utils/veoPromptBuilder'),
+      ]);
 
       // Garante que cada cena possua sua fala contínua correspondente (sem repetição global)
       // Se for música ou não tiver locução comercial real do produto, NUNCA use letras de música como fala
@@ -649,8 +681,10 @@ export default function App() {
   };
 
   // Update Prompt of a Single Scene when user edits that scene's speech
-  const handleUpdateSingleSceneSpeech = (sceneNumber: number, newSpeech: string) => {
+  const handleUpdateSingleSceneSpeech = async (sceneNumber: number, newSpeech: string) => {
     if (!analysisResult) return;
+
+    const { buildVeoSingleParagraphPrompt } = await import('./utils/veoPromptBuilder');
 
     const varList = variations.map((v, i) => v.name || `Variação ${i + 1}`);
     const durationSeconds = veoModelMode === 'veo3_omniflash_10s' ? 10 : 8;
@@ -726,20 +760,7 @@ export default function App() {
       };
     });
 
-    // Collect all uploaded photos to match the exact slot
-    const allUploadedPhotos: { photo: string; variationName: string }[] = [];
-    variations.forEach((v, vIdx) => {
-      v.photos.forEach((p, pIdx) => {
-        const varLabel =
-          variations.length === 1 && v.photos.length > 1
-            ? `Cor ${pIdx + 1}`
-            : (v.name || `Variação ${vIdx + 1}`);
-        allUploadedPhotos.push({
-          photo: p,
-          variationName: varLabel,
-        });
-      });
-    });
+    const { buildUniversalSceneImagePrompt } = await import('./utils/veoPromptBuilder');
 
     const imgIndex = targetScene.images.findIndex((i) => i.id === imageId);
     const slot = imgIndex >= 0 ? imgIndex + 1 : 1;
@@ -863,11 +884,13 @@ export default function App() {
 
   const handleDownloadAllZip = async () => {
     if (!analysisResult) return;
+    const { exportAllClonedAssets } = await import('./utils/zipExporter');
     await exportAllClonedAssets(analysisResult);
   };
 
   const handleDownloadAllImagesOnly = async () => {
     if (!analysisResult) return;
+    const { downloadAllGeneratedImagesZip } = await import('./utils/zipExporter');
     await downloadAllGeneratedImagesZip(analysisResult);
   };
 
@@ -879,6 +902,7 @@ export default function App() {
     setAniaStatusMessage('Iniciando pipeline do Método Ania...');
 
     try {
+      const { runAniaPipeline } = await import('./ania/aniaPipeline');
       const res = await runAniaPipeline(
         aniaForm,
         {
@@ -926,6 +950,8 @@ export default function App() {
     overrideProductPhotoBase64?: string
   ) => {
     if (!aniaResult) return;
+
+    const { regenerateAniaSingleImage } = await import('./ania/aniaPipeline');
 
     // Atualiza a foto da cor no formulário se fornecida uma nova foto
     if (overrideProductPhotoBase64) {
@@ -1081,8 +1107,11 @@ export default function App() {
     });
   };
 
-  const handleUpdateAniaVideoSpeech = (videoIndex: number, newSpeech: string) => {
+  const handleUpdateAniaVideoSpeech = async (videoIndex: number, newSpeech: string) => {
     if (!aniaResult) return;
+
+    const [{ buildAniaVideoPrompt }, { detectFabric, filterMoves, detectScenarioKey, getScenarioDescription }] =
+      await Promise.all([import('./ania/aniaPrompts'), import('./ania/aniaLibrary')]);
 
     const durationSec = videoIndex === 2 ? 8 : (aniaForm.veoModelMode === 'veo3_omniflash_10s' ? 10 : 8);
     const rawColors = aniaForm.colors.filter((c) => c.name.trim() || c.photoBase64);
@@ -1161,6 +1190,7 @@ export default function App() {
     setProdutos2ErrorMessage(null);
 
     try {
+      const { runProdutos2Pipeline } = await import('./produtos2/produtos2Pipeline');
       const res = await runProdutos2Pipeline({
         form: produtos2Form,
         aiProfile,
@@ -1187,6 +1217,7 @@ export default function App() {
       prev ? { ...prev, isRegeneratingStoryboard: true, storyboardError: undefined } : null
     );
     try {
+      const { regenerateProdutos2Storyboard } = await import('./produtos2/produtos2Pipeline');
       const regen = await regenerateProdutos2Storyboard({
         result: produtos2Result,
         form: produtos2Form,
@@ -1329,6 +1360,7 @@ export default function App() {
     setProdutoErrorMessage(null);
 
     try {
+      const { runProdutoPipeline } = await import('./produto/produtoPipeline');
       const res = await runProdutoPipeline({
         form: produtoForm,
         aiProfile,
@@ -1368,6 +1400,7 @@ export default function App() {
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 space-y-8">
+        <Suspense fallback={null}>
         {/* ========================================================================= */}
         {/* MODO PRODUTOS 2.0 VIEW (Padrão no App)                                    */}
         {/* ========================================================================= */}
@@ -1737,6 +1770,7 @@ export default function App() {
             )}
           </div>
         )}
+        </Suspense>
       </main>
 
       {/* Modal Image Full Preview */}

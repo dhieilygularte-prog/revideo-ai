@@ -84,7 +84,7 @@ function cleanDanglingEnds(text: string): string {
 
 export function extractUserSpeechFromInstructions(
   rawText: string,
-  productName: string = ''
+  _productName: string = ''
 ): { hasSpeech: boolean; speech: string } {
   if (!rawText || !rawText.trim()) {
     return { hasSpeech: false, speech: '' };

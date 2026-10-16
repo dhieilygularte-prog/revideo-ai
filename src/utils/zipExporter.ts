@@ -1,4 +1,3 @@
-import JSZip from 'jszip';
 import { VideoAnalysisResult, SceneDetail } from '../types';
 
 /**
@@ -23,13 +22,15 @@ export function getCleanProductName(productType?: string): string {
  * Filenames are strictly: "1_tenis.jpg", "2_tenis.jpg", "3_tenis.jpg"
  */
 export async function downloadAllGeneratedImagesZip(analysis: VideoAnalysisResult): Promise<void> {
+  const { default: JSZip } = await import('jszip');
   const zip = new JSZip();
   let count = 0;
   const prodSlug = getCleanProductName(analysis.productType);
 
   for (const scene of analysis.scenes) {
-    scene.images.forEach((img, imgIdx) => {
-      if (!img.imageUrl) return;
+    for (let imgIdx = 0; imgIdx < scene.images.length; imgIdx++) {
+      const img = scene.images[imgIdx];
+      if (!img.imageUrl) continue;
       count++;
       const slotNumber = img.frameNumber || ((scene.sceneNumber - 1) * scene.images.length + imgIdx + 1);
       const filename = `${slotNumber}_${prodSlug}.jpg`;
@@ -39,15 +40,14 @@ export async function downloadAllGeneratedImagesZip(analysis: VideoAnalysisResul
           const base64Data = img.imageUrl.split(',')[1];
           zip.file(filename, base64Data, { base64: true });
         } else {
-          fetch(img.imageUrl)
-            .then((res) => res.blob())
-            .then((blob) => zip.file(filename, blob))
-            .catch((e) => console.warn(`Erro ao baixar imagem ${filename}:`, e));
+          const res = await fetch(img.imageUrl);
+          const blob = await res.blob();
+          zip.file(filename, blob);
         }
       } catch (err) {
         console.warn(`Erro ao adicionar ${filename} ao zip:`, err);
       }
-    });
+    }
   }
 
   if (count === 0) return;
@@ -68,12 +68,14 @@ export async function downloadAllGeneratedImagesZip(analysis: VideoAnalysisResul
  * Filenames are strictly: "1_produto.jpg", "2_produto.jpg", etc.
  */
 export async function downloadSceneImagesZip(scene: SceneDetail, productType?: string): Promise<void> {
+  const { default: JSZip } = await import('jszip');
   const zip = new JSZip();
   let count = 0;
   const prodSlug = getCleanProductName(productType);
 
-  scene.images.forEach((img, imgIdx) => {
-    if (!img.imageUrl) return;
+  for (let imgIdx = 0; imgIdx < scene.images.length; imgIdx++) {
+    const img = scene.images[imgIdx];
+    if (!img.imageUrl) continue;
     count++;
     const slotNumber = img.frameNumber || ((scene.sceneNumber - 1) * scene.images.length + imgIdx + 1);
     const filename = `${slotNumber}_${prodSlug}.jpg`;
@@ -83,15 +85,14 @@ export async function downloadSceneImagesZip(scene: SceneDetail, productType?: s
         const base64Data = img.imageUrl.split(',')[1];
         zip.file(filename, base64Data, { base64: true });
       } else {
-        fetch(img.imageUrl)
-          .then((res) => res.blob())
-          .then((blob) => zip.file(filename, blob))
-          .catch((e) => console.warn(`Erro ao carregar ${filename}:`, e));
+        const res = await fetch(img.imageUrl);
+        const blob = await res.blob();
+        zip.file(filename, blob);
       }
     } catch (err) {
       console.warn(`Erro ao adicionar ${filename} ao zip da cena:`, err);
     }
-  });
+  }
 
   if (count === 0) return;
 
@@ -110,6 +111,7 @@ export async function downloadSceneImagesZip(scene: SceneDetail, productType?: s
  * Exports complete package: prompts, headlines, and 9:16 images named "1_tenis.jpg", "2_tenis.jpg", "3_tenis.jpg"
  */
 export async function exportAllClonedAssets(analysis: VideoAnalysisResult): Promise<void> {
+  const { default: JSZip } = await import('jszip');
   const zip = new JSZip();
   const prodSlug = getCleanProductName(analysis.productType);
 
@@ -187,8 +189,9 @@ ${analysis.speechData?.adaptedScript || analysis.speechData?.originalTranscript 
   for (const scene of analysis.scenes) {
     const sceneFolder = zip.folder(`cena_${scene.sceneNumber}`);
     if (sceneFolder) {
-      scene.images.forEach((img, imgIdx) => {
-        if (!img.imageUrl) return;
+      for (let imgIdx = 0; imgIdx < scene.images.length; imgIdx++) {
+        const img = scene.images[imgIdx];
+        if (!img.imageUrl) continue;
         const slotNumber = imgIdx + 1;
         const filename = `${slotNumber}_${prodSlug}.jpg`;
 
@@ -197,15 +200,14 @@ ${analysis.speechData?.adaptedScript || analysis.speechData?.originalTranscript 
             const base64Data = img.imageUrl.split(',')[1];
             sceneFolder.file(filename, base64Data, { base64: true });
           } else {
-            fetch(img.imageUrl)
-              .then((res) => res.blob())
-              .then((blob) => sceneFolder.file(filename, blob))
-              .catch((e) => console.warn(`Erro ao carregar ${filename}:`, e));
+            const res = await fetch(img.imageUrl);
+            const blob = await res.blob();
+            sceneFolder.file(filename, blob);
           }
         } catch (err) {
           console.warn(`Erro ao arquivar imagem ${img.id}:`, err);
         }
-      });
+      }
     }
   }
 

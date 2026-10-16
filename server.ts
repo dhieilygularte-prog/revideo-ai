@@ -400,7 +400,7 @@ function buildFallbackVideoAnalysis(
 }
 
 // Endpoint: Health check
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (_req, res) => {
   const currentKey = process.env.GEMINI_API_KEY || process.env.GEMINIAPI || '';
   const hasOpenAi = Boolean(
     (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim().length > 0) ||
@@ -421,7 +421,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // Endpoint: Cost report for the entire cloning session
-app.get('/api/cost-report', (req, res) => {
+app.get('/api/cost-report', (_req, res) => {
   const report = globalCostTracker.generateReport(getActiveProviderType());
   res.json({ success: true, report });
 });
@@ -3820,7 +3820,7 @@ async function startServer() {
     });
   } else if (!process.env.VERCEL) {
     app.use(express.static(path.join(__dirname, 'dist')));
-    app.get('*', (req, res) => {
+    app.get('*', (_req, res) => {
       res.sendFile(path.join(__dirname, 'dist', 'index.html'));
     });
   }

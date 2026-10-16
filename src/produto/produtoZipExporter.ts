@@ -1,4 +1,3 @@
-import JSZip from 'jszip';
 import { ProdutoResultState } from './types';
 
 function downloadBlob(blob: Blob, filename: string) {
@@ -29,6 +28,7 @@ async function urlToUint8Array(url: string): Promise<Uint8Array> {
 }
 
 export async function exportProdutoZip(result: ProdutoResultState): Promise<void> {
+  const { default: JSZip } = await import('jszip');
   const zip = new JSZip();
   const prodSlug = result.productName.toLowerCase().replace(/[^a-z0-9]/g, '_') || 'produto';
 

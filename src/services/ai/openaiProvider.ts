@@ -756,7 +756,7 @@ Retorne estritamente um JSON:
         content: [
           { type: 'text', text: `[IMAGEM GERADA]: Variação "${variationName}"` },
           { type: 'image_url', image_url: { url: generatedImageBase64 } },
-          ...primaryRefs.map((ref, idx) => ({
+          ...primaryRefs.map((_ref, idx) => ({
             type: 'text' as const,
             text: `[FOTO DE REFERÊNCIA REAL ${idx + 1}]:`,
           })),

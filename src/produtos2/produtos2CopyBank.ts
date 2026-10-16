@@ -1633,7 +1633,7 @@ export function normalizeTextForNarration(text: string): string {
  * - Aplica normalização para narração por IA
  * - Garante estritamente que length <= 225
  */
-export function enforceMaxChars(copyText: string, maxChars = 225, minTargetChars = 120): string {
+export function enforceMaxChars(copyText: string, maxChars = 225, _minTargetChars = 120): string {
   let clean = normalizeTextForNarration(copyText.replace(/\s+/g, ' ').trim());
   if (clean.length <= maxChars) return clean;
 
@@ -1909,7 +1909,7 @@ function buildMinimalReplacementClauses(
 /**
  * Avalia se a copy mantém a estrutura básica válida (prefixo "Nossa, ", sem "menina", e dentro do limite de 8s se aplicável)
  */
-export function evaluateCopyDnaChecklist(copy: string, duration: Produtos2Duration): {
+export function evaluateCopyDnaChecklist(copy: string, _duration: Produtos2Duration): {
   passed: boolean;
   hasOlha: boolean;
   hasCompleteCta: boolean;

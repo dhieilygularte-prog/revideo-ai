@@ -20,7 +20,7 @@ const STEPS = [
 export const ProgressBar: React.FC<ProgressBarProps> = ({
   currentStep,
   progressPercent,
-  statusMessage,
+  statusMessage: _statusMessage,
 }) => {
   const currentStepIndex = STEPS.findIndex((s) => s.key === currentStep);
 

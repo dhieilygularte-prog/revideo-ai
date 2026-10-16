@@ -1,4 +1,3 @@
-import JSZip from 'jszip';
 import { AniaResultState } from './types';
 import { removeAccents } from './aniaLibrary';
 
@@ -46,6 +45,7 @@ async function urlToUint8Array(url: string): Promise<Uint8Array> {
  * 7. descricao-{peca}.txt
  */
 export async function exportAniaAssetsZip(result: AniaResultState): Promise<void> {
+  const { default: JSZip } = await import('jszip');
   const zip = new JSZip();
   const pecaRaw = result.planning?.peca || 'peca';
   const peca = removeAccents(pecaRaw).replace(/[^a-z0-9]/g, '') || 'peca';

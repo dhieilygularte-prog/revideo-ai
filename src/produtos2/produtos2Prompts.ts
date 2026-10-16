@@ -176,7 +176,7 @@ export function sanitizeSceneColorAdjectivesForVeo(
 export function sanitizeProductLockForVariations(
   productLock: string[],
   activeVars: { name?: string; photos?: string[] }[] = [],
-  productName: string = ''
+  _productName: string = ''
 ): string[] {
   if (!Array.isArray(productLock) || productLock.length === 0) return productLock;
   if (activeVars.length < 2) return productLock;
