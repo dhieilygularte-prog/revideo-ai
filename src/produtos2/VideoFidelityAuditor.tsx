@@ -237,17 +237,31 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
 
       setStatusMessage(`Fiscalizando ${frames.length} frames com OpenAI (gpt-4o-mini)...`);
 
-      // 2. Envio para a rota de auditoria
+      // 2. Envio para a rota de auditoria (enviando no máximo as 5 primeiras fotos para economia e agilidade)
       const res = await fetch('/api/produtos2-audit-video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           videoFrames: frames,
-          productPhotosBase64: referencePhotos,
+          productPhotosBase64: referencePhotos.slice(0, 5),
           productName,
           productLock,
         }),
       });
+
+      if (!res.ok) {
+        const text = await res.text();
+        let errMsg = `Erro no servidor (Status ${res.status})`;
+        try {
+          const parsed = JSON.parse(text);
+          if (parsed.error) errMsg = parsed.error;
+        } catch {
+          if (text && !text.includes('<!DOCTYPE')) {
+            errMsg += `: ${text.slice(0, 150)}`;
+          }
+        }
+        throw new Error(errMsg);
+      }
 
       const data = await res.json();
       if (!data.success || !data.audit) {
