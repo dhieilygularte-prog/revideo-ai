@@ -163,6 +163,50 @@ async function extractVideoFramesEvery2s(videoFile: File): Promise<{ second: num
   });
 }
 
+/**
+ * Redimensiona fotos de referência para max 600px JPEG 0.80 antes do envio,
+ * evitando estourar o limite de 4.5MB da Vercel e acelerando a resposta.
+ */
+async function compressPhotoForVideoAudit(
+  dataUrl: string,
+  maxSide = 600,
+  quality = 0.80
+): Promise<string> {
+  if (!dataUrl || !dataUrl.startsWith('data:image')) return dataUrl;
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        let w = img.width || 600;
+        let h = img.height || 600;
+        if (w > maxSide || h > maxSide) {
+          if (w > h) {
+            h = Math.round((h * maxSide) / w);
+            w = maxSide;
+          } else {
+            w = Math.round((w * maxSide) / h);
+            h = maxSide;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(dataUrl);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      } catch {
+        resolve(dataUrl);
+      }
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
 export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
   productName,
   productLock,
@@ -229,48 +273,67 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
     setStatusMessage('Extraindo frames a cada 2 segundos do vídeo...');
 
     try {
-      // 1. Extração no cliente de 1 frame a cada 2s
-      const frames = await extractVideoFramesEvery2s(videoFile);
+      // 1. Extração no cliente de 1 frame a cada 2s + compressão das fotos de referência
+      const [frames, compressedRefs] = await Promise.all([
+        extractVideoFramesEvery2s(videoFile),
+        Promise.all(referencePhotos.slice(0, 5).map((p) => compressPhotoForVideoAudit(p, 600, 0.80))),
+      ]);
+
       if (frames.length === 0) {
         throw new Error('Falha ao extrair frames do vídeo.');
       }
 
       setStatusMessage(`Fiscalizando ${frames.length} frames com OpenAI (gpt-4o-mini)...`);
 
-      // 2. Envio para a rota de auditoria (enviando no máximo as 5 primeiras fotos para economia e agilidade)
-      const res = await fetch('/api/produtos2-audit-video', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          videoFrames: frames,
-          productPhotosBase64: referencePhotos.slice(0, 5),
-          productName,
-          productLock,
-        }),
+      const payloadBody = JSON.stringify({
+        videoFrames: frames,
+        productPhotosBase64: compressedRefs,
+        productName,
+        productLock,
       });
 
-      if (!res.ok) {
-        const text = await res.text();
-        let errMsg = `Erro no servidor (Status ${res.status})`;
+      // 2. Envio para a rota de auditoria (tenta /api/produtos2-audit-storyboard e fallback /api/produtos2-audit-video)
+      const endpoints = ['/api/produtos2-audit-storyboard', '/api/produtos2-audit-video'];
+      let parsedData: any = null;
+      let lastErrorMsg = 'Falha ao conectar com o servidor de auditoria de vídeo.';
+
+      for (const endpoint of endpoints) {
         try {
-          const parsed = JSON.parse(text);
-          if (parsed.error) errMsg = parsed.error;
-        } catch {
-          if (text && !text.includes('<!DOCTYPE')) {
-            errMsg += `: ${text.slice(0, 150)}`;
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: payloadBody,
+          });
+
+          const rawText = await res.text();
+          if (!rawText || rawText.trim().startsWith('<!DOCTYPE') || rawText.trim().startsWith('<html')) {
+            lastErrorMsg = `Rota indisponível (${res.status})`;
+            continue;
           }
+
+          const json = JSON.parse(rawText);
+          if (res.ok && json && json.success && json.audit) {
+            parsedData = json;
+            break;
+          } else if (json && json.error) {
+            lastErrorMsg = json.error;
+            // Se retornou erro explícito de validação que não seja 404/405, tenta próximo endpoint se for sobre storyboard
+            if (!String(json.error).toLowerCase().includes('storyboard')) {
+              break;
+            }
+          }
+        } catch (fetchErr: any) {
+          lastErrorMsg = fetchErr?.message || lastErrorMsg;
         }
-        throw new Error(errMsg);
       }
 
-      const data = await res.json();
-      if (!data.success || !data.audit) {
-        throw new Error(data.error || 'Falha ao auditar vídeo.');
+      if (!parsedData || !parsedData.success || !parsedData.audit) {
+        throw new Error(lastErrorMsg || 'Falha ao auditar vídeo.');
       }
 
-      setAudit(data.audit);
-      onAuditChange?.(data.audit);
-      onAuditComplete?.(data.audit, data.usage);
+      setAudit(parsedData.audit);
+      onAuditChange?.(parsedData.audit);
+      onAuditComplete?.(parsedData.audit, parsedData.usage);
     } catch (err: any) {
       console.error('Erro na auditoria de vídeo:', err);
       setErrorMessage(err?.message || 'Erro durante a auditoria do vídeo.');

@@ -1526,7 +1526,15 @@ export default function App() {
                   onOpenPreview={(url, title) => setPreviewModal({ isOpen: true, url, title })}
                   aiProfile={aiProfile}
                   onTokenUsageChange={setSessionTokenStats}
-                  referencePhotos={produtos2Form.variations.flatMap((v) => v.photos).filter(Boolean)}
+                  referencePhotos={
+                    produtos2Form.variations.flatMap((v) => v.photos).filter(Boolean).length > 0
+                      ? produtos2Form.variations.flatMap((v) => v.photos).filter(Boolean)
+                      : (produtos2Result.variations || []).flatMap((v) => v.photos).filter(Boolean).length > 0
+                      ? (produtos2Result.variations || []).flatMap((v) => v.photos).filter(Boolean)
+                      : produtos2Result.storyboardImageUrl
+                      ? [produtos2Result.storyboardImageUrl]
+                      : []
+                  }
                 />
               </div>
             )}

@@ -3285,6 +3285,10 @@ function getAuditColorLabel(status: 'green' | 'yellow' | 'orange' | 'red', score
 
 app.post('/api/produtos2-audit-storyboard', async (req, res) => {
   try {
+    if (Array.isArray(req.body?.videoFrames) && req.body.videoFrames.length > 0) {
+      return handleProdutos2AuditVideo(req, res);
+    }
+
     const {
       storyboardImageBase64,
       productPhotosBase64 = [],
@@ -3797,7 +3801,7 @@ O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "iss
 });
 
 // ─── ENDPOINT: FISCALIZAÇÃO DE FIDELIDADE DO VÍDEO DO VEO (5 FRAMES · 1 A CADA 2S) ───
-app.post('/api/produtos2-audit-video', async (req, res) => {
+async function handleProdutos2AuditVideo(req: any, res: any) {
   try {
     const {
       videoFrames = [], // Array<{ second: number; frameBase64: string }> (5 frames)
@@ -4101,7 +4105,9 @@ Retorne o JSON estritamente conforme solicitado.`;
       error: err?.message || 'Erro inesperado ao auditar fidelidade do vídeo.',
     });
   }
-});
+}
+
+app.post('/api/produtos2-audit-video', handleProdutos2AuditVideo);
 
 // Setup Vite middleware in dev or static serve in prod
 async function startServer() {

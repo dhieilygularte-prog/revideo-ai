@@ -4244,6 +4244,9 @@ function getAuditColorLabel(status, score) {
 }
 app.post("/api/produtos2-audit-storyboard", async (req, res) => {
   try {
+    if (Array.isArray(req.body?.videoFrames) && req.body.videoFrames.length > 0) {
+      return handleProdutos2AuditVideo(req, res);
+    }
     const {
       storyboardImageBase64,
       productPhotosBase64 = [],
@@ -4635,7 +4638,7 @@ Analise cada um dos 9 quadrantes (Cena 1 a Cena 9) e retorne o JSON em portugu\x
     });
   }
 });
-app.post("/api/produtos2-audit-video", async (req, res) => {
+async function handleProdutos2AuditVideo(req, res) {
   try {
     const {
       videoFrames = [],
@@ -4907,7 +4910,8 @@ Audite os frames acima e retorne o JSON estritamente no schema solicitado.`
       error: err?.message || "Erro inesperado ao auditar fidelidade do v\xEDdeo."
     });
   }
-});
+}
+app.post("/api/produtos2-audit-video", handleProdutos2AuditVideo);
 async function startServer() {
   if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
     const pkgName = "vite";
