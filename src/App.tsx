@@ -1467,18 +1467,6 @@ export default function App() {
 
             {!produtos2Result ? (
               <>
-                <div className="flex justify-end mb-1">
-                  <button
-                    type="button"
-                    onClick={() => setIsHistoryOpen(true)}
-                    className="px-3 py-1.5 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border border-zinc-800 hover:border-zinc-700 text-xs font-medium rounded-xl flex items-center gap-2 transition-colors cursor-pointer shadow-sm"
-                    title="Ver histórico dos últimos criativos gerados"
-                  >
-                    <History className="w-3.5 h-3.5 text-zinc-400" />
-                    <span>Histórico de Gerações</span>
-                  </button>
-                </div>
-
                 <Produtos2Form
                   form={produtos2Form}
                   onChange={setProdutos2Form}
@@ -1486,6 +1474,7 @@ export default function App() {
                   isProcessing={isProcessingProdutos2}
                   aiProfile={aiProfile}
                   onTokenUsageChange={setSessionTokenStats}
+                  onOpenHistory={() => setIsHistoryOpen(true)}
                 />
 
                 {isProcessingProdutos2 && (

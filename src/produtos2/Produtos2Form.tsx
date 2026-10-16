@@ -15,6 +15,7 @@ import {
   Check,
   Wand2,
   Copy,
+  History,
 } from 'lucide-react';
 import {
   Produtos2FormState,
@@ -37,6 +38,7 @@ interface Produtos2FormProps {
   isProcessing: boolean;
   aiProfile?: AIProfile;
   onTokenUsageChange?: (stats: TokenUsageStats) => void;
+  onOpenHistory?: () => void;
 }
 
 /**
@@ -97,6 +99,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
   isProcessing,
   aiProfile = 'openai',
   onTokenUsageChange,
+  onOpenHistory,
 }) => {
   const [activeMic, setActiveMic] = useState<'info' | 'instructions' | 'user' | 'banco1' | 'banco2' | 'aurora' | null>(null);
   const [isGeneratingSpeeches, setIsGeneratingSpeeches] = useState(false);
@@ -778,22 +781,36 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
               Copy-First: escolhe a copy campeã validada → monta o Storyboard 3×3 (9 cenas) que prova a fala → gera o prompt contínuo do Veo 3.
             </p>
           </div>
-          {form.detectedNiche && (
-            <span
-              className={`px-3 py-1 rounded-full border text-xs font-extrabold flex items-center gap-1.5 ${
-                isMaleVestuario
-                  ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-200'
-                  : 'bg-sky-500/20 border-sky-400/50 text-sky-200'
-              }`}
-            >
-              <CheckCircle2
-                className={`w-3.5 h-3.5 ${
-                  isMaleVestuario ? 'text-emerald-300' : 'text-sky-300'
+          <div className="flex items-center gap-2.5">
+            {form.detectedNiche && (
+              <span
+                className={`px-3 py-1 rounded-full border text-xs font-extrabold flex items-center gap-1.5 ${
+                  isMaleVestuario
+                    ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-200'
+                    : 'bg-sky-500/20 border-sky-400/50 text-sky-200'
                 }`}
-              />
-              Nicho: {form.detectedNiche}
-            </span>
-          )}
+              >
+                <CheckCircle2
+                  className={`w-3.5 h-3.5 ${
+                    isMaleVestuario ? 'text-emerald-300' : 'text-sky-300'
+                  }`}
+                />
+                Nicho: {form.detectedNiche}
+              </span>
+            )}
+
+            {onOpenHistory && (
+              <button
+                type="button"
+                onClick={onOpenHistory}
+                className="px-3.5 py-1.5 bg-zinc-950/70 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border border-zinc-800 hover:border-zinc-700 text-xs font-medium rounded-xl flex items-center gap-2 transition-colors cursor-pointer shadow-sm"
+                title="Ver histórico dos últimos criativos gerados"
+              >
+                <History className="w-3.5 h-3.5 text-zinc-400" />
+                <span>Histórico de Gerações</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Seletor de Sub-Modos */}
