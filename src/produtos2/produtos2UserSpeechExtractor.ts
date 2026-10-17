@@ -7,6 +7,8 @@
 
 export function fixCommonSlips(str: string): string {
   let s = str;
+  // Remove palavras duplicadas consecutivas por gagueira/ditado (ex: "trabalhar, trabalhar" -> "trabalhar")
+  s = s.replace(/\b([a-záàâãéêíóôõúç]{2,})(?:\s*,\s*|\s+)\1\b/gi, '$1');
   // Corrige falhas comuns de fala para texto no nome do produto
   s = s.replace(/\bp[óo]\s*pouco\b/gi, 'Poco');
   s = s.replace(/\bpopouco\b/gi, 'Poco');
@@ -21,7 +23,60 @@ export function fixCommonSlips(str: string): string {
   return s;
 }
 
-export function fitSpeechCloseToLimit(text: string, maxLen = 225, minTarget = 218): string {
+/**
+ * Reduz o MÍNIMO POSSÍVEL uma fala que passou de 225 caracteres,
+ * preservando começo, meio e CTA final, parando assim que atingir <= 225 chars (idealmente 215..225).
+ */
+export function condenseSpeechMinimallyTo225(text: string, maxLen = 225, minTarget = 215): string {
+  let s = fixCommonSlips(text).replace(/\s+/g, ' ').trim();
+  if (s.length <= maxLen) {
+    return s;
+  }
+
+  // Lista de micro-enxugamentos progressivos (do mais sutil ao moderado),
+  // aplicados um a um SOMENTE até entrar no limite <= 225 sem derrubar abaixo de minTarget
+  const microReplacements: [RegExp, string][] = [
+    [/,?\s*\bn[ée]\b\s*,?/gi, ', '],
+    [/,?\s*\btipo\s+assim\b\s*,?/gi, ' '],
+    [/\bque\s+eu\s+/gi, 'que '],
+    [/\beu\s+tenho\s+que\b/gi, 'tenho que'],
+    [/\beu\s+vou\s+deixar\b/gi, 'vou deixar'],
+    [/\beu\s+j[áa]\s+/gi, 'já '],
+    [/\bent[ãa]o\s+j[áa]\s+/gi, 'já '],
+    [/\be\s+j[áa]\s+/gi, 'e '],
+    [/\bvoc[êe]\s+sabe\s+que\b/gi, 'sabe que'],
+    [/\baqui\s+no\s+carrinho\s+laranja\b/gi, 'no carrinho laranja'],
+    [/\baqui\s+embaixo\s+no\s+carrinho\b/gi, 'no carrinho'],
+    [/\baqui\s+no\s+carrinho\b/gi, 'no carrinho'],
+    [/\bpor\s+um\s+valor\s+muito\s+barato\b/gi, 'muito barato'],
+    [/\bvalor\s+muito\s+barato\b/gi, 'muito barato'],
+    [/\bdois\s+dias\b/gi, '2 dias'],
+    [/\btr[êe]s\s+dias\b/gi, '3 dias'],
+    [/\bquatro\b/gi, '4'],
+    [/\bcinco\b/gi, '5'],
+  ];
+
+  for (const [pattern, replacement] of microReplacements) {
+    if (s.length <= maxLen) break;
+    const next = s
+      .replace(pattern, replacement)
+      .replace(/\s+,/g, ',')
+      .replace(/,{2,}/g, ',')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (next.length < s.length && (next.length >= minTarget || s.length > maxLen)) {
+      s = next;
+    }
+  }
+
+  if (s.length <= maxLen) {
+    return s;
+  }
+
+  return fitSpeechCloseToLimit(s, maxLen, minTarget);
+}
+
+export function fitSpeechCloseToLimit(text: string, maxLen = 225, minTarget = 215): string {
   let s = text.replace(/\s+/g, ' ').trim();
   if (s.length <= maxLen && s.length >= minTarget) {
     return s;
@@ -111,14 +166,14 @@ export function extractUserSpeechFromInstructions(
     };
   }
 
-  // 1.2. Falas introduzidas por verbo + dois-pontos (texto ditado: "o vendedor vira e diz assim: Gente, ...")
-  const colonRegex = /\b(?:fala|diz|disse|falou|grita|gritam|falam|dizem|responde|pergunta)(?:\s+assim)?\s*:\s*([\s\S]+?)(?=\s+(?:E\s+a[íi]\s+termina|E\s+a[íi]\s+j[áa]\s+corta|E\s+a[íi]\s+corta|Pronto\b|[ÉE]\s+isso\b|Ent[ãa]o\s+come[çc]a|A[íi]\s+a\s+primeira\s+cena|[ÉE]\s+uma\s+loja|O\s+cen[áa]rio|E\s+nessas\s+falas)|$)/gi;
+  // 1.2. Falas introduzidas por verbo + dois-pontos ou vírgula (ex: "e ele fala assim, cara, encontrei..." ou "diz assim: Gente, ...")
+  const colonRegex = /\b(?:(?:ele|ela|pai|m[ãa]e|homem|mulher|vendedor|cliente|personagem)\s+)?(?:(?:fala|diz|disse|falou|grita|gritam|falam|dizem|responde|pergunta)\s+assim\s*[:,]|(?:fala|diz|disse|falou|grita|gritam|falam|dizem|responde|pergunta)\s*:)\s*([\s\S]+?)(?=\s+(?:E\s+a[íi]\s+termina|E\s+a[íi]\s+j[áa]\s+corta|E\s+a[íi]\s+corta|Pronto\b|[ÉE]\s+isso\b|Ent[ãa]o\s+come[çc]a|A[íi]\s+a\s+primeira\s+cena|[ÉE]\s+uma\s+loja|O\s+cen[áa]rio|E\s+nessas\s+falas)|$)/gi;
   const colonSegments: string[] = [];
   let cm: RegExpExecArray | null;
   while ((cm = colonRegex.exec(text)) !== null) {
     let seg = (cm[1] || '').trim();
     // Se houver um novo marcador dentro do trecho ("Gente, gente... ele já fala assim: Gente, ..."), fica com o que vem depois do último
-    const inner = seg.split(/\b(?:fala|diz|disse|falou)(?:\s+assim)?\s*:\s*/i);
+    const inner = seg.split(/\b(?:fala|diz|disse|falou)(?:\s+assim)?\s*[:,]\s*/i);
     seg = inner[inner.length - 1].trim();
     seg = seg
       .replace(/,?\s*n[ée]\?/gi, '!')
@@ -126,7 +181,7 @@ export function extractUserSpeechFromInstructions(
       .trim();
     seg = fixCommonSlips(seg);
     // Ignora onomatopeias ("au au au") e trechos curtos demais
-    if (seg.length >= 25 && !/^(?:au\s*)+/i.test(seg)) {
+    if (seg.length >= 20 && !/^(?:au\s*)+/i.test(seg)) {
       colonSegments.push(seg);
     }
   }
@@ -281,9 +336,9 @@ export function formatFinalSpeech(raw: string): string {
   s = s.replace(/\s+([.,!?])/g, '$1');
   s = s.replace(/([.!?]\s+)([a-záàâãéêíóôõúç])/g, (_m, p, c) => p + c.toUpperCase());
 
-  // Se ultrapassar 225 caracteres, ajusta para ficar o mais próximo possível de 225 (entre 220 e 225)
+  // Se ultrapassar 225 caracteres, enxuga o MÍNIMO POSSÍVEL para ficar colado em 225 (entre 215 e 225)
   if (s.length > 225) {
-    s = fitSpeechCloseToLimit(s, 225, 218);
+    s = condenseSpeechMinimallyTo225(s, 225, 215);
   }
 
   if (!/[.!?]$/.test(s)) {

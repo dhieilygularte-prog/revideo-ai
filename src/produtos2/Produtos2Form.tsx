@@ -263,7 +263,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
         clientGender: form.clientGender,
         influencer: form.influencer,
       });
-      const banco1Result = copy1.finalCopy;
+      let banco1Result = copy1.finalCopy;
 
       const copy2 = selectAndAdaptProdutos2Copy({
         subMode: form.subMode,
@@ -275,7 +275,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
         influencer: form.influencer,
         excludeCopyId: copy1.copyId,
       });
-      const banco2Result = copy2.finalCopy;
+      let banco2Result = copy2.finalCopy;
 
       // 3. Aurora Copy imediata (0ms) como base
       let auroraResult = `Gente, olha esse lançamento imperdível! O ${finalProductName} foi desenvolvido com material resistente e tecnologia pensada para o seu conforto diário, super fácil de usar. Confere todos os detalhes aqui embaixo!`;
@@ -301,6 +301,69 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
         const timeoutId = setTimeout(() => controller.abort(), 7500);
 
         const apiPromises: Promise<any>[] = [];
+
+        // Adaptação cirúrgica por IA das Falas 1 e 2 do banco de memória (~64 copies validadas) para o produto atual
+        if (!copy1.isSameProductBankCopy || !copy2.isSameProductBankCopy) {
+          apiPromises.push(
+            fetch('/api/produtos2-planning', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'adapt_bank_copies',
+                productName: finalProductName,
+                productInfo: form.productInfo || finalProductName,
+                clientGender: form.clientGender,
+                influencer: form.influencer || copy1.resolvedInfluencer,
+                copy1: {
+                  id: copy1.copyId,
+                  originalText: copy1.baseEntry?.text || copy1.finalCopy,
+                  originalProductType: copy1.baseEntry?.productType || '',
+                  isSameProduct: copy1.isSameProductBankCopy,
+                  localAdaptedText: banco1Result,
+                },
+                copy2: {
+                  id: copy2.copyId,
+                  originalText: copy2.baseEntry?.text || copy2.finalCopy,
+                  originalProductType: copy2.baseEntry?.productType || '',
+                  isSameProduct: copy2.isSameProductBankCopy,
+                  localAdaptedText: banco2Result,
+                },
+              }),
+              signal: controller.signal,
+            })
+              .then((r) => r.json())
+              .then((data) => {
+                if (data?.success) {
+                  if (data.adaptedCopy1 && !copy1.isSameProductBankCopy) {
+                    banco1Result = data.adaptedCopy1;
+                  }
+                  if (data.adaptedCopy2 && !copy2.isSameProductBankCopy) {
+                    banco2Result = data.adaptedCopy2;
+                  }
+                  if (data.usage) {
+                    speechTokensAcc.promptTokens += data.usage.promptTokens || 650;
+                    speechTokensAcc.completionTokens += data.usage.completionTokens || 140;
+                    speechTokensAcc.totalTokens += data.usage.totalTokens || 790;
+                    speechTokensAcc.costUSD += data.usage.costUSD || 0.0005;
+                    speechTokensAcc.costBRL += data.usage.costBRL || 0.003;
+                    if (data.usage.model) speechTokensAcc.models.push(data.usage.model);
+                    speechTokensAcc.steps.push({
+                      step: 'Adaptação das Falas 1 e 2 do Banco de Memória',
+                      model: data.usage.model || 'gpt-4o-mini',
+                      promptTokens: data.usage.promptTokens || 650,
+                      completionTokens: data.usage.completionTokens || 140,
+                      totalTokens: data.usage.totalTokens || 790,
+                      costUSD: data.usage.costUSD || 0.0005,
+                      costBRL: data.usage.costBRL || 0.003,
+                      timestamp: new Date().toISOString(),
+                      details: 'Adaptação cirúrgica das copies validadas para o produto atual',
+                    });
+                  }
+                }
+              })
+              .catch(() => null)
+          );
+        }
 
         apiPromises.push(
           fetch('/api/produtos2-planning', {
@@ -353,6 +416,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                 action: 'detect_and_review_user_speech',
                 additionalInstructions: form.additionalInstructions,
                 productName: finalProductName,
+                productInfo: form.productInfo,
                 aiProfile,
               }),
               signal: controller.signal,
@@ -1247,7 +1311,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <label className="text-xs font-bold text-white flex items-center gap-2">
-                <span>11. Imagens do produto (Upload Múltiplo)</span>
+                <span>Anexe aqui as fotos do produto</span>
                 <strong className="text-rose-400">*</strong>
                 {isPhotosFilled && (
                   <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
@@ -1257,7 +1321,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                 )}
               </label>
               <p className="text-[11px] text-sky-200/80 mt-0.5">
-                Selecione várias fotos de uma vez (frente, lado, costas, detalhes) para travar o PRODUCT LOCK 1:1.
+                De preferência de vários ângulos diferentes (frente, lado, costas, detalhes) e caso vá adicionar variações do produto, anexe novas fotos em vários ângulos PARA CADA nova COR/VARIAÇÃO que for mostrar no vídeo.
               </p>
             </div>
 

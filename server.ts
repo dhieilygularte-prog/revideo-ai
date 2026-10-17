@@ -27,7 +27,12 @@ import {
 import { AIProfile } from './src/config/aiProfiles';
 import { buildAniaPlanningSystemPrompt } from './src/ania/aniaPrompts';
 import { buildProdutos2PlanningSystemPrompt } from './src/produtos2/produtos2Prompts';
-import { fitSpeechCloseToLimit, extractUserSpeechFromInstructions } from './src/produtos2/produtos2UserSpeechExtractor';
+import {
+  fitSpeechCloseToLimit,
+  condenseSpeechMinimallyTo225,
+  extractUserSpeechFromInstructions,
+  fixCommonSlips,
+} from './src/produtos2/produtos2UserSpeechExtractor';
 
 dotenv.config();
 
@@ -2451,27 +2456,32 @@ app.post('/api/produtos2-planning', async (req, res) => {
         }
 
         const detectSystem = `Você é o modelo mais avançado da OpenAI especializado em roteiros e copies para vídeos do TikTok Shop Brasil.
-O usuário preencheu o campo "Instruções Adicionais" com um texto ditado por voz (informal, repetitivo, com hesitações) que mistura descrição de cenário, personagens, ações e as FALAS que ele quer no vídeo.
+O usuário preencheu o campo "Instruções Adicionais" com um texto ditado por voz (informal, às vezes com gagueira) que mistura descrição de cenário, personagens, ações e as FALAS que ele quer no vídeo.
 
 SUA MISSÃO OBRIGATÓRIA:
-1. Identifique TODAS as falas que algum personagem diz em voz alta no vídeo (marcadores típicos: "fala", "diz", "vira e fala", "fala assim", "ele já fala assim", "dizendo", "grita", "todos falam em coro", etc.).
-2. O usuário frequentemente repete a mesma fala duas vezes com pequenas variações (ditado por voz). Nesse caso, FUNDA as versões numa única fala, mantendo os elementos mais fortes de cada uma (ex.: urgência "só até hoje à meia-noite", "menos da metade do preço", "preço de banana"). NUNCA pegue só o final da fala; a fala começa no gancho (ex.: "Gente, o gerente ficou doido...").
-3. Elimine totalmente metanarrativa e descrição (ex.: "a cena é o seguinte", "o primeiro frame é essa", "pronto, essa vai ser a questão", "é isso", "e aí termina com...", descrições de roupas, aparência e lugar). JAMAIS inclua isso na fala.
+1. Identifique TODAS as falas que algum personagem diz em voz alta no vídeo (marcadores típicos: "fala", "diz", "vira e fala", "fala assim", "ele fala assim,", "ele já fala assim", "dizendo", "grita", "todos falam em coro", etc.).
+2. Elimine totalmente metanarrativa e descrição de cena/personagem (ex.: "Um vídeo de um homem, um pai...", "chegando do serviço já com 4 pacotes...", "e ele fala assim,"). JAMAIS inclua descrições visuais na fala.
+3. Remova apenas palavras repetidas consecutivas por gagueira/ditado (ex.: "trabalhar, trabalhar" -> "trabalhar", "aí, aí" -> "aí").
 4. Sons não verbais de personagens (ex.: "au au au" de alguém imitando cachorro) NÃO entram em "userSpeech"; descreva-os em "soundEffects".
-5. "userSpeech": a FALA COMPLETA falada no vídeo, unindo todas as falas de todos os personagens em ordem, fluida, natural, persuasiva para TikTok Shop, sem nomes de personagens, com no máximo 225 caracteres (idealmente entre 170 e 225). Corrija a transcrição (ex.: "pó pouco"/"pouco" -> "Poco", "Tik Tok" -> "TikTok Shop"). O "X" em modelos (X8, Poco X8 Pro) NUNCA vira "vezes".
-6. "speakers": lista de TODOS os personagens que falam, na ordem, com { "speaker": papel (ex.: "Vendedor", "Mulher", "Homem", "Gerente", "Clientes em coro"), "gender": "masculina" | "feminina" | "coro", "speech": fala exata dele (trecho de userSpeech), "scenes": em quais cenas de 1 a 9 fala }.
-7. "isDialogue": true SOMENTE se 2 ou mais personagens/grupos diferentes falam. Se apenas um personagem fala, "isDialogue": false (mas preencha "speakers" com esse único personagem e seu gênero).
-8. "dialogueDescription": resumo curto da cena e dos personagens (sem as falas). "dialogueScript": roteiro "Papel: \\"fala\\"" por linha.
-9. Se não houver nenhuma fala explícita, "hasUserSpeech": false e "userSpeech": "".
+5. Extraia primeiro "rawUserSpeech": a fala EXATA e INTEGRAL dita pelo personagem no texto do usuário (apenas sem descrição de cena, sem gagueiras duplicadas e com pontuação correta), SEM ENCURTAR NENHUMA FRASE.
+6. REGRA ABSOLUTA E INEGOCIÁVEL PARA "userSpeech" (PROIBIDO ENCURTAR À TOA):
+   - CASO A: Se "rawUserSpeech" tiver 225 caracteres ou menos (<= 225 caracteres), É TERMINANTEMENTE PROIBIDO ENCURTAR, RESUMIR OU CORTAR QUALQUER PALAVRA OU EXPRESSÃO! Nesse caso, "userSpeech" DEVE SER IDÊNTICO ao "rawUserSpeech" (preservando expressões como "aqui", "valor muito barato", "você sabe que", "então já", etc.).
+   - CASO B: Se e SOMENTE SE "rawUserSpeech" ultrapassar 225 caracteres (> 225 caracteres), enxugue O MÍNIMO POSSÍVEL para que "userSpeech" fique COLADO no limite de 225 caracteres — OBRIGATORIAMENTE ENTRE 215 E 225 CARACTERES (idealmente entre 218 e 224 caracteres)! NUNCA encurte uma fala grande para 180 ou 190 caracteres; preserve ao máximo as palavras originais do usuário do início ao CTA final.
+   - Corrija erros de transcrição (ex.: "pó pouco"/"pouco" -> "Poco", "Tik Tok" -> "TikTok Shop"). O "X" em modelos (X8, Poco X8 Pro) NUNCA vira "vezes".
+7. "speakers": lista de TODOS os personagens que falam, na ordem, com { "speaker": papel (ex.: "Pai", "Vendedor", "Mulher", "Homem"), "gender": "masculina" | "feminina" | "coro", "speech": fala exata dele (trecho de userSpeech), "scenes": em quais cenas de 1 a 9 fala }.
+8. "isDialogue": true SOMENTE se 2 ou mais personagens/grupos diferentes falam. Se apenas um personagem fala, "isDialogue": false (mas preencha "speakers" com esse único personagem e seu gênero).
+9. "dialogueDescription": resumo curto da cena e dos personagens (sem as falas). "dialogueScript": roteiro "Papel: \\"fala\\"" por linha.
+10. Se não houver nenhuma fala explícita, "hasUserSpeech": false, "rawUserSpeech": "" e "userSpeech": "".
 
 FORMATO DE RESPOSTA (JSON estrito):
 {
   "hasUserSpeech": true,
+  "rawUserSpeech": "...",
   "userSpeech": "...",
   "isDialogue": false,
   "dialogueDescription": "...",
-  "dialogueScript": "Vendedor: \\"...\\"",
-  "speakers": [ { "speaker": "Vendedor", "gender": "masculina", "speech": "...", "scenes": "Cenas 2 a 9" } ],
+  "dialogueScript": "Pai: \\"...\\"",
+  "speakers": [ { "speaker": "Pai", "gender": "masculina", "speech": "...", "scenes": "Cenas 1 a 9" } ],
   "soundEffects": "..."
 }`;
 
@@ -2492,27 +2502,59 @@ FORMATO DE RESPOSTA (JSON estrito):
           }
         }
 
-        let userSpeech = (
-          parsed.userSpeech ||
-          parsed.user_speech ||
-          parsed.speech ||
-          parsed.fala ||
-          parsed.fala_usuario ||
-          parsed.texto_fala ||
-          ''
-        ).trim();
+        const syncExt = extractUserSpeechFromInstructions(textToAnalyze, productName);
+
+        let rawUserSpeech = fixCommonSlips(
+          normalizeVoiceText(
+            (parsed.rawUserSpeech || parsed.raw_user_speech || '').trim()
+          )
+        );
+        if (!rawUserSpeech && syncExt.hasSpeech && syncExt.speech) {
+          rawUserSpeech = fixCommonSlips(normalizeVoiceText(syncExt.speech));
+        }
+
+        let userSpeech = fixCommonSlips(
+          normalizeVoiceText(
+            (
+              parsed.userSpeech ||
+              parsed.user_speech ||
+              parsed.speech ||
+              parsed.fala ||
+              parsed.fala_usuario ||
+              parsed.texto_fala ||
+              ''
+            ).trim()
+          )
+        );
 
         // Fallback heurístico limpo se o modelo de IA não retornou fala
-        if (!userSpeech) {
-          const syncExt = extractUserSpeechFromInstructions(textToAnalyze, productName);
-          if (syncExt.hasSpeech && syncExt.speech) {
-            userSpeech = syncExt.speech;
+        if (!userSpeech && syncExt.hasSpeech && syncExt.speech) {
+          userSpeech = syncExt.speech;
+        }
+
+        // PROTEÇÃO ANTI-ENCURTAMENTO AGRESSIVO:
+        // 1. Se a fala original extraída (rawUserSpeech ou syncExt.speech) já tem <= 225 caracteres,
+        //    JAMAIS aceitamos versão resumida pela IA (como 186 chars quando o original tinha 224 chars)!
+        const candidateUnshortened =
+          rawUserSpeech && rawUserSpeech.length >= 15 && rawUserSpeech.length <= 225
+            ? rawUserSpeech
+            : syncExt.hasSpeech && syncExt.speech.length >= 15 && syncExt.speech.length <= 225
+            ? syncExt.speech
+            : '';
+
+        if (candidateUnshortened && candidateUnshortened.length > userSpeech.length) {
+          userSpeech = candidateUnshortened;
+        } else if (rawUserSpeech && rawUserSpeech.length > 225 && userSpeech.length < 212) {
+          // 2. Se a fala bruta tinha > 225 chars mas a IA cortou demais (abaixo de 212 chars, ex: 186 chars),
+          //    usamos o condensador cirúrgico mínimo para manter colado no teto de 225 (entre 215 e 225 chars)!
+          const minimallyCondensed = condenseSpeechMinimallyTo225(rawUserSpeech, 225, 215);
+          if (minimallyCondensed.length > userSpeech.length && minimallyCondensed.length <= 225) {
+            userSpeech = minimallyCondensed;
           }
         }
 
-        userSpeech = normalizeVoiceText(userSpeech);
         if (userSpeech.length > 225) {
-          userSpeech = fitSpeechCloseToLimit(userSpeech, 225, 218);
+          userSpeech = condenseSpeechMinimallyTo225(userSpeech, 225, 215);
         }
 
         const hasUserSpeech = Boolean(
@@ -2546,6 +2588,96 @@ FORMATO DE RESPOSTA (JSON estrito):
       }
     }
 
+    // Ação 1B: Adaptação Cirúrgica Inteligente das Falas 1 e 2 do Banco de Memória (~64 copies validadas) para o Produto Atual
+    if (action === 'adapt_bank_copies') {
+      try {
+        const { copy1, copy2, clientGender } = req.body;
+        if (!copy1 && !copy2) {
+          return res.json({ success: true });
+        }
+
+        const adaptSystem = `Você é um Especialista Sênior em Direct Response para TikTok Shop Brasil.
+Existe na memória do aplicativo um banco de 64 falas validadas de anúncios reais que já estão vendendo muito.
+Sua missão é ADAPTAR as falas sorteadas do banco (Fala 1 e Fala 2) para o PRODUTO ATUAL do usuário, seguindo estritamente estas regras:
+
+REGRA DE OURO DA ADAPTAÇÃO (MUDAR O MÍNIMO POSSÍVEL DA ESTRUTURA, MAS 100% FIEL AO PRODUTO ATUAL):
+1. SE FOR O MESMO PRODUTO (isSameProduct = true):
+   - Mantenha 99% da fala original intacta! Altere APENAS especificações divergentes (ex: marca, modelo, potência em Watts, capacidade em ml/litros, polegadas, quantidade do kit) e concordância de gênero.
+2. SE FOR OUTRO PRODUTO DO MESMO NICHO OU OUTRA COPY DO BANCO (isSameProduct = false):
+   - As falas do banco já possuem ganchos, cadência e chamadas para ação (CTA) altamente validados. Por isso, MUDE O MÍNIMO POSSÍVEL da estrutura persuasiva (mantenha o estilo do gancho, o ritmo das frases, a urgência e o CTA final).
+   - PORÉM, substitua 100% de qualquer menção à categoria ou nome do produto antigo e 100% das características exclusivas do produto antigo pelas características REAIS do produto atual (extraídas de INFORMAÇÕES DO PRODUTO).
+   - PROIBIÇÃO ABSOLUTA DE ABSURDOS:
+     * Se a copy original era de um brinquedo/triciclo/jipe (ex: "Olha o brinquedo que tá deixando a criançada apaixonada... faz drift 360, tem luzes de LED, 3 velocidades" ou "ele gira em 360 graus") e o produto atual é um Kit de Fraldas (ou qualquer item que não seja brinquedo de manobra): JAMAIS chame fralda de "brinquedo" ou "presente", e JAMAIS diga que fralda "faz drift 360", "tem luzes de LED", "3 velocidades" ou "gira em 360 graus"! Troque "brinquedo" por algo coerente (ex: "achado", "kit", "oferta") e troque "faz drift 360, tem luzes de LED, 3 velocidades" pelos benefícios reais do produto (ex: "tem até 12 horas de absorção, camada macia, elásticos confortáveis e estampa da Galinha Pintadinha").
+     * Nunca deixe características do produto antigo (como "tela curva", "suporta 100 quilos", "silenciosa com painel LED", "vara de carbono", "amplificador") em um produto que não tem isso.
+     * Ignore avisos legais/segurança das informações do produto (como "perigo de sufocamento", "mantenha sacos plásticos longe", "consulte um médico", "data de validade"). Use apenas os benefícios reais de venda!
+3. LIMITE DE CARACTERES E FORMATAÇÃO PARA VOZ DE IA:
+   - Cada fala adaptada deve ter entre 135 e 225 caracteres (NUNCA ultrapasse 225 caracteres).
+   - Escreva medidas por extenso para leitura perfeita da voz de IA ("12 horas", "200 fraldas", "50 unidades").
+
+Retorne SOMENTE um JSON estrito no formato:
+{
+  "adaptedCopy1": "...",
+  "adaptedCopy2": "..."
+}`;
+
+        const adaptUser = `PRODUTO ATUAL DO USUÁRIO:
+- Nome do Produto: ${productName || ''}
+- Informações e Benefícios do Produto:
+${productInfo || productName || ''}
+- Gênero do Público: ${clientGender || 'unissex'}
+- Apresentador(a): ${influencer || 'Mulher'}
+
+FALA 1 DO BANCO DE MEMÓRIA (${copy1?.id || 'Copy 1'} - Produto original da copy: "${copy1?.originalProductType || ''}" - Mesmo produto? ${copy1?.isSameProduct ? 'SIM' : 'NÃO'}):
+Texto original da Fala 1 no banco: "${copy1?.originalText || ''}"
+Sugestão base local da Fala 1: "${copy1?.localAdaptedText || ''}"
+
+FALA 2 DO BANCO DE MEMÓRIA (${copy2?.id || 'Copy 2'} - Produto original da copy: "${copy2?.originalProductType || ''}" - Mesmo produto? ${copy2?.isSameProduct ? 'SIM' : 'NÃO'}):
+Texto original da Fala 2 no banco: "${copy2?.originalText || ''}"
+Sugestão base local da Fala 2: "${copy2?.localAdaptedText || ''}"`;
+
+        const aiOut = await executeFastAIText({
+          systemPrompt: adaptSystem,
+          userPrompt: adaptUser,
+          temperature: 0.2,
+          jsonMode: true,
+        });
+
+        let parsed: any = {};
+        try {
+          parsed = JSON.parse(aiOut.text);
+        } catch {
+          const m = aiOut.text.match(/\{[\s\S]*\}/);
+          if (m) {
+            try { parsed = JSON.parse(m[0]); } catch {}
+          }
+        }
+
+        let adapted1 = fixCommonSlips(normalizeVoiceText((parsed.adaptedCopy1 || '').trim()));
+        let adapted2 = fixCommonSlips(normalizeVoiceText((parsed.adaptedCopy2 || '').trim()));
+
+        if (adapted1.length > 225) {
+          adapted1 = condenseSpeechMinimallyTo225(adapted1, 225, 200);
+        }
+        if (adapted2.length > 225) {
+          adapted2 = condenseSpeechMinimallyTo225(adapted2, 225, 200);
+        }
+
+        return res.json({
+          success: true,
+          adaptedCopy1: adapted1 || copy1?.localAdaptedText || '',
+          adaptedCopy2: adapted2 || copy2?.localAdaptedText || '',
+          usage: aiOut.usage,
+        });
+      } catch (err: any) {
+        console.warn('Erro ao adaptar copies do banco via IA, mantendo adaptação local:', err?.message || err);
+        return res.json({
+          success: true,
+          adaptedCopy1: req.body?.copy1?.localAdaptedText || '',
+          adaptedCopy2: req.body?.copy2?.localAdaptedText || '',
+        });
+      }
+    }
+
     // Ação 2: Revisão conservadora de texto (Botão "Revisar texto" na geração e na tela final do storyboard)
     if (action === 'normalize_speech_for_ai' || action === 'review_user_speech') {
       try {
@@ -2554,7 +2686,8 @@ FORMATO DE RESPOSTA (JSON estrito):
           return res.status(400).json({ success: false, error: 'Texto não fornecido para revisão.' });
         }
 
-        const charCount = inputSpeech.length;
+        const cleanedInput = fixCommonSlips(inputSpeech);
+        const charCount = cleanedInput.length;
         const isUnderLimit = charCount <= 225;
 
         const lengthInstruction = isUnderLimit
@@ -2563,11 +2696,11 @@ O texto fornecido tem ${charCount} caracteres e JÁ ESTÁ DENTRO do limite máxi
 - É TERMINANTEMENTE PROIBIDO ENCURTAR, RESUMIR, CONDENSAR OU CORTAR QUALQUER FRASE OU PARTE DO TEXTO!
 - Mantenha o texto O MAIS ORIGINAL POSSÍVEL, preservando integralmente todas as frases, palavras, argumentos e detalhes originais que o usuário escreveu.
 - O comprimento final deve permanecer praticamente idêntico ao original (com pequenas variações apenas pelas correções gramaticais ou remoção de palavras duplicadas).
-- A ÚNICA razão permitida para encurtar ou remover algo é se houver palavras repetidas ou gagueira (ex: "aí aí", "ele ele", "o o", "tá tá")!`
-          : `REGRA DE TAMANHO (ENCURTAMENTO NECESSÁRIO PORQUE EXCEDE 225 CARACTERES):
+- A ÚNICA razão permitida para encurtar ou remover algo é se houver palavras repetidas ou gagueira (ex: "aí aí", "ele ele", "o o", "tá tá", "trabalhar, trabalhar")!`
+          : `REGRA DE TAMANHO (ENCURTAMENTO MÍNIMO NECESSÁRIO PORQUE EXCEDE 225 CARACTERES):
 O texto fornecido tem ${charCount} caracteres e EXCEDE o limite de 225 caracteres.
-- Você DEVE condensar e encurtar o texto para caber com perfeição no limite de até 225 caracteres (idealmente entre 190 e 225 caracteres com espaços).
-- Elimine redundâncias, mantendo os principais benefícios e preservando a chamada de ação final (ex: "toca no carrinho laranja e garanta o seu!").
+- Você DEVE enxugar O MÍNIMO POSSÍVEL para que o texto fique COLADO no limite de 225 caracteres: OBRIGATORIAMENTE ENTRE 215 E 225 CARACTERES (com espaços)!
+- NUNCA encurte para 180 ou 195 caracteres! Corte apenas pequenas redundâncias ou conectivos extras para pousar entre 215 e 225 caracteres, mantendo os argumentos do usuário e a chamada de ação final.
 - NUNCA deixe frases cortadas pela metade; a última frase deve estar completa com ponto final ou exclamação.`;
 
         const reviewSystem = `Você é um REVISOR EDITORIAL DE ALTA FIDELIDADE para narração por voz de IA no TikTok Shop Brasil.
@@ -2582,7 +2715,7 @@ DIRETIVAS OBRIGATÓRIAS:
 2. PONTUAÇÃO E RITMO PARA VOZ DE IA:
    - Ajuste a pontuação (vírgulas nos pontos de respiração natural, exclamações em frases empolgantes, pontos finais firmes) para que o narrador de IA faça pausas naturais e respirações no lugar certo, com entonação empolgante e sem atropelar as palavras.
 3. REMOÇÃO DE REPETIÇÕES E GAGUEIRAS:
-   - Elimine palavras duplicadas consecutivas ou vícios de fala decorrentes de digitação ou ditado por voz (ex: "aí aí" -> "aí", "ele ele" -> "ele", "o o" -> "o", "que que" -> "que", "comprei comprei" -> "comprei").
+   - Elimine palavras duplicadas consecutivas ou vícios de fala decorrentes de digitação ou ditado por voz (ex: "aí aí" -> "aí", "ele ele" -> "ele", "o o" -> "o", "que que" -> "que", "trabalhar, trabalhar" -> "trabalhar").
 4. PRONÚNCIA CORRETA DE PRODUTOS E MEDIDAS:
    - Modelos com "X" (ex: "Poco X8 Pro", "iPhone X", "X8"): NUNCA substitua "X" por "vezes". O "X" refere-se ao nome/modelo do produto e deve permanecer como a letra "X".
    - "800 W" -> "800 watts"
@@ -2591,13 +2724,13 @@ DIRETIVAS OBRIGATÓRIAS:
    - "AMOLED" -> "Amóled"
 5. PRESERVAÇÃO DE CONTEÚDO:
    - Não invente argumentos novos e não adicione chamadas para ação que o usuário não escreveu.
-   - ${isUnderLimit ? 'LEMBRE-SE: Como o texto original tem <= 225 caracteres, PRESERVE O MÁXIMO POSSÍVEL DO TEXTO ORIGINAL, apenas corrigindo o português, removendo repetições e ajustando para leitura de IA.' : 'Encurte para até 225 caracteres mantendo o sentido.'}
+   - ${isUnderLimit ? 'LEMBRE-SE: Como o texto original tem <= 225 caracteres, PRESERVE 100% DAS FRASES DO TEXTO ORIGINAL, apenas corrigindo o português, removendo repetições e ajustando para leitura de IA.' : 'Enxugue o mínimo possível para ficar estritamente entre 215 e 225 caracteres mantendo todo o sentido.'}
 6. FORMATO DE SAÍDA:
    - Retorne SOMENTE o texto final revisado, sem aspas, sem contagem de caracteres e sem explicações adicionais.`;
 
         const userPromptReview = isUnderLimit
-          ? `TEXTO ORIGINAL PARA REVISÃO (TEM ${charCount} CARACTERES - NÃO ENCURTAR, MANTENHA O TEXTO O MAIS ORIGINAL POSSÍVEL APENAS CORRIGINDO O PORTUGUÊS, PALAVRAS REPETIDAS E PONTUAÇÃO PARA IA):\n${inputSpeech}`
-          : `TEXTO ORIGINAL PARA REVISÃO (TEM ${charCount} CARACTERES - EXCEDE 225 CARACTERES, ENCURTE PARA ATÉ 225 CARACTERES MANTENDO O SENTIDO E CALL TO ACTION):\n${inputSpeech}`;
+          ? `TEXTO ORIGINAL PARA REVISÃO (TEM ${charCount} CARACTERES - NÃO ENCURTAR, MANTENHA O TEXTO O MAIS ORIGINAL POSSÍVEL APENAS CORRIGINDO O PORTUGUÊS, PALAVRAS REPETIDAS E PONTUAÇÃO PARA IA):\n${cleanedInput}`
+          : `TEXTO ORIGINAL PARA REVISÃO (TEM ${charCount} CARACTERES - EXCEDE 225 CARACTERES, ENXUGUE O MÍNIMO POSSÍVEL PARA FICAR ENTRE 215 E 225 CARACTERES MANTENDO O SENTIDO E CALL TO ACTION):\n${cleanedInput}`;
 
         const reviewedOutput = await executeFastAIText({
           systemPrompt: reviewSystem,
@@ -2608,13 +2741,20 @@ DIRETIVAS OBRIGATÓRIAS:
         let reviewed = reviewedOutput.text;
         reviewed = reviewed.replace(/^["'«“]|["'»”]$/g, '').trim();
         reviewed = cleanDuplicateWords(reviewed);
-        reviewed = normalizeVoiceText(reviewed);
+        reviewed = fixCommonSlips(normalizeVoiceText(reviewed));
+
+        // Se já estava <= 225 chars e a IA tentou encurtar agressivamente, preserva o cleanedInput!
+        if (isUnderLimit && reviewed.length < cleanedInput.length - 10) {
+          reviewed = cleanedInput;
+        } else if (!isUnderLimit && reviewed.length < 212) {
+          const minimallyCondensed = condenseSpeechMinimallyTo225(cleanedInput, 225, 215);
+          if (minimallyCondensed.length > reviewed.length && minimallyCondensed.length <= 225) {
+            reviewed = minimallyCondensed;
+          }
+        }
 
         if (reviewed.length > 225) {
-          reviewed = reviewed.slice(0, 225).replace(/[,;:\s]+[^.!?,;:]*$/, '').trim();
-          if (!/[.!?]$/.test(reviewed)) {
-            reviewed += '!';
-          }
+          reviewed = condenseSpeechMinimallyTo225(reviewed, 225, 215);
         }
 
         return res.json({

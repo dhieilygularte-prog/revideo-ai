@@ -1549,17 +1549,49 @@ export function analyzeProductInfoForProdutos2(rawText: string): ProductSpecsExt
     clientGender = 'Unissex';
   }
 
-  // Extrair fatos-chave da descrição para adaptação
-  const keyFacts = text
-    .split(/[\r\n.;•-]+/)
+  // Extrair fatos-chave reais da descrição para adaptação (unindo quebras de linha no meio de frases e ignorando avisos legais)
+  const unwrappedText = text
+    .replace(/\r\n/g, '\n')
+    .replace(/([^\n.!?:;])\n(?=[a-záàâãéêíóôõúç0-9])/g, '$1 ');
+
+  const bulletFacts: string[] = [];
+  const bulletRegex = /[•*-]\s*([^\n•]+)/g;
+  let bm: RegExpExecArray | null;
+  while ((bm = bulletRegex.exec(unwrappedText)) !== null) {
+    let item = bm[1].trim().replace(/[.!?]+$/, '').trim();
+    if (/sufocamento|sacos plasticos|irritacao|suspenda o uso|consulte um medico|validade|seguranca do produto/i.test(normalizeAccents(item))) {
+      continue;
+    }
+    // Se tiver "Título Curto: Descrição", aproveita a parte descritiva ou une de forma limpa
+    if (item.includes(':')) {
+      const parts = item.split(':').map((p) => p.trim());
+      if (parts[1] && parts[1].length >= 8) {
+        item = parts[1];
+      }
+    }
+    if (item.length >= 6 && item.length <= 85) {
+      bulletFacts.push(item);
+    }
+  }
+
+  const generalFacts = unwrappedText
+    .split(/[\n.;•]+/)
     .map((s) => s.trim())
-    .filter((s) => s.length > 6 && s.length < 120)
-    .slice(0, 6);
+    .filter((s) => {
+      if (s.length <= 8 || s.length >= 90) return false;
+      const sn = normalizeAccents(s);
+      if (/^(descricao do produto|informacoes sobre|especificacoes|caracteristicas|aviso|atencao)\b/i.test(sn)) return false;
+      if (/sufocamento|sacos plasticos|irritacao|suspenda o uso|consulte um medico|validade|longe de bebes/i.test(sn)) return false;
+      if (shortName && sn === normalizeAccents(shortName)) return false;
+      return true;
+    });
+
+  const keyFacts = Array.from(new Set([...bulletFacts, ...generalFacts])).slice(0, 6);
 
   const isExpensive =
     /\b(scooter|bicicleta eletrica|e-bike|celular|smartphone|monitor|tablet|esteira|banco de exercicio|banco ajustavel|bateria|panificadora|motocultivador|puncao|jipe eletrico|triciclo|smartwatch)\b/i.test(norm);
 
-  const isKidsProduct = niche === 'Infantil e brinquedos' || /\b(crianca|infantil|filho|bebe|brinquedo|jipe|triciclo)\b/i.test(norm);
+  const isKidsProduct = niche === 'Infantil e brinquedos' || /\b(crianca|infantil|filho|bebe|brinquedo|jipe|triciclo|fralda|fraldas)\b/i.test(norm);
 
   return {
     shortName,
@@ -1809,7 +1841,7 @@ export function applySpeechIntro(text: string, useIntro: boolean = false): strin
  */
 function isFeminineProductName(name: string): boolean {
   const norm = normalizeAccents(name.trim());
-  return /^(rede|tinta|esteira|bicicleta|bike|e-bike|scooter|moto|garrafa|garrafinha|panificadora|air\s*fryer|fritadeira|panela|sanduicheira|torradeira|batedeira|chaleira|cafeteira|rocadeira|motosserra|mangueira|semente|escova|chapinha|prancha|palmilha|luva|saia|toalha|cortina|prateleira|sapateira|camera|webcam|tv|televisao|bateria|parafusadeira|furadeira|esmerilhadeira|lixadeira|serra|puncao|puncionadeira|trena|pedaleira|guitarra|camisa|camiseta|bermuda|calca|jaqueta|bota|sandalia|papete|chuteira|rasteirinha|cadeirinha|boneca|pelucia|capa|placa|pastilha|vara|linha|carretilha|isca|central|mesa|cama|cadeira|poltrona|estacao|barra|corda|anilha|fita|luminaria|lampada)\b/i.test(
+  return /^(rede|tinta|esteira|bicicleta|bike|e-bike|scooter|moto|garrafa|garrafinha|panificadora|air\s*fryer|fritadeira|panela|sanduicheira|torradeira|batedeira|chaleira|cafeteira|rocadeira|motosserra|mangueira|semente|escova|chapinha|prancha|palmilha|luva|saia|toalha|cortina|prateleira|sapateira|camera|webcam|tv|televisao|bateria|parafusadeira|furadeira|esmerilhadeira|lixadeira|serra|puncao|puncionadeira|trena|pedaleira|guitarra|camisa|camiseta|bermuda|calca|jaqueta|bota|sandalia|papete|chuteira|rasteirinha|cadeirinha|boneca|pelucia|capa|placa|pastilha|vara|linha|carretilha|isca|central|mesa|cama|cadeira|poltrona|estacao|barra|corda|anilha|fita|luminaria|lampada|fralda|fraldas|pomada|mamadeira|chupeta|bolsa|mochila|mala|caixa|escada|torneira|ducha|vassoura|esponja)\b/i.test(
     norm
   );
 }
@@ -1829,6 +1861,18 @@ function buildMinimalReplacementClauses(
   shortWithClause: string;
 } {
   const norm = normalizeAccents(`${productName} ${productInfo}`);
+
+  // Caso Fraldas / Higiene Infantil
+  if (/\b(fralda|fraldas|babysec|pampers|huggies|mamypoko)\b/i.test(norm)) {
+    const hoursMatch = norm.match(/\b(\d+)\s*(?:h|horas)\b/i);
+    const hoursStr = hoursMatch ? `até ${hoursMatch[1]} horas de absorção` : 'alta absorção sem vazar';
+    const hasMacia = /macia|conforto/i.test(norm);
+    const hasElastico = /elastico|ajuste/i.test(norm);
+    return {
+      conciseFeatureSentence: `Tem ${hoursStr}${hasMacia ? ', camada super macia' : ''}${hasElastico ? ' e ajuste perfeito que não vaza' : ' e muita economia'}.`,
+      shortWithClause: `com ${hoursStr}, camada macia e muita economia`,
+    };
+  }
 
   // Caso Rede de Descanso / Camping / Ar livre
   if (/\b(rede|descanso|acampamento|camping|varanda)\b/i.test(norm)) {
@@ -1880,7 +1924,7 @@ function buildMinimalReplacementClauses(
     const f1 = cleanFacts[0].charAt(0).toUpperCase() + cleanFacts[0].slice(1);
     const f2 = cleanFacts[1].charAt(0).toLowerCase() + cleanFacts[1].slice(1);
     return {
-      conciseFeatureSentence: `${f1}. E ainda conta com ${f2}.`,
+      conciseFeatureSentence: `${f1}. E ainda tem ${f2}.`,
       shortWithClause: `com ${cleanFacts[0].toLowerCase()} e ${f2}`,
     };
   }
@@ -1889,7 +1933,7 @@ function buildMinimalReplacementClauses(
     const f1 = cleanFacts[0].charAt(0).toUpperCase() + cleanFacts[0].slice(1);
     return {
       conciseFeatureSentence: `${f1}, super resistente e prático pro dia a dia.`,
-      shortWithClause: `com ${cleanFacts[0].toLowerCase()} e qualidade absurda`,
+      shortWithClause: `com ${cleanFacts[0].toLowerCase()} e excelente qualidade`,
     };
   }
 
@@ -2041,12 +2085,16 @@ export function selectAndAdaptProdutos2Copy(params: {
   }
 
   // Selecionar banco ativo (Seção 1 e 4.1)
-  const activeBank: CopyBankEntry[] =
+  const rawActiveBank: CopyBankEntry[] =
     subMode === 'vestuario_masculino'
       ? maleSubOption === 'calcados'
         ? COPIES_CALCADOS_MASCULINOS
         : COPIES_ROUPAS_MASCULINAS
       : COPIES_PRODUTOS_GERAIS;
+
+  const activeBank: CopyBankEntry[] = excludeCopyId
+    ? rawActiveBank.filter((e) => e.id !== excludeCopyId)
+    : rawActiveBank;
 
   const rawInfoLines = (productInfo || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   const titleNorm = normalizeAccents(rawInfoLines.slice(0, 3).join(' '));
@@ -2068,26 +2116,21 @@ export function selectAndAdaptProdutos2Copy(params: {
 
   let matchPriority: 'mesmo_produto' | 'mesmo_nicho' | 'nicho_vizinho' | 'outra_copy_do_banco' = 'mesmo_produto';
 
-  if (specs.kitQuantity && specs.kitQuantity >= 2) {
-    const kitCandidates = candidates.filter((c) => c.archetype === 'Kit/Valor' || /kit|dois|2|4/i.test(c.productType));
-    if (kitCandidates.length > 0) {
-      candidates = kitCandidates;
-    } else {
-      // Se não encontrou kit do mesmo produto, pega as falas validadas de kit da memória do app (CLI-03, CLI-04, CLI-05)
-      const memoryKits = COPIES_PRODUTOS_GERAIS.filter((e) => ['CLI-03', 'CLI-04', 'CLI-05'].includes(e.id));
-      if (memoryKits.length > 0) {
-        candidates = memoryKits;
-        matchPriority = 'mesmo_nicho';
+  if (candidates.length > 0) {
+    if (specs.kitQuantity && specs.kitQuantity >= 2) {
+      const kitCandidates = candidates.filter((c) => c.archetype === 'Kit/Valor' || /kit|dois|2|4/i.test(c.productType));
+      if (kitCandidates.length > 0) {
+        candidates = kitCandidates;
       }
-    }
-  } else if (candidates.length > 1) {
-    const singleCandidates = candidates.filter((c) => c.archetype !== 'Kit/Valor');
-    if (singleCandidates.length > 0) {
-      candidates = singleCandidates;
+    } else if (candidates.length > 1) {
+      const singleCandidates = candidates.filter((c) => c.archetype !== 'Kit/Valor');
+      if (singleCandidates.length > 0) {
+        candidates = singleCandidates;
+      }
     }
   }
 
-  // Prioridade 2: Outro produto do MESMO NICHO no banco ativo (ex: Banco de exercícios -> Fitness -> FIT-01 / FIT-02)
+  // Prioridade 2: Outro produto do MESMO NICHO no banco ativo (ex: Fraldas -> Infantil e brinquedos -> INF-01..06 adaptadas)
   if (candidates.length === 0) {
     candidates = activeBank.filter((entry) => entry.niche === specs.niche);
     if (candidates.length > 0) {
@@ -2099,7 +2142,7 @@ export function selectAndAdaptProdutos2Copy(params: {
   if (candidates.length === 0 && subMode === 'produtos_geral') {
     for (const rule of NEIGHBOR_NICHE_RULES) {
       if (rule.keywords.some((kw) => normCombined.includes(normalizeAccents(kw)))) {
-        candidates = COPIES_PRODUTOS_GERAIS.filter((e) => rule.targetNiches.includes(e.niche));
+        candidates = activeBank.filter((e) => rule.targetNiches.includes(e.niche));
         if (candidates.length > 0) {
           matchPriority = 'nicho_vizinho';
           break;
@@ -2108,24 +2151,24 @@ export function selectAndAdaptProdutos2Copy(params: {
     }
   }
 
-  // Prioridade 3: Caso não tenha nem do mesmo produto nem do mesmo nicho (ex.: tinta de parede ou produto aleatório),
-  // escolhe no banco de ~62 copies reais as copies que mais combinam com o perfil desse produto!
+  // Prioridade 3: Caso não tenha nem do mesmo produto nem do mesmo nicho (ou se o nicho só tinha 1 copy que foi usada na Fala 1),
+  // escolhe no banco de ~64 copies reais as copies que mais combinam com o perfil desse produto!
   if (candidates.length === 0) {
     matchPriority = 'outra_copy_do_banco';
     if (specs.kitQuantity && specs.kitQuantity >= 2) {
-      candidates = COPIES_PRODUTOS_GERAIS.filter((e) => ['CLI-03', 'CLI-04', 'CLI-05'].includes(e.id));
+      candidates = activeBank.filter((e) => ['CLI-03', 'CLI-04', 'CLI-05', 'ELE-03', 'ENE-01'].includes(e.id));
     } else if (specs.isKidsProduct) {
-      candidates = COPIES_PRODUTOS_GERAIS.filter((e) => ['INF-01', 'INF-02', 'INF-03', 'INF-05', 'INF-06'].includes(e.id));
+      candidates = activeBank.filter((e) => ['INF-01', 'INF-02', 'INF-03', 'INF-04', 'INF-05', 'INF-06'].includes(e.id));
     } else if (specs.isExpensive) {
-      candidates = COPIES_PRODUTOS_GERAIS.filter((e) => ['FIT-01', 'FIT-02', 'ELE-03', 'ELE-06', 'ELE-07', 'ENE-01', 'MOB-04'].includes(e.id));
+      candidates = activeBank.filter((e) => ['FIT-01', 'FIT-02', 'ELE-03', 'ELE-06', 'ELE-07', 'ENE-01', 'MOB-04'].includes(e.id));
     } else {
-      // Copies reais super versáteis do banco que se adaptam perfeitamente a qualquer produto (tinta, utilidades, casa, etc.)
-      candidates = COPIES_PRODUTOS_GERAIS.filter((e) =>
+      // Copies reais super versáteis do banco que se adaptam perfeitamente a qualquer produto
+      candidates = activeBank.filter((e) =>
         ['ELE-03', 'ELE-06', 'ELE-07', 'ENE-01', 'FIT-01', 'FIT-02', 'CLI-01', 'CLI-02', 'LIM-01', 'CAS-03'].includes(e.id)
       );
     }
     if (candidates.length === 0) {
-      candidates = activeBank;
+      candidates = activeBank.length > 0 ? activeBank : rawActiveBank;
     }
   }
 
@@ -2146,18 +2189,6 @@ export function selectAndAdaptProdutos2Copy(params: {
     const nonRepeated = pool.filter((c) => !recentPickedCopyIds.includes(c.id));
     if (nonRepeated.length > 0) {
       poolToPick = nonRepeated;
-    }
-  }
-
-  if (excludeCopyId) {
-    const withoutExcluded = poolToPick.filter((c) => c.id !== excludeCopyId);
-    if (withoutExcluded.length > 0) {
-      poolToPick = withoutExcluded;
-    } else {
-      const activeWithoutExcluded = activeBank.filter((c) => c.id !== excludeCopyId);
-      if (activeWithoutExcluded.length > 0) {
-        poolToPick = activeWithoutExcluded;
-      }
     }
   }
 
@@ -2225,6 +2256,7 @@ export function adaptBankCopyToProduct(
   let text = entry.text;
   const entryProdNorm = normalizeAccents(entry.productType);
   const targetProdNorm = normalizeAccents(productName);
+  const fullTargetNorm = normalizeAccents(`${productName} ${productInfo}`);
 
   const isSameProductType =
     isSameProductForce !== undefined
@@ -2234,7 +2266,7 @@ export function adaptBankCopyToProduct(
   const spokenName = (productName || '')
     .trim()
     .split(/\s+/)
-    .map((w) => (/^(4K|LED|RGB|USB|RMS|TNT|UV|GPS|BML|JBL|TV|HD|3D|5G)$/i.test(w) ? w.toUpperCase() : w.toLowerCase()))
+    .map((w) => (/^(4K|LED|RGB|USB|RMS|TNT|UV|GPS|BML|JBL|TV|HD|3D|5G|XG|XXG|rn)$/i.test(w) ? w.toUpperCase() : w.toLowerCase()))
     .join(' ');
   const isFem = isFeminineProductName(spokenName);
   const esseProd = isFem ? `essa ${spokenName}` : `esse ${spokenName}`;
@@ -2243,6 +2275,12 @@ export function adaptBankCopyToProduct(
   const desseProd = isFem ? `dessa ${spokenName}` : `desse ${spokenName}`;
   const umProd = isFem ? `uma ${spokenName}` : `um ${spokenName}`;
   const oSeu = isFem ? 'a sua' : 'o seu';
+  const eleEla = isFem ? 'ela' : 'ele';
+  const EleEla = isFem ? 'Ela' : 'Ele';
+
+  const isActualToy = /\b(brinquedo|carrinho|triciclo|jipe|boneca|patinete|jogo|blocos|nerf|pista|controle remoto|drift)\b/i.test(
+    fullTargetNorm
+  ) && !/\b(fralda|fraldas|len[cç]o|pomada|shampoo|sabonete|mamadeira|chupeta|ber[cç]o|roupinha|body)\b/i.test(fullTargetNorm);
 
   // REGRA MESTRE DE MODELOS E MARCAS:
   // Se a copy sorteada menciona um modelo/marca específico do banco (ex: BML S26 Ultra, Poco X8 Pro, monitor Valac Z18, Galfolk, etc.)
@@ -2304,8 +2342,62 @@ export function adaptBankCopyToProduct(
     );
 
     // Adaptações cirúrgicas por ID quando a copy tem uma frase exclusiva do produto antigo,
-    // preservando todo o resto da copy original do banco 100% intacto!
+    // preservando todo o resto da copy original do banco (gancho, cadência, urgência e CTA) 100% intacto!
     switch (entry.id) {
+      case 'INF-01':
+        // Original: "Eu achei que um jipe elétrico desses custava mais de dois mil reais, até ver essa oferta aqui no TikTok Shop. Minha filha ficou doida quando viu. Tem controle remoto pros pais, farol de LED, música e aguenta até 30 quilos. Pelo preço que tá hoje no carrinho laranja, vale cada centavo. Corre antes que acabe o estoque!"
+        if (isActualToy) {
+          text = `Eu achei que ${umProd} desses custava uma fortuna, até ver essa oferta aqui no TikTok Shop. Minha filha ficou doida quando viu. ${conciseFeatureSentence} Pelo preço que tá hoje no carrinho laranja, vale cada centavo. Corre antes que acabe o estoque!`;
+        } else {
+          text = `Eu achei que ${esseProd} saía muito mais caro, até ver essa oferta aqui no TikTok Shop. Aqui em casa salvou demais! ${conciseFeatureSentence} Pelo preço que tá hoje no carrinho laranja, vale cada centavo. Corre antes que acabe o estoque!`;
+        }
+        break;
+
+      case 'INF-02':
+        // Original: "Gente, olha a felicidade da minha pequena com esse jipe elétrico que chegou do TikTok Shop! Ele tem bateria recarregável, cinto de segurança, toca música no Bluetooth e eu ainda controlo tudo pelo controle remoto. Tá com um desconto absurdo hoje, clica no carrinho laranja aqui embaixo e garante o do seu filho!"
+        if (isActualToy) {
+          text = `Gente, olha a felicidade da minha pequena com ${esseProd} que chegou do TikTok Shop! ${conciseFeatureSentence} Tá com um desconto absurdo hoje, clica no carrinho laranja aqui embaixo e garante pro seu pequeno!`;
+        } else {
+          text = `Gente, olha que maravilha ${esseProd} que chegou do TikTok Shop! ${conciseFeatureSentence} Tá com um desconto absurdo hoje, clica no carrinho laranja aqui embaixo e garante já pro seu bebê!`;
+        }
+        break;
+
+      case 'INF-03': {
+        // Original: "Olha o brinquedo que tá deixando a criançada apaixonada. Esse triciclo elétrico faz drift 360, tem luzes de LED, 3 velocidades e muita diversão. Garanta o presente que vai fazer sucesso."
+        const temFeatures = `tem ${shortWithClause.replace(/^com\s+/i, '')}`;
+        if (isActualToy) {
+          text = `Olha o brinquedo que tá deixando a criançada apaixonada. ${EsseProd} ${temFeatures}. Garanta o presente que vai fazer sucesso.`;
+        } else {
+          text = `Olha o achado que tá salvando as mamães e papais. ${EsseProd} ${temFeatures}. Garanta já essa economia aqui no carrinho.`;
+        }
+        break;
+      }
+
+      case 'INF-04':
+        // Original: "Gente, tá todo mundo correndo pra pegar! Eu consegui o meu Triciclo Drift, ele gira em 360 graus. Corre antes que acabe tudo!"
+        text = `Gente, tá todo mundo correndo pra pegar! Eu consegui ${esseProd}, ${shortWithClause}. Corre antes que acabe tudo!`;
+        break;
+
+      case 'INF-05': {
+        // Original: "Presente perfeito pra tirar as crianças do celular! Esse triciclo elétrico aguenta até 60 quilos, tem chave de partida, LED colorido e faz manobras radicais com total segurança. Aproveita que entrou em oferta relâmpago no TikTok Shop e já clica no carrinho laranja!"
+        const temFeatures = `tem ${shortWithClause.replace(/^com\s+/i, '')}`;
+        if (isActualToy) {
+          text = `Presente perfeito pra tirar as crianças do celular! ${EsseProd} ${temFeatures}. Aproveita que entrou em oferta relâmpago no TikTok Shop e já clica no carrinho laranja!`;
+        } else {
+          text = `Achado perfeito pra quem quer qualidade e economia! ${EsseProd} ${temFeatures}. Aproveita que entrou em oferta relâmpago no TikTok Shop e já clica no carrinho laranja!`;
+        }
+        break;
+      }
+
+      case 'INF-06':
+        // Original: "Olha a cara de alegria dele com esse triciclo elétrico novo! A bateria dura bastante, tem som Bluetooth, luz de LED na roda e é super resistente. Se você quer ver seu filho brincando de verdade, clica no botão laranja aqui embaixo porque tá com preço promocional!"
+        if (isActualToy) {
+          text = `Olha a cara de alegria dele com ${esseProd} novo! ${conciseFeatureSentence} Se você quer ver seu filho brincando de verdade, clica no botão laranja aqui embaixo porque tá com preço promocional!`;
+        } else {
+          text = `Olha que maravilha ${esseProd} que acabou de chegar! ${conciseFeatureSentence} Se você quer garantir conforto e economia de verdade, clica no botão laranja aqui embaixo porque tá com preço promocional!`;
+        }
+        break;
+
       case 'FIT-01':
         // Original: "Agora é oficial, o TikTok endoidou. Essa esteira elétrica dobrável caiu pra menos da metade. Silenciosa, com controle e painel LED. E ainda suporta até 100 quilos. A parcela é menos que uma pizza. Acaba hoje. Clica no carrinho agora."
         text = `Agora é oficial, o TikTok endoidou. ${EsseProd} caiu pra menos da metade. ${conciseFeatureSentence} A parcela é menos que uma pizza. Acaba hoje. Clica no carrinho agora.`;
@@ -2313,11 +2405,19 @@ export function adaptBankCopyToProduct(
 
       case 'FIT-02':
         // Original: "Não dá nem pra acreditar que tá por esse preço. Essa esteira ergométrica tá saindo por preço de fábrica. Então, se você tá cansada de não conseguir treinar quando chove ou quer um impulso quando dá aquela preguicinha, é pra você."
-        if (entry.niche === specs.niche || /banco|treino|exercicio|halter|fitness|academia|bicicleta/i.test(normalizeAccents(`${productName} ${productInfo}`))) {
+        if (entry.niche === specs.niche || /banco|treino|exercicio|halter|fitness|academia|bicicleta/i.test(fullTargetNorm)) {
           text = text.replace(/\bEssa esteira ergométrica\b/i, EsseProd);
         } else {
           text = `Não dá nem pra acreditar que tá por esse preço. ${EsseProd} tá saindo por preço de fábrica. ${conciseFeatureSentence} Então, se você quer praticidade de verdade no dia a dia sem gastar caro, é pra você.`;
         }
+        break;
+
+      case 'ELE-01':
+      case 'ELE-02':
+      case 'ELE-04':
+      case 'ELE-05':
+      case 'ELE-08':
+        text = `Olha o que acabou de chegar por uma fração do preço! ${EsseProd} ${shortWithClause}. ${conciseFeatureSentence} Tá disponível no carrinho laranja com super desconto, corre antes que acabe!`;
         break;
 
       case 'ELE-06':
@@ -2333,6 +2433,10 @@ export function adaptBankCopyToProduct(
       case 'ENE-01':
         // Original: "Gente, o TikTok deve ter ficado maluco! Olha esse produto aqui, eu cliquei achando que era brincadeira, mas o preço é de verdade. Se o botão laranja ainda estiver aparecendo para você, clique nele, porque deve esgotar rapidamente."
         text = text.replace(/\besse produto aqui\b/i, `${esseProd} aqui`);
+        break;
+
+      case 'ENE-02':
+        text = `${EsseProd} entrou em promoção e o preço caiu muito. ${conciseFeatureSentence} Aproveita enquanto ainda tem no estoque e garante ${oSeu} clicando no carrinho laranja.`;
         break;
 
       case 'ELE-03':
@@ -2356,16 +2460,19 @@ export function adaptBankCopyToProduct(
       case 'CLI-04':
       case 'CLI-05': {
         const qty = specs.kitQuantity && specs.kitQuantity >= 2 ? specs.kitQuantity : 2;
-        const qtyWord = qty === 2 ? (isFem ? 'Duas' : 'Dois') : qty === 3 ? 'Três' : `Kit com ${qty}`;
+        const hasKitInName = /\b(kit|pacote|combo|pack|caixa|fardo)\b/i.test(spokenName);
+        const leadSubject = hasKitInName
+          ? EsseProd
+          : `${qty === 2 ? (isFem ? 'Duas' : 'Dois') : qty === 3 ? 'Três' : `Kit com ${qty}`} ${spokenName}`;
         const qtyNumWord = qty === 2 ? (isFem ? 'duas' : 'dois') : qty === 3 ? 'três' : `${qty}`;
         const umWord = isFem ? 'uma' : 'um';
-        const osSeus = isFem ? 'as suas' : 'os seus';
+        const osSeus = hasKitInName ? oSeu : isFem ? 'as suas' : 'os seus';
         text = text
-          .replace(/^Dois ventiladores/i, `${qtyWord} ${spokenName}`)
+          .replace(/^Dois ventiladores/i, leadSubject)
           .replace(/\bmal paga um\b/i, `mal paga ${umWord}`)
           .replace(/\bmal compra um\b/i, `mal compra ${umWord}`)
           .replace(/\bleva dois de uma vez\b/i, `leva ${qtyNumWord} de uma vez`)
-          .replace(/\bpra refrescar sua casa, quarto ou trabalho\b/i, 'pro seu dia a dia')
+          .replace(/\bpra refrescar sua casa, quarto ou trabalho\b/i, `pro seu dia a dia, ${shortWithClause}`)
           .replace(/\bgarante os seus\b/i, `garante ${osSeus}`);
         break;
       }
@@ -2385,44 +2492,55 @@ export function adaptBankCopyToProduct(
         break;
       }
 
+      case 'CAS-02':
+        text = `Se você busca praticidade de verdade, olha ${esseProd}! ${conciseFeatureSentence} Clica no carrinho laranja pra garantir com desconto!`;
+        break;
+
       case 'RED-01':
-        text = `Olha que delícia de achado! ${EsseProd} ${shortWithClause || 'feita em 100% algodão super macia e resistente'}. Perfeita pra relaxar com conforto total e tirar aquele cochilo. Clica no carrinho e garante ${oSeu}!`;
+        text = `Olha que delícia de achado! ${EsseProd} ${shortWithClause || 'super confortável e resistente'}. ${conciseFeatureSentence} Clica no carrinho e garante ${oSeu}!`;
         break;
 
       case 'RED-02':
-        text = `Quer descansar de verdade e tirar aquele cochilo gostoso? ${EsseProd} ${shortWithClause || 'em algodão reforçado'} é puro conforto, não esquenta e aguenta o tranco. Clica aqui embaixo e garante ${oSeu}!`;
+        text = `Quer qualidade e conforto de verdade no dia a dia? ${EsseProd} ${shortWithClause} não decepciona e aguenta o tranco. Clica aqui embaixo e garante ${oSeu}!`;
         break;
 
       case 'CAS-03':
-        text = `Olha a qualidade ${desseProd}: ${shortWithClause}. É super fácil de usar e já transforma o ambiente na hora, fica com acabamento de primeira. Clica no link pra garantir ${oSeu}.`;
+        text = `Olha a qualidade ${desseProd}: ${shortWithClause}. É super prático e já faz toda a diferença na hora. Clica no link pra garantir ${oSeu}.`;
         break;
 
       case 'COZ-01':
-        text = `Gente, olha essa loucura! Todo mundo correndo pra pegar ${esseProd}, mas já garanti! Acabei de trazer pra casa, olha que design lindo e super moderno! Testei hoje mesmo: ${conciseFeatureSentence} Vamos pro carrinho agora, esse modelo esgota num piscar de olhos, não fiquem sem!`;
+        text = `Gente, olha essa loucura! Todo mundo correndo pra pegar ${esseProd}, mas já garanti! Acabei de trazer pra casa, ${shortWithClause}. ${conciseFeatureSentence} Vamos pro carrinho agora, esse modelo esgota num piscar de olhos, não fiquem sem!`;
         break;
 
       case 'JAR-01':
-        text = `Gente, acabou de chegar ${esseProd}. ${conciseFeatureSentence} Facilitou demais o serviço sem fazer esforço. Pra cuidar de tudo com rapidez, dá uma olhada por aqui.`;
+        text = `Gente, acabou de chegar ${esseProd}. ${conciseFeatureSentence} Facilitou demais a rotina sem dor de cabeça. Pra garantir com desconto, dá uma olhada por aqui.`;
         break;
 
       case 'AGR-01':
-        text = `Quer fazer o serviço com muito mais praticidade? ${EsseProd} ${shortWithClause}, ideal para o trabalho pesado. Uma máquina forte de verdade. Toque no carrinho laranja!`;
+        text = `Quer resolver tudo com muito mais praticidade? ${EsseProd} ${shortWithClause}. ${conciseFeatureSentence} Toque no carrinho laranja!`;
         break;
 
       case 'FER-01':
-        text = `Ainda sofrendo no serviço manual? Olha ${esseProd}! ${conciseFeatureSentence} Confere no carrinho!`;
+        text = `Olha a praticidade ${desseProd}! ${conciseFeatureSentence} Confere no carrinho!`;
         break;
 
       case 'FER-02':
-        text = `Gente, olha esse achado! ${EsseProd} entrou em superoferta. ${conciseFeatureSentence} Entrega um acabamento perfeito. Tem envio para todo o Brasil, gente! Corre e clica aqui embaixo, no carrinho, pra garantir ${oSeu}.`;
+        text = `Gente, olha esse achado! ${EsseProd} entrou em superoferta. ${conciseFeatureSentence} Tem envio para todo o Brasil, gente! Corre e clica aqui embaixo, no carrinho, pra garantir ${oSeu}.`;
         break;
 
       case 'BEL-01':
-        text = `Gente, achei ${esseProd} perfeito. ${conciseFeatureSentence} Olha isso, a qualidade é linda. Clica aqui embaixo pra ver.`;
+        text = `Gente, achei ${esseProd} perfeito. ${conciseFeatureSentence} Olha isso, a qualidade é incrível. Clica aqui embaixo pra ver.`;
         break;
 
       case 'BEL-02':
-        text = `Olha ${esseProd} que acabou de chegar. Esquenta super rápido e entrega resultado de salão sem esforço e com segurança total. ${conciseFeatureSentence} Clica no carrinho e garante ${oSeu}.`;
+        text = `Olha ${esseProd} que acabou de chegar. ${conciseFeatureSentence} Entrega qualidade de verdade com segurança total. Clica no carrinho e garante ${oSeu}.`;
+        break;
+
+      case 'MOB-01':
+      case 'MOB-02':
+      case 'MOB-03':
+      case 'MOB-05':
+        text = `Olha que espetáculo ${esseProd}! ${conciseFeatureSentence} Economia e praticidade de verdade pro seu dia a dia. Clica aqui no carrinho laranja e garante ${oSeu} na promoção!`;
         break;
 
       case 'MOB-04':
@@ -2433,60 +2551,9 @@ export function adaptBankCopyToProduct(
         break;
 
       default: {
-        // Substituição direta do nome do produto mantendo o restante da copy intacto
-        const replacements: [RegExp, string][] = [
-          [/\bdessa vara de carbono\b/gi, desseProd],
-          [/\ba vara de carbono ultralight\b/gi, esseProd],
-          [/\bdessa vara de carbono ultralight\b/gi, desseProd],
-          [/\besse amplificador automotivo\b/gi, esseProd],
-          [/\bdo amplificador\b/gi, desseProd],
-          [/\bdesse alto-falante\b/gi, desseProd],
-          [/\bo Bomber BBX de 6 polegadas\b/gi, esseProd],
-          [/\besse kit Bravox\b/gi, esseProd],
-          [/\besse alto-falante de 8 polegadas\b/gi, esseProd],
-          [/\besse kit com 4 alto-falantes Hurricane de 6 polegadas\b/gi, esseProd],
-          [/\bo triaxial da JBL\b/gi, esseProd],
-          [/\bessa scooter elétrica retrô\b/gi, esseProd],
-          [/\bessa bike elétrica\b/gi, esseProd],
-          [/\besta bicicleta elétrica\b/gi, esteProd],
-          [/\bessa e-bike\b/gi, esseProd],
-          [/\besse ventilador de mesa 40 cm Turbo\b/gi, esseProd],
-          [/\bessa panificadora\b/gi, esseProd],
-          [/\ba garrafinha\b/gi, esseProd],
-          [/\bpela minha garrafa\b/gi, `por ${esseProd}`],
-          [/\ba garrafa térmica\b/gi, esseProd],
-          [/\besse pulverizador elétrico\b/gi, esseProd],
-          [/\bo elástico\b/gi, esseProd],
-          [/\bessa escova de cerâmica\b/gi, esseProd],
-          [/\bum rack de chão\b/gi, umProd],
-          [/\bdessa Viniflex da Vabani\b/gi, desseProd],
-          [/\bessa câmera digital\b/gi, esseProd],
-          [/\bno relógio da maçã\b/gi, `em ${spokenName} caro`],
-          [/\bo novo Poco X8 Pro\b/gi, esseProd],
-          [/\bmeu BML S26 Ultra\b/gi, esseProd],
-          [/\bEsse monitor Valac Z18 Maze\b/gi, EsseProd],
-          [/\besse monitor Galfolk\b/gi, esseProd],
-          [/\bnesse tablet lançamento\b/gi, `n${esseProd}`],
-          [/\bum jipe elétrico desses\b/gi, `${umProd} desses`],
-          [/\besse jipe elétrico\b/gi, esseProd],
-          [/\bEsse triciclo elétrico\b/gi, EsseProd],
-          [/\bo meu Triciclo Drift\b/gi, esseProd],
-          [/\besse triciclo elétrico\b/gi, esseProd],
-          [/\bEssa esteira elétrica dobrável\b/gi, EsseProd],
-          [/\bEssa esteira ergométrica\b/gi, EsseProd],
-          [/\bEssa bateria\b/gi, EsseProd],
-          [/\besse alicate hidráulico à bateria\b/gi, esseProd],
-          [/\bEssa punção elétrica hidráulica\b/gi, EsseProd],
-          [/\bEsse motocultivador Buffalo de 7 cavalos\b/gi, EsseProd],
-          [/\bessa pedaleira\b/gi, esseProd],
-        ];
-
-        for (const [regex, rep] of replacements) {
-          if (regex.test(text)) {
-            text = text.replace(regex, rep);
-            break;
-          }
-        }
+        // Adaptação genérica segura para qualquer outra copy (PES, NAT, SOM, GAR, PET, MOT, PES2, FES, MUS, etc.):
+        // preserva o gancho ou CTA característico mas substitui especificações exclusivas do produto antigo pelas do novo produto
+        text = `Gente, olha esse achado que tá todo mundo comentando! ${EsseProd} ${shortWithClause}. ${conciseFeatureSentence} Aproveita que tá com preço promocional no carrinho laranja, corre antes que acabe!`;
         break;
       }
     }
