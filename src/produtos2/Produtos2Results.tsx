@@ -104,6 +104,7 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
   const [hasCopiedPromptOnce, setHasCopiedPromptOnce] = useState(false);
   const [copyCopied, setCopyCopied] = useState(false);
   const [descriptionCopied, setDescriptionCopied] = useState(false);
+  const [hasCopiedDescriptionOnce, setHasCopiedDescriptionOnce] = useState(false);
   const [isExportingZip, setIsExportingZip] = useState(false);
 
   // Trocar fala / Revisar texto e Refazer Prompt
@@ -633,7 +634,8 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
     if (result.description) {
       navigator.clipboard.writeText(result.description);
       setDescriptionCopied(true);
-      setTimeout(() => setDescriptionCopied(false), 2000);
+      setHasCopiedDescriptionOnce(true);
+      setTimeout(() => setDescriptionCopied(false), 2500);
     }
   };
 
@@ -1342,36 +1344,63 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
       </div>
 
       {/* ===================================================================== */}
-      {/* DESCRIÇÃO DO POST + HASHTAGS (Idêntico ao Modo Ania)                  */}
+      {/* DESCRIÇÃO DO POST + HASHTAGS (Fica com o mesmo destaque ao copiar!)   */}
       {/* ===================================================================== */}
       {result.description && (
-        <div className="p-5 sm:p-6 bg-zinc-900 rounded-2xl border border-zinc-800 space-y-3 shadow-xl">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800 pb-3">
-            <div className="flex items-center gap-2">
+        <div
+          className={`p-5 sm:p-6 rounded-2xl transition-all duration-300 space-y-3 ${
+            hasCopiedDescriptionOnce ? copiedBlueSectionClass : defaultSectionClass
+          }`}
+        >
+          <div
+            className={`flex flex-wrap items-center justify-between gap-2 pb-3 border-b ${
+              hasCopiedDescriptionOnce ? 'border-sky-400/40' : 'border-zinc-800'
+            }`}
+          >
+            <div className="flex items-center gap-2 flex-wrap">
               <Tag className="w-4 h-4 text-emerald-400" />
-              <h3 className="text-sm font-bold text-white">Descrição do Post + Hashtags (TikTok & Reels)</h3>
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <span>Descrição do Post + Hashtags (TikTok & Reels)</span>
+                {hasCopiedDescriptionOnce && (
+                  <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-sky-300" /> Copiado ✓
+                  </span>
+                )}
+              </h3>
             </div>
 
             <button
               type="button"
               onClick={handleCopyDescription}
-              className="px-3 py-1 bg-zinc-800 hover:bg-zinc-700 text-xs font-bold text-zinc-200 hover:text-white rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer border border-zinc-700"
+              className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer shadow-lg ${
+                descriptionCopied
+                  ? 'bg-emerald-500 text-white ring-2 ring-emerald-300'
+                  : hasCopiedDescriptionOnce
+                  ? 'bg-sky-500 hover:bg-sky-400 text-white'
+                  : 'bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white'
+              }`}
             >
               {descriptionCopied ? (
                 <>
-                  <Check className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Copiado!</span>
+                  <Check className="w-4 h-4" />
+                  <span>Descrição Copiada!</span>
                 </>
               ) : (
                 <>
-                  <Copy className="w-3.5 h-3.5" />
+                  <Copy className="w-4 h-4" />
                   <span>Copiar Descrição</span>
                 </>
               )}
             </button>
           </div>
 
-          <div className="p-3.5 bg-zinc-950 rounded-xl border border-zinc-800/80 text-xs sm:text-sm text-zinc-200 font-sans leading-relaxed select-all">
+          <div
+            className={`p-3.5 rounded-xl text-xs sm:text-sm font-sans leading-relaxed select-all transition-colors ${
+              hasCopiedDescriptionOnce
+                ? 'bg-slate-950/90 border border-sky-400/60 text-sky-50'
+                : 'bg-zinc-950 border border-zinc-800/80 text-zinc-200'
+            }`}
+          >
             {result.description}
           </div>
         </div>
