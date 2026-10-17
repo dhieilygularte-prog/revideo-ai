@@ -25,15 +25,21 @@ import {
   sanitizeProductFileName,
 } from './produtos2ZipExporter';
 import { buildProdutos2VeoPrompt } from './produtos2Prompts';
+import { selectAndAdaptProdutos2Copy } from './produtos2CopyBank';
 import { VideoFidelityAuditor } from './VideoFidelityAuditor';
 import { MicroImageEditor } from '../components/MicroImageEditor';
 import { AIProfile } from '../config/aiProfiles';
 import { TokenUsageStats } from '../types';
+import { useLoadingGif } from '../utils/loadingGifQueue';
 
 interface Produtos2ResultsProps {
   result: Produtos2ResultState;
   onUpdateResult: React.Dispatch<React.SetStateAction<Produtos2ResultState | null>>;
   onRegenerateStoryboard: (customCorrection?: string) => void;
+  onRecreateStoryboardWithCopy?: (newCopy: string, copySourceLabel?: string) => void;
+  isRecreatingFullStoryboard?: boolean;
+  recreateProgressPercent?: number;
+  recreateStatusMessage?: string;
   onOpenPreview: (url: string, title: string) => void;
   aiProfile?: AIProfile;
   onTokenUsageChange?: (stats: TokenUsageStats) => void;
@@ -78,6 +84,10 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
   result,
   onUpdateResult,
   onRegenerateStoryboard,
+  onRecreateStoryboardWithCopy,
+  isRecreatingFullStoryboard = false,
+  recreateProgressPercent = 0,
+  recreateStatusMessage = '',
   onOpenPreview,
   aiProfile = 'openai',
   onTokenUsageChange,
@@ -107,17 +117,38 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
   const [hasCopiedDescriptionOnce, setHasCopiedDescriptionOnce] = useState(false);
   const [isExportingZip, setIsExportingZip] = useState(false);
 
-  // Trocar fala / Revisar texto e Refazer Prompt
+  // Trocar fala / Revisar texto / Geradores de Copy e Refazer Prompt
   const [speechInput, setSpeechInput] = useState(result.finalCopy || '');
   const [isReviewingSpeech, setIsReviewingSpeech] = useState(false);
+  const [isGeneratingAuroraCopy, setIsGeneratingAuroraCopy] = useState(false);
+  const [isGeneratingBankCopy, setIsGeneratingBankCopy] = useState(false);
+  const [previousAuroraCopies, setPreviousAuroraCopies] = useState<string[]>(() =>
+    result.finalCopy ? [result.finalCopy] : []
+  );
+  const [usedBankCopyIds, setUsedBankCopyIds] = useState<string[]>([]);
+  const [generatedCopySourceLabel, setGeneratedCopySourceLabel] = useState<string | undefined>(undefined);
   const [isSpeechMicRecording, setIsSpeechMicRecording] = useState(false);
   const [speechAppliedSuccess, setSpeechAppliedSuccess] = useState(false);
   const speechRecRef = useRef<any>(null);
   const speechStreamRef = useRef<MediaStream | null>(null);
+  const prevVeoPromptRef = useRef<string>(result.veoPrompt);
+
+  const storyboardLoadingGif = useLoadingGif(
+    Boolean(result.isRegeneratingStoryboard || isRecreatingFullStoryboard)
+  );
 
   useEffect(() => {
     setSpeechInput(result.finalCopy || '');
   }, [result.finalCopy]);
+
+  // Sempre que houver edição/atualização no prompt do Veo 3, remove o destaque azul de "Copiado"
+  useEffect(() => {
+    if (prevVeoPromptRef.current !== result.veoPrompt) {
+      prevVeoPromptRef.current = result.veoPrompt;
+      setHasCopiedPromptOnce(false);
+      setPromptCopied(false);
+    }
+  }, [result.veoPrompt]);
 
   const stopSpeechMicrophone = () => {
     if (speechRecRef.current) {
@@ -181,6 +212,9 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
     const trimmed = newSpeech.trim();
     if (!trimmed) return;
 
+    setHasCopiedPromptOnce(false);
+    setPromptCopied(false);
+
     onUpdateResult((prev) => {
       if (!prev) return null;
 
@@ -212,13 +246,188 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
       return {
         ...prev,
         finalCopy: trimmed,
-        copySourceLabel: isAuroraCopy ? 'Criada por IA (Aurora Copy)' : 'Personalizada / Editada',
+        copySourceLabel:
+          generatedCopySourceLabel ||
+          (isAuroraCopy ? 'Criada por IA (Aurora Copy)' : 'Personalizada / Editada'),
         veoPrompt: updatedPrompt,
       };
     });
 
     setSpeechAppliedSuccess(true);
     setTimeout(() => setSpeechAppliedSuccess(false), 3000);
+  };
+
+  const recordSpeechStepUsage = (usage: any, stepTitle: string, stepDetails: string) => {
+    if (!usage) return;
+    const revP = usage.promptTokens || 450;
+    const revC = usage.completionTokens || 90;
+    const revT = usage.totalTokens || revP + revC;
+    const revUSD = usage.costUSD || 0.001;
+    const revBRL = usage.costBRL || 0.006;
+    const revM = usage.model || 'gpt-4o-mini';
+
+    onUpdateResult((prev) => {
+      if (!prev) return null;
+      const curr = prev.tokenUsage || {
+        promptTokens: 0,
+        candidateTokens: 0,
+        totalTokens: 0,
+        estimatedCostBRL: 0,
+        totalCostUSD: 0,
+        breakdown: {
+          videoAnalysisTokens: 0,
+          videoAnalysisCostBRL: 0,
+          speechTokens: 0,
+          speechCostBRL: 0,
+          imagesCount: 0,
+          imagesCostBRL: 0,
+          promptsTokens: 0,
+          promptsCostBRL: 0,
+        },
+        detailedSteps: [],
+        modelsUsed: [],
+      };
+
+      const updatedSteps = [
+        ...(curr.detailedSteps || []),
+        {
+          step: stepTitle,
+          model: revM,
+          promptTokens: revP,
+          completionTokens: revC,
+          totalTokens: revT,
+          costUSD: revUSD,
+          costBRL: revBRL,
+          timestamp: new Date().toISOString(),
+          details: stepDetails,
+        },
+      ];
+
+      const updatedStats: TokenUsageStats = {
+        ...curr,
+        promptTokens: curr.promptTokens + revP,
+        candidateTokens: curr.candidateTokens + revC,
+        totalTokens: curr.totalTokens + revT,
+        totalCostUSD: Math.round(((curr.totalCostUSD || 0) + revUSD) * 1000) / 1000,
+        estimatedCostBRL: Math.round((curr.estimatedCostBRL + revBRL) * 100) / 100,
+        breakdown: {
+          ...curr.breakdown,
+          speechTokens: (curr.breakdown?.speechTokens || 0) + revT,
+          speechCostBRL: Math.round(((curr.breakdown?.speechCostBRL || 0) + revBRL) * 100) / 100,
+        },
+        detailedSteps: updatedSteps,
+        modelsUsed: Array.from(new Set([...(curr.modelsUsed || []), revM])),
+        totalCalls: ((curr.totalCalls || curr.detailedSteps?.length) || 0) + 1,
+      };
+
+      onTokenUsageChange?.(updatedStats);
+
+      return {
+        ...prev,
+        tokenUsage: updatedStats,
+      };
+    });
+  };
+
+  const handleGenerateWithAuroraCopy = async () => {
+    if (isGeneratingAuroraCopy || isGeneratingBankCopy) return;
+    setIsGeneratingAuroraCopy(true);
+    try {
+      const res = await fetch('/api/produtos2-planning', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'generate_aurora_copy',
+          productName: result.productName,
+          productInfo: result.productInfo || result.productName,
+          duration: result.duration || 10,
+          additionalInstructions: result.additionalInstructions,
+          previousCopies: previousAuroraCopies,
+          aiProfile,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.auroraCopy) {
+        setSpeechInput(data.auroraCopy);
+        setGeneratedCopySourceLabel('Criada por IA (Aurora Copy)');
+        setPreviousAuroraCopies((prev) => [...prev.slice(-8), data.auroraCopy]);
+        if (data.usage) {
+          recordSpeechStepUsage(
+            data.usage,
+            'Geração de Copy (Aurora Copy — Trocar fala)',
+            'Nova copy de 200 a 225 caracteres com hook inédito'
+          );
+        }
+      } else {
+        alert(`Erro ao gerar com Aurora Copy: ${data.error || 'Erro desconhecido'}`);
+      }
+    } catch (err: any) {
+      console.error('Erro ao gerar com Aurora Copy:', err);
+      alert(`Falha ao gerar com Aurora Copy: ${err?.message || err}`);
+    } finally {
+      setIsGeneratingAuroraCopy(false);
+    }
+  };
+
+  const handleGenerateWithBankCopy = async () => {
+    if (isGeneratingBankCopy || isGeneratingAuroraCopy) return;
+    setIsGeneratingBankCopy(true);
+    try {
+      const localPick = selectAndAdaptProdutos2Copy({
+        subMode: result.subMode || 'produtos_geral',
+        maleSubOption: result.maleSubOption || 'calcados',
+        productName: result.productName,
+        productInfo: result.productInfo || result.productName,
+        duration: result.duration || 10,
+        clientGender: result.clientGender || 'Unissex',
+        influencer: result.influencerResolved || null,
+        excludeCopyIds: usedBankCopyIds,
+      });
+
+      setUsedBankCopyIds((prev) => {
+        const next = [...prev, localPick.copyId];
+        return next.length >= 50 ? [localPick.copyId] : next;
+      });
+
+      const res = await fetch('/api/produtos2-planning', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'adapt_bank_copies',
+          productName: result.productName,
+          productInfo: result.productInfo || result.productName,
+          clientGender: result.clientGender || 'Unissex',
+          influencer: result.influencerResolved,
+          enforceRange200To225: true,
+          copy1: {
+            id: localPick.copyId,
+            originalText: localPick.baseEntry?.text || localPick.finalCopy,
+            originalProductType: localPick.baseEntry?.productType || '',
+            isSameProduct: false,
+            localAdaptedText: localPick.finalCopy,
+          },
+          aiProfile,
+        }),
+      });
+
+      const data = await res.json();
+      const adapted = (data?.success && data?.adaptedCopy1) ? data.adaptedCopy1 : localPick.finalCopy;
+      setSpeechInput(adapted);
+      setGeneratedCopySourceLabel('Adaptada do Banco de Copies');
+
+      if (data?.usage) {
+        recordSpeechStepUsage(
+          data.usage,
+          'Geração de Copy (Banco de Copies — Trocar fala)',
+          `Adaptação da copy #${localPick.copyId} do banco para o produto (200 a 225 caracteres)`
+        );
+      }
+    } catch (err: any) {
+      console.error('Erro ao gerar com Banco de Copies:', err);
+      alert(`Falha ao gerar com Banco de Copies: ${err?.message || err}`);
+    } finally {
+      setIsGeneratingBankCopy(false);
+    }
   };
 
   const handleReviewSpeech = async () => {
@@ -525,6 +734,8 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
 
       const data = await res.json();
       if (data.success && data.refinedPrompt) {
+        setHasCopiedPromptOnce(false);
+        setPromptCopied(false);
         onUpdateResult((prev) => (prev ? { ...prev, veoPrompt: data.refinedPrompt } : null));
         setPromptCorrection('');
         setInterimPromptCorrection('');
@@ -704,109 +915,200 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
       </div>
 
       {/* ===================================================================== */}
-      {/* NOVO CARD: TROCAR FALA · REVISAR TEXTO E REFAZER PROMPT              */}
+      {/* CARD: TROCAR FALA · REVISAR TEXTO · GERADORES DE COPY E RECRIAR       */}
       {/* ===================================================================== */}
-      <div className="p-4 sm:p-5 rounded-2xl bg-zinc-900/95 border border-purple-500/40 shadow-xl space-y-3.5">
+      <div className="p-4 sm:p-5 rounded-2xl bg-zinc-900/95 border border-purple-500/40 shadow-xl space-y-3">
+        {/* 1. Título "Trocar fala" na parte superior e contador à direita */}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Edit3 className="w-4 h-4 text-purple-400" />
-            <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-wide">
-              Trocar Fala
+            <h3 className="text-xs sm:text-sm font-black text-white">
+              Trocar fala
             </h3>
           </div>
 
-          {speechAppliedSuccess && (
-            <span className="px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-xs font-bold text-emerald-300 flex items-center gap-1.5 animate-fade-in">
-              <Check className="w-3.5 h-3.5 text-emerald-400" />
-              Prompt do Veo 3 e fala atualizados com sucesso!
+          <div className="flex items-center gap-2.5 flex-wrap">
+            {speechAppliedSuccess && (
+              <span className="px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/50 text-xs font-bold text-emerald-300 flex items-center gap-1.5 animate-fade-in">
+                <Check className="w-3.5 h-3.5 text-emerald-400" />
+                Prompt do Veo 3 e fala atualizados com sucesso!
+              </span>
+            )}
+
+            <span
+              className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold ${
+                speechInput.length > 225
+                  ? 'bg-rose-500/20 text-rose-400 border border-rose-500/40'
+                  : 'bg-zinc-800/90 text-zinc-300 border border-zinc-700'
+              }`}
+            >
+              {speechInput.length}/225 caracteres
             </span>
-          )}
+          </div>
         </div>
 
-        <p className="text-xs text-zinc-400 leading-relaxed">
-          Digite a nova fala, use o microfone para ditar ou clique em{' '}
-          <strong className="text-amber-400">"Revisar texto"</strong> para normalizar gramática, pontuação e unidades para locução de IA (máx. 225 caracteres). Em seguida, clique em{' '}
-          <strong className="text-emerald-300">"Refazer Prompt"</strong> para atualizar o prompt do Veo 3.
-        </p>
+        <div className="space-y-1.5">
+          <div className="relative">
+            <textarea
+              rows={3}
+              value={speechInput}
+              onChange={(e) => {
+                setSpeechInput(e.target.value);
+                setGeneratedCopySourceLabel('Personalizada / Editada');
+              }}
+              placeholder="Digite aqui a nova fala do vídeo ou use o microfone..."
+              className={`w-full p-3.5 pr-12 rounded-xl bg-zinc-950 border text-xs sm:text-sm placeholder-zinc-500 focus:outline-none leading-relaxed font-sans shadow-inner resize-y transition-colors ${
+                speechInput.length > 225
+                  ? 'text-rose-400 border-rose-500 focus:border-rose-400 font-semibold'
+                  : 'text-zinc-100 border-zinc-700 focus:border-purple-400'
+              }`}
+            />
 
-        <div className="relative">
-          <textarea
-            rows={3}
-            value={speechInput}
-            onChange={(e) => setSpeechInput(e.target.value)}
-            placeholder="Digite aqui a nova fala do vídeo ou use o microfone..."
-            className={`w-full p-3.5 pr-12 rounded-xl bg-zinc-950 border text-xs sm:text-sm placeholder-zinc-500 focus:outline-none leading-relaxed font-sans shadow-inner resize-y transition-colors ${
-              speechInput.length > 225
-                ? 'text-rose-400 border-rose-500 focus:border-rose-400 font-semibold'
-                : 'text-zinc-100 border-zinc-700 focus:border-purple-400'
-            }`}
-          />
+            {/* Botão Microfone */}
+            <button
+              type="button"
+              onClick={toggleSpeechMicrophone}
+              className={`absolute right-2.5 top-2.5 p-2 rounded-lg text-xs transition-all cursor-pointer ${
+                isSpeechMicRecording
+                  ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
+                  : 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 border border-zinc-600'
+              }`}
+              title={isSpeechMicRecording ? 'Parar gravação' : 'Ditar fala por voz'}
+            >
+              {isSpeechMicRecording ? (
+                <Square className="w-4 h-4 fill-white" />
+              ) : (
+                <Mic className="w-4 h-4 text-zinc-300" />
+              )}
+            </button>
+          </div>
 
-          {/* Botão Microfone */}
+          {/* Contador posicionado logo abaixo da caixa de texto, próximo à sua borda inferior, sem ocupar a linha dos botões */}
+          <div className="flex items-center justify-between px-1">
+            <span
+              className={`text-[11px] font-mono ${
+                speechInput.length > 225 ? 'text-rose-400 font-bold' : 'text-zinc-400'
+              }`}
+            >
+              {speechInput.length}/225 caracteres
+            </span>
+            {isSpeechMicRecording && (
+              <span className="text-[11px] text-rose-400 flex items-center gap-1.5 font-semibold animate-pulse">
+                <span className="w-2 h-2 rounded-full bg-rose-500" />
+                Gravando sua fala... clique no quadrado vermelho para parar.
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Linha dos botões de ação já existentes (Revisar texto e Refazer Prompt) */}
+        <div className="flex flex-wrap items-center justify-end gap-2 pt-0.5">
+          {/* Botão Revisar texto (Amarelo) */}
           <button
             type="button"
-            onClick={toggleSpeechMicrophone}
-            className={`absolute right-2.5 top-2.5 p-2 rounded-lg text-xs transition-all cursor-pointer ${
-              isSpeechMicRecording
-                ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
-                : 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 border border-zinc-600'
-            }`}
-            title={isSpeechMicRecording ? 'Parar gravação' : 'Ditar fala por voz'}
+            onClick={handleReviewSpeech}
+            disabled={isReviewingSpeech || !speechInput.trim()}
+            className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 text-xs font-black flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-amber-950/20"
           >
-            {isSpeechMicRecording ? (
-              <Square className="w-4 h-4 fill-white" />
+            {isReviewingSpeech ? (
+              <>
+                <RotateCcw className="w-3.5 h-3.5 animate-spin text-slate-950" />
+                <span>Revisando texto...</span>
+              </>
             ) : (
-              <Mic className="w-4 h-4 text-zinc-300" />
+              <>
+                <Sparkles className="w-3.5 h-3.5 text-slate-950 fill-slate-950" />
+                <span>Revisar texto</span>
+              </>
             )}
+          </button>
+
+          {/* Botão Refazer Prompt */}
+          <button
+            type="button"
+            onClick={() => applyNewSpeech(speechInput, generatedCopySourceLabel === 'Criada por IA (Aurora Copy)')}
+            disabled={!speechInput.trim()}
+            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-emerald-950/40"
+          >
+            <Wand2 className="w-3.5 h-3.5" />
+            <span>Refazer Prompt</span>
           </button>
         </div>
 
-        {isSpeechMicRecording && (
-          <p className="text-[11px] text-rose-400 flex items-center gap-1.5 font-semibold animate-pulse">
-            <span className="w-2 h-2 rounded-full bg-rose-500" />
-            Gravando sua fala... fale normalmente e clique no botão vermelho para parar.
-          </p>
-        )}
+        {/* 2. Seleção do gerador de copy + Recriar Storyboard */}
+        <div className="pt-2.5 border-t border-zinc-800/90 space-y-2">
+          <span className="text-xs font-bold text-zinc-200 block">
+            Escolha seu gerador de copy
+          </span>
 
-        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1">
-          <div
-            className={`text-[11px] font-mono ${
-              speechInput.length > 225 ? 'text-rose-400 font-bold' : 'text-zinc-400'
-            }`}
-          >
-            {speechInput.length} / 225 caracteres (máx. 225)
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Botão Revisar texto (Amarelo) */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            {/* Botão 1 — Aurora Copy (Cor: lilás) */}
             <button
               type="button"
-              onClick={handleReviewSpeech}
-              disabled={isReviewingSpeech || !speechInput.trim()}
-              className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 text-xs font-black flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-amber-950/20"
+              onClick={handleGenerateWithAuroraCopy}
+              disabled={isGeneratingAuroraCopy || isGeneratingBankCopy || Boolean(isRecreatingFullStoryboard)}
+              className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-50 border border-purple-400/50 text-white text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md shadow-purple-950/40"
             >
-              {isReviewingSpeech ? (
+              {isGeneratingAuroraCopy ? (
                 <>
-                  <RotateCcw className="w-3.5 h-3.5 animate-spin text-slate-950" />
-                  <span>Revisando texto...</span>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Gerando com Aurora Copy...</span>
                 </>
               ) : (
                 <>
-                  <Sparkles className="w-3.5 h-3.5 text-slate-950 fill-slate-950" />
-                  <span>Revisar texto</span>
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Gerar com Aurora Copy</span>
                 </>
               )}
             </button>
 
-            {/* Botão Refazer Prompt */}
+            {/* Botão 2 — Banco de Copies (Cor: verde-azulado / teal) */}
             <button
               type="button"
-              onClick={() => applyNewSpeech(speechInput, false)}
-              disabled={!speechInput.trim()}
-              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-emerald-950/40"
+              onClick={handleGenerateWithBankCopy}
+              disabled={isGeneratingBankCopy || isGeneratingAuroraCopy || Boolean(isRecreatingFullStoryboard)}
+              className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 disabled:opacity-50 border border-teal-400/50 text-white text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md shadow-teal-950/40"
             >
-              <Wand2 className="w-3.5 h-3.5" />
-              <span>Refazer Prompt</span>
+              {isGeneratingBankCopy ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Gerando com Banco de Copies...</span>
+                </>
+              ) : (
+                <>
+                  <Wand2 className="w-3.5 h-3.5" />
+                  <span>Gerar com Banco de Copies</span>
+                </>
+              )}
+            </button>
+
+            {/* Botão 3 — Recriar Storyboard (Cor: laranja) */}
+            <button
+              type="button"
+              onClick={() => {
+                if (!speechInput.trim() || isRecreatingFullStoryboard) return;
+                setHasCopiedPromptOnce(false);
+                setPromptCopied(false);
+                onRecreateStoryboardWithCopy?.(speechInput.trim(), generatedCopySourceLabel);
+              }}
+              disabled={
+                !speechInput.trim() ||
+                Boolean(isRecreatingFullStoryboard) ||
+                Boolean(result.isRegeneratingStoryboard)
+              }
+              className="px-4 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 disabled:opacity-50 border border-orange-400/50 text-white text-xs font-black flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md shadow-orange-950/40"
+            >
+              {isRecreatingFullStoryboard ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Recriando Storyboard ({recreateProgressPercent}%)...</span>
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Recriar Storyboard</span>
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -834,25 +1136,42 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
             <button
               type="button"
               onClick={() => onRegenerateStoryboard(storyboardCorrection.trim() || undefined)}
-              disabled={Boolean(result.isRegeneratingStoryboard)}
+              disabled={Boolean(result.isRegeneratingStoryboard || isRecreatingFullStoryboard)}
               className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 border border-zinc-700 text-xs font-bold text-zinc-200 flex items-center gap-1.5 transition-all cursor-pointer"
               title="Corrigir e gerar novamente a imagem do storyboard"
             >
               <RefreshCw
                 className={`w-3.5 h-3.5 text-sky-400 ${
-                  result.isRegeneratingStoryboard ? 'animate-spin' : ''
+                  result.isRegeneratingStoryboard || isRecreatingFullStoryboard ? 'animate-spin' : ''
                 }`}
               />
-              <span>{result.isRegeneratingStoryboard ? 'Refazendo...' : 'Refazer'}</span>
+              <span>
+                {result.isRegeneratingStoryboard || isRecreatingFullStoryboard ? 'Refazendo...' : 'Refazer'}
+              </span>
             </button>
           </div>
 
           <div className="relative aspect-[9/16] w-full max-w-[360px] mx-auto rounded-2xl overflow-hidden bg-zinc-950 border-2 border-zinc-800 shadow-2xl group">
-            {result.isRegeneratingStoryboard ? (
-              <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center gap-3">
-                <RefreshCw className="w-8 h-8 text-sky-400 animate-spin" />
+            {result.isRegeneratingStoryboard || isRecreatingFullStoryboard ? (
+              <div className="w-full h-full flex flex-col items-center justify-center p-5 text-center gap-3">
+                {storyboardLoadingGif && (
+                  <img
+                    src={storyboardLoadingGif}
+                    alt="Processando..."
+                    style={{
+                      maxWidth: '280px',
+                      width: '100%',
+                      borderRadius: '12px',
+                      objectFit: 'cover',
+                    }}
+                    className="shadow-lg border border-zinc-800/80 mx-auto"
+                  />
+                )}
+                <RefreshCw className="w-6 h-6 text-sky-400 animate-spin" />
                 <p className="text-xs font-bold text-zinc-200">
-                  Refazendo Storyboard 3×3 e corrigindo cenas apontadas...
+                  {isRecreatingFullStoryboard
+                    ? recreateStatusMessage || 'Recriando Storyboard 3×3 e Prompt do Veo 3 com a nova fala...'
+                    : 'Refazendo Storyboard 3×3 e corrigindo cenas apontadas...'}
                 </p>
                 <p className="text-[11px] text-zinc-400">
                   Preservando logomarca, textos impressos, cores e formato reais do produto
@@ -1232,6 +1551,8 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
             value={result.veoPrompt}
             onChange={(e) => {
               const val = e.target.value;
+              setHasCopiedPromptOnce(false);
+              setPromptCopied(false);
               onUpdateResult((prev) => (prev ? { ...prev, veoPrompt: val } : null));
             }}
             className={`w-full p-3.5 rounded-xl text-xs font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-sky-400 resize-y ${
@@ -1328,6 +1649,19 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
             )}
           </div>
 
+          {/* BOTÃO BAIXAR TUDO (.ZIP COM NOME DO PRODUTO) — Abaixo do campo de prompt e acima da Verificação de Fidelidade do Vídeo */}
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={handleDownloadZip}
+              disabled={isExportingZip}
+              className="w-full px-8 py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2.5 shadow-lg shadow-emerald-950/50 transition-all cursor-pointer"
+            >
+              <Download className="w-4 h-4" />
+              <span>{isExportingZip ? 'Gerando .ZIP...' : `Baixar Tudo (${safeFileName}.zip)`}</span>
+            </button>
+          </div>
+
           {/* VERIFICAÇÃO DE FIDELIDADE DO VÍDEO DO VEO (1 CAPTURA A CADA 2S) */}
           <VideoFidelityAuditor
             productName={result.productName}
@@ -1405,30 +1739,6 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
           </div>
         </div>
       )}
-
-      {/* ===================================================================== */}
-      {/* BOTÃO BAIXAR TUDO (.ZIP COM NOME DO PRODUTO)                          */}
-      {/* ===================================================================== */}
-      <div className="p-5 rounded-2xl bg-zinc-900/90 border border-zinc-800 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div>
-          <h4 className="text-sm font-black text-white">
-            Pacote Completo ({safeFileName}.zip)
-          </h4>
-          <p className="text-xs text-zinc-400 mt-0.5">
-            Contém a imagem do storyboard (<span className="text-zinc-200 font-mono">{safeFileName}.png</span>), o prompt completo do Veo 3 (<span className="text-zinc-200 font-mono">{safeFileName}.txt</span>) e a descrição com hashtags (<span className="text-zinc-200 font-mono">descricao-{safeFileName}.txt</span>).
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={handleDownloadZip}
-          disabled={isExportingZip}
-          className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2.5 shadow-lg shadow-emerald-950/50 transition-all cursor-pointer"
-        >
-          <Download className="w-4 h-4" />
-          <span>{isExportingZip ? 'Gerando .ZIP...' : `Baixar Tudo (${safeFileName}.zip)`}</span>
-        </button>
-      </div>
 
       {/* Módulo Independente de Microedição de Imagem */}
       <MicroImageEditor aiProfile={aiProfile} onOpenPreview={onOpenPreview} />

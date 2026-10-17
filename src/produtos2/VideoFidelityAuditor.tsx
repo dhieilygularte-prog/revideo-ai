@@ -14,6 +14,7 @@ import {
   X,
 } from 'lucide-react';
 import { VideoFidelityAudit, Produtos2AuditColorStatus } from './types';
+import { useLoadingGif } from '../utils/loadingGifQueue';
 
 interface VideoFidelityAuditorProps {
   productName: string;
@@ -229,6 +230,8 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const refPhotosInputRef = useRef<HTMLInputElement>(null);
 
+  const loadingGif = useLoadingGif(isProcessing);
+
   // Se o usuário anexou imagens neste campo, usa ELAS como referência; caso contrário, usa as da página anterior
   const effectiveReferencePhotos =
     customReferencePhotos.length > 0 ? customReferencePhotos : referencePhotos;
@@ -269,43 +272,9 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
     }
   };
 
-  const handleSelectVideo = (file: File) => {
-    if (!file) return;
-    setErrorMessage(null);
-    setAudit(null);
-
-    if (videoPreviewUrl) {
-      URL.revokeObjectURL(videoPreviewUrl);
-    }
-
-    const preview = URL.createObjectURL(file);
-    setVideoFile(file);
-    setVideoPreviewUrl(preview);
-
-    const tempVideo = document.createElement('video');
-    tempVideo.preload = 'metadata';
-    tempVideo.src = preview;
-    tempVideo.onloadedmetadata = () => {
-      setVideoDuration(Math.round((tempVideo.duration || 10) * 10) / 10);
-    };
-  };
-
-  const handleClearVideo = () => {
-    if (videoPreviewUrl) {
-      URL.revokeObjectURL(videoPreviewUrl);
-    }
-    setVideoFile(null);
-    setVideoPreviewUrl(null);
-    setVideoDuration(null);
-    setAudit(null);
-    setErrorMessage(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  const handleAuditVideo = async () => {
-    if (!videoFile) return;
+  const handleAuditVideo = async (overrideFile?: File) => {
+    const fileToAudit = overrideFile || videoFile;
+    if (!fileToAudit) return;
 
     if (!effectiveReferencePhotos || effectiveReferencePhotos.length === 0) {
       setErrorMessage(
@@ -321,7 +290,7 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
     try {
       // 1. Extração no cliente de 1 frame a cada 2s + compressão das fotos de referência (priorizando as anexadas aqui, ou da etapa anterior)
       const [frames, compressedRefs] = await Promise.all([
-        extractVideoFramesEvery2s(videoFile),
+        extractVideoFramesEvery2s(fileToAudit),
         Promise.all(
           effectiveReferencePhotos.slice(0, 6).map((p) => compressPhotoForVideoAudit(p, 600, 0.80))
         ),
@@ -387,6 +356,44 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
     } finally {
       setIsProcessing(false);
       setStatusMessage('');
+    }
+  };
+
+  const handleSelectVideo = (file: File) => {
+    if (!file) return;
+    setErrorMessage(null);
+    setAudit(null);
+
+    if (videoPreviewUrl) {
+      URL.revokeObjectURL(videoPreviewUrl);
+    }
+
+    const preview = URL.createObjectURL(file);
+    setVideoFile(file);
+    setVideoPreviewUrl(preview);
+
+    const tempVideo = document.createElement('video');
+    tempVideo.preload = 'metadata';
+    tempVideo.src = preview;
+    tempVideo.onloadedmetadata = () => {
+      setVideoDuration(Math.round((tempVideo.duration || 10) * 10) / 10);
+    };
+
+    // Inicia automaticamente a análise assim que o vídeo é anexado
+    void handleAuditVideo(file);
+  };
+
+  const handleClearVideo = () => {
+    if (videoPreviewUrl) {
+      URL.revokeObjectURL(videoPreviewUrl);
+    }
+    setVideoFile(null);
+    setVideoPreviewUrl(null);
+    setVideoDuration(null);
+    setAudit(null);
+    setErrorMessage(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -478,7 +485,7 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
                   Anexe aqui o vídeo para verificação
                 </p>
                 <p className="text-[10px] text-zinc-400 mt-0.5">
-                  Clique para selecionar o vídeo gerado no Veo 3 (.mp4 ou .mov)
+                  Ao selecionar o vídeo (.mp4 ou .mov), a análise inicia automaticamente
                 </p>
               </div>
             </div>
@@ -510,7 +517,7 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
 
               <button
                 type="button"
-                onClick={handleAuditVideo}
+                onClick={() => handleAuditVideo()}
                 disabled={isProcessing}
                 className={`px-4 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer shadow-lg disabled:opacity-50 ${
                   audit
@@ -612,6 +619,22 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
           </div>
         </div>
       </div>
+
+      {/* TELA DE LOADING COM GIF ANIMADO DURANTE A ANÁLISE DO VÍDEO */}
+      {isProcessing && (
+        <div className="p-4 rounded-2xl bg-zinc-950/80 border border-sky-500/30 flex flex-col items-center justify-center gap-3 text-center animate-fade-in">
+          <img
+            src={loadingGif}
+            alt="Analisando vídeo..."
+            style={{ maxWidth: '280px', borderRadius: '12px', objectFit: 'cover' }}
+            className="w-full h-auto mx-auto shadow-lg border border-zinc-700/60"
+          />
+          <p className="text-xs font-bold text-sky-300 flex items-center gap-2">
+            <RefreshCw className="w-3.5 h-3.5 animate-spin text-sky-400" />
+            <span>{statusMessage || 'Analisando fidelidade do vídeo...'}</span>
+          </p>
+        </div>
+      )}
 
       {/* QUANDO O VÍDEO ESTÁ ANEXADO E JÁ TEM AUDITORIA */}
       {videoFile && (

@@ -2038,6 +2038,7 @@ export function selectAndAdaptProdutos2Copy(params: {
   influencer: Produtos2Influencer;
   useSpeechIntro?: boolean;
   excludeCopyId?: string;
+  excludeCopyIds?: string[];
 }): {
   finalCopy: string;
   copyId: string;
@@ -2058,6 +2059,7 @@ export function selectAndAdaptProdutos2Copy(params: {
     influencer,
     useSpeechIntro = false,
     excludeCopyId,
+    excludeCopyIds = [],
   } = params;
 
   const specs = analyzeProductInfoForProdutos2(`${productName} ${productInfo}`);
@@ -2092,9 +2094,16 @@ export function selectAndAdaptProdutos2Copy(params: {
         : COPIES_ROUPAS_MASCULINAS
       : COPIES_PRODUTOS_GERAIS;
 
-  const activeBank: CopyBankEntry[] = excludeCopyId
-    ? rawActiveBank.filter((e) => e.id !== excludeCopyId)
+  const excludedSet = new Set<string>([
+    ...(excludeCopyId ? [excludeCopyId] : []),
+    ...excludeCopyIds,
+  ]);
+
+  const filteredBank = excludedSet.size > 0
+    ? rawActiveBank.filter((e) => !excludedSet.has(e.id))
     : rawActiveBank;
+
+  const activeBank: CopyBankEntry[] = filteredBank.length > 0 ? filteredBank : rawActiveBank;
 
   const rawInfoLines = (productInfo || '').split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   const titleNorm = normalizeAccents(rawInfoLines.slice(0, 3).join(' '));

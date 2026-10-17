@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Film, Eye, Layers, Image as ImageIcon, ShieldCheck, Sparkles, CheckCircle2 } from 'lucide-react';
 import { ProcessingStep } from '../types';
+import { getNextLoadingGif } from '../utils/loadingGifQueue';
 
 interface ProgressBarProps {
   currentStep: ProcessingStep;
@@ -20,16 +21,31 @@ const STEPS = [
 export const ProgressBar: React.FC<ProgressBarProps> = ({
   currentStep,
   progressPercent,
-  statusMessage: _statusMessage,
+  statusMessage,
 }) => {
+  const [loadingGif] = useState<string>(() => getNextLoadingGif());
   const currentStepIndex = STEPS.findIndex((s) => s.key === currentStep);
 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-2xl space-y-4 animate-fade-in">
+      <div className="flex flex-col items-center justify-center gap-3 pb-1">
+        <img
+          src={loadingGif}
+          alt="Processando..."
+          style={{ maxWidth: '280px', borderRadius: '12px', objectFit: 'cover' }}
+          className="w-full h-auto mx-auto shadow-lg border border-zinc-700/60"
+        />
+        {statusMessage && (
+          <p className="text-xs sm:text-sm font-bold text-sky-300 text-center">
+            {statusMessage}
+          </p>
+        )}
+      </div>
+
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-2.5 h-2.5 rounded-full bg-sky-400 animate-ping" />
-          <h3 className="text-sm font-bold text-white">Processando clonagem do vídeo</h3>
+          <h3 className="text-sm font-bold text-white">Processando...</h3>
         </div>
         <span className="text-xs font-mono font-bold text-sky-400">{Math.round(progressPercent)}%</span>
       </div>

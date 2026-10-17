@@ -12,7 +12,6 @@ export const TokenCostBadge: React.FC<TokenCostBadgeProps> = ({ stats }) => {
   if (!stats) return null;
 
   const hasDetailedSteps = Boolean(stats.detailedSteps && stats.detailedSteps.length > 0);
-  const costUSDText = stats.totalCostUSD ? `$ ${stats.totalCostUSD.toFixed(3)} USD` : null;
 
   return (
     <>
@@ -20,15 +19,9 @@ export const TokenCostBadge: React.FC<TokenCostBadgeProps> = ({ stats }) => {
       <button
         onClick={() => setIsOpen(true)}
         className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-mono font-bold transition-all cursor-pointer shadow-sm group"
-        title="Ver mediÃ§Ã£o completa de custos por etapa (USD e BRL)"
+        title="Ver medição completa de custos por etapa (R$)"
       >
         <Coins className="w-3.5 h-3.5 text-amber-400 group-hover:rotate-12 transition-transform" />
-        {costUSDText && (
-          <>
-            <span className="text-sky-300">{costUSDText}</span>
-            <span className="text-zinc-500">â€¢</span>
-          </>
-        )}
         <span className="text-emerald-400">R$ {stats.estimatedCostBRL.toFixed(2)}</span>
         <ChevronDown className="w-3 h-3 text-amber-400/70" />
       </button>
@@ -44,7 +37,7 @@ export const TokenCostBadge: React.FC<TokenCostBadgeProps> = ({ stats }) => {
                   <Coins className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm">MediÃ§Ã£o de Custos da Clonagem</h3>
+                  <h3 className="font-bold text-sm">Medição de Custos (R$)</h3>
                   <p className="text-[11px] text-zinc-400">Detalhamento por etapa, modelo e tokens</p>
                 </div>
               </div>
@@ -59,22 +52,18 @@ export const TokenCostBadge: React.FC<TokenCostBadgeProps> = ({ stats }) => {
             {/* Total Highlight */}
             <div className="p-4 bg-zinc-950 rounded-xl border border-zinc-800 flex items-center justify-between shrink-0">
               <div>
-                <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-bold">Custo Total (USD)</span>
-                <p className="text-2xl font-bold font-mono text-sky-400 mt-0.5">
-                  ${(stats.totalCostUSD ?? (stats.estimatedCostBRL / 5.70)).toFixed(3)} <span className="text-xs text-zinc-400">USD</span>
+                <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-bold">Custo Total (R$)</span>
+                <p className="text-2xl font-bold font-mono text-emerald-400 mt-0.5">
+                  R$ {stats.estimatedCostBRL.toFixed(2)}
                 </p>
+              </div>
+              <div className="text-right">
                 {stats.totalCalls && (
-                  <p className="text-[11px] text-zinc-400 mt-1 flex items-center gap-1">
+                  <p className="text-[11px] text-zinc-400 flex items-center justify-end gap-1">
                     <Layers className="w-3 h-3 text-amber-400" />
                     <span>{stats.totalCalls} chamadas instrumentadas</span>
                   </p>
                 )}
-              </div>
-              <div className="text-right">
-                <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-bold">Custo Estimado (BRL)</span>
-                <p className="text-2xl font-bold font-mono text-emerald-400 mt-0.5">
-                  R$ {stats.estimatedCostBRL.toFixed(2)}
-                </p>
                 <p className="text-[11px] text-zinc-400 mt-1 font-mono">
                   {stats.totalTokens.toLocaleString('pt-BR')} tokens
                 </p>
@@ -86,7 +75,7 @@ export const TokenCostBadge: React.FC<TokenCostBadgeProps> = ({ stats }) => {
               <div className="p-3 bg-zinc-950/80 rounded-xl border border-zinc-800 text-xs shrink-0 space-y-1.5">
                 <div className="flex items-center gap-1.5 text-zinc-400 font-bold text-[11px]">
                   <Cpu className="w-3.5 h-3.5 text-purple-400" />
-                  <span>Modelos Utilizados nesta Clonagem:</span>
+                  <span>Modelos Utilizados:</span>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {stats.modelsUsed.map((m) => (
@@ -124,8 +113,7 @@ export const TokenCostBadge: React.FC<TokenCostBadgeProps> = ({ stats }) => {
                       )}
                     </div>
                     <div className="text-right font-mono shrink-0 ml-2">
-                      <div className="text-sky-300 font-bold">${step.costUSD.toFixed(3)}</div>
-                      <div className="text-emerald-400 text-[10px]">R$ {step.costBRL.toFixed(3)}</div>
+                      <div className="text-emerald-400 font-bold">R$ {step.costBRL.toFixed(3)}</div>
                     </div>
                   </div>
                 ))
@@ -134,7 +122,7 @@ export const TokenCostBadge: React.FC<TokenCostBadgeProps> = ({ stats }) => {
                   <div className="flex items-center justify-between p-2.5 bg-zinc-950/60 rounded-lg border border-zinc-800/80">
                     <div className="flex items-center gap-2 text-zinc-300">
                       <Activity className="w-4 h-4 text-sky-400" />
-                      <span>AnÃ¡lise de VÃ­deo e VisÃ£o</span>
+                      <span>Análise de Vídeo e Visão</span>
                     </div>
                     <div className="text-right font-mono">
                       <span className="text-zinc-400">{stats.breakdown.videoAnalysisTokens.toLocaleString('pt-BR')} tok</span>
@@ -146,7 +134,7 @@ export const TokenCostBadge: React.FC<TokenCostBadgeProps> = ({ stats }) => {
                     <div className="flex items-center justify-between p-2.5 bg-zinc-950/60 rounded-lg border border-zinc-800/80">
                       <div className="flex items-center gap-2 text-zinc-300">
                         <Mic className="w-4 h-4 text-purple-400" />
-                        <span>TranscriÃ§Ã£o de Ãudio</span>
+                        <span>Transcrição de Áudio</span>
                       </div>
                       <div className="text-right font-mono">
                         <span className="text-zinc-400">{stats.breakdown.speechTokens.toLocaleString('pt-BR')} tok</span>
@@ -171,7 +159,7 @@ export const TokenCostBadge: React.FC<TokenCostBadgeProps> = ({ stats }) => {
             </div>
 
             <p className="text-[10px] text-zinc-500 leading-tight shrink-0 border-t border-zinc-800/80 pt-2">
-              * Custos medidos com precisÃ£o por chamada em USD e convertidos para BRL (taxa oficial R$ 5,70). Tokens e operaÃ§Ãµes registrados conforme retorno da API.
+              * Custos medidos por chamada em R$ (BRL). Tokens e operações registrados conforme retorno da API.
             </p>
 
             <button

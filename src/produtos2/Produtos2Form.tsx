@@ -16,6 +16,7 @@ import {
   Wand2,
   Copy,
   History,
+  ArrowRight,
 } from 'lucide-react';
 import {
   Produtos2FormState,
@@ -30,6 +31,7 @@ import {
 import { extractUserSpeechFromInstructions } from './produtos2UserSpeechExtractor';
 import { AIProfile } from '../config/aiProfiles';
 import { TokenUsageStats } from '../types';
+import { useLoadingGif } from '../utils/loadingGifQueue';
 
 interface Produtos2FormProps {
   form: Produtos2FormState;
@@ -39,6 +41,9 @@ interface Produtos2FormProps {
   aiProfile?: AIProfile;
   onTokenUsageChange?: (stats: TokenUsageStats) => void;
   onOpenHistory?: () => void;
+  isViewOnly?: boolean;
+  hasExistingResult?: boolean;
+  onGoToResults?: () => void;
 }
 
 /**
@@ -100,6 +105,9 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
   aiProfile = 'openai',
   onTokenUsageChange,
   onOpenHistory,
+  isViewOnly = false,
+  hasExistingResult = false,
+  onGoToResults,
 }) => {
   const [activeMic, setActiveMic] = useState<'info' | 'instructions' | 'user' | 'banco1' | 'banco2' | 'aurora' | null>(null);
   const [isGeneratingSpeeches, setIsGeneratingSpeeches] = useState(false);
@@ -111,6 +119,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
   const debounceTimerRef = useRef<number | null>(null);
   const instructionsTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const speechesLoadingGif = useLoadingGif(isGeneratingSpeeches);
 
   const handleCopySpeech = (text: string, key: string) => {
     if (!text) return;
@@ -121,7 +130,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
 
   // Botão "Revisar texto" com função conservadora (Item 9 e 11)
   const handleReviewSpeech = async (speechText: string, cardKey: 'user' | 'banco1' | 'banco2' | 'aurora') => {
-    if (!speechText.trim() || isReviewingCard) return;
+    if (isViewOnly || !speechText.trim() || isReviewingCard) return;
     setIsReviewingCard(cardKey);
     try {
       const res = await fetch('/api/produtos2-planning', {
@@ -572,6 +581,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
   };
 
   const handleProductInfoChange = (text: string) => {
+    if (isViewOnly) return;
     onChange((prev) => ({
       ...prev,
       productInfo: text,
@@ -601,6 +611,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
   };
 
   const toggleMic = async (field: 'info' | 'instructions' | 'user' | 'banco1' | 'banco2' | 'aurora') => {
+    if (isViewOnly) return;
     if (activeMic === field) {
       stopMicrophone();
       return;
@@ -688,6 +699,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
 
   // Variações e Upload Múltiplo de Fotos (Seção 2 item 11)
   const handleAddVariation = () => {
+    if (isViewOnly) return;
     const nextIdx = (form.variations?.length || 0) + 1;
     const newVar: Produtos2Variation = {
       id: `p2-var-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
@@ -701,6 +713,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
   };
 
   const handleRemoveVariation = (id: string) => {
+    if (isViewOnly) return;
     onChange((prev) => ({
       ...prev,
       variations: (prev.variations || []).filter((v) => v.id !== id),
@@ -708,7 +721,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
   };
 
   const handleAddPhotosToVariation = async (varId: string, files: FileList | null) => {
-    if (!files || files.length === 0) return;
+    if (isViewOnly || !files || files.length === 0) return;
     const fileArray = Array.from(files);
 
     const processed = await Promise.all(
@@ -733,6 +746,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
   };
 
   const handleRemovePhoto = (varId: string, photoIdx: number) => {
+    if (isViewOnly) return;
     onChange((prev) => ({
       ...prev,
       variations: (prev.variations || []).map((v) =>
@@ -744,6 +758,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
   };
 
   const handleSubModeSelect = (newSubMode: Produtos2SubMode, maleOpt?: Produtos2MaleSubOption) => {
+    if (isViewOnly) return;
     onChange((prev) => {
       const nextMaleOpt = maleOpt || prev.maleSubOption;
       const isMaleMode = newSubMode === 'vestuario_masculino';
@@ -791,9 +806,10 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
   const isPhotosFilled = totalPhotosCount > 0;
   const isInstructionsFilled = Boolean(form.additionalInstructions.trim().length > 0);
 
-  // Seção 2 item 13: Bloqueado se algum microfone estiver gravando ou se faltar "Informações do produto" ou imagens
+  // Seção 2 item 13: Bloqueado se algum microfone estiver gravando, se estiver em modo somente visualização, ou se faltar "Informações do produto"
   const isMicRecording = activeMic !== null;
   const canGenerateSpeeches =
+    !isViewOnly &&
     !isProcessing &&
     !isGeneratingSpeeches &&
     !isMicRecording &&
@@ -811,6 +827,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
   );
 
   const canGenerateVideo =
+    !isViewOnly &&
     !isProcessing &&
     !isMicRecording &&
     Boolean(form.speechesGenerated || form.userSpeech || form.bancoCopy || form.bancoCopy2 || form.auroraCopy) &&
@@ -825,6 +842,31 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
           : ''
       }`}
     >
+      {/* ===================================================================== */}
+      {/* BARRA DE NAVEGAÇÃO E MODO SOMENTE VISUALIZAÇÃO (Quando há Storyboard) */}
+      {/* ===================================================================== */}
+      {hasExistingResult && (
+        <div className="p-3.5 sm:p-4 rounded-2xl bg-zinc-900/95 border border-sky-500/40 shadow-xl flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 text-xs text-sky-200 font-semibold">
+            <Lock className="w-4 h-4 text-sky-400 shrink-0" />
+            <span>
+              Modo somente visualização ativo — Você pode consultar e copiar qualquer conteúdo preenchido.
+            </span>
+          </div>
+
+          {onGoToResults && (
+            <button
+              type="button"
+              onClick={onGoToResults}
+              className="px-4 py-2 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white text-xs font-black flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-sky-950/50 ml-auto"
+            >
+              <span>Avançar para a próxima página</span>
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      )}
+
       {/* ===================================================================== */}
       {/* SEÇÃO 1 — ESTRUTURA DOS MODOS (Produtos Geral vs Vestuário Masculino) */}
       {/* ===================================================================== */}
@@ -881,8 +923,11 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
           <button
             type="button"
+            disabled={isViewOnly}
             onClick={() => handleSubModeSelect('produtos_geral')}
-            className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-3 ${
+            className={`p-3 rounded-xl border text-left transition-all flex items-center gap-3 ${
+              isViewOnly ? 'cursor-default' : 'cursor-pointer'
+            } ${
               form.subMode === 'produtos_geral'
                 ? 'bg-gradient-to-r from-sky-600/90 to-blue-700/90 border-sky-400 text-white shadow-lg shadow-sky-950/50'
                 : 'bg-zinc-950/80 border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700'
@@ -897,8 +942,11 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
 
           <button
             type="button"
+            disabled={isViewOnly}
             onClick={() => handleSubModeSelect('vestuario_masculino', form.maleSubOption)}
-            className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-3 ${
+            className={`p-3 rounded-xl border text-left transition-all flex items-center gap-3 ${
+              isViewOnly ? 'cursor-default' : 'cursor-pointer'
+            } ${
               form.subMode === 'vestuario_masculino'
                 ? 'bg-gradient-to-r from-emerald-600 to-green-700 border-emerald-400 text-white shadow-lg shadow-emerald-950/60 ring-2 ring-emerald-400/40'
                 : 'bg-zinc-950/80 border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700'
@@ -935,6 +983,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
             <div className="grid grid-cols-2 gap-2 bg-zinc-950 p-1 rounded-xl border border-emerald-800/60">
               <button
                 type="button"
+                disabled={isViewOnly}
                 onClick={() => handleSubModeSelect('vestuario_masculino', 'calcados')}
                 className={`px-4 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
                   form.maleSubOption === 'calcados'
@@ -947,6 +996,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
               </button>
               <button
                 type="button"
+                disabled={isViewOnly}
                 onClick={() => handleSubModeSelect('vestuario_masculino', 'roupas')}
                 className={`px-4 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
                   form.maleSubOption === 'roupas'
@@ -989,6 +1039,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
           <div className="relative">
             <textarea
               rows={3}
+              readOnly={isViewOnly}
               value={form.productInfo}
               onChange={(e) => handleProductInfoChange(e.target.value)}
               placeholder="Cole aqui o título e a descrição completa do anúncio (watts, ml, tamanho, material, cor, benefícios)..."
@@ -998,18 +1049,20 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                   : 'bg-zinc-950 border border-zinc-700/80'
               }`}
             />
-            <button
-              type="button"
-              onClick={() => toggleMic('info')}
-              className={`absolute right-2.5 top-2.5 p-2 rounded-lg text-xs transition-all cursor-pointer ${
-                activeMic === 'info'
-                  ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
-                  : 'bg-zinc-800 text-sky-300 hover:bg-zinc-700 border border-zinc-700'
-              }`}
-              title={activeMic === 'info' ? 'Parar gravação' : 'Ditar informações do produto'}
-            >
-              {activeMic === 'info' ? <Square className="w-4 h-4 fill-white" /> : <Mic className="w-4 h-4" />}
-            </button>
+            {!isViewOnly && (
+              <button
+                type="button"
+                onClick={() => toggleMic('info')}
+                className={`absolute right-2.5 top-2.5 p-2 rounded-lg text-xs transition-all cursor-pointer ${
+                  activeMic === 'info'
+                    ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
+                    : 'bg-zinc-800 text-sky-300 hover:bg-zinc-700 border border-zinc-700'
+                }`}
+                title={activeMic === 'info' ? 'Parar gravação' : 'Ditar informações do produto'}
+              >
+                {activeMic === 'info' ? <Square className="w-4 h-4 fill-white" /> : <Mic className="w-4 h-4" />}
+              </button>
+            )}
           </div>
         </div>
 
@@ -1033,14 +1086,16 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
           </label>
           <input
             type="text"
+            readOnly={isViewOnly}
             value={form.productName}
-            onChange={(e) =>
+            onChange={(e) => {
+              if (isViewOnly) return;
               onChange((prev) => ({
                 ...prev,
                 productName: e.target.value,
                 productNameAutoFilled: false,
-              }))
-            }
+              }));
+            }}
             placeholder="Ex.: Roçadeira 2000 W, Vara de Carbono, Tênis Masculino..."
             className={`w-full px-3.5 py-2.5 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-sky-400 font-sans ${
               isNameFilled
@@ -1074,9 +1129,11 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
           <div className="grid grid-cols-3 gap-1.5 bg-slate-950/90 p-1 rounded-xl border border-zinc-700/80">
             <button
               type="button"
-              onClick={() =>
-                onChange((prev) => ({ ...prev, influencer: 'Mulher', influencerAutoFilled: false }))
-              }
+              disabled={isViewOnly}
+              onClick={() => {
+                if (isViewOnly) return;
+                onChange((prev) => ({ ...prev, influencer: 'Mulher', influencerAutoFilled: false }));
+              }}
               className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                 form.influencer === 'Mulher'
                   ? 'bg-sky-500 text-white shadow'
@@ -1087,9 +1144,11 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
             </button>
             <button
               type="button"
-              onClick={() =>
-                onChange((prev) => ({ ...prev, influencer: 'Homem', influencerAutoFilled: false }))
-              }
+              disabled={isViewOnly}
+              onClick={() => {
+                if (isViewOnly) return;
+                onChange((prev) => ({ ...prev, influencer: 'Homem', influencerAutoFilled: false }));
+              }}
               className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                 form.influencer === 'Homem'
                   ? 'bg-sky-500 text-white shadow'
@@ -1100,9 +1159,11 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
             </button>
             <button
               type="button"
-              onClick={() =>
-                onChange((prev) => ({ ...prev, influencer: null, influencerAutoFilled: false }))
-              }
+              disabled={isViewOnly}
+              onClick={() => {
+                if (isViewOnly) return;
+                onChange((prev) => ({ ...prev, influencer: null, influencerAutoFilled: false }));
+              }}
               className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                 form.influencer === null
                   ? 'bg-zinc-700 text-white shadow'
@@ -1129,9 +1190,11 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
               <button
                 key={g}
                 type="button"
-                onClick={() =>
-                  onChange((prev) => ({ ...prev, clientGender: g, clientGenderAutoFilled: false }))
-                }
+                disabled={isViewOnly}
+                onClick={() => {
+                  if (isViewOnly) return;
+                  onChange((prev) => ({ ...prev, clientGender: g, clientGenderAutoFilled: false }));
+                }}
                 className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                   form.clientGender === g
                     ? 'bg-sky-500 text-white shadow'
@@ -1153,7 +1216,11 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
           <div className="grid grid-cols-2 gap-1.5 bg-slate-950/90 p-1 rounded-xl border border-zinc-700/60">
             <button
               type="button"
-              onClick={() => onChange((prev) => ({ ...prev, speechMode: 'com_fala' }))}
+              disabled={isViewOnly}
+              onClick={() => {
+                if (isViewOnly) return;
+                onChange((prev) => ({ ...prev, speechMode: 'com_fala' }));
+              }}
               className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                 form.speechMode === 'com_fala'
                   ? accentBtnClass
@@ -1164,7 +1231,11 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => onChange((prev) => ({ ...prev, speechMode: 'sem_fala' }))}
+              disabled={isViewOnly}
+              onClick={() => {
+                if (isViewOnly) return;
+                onChange((prev) => ({ ...prev, speechMode: 'sem_fala' }));
+              }}
               className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                 form.speechMode === 'sem_fala'
                   ? accentBtnClass
@@ -1187,7 +1258,11 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
           <div className="grid grid-cols-3 gap-1.5 bg-slate-950/90 p-1 rounded-xl border border-zinc-700/60">
             <button
               type="button"
-              onClick={() => onChange((prev) => ({ ...prev, framing: 'com_rosto' }))}
+              disabled={isViewOnly}
+              onClick={() => {
+                if (isViewOnly) return;
+                onChange((prev) => ({ ...prev, framing: 'com_rosto' }));
+              }}
               className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                 form.framing === 'com_rosto'
                   ? accentBtnClass
@@ -1198,7 +1273,11 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => onChange((prev) => ({ ...prev, framing: 'sem_rosto' }))}
+              disabled={isViewOnly}
+              onClick={() => {
+                if (isViewOnly) return;
+                onChange((prev) => ({ ...prev, framing: 'sem_rosto' }));
+              }}
               className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                 form.framing === 'sem_rosto'
                   ? accentBtnClass
@@ -1209,7 +1288,11 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => onChange((prev) => ({ ...prev, framing: 'pov' }))}
+              disabled={isViewOnly}
+              onClick={() => {
+                if (isViewOnly) return;
+                onChange((prev) => ({ ...prev, framing: 'pov' }));
+              }}
               className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                 form.framing === 'pov'
                   ? accentBtnClass
@@ -1232,7 +1315,11 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
           <div className="grid grid-cols-2 gap-1.5 bg-slate-950/90 p-1 rounded-xl border border-zinc-700/60">
             <button
               type="button"
-              onClick={() => onChange((prev) => ({ ...prev, scenario: 'padrao_uso' }))}
+              disabled={isViewOnly}
+              onClick={() => {
+                if (isViewOnly) return;
+                onChange((prev) => ({ ...prev, scenario: 'padrao_uso' }));
+              }}
               className={`py-2 px-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                 form.scenario === 'padrao_uso'
                   ? accentBtnClass
@@ -1243,7 +1330,11 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => onChange((prev) => ({ ...prev, scenario: 'em_casa' }))}
+              disabled={isViewOnly}
+              onClick={() => {
+                if (isViewOnly) return;
+                onChange((prev) => ({ ...prev, scenario: 'em_casa' }));
+              }}
               className={`py-2 px-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                 form.scenario === 'em_casa'
                   ? accentBtnClass
@@ -1267,7 +1358,11 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
             <div className="grid grid-cols-3 gap-2 bg-slate-950/90 p-1 rounded-xl border border-sky-400/50">
               <button
                 type="button"
-                onClick={() => onChange((prev) => ({ ...prev, maleClothStyle: 'storyboard' }))}
+                disabled={isViewOnly}
+                onClick={() => {
+                  if (isViewOnly) return;
+                  onChange((prev) => ({ ...prev, maleClothStyle: 'storyboard' }));
+                }}
                 className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                   form.maleClothStyle === 'storyboard'
                     ? 'bg-sky-500 text-white shadow'
@@ -1278,9 +1373,11 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() =>
-                  onChange((prev) => ({ ...prev, maleClothStyle: 'pov', framing: 'pov' }))
-                }
+                disabled={isViewOnly}
+                onClick={() => {
+                  if (isViewOnly) return;
+                  onChange((prev) => ({ ...prev, maleClothStyle: 'pov', framing: 'pov' }));
+                }}
                 className={`py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
                   form.maleClothStyle === 'pov'
                     ? 'bg-sky-500 text-white shadow'
@@ -1325,14 +1422,16 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
               </p>
             </div>
 
-            <button
-              type="button"
-              onClick={handleAddVariation}
-              className="px-3 py-1.5 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 border border-sky-400/40 text-sky-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Adicionar Variação / Cor</span>
-            </button>
+            {!isViewOnly && (
+              <button
+                type="button"
+                onClick={handleAddVariation}
+                className="px-3 py-1.5 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 border border-sky-400/40 text-sky-200 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Adicionar Variação / Cor</span>
+              </button>
+            )}
           </div>
 
           <div className="space-y-3">
@@ -1348,8 +1447,10 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                     </span>
                     <input
                       type="text"
+                      readOnly={isViewOnly}
                       value={variation.name}
                       onChange={(e) => {
+                        if (isViewOnly) return;
                         const val = e.target.value;
                         onChange((prev) => ({
                           ...prev,
@@ -1367,7 +1468,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                     </span>
                   </div>
 
-                  {(form.variations || []).length > 1 && (
+                  {!isViewOnly && (form.variations || []).length > 1 && (
                     <button
                       type="button"
                       onClick={() => handleRemoveVariation(variation.id)}
@@ -1394,16 +1495,18 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                 />
 
                 <div className="grid grid-cols-3 sm:grid-cols-5 md:grid-cols-7 gap-2.5">
-                  <button
-                    type="button"
-                    onClick={() => fileInputRefs.current[variation.id]?.click()}
-                    className="aspect-square rounded-xl border-2 border-dashed border-sky-500/50 hover:border-sky-400 bg-sky-950/30 hover:bg-sky-900/40 flex flex-col items-center justify-center gap-1.5 text-sky-200 transition-all cursor-pointer p-2 text-center"
-                  >
-                    <Upload className="w-5 h-5 text-sky-400" />
-                    <span className="text-[10px] font-bold leading-tight">
-                      Anexar Fotos (Multi)
-                    </span>
-                  </button>
+                  {!isViewOnly && (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRefs.current[variation.id]?.click()}
+                      className="aspect-square rounded-xl border-2 border-dashed border-sky-500/50 hover:border-sky-400 bg-sky-950/30 hover:bg-sky-900/40 flex flex-col items-center justify-center gap-1.5 text-sky-200 transition-all cursor-pointer p-2 text-center"
+                    >
+                      <Upload className="w-5 h-5 text-sky-400" />
+                      <span className="text-[10px] font-bold leading-tight">
+                        Anexar Fotos (Multi)
+                      </span>
+                    </button>
+                  )}
 
                   {variation.photos.map((photo, pIdx) => (
                     <div
@@ -1415,14 +1518,16 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                         alt={`${variation.name} ${pIdx + 1}`}
                         className="w-full h-full object-cover"
                       />
-                      <button
-                        type="button"
-                        onClick={() => handleRemovePhoto(variation.id, pIdx)}
-                        className="absolute top-1 right-1 p-1 rounded-lg bg-black/80 text-zinc-300 hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                        title="Remover foto"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
+                      {!isViewOnly && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePhoto(variation.id, pIdx)}
+                          className="absolute top-1 right-1 p-1 rounded-lg bg-black/80 text-zinc-300 hover:text-rose-400 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                          title="Remover foto"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      )}
                       <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/75 text-[9px] font-bold text-white">
                         #{pIdx + 1}
                       </span>
@@ -1457,10 +1562,12 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
             <textarea
               ref={instructionsTextareaRef}
               rows={2}
+              readOnly={isViewOnly}
               value={form.additionalInstructions}
-              onChange={(e) =>
-                onChange((prev) => ({ ...prev, additionalInstructions: e.target.value }))
-              }
+              onChange={(e) => {
+                if (isViewOnly) return;
+                onChange((prev) => ({ ...prev, additionalInstructions: e.target.value }));
+              }}
               placeholder='Ex.: "Homem de 45 anos na oficina. Ele pega o produto e fala: Gente, olha esse equipamento que acabou de chegar pra mim..." (ou apenas ambiente, estilo, idade, sotaque)'
               className={`w-full p-3 pr-12 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-sky-400 resize-none overflow-hidden font-sans ${
                 isInstructionsFilled
@@ -1469,22 +1576,24 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
               }`}
               style={{ minHeight: '68px' }}
             />
-            <button
-              type="button"
-              onClick={() => toggleMic('instructions')}
-              className={`absolute right-2.5 top-2.5 p-2 rounded-lg text-xs transition-all cursor-pointer ${
-                activeMic === 'instructions'
-                  ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
-                  : 'bg-zinc-800 text-sky-300 hover:bg-zinc-700 border border-zinc-700'
-              }`}
-              title={activeMic === 'instructions' ? 'Parar gravação' : 'Ditar instruções adicionais'}
-            >
-              {activeMic === 'instructions' ? (
-                <Square className="w-4 h-4 fill-white" />
-              ) : (
-                <Mic className="w-4 h-4" />
-              )}
-            </button>
+            {!isViewOnly && (
+              <button
+                type="button"
+                onClick={() => toggleMic('instructions')}
+                className={`absolute right-2.5 top-2.5 p-2 rounded-lg text-xs transition-all cursor-pointer ${
+                  activeMic === 'instructions'
+                    ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
+                    : 'bg-zinc-800 text-sky-300 hover:bg-zinc-700 border border-zinc-700'
+                }`}
+                title={activeMic === 'instructions' ? 'Parar gravação' : 'Ditar instruções adicionais'}
+              >
+                {activeMic === 'instructions' ? (
+                  <Square className="w-4 h-4 fill-white" />
+                ) : (
+                  <Mic className="w-4 h-4" />
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -1496,7 +1605,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
         <button
           type="button"
           onClick={handleGenerateSpeeches}
-          disabled={!canGenerateSpeeches || isGeneratingSpeeches || isMicRecording}
+          disabled={!canGenerateSpeeches || isGeneratingSpeeches || isMicRecording || isViewOnly}
           className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-sky-600 hover:from-emerald-500 hover:via-teal-500 hover:to-sky-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black text-sm sm:text-base shadow-xl shadow-emerald-950/50 flex items-center justify-center gap-3 transition-all cursor-pointer"
         >
           {isGeneratingSpeeches ? (
@@ -1514,7 +1623,23 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
           )}
         </button>
 
-        {!canGenerateSpeeches && (
+        {isGeneratingSpeeches && speechesLoadingGif && (
+          <div className="flex justify-center pt-2">
+            <img
+              src={speechesLoadingGif}
+              alt="Gerando falas..."
+              style={{
+                maxWidth: '280px',
+                width: '100%',
+                borderRadius: '12px',
+                objectFit: 'cover',
+              }}
+              className="shadow-lg border border-zinc-800/80"
+            />
+          </div>
+        )}
+
+        {!isViewOnly && !canGenerateSpeeches && (
           <p className="text-center text-[11px] text-amber-300/90">
             * Preencha as Informações do Produto ou o Nome do Produto acima para liberar a geração das falas.
           </p>
@@ -1541,7 +1666,9 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                 </h3>
               </div>
               <p className="text-xs text-zinc-400 mt-1">
-                Todas as falas são 100% editáveis. Edite diretamente no texto, dite pelo microfone ou clique em "Revisar texto". Máximo de 225 caracteres.
+                {isViewOnly
+                  ? 'Modo somente visualização: selecione ou clique em Copiar para copiar qualquer uma das falas.'
+                  : 'Todas as falas são 100% editáveis. Edite diretamente no texto, dite pelo microfone ou clique em "Revisar texto". Máximo de 225 caracteres.'}
               </p>
             </div>
             <div className="text-[11px] font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-400/30 px-3 py-1.5 rounded-xl self-start sm:self-auto shrink-0 flex items-center gap-1.5">
@@ -1562,6 +1689,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
             {/* FALA 1 — BANCO DE COPIES */}
             <div
               onClick={() => {
+                if (isViewOnly) return;
                 onChange((prev) => ({
                   ...prev,
                   selectedSpeechOption: 'banco1',
@@ -1569,7 +1697,9 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                   finalSelectedSpeech: prev.bancoCopy || '',
                 }));
               }}
-              className={`p-4 sm:p-5 rounded-2xl transition-all cursor-pointer flex flex-col justify-between space-y-3 ${
+              className={`p-4 sm:p-5 rounded-2xl transition-all flex flex-col justify-between space-y-3 ${
+                isViewOnly ? 'cursor-default' : 'cursor-pointer'
+              } ${
                 form.selectedSpeechOption === 'banco1'
                   ? 'bg-zinc-900/95 border-2 border-emerald-400 shadow-xl shadow-emerald-950/50 ring-1 ring-emerald-500/40'
                   : 'bg-zinc-900/80 border border-zinc-800 hover:border-zinc-700 shadow-lg'
@@ -1607,28 +1737,30 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                     </span>
 
                     {/* Botão Revisar Texto (Item 9) */}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleReviewSpeech(form.bancoCopy || '', 'banco1');
-                      }}
-                      disabled={isReviewingCard === 'banco1' || !(form.bancoCopy || '').trim()}
-                      className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 font-black text-xs flex items-center gap-1 transition-all cursor-pointer shadow-sm shadow-amber-950/40"
-                      title="Revisar texto com IA (corrige português, pontuação, medidas e limita a 225 caracteres)"
-                    >
-                      {isReviewingCard === 'banco1' ? (
-                        <>
-                          <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-950" />
-                          <span>Revisando...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Wand2 className="w-3.5 h-3.5 text-slate-950" />
-                          <span>Revisar texto</span>
-                        </>
-                      )}
-                    </button>
+                    {!isViewOnly && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleReviewSpeech(form.bancoCopy || '', 'banco1');
+                        }}
+                        disabled={isReviewingCard === 'banco1' || !(form.bancoCopy || '').trim()}
+                        className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 font-black text-xs flex items-center gap-1 transition-all cursor-pointer shadow-sm shadow-amber-950/40"
+                        title="Revisar texto com IA (corrige português, pontuação, medidas e limita a 225 caracteres)"
+                      >
+                        {isReviewingCard === 'banco1' ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-950" />
+                            <span>Revisando...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Wand2 className="w-3.5 h-3.5 text-slate-950" />
+                            <span>Revisar texto</span>
+                          </>
+                        )}
+                      </button>
+                    )}
 
                     {/* Botão Copiar */}
                     <button
@@ -1651,8 +1783,10 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                 <div className="relative" onClick={(e) => e.stopPropagation()}>
                   <textarea
                     rows={3}
+                    readOnly={isViewOnly}
                     value={form.bancoCopy || ''}
                     onChange={(e) => {
+                      if (isViewOnly) return;
                       const val = e.target.value;
                       onChange((prev) => ({
                         ...prev,
@@ -1669,22 +1803,24 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                   />
 
                   {/* Microfone Banco 1 */}
-                  <button
-                    type="button"
-                    onClick={() => toggleMic('banco1')}
-                    className={`absolute right-2.5 top-2.5 p-2 rounded-lg text-xs transition-all cursor-pointer ${
-                      activeMic === 'banco1'
-                        ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
-                        : 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 border border-zinc-600'
-                    }`}
-                    title={activeMic === 'banco1' ? 'Parar gravação' : 'Ditar fala por voz'}
-                  >
-                    {activeMic === 'banco1' ? (
-                      <Square className="w-4 h-4 fill-white" />
-                    ) : (
-                      <Mic className="w-4 h-4 text-zinc-300" />
-                    )}
-                  </button>
+                  {!isViewOnly && (
+                    <button
+                      type="button"
+                      onClick={() => toggleMic('banco1')}
+                      className={`absolute right-2.5 top-2.5 p-2 rounded-lg text-xs transition-all cursor-pointer ${
+                        activeMic === 'banco1'
+                          ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
+                          : 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 border border-zinc-600'
+                      }`}
+                      title={activeMic === 'banco1' ? 'Parar gravação' : 'Ditar fala por voz'}
+                    >
+                      {activeMic === 'banco1' ? (
+                        <Square className="w-4 h-4 fill-white" />
+                      ) : (
+                        <Mic className="w-4 h-4 text-zinc-300" />
+                      )}
+                    </button>
+                  )}
                 </div>
 
                 {activeMic === 'banco1' && (
@@ -1697,8 +1833,10 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
 
               <button
                 type="button"
+                disabled={isViewOnly}
                 onClick={(e) => {
                   e.stopPropagation();
+                  if (isViewOnly) return;
                   onChange((prev) => ({
                     ...prev,
                     selectedSpeechOption: 'banco1',
@@ -1726,6 +1864,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
             {/* FALA 2 — BANCO DE COPIES */}
             <div
               onClick={() => {
+                if (isViewOnly) return;
                 onChange((prev) => ({
                   ...prev,
                   selectedSpeechOption: 'banco2',
@@ -1733,7 +1872,9 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                   finalSelectedSpeech: prev.bancoCopy2 || '',
                 }));
               }}
-              className={`p-4 sm:p-5 rounded-2xl transition-all cursor-pointer flex flex-col justify-between space-y-3 ${
+              className={`p-4 sm:p-5 rounded-2xl transition-all flex flex-col justify-between space-y-3 ${
+                isViewOnly ? 'cursor-default' : 'cursor-pointer'
+              } ${
                 form.selectedSpeechOption === 'banco2'
                   ? 'bg-zinc-900/95 border-2 border-emerald-400 shadow-xl shadow-emerald-950/50 ring-1 ring-emerald-500/40'
                   : 'bg-zinc-900/80 border border-zinc-800 hover:border-zinc-700 shadow-lg'
@@ -1771,28 +1912,30 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                     </span>
 
                     {/* Botão Revisar Texto (Item 9) */}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleReviewSpeech(form.bancoCopy2 || '', 'banco2');
-                      }}
-                      disabled={isReviewingCard === 'banco2' || !(form.bancoCopy2 || '').trim()}
-                      className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 font-black text-xs flex items-center gap-1 transition-all cursor-pointer shadow-sm shadow-amber-950/40"
-                      title="Revisar texto com IA (corrige português, pontuação, medidas e limita a 225 caracteres)"
-                    >
-                      {isReviewingCard === 'banco2' ? (
-                        <>
-                          <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-950" />
-                          <span>Revisando...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Wand2 className="w-3.5 h-3.5 text-slate-950" />
-                          <span>Revisar texto</span>
-                        </>
-                      )}
-                    </button>
+                    {!isViewOnly && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleReviewSpeech(form.bancoCopy2 || '', 'banco2');
+                        }}
+                        disabled={isReviewingCard === 'banco2' || !(form.bancoCopy2 || '').trim()}
+                        className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 font-black text-xs flex items-center gap-1 transition-all cursor-pointer shadow-sm shadow-amber-950/40"
+                        title="Revisar texto com IA (corrige português, pontuação, medidas e limita a 225 caracteres)"
+                      >
+                        {isReviewingCard === 'banco2' ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-950" />
+                            <span>Revisando...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Wand2 className="w-3.5 h-3.5 text-slate-950" />
+                            <span>Revisar texto</span>
+                          </>
+                        )}
+                      </button>
+                    )}
 
                     {/* Botão Copiar */}
                     <button
@@ -1815,8 +1958,10 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                 <div className="relative" onClick={(e) => e.stopPropagation()}>
                   <textarea
                     rows={3}
+                    readOnly={isViewOnly}
                     value={form.bancoCopy2 || ''}
                     onChange={(e) => {
+                      if (isViewOnly) return;
                       const val = e.target.value;
                       onChange((prev) => ({
                         ...prev,
@@ -1833,22 +1978,24 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                   />
 
                   {/* Microfone Banco 2 */}
-                  <button
-                    type="button"
-                    onClick={() => toggleMic('banco2')}
-                    className={`absolute right-2.5 top-2.5 p-2 rounded-lg text-xs transition-all cursor-pointer ${
-                      activeMic === 'banco2'
-                        ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
-                        : 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 border border-zinc-600'
-                    }`}
-                    title={activeMic === 'banco2' ? 'Parar gravação' : 'Ditar fala por voz'}
-                  >
-                    {activeMic === 'banco2' ? (
-                      <Square className="w-4 h-4 fill-white" />
-                    ) : (
-                      <Mic className="w-4 h-4 text-zinc-300" />
-                    )}
-                  </button>
+                  {!isViewOnly && (
+                    <button
+                      type="button"
+                      onClick={() => toggleMic('banco2')}
+                      className={`absolute right-2.5 top-2.5 p-2 rounded-lg text-xs transition-all cursor-pointer ${
+                        activeMic === 'banco2'
+                          ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
+                          : 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 border border-zinc-600'
+                      }`}
+                      title={activeMic === 'banco2' ? 'Parar gravação' : 'Ditar fala por voz'}
+                    >
+                      {activeMic === 'banco2' ? (
+                        <Square className="w-4 h-4 fill-white" />
+                      ) : (
+                        <Mic className="w-4 h-4 text-zinc-300" />
+                      )}
+                    </button>
+                  )}
                 </div>
 
                 {activeMic === 'banco2' && (
@@ -1861,8 +2008,10 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
 
               <button
                 type="button"
+                disabled={isViewOnly}
                 onClick={(e) => {
                   e.stopPropagation();
+                  if (isViewOnly) return;
                   onChange((prev) => ({
                     ...prev,
                     selectedSpeechOption: 'banco2',
@@ -1890,6 +2039,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
             {/* FALA 3 — AURORA COPY */}
             <div
               onClick={() => {
+                if (isViewOnly) return;
                 onChange((prev) => ({
                   ...prev,
                   selectedSpeechOption: 'aurora_copy',
@@ -1897,7 +2047,9 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                   finalSelectedSpeech: prev.auroraCopy || '',
                 }));
               }}
-              className={`p-4 sm:p-5 rounded-2xl transition-all cursor-pointer flex flex-col justify-between space-y-3 ${
+              className={`p-4 sm:p-5 rounded-2xl transition-all flex flex-col justify-between space-y-3 ${
+                isViewOnly ? 'cursor-default' : 'cursor-pointer'
+              } ${
                 form.selectedSpeechOption === 'aurora_copy'
                   ? 'bg-zinc-900/95 border-2 border-emerald-400 shadow-xl shadow-emerald-950/50 ring-1 ring-emerald-500/40'
                   : 'bg-zinc-900/80 border border-zinc-800 hover:border-zinc-700 shadow-lg'
@@ -1935,28 +2087,30 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                     </span>
 
                     {/* Botão Revisar Texto (Item 9) */}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleReviewSpeech(form.auroraCopy || '', 'aurora');
-                      }}
-                      disabled={isReviewingCard === 'aurora' || !(form.auroraCopy || '').trim()}
-                      className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 font-black text-xs flex items-center gap-1 transition-all cursor-pointer shadow-sm shadow-amber-950/40"
-                      title="Revisar texto com IA (corrige português, pontuação, medidas e limita a 225 caracteres)"
-                    >
-                      {isReviewingCard === 'aurora' ? (
-                        <>
-                          <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-950" />
-                          <span>Revisando...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Wand2 className="w-3.5 h-3.5 text-slate-950" />
-                          <span>Revisar texto</span>
-                        </>
-                      )}
-                    </button>
+                    {!isViewOnly && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleReviewSpeech(form.auroraCopy || '', 'aurora');
+                        }}
+                        disabled={isReviewingCard === 'aurora' || !(form.auroraCopy || '').trim()}
+                        className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 font-black text-xs flex items-center gap-1 transition-all cursor-pointer shadow-sm shadow-amber-950/40"
+                        title="Revisar texto com IA (corrige português, pontuação, medidas e limita a 225 caracteres)"
+                      >
+                        {isReviewingCard === 'aurora' ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-950" />
+                            <span>Revisando...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Wand2 className="w-3.5 h-3.5 text-slate-950" />
+                            <span>Revisar texto</span>
+                          </>
+                        )}
+                      </button>
+                    )}
 
                     {/* Botão Copiar */}
                     <button
@@ -1979,8 +2133,10 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                 <div className="relative" onClick={(e) => e.stopPropagation()}>
                   <textarea
                     rows={3}
+                    readOnly={isViewOnly}
                     value={form.auroraCopy || ''}
                     onChange={(e) => {
+                      if (isViewOnly) return;
                       const val = e.target.value;
                       onChange((prev) => ({
                         ...prev,
@@ -1997,22 +2153,24 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                   />
 
                   {/* Microfone Aurora */}
-                  <button
-                    type="button"
-                    onClick={() => toggleMic('aurora')}
-                    className={`absolute right-2.5 top-2.5 p-2 rounded-lg text-xs transition-all cursor-pointer ${
-                      activeMic === 'aurora'
-                        ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
-                        : 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 border border-zinc-600'
-                    }`}
-                    title={activeMic === 'aurora' ? 'Parar gravação' : 'Ditar fala por voz'}
-                  >
-                    {activeMic === 'aurora' ? (
-                      <Square className="w-4 h-4 fill-white" />
-                    ) : (
-                      <Mic className="w-4 h-4 text-zinc-300" />
-                    )}
-                  </button>
+                  {!isViewOnly && (
+                    <button
+                      type="button"
+                      onClick={() => toggleMic('aurora')}
+                      className={`absolute right-2.5 top-2.5 p-2 rounded-lg text-xs transition-all cursor-pointer ${
+                        activeMic === 'aurora'
+                          ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
+                          : 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 border border-zinc-600'
+                      }`}
+                      title={activeMic === 'aurora' ? 'Parar gravação' : 'Ditar fala por voz'}
+                    >
+                      {activeMic === 'aurora' ? (
+                        <Square className="w-4 h-4 fill-white" />
+                      ) : (
+                        <Mic className="w-4 h-4 text-zinc-300" />
+                      )}
+                    </button>
+                  )}
                 </div>
 
                 {activeMic === 'aurora' && (
@@ -2025,8 +2183,10 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
 
               <button
                 type="button"
+                disabled={isViewOnly}
                 onClick={(e) => {
                   e.stopPropagation();
+                  if (isViewOnly) return;
                   onChange((prev) => ({
                     ...prev,
                     selectedSpeechOption: 'aurora_copy',
@@ -2055,6 +2215,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
             {Boolean(form.hasUserSpeech || form.userSpeech || (form.additionalInstructions && form.additionalInstructions.trim())) && (
               <div
                 onClick={() => {
+                  if (isViewOnly) return;
                   onChange((prev) => ({
                     ...prev,
                     selectedSpeechOption: 'user_speech',
@@ -2062,7 +2223,9 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                     finalSelectedSpeech: prev.userSpeech || '',
                   }));
                 }}
-                className={`p-4 sm:p-5 rounded-2xl transition-all cursor-pointer flex flex-col justify-between space-y-3 ${
+                className={`p-4 sm:p-5 rounded-2xl transition-all flex flex-col justify-between space-y-3 ${
+                  isViewOnly ? 'cursor-default' : 'cursor-pointer'
+                } ${
                   form.selectedSpeechOption === 'user_speech'
                     ? 'bg-zinc-900/95 border-2 border-amber-400 shadow-xl shadow-amber-950/50 ring-1 ring-amber-500/40'
                     : 'bg-zinc-900/80 border border-zinc-800 hover:border-zinc-700 shadow-lg'
@@ -2101,28 +2264,30 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                       </span>
 
                       {/* Botão Revisar Texto */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleReviewSpeech(form.userSpeech || '', 'user');
-                        }}
-                        disabled={isReviewingCard === 'user' || !(form.userSpeech || '').trim()}
-                        className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 font-black text-xs flex items-center gap-1 transition-all cursor-pointer shadow-sm shadow-amber-950/40"
-                        title="Revisar texto com IA (corrige português, pontuação, medidas e limita a 225 caracteres)"
-                      >
-                        {isReviewingCard === 'user' ? (
-                          <>
-                            <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-950" />
-                            <span>Revisando...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Wand2 className="w-3.5 h-3.5 text-slate-950" />
-                            <span>Revisar texto</span>
-                          </>
-                        )}
-                      </button>
+                      {!isViewOnly && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleReviewSpeech(form.userSpeech || '', 'user');
+                          }}
+                          disabled={isReviewingCard === 'user' || !(form.userSpeech || '').trim()}
+                          className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 font-black text-xs flex items-center gap-1 transition-all cursor-pointer shadow-sm shadow-amber-950/40"
+                          title="Revisar texto com IA (corrige português, pontuação, medidas e limita a 225 caracteres)"
+                        >
+                          {isReviewingCard === 'user' ? (
+                            <>
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-950" />
+                              <span>Revisando...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Wand2 className="w-3.5 h-3.5 text-slate-950" />
+                              <span>Revisar texto</span>
+                            </>
+                          )}
+                        </button>
+                      )}
 
                       {/* Botão Copiar */}
                       <button
@@ -2145,8 +2310,10 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                   <div className="relative" onClick={(e) => e.stopPropagation()}>
                     <textarea
                       rows={3}
+                      readOnly={isViewOnly}
                       value={form.userSpeech || ''}
                       onChange={(e) => {
+                        if (isViewOnly) return;
                         const val = e.target.value;
                         onChange((prev) => ({
                           ...prev,
@@ -2163,22 +2330,24 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                     />
 
                     {/* Microfone Fala do Usuário */}
-                    <button
-                      type="button"
-                      onClick={() => toggleMic('user')}
-                      className={`absolute right-2.5 top-2.5 p-2 rounded-lg text-xs transition-all cursor-pointer ${
-                        activeMic === 'user'
-                          ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
-                          : 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 border border-zinc-600'
-                      }`}
-                      title={activeMic === 'user' ? 'Parar gravação' : 'Ditar fala por voz'}
-                    >
-                      {activeMic === 'user' ? (
-                        <Square className="w-4 h-4 fill-white" />
-                      ) : (
-                        <Mic className="w-4 h-4 text-zinc-300" />
-                      )}
-                    </button>
+                    {!isViewOnly && (
+                      <button
+                        type="button"
+                        onClick={() => toggleMic('user')}
+                        className={`absolute right-2.5 top-2.5 p-2 rounded-lg text-xs transition-all cursor-pointer ${
+                          activeMic === 'user'
+                            ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
+                            : 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 border border-zinc-600'
+                        }`}
+                        title={activeMic === 'user' ? 'Parar gravação' : 'Ditar fala por voz'}
+                      >
+                        {activeMic === 'user' ? (
+                          <Square className="w-4 h-4 fill-white" />
+                        ) : (
+                          <Mic className="w-4 h-4 text-zinc-300" />
+                        )}
+                      </button>
+                    )}
                   </div>
 
                   {activeMic === 'user' && (
@@ -2191,8 +2360,10 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
 
                 <button
                   type="button"
+                  disabled={isViewOnly}
                   onClick={(e) => {
                     e.stopPropagation();
+                    if (isViewOnly) return;
                     onChange((prev) => ({
                       ...prev,
                       selectedSpeechOption: 'user_speech',
@@ -2227,8 +2398,11 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
       <div className="pt-2">
         <button
           type="button"
-          onClick={onSubmit}
-          disabled={!canGenerateVideo}
+          onClick={() => {
+            if (isViewOnly) return;
+            onSubmit();
+          }}
+          disabled={!canGenerateVideo || isViewOnly}
           className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-sky-600 hover:from-emerald-500 hover:via-teal-500 hover:to-sky-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black text-sm sm:text-base shadow-xl shadow-emerald-950/50 flex items-center justify-center gap-3 transition-all cursor-pointer"
         >
           {isMicRecording ? (

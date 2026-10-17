@@ -2239,7 +2239,7 @@ app.post('/api/produtos2-planning', async (req, res) => {
       };
     }
 
-    // Helper de alta performance para chamadas de texto IA (OpenAI gpt-4o-mini com fallback automático para Gemini 2.5 Flash)
+    // Helper de alta performance para chamadas de texto IA (OpenAI gpt-4o-mini em ~0.7s com fallback automático para Gemini 2.5 Flash)
     const executeFastAIText = async (opts: {
       systemPrompt: string;
       userPrompt: string;
@@ -2249,8 +2249,8 @@ app.post('/api/produtos2-planning', async (req, res) => {
       const { systemPrompt, userPrompt, jsonMode = false, temperature = 0.3 } = opts;
       const client = (openAIProvider as any).getClient();
 
-      // 1. Tentar OpenAI gpt-4o-mini (se configurado)
-      if (client && (activeProfile === 'openai' || !process.env.GEMINI_API_KEY)) {
+      // 1. Sempre tentar OpenAI gpt-4o-mini primeiro quando configurado (resposta instantânea ~0.7s)
+      if (client) {
         try {
           const comp = await client.chat.completions.create({
             model: 'gpt-4o-mini',
@@ -2260,6 +2260,7 @@ app.post('/api/produtos2-planning', async (req, res) => {
             ],
             ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
             temperature,
+            max_tokens: 260,
           });
           const content = comp.choices[0]?.message?.content?.trim();
           if (content) {
@@ -2284,12 +2285,12 @@ app.post('/api/produtos2-planning', async (req, res) => {
         }
       }
 
-      // 2. Tentar Gemini 2.5 Flash se configurado ou como fallback
+      // 2. Fallback para Gemini 2.5 Flash
       if (process.env.GEMINI_API_KEY) {
         try {
           const genAI = getGenAI();
           const gemRes = await genAI.models.generateContent({
-            model: GEMINI_VISION_FAST_MODEL || 'gemini-2.5-flash',
+            model: 'gemini-2.5-flash',
             contents: [
               {
                 role: 'user',
@@ -2313,40 +2314,13 @@ app.post('/api/produtos2-planning', async (req, res) => {
                 totalTokens: pTokens + cTokens,
                 costUSD: 0.0003,
                 costBRL: 0.002,
-                model: GEMINI_VISION_FAST_MODEL || 'gemini-2.5-flash',
+                model: 'gemini-2.5-flash',
               },
             };
           }
         } catch (gemErr: any) {
           console.warn('Erro na chamada Gemini:', gemErr?.message || gemErr);
         }
-      }
-
-      // 3. Se Gemini não funcionou e OpenAI está disponível, tenta OpenAI
-      if (client) {
-        const comp = await client.chat.completions.create({
-          model: 'gpt-4o-mini',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: userPrompt },
-          ],
-          ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
-          temperature,
-        });
-        const content = comp.choices[0]?.message?.content?.trim() || '';
-        const pTokens = comp.usage?.prompt_tokens || 450;
-        const cTokens = comp.usage?.completion_tokens || 110;
-        return {
-          text: content,
-          usage: {
-            promptTokens: pTokens,
-            completionTokens: cTokens,
-            totalTokens: pTokens + cTokens,
-            costUSD: 0.0005,
-            costBRL: 0.003,
-            model: 'gpt-4o-mini',
-          },
-        };
       }
 
       throw new Error('Nenhum provedor de IA disponível para geração de texto.');
@@ -2588,21 +2562,63 @@ FORMATO DE RESPOSTA (JSON estrito):
       }
     }
 
+    // Helper para garantir estritamente entre 200 e 225 caracteres com espaços (sem cortar frases ao meio)
+    const calibrateSpeechTo200_225 = (text: string): string => {
+      let clean = fixCommonSlips(normalizeVoiceText(text.replace(/\s+/g, ' ').trim()));
+      if (clean.length > 225) {
+        clean = condenseSpeechMinimallyTo225(clean, 225, 200);
+      }
+      if (clean.length < 200) {
+        const baseNoDot = clean.replace(/[.!?]+$/, '').trim();
+        const expansions = [
+          '. Olha só',
+          '. Confere aqui embaixo!',
+          '. Aproveita e garante já no link!',
+          '. Clica aqui embaixo pra ver todos os detalhes!',
+          '. Vale muito a pena conferir aqui embaixo no carrinho!',
+          '. Dá uma olhada aqui embaixo no link e garante já antes que acabe!',
+          '. Aproveita pra conferir todos os detalhes aqui embaixo e garante logo!',
+          '. Deixei o link oficial aqui embaixo no carrinho pra você garantir com segurança!',
+        ];
+        // Ordena pelas expansões que deixam o texto entre 200 e 225 caracteres
+        for (const exp of expansions) {
+          const candidate = `${baseNoDot}${exp}`;
+          if (candidate.length >= 200 && candidate.length <= 225) {
+            clean = candidate;
+            break;
+          }
+        }
+        // Se ainda estiver abaixo de 200 chars (ex: copy muito curta do banco), adiciona complemento e calibra
+        if (clean.length < 200) {
+          const longCandidate = `${baseNoDot}. Entrega qualidade real pro dia a dia, clica aqui no carrinho laranja e garante já antes que acabe o estoque!`;
+          clean = condenseSpeechMinimallyTo225(longCandidate, 225, 200);
+        }
+      }
+      if (clean.length > 225) {
+        clean = clean.slice(0, 224).replace(/[,;:\s]+[^.!?,;:]*$/, '') + '!';
+      }
+      return clean;
+    };
+
     // Ação 1B: Adaptação Cirúrgica Inteligente das Falas 1 e 2 do Banco de Memória (~64 copies validadas) para o Produto Atual
     if (action === 'adapt_bank_copies') {
       try {
-        const { copy1, copy2, clientGender } = req.body;
+        const { copy1, copy2, clientGender, enforceRange200To225 } = req.body;
         if (!copy1 && !copy2) {
           return res.json({ success: true });
         }
 
+        const charRuleText = enforceRange200To225
+          ? `- REGRA OBRIGATÓRIA DE TAMANHO: A fala adaptada DEVE ter OBRIGATORIAMENTE ENTRE 200 E 225 CARACTERES (incluindo espaços e pontuação). NUNCA entregue menos de 200 caracteres e NUNCA ultrapasse 225 caracteres!`
+          : `- Cada fala adaptada deve ter entre 160 e 225 caracteres (NUNCA ultrapasse 225 caracteres).`;
+
         const adaptSystem = `Você é um Especialista Sênior em Direct Response para TikTok Shop Brasil.
 Existe na memória do aplicativo um banco de 64 falas validadas de anúncios reais que já estão vendendo muito.
-Sua missão é ADAPTAR as falas sorteadas do banco (Fala 1 e Fala 2) para o PRODUTO ATUAL do usuário, seguindo estritamente estas regras:
+Sua missão é ADAPTAR as falas sorteadas do banco para o PRODUTO ATUAL do usuário, seguindo estritamente estas regras:
 
 REGRA DE OURO DA ADAPTAÇÃO (MUDAR O MÍNIMO POSSÍVEL DA ESTRUTURA, MAS 100% FIEL AO PRODUTO ATUAL):
 1. SE FOR O MESMO PRODUTO (isSameProduct = true):
-   - Mantenha 99% da fala original intacta! Altere APENAS especificações divergentes (ex: marca, modelo, potência em Watts, capacidade em ml/litros, polegadas, quantidade do kit) e concordância de gênero.
+   - Mantenha a estrutura original da fala! Altere APENAS especificações divergentes (ex: marca, modelo, potência em Watts, capacidade em ml/litros, polegadas, quantidade do kit) e concordância de gênero.
 2. SE FOR OUTRO PRODUTO DO MESMO NICHO OU OUTRA COPY DO BANCO (isSameProduct = false):
    - As falas do banco já possuem ganchos, cadência e chamadas para ação (CTA) altamente validados. Por isso, MUDE O MÍNIMO POSSÍVEL da estrutura persuasiva (mantenha o estilo do gancho, o ritmo das frases, a urgência e o CTA final).
    - PORÉM, substitua 100% de qualquer menção à categoria ou nome do produto antigo e 100% das características exclusivas do produto antigo pelas características REAIS do produto atual (extraídas de INFORMAÇÕES DO PRODUTO).
@@ -2611,7 +2627,7 @@ REGRA DE OURO DA ADAPTAÇÃO (MUDAR O MÍNIMO POSSÍVEL DA ESTRUTURA, MAS 100% F
      * Nunca deixe características do produto antigo (como "tela curva", "suporta 100 quilos", "silenciosa com painel LED", "vara de carbono", "amplificador") em um produto que não tem isso.
      * Ignore avisos legais/segurança das informações do produto (como "perigo de sufocamento", "mantenha sacos plásticos longe", "consulte um médico", "data de validade"). Use apenas os benefícios reais de venda!
 3. LIMITE DE CARACTERES E FORMATAÇÃO PARA VOZ DE IA:
-   - Cada fala adaptada deve ter entre 135 e 225 caracteres (NUNCA ultrapasse 225 caracteres).
+   ${charRuleText}
    - Escreva medidas por extenso para leitura perfeita da voz de IA ("12 horas", "200 fraldas", "50 unidades").
 
 Retorne SOMENTE um JSON estrito no formato:
@@ -2626,19 +2642,20 @@ Retorne SOMENTE um JSON estrito no formato:
 ${productInfo || productName || ''}
 - Gênero do Público: ${clientGender || 'unissex'}
 - Apresentador(a): ${influencer || 'Mulher'}
+${enforceRange200To225 ? '- TAMANHO OBRIGATÓRIO: Estritamente entre 200 e 225 caracteres com espaços!' : ''}
 
 FALA 1 DO BANCO DE MEMÓRIA (${copy1?.id || 'Copy 1'} - Produto original da copy: "${copy1?.originalProductType || ''}" - Mesmo produto? ${copy1?.isSameProduct ? 'SIM' : 'NÃO'}):
 Texto original da Fala 1 no banco: "${copy1?.originalText || ''}"
 Sugestão base local da Fala 1: "${copy1?.localAdaptedText || ''}"
 
-FALA 2 DO BANCO DE MEMÓRIA (${copy2?.id || 'Copy 2'} - Produto original da copy: "${copy2?.originalProductType || ''}" - Mesmo produto? ${copy2?.isSameProduct ? 'SIM' : 'NÃO'}):
+${copy2 ? `FALA 2 DO BANCO DE MEMÓRIA (${copy2?.id || 'Copy 2'} - Produto original da copy: "${copy2?.originalProductType || ''}" - Mesmo produto? ${copy2?.isSameProduct ? 'SIM' : 'NÃO'}):
 Texto original da Fala 2 no banco: "${copy2?.originalText || ''}"
-Sugestão base local da Fala 2: "${copy2?.localAdaptedText || ''}"`;
+Sugestão base local da Fala 2: "${copy2?.localAdaptedText || ''}"` : ''}`;
 
         const aiOut = await executeFastAIText({
           systemPrompt: adaptSystem,
           userPrompt: adaptUser,
-          temperature: 0.2,
+          temperature: 0.25,
           jsonMode: true,
         });
 
@@ -2652,14 +2669,19 @@ Sugestão base local da Fala 2: "${copy2?.localAdaptedText || ''}"`;
           }
         }
 
-        let adapted1 = fixCommonSlips(normalizeVoiceText((parsed.adaptedCopy1 || '').trim()));
-        let adapted2 = fixCommonSlips(normalizeVoiceText((parsed.adaptedCopy2 || '').trim()));
+        let adapted1 = fixCommonSlips(normalizeVoiceText((parsed.adaptedCopy1 || copy1?.localAdaptedText || '').trim()));
+        let adapted2 = fixCommonSlips(normalizeVoiceText((parsed.adaptedCopy2 || copy2?.localAdaptedText || '').trim()));
 
-        if (adapted1.length > 225) {
-          adapted1 = condenseSpeechMinimallyTo225(adapted1, 225, 200);
-        }
-        if (adapted2.length > 225) {
-          adapted2 = condenseSpeechMinimallyTo225(adapted2, 225, 200);
+        if (enforceRange200To225) {
+          if (adapted1) adapted1 = calibrateSpeechTo200_225(adapted1);
+          if (adapted2) adapted2 = calibrateSpeechTo200_225(adapted2);
+        } else {
+          if (adapted1.length > 225) {
+            adapted1 = condenseSpeechMinimallyTo225(adapted1, 225, 200);
+          }
+          if (adapted2.length > 225) {
+            adapted2 = condenseSpeechMinimallyTo225(adapted2, 225, 200);
+          }
         }
 
         return res.json({
@@ -2670,10 +2692,12 @@ Sugestão base local da Fala 2: "${copy2?.localAdaptedText || ''}"`;
         });
       } catch (err: any) {
         console.warn('Erro ao adaptar copies do banco via IA, mantendo adaptação local:', err?.message || err);
+        const fallback1 = req.body?.copy1?.localAdaptedText || '';
+        const fallback2 = req.body?.copy2?.localAdaptedText || '';
         return res.json({
           success: true,
-          adaptedCopy1: req.body?.copy1?.localAdaptedText || '',
-          adaptedCopy2: req.body?.copy2?.localAdaptedText || '',
+          adaptedCopy1: req.body?.enforceRange200To225 && fallback1 ? calibrateSpeechTo200_225(fallback1) : fallback1,
+          adaptedCopy2: req.body?.enforceRange200To225 && fallback2 ? calibrateSpeechTo200_225(fallback2) : fallback2,
         });
       }
     }
@@ -2767,11 +2791,29 @@ DIRETIVAS OBRIGATÓRIAS:
       }
     }
 
-    // Ação 3: Gerar somente a fala com Aurora Copy (Rápido: ~1s via gpt-4o-mini e estritamente até 225 caracteres)
+    // Ação 3: Gerar somente a fala com Aurora Copy (Rápido: ~0.8s via gpt-4o-mini e estritamente entre 200 e 225 caracteres com hooks variados)
     if (action === 'generate_aurora_copy') {
       try {
-        const minLimit = 190;
+        const minLimit = 200;
         const maxLimit = 225;
+        const previousCopies: string[] = Array.isArray(req.body.previousCopies)
+          ? req.body.previousCopies.filter((c: any) => typeof c === 'string' && c.trim().length > 0)
+          : [];
+
+        const previousHooks = previousCopies
+          .map((c) => c.trim().split(/\s+/).slice(0, 6).join(' '))
+          .filter(Boolean);
+
+        const hookVariationClause =
+          previousHooks.length > 0
+            ? `\nREGRA INEGOCIÁVEL DE VARIAÇÃO DE HOOK (PROIBIDO REPETIR INÍCIO):
+As versões anteriores desta copy começaram com:
+${previousHooks.map((h, i) => `- Versão ${i + 1}: "${h}..."`).join('\n')}
+- Você DEVE criar uma copy com um HOOK COMPLETAMENTE DIFERENTE das versões anteriores!
+- Varie OBRIGATORIAMENTE as primeiras 4 a 5 palavras e use uma abordagem de abertura inédita (ex: pergunta direta sobre dor/desejo, reação de descoberta espontânea, comparação prática, detalhe surpreendente do produto, situação do dia a dia, etc.).
+- NUNCA repita as mesmas primeiras palavras das versões anteriores!`
+            : '';
+
         const auroraSystem = `Você é a AURORACOPY, uma especialista em copy para vídeos de TikTok Shop Brasil.
 Sua função é transformar as INFORMAÇÕES DO PRODUTO fornecidas pelo usuário em uma fala de alta retenção, natural, específica e persuasiva, pronta para ser usada como narração de vídeo.
 
@@ -2784,17 +2826,17 @@ A sensação deve ser de uma pessoa brasileira mostrando espontaneamente algo in
 A fala nunca deve parecer propaganda tradicional, locução institucional, descrição de marketplace ou texto corporativo.
 
 IGNORE COMO ARGUMENTO DE VENDA:
-Preço, desconto, cupom, frete grátis, parcelamento, promoção financeira. Mesmo que estejam presentes, não baseie a copy neles.
+Preço, desconto, cupom, frete grátis, parcelamento, promoção financeira. Mesmo que estejam presentes, não baseie a copy neles.${hookVariationClause}
 
 REGRA MANDATÓRIA DE CARACTERES (MUITO IMPORTANTE):
-A fala DEVE ter OBRIGATORIAMENTE entre 190 e 225 caracteres no total (contando espaços e pontuação).
-NUNCA entregue menos de 190 caracteres!
+A fala DEVE ter OBRIGATORIAMENTE entre 200 e 225 caracteres no total (contando espaços e pontuação).
+NUNCA entregue menos de 200 caracteres!
 NUNCA ultrapasse 225 caracteres!
 Estruture a fala com:
-1. Gancho direto e curioso de abertura (aprox. 35-40 caracteres).
-2. Explicação de 2 benefícios concretos com foco na usabilidade real (aprox. 110-125 caracteres).
-3. Chamada natural leve para conferir (aprox. 30-40 caracteres).
-Totalizando impreterivelmente entre 190 e 225 caracteres.
+1. Gancho direto e curioso de abertura (aprox. 40-45 caracteres, variando as primeiras 4 a 5 palavras).
+2. Explicação de 2 benefícios concretos com foco na usabilidade real (aprox. 120-135 caracteres).
+3. Chamada natural leve para conferir (aprox. 35-45 caracteres).
+Totalizando impreterivelmente entre 200 e 225 caracteres.
 
 LINGUAGEM E VOZ IA:
 Português do Brasil oral, simples, espontâneo, natural.
@@ -2809,38 +2851,19 @@ ${productInfo || productName}
 
 NOME DO PRODUTO: ${productName}
 ${additionalInstructions ? `INSTRUÇÕES ADICIONAIS: ${additionalInstructions}` : ''}
+${previousHooks.length > 0 ? `HOOKS JÁ USADOS (PROIBIDO REPETIR ESTAS PRIMEIRAS PALAVRAS): ${previousHooks.join(' | ')}` : ''}
 DURAÇÃO DO VÍDEO: 10 segundos.
-TAMANHO OBRIGATÓRIO: Exatamente entre ${minLimit} e ${maxLimit} caracteres.`;
+TAMANHO OBRIGATÓRIO: Estritamente entre ${minLimit} e ${maxLimit} caracteres (incluindo espaços).`;
 
         const auroraOutput = await executeFastAIText({
           systemPrompt: auroraSystem,
           userPrompt: auroraUser,
-          temperature: 0.7,
+          temperature: 0.75,
         });
 
         let rawSpeech = auroraOutput.text;
         rawSpeech = rawSpeech.replace(/^["'«“]|["'»”]$/g, '').trim();
-        rawSpeech = normalizeVoiceText(rawSpeech);
-
-        // Garantia absoluta de faixa até 225 caracteres
-        if (rawSpeech.length < 190) {
-          const complementos = [
-            ' Confere aqui embaixo pra ver todos os detalhes!',
-            ' Vale muito a pena conferir todos os detalhes!',
-            ' Dá uma olhada aqui embaixo e aproveita!',
-            ' Deixei todos os modelos disponíveis aqui embaixo!',
-          ];
-          for (const c of complementos) {
-            const candidate = rawSpeech.replace(/[.!]+$/, '') + '.' + c;
-            if (candidate.length <= 225 && candidate.length >= 190) {
-              rawSpeech = candidate;
-              break;
-            }
-          }
-        }
-        if (rawSpeech.length > 225) {
-          rawSpeech = rawSpeech.slice(0, 225).replace(/[,;:\s]+[^.!?,;:]*$/, '') + '!';
-        }
+        rawSpeech = calibrateSpeechTo200_225(rawSpeech);
 
         return res.json({ success: true, auroraCopy: rawSpeech, usage: auroraOutput.usage });
       } catch (err: any) {

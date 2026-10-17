@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   RotateCcw,
   History,
+  ArrowLeft,
 } from 'lucide-react';
 import {
   ReferenceVideoData,
@@ -116,6 +117,8 @@ export default function App() {
     maleClothStyle: 'storyboard',
   });
   const [produtos2Result, setProdutos2Result] = useState<Produtos2ResultState | null>(null);
+  const [produtos2Page, setProdutos2Page] = useState<'form' | 'results'>('form');
+  const [isProdutos2ViewOnly, setIsProdutos2ViewOnly] = useState(false);
   const [isProcessingProdutos2, setIsProcessingProdutos2] = useState(false);
   const [produtos2ProgressPercent, setProdutos2ProgressPercent] = useState(0);
   const [produtos2StatusMessage, setProdutos2StatusMessage] = useState('');
@@ -1207,6 +1210,8 @@ export default function App() {
         },
       });
       setProdutos2Result(res);
+      setProdutos2Page('results');
+      setIsProdutos2ViewOnly(false);
       if (res.tokenUsage) {
         setSessionTokenStats(res.tokenUsage);
       }
@@ -1218,6 +1223,142 @@ export default function App() {
         .catch(() => {});
     } catch (err: any) {
       setProdutos2ErrorMessage(err.message || 'Erro ao processar o Modo Produtos 2.0.');
+    } finally {
+      setIsProcessingProdutos2(false);
+    }
+  };
+
+  const handleRecreateProdutos2WithCopy = async (newCopy: string, copySourceLabel?: string) => {
+    if (!produtos2Result || isProcessingProdutos2) return;
+    const trimmedCopy = (newCopy || '').trim();
+    if (!trimmedCopy) return;
+
+    setIsProcessingProdutos2(true);
+    setProdutos2ProgressPercent(5);
+    setProdutos2StatusMessage('Recriando Storyboard completo com a nova copy...');
+    setProdutos2ErrorMessage(null);
+
+    const updatedForm: Produtos2FormState = {
+      ...produtos2Form,
+      productName: produtos2Form.productName || produtos2Result.productName || '',
+      productInfo: produtos2Form.productInfo || produtos2Result.productInfo || '',
+      detectedNiche: produtos2Form.detectedNiche || produtos2Result.detectedNiche,
+      subMode: produtos2Form.subMode || produtos2Result.subMode || 'produtos_geral',
+      maleSubOption: produtos2Form.maleSubOption || produtos2Result.maleSubOption || 'calcados',
+      duration: produtos2Form.duration || produtos2Result.duration || 10,
+      speechMode: 'com_fala',
+      useSpeechIntro: produtos2Form.useSpeechIntro ?? produtos2Result.useSpeechIntro,
+      framing: produtos2Form.framing || produtos2Result.framing || 'com_rosto',
+      scenario: produtos2Form.scenario || produtos2Result.scenario || 'padrao_uso',
+      clientGender: produtos2Form.clientGender || produtos2Result.clientGender || 'Unissex',
+      additionalInstructions:
+        produtos2Form.additionalInstructions || produtos2Result.additionalInstructions || '',
+      variations:
+        produtos2Form.variations &&
+        produtos2Form.variations.some((v) => v.photos && v.photos.length > 0)
+          ? produtos2Form.variations
+          : produtos2Result.variations && produtos2Result.variations.length > 0
+          ? produtos2Result.variations
+          : produtos2Form.variations,
+      finalSelectedSpeech: trimmedCopy,
+      customCopy: trimmedCopy,
+      speechesGenerated: true,
+    };
+
+    setProdutos2Form(updatedForm);
+
+    try {
+      const { runProdutos2Pipeline } = await import('./produtos2/produtos2Pipeline');
+      const prevUsage = produtos2Result.tokenUsage;
+      const res = await runProdutos2Pipeline({
+        form: updatedForm,
+        aiProfile,
+        onProgress: (pct, msg) => {
+          setProdutos2ProgressPercent(pct);
+          setProdutos2StatusMessage(msg);
+        },
+      });
+
+      let mergedTokenUsage = res.tokenUsage;
+      if (prevUsage && res.tokenUsage) {
+        const inc = res.tokenUsage;
+        mergedTokenUsage = {
+          ...prevUsage,
+          promptTokens: (prevUsage.promptTokens || 0) + (inc.promptTokens || 0),
+          candidateTokens: (prevUsage.candidateTokens || 0) + (inc.candidateTokens || 0),
+          totalTokens: (prevUsage.totalTokens || 0) + (inc.totalTokens || 0),
+          totalCostUSD:
+            Math.round(((prevUsage.totalCostUSD || 0) + (inc.totalCostUSD || 0)) * 1000) / 1000,
+          estimatedCostBRL:
+            Math.round(((prevUsage.estimatedCostBRL || 0) + (inc.estimatedCostBRL || 0)) * 100) /
+            100,
+          breakdown: {
+            videoAnalysisTokens:
+              (prevUsage.breakdown?.videoAnalysisTokens || 0) +
+              (inc.breakdown?.videoAnalysisTokens || 0),
+            videoAnalysisCostBRL:
+              Math.round(
+                ((prevUsage.breakdown?.videoAnalysisCostBRL || 0) +
+                  (inc.breakdown?.videoAnalysisCostBRL || 0)) *
+                  100
+              ) / 100,
+            speechTokens:
+              (prevUsage.breakdown?.speechTokens || 0) + (inc.breakdown?.speechTokens || 0),
+            speechCostBRL:
+              Math.round(
+                ((prevUsage.breakdown?.speechCostBRL || 0) +
+                  (inc.breakdown?.speechCostBRL || 0)) *
+                  100
+              ) / 100,
+            imagesCount:
+              (prevUsage.breakdown?.imagesCount || 0) + (inc.breakdown?.imagesCount || 0),
+            imagesCostBRL:
+              Math.round(
+                ((prevUsage.breakdown?.imagesCostBRL || 0) +
+                  (inc.breakdown?.imagesCostBRL || 0)) *
+                  100
+              ) / 100,
+            promptsTokens:
+              (prevUsage.breakdown?.promptsTokens || 0) + (inc.breakdown?.promptsTokens || 0),
+            promptsCostBRL:
+              Math.round(
+                ((prevUsage.breakdown?.promptsCostBRL || 0) +
+                  (inc.breakdown?.promptsCostBRL || 0)) *
+                  100
+              ) / 100,
+          },
+          detailedSteps: [
+            ...(prevUsage.detailedSteps || []),
+            ...(inc.detailedSteps || []),
+          ],
+          modelsUsed: Array.from(
+            new Set([...(prevUsage.modelsUsed || []), ...(inc.modelsUsed || [])])
+          ),
+          totalCalls:
+            (prevUsage.totalCalls || prevUsage.detailedSteps?.length || 0) +
+            (inc.totalCalls || inc.detailedSteps?.length || 0),
+        };
+      }
+
+      const finalResult: Produtos2ResultState = {
+        ...res,
+        copySourceLabel: copySourceLabel || res.copySourceLabel || produtos2Result.copySourceLabel,
+        tokenUsage: mergedTokenUsage,
+      };
+
+      setProdutos2Result(finalResult);
+      setProdutos2Page('results');
+      if (mergedTokenUsage) {
+        setSessionTokenStats(mergedTokenUsage);
+      }
+      playCompletionSound();
+      import('./utils/historyStorage')
+        .then(({ saveCreativeToHistory }) => {
+          saveCreativeToHistory(finalResult);
+        })
+        .catch(() => {});
+    } catch (err: any) {
+      setProdutos2ErrorMessage(err.message || 'Erro ao recriar o Storyboard com a nova copy.');
     } finally {
       setIsProcessingProdutos2(false);
     }
@@ -1321,6 +1462,8 @@ export default function App() {
 
   const handleCreateNewProdutos2 = () => {
     setProdutos2Result(null);
+    setProdutos2Page('form');
+    setIsProdutos2ViewOnly(false);
     setProdutos2Form({
       subMode: 'produtos_geral',
       maleSubOption: 'calcados',
@@ -1355,6 +1498,8 @@ export default function App() {
 
   const handleContinueWithSameProduct = () => {
     setProdutos2Result(null);
+    setProdutos2Page('form');
+    setIsProdutos2ViewOnly(false);
     setProdutos2Form((prev) => ({
       ...prev,
       additionalInstructions: '',
@@ -1373,6 +1518,8 @@ export default function App() {
   const handleReopenFromHistory = (item: any) => {
     if (!item?.result) return;
     setProdutos2Result(item.result);
+    setProdutos2Page('results');
+    setIsProdutos2ViewOnly(false);
     setProdutos2Form((prev) => ({
       ...prev,
       productName: item.result.productName || prev.productName,
@@ -1465,7 +1612,7 @@ export default function App() {
               </div>
             )}
 
-            {!produtos2Result ? (
+            {!produtos2Result || produtos2Page === 'form' ? (
               <>
                 <Produtos2Form
                   form={produtos2Form}
@@ -1475,6 +1622,9 @@ export default function App() {
                   aiProfile={aiProfile}
                   onTokenUsageChange={setSessionTokenStats}
                   onOpenHistory={() => setIsHistoryOpen(true)}
+                  isViewOnly={Boolean(produtos2Result && isProdutos2ViewOnly)}
+                  hasExistingResult={Boolean(produtos2Result)}
+                  onGoToResults={() => setProdutos2Page('results')}
                 />
 
                 {isProcessingProdutos2 && (
@@ -1487,6 +1637,21 @@ export default function App() {
               </>
             ) : (
               <div className="space-y-6">
+                {/* Navegação superior: Voltar para a página anterior (acima da seção Histórico de Gerações) */}
+                <div className="flex items-center justify-start">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProdutos2ViewOnly(true);
+                      setProdutos2Page('form');
+                    }}
+                    className="px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white border border-zinc-700 hover:border-emerald-500/50 text-xs font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-md"
+                  >
+                    <ArrowLeft className="w-4 h-4 text-emerald-400" />
+                    <span>Voltar para a página anterior</span>
+                  </button>
+                </div>
+
                 <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-zinc-800">
                   <div className="flex flex-wrap items-center gap-2.5">
                     <button
@@ -1523,6 +1688,10 @@ export default function App() {
                   result={produtos2Result}
                   onUpdateResult={setProdutos2Result}
                   onRegenerateStoryboard={handleRegenerateProdutos2Storyboard}
+                  onRecreateStoryboardWithCopy={handleRecreateProdutos2WithCopy}
+                  isRecreatingFullStoryboard={isProcessingProdutos2}
+                  recreateProgressPercent={produtos2ProgressPercent}
+                  recreateStatusMessage={produtos2StatusMessage}
                   onOpenPreview={(url, title) => setPreviewModal({ isOpen: true, url, title })}
                   aiProfile={aiProfile}
                   onTokenUsageChange={setSessionTokenStats}

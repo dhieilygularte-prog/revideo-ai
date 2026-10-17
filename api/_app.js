@@ -3382,7 +3382,7 @@ app.post("/api/produtos2-planning", async (req, res) => {
     const executeFastAIText = async (opts) => {
       const { systemPrompt, userPrompt: userPrompt2, jsonMode = false, temperature = 0.3 } = opts;
       const client = openAIProvider.getClient();
-      if (client && (activeProfile === "openai" || !process.env.GEMINI_API_KEY)) {
+      if (client) {
         try {
           const comp = await client.chat.completions.create({
             model: "gpt-4o-mini",
@@ -3391,7 +3391,8 @@ app.post("/api/produtos2-planning", async (req, res) => {
               { role: "user", content: userPrompt2 }
             ],
             ...jsonMode ? { response_format: { type: "json_object" } } : {},
-            temperature
+            temperature,
+            max_tokens: 260
           });
           const content = comp.choices[0]?.message?.content?.trim();
           if (content) {
@@ -3419,7 +3420,7 @@ app.post("/api/produtos2-planning", async (req, res) => {
         try {
           const genAI = getGenAI();
           const gemRes = await genAI.models.generateContent({
-            model: GEMINI_VISION_FAST_MODEL || "gemini-2.5-flash",
+            model: "gemini-2.5-flash",
             contents: [
               {
                 role: "user",
@@ -3445,38 +3446,13 @@ ${userPrompt2}` }]
                 totalTokens: pTokens + cTokens,
                 costUSD: 3e-4,
                 costBRL: 2e-3,
-                model: GEMINI_VISION_FAST_MODEL || "gemini-2.5-flash"
+                model: "gemini-2.5-flash"
               }
             };
           }
         } catch (gemErr) {
           console.warn("Erro na chamada Gemini:", gemErr?.message || gemErr);
         }
-      }
-      if (client) {
-        const comp = await client.chat.completions.create({
-          model: "gpt-4o-mini",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt2 }
-          ],
-          ...jsonMode ? { response_format: { type: "json_object" } } : {},
-          temperature
-        });
-        const content = comp.choices[0]?.message?.content?.trim() || "";
-        const pTokens = comp.usage?.prompt_tokens || 450;
-        const cTokens = comp.usage?.completion_tokens || 110;
-        return {
-          text: content,
-          usage: {
-            promptTokens: pTokens,
-            completionTokens: cTokens,
-            totalTokens: pTokens + cTokens,
-            costUSD: 5e-4,
-            costBRL: 3e-3,
-            model: "gpt-4o-mini"
-          }
-        };
       }
       throw new Error("Nenhum provedor de IA dispon\xEDvel para gera\xE7\xE3o de texto.");
     };
@@ -3672,19 +3648,54 @@ INFORMA\xC7\xD5ES DO PRODUTO: ${productInfo || ""}`,
         return res.json({ success: true, hasUserSpeech: false, userSpeech: "" });
       }
     }
+    const calibrateSpeechTo200_225 = (text) => {
+      let clean = fixCommonSlips(normalizeVoiceText(text.replace(/\s+/g, " ").trim()));
+      if (clean.length > 225) {
+        clean = condenseSpeechMinimallyTo225(clean, 225, 200);
+      }
+      if (clean.length < 200) {
+        const baseNoDot = clean.replace(/[.!?]+$/, "").trim();
+        const expansions = [
+          ". Olha s\xF3",
+          ". Confere aqui embaixo!",
+          ". Aproveita e garante j\xE1 no link!",
+          ". Clica aqui embaixo pra ver todos os detalhes!",
+          ". Vale muito a pena conferir aqui embaixo no carrinho!",
+          ". D\xE1 uma olhada aqui embaixo no link e garante j\xE1 antes que acabe!",
+          ". Aproveita pra conferir todos os detalhes aqui embaixo e garante logo!",
+          ". Deixei o link oficial aqui embaixo no carrinho pra voc\xEA garantir com seguran\xE7a!"
+        ];
+        for (const exp of expansions) {
+          const candidate = `${baseNoDot}${exp}`;
+          if (candidate.length >= 200 && candidate.length <= 225) {
+            clean = candidate;
+            break;
+          }
+        }
+        if (clean.length < 200) {
+          const longCandidate = `${baseNoDot}. Entrega qualidade real pro dia a dia, clica aqui no carrinho laranja e garante j\xE1 antes que acabe o estoque!`;
+          clean = condenseSpeechMinimallyTo225(longCandidate, 225, 200);
+        }
+      }
+      if (clean.length > 225) {
+        clean = clean.slice(0, 224).replace(/[,;:\s]+[^.!?,;:]*$/, "") + "!";
+      }
+      return clean;
+    };
     if (action === "adapt_bank_copies") {
       try {
-        const { copy1, copy2, clientGender: clientGender2 } = req.body;
+        const { copy1, copy2, clientGender: clientGender2, enforceRange200To225 } = req.body;
         if (!copy1 && !copy2) {
           return res.json({ success: true });
         }
+        const charRuleText = enforceRange200To225 ? `- REGRA OBRIGAT\xD3RIA DE TAMANHO: A fala adaptada DEVE ter OBRIGATORIAMENTE ENTRE 200 E 225 CARACTERES (incluindo espa\xE7os e pontua\xE7\xE3o). NUNCA entregue menos de 200 caracteres e NUNCA ultrapasse 225 caracteres!` : `- Cada fala adaptada deve ter entre 160 e 225 caracteres (NUNCA ultrapasse 225 caracteres).`;
         const adaptSystem = `Voc\xEA \xE9 um Especialista S\xEAnior em Direct Response para TikTok Shop Brasil.
 Existe na mem\xF3ria do aplicativo um banco de 64 falas validadas de an\xFAncios reais que j\xE1 est\xE3o vendendo muito.
-Sua miss\xE3o \xE9 ADAPTAR as falas sorteadas do banco (Fala 1 e Fala 2) para o PRODUTO ATUAL do usu\xE1rio, seguindo estritamente estas regras:
+Sua miss\xE3o \xE9 ADAPTAR as falas sorteadas do banco para o PRODUTO ATUAL do usu\xE1rio, seguindo estritamente estas regras:
 
 REGRA DE OURO DA ADAPTA\xC7\xC3O (MUDAR O M\xCDNIMO POSS\xCDVEL DA ESTRUTURA, MAS 100% FIEL AO PRODUTO ATUAL):
 1. SE FOR O MESMO PRODUTO (isSameProduct = true):
-   - Mantenha 99% da fala original intacta! Altere APENAS especifica\xE7\xF5es divergentes (ex: marca, modelo, pot\xEAncia em Watts, capacidade em ml/litros, polegadas, quantidade do kit) e concord\xE2ncia de g\xEAnero.
+   - Mantenha a estrutura original da fala! Altere APENAS especifica\xE7\xF5es divergentes (ex: marca, modelo, pot\xEAncia em Watts, capacidade em ml/litros, polegadas, quantidade do kit) e concord\xE2ncia de g\xEAnero.
 2. SE FOR OUTRO PRODUTO DO MESMO NICHO OU OUTRA COPY DO BANCO (isSameProduct = false):
    - As falas do banco j\xE1 possuem ganchos, cad\xEAncia e chamadas para a\xE7\xE3o (CTA) altamente validados. Por isso, MUDE O M\xCDNIMO POSS\xCDVEL da estrutura persuasiva (mantenha o estilo do gancho, o ritmo das frases, a urg\xEAncia e o CTA final).
    - POR\xC9M, substitua 100% de qualquer men\xE7\xE3o \xE0 categoria ou nome do produto antigo e 100% das caracter\xEDsticas exclusivas do produto antigo pelas caracter\xEDsticas REAIS do produto atual (extra\xEDdas de INFORMA\xC7\xD5ES DO PRODUTO).
@@ -3693,7 +3704,7 @@ REGRA DE OURO DA ADAPTA\xC7\xC3O (MUDAR O M\xCDNIMO POSS\xCDVEL DA ESTRUTURA, MA
      * Nunca deixe caracter\xEDsticas do produto antigo (como "tela curva", "suporta 100 quilos", "silenciosa com painel LED", "vara de carbono", "amplificador") em um produto que n\xE3o tem isso.
      * Ignore avisos legais/seguran\xE7a das informa\xE7\xF5es do produto (como "perigo de sufocamento", "mantenha sacos pl\xE1sticos longe", "consulte um m\xE9dico", "data de validade"). Use apenas os benef\xEDcios reais de venda!
 3. LIMITE DE CARACTERES E FORMATA\xC7\xC3O PARA VOZ DE IA:
-   - Cada fala adaptada deve ter entre 135 e 225 caracteres (NUNCA ultrapasse 225 caracteres).
+   ${charRuleText}
    - Escreva medidas por extenso para leitura perfeita da voz de IA ("12 horas", "200 fraldas", "50 unidades").
 
 Retorne SOMENTE um JSON estrito no formato:
@@ -3707,18 +3718,19 @@ Retorne SOMENTE um JSON estrito no formato:
 ${productInfo || productName || ""}
 - G\xEAnero do P\xFAblico: ${clientGender2 || "unissex"}
 - Apresentador(a): ${influencer || "Mulher"}
+${enforceRange200To225 ? "- TAMANHO OBRIGAT\xD3RIO: Estritamente entre 200 e 225 caracteres com espa\xE7os!" : ""}
 
 FALA 1 DO BANCO DE MEM\xD3RIA (${copy1?.id || "Copy 1"} - Produto original da copy: "${copy1?.originalProductType || ""}" - Mesmo produto? ${copy1?.isSameProduct ? "SIM" : "N\xC3O"}):
 Texto original da Fala 1 no banco: "${copy1?.originalText || ""}"
 Sugest\xE3o base local da Fala 1: "${copy1?.localAdaptedText || ""}"
 
-FALA 2 DO BANCO DE MEM\xD3RIA (${copy2?.id || "Copy 2"} - Produto original da copy: "${copy2?.originalProductType || ""}" - Mesmo produto? ${copy2?.isSameProduct ? "SIM" : "N\xC3O"}):
+${copy2 ? `FALA 2 DO BANCO DE MEM\xD3RIA (${copy2?.id || "Copy 2"} - Produto original da copy: "${copy2?.originalProductType || ""}" - Mesmo produto? ${copy2?.isSameProduct ? "SIM" : "N\xC3O"}):
 Texto original da Fala 2 no banco: "${copy2?.originalText || ""}"
-Sugest\xE3o base local da Fala 2: "${copy2?.localAdaptedText || ""}"`;
+Sugest\xE3o base local da Fala 2: "${copy2?.localAdaptedText || ""}"` : ""}`;
         const aiOut = await executeFastAIText({
           systemPrompt: adaptSystem,
           userPrompt: adaptUser,
-          temperature: 0.2,
+          temperature: 0.25,
           jsonMode: true
         });
         let parsed = {};
@@ -3733,13 +3745,18 @@ Sugest\xE3o base local da Fala 2: "${copy2?.localAdaptedText || ""}"`;
             }
           }
         }
-        let adapted1 = fixCommonSlips(normalizeVoiceText((parsed.adaptedCopy1 || "").trim()));
-        let adapted2 = fixCommonSlips(normalizeVoiceText((parsed.adaptedCopy2 || "").trim()));
-        if (adapted1.length > 225) {
-          adapted1 = condenseSpeechMinimallyTo225(adapted1, 225, 200);
-        }
-        if (adapted2.length > 225) {
-          adapted2 = condenseSpeechMinimallyTo225(adapted2, 225, 200);
+        let adapted1 = fixCommonSlips(normalizeVoiceText((parsed.adaptedCopy1 || copy1?.localAdaptedText || "").trim()));
+        let adapted2 = fixCommonSlips(normalizeVoiceText((parsed.adaptedCopy2 || copy2?.localAdaptedText || "").trim()));
+        if (enforceRange200To225) {
+          if (adapted1) adapted1 = calibrateSpeechTo200_225(adapted1);
+          if (adapted2) adapted2 = calibrateSpeechTo200_225(adapted2);
+        } else {
+          if (adapted1.length > 225) {
+            adapted1 = condenseSpeechMinimallyTo225(adapted1, 225, 200);
+          }
+          if (adapted2.length > 225) {
+            adapted2 = condenseSpeechMinimallyTo225(adapted2, 225, 200);
+          }
         }
         return res.json({
           success: true,
@@ -3749,10 +3766,12 @@ Sugest\xE3o base local da Fala 2: "${copy2?.localAdaptedText || ""}"`;
         });
       } catch (err) {
         console.warn("Erro ao adaptar copies do banco via IA, mantendo adapta\xE7\xE3o local:", err?.message || err);
+        const fallback1 = req.body?.copy1?.localAdaptedText || "";
+        const fallback2 = req.body?.copy2?.localAdaptedText || "";
         return res.json({
           success: true,
-          adaptedCopy1: req.body?.copy1?.localAdaptedText || "",
-          adaptedCopy2: req.body?.copy2?.localAdaptedText || ""
+          adaptedCopy1: req.body?.enforceRange200To225 && fallback1 ? calibrateSpeechTo200_225(fallback1) : fallback1,
+          adaptedCopy2: req.body?.enforceRange200To225 && fallback2 ? calibrateSpeechTo200_225(fallback2) : fallback2
         });
       }
     }
@@ -3833,8 +3852,17 @@ ${cleanedInput}`;
     }
     if (action === "generate_aurora_copy") {
       try {
-        const minLimit = 190;
+        const minLimit = 200;
         const maxLimit = 225;
+        const previousCopies = Array.isArray(req.body.previousCopies) ? req.body.previousCopies.filter((c) => typeof c === "string" && c.trim().length > 0) : [];
+        const previousHooks = previousCopies.map((c) => c.trim().split(/\s+/).slice(0, 6).join(" ")).filter(Boolean);
+        const hookVariationClause = previousHooks.length > 0 ? `
+REGRA INEGOCI\xC1VEL DE VARIA\xC7\xC3O DE HOOK (PROIBIDO REPETIR IN\xCDCIO):
+As vers\xF5es anteriores desta copy come\xE7aram com:
+${previousHooks.map((h, i) => `- Vers\xE3o ${i + 1}: "${h}..."`).join("\n")}
+- Voc\xEA DEVE criar uma copy com um HOOK COMPLETAMENTE DIFERENTE das vers\xF5es anteriores!
+- Varie OBRIGATORIAMENTE as primeiras 4 a 5 palavras e use uma abordagem de abertura in\xE9dita (ex: pergunta direta sobre dor/desejo, rea\xE7\xE3o de descoberta espont\xE2nea, compara\xE7\xE3o pr\xE1tica, detalhe surpreendente do produto, situa\xE7\xE3o do dia a dia, etc.).
+- NUNCA repita as mesmas primeiras palavras das vers\xF5es anteriores!` : "";
         const auroraSystem = `Voc\xEA \xE9 a AURORACOPY, uma especialista em copy para v\xEDdeos de TikTok Shop Brasil.
 Sua fun\xE7\xE3o \xE9 transformar as INFORMA\xC7\xD5ES DO PRODUTO fornecidas pelo usu\xE1rio em uma fala de alta reten\xE7\xE3o, natural, espec\xEDfica e persuasiva, pronta para ser usada como narra\xE7\xE3o de v\xEDdeo.
 
@@ -3847,17 +3875,17 @@ A sensa\xE7\xE3o deve ser de uma pessoa brasileira mostrando espontaneamente alg
 A fala nunca deve parecer propaganda tradicional, locu\xE7\xE3o institucional, descri\xE7\xE3o de marketplace ou texto corporativo.
 
 IGNORE COMO ARGUMENTO DE VENDA:
-Pre\xE7o, desconto, cupom, frete gr\xE1tis, parcelamento, promo\xE7\xE3o financeira. Mesmo que estejam presentes, n\xE3o baseie a copy neles.
+Pre\xE7o, desconto, cupom, frete gr\xE1tis, parcelamento, promo\xE7\xE3o financeira. Mesmo que estejam presentes, n\xE3o baseie a copy neles.${hookVariationClause}
 
 REGRA MANDAT\xD3RIA DE CARACTERES (MUITO IMPORTANTE):
-A fala DEVE ter OBRIGATORIAMENTE entre 190 e 225 caracteres no total (contando espa\xE7os e pontua\xE7\xE3o).
-NUNCA entregue menos de 190 caracteres!
+A fala DEVE ter OBRIGATORIAMENTE entre 200 e 225 caracteres no total (contando espa\xE7os e pontua\xE7\xE3o).
+NUNCA entregue menos de 200 caracteres!
 NUNCA ultrapasse 225 caracteres!
 Estruture a fala com:
-1. Gancho direto e curioso de abertura (aprox. 35-40 caracteres).
-2. Explica\xE7\xE3o de 2 benef\xEDcios concretos com foco na usabilidade real (aprox. 110-125 caracteres).
-3. Chamada natural leve para conferir (aprox. 30-40 caracteres).
-Totalizando impreterivelmente entre 190 e 225 caracteres.
+1. Gancho direto e curioso de abertura (aprox. 40-45 caracteres, variando as primeiras 4 a 5 palavras).
+2. Explica\xE7\xE3o de 2 benef\xEDcios concretos com foco na usabilidade real (aprox. 120-135 caracteres).
+3. Chamada natural leve para conferir (aprox. 35-45 caracteres).
+Totalizando impreterivelmente entre 200 e 225 caracteres.
 
 LINGUAGEM E VOZ IA:
 Portugu\xEAs do Brasil oral, simples, espont\xE2neo, natural.
@@ -3871,34 +3899,17 @@ ${productInfo || productName}
 
 NOME DO PRODUTO: ${productName}
 ${additionalInstructions ? `INSTRU\xC7\xD5ES ADICIONAIS: ${additionalInstructions}` : ""}
+${previousHooks.length > 0 ? `HOOKS J\xC1 USADOS (PROIBIDO REPETIR ESTAS PRIMEIRAS PALAVRAS): ${previousHooks.join(" | ")}` : ""}
 DURA\xC7\xC3O DO V\xCDDEO: 10 segundos.
-TAMANHO OBRIGAT\xD3RIO: Exatamente entre ${minLimit} e ${maxLimit} caracteres.`;
+TAMANHO OBRIGAT\xD3RIO: Estritamente entre ${minLimit} e ${maxLimit} caracteres (incluindo espa\xE7os).`;
         const auroraOutput = await executeFastAIText({
           systemPrompt: auroraSystem,
           userPrompt: auroraUser,
-          temperature: 0.7
+          temperature: 0.75
         });
         let rawSpeech = auroraOutput.text;
         rawSpeech = rawSpeech.replace(/^["'«“]|["'»”]$/g, "").trim();
-        rawSpeech = normalizeVoiceText(rawSpeech);
-        if (rawSpeech.length < 190) {
-          const complementos = [
-            " Confere aqui embaixo pra ver todos os detalhes!",
-            " Vale muito a pena conferir todos os detalhes!",
-            " D\xE1 uma olhada aqui embaixo e aproveita!",
-            " Deixei todos os modelos dispon\xEDveis aqui embaixo!"
-          ];
-          for (const c of complementos) {
-            const candidate = rawSpeech.replace(/[.!]+$/, "") + "." + c;
-            if (candidate.length <= 225 && candidate.length >= 190) {
-              rawSpeech = candidate;
-              break;
-            }
-          }
-        }
-        if (rawSpeech.length > 225) {
-          rawSpeech = rawSpeech.slice(0, 225).replace(/[,;:\s]+[^.!?,;:]*$/, "") + "!";
-        }
+        rawSpeech = calibrateSpeechTo200_225(rawSpeech);
         return res.json({ success: true, auroraCopy: rawSpeech, usage: auroraOutput.usage });
       } catch (err) {
         return res.status(500).json({ success: false, error: err?.message || "Erro ao gerar Aurora Copy" });
