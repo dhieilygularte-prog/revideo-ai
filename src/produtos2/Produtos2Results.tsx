@@ -84,12 +84,20 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
   referencePhotos = [],
 }) => {
   const allReferencePhotos = React.useMemo(() => {
-    if (referencePhotos && referencePhotos.length > 0) return referencePhotos;
+    const combined: string[] = [];
     if (result.variations && result.variations.length > 0) {
-      const list = result.variations.flatMap((v) => v.photos || []).filter(Boolean);
-      if (list.length > 0) return list;
+      result.variations.forEach((v) => {
+        (v.photos || []).forEach((p) => {
+          if (p && !combined.includes(p)) combined.push(p);
+        });
+      });
     }
-    return [];
+    if (referencePhotos && referencePhotos.length > 0) {
+      referencePhotos.forEach((p) => {
+        if (p && !combined.includes(p)) combined.push(p);
+      });
+    }
+    return combined;
   }, [referencePhotos, result.variations]);
 
   const [promptCopied, setPromptCopied] = useState(false);

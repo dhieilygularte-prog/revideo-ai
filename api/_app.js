@@ -4416,18 +4416,14 @@ app.post("/api/produtos2-audit-storyboard", async (req, res) => {
     const scenesContext = Array.isArray(scenes) ? scenes.slice(0, 9).map((s, idx) => `Cena ${idx + 1}: ${s.framing || ""}. ${s.action || ""}`).join("\n") : "";
     const lockContext = Array.isArray(productLock) ? productLock.join("; ") : "";
     const variationsAuditRule = activeVariations.length >= 2 ? `
-PASSO 3 \u2014 VERIFICA\xC7\xC3O MANDAT\xD3RIA DE ALTERN\xC2NCIA DE CORES/VARIA\xC7\xD5ES DO PRODUTO (DIVIS\xC3O 3x3):
-O produto possui ${activeVariations.length} varia\xE7\xF5es distintas de cores/modelos anexadas nas fotos:
-${activeVariations.length === 2 ? `\u2022 Quadros 1, 2, 3 e 4 (metade inicial): O produto DEVE estar na Varia\xE7\xE3o 1 ("${activeVariations[0]?.name || "1\xAA Varia\xE7\xE3o"}"). Compare estes quadros EXCLUSIVAMENTE com a Foto de Refer\xEAncia da Varia\xE7\xE3o 1!
-\u2022 Quadros 5, 6, 7, 8 e 9 (segunda metade): O produto DEVE estar na Varia\xE7\xE3o 2 ("${activeVariations[1]?.name || "2\xAA Varia\xE7\xE3o"}"). Compare estes quadros EXCLUSIVAMENTE com a Foto de Refer\xEAncia da Varia\xE7\xE3o 2! NUNCA compare com a Varia\xE7\xE3o 1!` : `\u2022 Quadros 1, 2 e 3 (Linha 1): O produto DEVE estar na Varia\xE7\xE3o 1 ("${activeVariations[0]?.name || "1\xAA Varia\xE7\xE3o"}"). Compare estes quadros EXCLUSIVAMENTE com a Foto da Varia\xE7\xE3o 1!
-\u2022 Quadros 4, 5 e 6 (Linha 2): O produto DEVE estar na Varia\xE7\xE3o 2 ("${activeVariations[1]?.name || "2\xAA Varia\xE7\xE3o"}"). Compare estes quadros EXCLUSIVAMENTE com a Foto da Varia\xE7\xE3o 2! NUNCA compare com a Varia\xE7\xE3o 1! A cor esperada dos quadros 4, 5 e 6 \xC9 "${activeVariations[1]?.name || "2\xAA Varia\xE7\xE3o"}". Se o produto estiver em "${activeVariations[1]?.name}", est\xE1 100% CORRETO e APROVADO!
-\u2022 Quadros 7, 8 e 9 (Linha 3): O produto DEVE estar na Varia\xE7\xE3o 3 ("${activeVariations[2]?.name || "3\xAA Varia\xE7\xE3o"}"). Compare estes quadros EXCLUSIVAMENTE com a Foto da Varia\xE7\xE3o 3! NUNCA compare com a Varia\xE7\xE3o 1 ou 2! A cor esperada dos quadros 7, 8 e 9 \xC9 "${activeVariations[2]?.name || "3\xAA Varia\xE7\xE3o"}". Se o produto estiver em "${activeVariations[2]?.name}", est\xE1 100% CORRETO e APROVADO!`}
-REGRA ABSOLUTA CONTRA FALSOS POSITIVOS DE COR:
-- \xC9 EXPRESSAMENTE PROIBIDO esperar a cor da Varia\xE7\xE3o 1 nos quadros pertencentes \xE0 Varia\xE7\xE3o 2 ou Varia\xE7\xE3o 3!
-- Cada grupo de quadros deve ser comparado unicamente com a sua pr\xF3pria varia\xE7\xE3o.
-- Se o quadro 4, 5 ou 6 estiver na cor da Varia\xE7\xE3o 2, ele DEVE receber nota m\xE1xima (90 a 100).
-- Se o quadro 7, 8 ou 9 estiver na cor da Varia\xE7\xE3o 3, ele DEVE receber nota m\xE1xima (90 a 100).
-- D\xEA nota baixa (<60) APENAS se o quadro violar a sua respectiva varia\xE7\xE3o (por exemplo, se o quadro 4 ficou na cor da Varia\xE7\xE3o 1 em vez da Varia\xE7\xE3o 2, ou se todos os 9 quadros foram gerados na mesma cor).` : "";
+PASSO 3 \u2014 REGRA DE OURO PARA M\xDALTIPLAS VARIA\xC7\xD5ES / CORES ANEXADAS (${activeVariations.length} VARIA\xC7\xD5ES V\xC1LIDAS):
+O usu\xE1rio anexou fotos de refer\xEAncia do produto em ${activeVariations.length} varia\xE7\xF5es/cores oficiais (${activeVariations.map((v, idx) => `Varia\xE7\xE3o ${idx + 1}: "${v.name || "Varia\xE7\xE3o " + (idx + 1)}"`).join(" | ")}).
+- REGRA DE APROVA\xC7\xC3O EM QUALQUER QUADRANTE (CENA 1 A CENA 9):
+  * Em QUALQUER um dos 9 quadrantes do storyboard, se o produto estiver retratado de forma ID\xCANTICA \xE0s fotos de refer\xEAncia de QUALQUER UMA das varia\xE7\xF5es anexadas (seja da Varia\xE7\xE3o 1, da Varia\xE7\xE3o 2 ou da Varia\xE7\xE3o 3), ELE EST\xC1 100% CERTO E DEVE SER APROVADO COM NOTA ALTA (90 a 100 \u2014 VERDE)!
+  * Exemplo: Se o usu\xE1rio anexou fotos do produto na cor Azul na Varia\xE7\xE3o 1 e fotos do produto na cor Vermelha na Varia\xE7\xE3o 2, qualquer quadrante onde o produto apare\xE7a Azul id\xEAntico \xE0s fotos da Varia\xE7\xE3o 1 est\xE1 CERTO (90-100), e qualquer quadrante onde o produto apare\xE7a Vermelho id\xEAntico \xE0s fotos da Varia\xE7\xE3o 2 est\xE1 CERTO (90-100), independentemente do n\xFAmero da cena (1 a 9)!
+  * NUNCA d\xEA nota baixa porque um quadrante mostrou a Varia\xE7\xE3o 2 em vez da Varia\xE7\xE3o 1 (ou vice-versa). Qualquer uma das varia\xE7\xF5es anexadas \xE9 100% v\xE1lida em qualquer quadrante!
+- O QUE \xC9 PROIBIDO E DEVE SER REPROVADO (< 60 \u2014 VERMELHO):
+  * O que N\xC3O pode acontecer \xE9 gerar no storyboard imagens do produto com apar\xEAncia, formato, logomarca ou COR DIFERENTE DE TODAS AS VARIA\xC7\xD5ES ANEXADAS (por exemplo: aparecer uma cor que n\xE3o existe em nenhuma das varia\xE7\xF5es anexadas, ou alterar o formato/logomarca do produto em rela\xE7\xE3o \xE0s fotos de refer\xEAncia daquela varia\xE7\xE3o).` : "";
     const auditSystemInstruction = `Voc\xEA \xE9 o Fiscal Rigoroso de Fidelidade Visual de Produtos (Storyboard 3x3 \u2014 9 Quadrantes).
 Sua miss\xE3o \xE9 inspecionar CADA UM DOS 9 QUADRANTES (numerados de 1 a 9, da esquerda para a direita, de cima para baixo: Linha 1 = Cenas 1, 2, 3; Linha 2 = Cenas 4, 5, 6; Linha 3 = Cenas 7, 8, 9) da imagem de Storyboard gerada e comparar o produto com as FOTOS REAIS DE REFER\xCANCIA do produto "${productName}".
 
@@ -4452,12 +4448,12 @@ PASSO 2 \u2014 REGRAS DE OURO DA FISCALIZA\xC7\xC3O POR QUADRANTE (CENA 1 A CENA
        -> Marque OBRIGATORIAMENTE "logoFaithful": false!
        -> D\xEA OBRIGATORIAMENTE uma nota BAIXA entre 45 e 58 (VERMELHO, abaixo de 60) para aquele quadrante! NUNCA d\xEA nota alta se a parte da logo est\xE1 vis\xEDvel e a logo sumiu!
        -> No campo "issue" (SEMPRE EM PORTUGU\xCAS), escreva claramente: "Na Cena X, o produto est\xE1 diferente: a logomarca original do fabricante ([descreva a logo e onde fica, ex: no encosto]) foi removida e n\xE3o aparece como na foto de refer\xEAncia."
-   - CORES, FORMATO, ESTRUTURA E DETALHES: Verifique tamb\xE9m se cor, formato, estofamento, costuras, pinos e pe\xE7as conferem 100% com as fotos de refer\xEAncia.${variationsAuditRule}
+   - CORES, FORMATO, ESTRUTURA E DETALHES: Verifique se a apar\xEAncia, formato, estrutura e cor conferem com QUALQUER UMA das fotos/varia\xE7\xF5es de refer\xEAncia anexadas pelo usu\xE1rio.${variationsAuditRule}
 3. ESCALA INTEIRA DE NOTAS DE CADA QUADRANTE (0 a 100 \u2014 NUNCA use decimais de 0 a 1):
-   - 90 a 100 (VERDE): Produto 90%+ id\xEAntico \xE0s fotos de refer\xEAncia (logomarca original presente e fiel quando a \xE1rea aparece, ou close fiel de outra parte do produto).
+   - 90 a 100 (VERDE): Produto 90%+ id\xEAntico a qualquer uma das fotos/varia\xE7\xF5es de refer\xEAncia anexadas (logomarca original presente e fiel quando a \xE1rea aparece, ou close fiel de outra parte do produto).
    - 71 a 89 (AMARELO): Produto com pequena varia\xE7\xE3o leve de detalhe secund\xE1rio.
    - 60 a 70 (LARANJA): Diferen\xE7a moderada de formato/cor ou logomarca parcialmente distorcida/apagada.
-   - Abaixo de 60 (VERMELHO): Logomarca original do fabricante removida/ausente em quadrante onde aquela parte est\xE1 vis\xEDvel, formato errado ou cor errada da varia\xE7\xE3o correspondente.
+   - Abaixo de 60 (VERMELHO): Logomarca original do fabricante removida/ausente em quadrante onde aquela parte est\xE1 vis\xEDvel, formato alterado ou cor/apar\xEAncia diferente de TODAS as varia\xE7\xF5es anexadas.
 
 CONTEXTO DO PRODUCT LOCK ESPERADO:
 ${lockContext}
@@ -4495,11 +4491,11 @@ O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "iss
           const contentBlocks = [];
           if (activeVariations.length >= 2) {
             activeVariations.forEach((v, idx) => {
-              const photo = v.photos?.[0] || v.photo || photosList[idx];
-              if (photo) {
+              const varPhotos = Array.isArray(v.photos) && v.photos.length > 0 ? v.photos.filter(Boolean).slice(0, 2) : v.photo ? [v.photo] : photosList[idx] ? [photosList[idx]] : [];
+              varPhotos.forEach((photo, pIdx) => {
                 contentBlocks.push({
                   type: "text",
-                  text: `[FOTO DE REFER\xCANCIA REAL DA VARIA\xC7\xC3O ${idx + 1} ("${v.name || "Varia\xE7\xE3o " + (idx + 1)}") \u2014 OBSERVE A COR E ACABAMENTO DESTA VARIA\xC7\xC3O]:`
+                  text: `[FOTO DE REFER\xCANCIA REAL DA VARIA\xC7\xC3O ${idx + 1} ("${v.name || "Varia\xE7\xE3o " + (idx + 1)}") \u2014 FOTO #${pIdx + 1}: QUALQUER QUADRANTE QUE RETRATE O PRODUTO ID\xCANTICO A ESTA VARIA\xC7\xC3O EST\xC1 100% CORRETO E APROVADO]:`
                 });
                 contentBlocks.push({
                   type: "image_url",
@@ -4508,7 +4504,7 @@ O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "iss
                     detail: "high"
                   }
                 });
-              }
+              });
             });
           } else {
             photosList.slice(0, 4).forEach((photo, idx) => {
@@ -4538,7 +4534,7 @@ O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "iss
           });
           contentBlocks.push({
             type: "text",
-            text: "Inspecione cada um dos 9 quadrantes (Cena 1 a Cena 9) comparando rigorosamente com as fotos reais de refer\xEAncia (especialmente se a logomarca do fabricante impressa no produto est\xE1 presente nos quadros onde aquela parte do produto aparece e se a divis\xE3o de cores das varia\xE7\xF5es foi estritamente respeitada) e retorne o JSON em portugu\xEAs."
+            text: "Inspecione cada um dos 9 quadrantes (Cena 1 a Cena 9) comparando com as fotos reais de refer\xEAncia. Lembre-se: se houver m\xFAltiplas varia\xE7\xF5es anexadas, o produto \xE9 considerado 100% correto em qualquer quadrante desde que seja id\xEAntico a QUALQUER UMA das varia\xE7\xF5es anexadas! S\xF3 reprove se o produto tiver apar\xEAncia, formato, logomarca ou cor diferente de TODAS as varia\xE7\xF5es anexadas. Retorne o JSON em portugu\xEAs."
           });
           const modelsToTry = [OPENAI_AUDIT_MODEL || "gpt-5.6-luna", "gpt-4o", "gpt-4o-mini", OPENAI_BRAIN_MODEL];
           for (const modelCandidate of modelsToTry) {
@@ -4585,14 +4581,16 @@ O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "iss
           const parts = [];
           if (activeVariations.length >= 2) {
             activeVariations.forEach((v, idx) => {
-              const photo = v.photos?.[0] || v.photo || photosList[idx];
-              const parsedRef = photo ? parseInlineImage(photo) : null;
-              if (parsedRef) {
-                parts.push({
-                  text: `[FOTO DE REFER\xCANCIA REAL DA VARIA\xC7\xC3O ${idx + 1} ("${v.name || "Varia\xE7\xE3o " + (idx + 1)}") \u2014 OBSERVE A COR E ACABAMENTO DESTA VARIA\xC7\xC3O]:`
-                });
-                parts.push({ inlineData: parsedRef });
-              }
+              const varPhotos = Array.isArray(v.photos) && v.photos.length > 0 ? v.photos.filter(Boolean).slice(0, 2) : v.photo ? [v.photo] : photosList[idx] ? [photosList[idx]] : [];
+              varPhotos.forEach((photo, pIdx) => {
+                const parsedRef = photo ? parseInlineImage(photo) : null;
+                if (parsedRef) {
+                  parts.push({
+                    text: `[FOTO DE REFER\xCANCIA REAL DA VARIA\xC7\xC3O ${idx + 1} ("${v.name || "Varia\xE7\xE3o " + (idx + 1)}") \u2014 FOTO #${pIdx + 1}: QUALQUER QUADRANTE ID\xCANTICO A ESTA VARIA\xC7\xC3O EST\xC1 100% CORRETO]:`
+                  });
+                  parts.push({ inlineData: parsedRef });
+                }
+              });
             });
           } else {
             photosList.slice(0, 4).forEach((photo, idx) => {
@@ -4674,28 +4672,13 @@ Analise cada um dos 9 quadrantes (Cena 1 a Cena 9) e retorne o JSON em portugu\x
           issue = `Na Cena ${sceneNum}, o produto est\xE1 diferente: a logomarca original do fabricante${logoRefText} foi removida ou n\xE3o aparece id\xEAntica na pe\xE7a.`;
         }
       }
-      let isFalsePositiveVariationMismatch = false;
-      if (activeVariations.length >= 2) {
-        const expectedVarIndex = activeVariations.length === 2 ? sceneNum <= 4 ? 0 : 1 : sceneNum <= 3 ? 0 : sceneNum <= 6 ? 1 : 2;
-        const var1Name = (activeVariations[0]?.name || "").toLowerCase();
-        const var1Words = var1Name.split(/[\s/,-]+/).filter((w) => w.length >= 4);
-        if (expectedVarIndex > 0) {
-          const mentionsVar1 = var1Words.some((w) => lowerIssue.includes(w));
-          const hasDivergencePhrase = lowerIssue.includes("em vez de") || lowerIssue.includes("em lugar de") || lowerIssue.includes("diverge do produto esperado") || lowerIssue.includes("diverge da cor") || lowerIssue.includes("em vez do") || lowerIssue.includes("em vez da");
-          if (hasDivergencePhrase || mentionsVar1) {
-            isFalsePositiveVariationMismatch = true;
-          }
-        }
-      }
-      if (isFalsePositiveVariationMismatch) {
-        rawScore = Math.max(rawScore, 95);
-        const expectedVarIndex = activeVariations.length === 2 ? sceneNum <= 4 ? 0 : 1 : sceneNum <= 3 ? 0 : sceneNum <= 6 ? 1 : 2;
-        const expectedVarName = activeVariations[expectedVarIndex]?.name || `Varia\xE7\xE3o ${expectedVarIndex + 1}`;
-        issue = `Cena ${sceneNum}: Produto id\xEAntico \xE0 Varia\xE7\xE3o ${expectedVarName} (95%)`;
-      } else {
-        const mentionsWrongVariation = lowerIssue.includes("varia\xE7\xE3o") && (lowerIssue.includes("incorret") || lowerIssue.includes("cor errada") || lowerIssue.includes("cor diferente") || lowerIssue.includes("deveria ser") || lowerIssue.includes("mesma cor"));
-        if (productVisible && mentionsWrongVariation) {
-          rawScore = Math.min(rawScore, 54);
+      if (activeVariations.length >= 2 && !mentionsMissingLogo && rawScore < 90) {
+        const allVarWords = activeVariations.flatMap((v) => String(v.name || "").toLowerCase().split(/[\s/,-]+/)).filter((w) => w.length >= 3);
+        const mentionsAnyKnownVar = allVarWords.some((w) => lowerIssue.includes(w));
+        const isComparingBetweenVariations = lowerIssue.includes("em vez de") || lowerIssue.includes("em lugar de") || lowerIssue.includes("diverge da varia\xE7\xE3o") || lowerIssue.includes("deveria estar na varia\xE7\xE3o") || lowerIssue.includes("pertence \xE0 varia\xE7\xE3o") || mentionsAnyKnownVar && (lowerIssue.includes("varia\xE7\xE3o 1") || lowerIssue.includes("varia\xE7\xE3o 2") || lowerIssue.includes("varia\xE7\xE3o 3"));
+        if (isComparingBetweenVariations) {
+          rawScore = Math.max(rawScore, 95);
+          issue = `Cena ${sceneNum}: Produto id\xEAntico a uma das varia\xE7\xF5es de refer\xEAncia anexadas (95%)`;
         }
       }
       const score = Math.max(0, Math.min(100, Math.round(rawScore)));
@@ -4741,11 +4724,11 @@ Analise cada um dos 9 quadrantes (Cena 1 a Cena 9) e retorne o JSON em portugu\x
     const summaryIssues = problemQuadrants.length > 0 ? problemQuadrants.map((q) => `${q.issue} (Nota: ${q.score}%)`) : ["Todas as 9 cenas est\xE3o com fidelidade acima de 90% em rela\xE7\xE3o \xE0s fotos de refer\xEAncia."];
     let correctionPrompt = "";
     const logoMandatoryNote = hasReferenceLogo && referenceLogoDescription ? `OBRIGAT\xD3RIO REPRODUZIR A LOGOMARCA ORIGINAL DO FABRICANTE NO PRODUTO: "${referenceLogoDescription}". JAMAIS deixe a superf\xEDcie lisa onde existe a logomarca nas fotos de refer\xEAncia!` : `OBRIGAT\xD3RIO preservar 100% id\xEAnticos a logomarca e os textos originais do fabricante impressos no pr\xF3prio produto nas fotos de refer\xEAncia.`;
-    const variationMandatoryNote = activeVariations.length >= 2 ? activeVariations.length === 2 ? `DIVIS\xC3O OBRIGAT\xD3RIA DE CORES: Quadros 1 a 4 na Varia\xE7\xE3o 1 (${activeVariations[0]?.name || "1\xAA Cor"}), e Quadros 5 a 9 na Varia\xE7\xE3o 2 (${activeVariations[1]?.name || "2\xAA Cor"}). NUNCA gere todos os quadros na mesma cor!` : `DIVIS\xC3O OBRIGAT\xD3RIA DE CORES: Quadros 1 a 3 na Varia\xE7\xE3o 1 (${activeVariations[0]?.name || "1\xAA Cor"}), Quadros 4 a 6 na Varia\xE7\xE3o 2 (${activeVariations[1]?.name || "2\xAA Cor"}), e Quadros 7 a 9 na Varia\xE7\xE3o 3 (${activeVariations[2]?.name || "3\xAA Cor"}). NUNCA gere todos os quadros na mesma cor!` : "";
+    const variationMandatoryNote = activeVariations.length >= 2 ? `VARIA\xC7\xD5ES DE CORES OFICIAIS PERMITIDAS: ${activeVariations.map((v, idx) => `Varia\xE7\xE3o ${idx + 1} (${v.name || "Cor " + (idx + 1)})`).join(", ")}. O produto em cada quadrante deve ser 100% id\xEAntico a uma das varia\xE7\xF5es de refer\xEAncia anexadas, nunca com cor ou formato diferente das fotos anexadas!` : "";
     if (problemQuadrants.length > 0) {
       const approvedNums = approvedQuadrants.map((q) => q.sceneNumber).join(", ");
       const fixesList = problemQuadrants.map(
-        (q) => `- CORRIGIR CENA ${q.sceneNumber} (nota anterior ${q.score}%): ${q.issue}. Fa\xE7a o produto "${productName}" na Cena ${q.sceneNumber} ficar 100% ID\xCANTICO \xE0s fotos reais de refer\xEAncia (reproduzindo fielmente a logomarca original do fabricante na pe\xE7a, cores das varia\xE7\xF5es, formato e bot\xF5es).`
+        (q) => `- CORRIGIR CENA ${q.sceneNumber} (nota anterior ${q.score}%): ${q.issue}. Fa\xE7a o produto "${productName}" na Cena ${q.sceneNumber} ficar 100% ID\xCANTICO \xE0s fotos reais de refer\xEAncia (reproduzindo fielmente a logomarca original do fabricante na pe\xE7a, cores das varia\xE7\xF5es anexadas, formato e bot\xF5es).`
       ).join("\n");
       correctionPrompt = [
         logoMandatoryNote,
@@ -4753,13 +4736,13 @@ Analise cada um dos 9 quadrantes (Cena 1 a Cena 9) e retorne o JSON em portugu\x
         approvedNums ? `MANTENHA A QUALIDADE E FIDELIDADE DAS CENAS J\xC1 APROVADAS (Cenas ${approvedNums}).` : "",
         `CORRIJA PRIORITARIAMENTE AS CENAS ONDE O PRODUTO FICOU DIFERENTE:`,
         fixesList,
-        `OBJETIVO OBRIGAT\xD3RIO: Atingir mais de 90% de similaridade em TODOS os 9 quadrantes, preservando logomarca do fabricante, textos impressos no produto, cores das varia\xE7\xF5es, formato e bot\xF5es 100% id\xEAnticos \xE0s fotos de refer\xEAncia.`
+        `OBJETIVO OBRIGAT\xD3RIO: Atingir mais de 90% de similaridade em TODOS os 9 quadrantes, preservando logomarca do fabricante, textos impressos no produto, cores das varia\xE7\xF5es anexadas, formato e bot\xF5es 100% id\xEAnticos \xE0s fotos de refer\xEAncia.`
       ].filter(Boolean).join("\n");
     } else {
       correctionPrompt = [
         logoMandatoryNote,
         variationMandatoryNote,
-        "Mantenha mais de 90% de similaridade em todos os 9 quadrantes, preservando logomarca do fabricante, textos impressos no produto, cores das varia\xE7\xF5es, bot\xF5es e formato 100% id\xEAnticos \xE0s fotos de refer\xEAncia."
+        "Mantenha mais de 90% de similaridade em todos os 9 quadrantes, preservando logomarca do fabricante, textos impressos no produto, cores das varia\xE7\xF5es anexadas, bot\xF5es e formato 100% id\xEAnticos \xE0s fotos de refer\xEAncia."
       ].filter(Boolean).join(" ");
     }
     return res.json({
@@ -4793,7 +4776,7 @@ async function handleProdutos2AuditVideo(req, res) {
   try {
     const {
       videoFrames = [],
-      // Array<{ second: number; frameBase64: string }> (5 frames)
+      // Array<{ second: number; frameBase64: string }>
       productPhotosBase64 = [],
       // Array<string>
       productName = "Produto",
@@ -4808,17 +4791,18 @@ async function handleProdutos2AuditVideo(req, res) {
     }
     const lockContext = Array.isArray(productLock) ? productLock.join("; ") : "";
     const systemInstruction = `Voc\xEA \xE9 o Fiscal Rigoroso de Fidelidade Visual de Produtos para V\xEDdeos Comerciais do TikTok Shop e Veo 3.
-Sua miss\xE3o \xE9 auditar ${videoFrames.length} FRAMES extra\xEDdos do v\xEDdeo gerado pelo Google Veo (extra\xEDdos a cada 2 segundos ao longo do v\xEDdeo) e comparar o produto retratado em cada um deles com as FOTOS REAIS DE REFER\xCANCIA do an\xFAncio do produto "${productName}".
+Sua miss\xE3o \xE9 auditar ${videoFrames.length} FRAMES extra\xEDdos do v\xEDdeo gerado pelo Google Veo (extra\xEDdos a cada 2 segundos ao longo do v\xEDdeo) e comparar o produto retratado em cada um deles com as FOTOS REAIS DE REFER\xCANCIA do produto "${productName}".
 
 O algoritmo de modera\xE7\xE3o do TikTok Shop \xE9 impiedoso:
-- Se em QUALQUER frame o produto mudar de formato/tamanho, cor, acabamento, textura, adicionar bot\xF5es/bolsos/z\xEDperes inexistentes, ou se a logomarca do fabricante for removida ou distorcida, o v\xEDdeo corre risco iminente de RESTRI\xC7\xC3O ou BANIMENTO por "Produto Inconsistente / Divergente".
+- Se em QUALQUER frame o produto mudar de formato/tamanho, tiver cor/apar\xEAncia inexistente nas fotos de refer\xEAncia, adicionar bot\xF5es/bolsos/z\xEDperes inexistentes, ou se a logomarca do fabricante for removida ou distorcida, o v\xEDdeo corre risco iminente de RESTRI\xC7\xC3O ou BANIMENTO por "Produto Inconsistente / Divergente".
+- REGRA DE OURO PARA M\xDALTIPLAS FOTOS / VARIA\xC7\xD5ES DE REFER\xCANCIA: Caso as fotos de refer\xEAncia anexadas mostrem mais de uma varia\xE7\xE3o/cor do produto (ex: Azul e Vermelho), qualquer frame onde o produto esteja id\xEAntico a QUALQUER UMA das fotos de refer\xEAncia anexadas est\xE1 100% CORRETO e APROVADO (90 a 100% \u2014 Verde). S\xF3 reprove se o produto no frame divergir de TODAS as fotos de refer\xEAncia anexadas!
 - O cen\xE1rio ao redor e a pessoa/modelo segurando ou vestindo o produto N\xC3O importam tanto. O foco cir\xFArgico DEVE ser 100% no PRODUTO F\xCDSICO!
 
 CRIT\xC9RIOS DE PONTUA\xC7\xC3O PARA CADA FRAME:
-- 90 a 100% (Verde - Aprovado): Produto id\xEAntico ou com varia\xE7\xE3o lev\xEDssima (<10%), preservando cores, acabamento, textura e formato real.
+- 90 a 100% (Verde - Aprovado): Produto id\xEAntico a qualquer uma das fotos de refer\xEAncia anexadas (varia\xE7\xE3o <10%), preservando cores, acabamento, textura e formato real.
 - 71 a 89% (Amarelo - Pode Passar / Razo\xE1vel): Pequena varia\xE7\xE3o (ex: tom de cor levemente alterado pela luz, detalhe sutil).
 - 60 a 70% (Laranja - Cuidado / Risco M\xE9dio): Varia\xE7\xE3o moderada percept\xEDvel (ex: formato deformado, propor\xE7\xE3o esquisita).
-- Menor que 60% (Vermelho - Reprovado / Risco de Restri\xE7\xE3o): Varia\xE7\xE3o gritante (ex: cor totalmente diferente, modelo alterado, detalhes fantasmas adicionados, logo apagada ou produto irreconhec\xEDvel).
+- Menor que 60% (Vermelho - Reprovado / Risco de Restri\xE7\xE3o): Varia\xE7\xE3o gritante (ex: cor inexistente nas fotos de refer\xEAncia, modelo alterado, detalhes fantasmas adicionados, logo apagada ou produto irreconhec\xEDvel).
 
 Retorne ESTRITAMENTE um objeto JSON:
 {
@@ -4838,10 +4822,10 @@ Retorne ESTRITAMENTE um objeto JSON:
       try {
         const client = openAIProvider.getClient();
         const contentBlocks = [];
-        photosList.slice(0, 5).forEach((photo, idx) => {
+        photosList.slice(0, 6).forEach((photo, idx) => {
           contentBlocks.push({
             type: "text",
-            text: `[FOTO DE REFER\xCANCIA REAL #${idx + 1} DO AN\xDANCIO DO PRODUTO "${productName}"]:`
+            text: `[FOTO DE REFER\xCANCIA REAL #${idx + 1} DO PRODUTO "${productName}"]:`
           });
           contentBlocks.push({
             type: "image_url",
@@ -4865,7 +4849,7 @@ Retorne ESTRITAMENTE um objeto JSON:
             }
           });
         });
-        const promptText = `Audite os ${videoFrames.length} frames do v\xEDdeo acima comparando exclusivamente com as fotos de refer\xEAncia reais do produto "${productName}".${lockContext ? ` Trava do produto: ${lockContext}` : ""}
+        const promptText = `Audite os ${videoFrames.length} frames do v\xEDdeo acima comparando com as fotos de refer\xEAncia reais do produto "${productName}". Se o produto em cada frame for id\xEAntico a qualquer uma das fotos de refer\xEAncia anexadas, aprove com nota >= 90%.${lockContext ? ` Trava do produto: ${lockContext}` : ""}
 Retorne o JSON estritamente conforme solicitado.`;
         contentBlocks.push({ type: "text", text: promptText });
         const completion = await client.chat.completions.create({

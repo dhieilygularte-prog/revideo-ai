@@ -10,6 +10,8 @@ import {
   Eye,
   FileVideo,
   RotateCcw,
+  ImagePlus,
+  X,
 } from 'lucide-react';
 import { VideoFidelityAudit, Produtos2AuditColorStatus } from './types';
 
@@ -219,11 +221,53 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
   const [videoDuration, setVideoDuration] = useState<number | null>(null);
+  const [customReferencePhotos, setCustomReferencePhotos] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
   const [audit, setAudit] = useState<VideoFidelityAudit | null>(initialAudit || null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const refPhotosInputRef = useRef<HTMLInputElement>(null);
+
+  // Se o usuário anexou imagens neste campo, usa ELAS como referência; caso contrário, usa as da página anterior
+  const effectiveReferencePhotos =
+    customReferencePhotos.length > 0 ? customReferencePhotos : referencePhotos;
+
+  const handleSelectReferencePhotos = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setErrorMessage(null);
+    const fileArray = Array.from(files);
+    Promise.all(
+      fileArray.map(
+        (f) =>
+          new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+            reader.onerror = () => resolve('');
+            reader.readAsDataURL(f);
+          })
+      )
+    ).then((loaded) => {
+      const valid = loaded.filter(Boolean);
+      if (valid.length > 0) {
+        setCustomReferencePhotos((prev) => [...prev, ...valid].slice(0, 10));
+      }
+      if (refPhotosInputRef.current) {
+        refPhotosInputRef.current.value = '';
+      }
+    });
+  };
+
+  const handleRemoveCustomPhoto = (index: number) => {
+    setCustomReferencePhotos((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
+  const handleClearCustomPhotos = () => {
+    setCustomReferencePhotos([]);
+    if (refPhotosInputRef.current) {
+      refPhotosInputRef.current.value = '';
+    }
+  };
 
   const handleSelectVideo = (file: File) => {
     if (!file) return;
@@ -263,8 +307,10 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
   const handleAuditVideo = async () => {
     if (!videoFile) return;
 
-    if (!referencePhotos || referencePhotos.length === 0) {
-      setErrorMessage('Nenhuma foto de referência do produto foi encontrada na etapa anterior para comparação.');
+    if (!effectiveReferencePhotos || effectiveReferencePhotos.length === 0) {
+      setErrorMessage(
+        'Nenhuma foto de referência do produto foi encontrada. Anexe fotos no campo ao lado ou na etapa anterior.'
+      );
       return;
     }
 
@@ -273,10 +319,12 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
     setStatusMessage('Extraindo frames a cada 2 segundos do vídeo...');
 
     try {
-      // 1. Extração no cliente de 1 frame a cada 2s + compressão das fotos de referência
+      // 1. Extração no cliente de 1 frame a cada 2s + compressão das fotos de referência (priorizando as anexadas aqui, ou da etapa anterior)
       const [frames, compressedRefs] = await Promise.all([
         extractVideoFramesEvery2s(videoFile),
-        Promise.all(referencePhotos.slice(0, 5).map((p) => compressPhotoForVideoAudit(p, 600, 0.80))),
+        Promise.all(
+          effectiveReferencePhotos.slice(0, 6).map((p) => compressPhotoForVideoAudit(p, 600, 0.80))
+        ),
       ]);
 
       if (frames.length === 0) {
@@ -317,7 +365,6 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
             break;
           } else if (json && json.error) {
             lastErrorMsg = json.error;
-            // Se retornou erro explícito de validação que não seja 404/405, tenta próximo endpoint se for sobre storyboard
             if (!String(json.error).toLowerCase().includes('storyboard')) {
               break;
             }
@@ -386,7 +433,7 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
         )}
       </div>
 
-      {/* Input de Arquivo Oculto */}
+      {/* Inputs de Arquivo Ocultos */}
       <input
         ref={fileInputRef}
         type="file"
@@ -397,6 +444,14 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
           if (file) handleSelectVideo(file);
         }}
       />
+      <input
+        ref={refPhotosInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => handleSelectReferencePhotos(e.target.files)}
+      />
 
       {/* Mensagem de Erro (se houver) */}
       {errorMessage && (
@@ -406,75 +461,161 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
         </div>
       )}
 
-      {/* ÁREA DE ANEXAR VÍDEO (Quando ainda não anexou) */}
-      {!videoFile && (
-        <div
-          onClick={() => fileInputRef.current?.click()}
-          className="p-6 border-2 border-dashed border-zinc-700 hover:border-sky-500/70 rounded-2xl bg-zinc-950/60 hover:bg-zinc-900/50 flex flex-col items-center justify-center text-center gap-2 cursor-pointer transition-all group shadow-inner"
-        >
-          <div className="p-3 rounded-2xl bg-zinc-800/80 group-hover:bg-sky-500/20 text-zinc-400 group-hover:text-sky-300 transition-colors">
-            <Upload className="w-5 h-5" />
-          </div>
-          <div>
-            <p className="text-xs font-bold text-zinc-200 group-hover:text-white transition-colors">
-              Anexe aqui o vídeo para verificação
-            </p>
-            <p className="text-[10px] text-zinc-400 mt-0.5">
-              Clique para selecionar o vídeo gerado no Veo 3 (.mp4 ou .mov)
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* QUANDO O VÍDEO ESTÁ ANEXADO */}
-      {videoFile && (
-        <div className="space-y-3.5">
-          {/* Card com Detalhes do Vídeo Anexado + Botão Analisar */}
-          <div className="p-3 rounded-xl bg-zinc-950/80 border border-white/10 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center overflow-hidden shrink-0">
-                {videoPreviewUrl ? (
-                  <video
-                    src={videoPreviewUrl}
-                    className="w-full h-full object-cover"
-                    muted
-                    playsInline
-                  />
-                ) : (
-                  <FileVideo className="w-5 h-5 text-sky-400" />
-                )}
+      {/* LINHA LADO A LADO: CAMPO DE ANEXAR VÍDEO + CAMPO DISCRETO DE FOTOS DE REFERÊNCIA (OPCIONAL) */}
+      <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-stretch">
+        {/* Coluna Esquerda (7 cols): Anexar Vídeo ou Detalhes do Vídeo Anexado */}
+        <div className="sm:col-span-7 flex flex-col">
+          {!videoFile ? (
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="flex-1 p-5 border-2 border-dashed border-zinc-700 hover:border-sky-500/70 rounded-2xl bg-zinc-950/60 hover:bg-zinc-900/50 flex flex-col items-center justify-center text-center gap-2 cursor-pointer transition-all group shadow-inner"
+            >
+              <div className="p-2.5 rounded-2xl bg-zinc-800/80 group-hover:bg-sky-500/20 text-zinc-400 group-hover:text-sky-300 transition-colors">
+                <Upload className="w-5 h-5" />
               </div>
-              <div className="space-y-0.5">
-                <p className="text-xs font-bold text-white truncate max-w-xs sm:max-w-md">
-                  {videoFile.name}
+              <div>
+                <p className="text-xs font-bold text-zinc-200 group-hover:text-white transition-colors">
+                  Anexe aqui o vídeo para verificação
                 </p>
-                <p className="text-[10px] text-zinc-400">
-                  {videoDuration ? `${videoDuration}s de duração` : 'Carregando...'} • {(videoFile.size / (1024 * 1024)).toFixed(1)} MB
+                <p className="text-[10px] text-zinc-400 mt-0.5">
+                  Clique para selecionar o vídeo gerado no Veo 3 (.mp4 ou .mov)
                 </p>
               </div>
             </div>
+          ) : (
+            <div className="flex-1 p-3 rounded-2xl bg-zinc-950/80 border border-white/10 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-12 h-12 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center overflow-hidden shrink-0">
+                  {videoPreviewUrl ? (
+                    <video
+                      src={videoPreviewUrl}
+                      className="w-full h-full object-cover"
+                      muted
+                      playsInline
+                    />
+                  ) : (
+                    <FileVideo className="w-5 h-5 text-sky-400" />
+                  )}
+                </div>
+                <div className="space-y-0.5 min-w-0">
+                  <p className="text-xs font-bold text-white truncate max-w-[180px] sm:max-w-[220px]">
+                    {videoFile.name}
+                  </p>
+                  <p className="text-[10px] text-zinc-400">
+                    {videoDuration ? `${videoDuration}s de duração` : 'Carregando...'} •{' '}
+                    {(videoFile.size / (1024 * 1024)).toFixed(1)} MB
+                  </p>
+                </div>
+              </div>
 
-            <button
-              type="button"
-              onClick={handleAuditVideo}
-              disabled={isProcessing}
-              className={`px-5 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer shadow-lg disabled:opacity-50 ${
-                audit
-                  ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700'
-                  : 'bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white shadow-sky-500/20'
-              }`}
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isProcessing ? 'animate-spin' : ''}`} />
-              <span>
-                {isProcessing
-                  ? statusMessage || 'Analisando vídeo...'
-                  : audit
-                  ? 'Reanalisar Vídeo'
-                  : 'Analisar Vídeo'}
-              </span>
-            </button>
+              <button
+                type="button"
+                onClick={handleAuditVideo}
+                disabled={isProcessing}
+                className={`px-4 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer shadow-lg disabled:opacity-50 ${
+                  audit
+                    ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700'
+                    : 'bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white shadow-sky-500/20'
+                }`}
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isProcessing ? 'animate-spin' : ''}`} />
+                <span>
+                  {isProcessing
+                    ? statusMessage || 'Analisando...'
+                    : audit
+                    ? 'Reanalisar Vídeo'
+                    : 'Analisar Vídeo'}
+                </span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Coluna Direita (5 cols): Campo Discreto de Anexar Imagens de Referência (Opcional) */}
+        <div className="sm:col-span-5 flex flex-col">
+          <div
+            className={`flex-1 p-3 rounded-2xl border transition-all flex flex-col justify-between gap-2 ${
+              customReferencePhotos.length > 0
+                ? 'bg-sky-950/25 border-sky-500/40'
+                : 'bg-zinc-950/40 border-zinc-800/90 hover:border-zinc-700'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-1.5">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <ImagePlus className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                <span className="text-[11px] font-bold text-zinc-300 truncate">
+                  Fotos de referência (opcional)
+                </span>
+              </div>
+              {customReferencePhotos.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={handleClearCustomPhotos}
+                  className="text-[10px] text-zinc-400 hover:text-rose-400 font-semibold transition-colors cursor-pointer shrink-0"
+                >
+                  Limpar ({customReferencePhotos.length})
+                </button>
+              ) : (
+                <span className="text-[9px] text-zinc-500 font-medium shrink-0">
+                  Padrão: fotos anteriores ({referencePhotos?.length || 0})
+                </span>
+              )}
+            </div>
+
+            {customReferencePhotos.length > 0 ? (
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {customReferencePhotos.map((photo, idx) => (
+                  <div
+                    key={idx}
+                    className="relative w-9 h-9 rounded-lg overflow-hidden border border-sky-400/40 bg-zinc-900 group shrink-0"
+                  >
+                    <img
+                      src={photo}
+                      alt={`Ref ${idx + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveCustomPhoto(idx)}
+                      className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center text-rose-300 transition-opacity cursor-pointer"
+                      title="Remover foto"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => refPhotosInputRef.current?.click()}
+                  className="w-9 h-9 rounded-lg border border-dashed border-sky-400/40 hover:border-sky-400 bg-sky-500/10 hover:bg-sky-500/20 flex items-center justify-center text-sky-300 transition-colors cursor-pointer shrink-0"
+                  title="Adicionar mais fotos de referência"
+                >
+                  <ImagePlus className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => refPhotosInputRef.current?.click()}
+                className="w-full py-2 px-2.5 rounded-xl border border-dashed border-zinc-700/80 hover:border-zinc-500 bg-zinc-900/50 hover:bg-zinc-900 text-[10px] text-zinc-400 hover:text-zinc-200 font-medium flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+              >
+                <ImagePlus className="w-3.5 h-3.5 text-zinc-400" />
+                <span>Anexar fotos específicas para este vídeo</span>
+              </button>
+            )}
+
+            <p className="text-[9px] text-zinc-500 leading-tight">
+              {customReferencePhotos.length > 0
+                ? `Usando ${customReferencePhotos.length} foto(s) anexada(s) aqui como referência.`
+                : 'Se não anexar aqui, usa automaticamente as fotos do produto da página anterior.'}
+            </p>
           </div>
+        </div>
+      </div>
 
+      {/* QUANDO O VÍDEO ESTÁ ANEXADO E JÁ TEM AUDITORIA */}
+      {videoFile && (
+        <div className="space-y-3.5">
           {/* PAINEL DE RESULTADO DA AUDITORIA */}
           {audit && (
             <div className="space-y-3 pt-1">

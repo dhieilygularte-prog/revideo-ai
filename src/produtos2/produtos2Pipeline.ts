@@ -475,14 +475,16 @@ export async function auditProdutos2Storyboard(params: {
       productPhotosBase64.slice(0, 4).map((p) => compressImageForPayload(p, 1400, 0.88))
     );
 
-    // Comprime a foto de referência de cada variação para auditoria precisa de cores
+    // Comprime até 2 fotos de referência de cada variação para auditoria precisa de todas as cores/ângulos anexados
     const compressedVariations = await Promise.all(
       (variations || []).map(async (v) => {
-        const firstPhoto = (v.photos || []).find(Boolean);
-        const comp = firstPhoto ? await compressImageForPayload(firstPhoto, 1200, 0.86) : undefined;
+        const varPhotos = (v.photos || []).filter(Boolean).slice(0, 2);
+        const compList = await Promise.all(
+          varPhotos.map((p) => compressImageForPayload(p, 1200, 0.86))
+        );
         return {
           name: v.name,
-          photos: comp ? [comp] : [],
+          photos: compList.filter(Boolean),
         };
       })
     );
