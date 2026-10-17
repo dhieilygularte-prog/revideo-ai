@@ -14,7 +14,6 @@ import {
   X,
 } from 'lucide-react';
 import { VideoFidelityAudit, Produtos2AuditColorStatus } from './types';
-import { useLoadingGif } from '../utils/loadingGifQueue';
 
 interface VideoFidelityAuditorProps {
   productName: string;
@@ -229,8 +228,6 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const refPhotosInputRef = useRef<HTMLInputElement>(null);
-
-  const loadingGif = useLoadingGif(isProcessing);
 
   // Se o usuário anexou imagens neste campo, usa ELAS como referência; caso contrário, usa as da página anterior
   const effectiveReferencePhotos =
@@ -620,18 +617,12 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
         </div>
       </div>
 
-      {/* TELA DE LOADING COM GIF ANIMADO DURANTE A ANÁLISE DO VÍDEO */}
+      {/* STATUS DE PROCESSAMENTO DURANTE A ANÁLISE DO VÍDEO */}
       {isProcessing && (
-        <div className="p-4 rounded-2xl bg-zinc-950/80 border border-sky-500/30 flex flex-col items-center justify-center gap-3 text-center animate-fade-in">
-          <img
-            src={loadingGif}
-            alt="Analisando vídeo..."
-            style={{ maxWidth: '280px', borderRadius: '12px', objectFit: 'cover' }}
-            className="w-full h-auto mx-auto shadow-lg border border-zinc-700/60"
-          />
-          <p className="text-xs font-bold text-sky-300 flex items-center gap-2">
-            <RefreshCw className="w-3.5 h-3.5 animate-spin text-sky-400" />
-            <span>{statusMessage || 'Analisando fidelidade do vídeo...'}</span>
+        <div className="p-3.5 rounded-2xl bg-zinc-950/80 border border-sky-500/30 flex items-center justify-center gap-2 text-center animate-fade-in">
+          <RefreshCw className="w-4 h-4 animate-spin text-sky-400" />
+          <p className="text-xs font-bold text-sky-300">
+            {statusMessage || 'Analisando fidelidade do vídeo...'}
           </p>
         </div>
       )}

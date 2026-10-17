@@ -1039,11 +1039,44 @@ export const NEIGHBOR_NICHE_RULES: { keywords: string[]; targetNiches: string[] 
     targetNiches: ['Eletrônicos'],
   },
   {
+    keywords: [
+      'irrigador oral',
+      'irrigador bucal',
+      'irrigador dental',
+      'jato dental',
+      'fio dental',
+      'escova eletrica',
+      'escova de dente',
+      'clareador dental',
+      'higiene bucal',
+      'saude bucal',
+      'secador',
+      'chapinha',
+      'babyliss',
+      'maquiagem',
+      'skincare',
+      'escova alisadora',
+      'escova secadora',
+      'elastico de cabelo',
+      'serum',
+      'batom',
+      'creme',
+      'perfume',
+      'depilador',
+      'barbeador',
+      'aparador de pelos',
+      'massageador',
+      'modelador de cachos',
+      'prancha de cabelo',
+    ],
+    targetNiches: ['Cabelo e beleza', 'Casa, banheiro e organização'],
+  },
+  {
     keywords: ['furadeira', 'parafusadeira', 'esmerilhadeira', 'serra', 'compressor', 'solda', 'alicate', 'puncao', 'chave', 'ferramenta', 'lixadeira', 'martelete', 'trena', 'nivel laser', 'soprador', 'tupia', 'plaina'],
     targetNiches: ['Ferramentas'],
   },
   {
-    keywords: ['rocadeira', 'cortador de grama', 'semente', 'sementes', 'mangueira', 'adubo', 'pulverizador', 'podador', 'jardim', 'grama', 'planta', 'motosserra', 'aparador de grama', 'irrigador'],
+    keywords: ['rocadeira', 'cortador de grama', 'semente', 'sementes', 'mangueira de jardim', 'adubo', 'pulverizador', 'podador', 'jardim', 'grama', 'planta', 'motosserra', 'aparador de grama', 'irrigador de jardim', 'irrigador de grama', 'irrigacao agricola'],
     targetNiches: ['Jardim', 'Agro e roça'],
   },
   {
@@ -1061,10 +1094,6 @@ export const NEIGHBOR_NICHE_RULES: { keywords: string[]; targetNiches: string[] 
   {
     keywords: ['copo termico', 'marmita', 'pote', 'garrafa', 'garrafinha', 'squeeze', 'stanley', 'caneca termica', 'jarra'],
     targetNiches: ['Garrafas e copos'],
-  },
-  {
-    keywords: ['secador', 'chapinha', 'babyliss', 'maquiagem', 'skincare', 'escova alisadora', 'escova secadora', 'elastico de cabelo', 'serum', 'batom', 'creme', 'perfume', 'depilador', 'modelador de cachos', 'prancha de cabelo'],
-    targetNiches: ['Cabelo e beleza'],
   },
   {
     keywords: [
@@ -2601,99 +2630,193 @@ export function adaptBankCopyToProduct(
 
 /**
  * Gera automaticamente a Descrição do Post + Hashtags para TikTok / Reels (Modo Produtos 2.0)
- * baseado no nome do produto, nicho, categoria e palavras-chave de alta conversão.
- * NUNCA injeta tags de categorias cruzadas (ex: moda masculina em celulares/eletrônicos).
+ * baseado no nome do produto, informações do produto, nicho, categoria e hashtags geradas pela IA.
+ * NUNCA injeta tags aleatórias ou de categorias cruzadas (ex: #ferramentas/#jardim em irrigador oral).
  */
 export function generateProdutos2DescriptionHashtags(params: {
   productName: string;
+  productInfo?: string;
   niche?: string;
   subMode?: Produtos2SubMode;
   maleSubOption?: Produtos2MaleSubOption;
   clientGender?: Produtos2ClientGender;
   finalCopy?: string;
+  aiHashtags?: string[];
 }): { description: string; hashtags: string[] } {
-  const { productName, niche, subMode, maleSubOption } = params;
+  const { productName, productInfo, niche, subMode, maleSubOption, finalCopy, aiHashtags } = params;
   const rawName = (productName || 'Produto').trim();
   const cleanTitle = rawName.replace(/[!.]+$/, '');
   const normName = normalizeAccents(rawName.toLowerCase());
+  const normInfo = normalizeAccents((productInfo || '').toLowerCase());
+  const normCopy = normalizeAccents((finalCopy || '').toLowerCase());
   const normNiche = normalizeAccents((niche || '').toLowerCase());
+  const normFull = `${normName} ${normInfo} ${normCopy}`.trim();
 
   const tags: string[] = [];
 
-  // 1. Tag específica limpa do produto (ex: #pocox8pro, #redededescanso, #tenismasculino)
-  const productTagSlug = normName
-    .replace(/[^a-z0-9]/g, '')
-    .slice(0, 24);
-  if (productTagSlug.length >= 3) {
-    tags.push(`#${productTagSlug}`);
+  // 1. Tag específica limpa do produto (ex: #irrigadororal, #pocox8pro, #redededescanso)
+  const stopWords = new Set(['para', 'com', 'sem', 'por', 'mais', 'menos', 'kit', 'unidades', 'unidade', 'novo', 'nova', 'original', 'portatil', 'recarregavel', 'eletrico', 'eletrica']);
+  const nameWords = normName
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length >= 2);
+  const coreProductSlug = nameWords.slice(0, 3).join('').slice(0, 24);
+  const fullProductSlug = normName.replace(/[^a-z0-9]/g, '').slice(0, 24);
+
+  if (coreProductSlug.length >= 3) {
+    tags.push(`#${coreProductSlug}`);
+  } else if (fullProductSlug.length >= 3) {
+    tags.push(`#${fullProductSlug}`);
   }
 
-  // 2. Detecção precisa de Categoria e Nicho
+  // 2. Detecção precisa de Categoria e Nicho (olhando prioritariamente o nome e a ficha do produto)
   const isVestuarioMasculino = subMode === 'vestuario_masculino';
   const isVestuarioFeminino = normNiche.includes('feminino') || normNiche.includes('moda feminina');
 
+  // Detecção de Higiene Bucal / Odontologia / Sorriso (ex: Irrigador Oral, Escova Elétrica, Clareador Dental)
+  const isHigieneBucal =
+    /\b(irrigador oral|irrigador bucal|irrigador dental|jato dental|fio dental|escova eletrica|escova de dente|escova dental|clareador dental|higiene bucal|saude bucal|limpeza dental|tartaro|gengiva|aparelho ortodontico|ortodontia|dentes|bucal|dental)\b/i.test(
+      normFull
+    );
+
+  // Detecção de Saúde / Bem-Estar / Massagem / Ortopedia / Cuidados Corporais
+  const isSaudeBemEstar =
+    !isHigieneBucal &&
+    /\b(massageador|pistola de massagem|ortopedico|ortopedica|corretor postural|postura|joelheira|tornozeleira|munhequeira|cinta modeladora|cinta lombar|palmilha|termometro|oximetro|medidor de pressao|inalador|nebulizador|umidificador|acupuntura|fisioterapia|alivio da dor|relaxamento muscular)\b/i.test(
+      normFull
+    );
+
+  // Detecção de Beleza / Cuidados Pessoais / Cabelo / Skincare / Barbearia
+  const isBelezaCuidado =
+    !isHigieneBucal &&
+    (normNiche.includes('beleza') ||
+      normNiche.includes('cabelo') ||
+      normNiche.includes('skincare') ||
+      /\b(escova secadora|escova alisadora|secador de cabelo|secador|prancha|modelador|chapinha|babyliss|perfume|hidratante|maquiagem|batom|base|corretivo|rimel|mascara capilar|shampoo|condicionador|oleo capilar|depilador|aparador de pelos|barbeador|maquina de cortar cabelo|skincare|limpeza de pele|esfoliante|serum|unhas|manicure)\b/i.test(
+        normFull
+      ));
+
   // Detecção de Eletrônicos / Celulares / Smartphones / Tecnologia / Gamers
   const isTechOrPhone =
-    normNiche.includes('eletron') ||
-    normNiche.includes('celular') ||
-    normNiche.includes('smartphone') ||
-    normNiche.includes('tecnologia') ||
-    normNiche.includes('tech') ||
-    /\b(poco|xiaomi|redmi|iphone|samsung|galaxy|motorola|realme|smartphone|celular|tablet|ipad|smartwatch|relogio inteligente|fone|headphone|headset|earbuds|airpods|airpod|bluetooth|carregador|powerbank|cabo|monitor|computador|notebook|laptop|pc gamer|teclado gamer|mouse gamer|gamer)\b/i.test(normName);
+    !isHigieneBucal &&
+    !isBelezaCuidado &&
+    (normNiche.includes('eletron') ||
+      normNiche.includes('celular') ||
+      normNiche.includes('smartphone') ||
+      normNiche.includes('tecnologia') ||
+      normNiche.includes('tech') ||
+      /\b(poco|xiaomi|redmi|iphone|samsung|galaxy|motorola|realme|smartphone|celular|tablet|ipad|smartwatch|relogio inteligente|fone|headphone|headset|earbuds|airpods|airpod|powerbank|carregador sem fio|monitor|computador|notebook|laptop|pc gamer|teclado gamer|mouse gamer|gamer|camera digital|webcam|projetor|pendrive|ssd|placa de video)\b/i.test(
+        normName
+      ));
 
-  // Detecção de Casa / Cozinha / Conforto / Decoração / Organização
+  // Detecção de Casa / Cozinha / Conforto / Decoração / Organização / Limpeza
   const isCasaCozinha =
-    normNiche.includes('casa') ||
-    normNiche.includes('cozinha') ||
-    normNiche.includes('organizacao') ||
-    normNiche.includes('limpeza') ||
-    normNiche.includes('climatizacao') ||
-    normNiche.includes('descanso') ||
-    /\b(panela|airfryer|liquidificador|batedeira|garrafa|copo termico|stanley|rede de descanso|rede|ventilador|climatizador|umidificador|aspirador|mop|luminaria|decoracao|almofada|travesseiro|toalha|tapete|cozinha|banheiro)\b/i.test(normName);
+    !isHigieneBucal &&
+    (normNiche.includes('casa') ||
+      normNiche.includes('cozinha') ||
+      normNiche.includes('organizacao') ||
+      normNiche.includes('limpeza') ||
+      normNiche.includes('climatizacao') ||
+      normNiche.includes('descanso') ||
+      normNiche.includes('garrafas') ||
+      /\b(panela|airfryer|air fryer|fritadeira|liquidificador|batedeira|cafeteira|chaleira|sanduicheira|torradeira|panificadora|processador de alimentos|garrafa|copo termico|stanley|marmita|pote|rede de descanso|rede|ventilador|climatizador|ar condicionado|aspirador|mop|vassoura|rodo|luminaria|fita led|decoracao|almofada|travesseiro|colchao|lencol|edredom|cobertor|toalha|tapete|cortina|prateleira|sapateira|organizador|armario|rack|cozinha|banheiro|luva descartavel|pastilha sanitaria)\b/i.test(
+        normFull
+      ));
 
-  // Detecção de Ferramentas / Jardim / Agro / Construção
-  const isFerramentasJardim =
-    normNiche.includes('ferramenta') ||
-    normNiche.includes('jardim') ||
-    normNiche.includes('agro') ||
-    normNiche.includes('construcao') ||
-    /\b(furadeira|parafusadeira|rocadeira|motosserra|trena|alicate|chave de fenda|lavadora de alta pressao|cortador de grama|jardinagem)\b/i.test(normName);
+  // Detecção estrita de Ferramentas / Construção (NUNCA ativa se for item de higiene, beleza, casa ou saúde)
+  const isFerramentasConstrucao =
+    !isHigieneBucal &&
+    !isSaudeBemEstar &&
+    !isBelezaCuidado &&
+    !isCasaCozinha &&
+    (normNiche.includes('ferramenta') ||
+      normNiche.includes('construcao') ||
+      /\b(furadeira|parafusadeira|esmerilhadeira|lixadeira|serra eletrica|martelete|chave de impacto|chave de fenda|alicate|puncao|puncionadeira|trena|nivel laser|solda|ferramenta|oficina|reforma|tinta de parede)\b/i.test(
+        normName
+      ));
 
-  // Detecção de Beleza / Cuidados Pessoais / Cabelo / Skincare
-  const isBelezaCuidado =
-    normNiche.includes('beleza') ||
-    normNiche.includes('cabelo') ||
-    normNiche.includes('skincare') ||
-    normNiche.includes('saude') ||
-    /\b(escova secadora|secador|prancha|modelador|chapinha|perfume|hidratante|maquiagem|batom|sabonete|depilador|skincare)\b/i.test(normName);
+  // Detecção estrita de Jardim / Agro / Roça (NUNCA ativa para "irrigador oral")
+  const isJardimAgro =
+    !isHigieneBucal &&
+    !isSaudeBemEstar &&
+    !isBelezaCuidado &&
+    !isCasaCozinha &&
+    /\b(rocadeira|cortador de grama|aparador de grama|motosserra|podador|pulverizador agricola|motocultivador|semente|adubo|grama|jardinagem|jardim|irrigador de jardim|mangueira de jardim|plantas|horta)\b/i.test(
+      normFull
+    );
 
   // Detecção de Fitness / Academia / Treino
   const isFitness =
     normNiche.includes('fitness') ||
     normNiche.includes('treino') ||
     normNiche.includes('academia') ||
-    /\b(esteira|bicicleta ergometrica|haltere|halter|kettlebell|elastico|whey|creatina|suplemento|treino|academia|corda de pular)\b/i.test(normName);
+    /\b(esteira|bicicleta ergometrica|banco de exercicio|banco ajustavel|supino|musculacao|haltere|halter|kettlebell|elastico de treino|whey|creatina|suplemento|treino|academia|corda de pular|barra fixa)\b/i.test(
+      normFull
+    );
 
   // Detecção de Automotivo / Som / Moto
   const isAutoMoto =
     normNiche.includes('auto') ||
     normNiche.includes('moto') ||
     normNiche.includes('som automotivo') ||
-    /\b(som automotivo|alto-falante|amplificador|multimidia|suporte celular carro|capa de moto|capacete|farol|pneu)\b/i.test(normName);
+    /\b(som automotivo|alto-falante|autofalante|subwoofer|amplificador|modulo de som|radio automotivo|central multimidia|suporte celular carro|capa de moto|capa de carro|capacete|farol automotivo|pneu|lavagem automotiva)\b/i.test(
+      normFull
+    );
 
-  // Detecção de Brinquedos / Infantil
+  // Detecção de Infantil / Bebês / Maternidade / Brinquedos
   const isInfantil =
     normNiche.includes('infantil') ||
     normNiche.includes('brinquedo') ||
-    /\b(brinquedo|bebe|crianca|carrinho infantil|boneca|jogo infantil|educativo)\b/i.test(normName);
+    /\b(brinquedo|bebe|fralda|fraldas|mamadeira|chupeta|carrinho de bebe|bebe conforto|cadeirinha|crianca|carrinho infantil|jipe eletrico|triciclo|boneca|pelucia|jogo infantil|educativo|maternidade|enxoval)\b/i.test(
+      normFull
+    );
 
   // Detecção de Pet
   const isPet =
     normNiche.includes('pet') ||
-    /\b(cachorro|gato|racao|coleira|arranhador|caminha pet|bebedouro pet)\b/i.test(normName);
+    /\b(cachorro|cao|gato|pet|racao|coleira|peitoral|guia pet|arranhador|caminha pet|bebedouro pet|comedouro| tapete higienico|educador pet)\b/i.test(
+      normFull
+    );
 
-  // 3. Tags por nicho (com prioridade estrita — eletrônicos e outros nunca recebem moda)
-  if (isTechOrPhone) {
+  // Detecção de Pesca / Camping / Natação / Esporte Aquático
+  const isPescaCampingNatacao =
+    normNiche.includes('pesca') ||
+    normNiche.includes('natacao') ||
+    /\b(vara de pesca|vara de pescar|vara de carbono|molinete|carretilha|linha de pesca|isca artificial|anzol|pescaria|pescador|barraca de camping|camping|acampamento|lanterna tatica|oculos de natacao|touca de natacao|mergulho)\b/i.test(
+      normFull
+    );
+
+  // 3. Se a IA enviou hashtags específicas para o produto (`aiHashtags`), sanitiza e valida contra falsos positivos
+  if (Array.isArray(aiHashtags) && aiHashtags.length > 0) {
+    const forbiddenNonToolTags = new Set(['#ferramentas', '#construcao', '#jardim', '#jardinagem', '#obra', '#agro', '#roca']);
+    for (const rawTag of aiHashtags) {
+      if (typeof rawTag !== 'string') continue;
+      const cleanSlug = normalizeAccents(rawTag.toLowerCase()).replace(/[^a-z0-9]/g, '');
+      if (cleanSlug.length < 3 || cleanSlug.length > 28) continue;
+      const formattedTag = `#${cleanSlug}`;
+      if (!isFerramentasConstrucao && !isJardimAgro && forbiddenNonToolTags.has(formattedTag)) {
+        continue;
+      }
+      if (!tags.includes(formattedTag)) {
+        tags.push(formattedTag);
+      }
+    }
+  }
+
+  // 4. Tags por categoria real do produto (garantindo coerência 100% com o produto)
+  if (isHigieneBucal) {
+    tags.push('#irrigadororal', '#higienebucal', '#saudebucal', '#cuidadospessoais', '#sorrisoperfeito');
+  } else if (isSaudeBemEstar) {
+    tags.push('#saudeebemestar', '#autocuidado', '#cuidadospessoais', '#qualidadedevida', '#bemestar');
+  } else if (isBelezaCuidado) {
+    if (/\b(barbeador|maquina de cortar cabelo|aparador|barba)\b/i.test(normFull)) {
+      tags.push('#barbearia', '#cuidadosmasculinos', '#barbeador', '#autocuidado');
+    } else if (/\b(escova|secador|chapinha|prancha|babyliss|cabelo|capilar)\b/i.test(normFull)) {
+      tags.push('#cabelos', '#dicasdecabelo', '#beleza', '#autocuidado');
+    } else {
+      tags.push('#dicasdebeleza', '#beleza', '#autocuidado', '#cuidadospessoais');
+    }
+  } else if (isTechOrPhone) {
     const isPhone =
       /\b(celular|smartphone|poco|xiaomi|redmi|iphone|samsung|galaxy|motorola|realme)\b/i.test(normName) ||
       normNiche.includes('celular') ||
@@ -2711,10 +2834,8 @@ export function generateProdutos2DescriptionHashtags(params: {
     }
   } else if (
     isVestuarioMasculino ||
-    (
-      (normNiche.includes('masculino') || normNiche.includes('calcados masculinos') || normNiche.includes('roupas masculinas')) &&
-      /\b(tenis|sapato|bota|chinelo|camisa|camiseta|bermuda|calca|cueca|jaqueta|polo|moletom|roupa|calcado|coturno)\b/i.test(normName)
-    )
+    ((normNiche.includes('masculino') || normNiche.includes('calcados masculinos') || normNiche.includes('roupas masculinas')) &&
+      /\b(tenis|sapato|bota|chinelo|camisa|camiseta|bermuda|calca|cueca|jaqueta|polo|moletom|roupa|calcado|coturno)\b/i.test(normName))
   ) {
     tags.push('#modamasculina', '#estilomasculino');
     const isShoes =
@@ -2738,29 +2859,50 @@ export function generateProdutos2DescriptionHashtags(params: {
     else if (normName.includes('conjunto')) tags.push('#conjuntofeminino');
     else if (normName.includes('pijama') || normName.includes('camisola')) tags.push('#pijamafeminino');
     else if (normName.includes('tenis') || normName.includes('sapato') || normName.includes('sandalia')) tags.push('#calcadosfemininos');
+  } else if (isInfantil) {
+    if (/\b(fralda|fraldas|bebe|mamadeira|chupeta|enxoval|maternidade)\b/i.test(normFull)) {
+      tags.push('#maternidade', '#maedebebe', '#enxovaldebebe', '#cuidadoscomobebe');
+    } else {
+      tags.push('#brinquedos', '#maesnotiktok', '#brinquedoinfantil', '#infantil');
+    }
   } else if (isCasaCozinha) {
     tags.push('#achadinhosdecasa', '#dicasdecasa', '#utilidadesdomesticas', '#casaorganizada');
     if (normName.includes('rede')) tags.push('#redededescanso', '#confortoemcasa');
     else if (normName.includes('garrafa') || normName.includes('copo')) tags.push('#copotermico', '#garrafatermica');
     else if (normName.includes('ventilador') || normName.includes('climatizador')) tags.push('#ventilador', '#verao');
-  } else if (isFerramentasJardim) {
-    tags.push('#ferramentas', '#construcao', '#jardim', '#dicasuteis');
-  } else if (isBelezaCuidado) {
-    tags.push('#dicasdebeleza', '#beleza', '#autocuidado', '#skincare');
   } else if (isFitness) {
     tags.push('#fitness', '#treinoemcasa', '#vidasaudavel', '#academia');
   } else if (isAutoMoto) {
     tags.push('#automotivo', '#carros', '#motos');
-    if (normName.includes('som') || normName.includes('alto-falante')) tags.push('#somautomotivo');
-  } else if (isInfantil) {
-    tags.push('#brinquedos', '#maesnotiktok', '#brinquedoinfantil', '#infantil');
+    if (normName.includes('som') || normName.includes('alto-falante') || normName.includes('autofalante')) {
+      tags.push('#somautomotivo');
+    }
+  } else if (isPescaCampingNatacao) {
+    if (/\b(natacao|mergulho|oculos de natacao)\b/i.test(normFull)) {
+      tags.push('#natacao', '#esporteaquatico', '#treino', '#esporte');
+    } else if (/\b(pesca|pescar|molinete|carretilha|anzol|isca)\b/i.test(normFull)) {
+      tags.push('#pescaria', '#pescaesportiva', '#pescador', '#lazer');
+    } else {
+      tags.push('#camping', '#aventura', '#natureza', '#lazer');
+    }
   } else if (isPet) {
     tags.push('#petsoftiktok', '#cachorros', '#gatos', '#dicaspet');
+  } else if (isFerramentasConstrucao) {
+    tags.push('#ferramentas', '#construcao', '#oficina', '#dicasuteis');
+  } else if (isJardimAgro) {
+    tags.push('#jardim', '#jardinagem', '#cuidadoscomojardim', '#dicasuteis');
   } else {
-    tags.push('#achadinhos', '#utilidades');
+    // Extrai tags diretamente das palavras reais do nome do produto para nunca colocar nicho errado
+    for (const w of nameWords) {
+      if (w.length >= 4 && !stopWords.has(w) && tags.length < 5) {
+        const wTag = `#${w}`;
+        if (!tags.includes(wTag)) tags.push(wTag);
+      }
+    }
+    tags.push('#achadinhos', '#dicasuteis', '#praticidade');
   }
 
-  // 4. Tags universais virais de compras TikTok / Reels (ex: #viraltiktok, #fypviral, #tiktokcompras)
+  // 5. Tags universais virais de compras TikTok / Reels
   const viralShoppingTags = [
     '#viraltiktok',
     '#fypviral',
@@ -2775,7 +2917,7 @@ export function generateProdutos2DescriptionHashtags(params: {
     }
   }
 
-  // Limitar a 7-8 tags únicas
+  // Limitar a 8 tags únicas
   const uniqueTags = Array.from(new Set(tags)).slice(0, 8);
   const fullDescription = `${cleanTitle}! ${uniqueTags.join(' ')}`;
 

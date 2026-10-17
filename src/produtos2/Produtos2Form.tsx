@@ -32,12 +32,15 @@ import { extractUserSpeechFromInstructions } from './produtos2UserSpeechExtracto
 import { AIProfile } from '../config/aiProfiles';
 import { TokenUsageStats } from '../types';
 import { useLoadingGif } from '../utils/loadingGifQueue';
+import { ProgressBar } from '../components/ProgressBar';
 
 interface Produtos2FormProps {
   form: Produtos2FormState;
   onChange: React.Dispatch<React.SetStateAction<Produtos2FormState>>;
   onSubmit: () => void;
   isProcessing: boolean;
+  progressPercent?: number;
+  statusMessage?: string;
   aiProfile?: AIProfile;
   onTokenUsageChange?: (stats: TokenUsageStats) => void;
   onOpenHistory?: () => void;
@@ -102,6 +105,8 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
   onChange,
   onSubmit,
   isProcessing,
+  progressPercent = 0,
+  statusMessage = '',
   aiProfile = 'openai',
   onTokenUsageChange,
   onOpenHistory,
@@ -1601,7 +1606,23 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
       {/* ===================================================================== */}
       {/* 13. BOTÃO GERAR FALAS                                                 */}
       {/* ===================================================================== */}
-      <div className="pt-2 space-y-2">
+      <div className="pt-2 space-y-3">
+        {isGeneratingSpeeches && speechesLoadingGif && (
+          <div className="flex justify-center pb-1">
+            <img
+              src={speechesLoadingGif}
+              alt="Gerando falas..."
+              style={{
+                width: '100%',
+                maxWidth: '840px',
+                borderRadius: '16px',
+                objectFit: 'contain',
+              }}
+              className="h-auto mx-auto shadow-2xl border border-zinc-800/80"
+            />
+          </div>
+        )}
+
         <button
           type="button"
           onClick={handleGenerateSpeeches}
@@ -1622,22 +1643,6 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
             </>
           )}
         </button>
-
-        {isGeneratingSpeeches && speechesLoadingGif && (
-          <div className="flex justify-center pt-2">
-            <img
-              src={speechesLoadingGif}
-              alt="Gerando falas..."
-              style={{
-                maxWidth: '280px',
-                width: '100%',
-                borderRadius: '12px',
-                objectFit: 'cover',
-              }}
-              className="shadow-lg border border-zinc-800/80"
-            />
-          </div>
-        )}
 
         {!isViewOnly && !canGenerateSpeeches && (
           <p className="text-center text-[11px] text-amber-300/90">
@@ -2395,7 +2400,15 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
       {/* ===================================================================== */}
       {/* 15. BOTÃO GERAR VÍDEO (Storyboard 9 Cenas + Prompt Veo 3)              */}
       {/* ===================================================================== */}
-      <div className="pt-2">
+      <div className="pt-2 space-y-4">
+        {isProcessing && (
+          <ProgressBar
+            currentStep="generating_images"
+            progressPercent={progressPercent}
+            statusMessage={statusMessage}
+          />
+        )}
+
         <button
           type="button"
           onClick={() => {

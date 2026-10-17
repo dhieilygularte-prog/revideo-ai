@@ -1613,28 +1613,20 @@ export default function App() {
             )}
 
             {!produtos2Result || produtos2Page === 'form' ? (
-              <>
-                <Produtos2Form
-                  form={produtos2Form}
-                  onChange={setProdutos2Form}
-                  onSubmit={handleStartProdutos2}
-                  isProcessing={isProcessingProdutos2}
-                  aiProfile={aiProfile}
-                  onTokenUsageChange={setSessionTokenStats}
-                  onOpenHistory={() => setIsHistoryOpen(true)}
-                  isViewOnly={Boolean(produtos2Result && isProdutos2ViewOnly)}
-                  hasExistingResult={Boolean(produtos2Result)}
-                  onGoToResults={() => setProdutos2Page('results')}
-                />
-
-                {isProcessingProdutos2 && (
-                  <ProgressBar
-                    currentStep="generating_images"
-                    progressPercent={produtos2ProgressPercent}
-                    statusMessage={produtos2StatusMessage}
-                  />
-                )}
-              </>
+              <Produtos2Form
+                form={produtos2Form}
+                onChange={setProdutos2Form}
+                onSubmit={handleStartProdutos2}
+                isProcessing={isProcessingProdutos2}
+                progressPercent={produtos2ProgressPercent}
+                statusMessage={produtos2StatusMessage}
+                aiProfile={aiProfile}
+                onTokenUsageChange={setSessionTokenStats}
+                onOpenHistory={() => setIsHistoryOpen(true)}
+                isViewOnly={Boolean(produtos2Result && isProdutos2ViewOnly)}
+                hasExistingResult={Boolean(produtos2Result)}
+                onGoToResults={() => setProdutos2Page('results')}
+              />
             ) : (
               <div className="space-y-6">
                 {/* Navegação superior: Voltar para a página anterior (acima da seção Histórico de Gerações) */}

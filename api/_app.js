@@ -4018,6 +4018,7 @@ Retorne APENAS um objeto JSON v\xE1lido com as chaves:
 {
   "manufacturerLogoDescription": "string (descreva com precis\xE3o cir\xFArgica a logomarca, emblema, s\xEDmbolo ou nome da marca impresso/estampado no pr\xF3prio produto nas fotos de refer\xEAncia: formato, desenho, letras, cor exata e posi\xE7\xE3o exata na pe\xE7a, ex: 'Logomarca geom\xE9trica branca em formato de escudo hexagonal com W estilizado centralizada na parte superior do encosto preto')",
   "adaptedCopy": "string",
+  "hashtags": ["#tag1", "#tag2", "#tag3", "#tag4", "#tag5 (5 hashtags em portugu\xEAs, min\xFAsculas e sem acentos, 100% relacionadas especificamente a este produto e \xE0 sua verdadeira categoria/fun\xE7\xE3o real, ex: para irrigador oral use #irrigadororal, #higienebucal, #saudebucal, #cuidadospessoais, #sorrisoperfeito \u2014 NUNCA coloque hashtags aleat\xF3rias ou de outros nichos)"],
   "productLock": ["string (1\xBA item obrigatoriamente a descri\xE7\xE3o exata da logomarca/marca impressa no produto e sua posi\xE7\xE3o)", "string", "string", "string"],
   "avatarDescription": "string",
   "scenarioDescription": "string",

@@ -30,7 +30,6 @@ import { VideoFidelityAuditor } from './VideoFidelityAuditor';
 import { MicroImageEditor } from '../components/MicroImageEditor';
 import { AIProfile } from '../config/aiProfiles';
 import { TokenUsageStats } from '../types';
-import { useLoadingGif } from '../utils/loadingGifQueue';
 
 interface Produtos2ResultsProps {
   result: Produtos2ResultState;
@@ -132,10 +131,6 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
   const speechRecRef = useRef<any>(null);
   const speechStreamRef = useRef<MediaStream | null>(null);
   const prevVeoPromptRef = useRef<string>(result.veoPrompt);
-
-  const storyboardLoadingGif = useLoadingGif(
-    Boolean(result.isRegeneratingStoryboard || isRecreatingFullStoryboard)
-  );
 
   useEffect(() => {
     setSpeechInput(result.finalCopy || '');
@@ -1153,21 +1148,8 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
 
           <div className="relative aspect-[9/16] w-full max-w-[360px] mx-auto rounded-2xl overflow-hidden bg-zinc-950 border-2 border-zinc-800 shadow-2xl group">
             {result.isRegeneratingStoryboard || isRecreatingFullStoryboard ? (
-              <div className="w-full h-full flex flex-col items-center justify-center p-5 text-center gap-3">
-                {storyboardLoadingGif && (
-                  <img
-                    src={storyboardLoadingGif}
-                    alt="Processando..."
-                    style={{
-                      maxWidth: '280px',
-                      width: '100%',
-                      borderRadius: '12px',
-                      objectFit: 'cover',
-                    }}
-                    className="shadow-lg border border-zinc-800/80 mx-auto"
-                  />
-                )}
-                <RefreshCw className="w-6 h-6 text-sky-400 animate-spin" />
+              <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center gap-3">
+                <RefreshCw className="w-8 h-8 text-sky-400 animate-spin" />
                 <p className="text-xs font-bold text-zinc-200">
                   {isRecreatingFullStoryboard
                     ? recreateStatusMessage || 'Recriando Storyboard 3×3 e Prompt do Veo 3 com a nova fala...'

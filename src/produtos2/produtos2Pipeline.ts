@@ -652,6 +652,7 @@ export async function runProdutos2Pipeline(params: {
   let visualMap: Produtos2VisualMapItem[] = fallbackPlan.visualMap;
   let scenes: Produtos2SceneItem[] = fallbackPlan.scenes;
   let planUsage: any = null;
+  let aiGeneratedHashtags: string[] | undefined = undefined;
 
   // Refinamento Inteligente via IA (/api/produtos2-planning) analisando as fotos reais e a copy
   try {
@@ -689,6 +690,9 @@ export async function runProdutos2Pipeline(params: {
       if (planJson && planJson.success && planJson.data) {
         const d = planJson.data;
         planUsage = planJson.usage;
+        if (Array.isArray(d.hashtags) && d.hashtags.length > 0) {
+          aiGeneratedHashtags = d.hashtags.map((t: any) => String(t).trim()).filter(Boolean);
+        }
 
         // Se o usuário selecionou uma fala previamente (ou customCopy), preserva a fala escolhida!
         if (form.speechesGenerated || form.bancoCopy || form.auroraCopy || (form.customCopy && form.customCopy.trim())) {
@@ -896,11 +900,13 @@ export async function runProdutos2Pipeline(params: {
   // Gerar Descrição do Post + Hashtags para TikTok / Reels (Modo Ania portado para Produtos 2.0)
   const { description, hashtags } = generateProdutos2DescriptionHashtags({
     productName: finalProductName,
+    productInfo: form.productInfo,
     niche: detectedNiche,
     subMode: form.subMode,
     maleSubOption: form.maleSubOption,
     clientGender: form.clientGender,
     finalCopy,
+    aiHashtags: aiGeneratedHashtags,
   });
 
   // Calibragem e consolidação de tokens e custos para o Modo Produtos 2.0
