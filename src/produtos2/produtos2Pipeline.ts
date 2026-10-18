@@ -601,6 +601,33 @@ export async function runProdutos2LeilaoPipeline(params: {
       userSpeech: form.userSpeech,
     });
     speeches = generated.leilaoSpeech;
+
+    if (form.productInfo && form.productInfo.trim()) {
+      try {
+        const res = await fetch('/api/produtos2-planning', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'generate_leilao_speeches',
+            productName: form.productName,
+            productInfo: form.productInfo,
+            realPrice,
+            l1Text: generated.l1Text,
+            l2Text: generated.l2Text,
+            shortName: generated.shortName,
+            fullName: generated.fullName,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.leilaoSpeech) {
+            speeches = data.leilaoSpeech;
+          }
+        }
+      } catch (e) {
+        console.warn('Fallback para falas locais do modo leilão no pipeline:', e);
+      }
+    }
   }
 
   const productSize = classifyProductSize(form.productName, form.productInfo);

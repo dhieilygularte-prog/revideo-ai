@@ -3788,6 +3788,75 @@ Sugest\xE3o base local da Fala 2: "${copy2?.localAdaptedText || ""}"` : ""}`;
         });
       }
     }
+    if (action === "generate_leilao_speeches") {
+      try {
+        const prodName = (productName || req.body.productName || "Produto").trim();
+        const pInfo = (productInfo || req.body.productInfo || "").trim();
+        const l1Text = (req.body.l1Text || "quatro mil").trim();
+        const l2Text = (req.body.l2Text || "tr\xEAs mil").trim();
+        const shortName = (req.body.shortName || prodName).trim();
+        const fullName = (req.body.fullName || prodName).trim();
+        const leilaoPrompt = `Voc\xEA \xE9 o redator oficial do Modo Leil\xE3o para criativos de alta convers\xE3o do TikTok Shop / Reels.
+Sua miss\xE3o \xE9 gerar EXATAMENTE as 3 falas do criativo de leil\xE3o para o produto: "${prodName}".
+Informa\xE7\xF5es reais do produto:
+"""
+${pInfo}
+"""
+
+ESTRUTURA OBRIGAT\xD3RIA E RIGOROSA:
+CENA 1 (Gancho no sal\xE3o de leil\xE3o - 0 a 12s):
+"Quem d\xE1 ${l1Text} reais nesse ${shortName}? Quem d\xE1 ${l2Text}? Dou-lhe uma! Pera\xED... Olha o valor desse ${shortName} no TikTok Shop. T\xE1 de gra\xE7a!"
+
+CENA 2 (Revela\xE7\xE3o e 2 diferenciais reais do produto - 12 a 24s):
+"Leil\xE3o cancelado! Esse \xE9 o ${fullName}. [DIFERENCIAL 1]. [DIFERENCIAL 2]."
+Exemplo de refer\xEAncia do modelo: "Leil\xE3o cancelado! Esse \xE9 o notebook Vaio FE16. Tela de 16 polegadas IPS antirreflexo. Processador AMD Ryzen 7."
+
+CENA 3 (Chamada para a\xE7\xE3o no carrinho laranja - 24 a 30s):
+"Por esse valor, n\xE3o tem como fazer leil\xE3o! Clica no carrinho laranja e garante o seu!"
+
+REGRAS INEGOCI\xC1VEIS:
+1. NUNCA inclua s\xEDmbolos como \xAE, \u2122, \xA9, *, \u2022 ou #.
+2. Na CENA 2, [DIFERENCIAL 1] e [DIFERENCIAL 2] NUNCA devem repetir o nome do produto! Extraia os 2 maiores destaques das informa\xE7\xF5es (ex: Tela, Processador, Mem\xF3ria, Jato de \xE1gua pressurizado, Bateria, etc.).
+3. NUNCA termine frases com retic\xEAncias (...) ou palavras cortadas. Cada frase deve ser completa e terminar com ponto final.
+4. O texto deve ser 100% otimizado para narra\xE7\xE3o por voz de IA, fluido e natural em portugu\xEAs brasileiro.
+
+Responda EXCLUSIVAMENTE em formato JSON com esta estrutura:
+{
+  "cena1": "texto exato da cena 1",
+  "cena2": "texto exato da cena 2",
+  "cena3": "texto da cena 3"
+}`;
+        const aiOutput = await executeFastAIText({
+          systemPrompt: "Voc\xEA \xE9 um redator s\xEAnior de an\xFAncios de alta convers\xE3o para TikTok Shop. Responda apenas em JSON v\xE1lido.",
+          userPrompt: leilaoPrompt,
+          jsonMode: true,
+          temperature: 0.2
+        });
+        const rawJson = aiOutput.text.replace(/```json\s*/i, "").replace(/```\s*$/i, "").trim();
+        let parsed = JSON.parse(rawJson);
+        const cleanSpeech = (t) => normalizeVoiceText(t).replace(/[®™©℠]/g, "").replace(/[*_~•|/\\#]/g, " ").replace(/\.{2,}/g, ".").replace(/\s+/g, " ").trim();
+        const cena1 = cleanSpeech(parsed.cena1 || `Quem d\xE1 ${l1Text} reais nesse ${shortName}? Quem d\xE1 ${l2Text}? Dou-lhe uma! Pera\xED... Olha o valor desse ${shortName} no TikTok Shop. T\xE1 de gra\xE7a!`);
+        const cena2 = cleanSpeech(parsed.cena2 || `Leil\xE3o cancelado! Esse \xE9 o ${fullName}. Alta performance e velocidade. Constru\xE7\xE3o refor\xE7ada de longa durabilidade.`);
+        const cena3 = cleanSpeech(parsed.cena3 || `Por esse valor, n\xE3o tem como fazer leil\xE3o! Clica no carrinho laranja e garante o seu!`);
+        return res.json({
+          success: true,
+          leilaoSpeech: {
+            cena1,
+            cena1A: cena1.split("Pera\xED")[0]?.trim() || cena1,
+            cena1B: cena1.includes("Pera\xED") ? `Pera\xED${cena1.split("Pera\xED")[1]}`.trim() : "",
+            cena2,
+            cena2A: `Leil\xE3o cancelado! Esse \xE9 o ${fullName}.`,
+            cena2B: cena2.replace(`Leil\xE3o cancelado! Esse \xE9 o ${fullName}.`, "").trim(),
+            cena3,
+            full: `${cena1} ${cena2} ${cena3}`
+          },
+          usage: aiOutput.usage
+        });
+      } catch (err) {
+        console.warn("Erro ao gerar falas leil\xE3o com IA:", err?.message || err);
+        return res.status(500).json({ success: false, error: err?.message || "Erro ao gerar falas do leil\xE3o." });
+      }
+    }
     if (action === "normalize_speech_for_ai" || action === "review_user_speech") {
       try {
         const inputSpeech = (req.body.text || req.body.speech || baseCopy || "").trim();

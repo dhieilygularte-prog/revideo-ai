@@ -2714,6 +2714,89 @@ Sugestão base local da Fala 2: "${copy2?.localAdaptedText || ''}"` : ''}`;
       }
     }
 
+    // Ação: Geração inteligente das 3 falas do Modo Leilão (fiel ao modelo original)
+    if (action === 'generate_leilao_speeches') {
+      try {
+        const prodName = (productName || req.body.productName || 'Produto').trim();
+        const pInfo = (productInfo || req.body.productInfo || '').trim();
+        const l1Text = (req.body.l1Text || 'quatro mil').trim();
+        const l2Text = (req.body.l2Text || 'três mil').trim();
+        const shortName = (req.body.shortName || prodName).trim();
+        const fullName = (req.body.fullName || prodName).trim();
+
+        const leilaoPrompt = `Você é o redator oficial do Modo Leilão para criativos de alta conversão do TikTok Shop / Reels.
+Sua missão é gerar EXATAMENTE as 3 falas do criativo de leilão para o produto: "${prodName}".
+Informações reais do produto:
+"""
+${pInfo}
+"""
+
+ESTRUTURA OBRIGATÓRIA E RIGOROSA:
+CENA 1 (Gancho no salão de leilão - 0 a 12s):
+"Quem dá ${l1Text} reais nesse ${shortName}? Quem dá ${l2Text}? Dou-lhe uma! Peraí... Olha o valor desse ${shortName} no TikTok Shop. Tá de graça!"
+
+CENA 2 (Revelação e 2 diferenciais reais do produto - 12 a 24s):
+"Leilão cancelado! Esse é o ${fullName}. [DIFERENCIAL 1]. [DIFERENCIAL 2]."
+Exemplo de referência do modelo: "Leilão cancelado! Esse é o notebook Vaio FE16. Tela de 16 polegadas IPS antirreflexo. Processador AMD Ryzen 7."
+
+CENA 3 (Chamada para ação no carrinho laranja - 24 a 30s):
+"Por esse valor, não tem como fazer leilão! Clica no carrinho laranja e garante o seu!"
+
+REGRAS INEGOCIÁVEIS:
+1. NUNCA inclua símbolos como ®, ™, ©, *, • ou #.
+2. Na CENA 2, [DIFERENCIAL 1] e [DIFERENCIAL 2] NUNCA devem repetir o nome do produto! Extraia os 2 maiores destaques das informações (ex: Tela, Processador, Memória, Jato de água pressurizado, Bateria, etc.).
+3. NUNCA termine frases com reticências (...) ou palavras cortadas. Cada frase deve ser completa e terminar com ponto final.
+4. O texto deve ser 100% otimizado para narração por voz de IA, fluido e natural em português brasileiro.
+
+Responda EXCLUSIVAMENTE em formato JSON com esta estrutura:
+{
+  "cena1": "texto exato da cena 1",
+  "cena2": "texto exato da cena 2",
+  "cena3": "texto da cena 3"
+}`;
+
+        const aiOutput = await executeFastAIText({
+          systemPrompt: 'Você é um redator sênior de anúncios de alta conversão para TikTok Shop. Responda apenas em JSON válido.',
+          userPrompt: leilaoPrompt,
+          jsonMode: true,
+          temperature: 0.2,
+        });
+
+        const rawJson = aiOutput.text.replace(/```json\s*/i, '').replace(/```\s*$/i, '').trim();
+        let parsed = JSON.parse(rawJson);
+
+        const cleanSpeech = (t: string) =>
+          normalizeVoiceText(t)
+            .replace(/[®™©℠]/g, '')
+            .replace(/[*_~•|/\\#]/g, ' ')
+            .replace(/\.{2,}/g, '.')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        const cena1 = cleanSpeech(parsed.cena1 || `Quem dá ${l1Text} reais nesse ${shortName}? Quem dá ${l2Text}? Dou-lhe uma! Peraí... Olha o valor desse ${shortName} no TikTok Shop. Tá de graça!`);
+        const cena2 = cleanSpeech(parsed.cena2 || `Leilão cancelado! Esse é o ${fullName}. Alta performance e velocidade. Construção reforçada de longa durabilidade.`);
+        const cena3 = cleanSpeech(parsed.cena3 || `Por esse valor, não tem como fazer leilão! Clica no carrinho laranja e garante o seu!`);
+
+        return res.json({
+          success: true,
+          leilaoSpeech: {
+            cena1,
+            cena1A: cena1.split('Peraí')[0]?.trim() || cena1,
+            cena1B: cena1.includes('Peraí') ? `Peraí${cena1.split('Peraí')[1]}`.trim() : '',
+            cena2,
+            cena2A: `Leilão cancelado! Esse é o ${fullName}.`,
+            cena2B: cena2.replace(`Leilão cancelado! Esse é o ${fullName}.`, '').trim(),
+            cena3,
+            full: `${cena1} ${cena2} ${cena3}`,
+          },
+          usage: aiOutput.usage,
+        });
+      } catch (err: any) {
+        console.warn('Erro ao gerar falas leilão com IA:', err?.message || err);
+        return res.status(500).json({ success: false, error: err?.message || 'Erro ao gerar falas do leilão.' });
+      }
+    }
+
     // Ação 2: Revisão conservadora de texto (Botão "Revisar texto" na geração e na tela final do storyboard)
     if (action === 'normalize_speech_for_ai' || action === 'review_user_speech') {
       try {

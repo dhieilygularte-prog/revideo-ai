@@ -334,13 +334,29 @@ export function classifyProductSize(productName: string, productInfo: string): '
 }
 
 /**
+ * Sanitiza texto para narração por voz IA:
+ * - Remove marcas registradas e símbolos proibidos para narração IA (®, ™, ©, etc.)
+ * - Remove asteriscos, bullets, barras e caracteres de formatação
+ * - Remove reticências que truncam palavras
+ */
+export function sanitizeTextForAISpeech(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/[®™©℠]/g, '')
+    .replace(/[*_~•|/\\#]/g, ' ')
+    .replace(/\.{2,}/g, '.')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
  * Extrai nome curto (2 a 4 palavras) e nome completo/modelo do produto.
  */
-export function extractLeilaoProductNames(productName: string, productInfo: string): {
+export function extractLeilaoProductNames(productName: string, productInfo?: string): {
   shortName: string;
   fullName: string;
 } {
-  const cleanName = productName
+  const cleanName = sanitizeTextForAISpeech(productName)
     .replace(/[•\n\r|]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
@@ -349,18 +365,8 @@ export function extractLeilaoProductNames(productName: string, productInfo: stri
   let shortName = words.slice(0, 4).join(' ');
   if (!shortName) shortName = 'produto';
 
-  // Nome completo: até 6-8 palavras ou nome curto + primeiro diferencial
-  let fullName = words.slice(0, 7).join(' ');
+  let fullName = words.slice(0, 5).join(' ');
   if (!fullName) fullName = shortName;
-
-  // Se o nome completo for idêntico ao nome curto mas houver modelo nas informações, complementa
-  if (fullName === shortName && productInfo) {
-    const modelMatch = productInfo.match(/(?:modelo|linha|vers[aã]o|processador|geração)[:\s]+([^\n.,;]+)/i);
-    if (modelMatch && modelMatch[1]) {
-      const extra = modelMatch[1].trim().split(' ').slice(0, 3).join(' ');
-      fullName = `${shortName} ${extra}`.trim();
-    }
-  }
 
   return { shortName, fullName };
 }
@@ -373,7 +379,8 @@ export function formatSpecsForSpokenPortuguese(text: string): string {
   if (!text) return '';
 
   return text
-    .replace(/(\d+)\s*["”']\s*(?:polegadas)?/gi, (_, n) => `${numberToPortugueseWords(parseInt(n, 10))} polegadas`)
+    .replace(/[®™©℠]/g, '')
+    .replace(/(\d+(?:[.,]\d+)?)\s*["”']\s*(?:polegadas)?/gi, (_, n) => `${numberToPortugueseWords(parseFloat(n.replace(',', '.')))} polegadas`)
     .replace(/(\d+)\s*hz/gi, (_, n) => `${numberToPortugueseWords(parseInt(n, 10))} hertz`)
     .replace(/(\d+)\s*w\b/gi, (_, n) => `${numberToPortugueseWords(parseInt(n, 10))} watts`)
     .replace(/(\d+)\s*mah/gi, (_, n) => `${numberToPortugueseWords(parseInt(n, 10))} miliamperes`)
@@ -387,67 +394,160 @@ export function formatSpecsForSpokenPortuguese(text: string): string {
     .replace(/4G\b/g, 'quatro G')
     .replace(/4K\b/g, 'quatro K')
     .replace(/8K\b/g, 'oito K')
-    .replace(/Ryzen\s*7\b/gi, 'Ryzen sete')
-    .replace(/Ryzen\s*5\b/gi, 'Ryzen cinco')
-    .replace(/Core\s*i7\b/gi, 'Core i sete')
-    .replace(/Core\s*i5\b/gi, 'Core i cinco')
-    .replace(/Core\s*i9\b/gi, 'Core i nove')
+    .replace(/Ryzen\s*7\b/gi, 'Ryzen 7')
+    .replace(/Ryzen\s*5\b/gi, 'Ryzen 5')
+    .replace(/Core\s*i7\b/gi, 'Core i7')
+    .replace(/Core\s*i5\b/gi, 'Core i5')
+    .replace(/Core\s*i9\b/gi, 'Core i9')
+    .replace(/anti-reflexo/gi, 'antirreflexo')
     .replace(/120Hz/gi, 'cento e vinte hertz')
     .replace(/60Hz/gi, 'sessenta hertz')
     .replace(/144Hz/gi, 'cento e quarenta e quatro hertz')
-    .replace(/1080p/gi, 'dez oitenta p')
-    .replace(/WUXGA/gi, 'W U X G A')
-    .replace(/IPS/gi, 'I P S')
-    .replace(/LED/gi, 'Léd')
-    .replace(/OLED/gi, 'O-Léd')
-    .replace(/AMOLED/gi, 'Amo-léd')
+    .replace(/1080p/gi, 'Full HD')
+    .replace(/WUXGA/gi, 'Full HD')
+    .replace(/IPS/gi, 'IPS')
+    .replace(/LED/gi, 'LED')
+    .replace(/OLED/gi, 'OLED')
+    .replace(/AMOLED/gi, 'AMOLED')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
 /**
- * Extrai até 2 benefícios concretos com números das informações do produto
- * (limite de ~80 caracteres totais, números por extenso).
+ * Extrai até 2 benefícios concretos das informações do produto:
+ * - NUNCA repete o nome do produto
+ * - NUNCA inclui marcas registradas (® ou ™)
+ * - NUNCA corta palavras no meio com reticências
+ * - Prioriza especificações nobres (Tela, Processador, Memória, Jato, Bateria)
  */
 export function extractLeilaoBenefits(productInfo: string, productName: string): string[] {
   if (!productInfo || typeof productInfo !== 'string') {
     return ['Alta potência e desempenho premium', 'Construção reforçada de longa durabilidade'];
   }
 
-  // Divide por linhas ou marcadores
-  const lines = productInfo
-    .split(/[\n\r•\-\*]/)
-    .map((l) => l.trim())
-    .filter((l) => l.length > 10 && !l.toLowerCase().includes('segurança') && !l.toLowerCase().includes('perigo'));
+  const cleanInfo = productInfo
+    .replace(/[®™©℠]/g, '')
+    .replace(/[*_~•|/\\#]/g, ' ')
+    .replace(/\s+/g, ' ');
 
-  // Procura linhas com especificações concretas com números
-  const candidatesWithNumbers = lines.filter((l) => /\d/.test(l));
-  const pool = candidatesWithNumbers.length >= 2 ? candidatesWithNumbers : lines;
+  const cleanProd = (productName || '')
+    .replace(/[®™©℠]/g, '')
+    .trim();
 
-  const cleanBenefits: string[] = [];
-  for (const raw of pool) {
-    if (cleanBenefits.length >= 2) break;
-    const clean = raw
-      .replace(/^[0-9a-zA-Z\s]+:\s*/, '') // Remove prefixos tipo "Conforto Máximo: "
-      .replace(/[•\-\*]/g, '')
-      .trim();
+  const foundBenefits: string[] = [];
 
-    if (clean.length >= 8 && !cleanBenefits.some((b) => b.toLowerCase().slice(0, 15) === clean.toLowerCase().slice(0, 15))) {
-      const formatted = formatSpecsForSpokenPortuguese(clean);
-      // Pega até cerca de 45-50 caracteres de cada benefício para manter a soma <= 80 chars
-      const shortDesc = formatted.length > 55 ? `${formatted.slice(0, 52).trim()}...` : formatted;
-      cleanBenefits.push(shortDesc);
+  // 1. Detectores de padrões nobres para eletrônicos / tecnologia (Notebooks, Smartphones, Gadgets)
+  // Tela (ex: Tela de 16 polegadas IPS antirreflexo)
+  const screenMatch = cleanInfo.match(/(?:tela|display|monitor)\s*(?:de)?\s*(\d+(?:[.,]\d+)?\s*(?:["”']|polegadas)?(?:\s*(?:ips|oled|amoled|fhd|full\s*hd|antirreflexo|anti-reflexo|retina|\d+\s*hz))*)/i);
+  if (screenMatch && screenMatch[1]) {
+    let screenText = `Tela de ${screenMatch[1].trim()}`
+      .replace(/["”']/g, ' polegadas')
+      .replace(/anti-reflexo/gi, 'antirreflexo')
+      .replace(/\s+/g, ' ');
+    if (!screenText.toLowerCase().includes('polegadas')) {
+      screenText = screenText.replace(/Tela de (\d+)/i, 'Tela de $1 polegadas');
+    }
+    foundBenefits.push(screenText);
+  }
+
+  // Processador (ex: Processador AMD Ryzen 7)
+  const procMatch = cleanInfo.match(/(?:processador|chip|cpu)?\s*(amd\s*ryzen\s*\d+|intel\s*core\s*i\d+|snapdragon\s*[\d\w+]+|apple\s*m\d+)/i);
+  if (procMatch && procMatch[1]) {
+    const procText = `Processador ${procMatch[1].trim().replace(/\s+/g, ' ')}`;
+    foundBenefits.push(procText);
+  }
+
+  // Jato de água / Limpeza (para Irrigador Oral / Bucal)
+  const jatoMatch = cleanInfo.match(/(jato\s*(?:de\s*)?[aá]gua\s*(?:pressurizado|de\s*alta\s*press[aã]o)?|limpeza\s*profunda(?:\s*entre\s*os\s*dentes)?)/i);
+  if (jatoMatch && jatoMatch[1]) {
+    foundBenefits.push('Jato de água pressurizado para limpeza profunda');
+  }
+
+  // Bateria recarregável / Autonomia
+  const batMatch = cleanInfo.match(/(bateria\s*(?:recarreg[aá]vel\s*)?de\s*longa\s*dura[cç][aã]o|bateria\s*de\s*\d+\s*m?ah|autonomia\s*de\s*(?:at[eé]\s*)?\d+\s*horas?)/i);
+  if (batMatch && batMatch[1] && foundBenefits.length < 2) {
+    foundBenefits.push('Bateria recarregável de longa duração');
+  }
+
+  // Memória RAM (se ainda não temos 2)
+  if (foundBenefits.length < 2) {
+    const ramMatch = cleanInfo.match(/(\d+\s*(?:gb|gigas)\s*(?:de\s*)?ram)/i);
+    if (ramMatch && ramMatch[1]) {
+      foundBenefits.push(`${ramMatch[1].replace(/gb/i, 'gigas de')} RAM`);
     }
   }
 
-  if (cleanBenefits.length === 0) {
-    cleanBenefits.push('Alta durabilidade com acabamento reforçado');
-    cleanBenefits.push('Desempenho rápido e confiável no uso diário');
-  } else if (cleanBenefits.length === 1) {
-    cleanBenefits.push('Acabamento premium de alta resistência');
+  // Armazenamento SSD (se ainda não temos 2)
+  if (foundBenefits.length < 2) {
+    const ssdMatch = cleanInfo.match(/(\d+\s*(?:gb|tb)\s*ssd)/i);
+    if (ssdMatch && ssdMatch[1]) {
+      foundBenefits.push('Armazenamento SSD de alta velocidade');
+    }
   }
 
-  return cleanBenefits;
+  // Se já encontrou 2 benefícios específicos por padrão nobre, retorna
+  if (foundBenefits.length >= 2) {
+    return foundBenefits.slice(0, 2).map((b) => b.trim().replace(/[.,;]+$/, ''));
+  }
+
+  // 2. Extração por linhas/frases com filtro estrito anti-repetição do produto
+  const prodTokens = cleanProd
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((w) => w.length >= 3);
+
+  const lines = productInfo
+    .split(/[\n\r•\-\*;|]/)
+    .map((l) => l.trim())
+    .filter(
+      (l) =>
+        l.length >= 8 &&
+        !/seguran[cç]a|perigo|cuidado|aviso|garantia|sac|fabricado|cnpj|c[oó]digo|dimens[oõ]es|peso|embalagem|linux|windows/i.test(l)
+    );
+
+  for (const rawLine of lines) {
+    if (foundBenefits.length >= 2) break;
+
+    let clean = rawLine
+      .replace(/^[0-9a-zA-ZÀ-ÿ\s]+:\s*/, '')
+      .replace(/[®™©℠]/g, '')
+      .replace(/[*_~•|/\\#]/g, ' ')
+      .trim();
+
+    // Remove tokens do nome do produto no início para não duplicar
+    for (const t of prodTokens) {
+      const reg = new RegExp(`^${t}\\b[:\\s-]*`, 'gi');
+      clean = clean.replace(reg, '').trim();
+    }
+
+    if (clean.length < 6) continue;
+
+    // Pega a primeira oração completa
+    const clause = clean.split(/[,.;]/)[0].trim();
+    if (clause.length >= 8 && clause.length <= 50) {
+      if (!foundBenefits.some((b) => b.toLowerCase().includes(clause.toLowerCase().slice(0, 10)))) {
+        foundBenefits.push(clause);
+      }
+    } else if (clean.length > 50) {
+      // Pega até 5-6 palavras sem cortar palavra no meio
+      const words = clean.split(/\s+/).slice(0, 6).join(' ');
+      if (words.length >= 8) {
+        foundBenefits.push(words);
+      }
+    }
+  }
+
+  if (foundBenefits.length === 0) {
+    foundBenefits.push('Alta performance e velocidade');
+    foundBenefits.push('Construção reforçada de longa durabilidade');
+  } else if (foundBenefits.length === 1) {
+    foundBenefits.push('Acabamento premium de alta resistência');
+  }
+
+  return foundBenefits.slice(0, 2).map((b) => {
+    const trimmed = b.trim().replace(/[.,;]+$/, '');
+    return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+  });
 }
 
 /**
@@ -471,7 +571,6 @@ export function buildLeilaoPresenter(additionalInstructions?: string): {
   // Se o usuário passou instruções específicas para o apresentador nas instruções adicionais
   const cleanInstructions = (additionalInstructions || '').trim();
   if (cleanInstructions.length > 3) {
-    // Incorpora as características solicitadas mantendo o estilo de leiloeiro elegante
     return {
       presenterDescription: cleanInstructions,
       gender,
@@ -479,7 +578,6 @@ export function buildLeilaoPresenter(additionalInstructions?: string): {
     };
   }
 
-  // Descrição padrão canônica da Seção 4
   return {
     presenterDescription:
       'homem branco de cerca de 55 anos, cabelo grisalho penteado para trás, barba grisalha cheia e bem aparada',
@@ -498,6 +596,7 @@ export function buildLeilaoSpeeches(params: {
   productName: string;
   productInfo: string;
   realPrice: number;
+  additionalInstructions?: string;
   userSpeech?: string;
 }): {
   leilaoSpeech: LeilaoSpeechParts;
@@ -510,36 +609,54 @@ export function buildLeilaoSpeeches(params: {
   l1Text: string;
   l2Text: string;
 } {
-  const { productName, productInfo, realPrice, userSpeech } = params;
+  const { productName, productInfo, realPrice, additionalInstructions, userSpeech } = params;
 
   const bids = calculateLeilaoBids(realPrice);
   const { shortName, fullName } = extractLeilaoProductNames(productName, productInfo);
   const benefits = extractLeilaoBenefits(productInfo, productName);
 
+  const cleanShortName = sanitizeTextForAISpeech(shortName);
+  const cleanFullName = sanitizeTextForAISpeech(fullName);
+
   const l1Words = bids.l1Text || 'quatro mil';
   const l2Words = bids.l2Text || 'três mil';
 
-  // CENA 1
-  const cena1A = `Quem dá ${l1Words} reais nesse ${shortName}? Quem dá ${l2Words}? Dou-lhe uma!`;
-  const cena1B = `Peraí... Olha o valor desse ${shortName} no TikTok Shop. Tá de graça!`;
-  let cena1 = `${cena1A} ${cena1B}`.trim();
+  // CENA 1: fiel ao modelo original
+  const cena1A = `Quem dá ${l1Words} reais nesse ${cleanShortName}? Quem dá ${l2Words}? Dou-lhe uma!`;
+  const cena1B = `Peraí... Olha o valor desse ${cleanShortName} no TikTok Shop. Tá de graça!`;
+  const cena1 = `${cena1A} ${cena1B}`.trim();
 
-  // CENA 2
-  const b1 = benefits[0] || 'Desempenho de alta performance';
-  const b2 = benefits[1] || 'Construção reforçada';
-  const cena2A = `Leilão cancelado! Esse é o ${fullName}.`;
-  const cena2B = `${b1}. ${b2}.`;
+  // CENA 2: fiel ao modelo original
+  // "Leilão cancelado! Esse é o [NOME COMPLETO]. [BENEFÍCIO 1]. [BENEFÍCIO 2]."
+  // NUNCA repetir o nome do produto no benefício 1 e 2!
+  let b1 = sanitizeTextForAISpeech(benefits[0] || 'Desempenho de alta performance');
+  let b2 = sanitizeTextForAISpeech(benefits[1] || 'Construção reforçada');
+
+  // Garante que b1 e b2 não comecem repetindo o produto
+  const prodTokens = cleanFullName.toLowerCase().split(/\s+/);
+  for (const t of prodTokens) {
+    if (t.length >= 3) {
+      b1 = b1.replace(new RegExp(`^${t}\\b[:\\s-]*`, 'gi'), '').trim();
+      b2 = b2.replace(new RegExp(`^${t}\\b[:\\s-]*`, 'gi'), '').trim();
+    }
+  }
+  b1 = b1 ? b1.charAt(0).toUpperCase() + b1.slice(1) : 'Desempenho de alta performance';
+  b2 = b2 ? b2.charAt(0).toUpperCase() + b2.slice(1) : 'Construção reforçada';
+
+  const cena2A = `Leilão cancelado! Esse é o ${cleanFullName}.`;
+  const cena2B = `${b1}. ${b2}.`.replace(/\.{2,}/g, '.');
   let cena2 = `${cena2A} ${cena2B}`.trim();
 
-  // Garantir que a Cena 2 não ultrapasse 250 caracteres
+  // Garantir que a Cena 2 não ultrapasse 250 caracteres sem cortar palavras
   if (cena2.length > 250) {
     cena2 = `${cena2A} ${b1}.`.trim();
     if (cena2.length > 250) {
-      cena2 = cena2.slice(0, 245).trim() + '.';
+      const cutIdx = cena2.slice(0, 240).lastIndexOf(' ');
+      cena2 = (cutIdx > 0 ? cena2.slice(0, cutIdx) : cena2.slice(0, 240)).trim() + '.';
     }
   }
 
-  // CENA 3
+  // CENA 3: fiel ao modelo original
   const cena3 = `Por esse valor, não tem como fazer leilão! Clica no carrinho laranja e garante o seu!`;
 
   const full = `${cena1} ${cena2} ${cena3}`;

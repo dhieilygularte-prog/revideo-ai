@@ -293,17 +293,47 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
           userSpeech: form.userSpeech,
         });
 
+        let finalLeilaoSpeech = generated.leilaoSpeech;
+
+        // Tenta gerar via IA no servidor para máxima fidelidade e extração de diferenciais reais
+        if (form.productInfo && form.productInfo.trim()) {
+          try {
+            const res = await fetch('/api/produtos2-planning', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'generate_leilao_speeches',
+                productName: finalProductName,
+                productInfo: form.productInfo,
+                realPrice,
+                l1Text: generated.l1Text,
+                l2Text: generated.l2Text,
+                shortName: generated.shortName,
+                fullName: generated.fullName,
+              }),
+            });
+            if (res.ok) {
+              const data = await res.json();
+              if (data.success && data.leilaoSpeech) {
+                finalLeilaoSpeech = data.leilaoSpeech;
+              }
+            }
+          } catch (e) {
+            console.warn('Fallback para falas locais do modo leilão:', e);
+          }
+        }
+
         onChange((prev) => ({
           ...prev,
           realPrice,
           realPriceRaw: String(realPrice),
-          leilaoSpeech: generated.leilaoSpeech,
+          leilaoSpeech: finalLeilaoSpeech,
           userSpeech: generated.userSpeechParts
             ? `${generated.userSpeechParts.cena1}\n\n${generated.userSpeechParts.cena2}\n\n${generated.userSpeechParts.cena3}`
             : prev.userSpeech,
           speechesGenerated: true,
           selectedSpeechOption: 'leilao',
-          finalSelectedSpeech: `${generated.leilaoSpeech.cena1}\n\n${generated.leilaoSpeech.cena2}\n\n${generated.leilaoSpeech.cena3}`,
+          finalSelectedSpeech: `${finalLeilaoSpeech.cena1}\n\n${finalLeilaoSpeech.cena2}\n\n${finalLeilaoSpeech.cena3}`,
         }));
 
         setIsGeneratingSpeeches(false);
