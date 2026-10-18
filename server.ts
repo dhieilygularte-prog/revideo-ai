@@ -2260,7 +2260,7 @@ app.post('/api/produtos2-planning', async (req, res) => {
             ],
             ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
             temperature,
-            max_tokens: 260,
+            max_tokens: 420,
           });
           const content = comp.choices[0]?.message?.content?.trim();
           if (content) {
@@ -2421,6 +2421,46 @@ app.post('/api/produtos2-planning', async (req, res) => {
       throw new Error('Nenhum provedor de IA disponível para a fala do usuário.');
     };
 
+    // Helper para calibrar texto dentro de qualquer faixa [minTarget, maxLimit] sem cortar frases ao meio
+    const calibrateSpeechToRange = (text: string, minTarget = 200, maxLimit = 225): string => {
+      let clean = fixCommonSlips(normalizeVoiceText(text.replace(/\s+/g, ' ').trim()));
+      if (clean.length > maxLimit) {
+        clean = condenseSpeechMinimallyTo225(clean, maxLimit, minTarget);
+      }
+      if (clean.length < minTarget) {
+        const baseNoDot = clean.replace(/[.!?]+$/, '').trim();
+        const expansions = [
+          '. Olha só!',
+          '. Confere aqui embaixo!',
+          '. Aproveita e garante já no link!',
+          '. Clica aqui embaixo pra ver todos os detalhes!',
+          '. Vale muito a pena conferir aqui embaixo no carrinho!',
+          '. Dá uma olhada aqui embaixo no link e garante já antes que acabe!',
+          '. Aproveita pra conferir todos os detalhes aqui embaixo e garante logo!',
+          '. Deixei o link oficial aqui embaixo no carrinho pra você garantir com segurança!',
+          '. Entrega muita praticidade e qualidade real no uso diário, clica aqui no carrinho laranja e garante o seu agora mesmo!',
+          '. É super prático, faz toda a diferença na rotina e tá fazendo o maior sucesso, clica aqui embaixo no carrinho laranja pra conferir e garantir o seu antes que acabe!',
+        ];
+        for (const exp of expansions) {
+          const candidate = `${baseNoDot}${exp}`;
+          if (candidate.length >= minTarget && candidate.length <= maxLimit) {
+            clean = candidate;
+            break;
+          }
+        }
+        if (clean.length < minTarget) {
+          const longCandidate = `${baseNoDot}. Entrega muita qualidade e praticidade real pro seu dia a dia, clica aqui embaixo no carrinho laranja pra ver todos os detalhes e garante já o seu antes que acabe o estoque!`;
+          clean = condenseSpeechMinimallyTo225(longCandidate, maxLimit, minTarget);
+        }
+      }
+      if (clean.length > maxLimit) {
+        clean = clean.slice(0, maxLimit - 1).replace(/[,;:\s]+[^.!?,;:]*$/, '') + '!';
+      }
+      return clean;
+    };
+
+    const calibrateSpeechTo200_225 = (text: string): string => calibrateSpeechToRange(text, 200, 225);
+
     // Ação 1: Detectar e condensar com inteligência máxima a fala do usuário a partir das Instruções Adicionais
     if (action === 'detect_and_review_user_speech') {
       try {
@@ -2428,6 +2468,12 @@ app.post('/api/produtos2-planning', async (req, res) => {
         if (!textToAnalyze) {
           return res.json({ success: true, hasUserSpeech: false, userSpeech: '' });
         }
+
+        const reqSceneMode = req.body.sceneMode || '1_cena_10s';
+        const maxSpeechLimit =
+          reqSceneMode === '2_cenas_10s' ? 450 : reqSceneMode === '1_cena_15s' ? 335 : 225;
+        const minSpeechTarget =
+          reqSceneMode === '2_cenas_10s' ? 400 : reqSceneMode === '1_cena_15s' ? 310 : 215;
 
         const detectSystem = `Você é o modelo mais avançado da OpenAI especializado em roteiros e copies para vídeos do TikTok Shop Brasil.
 O usuário preencheu o campo "Instruções Adicionais" com um texto ditado por voz (informal, às vezes com gagueira) que mistura descrição de cenário, personagens, ações e as FALAS que ele quer no vídeo.
@@ -2438,11 +2484,11 @@ SUA MISSÃO OBRIGATÓRIA:
 3. Remova apenas palavras repetidas consecutivas por gagueira/ditado (ex.: "trabalhar, trabalhar" -> "trabalhar", "aí, aí" -> "aí").
 4. Sons não verbais de personagens (ex.: "au au au" de alguém imitando cachorro) NÃO entram em "userSpeech"; descreva-os em "soundEffects".
 5. Extraia primeiro "rawUserSpeech": a fala EXATA e INTEGRAL dita pelo personagem no texto do usuário (apenas sem descrição de cena, sem gagueiras duplicadas e com pontuação correta), SEM ENCURTAR NENHUMA FRASE.
-6. REGRA ABSOLUTA E INEGOCIÁVEL PARA "userSpeech" (PROIBIDO ENCURTAR À TOA):
-   - CASO A: Se "rawUserSpeech" tiver 225 caracteres ou menos (<= 225 caracteres), É TERMINANTEMENTE PROIBIDO ENCURTAR, RESUMIR OU CORTAR QUALQUER PALAVRA OU EXPRESSÃO! Nesse caso, "userSpeech" DEVE SER IDÊNTICO ao "rawUserSpeech" (preservando expressões como "aqui", "valor muito barato", "você sabe que", "então já", etc.).
-   - CASO B: Se e SOMENTE SE "rawUserSpeech" ultrapassar 225 caracteres (> 225 caracteres), enxugue O MÍNIMO POSSÍVEL para que "userSpeech" fique COLADO no limite de 225 caracteres — OBRIGATORIAMENTE ENTRE 215 E 225 CARACTERES (idealmente entre 218 e 224 caracteres)! NUNCA encurte uma fala grande para 180 ou 190 caracteres; preserve ao máximo as palavras originais do usuário do início ao CTA final.
+6. REGRA ABSOLUTA E INEGOCIÁVEL PARA "userSpeech" (LIMITE ATUAL: ${maxSpeechLimit} CARACTERES):
+   - CASO A: Se "rawUserSpeech" tiver ${maxSpeechLimit} caracteres ou menos (<= ${maxSpeechLimit} caracteres), É TERMINANTEMENTE PROIBIDO ENCURTAR, RESUMIR OU CORTAR QUALQUER PALAVRA OU EXPRESSÃO! Nesse caso, "userSpeech" DEVE SER IDÊNTICO ao "rawUserSpeech".
+   - CASO B: Se e SOMENTE SE "rawUserSpeech" ultrapassar ${maxSpeechLimit} caracteres (> ${maxSpeechLimit} caracteres), enxugue O MÍNIMO POSSÍVEL para que "userSpeech" fique COLADO no limite de ${maxSpeechLimit} caracteres — OBRIGATORIAMENTE ENTRE ${minSpeechTarget} E ${maxSpeechLimit} CARACTERES! Preserve ao máximo as palavras originais do usuário do início ao CTA final.
    - Corrija erros de transcrição (ex.: "pó pouco"/"pouco" -> "Poco", "Tik Tok" -> "TikTok Shop"). O "X" em modelos (X8, Poco X8 Pro) NUNCA vira "vezes".
-7. "speakers": lista de TODOS os personagens que falam, na ordem, com { "speaker": papel (ex.: "Pai", "Vendedor", "Mulher", "Homem"), "gender": "masculina" | "feminina" | "coro", "speech": fala exata dele (trecho de userSpeech), "scenes": em quais cenas de 1 a 9 fala }.
+7. "speakers": lista de TODOS os personagens que falam, na ordem, com { "speaker": papel (ex.: "Pai", "Vendedor", "Mulher", "Homem"), "gender": "masculina" | "feminina" | "coro", "speech": fala exata dele (trecho de userSpeech), "scenes": em quais cenas fala }.
 8. "isDialogue": true SOMENTE se 2 ou mais personagens/grupos diferentes falam. Se apenas um personagem fala, "isDialogue": false (mas preencha "speakers" com esse único personagem e seu gênero).
 9. "dialogueDescription": resumo curto da cena e dos personagens (sem as falas). "dialogueScript": roteiro "Papel: \\"fala\\"" por linha.
 10. Se não houver nenhuma fala explícita, "hasUserSpeech": false, "rawUserSpeech": "" e "userSpeech": "".
@@ -2476,7 +2522,7 @@ FORMATO DE RESPOSTA (JSON estrito):
           }
         }
 
-        const syncExt = extractUserSpeechFromInstructions(textToAnalyze, productName);
+        const syncExt = extractUserSpeechFromInstructions(textToAnalyze, productName, maxSpeechLimit, minSpeechTarget);
 
         let rawUserSpeech = fixCommonSlips(
           normalizeVoiceText(
@@ -2507,28 +2553,24 @@ FORMATO DE RESPOSTA (JSON estrito):
         }
 
         // PROTEÇÃO ANTI-ENCURTAMENTO AGRESSIVO:
-        // 1. Se a fala original extraída (rawUserSpeech ou syncExt.speech) já tem <= 225 caracteres,
-        //    JAMAIS aceitamos versão resumida pela IA (como 186 chars quando o original tinha 224 chars)!
         const candidateUnshortened =
-          rawUserSpeech && rawUserSpeech.length >= 15 && rawUserSpeech.length <= 225
+          rawUserSpeech && rawUserSpeech.length >= 15 && rawUserSpeech.length <= maxSpeechLimit
             ? rawUserSpeech
-            : syncExt.hasSpeech && syncExt.speech.length >= 15 && syncExt.speech.length <= 225
+            : syncExt.hasSpeech && syncExt.speech.length >= 15 && syncExt.speech.length <= maxSpeechLimit
             ? syncExt.speech
             : '';
 
         if (candidateUnshortened && candidateUnshortened.length > userSpeech.length) {
           userSpeech = candidateUnshortened;
-        } else if (rawUserSpeech && rawUserSpeech.length > 225 && userSpeech.length < 212) {
-          // 2. Se a fala bruta tinha > 225 chars mas a IA cortou demais (abaixo de 212 chars, ex: 186 chars),
-          //    usamos o condensador cirúrgico mínimo para manter colado no teto de 225 (entre 215 e 225 chars)!
-          const minimallyCondensed = condenseSpeechMinimallyTo225(rawUserSpeech, 225, 215);
-          if (minimallyCondensed.length > userSpeech.length && minimallyCondensed.length <= 225) {
+        } else if (rawUserSpeech && rawUserSpeech.length > maxSpeechLimit && userSpeech.length < minSpeechTarget - 3) {
+          const minimallyCondensed = condenseSpeechMinimallyTo225(rawUserSpeech, maxSpeechLimit, minSpeechTarget);
+          if (minimallyCondensed.length > userSpeech.length && minimallyCondensed.length <= maxSpeechLimit) {
             userSpeech = minimallyCondensed;
           }
         }
 
-        if (userSpeech.length > 225) {
-          userSpeech = condenseSpeechMinimallyTo225(userSpeech, 225, 215);
+        if (userSpeech.length > maxSpeechLimit) {
+          userSpeech = condenseSpeechMinimallyTo225(userSpeech, maxSpeechLimit, minSpeechTarget);
         }
 
         const hasUserSpeech = Boolean(
@@ -2562,44 +2604,6 @@ FORMATO DE RESPOSTA (JSON estrito):
       }
     }
 
-    // Helper para garantir estritamente entre 200 e 225 caracteres com espaços (sem cortar frases ao meio)
-    const calibrateSpeechTo200_225 = (text: string): string => {
-      let clean = fixCommonSlips(normalizeVoiceText(text.replace(/\s+/g, ' ').trim()));
-      if (clean.length > 225) {
-        clean = condenseSpeechMinimallyTo225(clean, 225, 200);
-      }
-      if (clean.length < 200) {
-        const baseNoDot = clean.replace(/[.!?]+$/, '').trim();
-        const expansions = [
-          '. Olha só',
-          '. Confere aqui embaixo!',
-          '. Aproveita e garante já no link!',
-          '. Clica aqui embaixo pra ver todos os detalhes!',
-          '. Vale muito a pena conferir aqui embaixo no carrinho!',
-          '. Dá uma olhada aqui embaixo no link e garante já antes que acabe!',
-          '. Aproveita pra conferir todos os detalhes aqui embaixo e garante logo!',
-          '. Deixei o link oficial aqui embaixo no carrinho pra você garantir com segurança!',
-        ];
-        // Ordena pelas expansões que deixam o texto entre 200 e 225 caracteres
-        for (const exp of expansions) {
-          const candidate = `${baseNoDot}${exp}`;
-          if (candidate.length >= 200 && candidate.length <= 225) {
-            clean = candidate;
-            break;
-          }
-        }
-        // Se ainda estiver abaixo de 200 chars (ex: copy muito curta do banco), adiciona complemento e calibra
-        if (clean.length < 200) {
-          const longCandidate = `${baseNoDot}. Entrega qualidade real pro dia a dia, clica aqui no carrinho laranja e garante já antes que acabe o estoque!`;
-          clean = condenseSpeechMinimallyTo225(longCandidate, 225, 200);
-        }
-      }
-      if (clean.length > 225) {
-        clean = clean.slice(0, 224).replace(/[,;:\s]+[^.!?,;:]*$/, '') + '!';
-      }
-      return clean;
-    };
-
     // Ação 1B: Adaptação Cirúrgica Inteligente das Falas 1 e 2 do Banco de Memória (~64 copies validadas) para o Produto Atual
     if (action === 'adapt_bank_copies') {
       try {
@@ -2608,9 +2612,14 @@ FORMATO DE RESPOSTA (JSON estrito):
           return res.json({ success: true });
         }
 
-        const charRuleText = enforceRange200To225
-          ? `- REGRA OBRIGATÓRIA DE TAMANHO: A fala adaptada DEVE ter OBRIGATORIAMENTE ENTRE 200 E 225 CARACTERES (incluindo espaços e pontuação). NUNCA entregue menos de 200 caracteres e NUNCA ultrapasse 225 caracteres!`
-          : `- Cada fala adaptada deve ter entre 160 e 225 caracteres (NUNCA ultrapasse 225 caracteres).`;
+        const reqSceneMode = req.body.sceneMode || '1_cena_10s';
+        const targetMin = Number(req.body.targetMinChars) || (reqSceneMode === '1_cena_15s' ? 310 : 200);
+        const targetMax = Number(req.body.targetMaxChars) || (reqSceneMode === '1_cena_15s' ? 335 : 225);
+        const enforceStrictRange = Boolean(enforceRange200To225 || targetMax === 335);
+
+        const charRuleText = enforceStrictRange
+          ? `- REGRA OBRIGATÓRIA DE TAMANHO: A fala adaptada DEVE ter OBRIGATORIAMENTE ENTRE ${targetMin} E ${targetMax} CARACTERES (incluindo espaços e pontuação). NUNCA entregue menos de ${targetMin} caracteres e NUNCA ultrapasse ${targetMax} caracteres!`
+          : `- Cada fala adaptada deve ter entre 160 e ${targetMax} caracteres (NUNCA ultrapasse ${targetMax} caracteres).`;
 
         const adaptSystem = `Você é um Especialista Sênior em Direct Response para TikTok Shop Brasil.
 Existe na memória do aplicativo um banco de 64 falas validadas de anúncios reais que já estão vendendo muito.
@@ -2642,7 +2651,7 @@ Retorne SOMENTE um JSON estrito no formato:
 ${productInfo || productName || ''}
 - Gênero do Público: ${clientGender || 'unissex'}
 - Apresentador(a): ${influencer || 'Mulher'}
-${enforceRange200To225 ? '- TAMANHO OBRIGATÓRIO: Estritamente entre 200 e 225 caracteres com espaços!' : ''}
+${enforceStrictRange ? `- TAMANHO OBRIGATÓRIO: Estritamente entre ${targetMin} e ${targetMax} caracteres com espaços!` : ''}
 
 FALA 1 DO BANCO DE MEMÓRIA (${copy1?.id || 'Copy 1'} - Produto original da copy: "${copy1?.originalProductType || ''}" - Mesmo produto? ${copy1?.isSameProduct ? 'SIM' : 'NÃO'}):
 Texto original da Fala 1 no banco: "${copy1?.originalText || ''}"
@@ -2672,15 +2681,15 @@ Sugestão base local da Fala 2: "${copy2?.localAdaptedText || ''}"` : ''}`;
         let adapted1 = fixCommonSlips(normalizeVoiceText((parsed.adaptedCopy1 || copy1?.localAdaptedText || '').trim()));
         let adapted2 = fixCommonSlips(normalizeVoiceText((parsed.adaptedCopy2 || copy2?.localAdaptedText || '').trim()));
 
-        if (enforceRange200To225) {
-          if (adapted1) adapted1 = calibrateSpeechTo200_225(adapted1);
-          if (adapted2) adapted2 = calibrateSpeechTo200_225(adapted2);
+        if (enforceStrictRange) {
+          if (adapted1) adapted1 = calibrateSpeechToRange(adapted1, targetMin, targetMax);
+          if (adapted2) adapted2 = calibrateSpeechToRange(adapted2, targetMin, targetMax);
         } else {
-          if (adapted1.length > 225) {
-            adapted1 = condenseSpeechMinimallyTo225(adapted1, 225, 200);
+          if (adapted1.length > targetMax) {
+            adapted1 = condenseSpeechMinimallyTo225(adapted1, targetMax, targetMin);
           }
-          if (adapted2.length > 225) {
-            adapted2 = condenseSpeechMinimallyTo225(adapted2, 225, 200);
+          if (adapted2.length > targetMax) {
+            adapted2 = condenseSpeechMinimallyTo225(adapted2, targetMax, targetMin);
           }
         }
 
@@ -2694,10 +2703,13 @@ Sugestão base local da Fala 2: "${copy2?.localAdaptedText || ''}"` : ''}`;
         console.warn('Erro ao adaptar copies do banco via IA, mantendo adaptação local:', err?.message || err);
         const fallback1 = req.body?.copy1?.localAdaptedText || '';
         const fallback2 = req.body?.copy2?.localAdaptedText || '';
+        const reqSceneMode = req.body?.sceneMode || '1_cena_10s';
+        const targetMin = Number(req.body?.targetMinChars) || (reqSceneMode === '1_cena_15s' ? 310 : 200);
+        const targetMax = Number(req.body?.targetMaxChars) || (reqSceneMode === '1_cena_15s' ? 335 : 225);
         return res.json({
           success: true,
-          adaptedCopy1: req.body?.enforceRange200To225 && fallback1 ? calibrateSpeechTo200_225(fallback1) : fallback1,
-          adaptedCopy2: req.body?.enforceRange200To225 && fallback2 ? calibrateSpeechTo200_225(fallback2) : fallback2,
+          adaptedCopy1: req.body?.enforceRange200To225 && fallback1 ? calibrateSpeechToRange(fallback1, targetMin, targetMax) : fallback1,
+          adaptedCopy2: req.body?.enforceRange200To225 && fallback2 ? calibrateSpeechToRange(fallback2, targetMin, targetMax) : fallback2,
         });
       }
     }
@@ -2710,21 +2722,33 @@ Sugestão base local da Fala 2: "${copy2?.localAdaptedText || ''}"` : ''}`;
           return res.status(400).json({ success: false, error: 'Texto não fornecido para revisão.' });
         }
 
+        const reqSceneMode = req.body.sceneMode || '1_cena_10s';
+        const maxLimit =
+          Number(req.body.maxChars) ||
+          (reqSceneMode === '2_cenas_10s' && !req.body.isSingleScenePart
+            ? 450
+            : reqSceneMode === '1_cena_15s'
+            ? 335
+            : 225);
+        const minTarget =
+          Number(req.body.minChars) ||
+          (maxLimit === 335 ? 310 : maxLimit === 450 ? 400 : 215);
+
         const cleanedInput = fixCommonSlips(inputSpeech);
         const charCount = cleanedInput.length;
-        const isUnderLimit = charCount <= 225;
+        const isUnderLimit = charCount <= maxLimit;
 
         const lengthInstruction = isUnderLimit
           ? `REGRA ABSOLUTA DE TAMANHO (NÃO ENCURTAR):
-O texto fornecido tem ${charCount} caracteres e JÁ ESTÁ DENTRO do limite máximo de 225 caracteres.
+O texto fornecido tem ${charCount} caracteres e JÁ ESTÁ DENTRO do limite máximo de ${maxLimit} caracteres.
 - É TERMINANTEMENTE PROIBIDO ENCURTAR, RESUMIR, CONDENSAR OU CORTAR QUALQUER FRASE OU PARTE DO TEXTO!
 - Mantenha o texto O MAIS ORIGINAL POSSÍVEL, preservando integralmente todas as frases, palavras, argumentos e detalhes originais que o usuário escreveu.
 - O comprimento final deve permanecer praticamente idêntico ao original (com pequenas variações apenas pelas correções gramaticais ou remoção de palavras duplicadas).
 - A ÚNICA razão permitida para encurtar ou remover algo é se houver palavras repetidas ou gagueira (ex: "aí aí", "ele ele", "o o", "tá tá", "trabalhar, trabalhar")!`
-          : `REGRA DE TAMANHO (ENCURTAMENTO MÍNIMO NECESSÁRIO PORQUE EXCEDE 225 CARACTERES):
-O texto fornecido tem ${charCount} caracteres e EXCEDE o limite de 225 caracteres.
-- Você DEVE enxugar O MÍNIMO POSSÍVEL para que o texto fique COLADO no limite de 225 caracteres: OBRIGATORIAMENTE ENTRE 215 E 225 CARACTERES (com espaços)!
-- NUNCA encurte para 180 ou 195 caracteres! Corte apenas pequenas redundâncias ou conectivos extras para pousar entre 215 e 225 caracteres, mantendo os argumentos do usuário e a chamada de ação final.
+          : `REGRA DE TAMANHO (ENCURTAMENTO MÍNIMO NECESSÁRIO PORQUE EXCEDE ${maxLimit} CARACTERES):
+O texto fornecido tem ${charCount} caracteres e EXCEDE o limite de ${maxLimit} caracteres.
+- Você DEVE enxugar O MÍNIMO POSSÍVEL para que o texto fique COLADO no limite de ${maxLimit} caracteres: OBRIGATORIAMENTE ENTRE ${minTarget} E ${maxLimit} CARACTERES (com espaços)!
+- Corte apenas pequenas redundâncias ou conectivos extras para pousar entre ${minTarget} e ${maxLimit} caracteres, mantendo os argumentos do usuário e a chamada de ação final.
 - NUNCA deixe frases cortadas pela metade; a última frase deve estar completa com ponto final ou exclamação.`;
 
         const reviewSystem = `Você é um REVISOR EDITORIAL DE ALTA FIDELIDADE para narração por voz de IA no TikTok Shop Brasil.
@@ -2748,13 +2772,13 @@ DIRETIVAS OBRIGATÓRIAS:
    - "AMOLED" -> "Amóled"
 5. PRESERVAÇÃO DE CONTEÚDO:
    - Não invente argumentos novos e não adicione chamadas para ação que o usuário não escreveu.
-   - ${isUnderLimit ? 'LEMBRE-SE: Como o texto original tem <= 225 caracteres, PRESERVE 100% DAS FRASES DO TEXTO ORIGINAL, apenas corrigindo o português, removendo repetições e ajustando para leitura de IA.' : 'Enxugue o mínimo possível para ficar estritamente entre 215 e 225 caracteres mantendo todo o sentido.'}
+   - ${isUnderLimit ? `LEMBRE-SE: Como o texto original tem <= ${maxLimit} caracteres, PRESERVE 100% DAS FRASES DO TEXTO ORIGINAL, apenas corrigindo o português, removendo repetições e ajustando para leitura de IA.` : `Enxugue o mínimo possível para ficar estritamente entre ${minTarget} e ${maxLimit} caracteres mantendo todo o sentido.`}
 6. FORMATO DE SAÍDA:
    - Retorne SOMENTE o texto final revisado, sem aspas, sem contagem de caracteres e sem explicações adicionais.`;
 
         const userPromptReview = isUnderLimit
           ? `TEXTO ORIGINAL PARA REVISÃO (TEM ${charCount} CARACTERES - NÃO ENCURTAR, MANTENHA O TEXTO O MAIS ORIGINAL POSSÍVEL APENAS CORRIGINDO O PORTUGUÊS, PALAVRAS REPETIDAS E PONTUAÇÃO PARA IA):\n${cleanedInput}`
-          : `TEXTO ORIGINAL PARA REVISÃO (TEM ${charCount} CARACTERES - EXCEDE 225 CARACTERES, ENXUGUE O MÍNIMO POSSÍVEL PARA FICAR ENTRE 215 E 225 CARACTERES MANTENDO O SENTIDO E CALL TO ACTION):\n${cleanedInput}`;
+          : `TEXTO ORIGINAL PARA REVISÃO (TEM ${charCount} CARACTERES - EXCEDE ${maxLimit} CARACTERES, ENXUGUE O MÍNIMO POSSÍVEL PARA FICAR ENTRE ${minTarget} E ${maxLimit} CARACTERES MANTENDO O SENTIDO E CALL TO ACTION):\n${cleanedInput}`;
 
         const reviewedOutput = await executeFastAIText({
           systemPrompt: reviewSystem,
@@ -2767,18 +2791,18 @@ DIRETIVAS OBRIGATÓRIAS:
         reviewed = cleanDuplicateWords(reviewed);
         reviewed = fixCommonSlips(normalizeVoiceText(reviewed));
 
-        // Se já estava <= 225 chars e a IA tentou encurtar agressivamente, preserva o cleanedInput!
+        // Se já estava <= maxLimit chars e a IA tentou encurtar agressivamente, preserva o cleanedInput!
         if (isUnderLimit && reviewed.length < cleanedInput.length - 10) {
           reviewed = cleanedInput;
-        } else if (!isUnderLimit && reviewed.length < 212) {
-          const minimallyCondensed = condenseSpeechMinimallyTo225(cleanedInput, 225, 215);
-          if (minimallyCondensed.length > reviewed.length && minimallyCondensed.length <= 225) {
+        } else if (!isUnderLimit && reviewed.length < minTarget - 3) {
+          const minimallyCondensed = condenseSpeechMinimallyTo225(cleanedInput, maxLimit, minTarget);
+          if (minimallyCondensed.length > reviewed.length && minimallyCondensed.length <= maxLimit) {
             reviewed = minimallyCondensed;
           }
         }
 
-        if (reviewed.length > 225) {
-          reviewed = condenseSpeechMinimallyTo225(reviewed, 225, 215);
+        if (reviewed.length > maxLimit) {
+          reviewed = condenseSpeechMinimallyTo225(reviewed, maxLimit, minTarget);
         }
 
         return res.json({
@@ -2791,11 +2815,33 @@ DIRETIVAS OBRIGATÓRIAS:
       }
     }
 
-    // Ação 3: Gerar somente a fala com Aurora Copy (Rápido: ~0.8s via gpt-4o-mini e estritamente entre 200 e 225 caracteres com hooks variados)
+    // Ação 3: Gerar somente a fala com Aurora Copy (suporta 10s [200..225], 15s [310..335] e 2 cenas [400..450 ou 200..225 por cena])
     if (action === 'generate_aurora_copy') {
       try {
-        const minLimit = 200;
-        const maxLimit = 225;
+        const reqSceneMode = req.body.sceneMode || '1_cena_10s';
+        const isSingleScenePart = Boolean(req.body.isSingleScenePart);
+        const scenePartIndex = Number(req.body.scenePartIndex) || 1;
+        const scene1CopyContext = String(req.body.scene1Copy || '').trim();
+
+        const minLimit =
+          Number(req.body.targetMinChars) ||
+          (isSingleScenePart
+            ? 200
+            : reqSceneMode === '1_cena_15s'
+            ? 310
+            : reqSceneMode === '2_cenas_10s'
+            ? 400
+            : 200);
+        const maxLimit =
+          Number(req.body.targetMaxChars) ||
+          (isSingleScenePart
+            ? 225
+            : reqSceneMode === '1_cena_15s'
+            ? 335
+            : reqSceneMode === '2_cenas_10s'
+            ? 450
+            : 225);
+
         const previousCopies: string[] = Array.isArray(req.body.previousCopies)
           ? req.body.previousCopies.filter((c: any) => typeof c === 'string' && c.trim().length > 0)
           : [];
@@ -2814,6 +2860,40 @@ ${previousHooks.map((h, i) => `- Versão ${i + 1}: "${h}..."`).join('\n')}
 - NUNCA repita as mesmas primeiras palavras das versões anteriores!`
             : '';
 
+        const modeStructureInstructions =
+          maxLimit === 335
+            ? `INSTRUÇÃO ESPECIAL DE MODO 15 SEGUNDOS (AUTORIZAÇÃO EXPLÍCITA DE 310 A 335 CARACTERES):
+Neste modo de Uma Cena de 15 Segundos, você está EXPRESSAMENTE AUTORIZADA e OBRIGADA a produzir uma fala mais completa e envolvente, contendo ESTRITAMENTE ENTRE 310 E 335 CARACTERES (incluindo espaços e pontuação).
+NUNCA entregue menos de 310 caracteres e NUNCA ultrapasse 335 caracteres!
+Estruture a fala para preencher 15 segundos naturais de narração com:
+1. Gancho forte e inédito de abertura que prenda a atenção nos primeiros segundos (aprox. 55-65 caracteres).
+2. Desenvolvimento completo com 3 benefícios concretos, detalhes reais de funcionamento e transformação prática no dia a dia (aprox. 200-215 caracteres).
+3. Chamada natural e persuasiva para clicar no carrinho (aprox. 45-55 caracteres).
+Totalizando impreterivelmente entre 310 e 335 caracteres.`
+            : maxLimit === 450
+            ? `INSTRUÇÃO ESPECIAL DE MODO DUAS CENAS — 10 SEGUNDOS CADA (ATÉ 450 CARACTERES TOTAIS):
+Neste modo de Duas Cenas de 10 Segundos cada (~20 segundos totais de vídeo), você está EXPRESSAMENTE AUTORIZADA a produzir uma narrativa contínua completa contendo ENTRE 400 E 450 CARACTERES (incluindo espaços e pontuação, NUNCA ultrapassando 450 caracteres).
+IMPORTANTE — DIVISÃO ORGÂNICA EM DUAS PARTES:
+A fala será exibida inteira para o usuário aprovar e, em seguida, dividida em duas partes de até 225 caracteres cada (Cena 1 e Cena 2).
+Por isso, estruture o texto em DUAS METADES NARRATIVAS CONTÍNUAS separadas por um ponto final claro perto da metade do texto (~200 a 220 caracteres):
+- Primeira metade (Cena 1 — ~200 a 220 caracteres): Gancho forte de abertura + descoberta do produto + primeiro grande benefício visual em uso (terminando com ponto final completo).
+- Segunda metade (Cena 2 — ~200 a 220 caracteres): Continuação direta da demonstração (sem repetir o gancho!) + benefícios extras e diferenciais reais do produto + chamada para ação natural para conferir no carrinho.
+Totalizando entre 400 e 450 caracteres.`
+            : isSingleScenePart && scenePartIndex === 2 && scene1CopyContext
+            ? `INSTRUÇÃO DE CONTINUIDADE PARA A CENA 2 (200 A 225 CARACTERES):
+Esta fala é para a CENA 2 (segunda parte do vídeo), dando continuidade direta à Cena 1 cuja fala foi: "${scene1CopyContext}".
+- NÃO repita a abertura da Cena 1! Continue a explicação destacando novos benefícios reais do produto e finalize com uma chamada para ação natural (CTA).
+- A fala da Cena 2 DEVE ter OBRIGATORIAMENTE entre 200 e 225 caracteres (incluindo espaços).`
+            : `REGRA MANDATÓRIA DE CARACTERES (MUITO IMPORTANTE):
+A fala DEVE ter OBRIGATORIAMENTE entre 200 e 225 caracteres no total (contando espaços e pontuação).
+NUNCA entregue menos de 200 caracteres!
+NUNCA ultrapasse 225 caracteres!
+Estruture a fala com:
+1. Gancho direto e curioso de abertura (aprox. 40-45 caracteres, variando as primeiras 4 a 5 palavras).
+2. Explicação de 2 benefícios concretos com foco na usabilidade real (aprox. 120-135 caracteres).
+3. Chamada natural leve para conferir (aprox. 35-45 caracteres).
+Totalizando impreterivelmente entre 200 e 225 caracteres.`;
+
         const auroraSystem = `Você é a AURORACOPY, uma especialista em copy para vídeos de TikTok Shop Brasil.
 Sua função é transformar as INFORMAÇÕES DO PRODUTO fornecidas pelo usuário em uma fala de alta retenção, natural, específica e persuasiva, pronta para ser usada como narração de vídeo.
 
@@ -2828,15 +2908,7 @@ A fala nunca deve parecer propaganda tradicional, locução institucional, descr
 IGNORE COMO ARGUMENTO DE VENDA:
 Preço, desconto, cupom, frete grátis, parcelamento, promoção financeira. Mesmo que estejam presentes, não baseie a copy neles.${hookVariationClause}
 
-REGRA MANDATÓRIA DE CARACTERES (MUITO IMPORTANTE):
-A fala DEVE ter OBRIGATORIAMENTE entre 200 e 225 caracteres no total (contando espaços e pontuação).
-NUNCA entregue menos de 200 caracteres!
-NUNCA ultrapasse 225 caracteres!
-Estruture a fala com:
-1. Gancho direto e curioso de abertura (aprox. 40-45 caracteres, variando as primeiras 4 a 5 palavras).
-2. Explicação de 2 benefícios concretos com foco na usabilidade real (aprox. 120-135 caracteres).
-3. Chamada natural leve para conferir (aprox. 35-45 caracteres).
-Totalizando impreterivelmente entre 200 e 225 caracteres.
+${modeStructureInstructions}
 
 LINGUAGEM E VOZ IA:
 Português do Brasil oral, simples, espontâneo, natural.
@@ -2846,13 +2918,20 @@ Use detalhes reais presentes nas informações do produto. NUNCA invente caracte
 FORMATO DE SAÍDA:
 Entregue SOMENTE a fala final, sem aspas, sem títulos, sem explicações, sem contagem de caracteres.`;
 
+        const videoDurationLabel =
+          maxLimit === 335
+            ? '15 segundos (Uma cena — 15 segundos)'
+            : maxLimit === 450
+            ? '20 segundos totais (Duas cenas de 10 segundos cada)'
+            : '10 segundos';
+
         const auroraUser = `INFORMAÇÕES DO PRODUTO:
 ${productInfo || productName}
 
 NOME DO PRODUTO: ${productName}
 ${additionalInstructions ? `INSTRUÇÕES ADICIONAIS: ${additionalInstructions}` : ''}
 ${previousHooks.length > 0 ? `HOOKS JÁ USADOS (PROIBIDO REPETIR ESTAS PRIMEIRAS PALAVRAS): ${previousHooks.join(' | ')}` : ''}
-DURAÇÃO DO VÍDEO: 10 segundos.
+DURAÇÃO DO VÍDEO: ${videoDurationLabel}.
 TAMANHO OBRIGATÓRIO: Estritamente entre ${minLimit} e ${maxLimit} caracteres (incluindo espaços).`;
 
         const auroraOutput = await executeFastAIText({
@@ -2863,7 +2942,7 @@ TAMANHO OBRIGATÓRIO: Estritamente entre ${minLimit} e ${maxLimit} caracteres (i
 
         let rawSpeech = auroraOutput.text;
         rawSpeech = rawSpeech.replace(/^["'«“]|["'»”]$/g, '').trim();
-        rawSpeech = calibrateSpeechTo200_225(rawSpeech);
+        rawSpeech = calibrateSpeechToRange(rawSpeech, minLimit, maxLimit);
 
         return res.json({ success: true, auroraCopy: rawSpeech, usage: auroraOutput.usage });
       } catch (err: any) {
@@ -2948,6 +3027,10 @@ DURAÇÃO MÁXIMA DO VÍDEO: ${duration} segundos. Limite estrito: até ${maxLim
       }
     }
 
+    const expectedSceneCount: 6 | 9 = Number(req.body.sceneCount) === 6 ? 6 : 9;
+    const scenePartIndex: 1 | 2 = Number(req.body.scenePartIndex) === 2 ? 2 : 1;
+    const previousSceneContext = String(req.body.previousSceneContext || '').trim();
+
     const activeReqVars = Array.isArray(variations)
       ? variations.filter((v: any) => v && (v.photosCount > 0 || v.name))
       : [];
@@ -2955,11 +3038,15 @@ DURAÇÃO MÁXIMA DO VÍDEO: ${duration} segundos. Limite estrito: até ${maxLim
       activeReqVars.length >= 2
         ? `\n- Variações de cor do produto: ${activeReqVars.map((v: any) => v.name).join(', ')}
   REGRA MANDATÓRIA DE NARRATIVA PROGRESSIVA CONTÍNUA (NÃO REPETIR CENAS):
-  As 9 cenas formam UMA ÚNICA DEMONSTRAÇÃO PROGRESSIVA DO PRODUTO acompanhando a copy do segundo 0 ao final.
-  PROIBIDO REPETIR CENAS OU REINICIAR A DEMONSTRAÇÃO PARA CADA COR! As 9 cenas seguem normalmente seu fluxo narrativo sem repetições (apresentação inicial -> funcionamento prático -> detalhes/macro -> benefício no cenário -> CTA).
+  As ${expectedSceneCount} cenas formam UMA ÚNICA DEMONSTRAÇÃO PROGRESSIVA DO PRODUTO acompanhando a copy do segundo 0 ao final.
+  PROIBIDO REPETIR CENAS OU REINICIAR A DEMONSTRAÇÃO PARA CADA COR! As ${expectedSceneCount} cenas seguem normalmente seu fluxo narrativo sem repetições (apresentação inicial -> funcionamento prático -> detalhes/macro -> benefício no cenário -> CTA).
   A ÚNICA diferença é a cor em que o produto é retratado em cada grupo de quadros:
   ${
-    activeReqVars.length === 2
+    expectedSceneCount === 6
+      ? activeReqVars.length === 2
+        ? '• Cenas 1 a 3: produto retratado na 1ª Variação (' + (activeReqVars[0]?.name || '1ª Cor') + ')\n  • Cenas 4 a 6: produto retratado na 2ª Variação (' + (activeReqVars[1]?.name || '2ª Cor') + ')'
+        : '• Cenas 1 a 2: produto retratado na 1ª Variação (' + (activeReqVars[0]?.name || '1ª Cor') + ')\n  • Cenas 3 a 4: produto retratado na 2ª Variação (' + (activeReqVars[1]?.name || '2ª Cor') + ')\n  • Cenas 5 a 6: produto retratado na 3ª Variação (' + (activeReqVars[2]?.name || '3ª Cor') + ')'
+      : activeReqVars.length === 2
       ? '• Cenas 1 a 4: produto retratado na 1ª Variação (' + (activeReqVars[0]?.name || '1ª Cor') + ')\n  • Cenas 5 a 9: produto retratado na 2ª Variação (' + (activeReqVars[1]?.name || '2ª Cor') + ')'
       : '• Cenas 1 a 3: produto retratado na 1ª Variação (' + (activeReqVars[0]?.name || '1ª Cor') + ')\n  • Cenas 4 a 6: produto retratado na 2ª Variação (' + (activeReqVars[1]?.name || '2ª Cor') + ')\n  • Cenas 7 a 9: produto retratado na 3ª Variação (' + (activeReqVars[2]?.name || '3ª Cor') + ')'
   }
@@ -2969,21 +3056,42 @@ DURAÇÃO MÁXIMA DO VÍDEO: ${duration} segundos. Limite estrito: até ${maxLim
   Nas descrições das cenas, NUNCA cite a cor de uma variação em cenas de outra variação!`
         : '';
 
+    const twoScenesContinuityClause =
+      expectedSceneCount === 6
+        ? scenePartIndex === 2
+          ? `\n- MODO DUAS CENAS (ESTA É A CENA 2 — 6 QUADROS NUMERADOS DE 1 A 6 EM GRADE 2x3, DURAÇÃO 10 SEGUNDOS):
+  * REGRA INEGOCIÁVEL DE CONTINUIDADE NARRATIVA E VISUAL DA CENA 2:
+    Esta Cena 2 dá CONTINUIDADE DIRETA ao vídeo iniciado na Cena 1.
+    ${previousSceneContext ? `Resumo do que já aconteceu na Cena 1 (NÃO REPETIR ESTAS AÇÕES): ${previousSceneContext}` : ''}
+    • PROIBIDO repetir as cenas da Cena 1 ou reiniciar a apresentação do zero!
+    • Avance na demonstração prática, mostre novos ângulos/detalhes de funcionamento, prova de resultado real e finalize com o fechamento persuasivo (CTA) nos quadros 5 e 6.
+    • Mantenha 100% de continuidade de personagem (mesmo avatarDescription e mesma roupa), mesmo cenário (scenarioDescription), mesma iluminação e mesmo Product Lock da Cena 1!`
+          : `\n- MODO DUAS CENAS (ESTA É A CENA 1 — 6 QUADROS NUMERADOS DE 1 A 6 EM GRADE 2x3, DURAÇÃO 10 SEGUNDOS):
+  * Planeje EXATAMENTE 6 cenas numeradas de 1 a 6 (0.0s a 10.0s) representando o gancho visual imediato, a introdução e o desenvolvimento inicial da demonstração do produto.`
+        : '';
+
     const systemInstruction = buildProdutos2PlanningSystemPrompt();
+    const charLimitNote =
+      duration === 8
+        ? 'MÁXIMO 199 CARACTERES COM ESPAÇOS'
+        : duration === 15
+        ? 'ATÉ 335 CARACTERES COM ESPAÇOS'
+        : 'ATÉ 225 CARACTERES COM ESPAÇOS';
     const userPrompt = `PLANEJAMENTO COPY-FIRST (MODO PRODUTOS 2.0):
 - Produto (nome curto): ${productName}
 - Sub-modo: ${subMode === 'vestuario_masculino' ? `Vestuário Masculino (${maleSubOption} - estilo ${maleClothStyle})` : 'Produtos (Geral)'}
 - Nicho detectado: ${niche}
 - Informações do produto: ${productInfo || productName}
 - Copy-base selecionada (${isCustomCopy ? 'PERSONALIZADA PELO USUÁRIO - NÃO ALTERAR' : copyEngine === 'aurora_copy' ? 'GERADA POR AURORA COPY (IA CRIATIVA)' : 'DO BANCO VALIDADO - ADAPTAR MÍNIMO POSSÍVEL'}): "${activeCopy}"
-- Duração no Veo: ${duration} segundos (${duration === 8 ? 'MÁXIMO 199 CARACTERES COM ESPAÇOS' : 'ATÉ 250 CARACTERES COM ESPAÇOS'})
+- Duração no Veo: ${duration} segundos (${charLimitNote})
+- Quantidade obrigatória de quadros no Storyboard: EXATAMENTE ${expectedSceneCount} cenas numeradas de 1 a ${expectedSceneCount} (${expectedSceneCount === 6 ? 'grade 2x3: 2 colunas x 3 linhas' : 'grade 3x3: 3 colunas x 3 linhas'})
 - Influencer (quem aparece e voz): ${influencer}
 - Gênero do cliente (vocativo): ${clientGender} (se feminino, usar "Amiga" ou "Gente", NUNCA usar "menina")
 - Modo de fala: ${speechMode} (locução RÁPIDA E EUFÓRICA, com tom animado como se estivesse contando uma novidade imperdível)
 - Regra de frete grátis: NUNCA mencione "frete grátis" ou "frete gratuito" na fala, a menos que isso tenha sido informado diretamente nas informações do produto.
 - Enquadramento: ${framing}
 - Cenário: ${scenario === 'padrao_uso' ? 'Cenário padrão de uso real do produto' : 'Em casa (casa brasileira simples e aconchegante)'}
-- Instruções adicionais prioritárias: ${additionalInstructions || 'Nenhuma'}${variationsClause}
+- Instruções adicionais prioritárias: ${additionalInstructions || 'Nenhuma'}${variationsClause}${twoScenesContinuityClause}
 
 Retorne APENAS um objeto JSON válido com as chaves:
 {
@@ -3000,14 +3108,14 @@ Retorne APENAS um objeto JSON válido com as chaves:
     {
       "number": 1,
       "startTime": "0.0",
-      "endTime": "0.9",
+      "endTime": "${expectedSceneCount === 6 || duration === 15 ? '1.6' : '0.9'}",
       "framing": "string",
       "action": "string",
       "cameraMovement": "string",
       "storyboardDescription": "string"
     }
   ]
-} (exatamente 9 cenas numeradas de 1 a 9 somando ${duration}.0s).`;
+} (exatamente ${expectedSceneCount} cenas numeradas de 1 a ${expectedSceneCount} somando ${duration}.0s).`;
 
     const tryOrder: ('openai' | 'gemini')[] =
       activeProfile === 'gemini' ? ['gemini'] : ['openai'];
@@ -3045,7 +3153,8 @@ Retorne APENAS um objeto JSON válido com as chaves:
             }
             const completion = await client.chat.completions.create(params);
             const parsed = JSON.parse(completion.choices[0]?.message?.content || '{}');
-            if (parsed && Array.isArray(parsed.scenes) && parsed.scenes.length === 9) {
+            if (parsed && Array.isArray(parsed.scenes) && parsed.scenes.length >= expectedSceneCount) {
+              parsed.scenes = parsed.scenes.slice(0, expectedSceneCount);
               if (
                 typeof parsed.manufacturerLogoDescription === 'string' &&
                 parsed.manufacturerLogoDescription.trim().length > 3
@@ -3109,7 +3218,8 @@ Retorne APENAS um objeto JSON válido com as chaves:
               },
             });
             const parsed = JSON.parse(response.text || '{}');
-            if (parsed && Array.isArray(parsed.scenes) && parsed.scenes.length === 9) {
+            if (parsed && Array.isArray(parsed.scenes) && parsed.scenes.length >= expectedSceneCount) {
+              parsed.scenes = parsed.scenes.slice(0, expectedSceneCount);
               if (
                 typeof parsed.manufacturerLogoDescription === 'string' &&
                 parsed.manufacturerLogoDescription.trim().length > 3
@@ -3226,6 +3336,12 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Prompt do storyboard não fornecido.' });
     }
 
+    const isSixFrames =
+      Number(req.body.sceneCount) === 6 ||
+      /GRADE\s+2x3|EXATAMENTE\s+6\s+(?:QUADROS|CENAS)/i.test(String(prompt));
+    const frameCount = isSixFrames ? 6 : 9;
+    const gridLabel = isSixFrames ? '2x3 (2 colunas x 3 linhas)' : '3x3 (3 colunas x 3 linhas)';
+
     const photosList: string[] = Array.isArray(productPhotosBase64)
       ? productPhotosBase64.filter(Boolean)
       : [];
@@ -3243,13 +3359,13 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
     if (photosList.length > 0 && !prompt.includes('LOGOMARCA ORIGINAL DO FABRICANTE NO PRODUTO')) {
       const extractedLogo = await extractManufacturerLogoSpecFromPhotos(photosList, productName);
       if (extractedLogo) {
-        logoEnforcementBlock = `\n\n========================\nTRAVA OBRIGATÓRIA DE LOGOMARCA DO FABRICANTE NO PRODUTO (FIDELIDADE 1:1):\nNas fotos reais anexadas, o produto possui esta logomarca original de fábrica:\n"${extractedLogo}".\nREGRA INEGOCIÁVEL: Em TODOS os quadrantes do storyboard 3x3 onde essa parte do produto aparecer, você DEVE desenhar e reproduzir FIELMENTE essa exata logomarca do fabricante (mesmo símbolo/desenho, mesma cor, mesmo tamanho e mesma posição na peça). É TERMINANTEMENTE PROIBIDO apagar, remover ou deixar lisa a área onde fica a logomarca do fabricante!\n========================`;
+        logoEnforcementBlock = `\n\n========================\nTRAVA OBRIGATÓRIA DE LOGOMARCA DO FABRICANTE NO PRODUTO (FIDELIDADE 1:1):\nNas fotos reais anexadas, o produto possui esta logomarca original de fábrica:\n"${extractedLogo}".\nREGRA INEGOCIÁVEL: Em TODOS os quadrantes do storyboard onde essa parte do produto aparecer, você DEVE desenhar e reproduzir FIELMENTE essa exata logomarca do fabricante (mesmo símbolo/desenho, mesma cor, mesmo tamanho e mesma posição na peça). É TERMINANTEMENTE PROIBIDO apagar, remover ou deixar lisa a área onde fica a logomarca do fabricante!\n========================`;
       }
     }
 
     const baseWithLogo = `${prompt}${logoEnforcementBlock}`;
     const effectivePrompt = correctionPrompt && correctionPrompt.trim()
-      ? `${baseWithLogo}\n\n========================\nCORREÇÃO OBRIGATÓRIA DE AUDITORIA DE FIDELIDADE DOS 9 QUADRANTES:\n${correctionPrompt.trim()}\n========================`
+      ? `${baseWithLogo}\n\n========================\nCORREÇÃO OBRIGATÓRIA DE AUDITORIA DE FIDELIDADE DOS ${frameCount} QUADRANTES:\n${correctionPrompt.trim()}\n========================`
       : baseWithLogo;
 
     const activeProfile = req.body?.aiProfile || getRequestAIProfile(req);
@@ -3272,7 +3388,7 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
             prompt: effectivePrompt,
             productPhotoBase64: photosList[0] || '',
             productPhotosBase64: photosList,
-            modelReferenceBase64: undefined, // Sempre usa as fotos reais do produto como referência primária no storyboard 3x3
+            modelReferenceBase64: undefined, // Sempre usa as fotos reais do produto como referência primária no storyboard
             referenceFrameBase64: previousStoryboardImageBase64 || undefined,
             variationName: productName,
             productType: productName,
@@ -3321,23 +3437,32 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
               );
               const vIdx = matchedVarIdx >= 0 ? matchedVarIdx : Math.min(idx, activeVariations.length - 1);
               const varName = activeVariations[vIdx]?.name?.trim() || `Variação ${vIdx + 1}`;
-              const frameRange =
-                activeVariations.length === 2
+              const frameRange = isSixFrames
+                ? activeVariations.length === 2
                   ? vIdx === 0
-                    ? 'Quadros 1, 2, 3 e 4'
-                    : 'Quadros 5, 6, 7, 8 e 9'
+                    ? 'Quadros 1, 2 e 3'
+                    : 'Quadros 4, 5 e 6'
                   : vIdx === 0
-                  ? 'Quadros 1, 2 e 3 (Linha 1)'
+                  ? 'Quadros 1 e 2 (Linha 1)'
                   : vIdx === 1
-                  ? 'Quadros 4, 5 e 6 (Linha 2)'
-                  : 'Quadros 7, 8 e 9 (Linha 3)';
+                  ? 'Quadros 3 e 4 (Linha 2)'
+                  : 'Quadros 5 e 6 (Linha 3)'
+                : activeVariations.length === 2
+                ? vIdx === 0
+                  ? 'Quadros 1, 2, 3 e 4'
+                  : 'Quadros 5, 6, 7, 8 e 9'
+                : vIdx === 0
+                ? 'Quadros 1, 2 e 3 (Linha 1)'
+                : vIdx === 1
+                ? 'Quadros 4, 5 e 6 (Linha 2)'
+                : 'Quadros 7, 8 e 9 (Linha 3)';
 
               parts.push({
                 text: `[FOTO DE REFERÊNCIA REAL - VARIAÇÃO ${vIdx + 1}: ${varName.toUpperCase()}]: Esta foto define a cor/estilo para uso RIGOROSO nos ${frameRange}. O modelo, formato, peças e logomarca do fabricante devem permanecer idênticos, mas a cor deve ser exatamente a desta foto nesses quadros específicos!`,
               });
             } else {
               parts.push({
-                text: `[FOTO DE REFERÊNCIA REAL DO PRODUTO #${idx + 1} (${productName})]: Preserve 100% idênticos o formato, cor, proporção, textura, botões e OBRIGATORIAMENTE A LOGOMARCA/EMBLEMA E TEXTOS DO FABRICANTE IMPRESSOS NO PRODUTO em todos os 9 quadros do storyboard 3x3. JAMAIS apague a logo original do produto.`,
+                text: `[FOTO DE REFERÊNCIA REAL DO PRODUTO #${idx + 1} (${productName})]: Preserve 100% idênticos o formato, cor, proporção, textura, botões e OBRIGATORIAMENTE A LOGOMARCA/EMBLEMA E TEXTOS DO FABRICANTE IMPRESSOS NO PRODUTO em todos os ${frameCount} quadros do storyboard. JAMAIS apague a logo original do produto.`,
               });
             }
           }
@@ -3348,7 +3473,7 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
           if (parsedPrev) {
             parts.push({ inlineData: parsedPrev });
             parts.push({
-              text: `[STORYBOARD ANTERIOR ENVIADO COMO REFERÊNCIA DE BASE]: Esta imagem acima é o storyboard 3x3 gerado anteriormente. REGRA OBRIGATÓRIA: Mantenha RIGOROSAMENTE IDÊNTICOS todos os quadros que não foram solicitados para alteração. Altere EXCLUSIVAMENTE os quadros apontados na instrução de correção (especialmente as ordens do usuário com prioridade soberana), aplicando a modificação solicitada mantendo as demais cenas iguais.`,
+              text: `[STORYBOARD ANTERIOR ENVIADO COMO REFERÊNCIA DE BASE]: Esta imagem acima é o storyboard gerado anteriormente. REGRA OBRIGATÓRIA: Mantenha RIGOROSAMENTE IDÊNTICOS todos os quadros que não foram solicitados para alteração. Altere EXCLUSIVAMENTE os quadros apontados na instrução de correção (especialmente as ordens do usuário com prioridade soberana), aplicando a modificação solicitada mantendo as demais cenas iguais.`,
             });
           }
         }
@@ -3357,19 +3482,15 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
 
         const variationInstructionRule =
           activeVariations.length >= 2
-            ? `- REGRA MANDATÓRIA DE ALTERNÂNCIA DE CORES ENTRE OS QUADROS (GRADE 3x3): O produto possui ${activeVariations.length} variações de cores/modelos. Você DEVE OBRIGATORIAMENTE alternar as cores conforme a divisão especificada: ${
-                activeVariations.length === 2
-                  ? 'Quadros 1 a 4 na Variação 1 (' + (activeVariations[0]?.name || '1ª cor') + '); Quadros 5 a 9 na Variação 2 (' + (activeVariations[1]?.name || '2ª cor') + ')'
-                  : 'Quadros 1 a 3 na Variação 1 (' + (activeVariations[0]?.name || '1ª cor') + '); Quadros 4 a 6 na Variação 2 (' + (activeVariations[1]?.name || '2ª cor') + '); Quadros 7 a 9 na Variação 3 (' + (activeVariations[2]?.name || '3ª cor') + ')'
-              }. NUNCA gere todos os 9 quadros na mesma cor! É expressamente PROIBIDO usar uma única cor para todo o storyboard quando há variações informadas. Apenas o modelo, formato e peças permanecem idênticos, a cor DEVE alternar entre os blocos de quadros!`
-            : `- PRODUCT LOCK ABSOLUTO: O produto em todos os 9 quadros onde aparece deve ser 100% idêntico às fotos reais anexadas (mesmo formato, cor, textura, botões, funções, proporção e detalhes).`;
+            ? `- REGRA MANDATÓRIA DE ALTERNÂNCIA DE CORES ENTRE OS QUADROS: O produto possui ${activeVariations.length} variações de cores/modelos. Você DEVE OBRIGATORIAMENTE alternar as cores conforme a divisão especificada. NUNCA gere todos os ${frameCount} quadros na mesma cor! Apenas o modelo, formato e peças permanecem idênticos, a cor DEVE alternar entre os blocos de quadros!`
+            : `- PRODUCT LOCK ABSOLUTO: O produto em todos os ${frameCount} quadros onde aparece deve ser 100% idêntico às fotos reais anexadas (mesmo formato, cor, textura, botões, funções, proporção e detalhes).`;
 
-        const systemInstructionText = `VOCÊ É O GERADOR DE STORYBOARD 3x3 DO MODO PRODUTOS 2.0.
-- Gere UMA ÚNICA IMAGEM VERTICAL 9:16 (1080x1920) contendo uma grade 3x3 (3 colunas x 3 linhas) com EXATAMENTE 9 quadros fotográficos ultra-realistas numerados de 1 a 9 (selo circular branco pequeno no canto superior esquerdo de cada quadro com número preto).
+        const systemInstructionText = `VOCÊ É O GERADOR DE STORYBOARD DO MODO PRODUTOS 2.0.
+- Gere UMA ÚNICA IMAGEM VERTICAL 9:16 (1080x1920) contendo uma grade ${gridLabel} com EXATAMENTE ${frameCount} quadros fotográficos ultra-realistas numerados de 1 a ${frameCount} (selo circular branco pequeno no canto superior esquerdo de cada quadro com número preto).
 - Cantos arredondados nos quadros, separados por uma borda branca fina, sobre fundo branco.
 ${variationInstructionRule}
 - LOGOMARCA E MARCA DO FABRICANTE NO PRODUTO (OBRIGATÓRIO): A marca, a logomarca, o emblema e os textos que já estão impressos/estampados no próprio produto nas fotos de referência DEVEM aparecer 100% idênticos, na mesma cor e no mesmo lugar da peça, em todos os quadros em que aquela parte estiver visível. JAMAIS remova ou alise a logomarca do produto!
-- ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: Não adicione legendas flutuantes, textos publicitários externos, preços, setas, carrinho de compras, marca d'água externa, @ ou logotipo do TikTok. Apenas os números 1 a 9 nos selos circulares e a logomarca original do fabricante no próprio produto.`;
+- ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: Não adicione legendas flutuantes, textos publicitários externos, preços, setas, carrinho de compras, marca d'água externa, @ ou logotipo do TikTok. Apenas os números 1 a ${frameCount} nos selos circulares e a logomarca original do fabricante no próprio produto.`;
 
         const modelsToTry = [
           GEMINI_IMAGE_MODEL || 'gemini-3.1-flash-image',
@@ -3432,7 +3553,7 @@ ${variationInstructionRule}
   }
 });
 
-// ─── ENDPOINT: FISCALIZAÇÃO DE FIDELIDADE DOS 9 QUADRANTES DO STORYBOARD 3x3 ──
+// ─── ENDPOINT: FISCALIZAÇÃO DE FIDELIDADE DOS QUADRANTES DO STORYBOARD (6 OU 9 QUADRANTES) ──
 function getAuditColorStatus(score: number): 'green' | 'yellow' | 'orange' | 'red' {
   if (score >= 90) return 'green';
   if (score >= 71) return 'yellow';
@@ -3466,6 +3587,13 @@ app.post('/api/produtos2-audit-storyboard', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Imagem do storyboard não fornecida para auditoria.' });
     }
 
+    const quadrantCount: 6 | 9 =
+      (Array.isArray(scenes) && scenes.length === 6) || Number(req.body?.quadrantCount) === 6 ? 6 : 9;
+    const gridDescription =
+      quadrantCount === 6
+        ? '2x3 — 6 Quadrantes (numerados de 1 a 6, da esquerda para a direita, de cima para baixo: Linha 1 = Cenas 1, 2; Linha 2 = Cenas 3, 4; Linha 3 = Cenas 5, 6)'
+        : '3x3 — 9 Quadrantes (numerados de 1 a 9, da esquerda para a direita, de cima para baixo: Linha 1 = Cenas 1, 2, 3; Linha 2 = Cenas 4, 5, 6; Linha 3 = Cenas 7, 8, 9)';
+
     const photosList: string[] = Array.isArray(productPhotosBase64)
       ? productPhotosBase64.filter(Boolean)
       : [];
@@ -3480,7 +3608,7 @@ app.post('/api/produtos2-audit-storyboard', async (req, res) => {
 
     const scenesContext = Array.isArray(scenes)
       ? scenes
-          .slice(0, 9)
+          .slice(0, quadrantCount)
           .map((s: any, idx: number) => `Cena ${idx + 1}: ${s.framing || ''}. ${s.action || ''}`)
           .join('\n')
       : '';
@@ -3493,23 +3621,23 @@ app.post('/api/produtos2-audit-storyboard', async (req, res) => {
 O usuário anexou fotos de referência do produto em ${activeVariations.length} variações/cores oficiais (${activeVariations
             .map((v: any, idx: number) => `Variação ${idx + 1}: "${v.name || 'Variação ' + (idx + 1)}"`)
             .join(' | ')}).
-- REGRA DE APROVAÇÃO EM QUALQUER QUADRANTE (CENA 1 A CENA 9):
-  * Em QUALQUER um dos 9 quadrantes do storyboard, se o produto estiver retratado de forma IDÊNTICA às fotos de referência de QUALQUER UMA das variações anexadas (seja da Variação 1, da Variação 2 ou da Variação 3), ELE ESTÁ 100% CERTO E DEVE SER APROVADO COM NOTA ALTA (90 a 100 — VERDE)!
-  * Exemplo: Se o usuário anexou fotos do produto na cor Azul na Variação 1 e fotos do produto na cor Vermelha na Variação 2, qualquer quadrante onde o produto apareça Azul idêntico às fotos da Variação 1 está CERTO (90-100), e qualquer quadrante onde o produto apareça Vermelho idêntico às fotos da Variação 2 está CERTO (90-100), independentemente do número da cena (1 a 9)!
+- REGRA DE APROVAÇÃO EM QUALQUER QUADRANTE (CENA 1 A CENA ${quadrantCount}):
+  * Em QUALQUER um dos ${quadrantCount} quadrantes do storyboard, se o produto estiver retratado de forma IDÊNTICA às fotos de referência de QUALQUER UMA das variações anexadas (seja da Variação 1, da Variação 2 ou da Variação 3), ELE ESTÁ 100% CERTO E DEVE SER APROVADO COM NOTA ALTA (90 a 100 — VERDE)!
+  * Exemplo: Se o usuário anexou fotos do produto na cor Azul na Variação 1 e fotos do produto na cor Vermelha na Variação 2, qualquer quadrante onde o produto apareça Azul idêntico às fotos da Variação 1 está CERTO (90-100), e qualquer quadrante onde o produto apareça Vermelho idêntico às fotos da Variação 2 está CERTO (90-100), independentemente do número da cena (1 a ${quadrantCount})!
   * NUNCA dê nota baixa porque um quadrante mostrou a Variação 2 em vez da Variação 1 (ou vice-versa). Qualquer uma das variações anexadas é 100% válida em qualquer quadrante!
 - O QUE É PROIBIDO E DEVE SER REPROVADO (< 60 — VERMELHO):
   * O que NÃO pode acontecer é gerar no storyboard imagens do produto com aparência, formato, logomarca ou COR DIFERENTE DE TODAS AS VARIAÇÕES ANEXADAS (por exemplo: aparecer uma cor que não existe em nenhuma das variações anexadas, ou alterar o formato/logomarca do produto em relação às fotos de referência daquela variação).`
         : '';
 
-    const auditSystemInstruction = `Você é o Fiscal Rigoroso de Fidelidade Visual de Produtos (Storyboard 3x3 — 9 Quadrantes).
-Sua missão é inspecionar CADA UM DOS 9 QUADRANTES (numerados de 1 a 9, da esquerda para a direita, de cima para baixo: Linha 1 = Cenas 1, 2, 3; Linha 2 = Cenas 4, 5, 6; Linha 3 = Cenas 7, 8, 9) da imagem de Storyboard gerada e comparar o produto com as FOTOS REAIS DE REFERÊNCIA do produto "${productName}".
+    const auditSystemInstruction = `Você é o Fiscal Rigoroso de Fidelidade Visual de Produtos (Storyboard ${gridDescription}).
+Sua missão é inspecionar CADA UM DOS ${quadrantCount} QUADRANTES (numerados de 1 a ${quadrantCount}) da imagem de Storyboard gerada e comparar o produto com as FOTOS REAIS DE REFERÊNCIA do produto "${productName}".
 
 PASSO 1 — VERIFICAÇÃO DA LOGOMARCA DO FABRICANTE NAS FOTOS DE REFERÊNCIA:
 Primeiro, olhe com atenção máxima para as FOTOS DE REFERÊNCIA REAIS do produto e identifique se o produto possui alguma LOGOMARCA, EMBLEMA, ESCUDO, SÍMBOLO ou NOME DA MARCA impresso/estampado/gravado nele (por exemplo: logomarca branca no topo do encosto de um banco de exercícios, logo na lateral, emblema frontal, rótulo, etc.).
 - Preencha "hasReferenceLogo": true ou false.
 - Preencha "referenceLogoDescription": descrição exata da logomarca original vista na foto de referência e em qual parte do produto ela fica (ex: "Logomarca geométrica branca em formato de escudo no topo do encosto preto").
 
-PASSO 2 — REGRAS DE OURO DA FISCALIZAÇÃO POR QUADRANTE (CENA 1 A CENA 9):
+PASSO 2 — REGRAS DE OURO DA FISCALIZAÇÃO POR QUADRANTE (CENA 1 A CENA ${quadrantCount}):
 1. Se em algum quadrante aparecer SOMENTE o modelo/pessoa ou SOMENTE o cenário, SEM o produto aparecer:
    - "productVisible": false
    - "logoPartVisible": false
@@ -3535,7 +3663,7 @@ PASSO 2 — REGRAS DE OURO DA FISCALIZAÇÃO POR QUADRANTE (CENA 1 A CENA 9):
 CONTEXTO DO PRODUCT LOCK ESPERADO:
 ${lockContext}
 
-DESCRIÇÃO PLANEJADA DAS 9 CENAS:
+DESCRIÇÃO PLANEJADA DAS ${quadrantCount} CENAS:
 ${scenesContext}
 
 Retorne ESTRITAMENTE um objeto JSON válido EM PORTUGUÊS com este formato exato:
@@ -3553,7 +3681,7 @@ Retorne ESTRITAMENTE um objeto JSON válido EM PORTUGUÊS com este formato exato
     }
   ]
 }
-O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "issue" sempre em português do Brasil.`;
+O array "quadrants" DEVE conter exatamente ${quadrantCount} itens (sceneNumber 1 a ${quadrantCount}), com "issue" sempre em português do Brasil.`;
 
     const activeProfile = req.body?.aiProfile || getRequestAIProfile(req);
     const tryOrder: ('openai' | 'gemini')[] =
@@ -3614,7 +3742,7 @@ O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "iss
 
           contentBlocks.push({
             type: 'text',
-            text: '[IMAGEM GERADA — STORYBOARD 3x3 COM 9 CENAS NUMERADAS DE 1 A 9 PARA FISCALIZAÇÃO]:',
+            text: `[IMAGEM GERADA — STORYBOARD COM ${quadrantCount} CENAS NUMERADAS DE 1 A ${quadrantCount} PARA FISCALIZAÇÃO]:`,
           });
           contentBlocks.push({
             type: 'image_url',
@@ -3628,7 +3756,7 @@ O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "iss
 
           contentBlocks.push({
             type: 'text',
-            text: 'Inspecione cada um dos 9 quadrantes (Cena 1 a Cena 9) comparando com as fotos reais de referência. Lembre-se: se houver múltiplas variações anexadas, o produto é considerado 100% correto em qualquer quadrante desde que seja idêntico a QUALQUER UMA das variações anexadas! Só reprove se o produto tiver aparência, formato, logomarca ou cor diferente de TODAS as variações anexadas. Retorne o JSON em português.',
+            text: `Inspecione cada um dos ${quadrantCount} quadrantes (Cena 1 a Cena ${quadrantCount}) comparando com as fotos reais de referência. Lembre-se: se houver múltiplas variações anexadas, o produto é considerado 100% correto em qualquer quadrante desde que seja idêntico a QUALQUER UMA das variações anexadas! Só reprove se o produto tiver aparência, formato, logomarca ou cor diferente de TODAS as variações anexadas. Retorne o JSON em português.`,
           });
 
           const modelsToTry = [OPENAI_AUDIT_MODEL || 'gpt-5.6-luna', 'gpt-4o', 'gpt-4o-mini', OPENAI_BRAIN_MODEL];
@@ -3706,11 +3834,11 @@ O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "iss
           }
           const parsedStoryboard = parseInlineImage(storyboardImageBase64);
           if (parsedStoryboard) {
-            parts.push({ text: '[IMAGEM GERADA — STORYBOARD 3x3 (9 CENAS NUMERADAS DE 1 A 9)]:' });
+            parts.push({ text: `[IMAGEM GERADA — STORYBOARD (${quadrantCount} CENAS NUMERADAS DE 1 A ${quadrantCount})]:` });
             parts.push({ inlineData: parsedStoryboard });
           }
           parts.push({
-            text: `${auditSystemInstruction}\n\nAnalise cada um dos 9 quadrantes (Cena 1 a Cena 9) e retorne o JSON em português.`,
+            text: `${auditSystemInstruction}\n\nAnalise cada um dos ${quadrantCount} quadrantes (Cena 1 a Cena ${quadrantCount}) e retorne o JSON em português.`,
           });
 
           const geminiModels = [
@@ -3754,8 +3882,8 @@ O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "iss
       }
     }
 
-    // Normalizar os 9 quadrantes com trava rígida de penalização caso a logomarca do produto tenha sido removida
-    const normalizedQuadrants = Array.from({ length: 9 }, (_, i) => {
+    // Normalizar os quadrantes com trava rígida de penalização caso a logomarca do produto tenha sido removida
+    const normalizedQuadrants = Array.from({ length: quadrantCount }, (_, i) => {
       const sceneNum = i + 1;
       const found = (rawQuadrants || []).find((q: any) => Number(q.sceneNumber) === sceneNum) || (rawQuadrants || [])[i];
       const productVisible = found?.productVisible !== undefined ? Boolean(found.productVisible) : true;
@@ -3794,7 +3922,6 @@ O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "iss
       }
 
       // Proteção contra falso positivo entre variações anexadas:
-      // Se o usuário anexou 2 ou 3 variações e o modelo reclamou apenas que o quadrante está na cor de uma variação anexada em vez de outra, aprova com 95%!
       if (activeVariations.length >= 2 && !mentionsMissingLogo && rawScore < 90) {
         const allVarWords = activeVariations
           .flatMap((v: any) => String(v.name || '').toLowerCase().split(/[\s/,-]+/))
@@ -3852,13 +3979,10 @@ O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "iss
       if (problemQuadrants.length === 0) {
         overallScore = Math.max(90, Math.round(avgScore));
       } else if (minScore < 60) {
-        // Se pelo menos 1 cena ficou muito diferente (<60%), nota geral cai para faixa vermelha (<60)
         overallScore = Math.min(59, Math.round(minScore * 0.75 + avgScore * 0.25));
       } else if (minScore <= 70) {
-        // Faixa laranja (60 a 70%)
         overallScore = Math.min(70, Math.max(60, Math.round(minScore * 0.7 + avgScore * 0.3)));
       } else {
-        // Faixa amarela (71 a 89%)
         overallScore = Math.min(89, Math.max(71, Math.round(minScore * 0.65 + avgScore * 0.35)));
       }
     }
@@ -3869,7 +3993,7 @@ O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "iss
     const summaryIssues =
       problemQuadrants.length > 0
         ? problemQuadrants.map((q) => `${q.issue} (Nota: ${q.score}%)`)
-        : ['Todas as 9 cenas estão com fidelidade acima de 90% em relação às fotos de referência.'];
+        : [`Todas as ${quadrantCount} cenas estão com fidelidade acima de 90% em relação às fotos de referência.`];
 
     // Construir prompt cirúrgico de correção para quando o usuário clicar em "Refazer"
     let correctionPrompt = '';
@@ -3902,7 +4026,7 @@ O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "iss
           : '',
         `CORRIJA PRIORITARIAMENTE AS CENAS ONDE O PRODUTO FICOU DIFERENTE:`,
         fixesList,
-        `OBJETIVO OBRIGATÓRIO: Atingir mais de 90% de similaridade em TODOS os 9 quadrantes, preservando logomarca do fabricante, textos impressos no produto, cores das variações anexadas, formato e botões 100% idênticos às fotos de referência.`,
+        `OBJETIVO OBRIGATÓRIO: Atingir mais de 90% de similaridade em TODOS os ${quadrantCount} quadrantes, preservando logomarca do fabricante, textos impressos no produto, cores das variações anexadas, formato e botões 100% idênticos às fotos de referência.`,
       ]
         .filter(Boolean)
         .join('\n');
@@ -3910,7 +4034,7 @@ O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "iss
       correctionPrompt = [
         logoMandatoryNote,
         variationMandatoryNote,
-        'Mantenha mais de 90% de similaridade em todos os 9 quadrantes, preservando logomarca do fabricante, textos impressos no produto, cores das variações anexadas, botões e formato 100% idênticos às fotos de referência.',
+        `Mantenha mais de 90% de similaridade em todos os ${quadrantCount} quadrantes, preservando logomarca do fabricante, textos impressos no produto, cores das variações anexadas, botões e formato 100% idênticos às fotos de referência.`,
       ]
         .filter(Boolean)
         .join(' ');
@@ -3939,7 +4063,7 @@ O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "iss
     console.warn('Erro em /api/produtos2-audit-storyboard:', err?.message || err);
     return res.json({
       success: false,
-      error: err?.message || 'Erro ao auditar os 9 quadrantes do storyboard.',
+      error: err?.message || 'Erro ao auditar os quadrantes do storyboard.',
     });
   }
 });

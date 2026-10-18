@@ -2,7 +2,8 @@ import { TokenUsageStats } from '../types';
 
 export type Produtos2SubMode = 'produtos_geral' | 'vestuario_masculino';
 export type Produtos2MaleSubOption = 'calcados' | 'roupas';
-export type Produtos2Duration = 8 | 10;
+export type Produtos2Duration = 8 | 10 | 15;
+export type Produtos2SceneMode = '1_cena_10s' | '1_cena_15s' | '2_cenas_10s';
 export type Produtos2Influencer = 'Homem' | 'Mulher' | null;
 export type Produtos2ClientGender = 'Masculino' | 'Feminino' | 'Unissex';
 export type Produtos2SpeechMode = 'com_fala' | 'sem_fala';
@@ -51,6 +52,7 @@ export interface Produtos2FormState {
   productNameAutoFilled?: boolean;
   detectedNiche?: string;
   duration: Produtos2Duration;
+  sceneMode?: Produtos2SceneMode;
   customCopy?: string;
   copyEngine?: Produtos2CopyEngine;
   // Fluxo de falas: Fala do usuário (se fornecida) + Banco 1 + Banco 2 + Aurora Copy
@@ -117,6 +119,23 @@ export interface Produtos2StoryboardAudit {
   correctionPrompt: string;
 }
 
+export interface Produtos2SecondSceneState {
+  finalCopy: string;
+  copySourceLabel: string;
+  copyId?: string;
+  copyEngine?: Produtos2CopyEngine;
+  visualMap: Produtos2VisualMapItem[];
+  scenes: Produtos2SceneItem[];
+  storyboardPrompt: string;
+  storyboardImageUrl?: string;
+  storyboardError?: string;
+  isRegeneratingStoryboard?: boolean;
+  isAuditingStoryboard?: boolean;
+  storyboardAudit?: Produtos2StoryboardAudit;
+  veoPrompt: string;
+  videoAudit?: VideoFidelityAudit;
+}
+
 export interface Produtos2ResultState {
   productName: string;
   productInfo?: string;
@@ -124,6 +143,7 @@ export interface Produtos2ResultState {
   subMode: Produtos2SubMode;
   maleSubOption: Produtos2MaleSubOption;
   duration: Produtos2Duration;
+  sceneMode?: Produtos2SceneMode;
   speechMode: Produtos2SpeechMode;
   useSpeechIntro?: boolean;
   framing: Produtos2Framing;
@@ -146,6 +166,7 @@ export interface Produtos2ResultState {
   isAuditingStoryboard?: boolean;
   storyboardAudit?: Produtos2StoryboardAudit;
   veoPrompt: string;
+  scene2?: Produtos2SecondSceneState;
   variations?: Produtos2Variation[];
   additionalInstructions?: string;
   isDialogue?: boolean;

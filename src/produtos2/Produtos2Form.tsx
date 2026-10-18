@@ -23,6 +23,7 @@ import {
   Produtos2Variation,
   Produtos2SubMode,
   Produtos2MaleSubOption,
+  Produtos2SceneMode,
 } from './types';
 import {
   analyzeProductInfoForProdutos2,
@@ -126,6 +127,13 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
   const instructionsTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const speechesLoadingGif = useLoadingGif(isGeneratingSpeeches);
 
+  const currentSceneMode: Produtos2SceneMode = form.sceneMode || '1_cena_10s';
+  const is10sSingle = currentSceneMode === '1_cena_10s';
+  const is15sSingle = currentSceneMode === '1_cena_15s';
+  const isTwoScenes = currentSceneMode === '2_cenas_10s';
+  const speechMaxChars = isTwoScenes ? 450 : is15sSingle ? 335 : 225;
+  const speechMinChars = isTwoScenes ? 400 : is15sSingle ? 310 : 200;
+
   const handleCopySpeech = (text: string, key: string) => {
     if (!text) return;
     navigator.clipboard.writeText(text);
@@ -145,6 +153,9 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
           action: cardKey === 'user' ? 'review_user_speech' : 'normalize_speech_for_ai',
           cardKey,
           text: speechText,
+          sceneMode: currentSceneMode,
+          targetMinChars: speechMinChars,
+          targetMaxChars: speechMaxChars,
           aiProfile,
         }),
       });
@@ -204,7 +215,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                 costUSD: revUSD,
                 costBRL: revBRL,
                 timestamp: new Date().toISOString(),
-                details: 'Revisão conservadora mantendo originalidade <= 225 caracteres',
+                details: `Revisão conservadora mantendo originalidade <= ${speechMaxChars} caracteres`,
               },
             ],
             modelsUsed: Array.from(new Set([...(prevUsage.modelsUsed || []), revM])),
@@ -253,11 +264,16 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
       const finalProductName = (form.productName.trim() || 'Produto').trim();
       const hasInstructions = Boolean(form.additionalInstructions && form.additionalInstructions.trim());
 
-      // 1. Extração IMEDIATA (0ms) da Fala do Usuário a partir de Instruções Adicionais
+      // 1. Extração IMEDIATA (0ms) da Fala do Usuário a partir de Instruções Adicionais respeitando o limite do modo selecionado
       let detectedUserSpeech = form.userSpeech || '';
       let hasUserSpeech = Boolean(form.userSpeech?.trim());
       if (hasInstructions) {
-        const ext = extractUserSpeechFromInstructions(form.additionalInstructions, finalProductName);
+        const ext = extractUserSpeechFromInstructions(
+          form.additionalInstructions,
+          finalProductName,
+          speechMaxChars,
+          speechMinChars
+        );
         if (ext.hasSpeech && ext.speech) {
           hasUserSpeech = true;
           detectedUserSpeech = ext.speech;
@@ -267,7 +283,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
         }
       }
 
-      // 2. Banco de Copies 1 e 2 geradas instantaneamente (0ms)
+      // 2. Banco de Copies 1 e 2 geradas instantaneamente (0ms) para o modo padrão de 10s
       const copy1 = selectAndAdaptProdutos2Copy({
         subMode: form.subMode,
         maleSubOption: form.maleSubOption,
@@ -291,8 +307,12 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
       });
       let banco2Result = copy2.finalCopy;
 
-      // 3. Aurora Copy imediata (0ms) como base
-      let auroraResult = `Gente, olha esse lançamento imperdível! O ${finalProductName} foi desenvolvido com material resistente e tecnologia pensada para o seu conforto diário, super fácil de usar. Confere todos os detalhes aqui embaixo!`;
+      // 3. Aurora Copy imediata (0ms) como base de acordo com o modo de cena selecionado
+      let auroraResult = isTwoScenes
+        ? `Gente, olha esse lançamento incrível que acabou de chegar aqui em casa! O ${finalProductName} foi feito com acabamento reforçado e tecnologia pensada para resolver a sua rotina sem esforço. Além de super prático e resistente no uso diário, ele entrega um resultado impecável desde a primeira vez e vale cada centavo pelo custo-benefício. Aproveita agora mesmo e garante o seu no link aqui embaixo antes que o estoque acabe!`
+        : is15sSingle
+        ? `Gente, olha esse lançamento incrível que acabou de chegar! O ${finalProductName} foi desenvolvido com material super resistente e tecnologia pensada para facilitar o seu dia a dia com muito mais conforto, praticidade e eficiência real em cada detalhe. Garanta já o seu clicando no carrinho laranja aqui embaixo!`
+        : `Gente, olha esse lançamento imperdível! O ${finalProductName} foi desenvolvido com material resistente e tecnologia pensada para o seu conforto diário, super fácil de usar. Confere todos os detalhes aqui embaixo!`;
 
       let detectedIsDialogue = false;
       let detectedDialogueDescription = '';
@@ -309,15 +329,15 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
         steps: [] as any[],
       };
 
-      // 4. Chamada de refinamento com IA topo de linha (timeout estrito de 7.5s)
+      // 4. Chamada de refinamento com IA topo de linha (timeout estrito de 8.5s)
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 7500);
+        const timeoutId = setTimeout(() => controller.abort(), 8500);
 
         const apiPromises: Promise<any>[] = [];
 
-        // Adaptação cirúrgica por IA das Falas 1 e 2 do banco de memória (~64 copies validadas) para o produto atual
-        if (!copy1.isSameProductBankCopy || !copy2.isSameProductBankCopy) {
+        // Adaptação cirúrgica por IA das Falas 1 e 2 do banco de memória (somente no modo padrão de 10 segundos)
+        if (is10sSingle && (!copy1.isSameProductBankCopy || !copy2.isSameProductBankCopy)) {
           apiPromises.push(
             fetch('/api/produtos2-planning', {
               method: 'POST',
@@ -328,6 +348,9 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                 productInfo: form.productInfo || finalProductName,
                 clientGender: form.clientGender,
                 influencer: form.influencer || copy1.resolvedInfluencer,
+                sceneMode: '1_cena_10s',
+                targetMinChars: 200,
+                targetMaxChars: 225,
                 copy1: {
                   id: copy1.copyId,
                   originalText: copy1.baseEntry?.text || copy1.finalCopy,
@@ -387,7 +410,10 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
               action: 'generate_aurora_copy',
               productName: finalProductName,
               productInfo: form.productInfo || finalProductName,
-              duration: 10,
+              duration: is15sSingle ? 15 : 10,
+              sceneMode: currentSceneMode,
+              targetMinChars: speechMinChars,
+              targetMaxChars: speechMaxChars,
               additionalInstructions: form.additionalInstructions,
               aiProfile,
             }),
@@ -431,6 +457,9 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                 additionalInstructions: form.additionalInstructions,
                 productName: finalProductName,
                 productInfo: form.productInfo,
+                sceneMode: currentSceneMode,
+                targetMinChars: speechMinChars,
+                targetMaxChars: speechMaxChars,
                 aiProfile,
               }),
               signal: controller.signal,
@@ -477,8 +506,16 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
         // Prossegue com os dados locais instantâneos
       }
 
-      const defaultSelected = hasUserSpeech ? 'user_speech' : 'banco1';
-      const defaultFinal = hasUserSpeech ? detectedUserSpeech : banco1Result;
+      const defaultSelected: 'user_speech' | 'banco1' | 'aurora_copy' = hasUserSpeech
+        ? 'user_speech'
+        : is10sSingle
+        ? 'banco1'
+        : 'aurora_copy';
+      const defaultFinal = hasUserSpeech
+        ? detectedUserSpeech
+        : is10sSingle
+        ? banco1Result
+        : auroraResult;
 
       const existingSpeechUsage = form.speechTokenUsage;
       let combinedUsage: TokenUsageStats | undefined = undefined;
@@ -513,7 +550,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
 
       onChange((prev) => ({
         ...prev,
-        duration: 10,
+        duration: is15sSingle ? 15 : 10,
         speechesGenerated: true,
         hasUserSpeech,
         userSpeech: detectedUserSpeech,
@@ -526,7 +563,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
         auroraCopy: auroraResult,
         selectedSpeechOption: defaultSelected,
         finalSelectedSpeech: defaultFinal,
-        copyEngine: 'banco',
+        copyEngine: defaultSelected === 'aurora_copy' ? 'aurora_copy' : 'banco',
         speechTokenUsage: combinedUsage || prev.speechTokenUsage,
       }));
     } catch (err: any) {
@@ -1252,6 +1289,101 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
           </div>
         </div>
 
+        {/* Seletor de Modo de cena (Posicionado entre 8. Fala e 9. Enquadramento) */}
+        <div className={`md:col-span-12 p-4 rounded-2xl space-y-2 transition-all duration-300 flex flex-col justify-between ${activeAutoCardClass}`}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <label className="text-xs font-bold text-white block">Modo de cena</label>
+              <p className="text-[11px] text-zinc-300 mt-0.5 leading-snug">
+                Escolha o formato e a duração do vídeo a ser gerado
+              </p>
+            </div>
+            <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2.5 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3 text-sky-300" />
+              {currentSceneMode === '1_cena_15s'
+                ? 'Uma cena — 15 segundos ✓'
+                : currentSceneMode === '2_cenas_10s'
+                ? 'Duas cenas — 10 segundos cada ✓'
+                : 'Uma cena — 10 segundos ✓'}
+            </span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-slate-950/90 p-1.5 rounded-xl border border-zinc-700/60">
+            <button
+              type="button"
+              disabled={isViewOnly}
+              onClick={() => {
+                if (isViewOnly) return;
+                onChange((prev) => ({
+                  ...prev,
+                  sceneMode: '1_cena_10s',
+                  duration: 10,
+                }));
+              }}
+              className={`py-2.5 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                currentSceneMode === '1_cena_10s'
+                  ? accentBtnClass
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              Uma cena — 10 segundos
+            </button>
+            <button
+              type="button"
+              disabled={isViewOnly}
+              onClick={() => {
+                if (isViewOnly) return;
+                onChange((prev) => {
+                  const shouldSwitchToAurora =
+                    prev.selectedSpeechOption === 'banco1' || prev.selectedSpeechOption === 'banco2';
+                  return {
+                    ...prev,
+                    sceneMode: '1_cena_15s',
+                    duration: 15,
+                    selectedSpeechOption: shouldSwitchToAurora ? 'aurora_copy' : prev.selectedSpeechOption,
+                    finalSelectedSpeech: shouldSwitchToAurora
+                      ? prev.auroraCopy || prev.finalSelectedSpeech
+                      : prev.finalSelectedSpeech,
+                  };
+                });
+              }}
+              className={`py-2.5 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                currentSceneMode === '1_cena_15s'
+                  ? accentBtnClass
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              Uma cena — 15 segundos
+            </button>
+            <button
+              type="button"
+              disabled={isViewOnly}
+              onClick={() => {
+                if (isViewOnly) return;
+                onChange((prev) => {
+                  const shouldSwitchToAurora =
+                    prev.selectedSpeechOption === 'banco1' || prev.selectedSpeechOption === 'banco2';
+                  return {
+                    ...prev,
+                    sceneMode: '2_cenas_10s',
+                    duration: 10,
+                    selectedSpeechOption: shouldSwitchToAurora ? 'aurora_copy' : prev.selectedSpeechOption,
+                    finalSelectedSpeech: shouldSwitchToAurora
+                      ? prev.auroraCopy || prev.finalSelectedSpeech
+                      : prev.finalSelectedSpeech,
+                  };
+                });
+              }}
+              className={`py-2.5 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                currentSceneMode === '2_cenas_10s'
+                  ? accentBtnClass
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              Duas cenas — 10 segundos cada
+            </button>
+          </div>
+        </div>
+
         {/* 9. Enquadramento (Com rosto / Sem rosto / POV) */}
         <div className={`md:col-span-6 p-4 rounded-2xl space-y-2 flex flex-col justify-between ${activeAutoCardClass}`}>
           <div>
@@ -1673,6 +1805,10 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
               <p className="text-xs text-zinc-400 mt-1">
                 {isViewOnly
                   ? 'Modo somente visualização: selecione ou clique em Copiar para copiar qualquer uma das falas.'
+                  : isTwoScenes
+                  ? 'Modo Duas cenas (10s cada): todas as falas são 100% editáveis. Máximo de 450 caracteres (será dividida em duas partes de até 225 caracteres cada ao gerar os storyboards).'
+                  : is15sSingle
+                  ? 'Modo Uma cena (15 segundos): todas as falas são 100% editáveis. Faixa ideal de 310 a 335 caracteres.'
                   : 'Todas as falas são 100% editáveis. Edite diretamente no texto, dite pelo microfone ou clique em "Revisar texto". Máximo de 225 caracteres.'}
               </p>
             </div>
@@ -1681,166 +1817,22 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
               <span>
                 {form.selectedSpeechOption === 'user_speech'
                   ? 'Fala do Usuário Selecionada'
-                  : form.selectedSpeechOption === 'banco1'
+                  : is10sSingle && form.selectedSpeechOption === 'banco1'
                   ? 'Fala 1 Selecionada'
-                  : form.selectedSpeechOption === 'banco2'
+                  : is10sSingle && form.selectedSpeechOption === 'banco2'
                   ? 'Fala 2 Selecionada'
-                  : 'Fala 3 (Aurora Copy) Selecionada'}
+                  : is10sSingle
+                  ? 'Fala 3 (Aurora Copy) Selecionada'
+                  : 'Fala 1 (Aurora Copy) Selecionada'}
               </span>
             </div>
           </div>
 
           <div className="space-y-4">
-            {/* FALA 1 — BANCO DE COPIES */}
-            <div
-              onClick={() => {
-                if (isViewOnly) return;
-                onChange((prev) => ({
-                  ...prev,
-                  selectedSpeechOption: 'banco1',
-                  copyEngine: 'banco',
-                  finalSelectedSpeech: prev.bancoCopy || '',
-                }));
-              }}
-              className={`p-4 sm:p-5 rounded-2xl transition-all flex flex-col justify-between space-y-3 ${
-                isViewOnly ? 'cursor-default' : 'cursor-pointer'
-              } ${
-                form.selectedSpeechOption === 'banco1'
-                  ? 'bg-zinc-900/95 border-2 border-emerald-400 shadow-xl shadow-emerald-950/50 ring-1 ring-emerald-500/40'
-                  : 'bg-zinc-900/80 border border-zinc-800 hover:border-zinc-700 shadow-lg'
-              }`}
-            >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
-                        form.selectedSpeechOption === 'banco1'
-                          ? 'bg-emerald-400 text-slate-950'
-                          : 'border-2 border-zinc-600 bg-zinc-800'
-                      }`}
-                    >
-                      {form.selectedSpeechOption === 'banco1' && (
-                        <Check className="w-3.5 h-3.5 stroke-[3]" />
-                      )}
-                    </div>
-                    <h4 className="text-xs sm:text-sm font-black text-white">
-                      Fala 1 — Banco de Copies
-                    </h4>
-                  </div>
-
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {/* Contador de caracteres (Item 8: vermelho se > 225) */}
-                    <span
-                      className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-colors ${
-                        (form.bancoCopy?.length || 0) > 225
-                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse'
-                          : 'bg-zinc-800 text-emerald-300 border border-emerald-500/30'
-                      }`}
-                    >
-                      {form.bancoCopy?.length || 0} / 225
-                    </span>
-
-                    {/* Botão Revisar Texto (Item 9) */}
-                    {!isViewOnly && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleReviewSpeech(form.bancoCopy || '', 'banco1');
-                        }}
-                        disabled={isReviewingCard === 'banco1' || !(form.bancoCopy || '').trim()}
-                        className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 font-black text-xs flex items-center gap-1 transition-all cursor-pointer shadow-sm shadow-amber-950/40"
-                        title="Revisar texto com IA (corrige português, pontuação, medidas e limita a 225 caracteres)"
-                      >
-                        {isReviewingCard === 'banco1' ? (
-                          <>
-                            <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-950" />
-                            <span>Revisando...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Wand2 className="w-3.5 h-3.5 text-slate-950" />
-                            <span>Revisar texto</span>
-                          </>
-                        )}
-                      </button>
-                    )}
-
-                    {/* Botão Copiar */}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCopySpeech(form.bancoCopy || '', 'banco1');
-                      }}
-                      className="p-1.5 px-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white border border-zinc-700 flex items-center gap-1 text-xs transition-colors cursor-pointer"
-                      title="Copiar fala 1"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                      {copiedSpeechKey === 'banco1' && (
-                        <span className="text-[10px] text-emerald-300 font-bold">Copiado!</span>
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="relative" onClick={(e) => e.stopPropagation()}>
-                  <textarea
-                    rows={3}
-                    readOnly={isViewOnly}
-                    value={form.bancoCopy || ''}
-                    onChange={(e) => {
-                      if (isViewOnly) return;
-                      const val = e.target.value;
-                      onChange((prev) => ({
-                        ...prev,
-                        bancoCopy: val,
-                        finalSelectedSpeech: prev.selectedSpeechOption === 'banco1' ? val : prev.finalSelectedSpeech,
-                      }));
-                    }}
-                    placeholder="Fala 1 adaptada do Banco de Copies..."
-                    className={`w-full p-3.5 pr-12 rounded-xl bg-zinc-950/90 text-xs sm:text-sm leading-relaxed font-sans shadow-inner resize-y transition-colors ${
-                      (form.bancoCopy?.length || 0) > 225
-                        ? 'text-rose-400 border-2 border-rose-500 focus:border-rose-400'
-                        : 'text-zinc-100 border border-zinc-700 focus:border-emerald-400'
-                    }`}
-                  />
-
-                  {/* Microfone Banco 1 */}
-                  {!isViewOnly && (
-                    <button
-                      type="button"
-                      onClick={() => toggleMic('banco1')}
-                      className={`absolute right-2.5 top-2.5 p-2 rounded-lg text-xs transition-all cursor-pointer ${
-                        activeMic === 'banco1'
-                          ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
-                          : 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 border border-zinc-600'
-                      }`}
-                      title={activeMic === 'banco1' ? 'Parar gravação' : 'Ditar fala por voz'}
-                    >
-                      {activeMic === 'banco1' ? (
-                        <Square className="w-4 h-4 fill-white" />
-                      ) : (
-                        <Mic className="w-4 h-4 text-zinc-300" />
-                      )}
-                    </button>
-                  )}
-                </div>
-
-                {activeMic === 'banco1' && (
-                  <p className="text-[11px] text-rose-400 flex items-center gap-1.5 font-semibold animate-pulse">
-                    <span className="w-2 h-2 rounded-full bg-rose-500" />
-                    Ouvindo sua voz para a Fala 1... clique no quadrado vermelho para parar.
-                  </p>
-                )}
-              </div>
-
-              <button
-                type="button"
-                disabled={isViewOnly}
-                onClick={(e) => {
-                  e.stopPropagation();
+            {/* FALA 1 — BANCO DE COPIES (Apenas no modo padrão de 10 segundos) */}
+            {is10sSingle && (
+              <div
+                onClick={() => {
                   if (isViewOnly) return;
                   onChange((prev) => ({
                     ...prev,
@@ -1849,173 +1841,175 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                     finalSelectedSpeech: prev.bancoCopy || '',
                   }));
                 }}
-                className={`w-full py-2.5 px-4 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                className={`p-4 sm:p-5 rounded-2xl transition-all flex flex-col justify-between space-y-3 ${
+                  isViewOnly ? 'cursor-default' : 'cursor-pointer'
+                } ${
                   form.selectedSpeechOption === 'banco1'
-                    ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black shadow-md shadow-emerald-950/40'
-                    : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 font-bold'
+                    ? 'bg-zinc-900/95 border-2 border-emerald-400 shadow-xl shadow-emerald-950/50 ring-1 ring-emerald-500/40'
+                    : 'bg-zinc-900/80 border border-zinc-800 hover:border-zinc-700 shadow-lg'
                 }`}
               >
-                {form.selectedSpeechOption === 'banco1' ? (
-                  <>
-                    <Check className="w-4 h-4 stroke-[3]" />
-                    <span>Fala Selecionada para o Vídeo</span>
-                  </>
-                ) : (
-                  <span>Usar Esta Fala</span>
-                )}
-              </button>
-            </div>
-
-            {/* FALA 2 — BANCO DE COPIES */}
-            <div
-              onClick={() => {
-                if (isViewOnly) return;
-                onChange((prev) => ({
-                  ...prev,
-                  selectedSpeechOption: 'banco2',
-                  copyEngine: 'banco',
-                  finalSelectedSpeech: prev.bancoCopy2 || '',
-                }));
-              }}
-              className={`p-4 sm:p-5 rounded-2xl transition-all flex flex-col justify-between space-y-3 ${
-                isViewOnly ? 'cursor-default' : 'cursor-pointer'
-              } ${
-                form.selectedSpeechOption === 'banco2'
-                  ? 'bg-zinc-900/95 border-2 border-emerald-400 shadow-xl shadow-emerald-950/50 ring-1 ring-emerald-500/40'
-                  : 'bg-zinc-900/80 border border-zinc-800 hover:border-zinc-700 shadow-lg'
-              }`}
-            >
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-2 flex-wrap">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
-                        form.selectedSpeechOption === 'banco2'
-                          ? 'bg-emerald-400 text-slate-950'
-                          : 'border-2 border-zinc-600 bg-zinc-800'
-                      }`}
-                    >
-                      {form.selectedSpeechOption === 'banco2' && (
-                        <Check className="w-3.5 h-3.5 stroke-[3]" />
-                      )}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
+                          form.selectedSpeechOption === 'banco1'
+                            ? 'bg-emerald-400 text-slate-950'
+                            : 'border-2 border-zinc-600 bg-zinc-800'
+                        }`}
+                      >
+                        {form.selectedSpeechOption === 'banco1' && (
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        )}
+                      </div>
+                      <h4 className="text-xs sm:text-sm font-black text-white">
+                        Fala 1 — Banco de Copies
+                      </h4>
                     </div>
-                    <h4 className="text-xs sm:text-sm font-black text-white">
-                      Fala 2 — Banco de Copies
-                    </h4>
-                  </div>
 
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {/* Contador de caracteres (Item 8: vermelho se > 225) */}
-                    <span
-                      className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-colors ${
-                        (form.bancoCopy2?.length || 0) > 225
-                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse'
-                          : 'bg-zinc-800 text-emerald-300 border border-emerald-500/30'
-                      }`}
-                    >
-                      {form.bancoCopy2?.length || 0} / 225
-                    </span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* Contador de caracteres (Item 8: vermelho se > 225) */}
+                      <span
+                        className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-colors ${
+                          (form.bancoCopy?.length || 0) > 225
+                            ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse'
+                            : 'bg-zinc-800 text-emerald-300 border border-emerald-500/30'
+                        }`}
+                      >
+                        {form.bancoCopy?.length || 0} / 225
+                      </span>
 
-                    {/* Botão Revisar Texto (Item 9) */}
-                    {!isViewOnly && (
+                      {/* Botão Revisar Texto (Item 9) */}
+                      {!isViewOnly && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleReviewSpeech(form.bancoCopy || '', 'banco1');
+                          }}
+                          disabled={isReviewingCard === 'banco1' || !(form.bancoCopy || '').trim()}
+                          className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 font-black text-xs flex items-center gap-1 transition-all cursor-pointer shadow-sm shadow-amber-950/40"
+                          title="Revisar texto com IA (corrige português, pontuação, medidas e limita a 225 caracteres)"
+                        >
+                          {isReviewingCard === 'banco1' ? (
+                            <>
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-950" />
+                              <span>Revisando...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Wand2 className="w-3.5 h-3.5 text-slate-950" />
+                              <span>Revisar texto</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+
+                      {/* Botão Copiar */}
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleReviewSpeech(form.bancoCopy2 || '', 'banco2');
+                          handleCopySpeech(form.bancoCopy || '', 'banco1');
                         }}
-                        disabled={isReviewingCard === 'banco2' || !(form.bancoCopy2 || '').trim()}
-                        className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 font-black text-xs flex items-center gap-1 transition-all cursor-pointer shadow-sm shadow-amber-950/40"
-                        title="Revisar texto com IA (corrige português, pontuação, medidas e limita a 225 caracteres)"
+                        className="p-1.5 px-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white border border-zinc-700 flex items-center gap-1 text-xs transition-colors cursor-pointer"
+                        title="Copiar fala 1"
                       >
-                        {isReviewingCard === 'banco2' ? (
-                          <>
-                            <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-950" />
-                            <span>Revisando...</span>
-                          </>
+                        <Copy className="w-3.5 h-3.5" />
+                        {copiedSpeechKey === 'banco1' && (
+                          <span className="text-[10px] text-emerald-300 font-bold">Copiado!</span>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="relative" onClick={(e) => e.stopPropagation()}>
+                    <textarea
+                      rows={3}
+                      readOnly={isViewOnly}
+                      value={form.bancoCopy || ''}
+                      onChange={(e) => {
+                        if (isViewOnly) return;
+                        const val = e.target.value;
+                        onChange((prev) => ({
+                          ...prev,
+                          bancoCopy: val,
+                          finalSelectedSpeech: prev.selectedSpeechOption === 'banco1' ? val : prev.finalSelectedSpeech,
+                        }));
+                      }}
+                      placeholder="Fala 1 adaptada do Banco de Copies..."
+                      className={`w-full p-3.5 pr-12 rounded-xl bg-zinc-950/90 text-xs sm:text-sm leading-relaxed font-sans shadow-inner resize-y transition-colors ${
+                        (form.bancoCopy?.length || 0) > 225
+                          ? 'text-rose-400 border-2 border-rose-500 focus:border-rose-400'
+                          : 'text-zinc-100 border border-zinc-700 focus:border-emerald-400'
+                      }`}
+                    />
+
+                    {/* Microfone Banco 1 */}
+                    {!isViewOnly && (
+                      <button
+                        type="button"
+                        onClick={() => toggleMic('banco1')}
+                        className={`absolute right-2.5 top-2.5 p-2 rounded-lg text-xs transition-all cursor-pointer ${
+                          activeMic === 'banco1'
+                            ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
+                            : 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 border border-zinc-600'
+                        }`}
+                        title={activeMic === 'banco1' ? 'Parar gravação' : 'Ditar fala por voz'}
+                      >
+                        {activeMic === 'banco1' ? (
+                          <Square className="w-4 h-4 fill-white" />
                         ) : (
-                          <>
-                            <Wand2 className="w-3.5 h-3.5 text-slate-950" />
-                            <span>Revisar texto</span>
-                          </>
+                          <Mic className="w-4 h-4 text-zinc-300" />
                         )}
                       </button>
                     )}
-
-                    {/* Botão Copiar */}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleCopySpeech(form.bancoCopy2 || '', 'banco2');
-                      }}
-                      className="p-1.5 px-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white border border-zinc-700 flex items-center gap-1 text-xs transition-colors cursor-pointer"
-                      title="Copiar fala 2"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                      {copiedSpeechKey === 'banco2' && (
-                        <span className="text-[10px] text-emerald-300 font-bold">Copiado!</span>
-                      )}
-                    </button>
                   </div>
-                </div>
 
-                <div className="relative" onClick={(e) => e.stopPropagation()}>
-                  <textarea
-                    rows={3}
-                    readOnly={isViewOnly}
-                    value={form.bancoCopy2 || ''}
-                    onChange={(e) => {
-                      if (isViewOnly) return;
-                      const val = e.target.value;
-                      onChange((prev) => ({
-                        ...prev,
-                        bancoCopy2: val,
-                        finalSelectedSpeech: prev.selectedSpeechOption === 'banco2' ? val : prev.finalSelectedSpeech,
-                      }));
-                    }}
-                    placeholder="Fala 2 adaptada do Banco de Copies..."
-                    className={`w-full p-3.5 pr-12 rounded-xl bg-zinc-950/90 text-xs sm:text-sm leading-relaxed font-sans shadow-inner resize-y transition-colors ${
-                      (form.bancoCopy2?.length || 0) > 225
-                        ? 'text-rose-400 border-2 border-rose-500 focus:border-rose-400'
-                        : 'text-zinc-100 border border-zinc-700 focus:border-emerald-400'
-                    }`}
-                  />
-
-                  {/* Microfone Banco 2 */}
-                  {!isViewOnly && (
-                    <button
-                      type="button"
-                      onClick={() => toggleMic('banco2')}
-                      className={`absolute right-2.5 top-2.5 p-2 rounded-lg text-xs transition-all cursor-pointer ${
-                        activeMic === 'banco2'
-                          ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
-                          : 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 border border-zinc-600'
-                      }`}
-                      title={activeMic === 'banco2' ? 'Parar gravação' : 'Ditar fala por voz'}
-                    >
-                      {activeMic === 'banco2' ? (
-                        <Square className="w-4 h-4 fill-white" />
-                      ) : (
-                        <Mic className="w-4 h-4 text-zinc-300" />
-                      )}
-                    </button>
+                  {activeMic === 'banco1' && (
+                    <p className="text-[11px] text-rose-400 flex items-center gap-1.5 font-semibold animate-pulse">
+                      <span className="w-2 h-2 rounded-full bg-rose-500" />
+                      Ouvindo sua voz para a Fala 1... clique no quadrado vermelho para parar.
+                    </p>
                   )}
                 </div>
 
-                {activeMic === 'banco2' && (
-                  <p className="text-[11px] text-rose-400 flex items-center gap-1.5 font-semibold animate-pulse">
-                    <span className="w-2 h-2 rounded-full bg-rose-500" />
-                    Ouvindo sua voz para a Fala 2... clique no quadrado vermelho para parar.
-                  </p>
-                )}
+                <button
+                  type="button"
+                  disabled={isViewOnly}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (isViewOnly) return;
+                    onChange((prev) => ({
+                      ...prev,
+                      selectedSpeechOption: 'banco1',
+                      copyEngine: 'banco',
+                      finalSelectedSpeech: prev.bancoCopy || '',
+                    }));
+                  }}
+                  className={`w-full py-2.5 px-4 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    form.selectedSpeechOption === 'banco1'
+                      ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black shadow-md shadow-emerald-950/40'
+                      : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 font-bold'
+                  }`}
+                >
+                  {form.selectedSpeechOption === 'banco1' ? (
+                    <>
+                      <Check className="w-4 h-4 stroke-[3]" />
+                      <span>Fala Selecionada para o Vídeo</span>
+                    </>
+                  ) : (
+                    <span>Usar Esta Fala</span>
+                  )}
+                </button>
               </div>
+            )}
 
-              <button
-                type="button"
-                disabled={isViewOnly}
-                onClick={(e) => {
-                  e.stopPropagation();
+            {/* FALA 2 — BANCO DE COPIES (Apenas no modo padrão de 10 segundos) */}
+            {is10sSingle && (
+              <div
+                onClick={() => {
                   if (isViewOnly) return;
                   onChange((prev) => ({
                     ...prev,
@@ -2024,24 +2018,172 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                     finalSelectedSpeech: prev.bancoCopy2 || '',
                   }));
                 }}
-                className={`w-full py-2.5 px-4 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                className={`p-4 sm:p-5 rounded-2xl transition-all flex flex-col justify-between space-y-3 ${
+                  isViewOnly ? 'cursor-default' : 'cursor-pointer'
+                } ${
                   form.selectedSpeechOption === 'banco2'
-                    ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black shadow-md shadow-emerald-950/40'
-                    : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 font-bold'
+                    ? 'bg-zinc-900/95 border-2 border-emerald-400 shadow-xl shadow-emerald-950/50 ring-1 ring-emerald-500/40'
+                    : 'bg-zinc-900/80 border border-zinc-800 hover:border-zinc-700 shadow-lg'
                 }`}
               >
-                {form.selectedSpeechOption === 'banco2' ? (
-                  <>
-                    <Check className="w-4 h-4 stroke-[3]" />
-                    <span>Fala Selecionada para o Vídeo</span>
-                  </>
-                ) : (
-                  <span>Usar Esta Fala</span>
-                )}
-              </button>
-            </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
+                          form.selectedSpeechOption === 'banco2'
+                            ? 'bg-emerald-400 text-slate-950'
+                            : 'border-2 border-zinc-600 bg-zinc-800'
+                        }`}
+                      >
+                        {form.selectedSpeechOption === 'banco2' && (
+                          <Check className="w-3.5 h-3.5 stroke-[3]" />
+                        )}
+                      </div>
+                      <h4 className="text-xs sm:text-sm font-black text-white">
+                        Fala 2 — Banco de Copies
+                      </h4>
+                    </div>
 
-            {/* FALA 3 — AURORA COPY */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* Contador de caracteres (Item 8: vermelho se > 225) */}
+                      <span
+                        className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-colors ${
+                          (form.bancoCopy2?.length || 0) > 225
+                            ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse'
+                            : 'bg-zinc-800 text-emerald-300 border border-emerald-500/30'
+                        }`}
+                      >
+                        {form.bancoCopy2?.length || 0} / 225
+                      </span>
+
+                      {/* Botão Revisar Texto (Item 9) */}
+                      {!isViewOnly && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleReviewSpeech(form.bancoCopy2 || '', 'banco2');
+                          }}
+                          disabled={isReviewingCard === 'banco2' || !(form.bancoCopy2 || '').trim()}
+                          className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 font-black text-xs flex items-center gap-1 transition-all cursor-pointer shadow-sm shadow-amber-950/40"
+                          title="Revisar texto com IA (corrige português, pontuação, medidas e limita a 225 caracteres)"
+                        >
+                          {isReviewingCard === 'banco2' ? (
+                            <>
+                              <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-950" />
+                              <span>Revisando...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Wand2 className="w-3.5 h-3.5 text-slate-950" />
+                              <span>Revisar texto</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+
+                      {/* Botão Copiar */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCopySpeech(form.bancoCopy2 || '', 'banco2');
+                        }}
+                        className="p-1.5 px-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white border border-zinc-700 flex items-center gap-1 text-xs transition-colors cursor-pointer"
+                        title="Copiar fala 2"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        {copiedSpeechKey === 'banco2' && (
+                          <span className="text-[10px] text-emerald-300 font-bold">Copiado!</span>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="relative" onClick={(e) => e.stopPropagation()}>
+                    <textarea
+                      rows={3}
+                      readOnly={isViewOnly}
+                      value={form.bancoCopy2 || ''}
+                      onChange={(e) => {
+                        if (isViewOnly) return;
+                        const val = e.target.value;
+                        onChange((prev) => ({
+                          ...prev,
+                          bancoCopy2: val,
+                          finalSelectedSpeech: prev.selectedSpeechOption === 'banco2' ? val : prev.finalSelectedSpeech,
+                        }));
+                      }}
+                      placeholder="Fala 2 adaptada do Banco de Copies..."
+                      className={`w-full p-3.5 pr-12 rounded-xl bg-zinc-950/90 text-xs sm:text-sm leading-relaxed font-sans shadow-inner resize-y transition-colors ${
+                        (form.bancoCopy2?.length || 0) > 225
+                          ? 'text-rose-400 border-2 border-rose-500 focus:border-rose-400'
+                          : 'text-zinc-100 border border-zinc-700 focus:border-emerald-400'
+                      }`}
+                    />
+
+                    {/* Microfone Banco 2 */}
+                    {!isViewOnly && (
+                      <button
+                        type="button"
+                        onClick={() => toggleMic('banco2')}
+                        className={`absolute right-2.5 top-2.5 p-2 rounded-lg text-xs transition-all cursor-pointer ${
+                          activeMic === 'banco2'
+                            ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
+                            : 'bg-zinc-800 text-zinc-300 hover:text-white hover:bg-zinc-700 border border-zinc-600'
+                        }`}
+                        title={activeMic === 'banco2' ? 'Parar gravação' : 'Ditar fala por voz'}
+                      >
+                        {activeMic === 'banco2' ? (
+                          <Square className="w-4 h-4 fill-white" />
+                        ) : (
+                          <Mic className="w-4 h-4 text-zinc-300" />
+                        )}
+                      </button>
+                    )}
+                  </div>
+
+                  {activeMic === 'banco2' && (
+                    <p className="text-[11px] text-rose-400 flex items-center gap-1.5 font-semibold animate-pulse">
+                      <span className="w-2 h-2 rounded-full bg-rose-500" />
+                      Ouvindo sua voz para a Fala 2... clique no quadrado vermelho para parar.
+                    </p>
+                  )}
+                </div>
+
+                <button
+                  type="button"
+                  disabled={isViewOnly}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (isViewOnly) return;
+                    onChange((prev) => ({
+                      ...prev,
+                      selectedSpeechOption: 'banco2',
+                      copyEngine: 'banco',
+                      finalSelectedSpeech: prev.bancoCopy2 || '',
+                    }));
+                  }}
+                  className={`w-full py-2.5 px-4 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    form.selectedSpeechOption === 'banco2'
+                      ? 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black shadow-md shadow-emerald-950/40'
+                      : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 font-bold'
+                  }`}
+                >
+                  {form.selectedSpeechOption === 'banco2' ? (
+                    <>
+                      <Check className="w-4 h-4 stroke-[3]" />
+                      <span>Fala Selecionada para o Vídeo</span>
+                    </>
+                  ) : (
+                    <span>Usar Esta Fala</span>
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* FALA AURORA COPY (Fala 3 no modo 10s, ou Fala 1 nos modos 15s e 2 cenas) */}
             <div
               onClick={() => {
                 if (isViewOnly) return;
@@ -2075,23 +2217,23 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                       )}
                     </div>
                     <h4 className="text-xs sm:text-sm font-black text-white">
-                      Fala 3 — Aurora Copy
+                      {is10sSingle ? 'Fala 3 — Aurora Copy' : 'Fala 1 — Aurora Copy'}
                     </h4>
                   </div>
 
                   <div className="flex items-center gap-2 flex-wrap">
-                    {/* Contador de caracteres (Item 8: vermelho se > 225) */}
+                    {/* Contador de caracteres (vermelho se > speechMaxChars) */}
                     <span
                       className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-colors ${
-                        (form.auroraCopy?.length || 0) > 225
+                        (form.auroraCopy?.length || 0) > speechMaxChars
                           ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse'
                           : 'bg-zinc-800 text-emerald-300 border border-emerald-500/30'
                       }`}
                     >
-                      {form.auroraCopy?.length || 0} / 225
+                      {form.auroraCopy?.length || 0} / {speechMaxChars}
                     </span>
 
-                    {/* Botão Revisar Texto (Item 9) */}
+                    {/* Botão Revisar Texto */}
                     {!isViewOnly && (
                       <button
                         type="button"
@@ -2101,7 +2243,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                         }}
                         disabled={isReviewingCard === 'aurora' || !(form.auroraCopy || '').trim()}
                         className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 font-black text-xs flex items-center gap-1 transition-all cursor-pointer shadow-sm shadow-amber-950/40"
-                        title="Revisar texto com IA (corrige português, pontuação, medidas e limita a 225 caracteres)"
+                        title={`Revisar texto com IA (corrige português, pontuação, medidas e limita a ${speechMaxChars} caracteres)`}
                       >
                         {isReviewingCard === 'aurora' ? (
                           <>
@@ -2125,7 +2267,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                         handleCopySpeech(form.auroraCopy || '', 'aurora');
                       }}
                       className="p-1.5 px-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white border border-zinc-700 flex items-center gap-1 text-xs transition-colors cursor-pointer"
-                      title="Copiar fala 3"
+                      title="Copiar fala Aurora Copy"
                     >
                       <Copy className="w-3.5 h-3.5" />
                       {copiedSpeechKey === 'aurora' && (
@@ -2137,7 +2279,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
 
                 <div className="relative" onClick={(e) => e.stopPropagation()}>
                   <textarea
-                    rows={3}
+                    rows={isTwoScenes ? 4 : 3}
                     readOnly={isViewOnly}
                     value={form.auroraCopy || ''}
                     onChange={(e) => {
@@ -2149,9 +2291,9 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                         finalSelectedSpeech: prev.selectedSpeechOption === 'aurora_copy' ? val : prev.finalSelectedSpeech,
                       }));
                     }}
-                    placeholder="Fala 3 criada pela Aurora Copy..."
+                    placeholder="Fala criada pela Aurora Copy..."
                     className={`w-full p-3.5 pr-12 rounded-xl bg-zinc-950/90 text-xs sm:text-sm leading-relaxed font-sans shadow-inner resize-y transition-colors ${
-                      (form.auroraCopy?.length || 0) > 225
+                      (form.auroraCopy?.length || 0) > speechMaxChars
                         ? 'text-rose-400 border-2 border-rose-500 focus:border-rose-400'
                         : 'text-zinc-100 border border-zinc-700 focus:border-emerald-400'
                     }`}
@@ -2181,7 +2323,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                 {activeMic === 'aurora' && (
                   <p className="text-[11px] text-rose-400 flex items-center gap-1.5 font-semibold animate-pulse">
                     <span className="w-2 h-2 rounded-full bg-rose-500" />
-                    Ouvindo sua voz para a Fala 3... clique no quadrado vermelho para parar.
+                    Ouvindo sua voz para a Aurora Copy... clique no quadrado vermelho para parar.
                   </p>
                 )}
               </div>
@@ -2216,7 +2358,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
               </button>
             </div>
 
-            {/* FALA 4 — FALA DO USUÁRIO */}
+            {/* FALA DO USUÁRIO (Fala 4 no modo 10s, ou Fala 2 nos modos 15s e 2 cenas) */}
             {Boolean(form.hasUserSpeech || form.userSpeech || (form.additionalInstructions && form.additionalInstructions.trim())) && (
               <div
                 onClick={() => {
@@ -2252,20 +2394,20 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                       </div>
                       <h4 className="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wide flex items-center gap-1.5">
                         <Sparkles className="w-4 h-4 text-amber-400" />
-                        <span>Fala 4 — Fala do Usuário</span>
+                        <span>{is10sSingle ? 'Fala 4 — Fala do Usuário' : 'Fala 2 — Fala do Usuário'}</span>
                       </h4>
                     </div>
 
                     <div className="flex items-center gap-2 flex-wrap">
-                      {/* Contador de caracteres (vermelho se > 225) */}
+                      {/* Contador de caracteres (vermelho se > speechMaxChars) */}
                       <span
                         className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-colors ${
-                          (form.userSpeech?.length || 0) > 225
+                          (form.userSpeech?.length || 0) > speechMaxChars
                             ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse'
                             : 'bg-zinc-800 text-amber-300 border border-amber-500/30'
                         }`}
                       >
-                        {form.userSpeech?.length || 0} / 225
+                        {form.userSpeech?.length || 0} / {speechMaxChars}
                       </span>
 
                       {/* Botão Revisar Texto */}
@@ -2278,7 +2420,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                           }}
                           disabled={isReviewingCard === 'user' || !(form.userSpeech || '').trim()}
                           className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 disabled:opacity-50 text-slate-950 font-black text-xs flex items-center gap-1 transition-all cursor-pointer shadow-sm shadow-amber-950/40"
-                          title="Revisar texto com IA (corrige português, pontuação, medidas e limita a 225 caracteres)"
+                          title={`Revisar texto com IA (corrige português, pontuação, medidas e limita a ${speechMaxChars} caracteres)`}
                         >
                           {isReviewingCard === 'user' ? (
                             <>
@@ -2314,7 +2456,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
 
                   <div className="relative" onClick={(e) => e.stopPropagation()}>
                     <textarea
-                      rows={3}
+                      rows={isTwoScenes ? 4 : 3}
                       readOnly={isViewOnly}
                       value={form.userSpeech || ''}
                       onChange={(e) => {
@@ -2328,7 +2470,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                       }}
                       placeholder="Fala extraída das Instruções Adicionais..."
                       className={`w-full p-3.5 pr-12 rounded-xl bg-zinc-950/90 text-xs sm:text-sm leading-relaxed font-sans shadow-inner resize-y transition-colors ${
-                        (form.userSpeech?.length || 0) > 225
+                        (form.userSpeech?.length || 0) > speechMaxChars
                           ? 'text-rose-400 border-2 border-rose-500 focus:border-rose-400'
                           : 'text-zinc-100 border border-zinc-700 focus:border-amber-400'
                       }`}
@@ -2358,7 +2500,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                   {activeMic === 'user' && (
                     <p className="text-[11px] text-rose-400 flex items-center gap-1.5 font-semibold animate-pulse">
                       <span className="w-2 h-2 rounded-full bg-rose-500" />
-                      Ouvindo sua voz para a Fala 4... clique no quadrado vermelho para parar.
+                      Ouvindo sua voz para a Fala do Usuário... clique no quadrado vermelho para parar.
                     </p>
                   )}
                 </div>
@@ -2398,7 +2540,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
       )}
 
       {/* ===================================================================== */}
-      {/* 15. BOTÃO GERAR VÍDEO (Storyboard 9 Cenas + Prompt Veo 3)              */}
+      {/* 15. BOTÃO GERAR VÍDEO (Storyboard + Prompt Veo 3)                     */}
       {/* ===================================================================== */}
       <div className="pt-2 space-y-4">
         {isProcessing && (
@@ -2426,7 +2568,11 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
           ) : isProcessing ? (
             <>
               <RefreshCw className="w-5 h-5 animate-spin" />
-              <span>Gerando Storyboard 9 Cenas + Prompt do Veo 3 com a Fala Escolhida...</span>
+              <span>
+                {isTwoScenes
+                  ? 'Gerando 2 Storyboards (6 Quadros Cada) + 2 Prompts do Veo 3...'
+                  : 'Gerando Storyboard 9 Cenas + Prompt do Veo 3 com a Fala Escolhida...'}
+              </span>
             </>
           ) : (
             <>
@@ -2435,11 +2581,13 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                 Gerar Vídeo com a Fala Selecionada (
                 {form.selectedSpeechOption === 'user_speech'
                   ? 'Fala do Usuário'
-                  : form.selectedSpeechOption === 'banco1'
+                  : is10sSingle && form.selectedSpeechOption === 'banco1'
                   ? 'Fala 1 — Banco'
-                  : form.selectedSpeechOption === 'banco2'
+                  : is10sSingle && form.selectedSpeechOption === 'banco2'
                   ? 'Fala 2 — Banco'
-                  : 'Fala 3 — Aurora Copy'}
+                  : is10sSingle
+                  ? 'Fala 3 — Aurora Copy'
+                  : 'Fala 1 — Aurora Copy'}
                 )
               </span>
             </>

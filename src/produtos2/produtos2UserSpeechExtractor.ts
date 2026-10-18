@@ -139,7 +139,9 @@ function cleanDanglingEnds(text: string): string {
 
 export function extractUserSpeechFromInstructions(
   rawText: string,
-  _productName: string = ''
+  _productName: string = '',
+  maxLen: number = 225,
+  minTarget: number = 215
 ): { hasSpeech: boolean; speech: string } {
   if (!rawText || !rawText.trim()) {
     return { hasSpeech: false, speech: '' };
@@ -149,7 +151,7 @@ export function extractUserSpeechFromInstructions(
 
   // 1. Falas explícitas entre aspas ("...", '...', «...», “...”)
   const quoteMatches: string[] = [];
-  const quoteRegex = /["'«“]([^"'»”]{8,350})["'»”]/g;
+  const quoteRegex = /["'«“]([^"'»”]{8,500})["'»”]/g;
   let qm: RegExpExecArray | null;
   while ((qm = quoteRegex.exec(text)) !== null) {
     if (qm[1]?.trim()) {
@@ -162,7 +164,7 @@ export function extractUserSpeechFromInstructions(
     combined = fixCommonSlips(combined);
     return {
       hasSpeech: true,
-      speech: formatFinalSpeech(combined),
+      speech: formatFinalSpeech(combined, maxLen, minTarget),
     };
   }
 
@@ -188,7 +190,7 @@ export function extractUserSpeechFromInstructions(
   if (colonSegments.length > 0) {
     // A última reformulação do usuário costuma ser a versão final desejada
     const chosen = colonSegments[colonSegments.length - 1];
-    return { hasSpeech: true, speech: formatFinalSpeech(chosen) };
+    return { hasSpeech: true, speech: formatFinalSpeech(chosen, maxLen, minTarget) };
   }
 
   // 1.5. Detecção e Extração Limpa de Diálogo entre Personagens (ex: mulher e homem, encontro)
@@ -220,7 +222,7 @@ export function extractUserSpeechFromInstructions(
       const combined = `${womanSpeech}! ${manSpeech}!`;
       return {
         hasSpeech: true,
-        speech: formatFinalSpeech(combined),
+        speech: formatFinalSpeech(combined, maxLen, minTarget),
       };
     }
   }
@@ -289,7 +291,7 @@ export function extractUserSpeechFromInstructions(
 
     return {
       hasSpeech: true,
-      speech: formatFinalSpeech(combined),
+      speech: formatFinalSpeech(combined, maxLen, minTarget),
     };
   }
 
@@ -300,7 +302,7 @@ export function extractUserSpeechFromInstructions(
     speechCandidate = speechCandidate.replace(/\s+(?:e\s+nessas\s+falas|nessas\s+falas|essa\s+vai\s+terminar|como\s+eu\s+disse|o\s+cen[áa]rio|e\s+[ée]\s+isso)[\s\S]*$/i, '').trim();
     return {
       hasSpeech: true,
-      speech: formatFinalSpeech(speechCandidate),
+      speech: formatFinalSpeech(speechCandidate, maxLen, minTarget),
     };
   }
 
@@ -319,7 +321,7 @@ export function extractUserSpeechFromInstructions(
     if (cleaned.length >= 15) {
       return {
         hasSpeech: true,
-        speech: formatFinalSpeech(cleaned),
+        speech: formatFinalSpeech(cleaned, maxLen, minTarget),
       };
     }
   }
@@ -327,7 +329,7 @@ export function extractUserSpeechFromInstructions(
   return { hasSpeech: false, speech: '' };
 }
 
-export function formatFinalSpeech(raw: string): string {
+export function formatFinalSpeech(raw: string, maxLen = 225, minTarget = 215): string {
   let s = raw.trim();
   if (!s) return '';
   s = s.replace(/^["'«“]|["'»”]$/g, '').trim();
@@ -336,9 +338,9 @@ export function formatFinalSpeech(raw: string): string {
   s = s.replace(/\s+([.,!?])/g, '$1');
   s = s.replace(/([.!?]\s+)([a-záàâãéêíóôõúç])/g, (_m, p, c) => p + c.toUpperCase());
 
-  // Se ultrapassar 225 caracteres, enxuga o MÍNIMO POSSÍVEL para ficar colado em 225 (entre 215 e 225)
-  if (s.length > 225) {
-    s = condenseSpeechMinimallyTo225(s, 225, 215);
+  // Se ultrapassar maxLen caracteres, enxuga o MÍNIMO POSSÍVEL para ficar colado em maxLen
+  if (s.length > maxLen) {
+    s = condenseSpeechMinimallyTo225(s, maxLen, minTarget);
   }
 
   if (!/[.!?]$/.test(s)) {
@@ -346,3 +348,70 @@ export function formatFinalSpeech(raw: string): string {
   }
   return s;
 }
+
+/**
+ * Divide uma fala completa (de até 450 caracteres) em duas partes coerentes para Cena 1 e Cena 2,
+ * onde cada parte tem no máximo 225 caracteres e nenhuma frase ou palavra é cortada ao meio.
+ */
+export function splitSpeechIntoTwoScenes(fullSpeech: string): [string, string] {
+  const cleaned = fullSpeech.replace(/\s+/g, ' ').trim();
+  if (!cleaned) return ['', ''];
+
+  // Se for muito curta (<= 225), divide próximo ao meio em fim de frase ou vírgula
+  const targetMid = Math.min(225, Math.floor(cleaned.length / 2));
+
+  // 1. Procura pontuação forte (. ! ?) que permita ambas as partes <= 225 chars
+  const sentenceBreakIndices: number[] = [];
+  for (let i = 30; i < cleaned.length - 20; i++) {
+    const ch = cleaned[i];
+    if ((ch === '.' || ch === '!' || ch === '?') && cleaned[i + 1] === ' ') {
+      const part1Len = i + 1;
+      const part2Len = cleaned.length - (i + 2);
+      if (part1Len <= 225 && part2Len <= 225) {
+        sentenceBreakIndices.push(i + 1);
+      }
+    }
+  }
+
+  if (sentenceBreakIndices.length > 0) {
+    // Escolhe a quebra de frase mais próxima da metade
+    sentenceBreakIndices.sort((a, b) => Math.abs(a - targetMid) - Math.abs(b - targetMid));
+    const bestIdx = sentenceBreakIndices[0];
+    const p1 = formatFinalSpeech(cleaned.slice(0, bestIdx).trim(), 225, 100);
+    const p2 = formatFinalSpeech(cleaned.slice(bestIdx).trim(), 225, 100);
+    return [p1, p2];
+  }
+
+  // 2. Procura vírgula ou ponto-e-vírgula que permita ambas as partes <= 225 chars
+  const clauseBreakIndices: number[] = [];
+  for (let i = 30; i < cleaned.length - 20; i++) {
+    const ch = cleaned[i];
+    if ((ch === ',' || ch === ';') && cleaned[i + 1] === ' ') {
+      const part1Len = i + 1;
+      const part2Len = cleaned.length - (i + 2);
+      if (part1Len <= 224 && part2Len <= 225) {
+        clauseBreakIndices.push(i);
+      }
+    }
+  }
+
+  if (clauseBreakIndices.length > 0) {
+    clauseBreakIndices.sort((a, b) => Math.abs(a - targetMid) - Math.abs(b - targetMid));
+    const bestIdx = clauseBreakIndices[0];
+    const p1 = formatFinalSpeech(cleaned.slice(0, bestIdx).trim() + '.', 225, 100);
+    const p2 = formatFinalSpeech(cleaned.slice(bestIdx + 1).trim(), 225, 100);
+    return [p1, p2];
+  }
+
+  // 3. Procura espaço entre palavras onde ambas as partes fiquem <= 224 chars
+  let splitSpace = cleaned.lastIndexOf(' ', Math.min(220, targetMid + 30));
+  if (splitSpace <= 0) {
+    splitSpace = Math.min(220, Math.floor(cleaned.length / 2));
+  }
+  const rawPart1 = cleaned.slice(0, splitSpace).trim();
+  const rawPart2 = cleaned.slice(splitSpace).trim();
+  const p1 = formatFinalSpeech(rawPart1, 225, 150);
+  const p2 = formatFinalSpeech(rawPart2, 225, 150);
+  return [p1, p2];
+}
+

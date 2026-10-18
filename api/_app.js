@@ -1358,13 +1358,13 @@ function cleanDanglingEnds(text) {
   s = s.replace(/\s+(?:e|de|do|da|dos|das|o|a|os|as|com|em|no|na|nos|nas|que|para|pra|por|um|uma)\s*([.!?,;:]*)$/i, "$1");
   return s.trim();
 }
-function extractUserSpeechFromInstructions(rawText, _productName = "") {
+function extractUserSpeechFromInstructions(rawText, _productName = "", maxLen = 225, minTarget = 215) {
   if (!rawText || !rawText.trim()) {
     return { hasSpeech: false, speech: "" };
   }
   const text = rawText.trim();
   const quoteMatches = [];
-  const quoteRegex = /["'«“]([^"'»”]{8,350})["'»”]/g;
+  const quoteRegex = /["'«“]([^"'»”]{8,500})["'»”]/g;
   let qm;
   while ((qm = quoteRegex.exec(text)) !== null) {
     if (qm[1]?.trim()) {
@@ -1376,7 +1376,7 @@ function extractUserSpeechFromInstructions(rawText, _productName = "") {
     combined = fixCommonSlips(combined);
     return {
       hasSpeech: true,
-      speech: formatFinalSpeech(combined)
+      speech: formatFinalSpeech(combined, maxLen, minTarget)
     };
   }
   const colonRegex = /\b(?:(?:ele|ela|pai|m[ãa]e|homem|mulher|vendedor|cliente|personagem)\s+)?(?:(?:fala|diz|disse|falou|grita|gritam|falam|dizem|responde|pergunta)\s+assim\s*[:,]|(?:fala|diz|disse|falou|grita|gritam|falam|dizem|responde|pergunta)\s*:)\s*([\s\S]+?)(?=\s+(?:E\s+a[íi]\s+termina|E\s+a[íi]\s+j[áa]\s+corta|E\s+a[íi]\s+corta|Pronto\b|[ÉE]\s+isso\b|Ent[ãa]o\s+come[çc]a|A[íi]\s+a\s+primeira\s+cena|[ÉE]\s+uma\s+loja|O\s+cen[áa]rio|E\s+nessas\s+falas)|$)/gi;
@@ -1394,7 +1394,7 @@ function extractUserSpeechFromInstructions(rawText, _productName = "") {
   }
   if (colonSegments.length > 0) {
     const chosen = colonSegments[colonSegments.length - 1];
-    return { hasSpeech: true, speech: formatFinalSpeech(chosen) };
+    return { hasSpeech: true, speech: formatFinalSpeech(chosen, maxLen, minTarget) };
   }
   const isDialoguePattern = (text.toLowerCase().includes("homem") || text.toLowerCase().includes("rapaz")) && (text.toLowerCase().includes("mulher") || text.toLowerCase().includes("mo\xE7a")) && /(?:fala|diz|falou|pergunt)/i.test(text);
   if (isDialoguePattern) {
@@ -1415,7 +1415,7 @@ function extractUserSpeechFromInstructions(rawText, _productName = "") {
       const combined = `${womanSpeech}! ${manSpeech}!`;
       return {
         hasSpeech: true,
-        speech: formatFinalSpeech(combined)
+        speech: formatFinalSpeech(combined, maxLen, minTarget)
       };
     }
   }
@@ -1467,7 +1467,7 @@ function extractUserSpeechFromInstructions(rawText, _productName = "") {
     }
     return {
       hasSpeech: true,
-      speech: formatFinalSpeech(combined)
+      speech: formatFinalSpeech(combined, maxLen, minTarget)
     };
   }
   const ctaMatch = text.match(/(?:compra|comprei|toca no carrinho|adquira|pega o seu|aproveita)[^.!?]+(?:carrinho|shop|link|aqui)[^.!?]*/i);
@@ -1476,7 +1476,7 @@ function extractUserSpeechFromInstructions(rawText, _productName = "") {
     speechCandidate = speechCandidate.replace(/\s+(?:e\s+nessas\s+falas|nessas\s+falas|essa\s+vai\s+terminar|como\s+eu\s+disse|o\s+cen[áa]rio|e\s+[ée]\s+isso)[\s\S]*$/i, "").trim();
     return {
       hasSpeech: true,
-      speech: formatFinalSpeech(speechCandidate)
+      speech: formatFinalSpeech(speechCandidate, maxLen, minTarget)
     };
   }
   if (text.length >= 10) {
@@ -1485,13 +1485,13 @@ function extractUserSpeechFromInstructions(rawText, _productName = "") {
     if (cleaned.length >= 15) {
       return {
         hasSpeech: true,
-        speech: formatFinalSpeech(cleaned)
+        speech: formatFinalSpeech(cleaned, maxLen, minTarget)
       };
     }
   }
   return { hasSpeech: false, speech: "" };
 }
-function formatFinalSpeech(raw) {
+function formatFinalSpeech(raw, maxLen = 225, minTarget = 215) {
   let s = raw.trim();
   if (!s) return "";
   s = s.replace(/^["'«“]|["'»”]$/g, "").trim();
@@ -1499,8 +1499,8 @@ function formatFinalSpeech(raw) {
   s = s.replace(/\.{2,}/g, ".");
   s = s.replace(/\s+([.,!?])/g, "$1");
   s = s.replace(/([.!?]\s+)([a-záàâãéêíóôõúç])/g, (_m, p, c) => p + c.toUpperCase());
-  if (s.length > 225) {
-    s = condenseSpeechMinimallyTo225(s, 225, 215);
+  if (s.length > maxLen) {
+    s = condenseSpeechMinimallyTo225(s, maxLen, minTarget);
   }
   if (!/[.!?]$/.test(s)) {
     s += "!";
@@ -3392,7 +3392,7 @@ app.post("/api/produtos2-planning", async (req, res) => {
             ],
             ...jsonMode ? { response_format: { type: "json_object" } } : {},
             temperature,
-            max_tokens: 260
+            max_tokens: 420
           });
           const content = comp.choices[0]?.message?.content?.trim();
           if (content) {
@@ -3540,12 +3540,52 @@ ${userPrompt2}` }]
       }
       throw new Error("Nenhum provedor de IA dispon\xEDvel para a fala do usu\xE1rio.");
     };
+    const calibrateSpeechToRange = (text, minTarget = 200, maxLimit = 225) => {
+      let clean = fixCommonSlips(normalizeVoiceText(text.replace(/\s+/g, " ").trim()));
+      if (clean.length > maxLimit) {
+        clean = condenseSpeechMinimallyTo225(clean, maxLimit, minTarget);
+      }
+      if (clean.length < minTarget) {
+        const baseNoDot = clean.replace(/[.!?]+$/, "").trim();
+        const expansions = [
+          ". Olha s\xF3!",
+          ". Confere aqui embaixo!",
+          ". Aproveita e garante j\xE1 no link!",
+          ". Clica aqui embaixo pra ver todos os detalhes!",
+          ". Vale muito a pena conferir aqui embaixo no carrinho!",
+          ". D\xE1 uma olhada aqui embaixo no link e garante j\xE1 antes que acabe!",
+          ". Aproveita pra conferir todos os detalhes aqui embaixo e garante logo!",
+          ". Deixei o link oficial aqui embaixo no carrinho pra voc\xEA garantir com seguran\xE7a!",
+          ". Entrega muita praticidade e qualidade real no uso di\xE1rio, clica aqui no carrinho laranja e garante o seu agora mesmo!",
+          ". \xC9 super pr\xE1tico, faz toda a diferen\xE7a na rotina e t\xE1 fazendo o maior sucesso, clica aqui embaixo no carrinho laranja pra conferir e garantir o seu antes que acabe!"
+        ];
+        for (const exp of expansions) {
+          const candidate = `${baseNoDot}${exp}`;
+          if (candidate.length >= minTarget && candidate.length <= maxLimit) {
+            clean = candidate;
+            break;
+          }
+        }
+        if (clean.length < minTarget) {
+          const longCandidate = `${baseNoDot}. Entrega muita qualidade e praticidade real pro seu dia a dia, clica aqui embaixo no carrinho laranja pra ver todos os detalhes e garante j\xE1 o seu antes que acabe o estoque!`;
+          clean = condenseSpeechMinimallyTo225(longCandidate, maxLimit, minTarget);
+        }
+      }
+      if (clean.length > maxLimit) {
+        clean = clean.slice(0, maxLimit - 1).replace(/[,;:\s]+[^.!?,;:]*$/, "") + "!";
+      }
+      return clean;
+    };
+    const calibrateSpeechTo200_225 = (text) => calibrateSpeechToRange(text, 200, 225);
     if (action === "detect_and_review_user_speech") {
       try {
         const textToAnalyze = (additionalInstructions || req.body.text || "").trim();
         if (!textToAnalyze) {
           return res.json({ success: true, hasUserSpeech: false, userSpeech: "" });
         }
+        const reqSceneMode = req.body.sceneMode || "1_cena_10s";
+        const maxSpeechLimit = reqSceneMode === "2_cenas_10s" ? 450 : reqSceneMode === "1_cena_15s" ? 335 : 225;
+        const minSpeechTarget = reqSceneMode === "2_cenas_10s" ? 400 : reqSceneMode === "1_cena_15s" ? 310 : 215;
         const detectSystem = `Voc\xEA \xE9 o modelo mais avan\xE7ado da OpenAI especializado em roteiros e copies para v\xEDdeos do TikTok Shop Brasil.
 O usu\xE1rio preencheu o campo "Instru\xE7\xF5es Adicionais" com um texto ditado por voz (informal, \xE0s vezes com gagueira) que mistura descri\xE7\xE3o de cen\xE1rio, personagens, a\xE7\xF5es e as FALAS que ele quer no v\xEDdeo.
 
@@ -3555,11 +3595,11 @@ SUA MISS\xC3O OBRIGAT\xD3RIA:
 3. Remova apenas palavras repetidas consecutivas por gagueira/ditado (ex.: "trabalhar, trabalhar" -> "trabalhar", "a\xED, a\xED" -> "a\xED").
 4. Sons n\xE3o verbais de personagens (ex.: "au au au" de algu\xE9m imitando cachorro) N\xC3O entram em "userSpeech"; descreva-os em "soundEffects".
 5. Extraia primeiro "rawUserSpeech": a fala EXATA e INTEGRAL dita pelo personagem no texto do usu\xE1rio (apenas sem descri\xE7\xE3o de cena, sem gagueiras duplicadas e com pontua\xE7\xE3o correta), SEM ENCURTAR NENHUMA FRASE.
-6. REGRA ABSOLUTA E INEGOCI\xC1VEL PARA "userSpeech" (PROIBIDO ENCURTAR \xC0 TOA):
-   - CASO A: Se "rawUserSpeech" tiver 225 caracteres ou menos (<= 225 caracteres), \xC9 TERMINANTEMENTE PROIBIDO ENCURTAR, RESUMIR OU CORTAR QUALQUER PALAVRA OU EXPRESS\xC3O! Nesse caso, "userSpeech" DEVE SER ID\xCANTICO ao "rawUserSpeech" (preservando express\xF5es como "aqui", "valor muito barato", "voc\xEA sabe que", "ent\xE3o j\xE1", etc.).
-   - CASO B: Se e SOMENTE SE "rawUserSpeech" ultrapassar 225 caracteres (> 225 caracteres), enxugue O M\xCDNIMO POSS\xCDVEL para que "userSpeech" fique COLADO no limite de 225 caracteres \u2014 OBRIGATORIAMENTE ENTRE 215 E 225 CARACTERES (idealmente entre 218 e 224 caracteres)! NUNCA encurte uma fala grande para 180 ou 190 caracteres; preserve ao m\xE1ximo as palavras originais do usu\xE1rio do in\xEDcio ao CTA final.
+6. REGRA ABSOLUTA E INEGOCI\xC1VEL PARA "userSpeech" (LIMITE ATUAL: ${maxSpeechLimit} CARACTERES):
+   - CASO A: Se "rawUserSpeech" tiver ${maxSpeechLimit} caracteres ou menos (<= ${maxSpeechLimit} caracteres), \xC9 TERMINANTEMENTE PROIBIDO ENCURTAR, RESUMIR OU CORTAR QUALQUER PALAVRA OU EXPRESS\xC3O! Nesse caso, "userSpeech" DEVE SER ID\xCANTICO ao "rawUserSpeech".
+   - CASO B: Se e SOMENTE SE "rawUserSpeech" ultrapassar ${maxSpeechLimit} caracteres (> ${maxSpeechLimit} caracteres), enxugue O M\xCDNIMO POSS\xCDVEL para que "userSpeech" fique COLADO no limite de ${maxSpeechLimit} caracteres \u2014 OBRIGATORIAMENTE ENTRE ${minSpeechTarget} E ${maxSpeechLimit} CARACTERES! Preserve ao m\xE1ximo as palavras originais do usu\xE1rio do in\xEDcio ao CTA final.
    - Corrija erros de transcri\xE7\xE3o (ex.: "p\xF3 pouco"/"pouco" -> "Poco", "Tik Tok" -> "TikTok Shop"). O "X" em modelos (X8, Poco X8 Pro) NUNCA vira "vezes".
-7. "speakers": lista de TODOS os personagens que falam, na ordem, com { "speaker": papel (ex.: "Pai", "Vendedor", "Mulher", "Homem"), "gender": "masculina" | "feminina" | "coro", "speech": fala exata dele (trecho de userSpeech), "scenes": em quais cenas de 1 a 9 fala }.
+7. "speakers": lista de TODOS os personagens que falam, na ordem, com { "speaker": papel (ex.: "Pai", "Vendedor", "Mulher", "Homem"), "gender": "masculina" | "feminina" | "coro", "speech": fala exata dele (trecho de userSpeech), "scenes": em quais cenas fala }.
 8. "isDialogue": true SOMENTE se 2 ou mais personagens/grupos diferentes falam. Se apenas um personagem fala, "isDialogue": false (mas preencha "speakers" com esse \xFAnico personagem e seu g\xEAnero).
 9. "dialogueDescription": resumo curto da cena e dos personagens (sem as falas). "dialogueScript": roteiro "Papel: \\"fala\\"" por linha.
 10. Se n\xE3o houver nenhuma fala expl\xEDcita, "hasUserSpeech": false, "rawUserSpeech": "" e "userSpeech": "".
@@ -3597,7 +3637,7 @@ INFORMA\xC7\xD5ES DO PRODUTO: ${productInfo || ""}`,
             }
           }
         }
-        const syncExt = extractUserSpeechFromInstructions(textToAnalyze, productName);
+        const syncExt = extractUserSpeechFromInstructions(textToAnalyze, productName, maxSpeechLimit, minSpeechTarget);
         let rawUserSpeech = fixCommonSlips(
           normalizeVoiceText(
             (parsed.rawUserSpeech || parsed.raw_user_speech || "").trim()
@@ -3614,17 +3654,17 @@ INFORMA\xC7\xD5ES DO PRODUTO: ${productInfo || ""}`,
         if (!userSpeech && syncExt.hasSpeech && syncExt.speech) {
           userSpeech = syncExt.speech;
         }
-        const candidateUnshortened = rawUserSpeech && rawUserSpeech.length >= 15 && rawUserSpeech.length <= 225 ? rawUserSpeech : syncExt.hasSpeech && syncExt.speech.length >= 15 && syncExt.speech.length <= 225 ? syncExt.speech : "";
+        const candidateUnshortened = rawUserSpeech && rawUserSpeech.length >= 15 && rawUserSpeech.length <= maxSpeechLimit ? rawUserSpeech : syncExt.hasSpeech && syncExt.speech.length >= 15 && syncExt.speech.length <= maxSpeechLimit ? syncExt.speech : "";
         if (candidateUnshortened && candidateUnshortened.length > userSpeech.length) {
           userSpeech = candidateUnshortened;
-        } else if (rawUserSpeech && rawUserSpeech.length > 225 && userSpeech.length < 212) {
-          const minimallyCondensed = condenseSpeechMinimallyTo225(rawUserSpeech, 225, 215);
-          if (minimallyCondensed.length > userSpeech.length && minimallyCondensed.length <= 225) {
+        } else if (rawUserSpeech && rawUserSpeech.length > maxSpeechLimit && userSpeech.length < minSpeechTarget - 3) {
+          const minimallyCondensed = condenseSpeechMinimallyTo225(rawUserSpeech, maxSpeechLimit, minSpeechTarget);
+          if (minimallyCondensed.length > userSpeech.length && minimallyCondensed.length <= maxSpeechLimit) {
             userSpeech = minimallyCondensed;
           }
         }
-        if (userSpeech.length > 225) {
-          userSpeech = condenseSpeechMinimallyTo225(userSpeech, 225, 215);
+        if (userSpeech.length > maxSpeechLimit) {
+          userSpeech = condenseSpeechMinimallyTo225(userSpeech, maxSpeechLimit, minSpeechTarget);
         }
         const hasUserSpeech = Boolean(
           userSpeech && userSpeech.length >= 8 && (parsed.hasUserSpeech === true || parsed.has_user_speech === true || String(parsed.hasUserSpeech).toLowerCase() === "true" || String(parsed.has_user_speech).toLowerCase() === "true" || Boolean(userSpeech))
@@ -3648,47 +3688,17 @@ INFORMA\xC7\xD5ES DO PRODUTO: ${productInfo || ""}`,
         return res.json({ success: true, hasUserSpeech: false, userSpeech: "" });
       }
     }
-    const calibrateSpeechTo200_225 = (text) => {
-      let clean = fixCommonSlips(normalizeVoiceText(text.replace(/\s+/g, " ").trim()));
-      if (clean.length > 225) {
-        clean = condenseSpeechMinimallyTo225(clean, 225, 200);
-      }
-      if (clean.length < 200) {
-        const baseNoDot = clean.replace(/[.!?]+$/, "").trim();
-        const expansions = [
-          ". Olha s\xF3",
-          ". Confere aqui embaixo!",
-          ". Aproveita e garante j\xE1 no link!",
-          ". Clica aqui embaixo pra ver todos os detalhes!",
-          ". Vale muito a pena conferir aqui embaixo no carrinho!",
-          ". D\xE1 uma olhada aqui embaixo no link e garante j\xE1 antes que acabe!",
-          ". Aproveita pra conferir todos os detalhes aqui embaixo e garante logo!",
-          ". Deixei o link oficial aqui embaixo no carrinho pra voc\xEA garantir com seguran\xE7a!"
-        ];
-        for (const exp of expansions) {
-          const candidate = `${baseNoDot}${exp}`;
-          if (candidate.length >= 200 && candidate.length <= 225) {
-            clean = candidate;
-            break;
-          }
-        }
-        if (clean.length < 200) {
-          const longCandidate = `${baseNoDot}. Entrega qualidade real pro dia a dia, clica aqui no carrinho laranja e garante j\xE1 antes que acabe o estoque!`;
-          clean = condenseSpeechMinimallyTo225(longCandidate, 225, 200);
-        }
-      }
-      if (clean.length > 225) {
-        clean = clean.slice(0, 224).replace(/[,;:\s]+[^.!?,;:]*$/, "") + "!";
-      }
-      return clean;
-    };
     if (action === "adapt_bank_copies") {
       try {
         const { copy1, copy2, clientGender: clientGender2, enforceRange200To225 } = req.body;
         if (!copy1 && !copy2) {
           return res.json({ success: true });
         }
-        const charRuleText = enforceRange200To225 ? `- REGRA OBRIGAT\xD3RIA DE TAMANHO: A fala adaptada DEVE ter OBRIGATORIAMENTE ENTRE 200 E 225 CARACTERES (incluindo espa\xE7os e pontua\xE7\xE3o). NUNCA entregue menos de 200 caracteres e NUNCA ultrapasse 225 caracteres!` : `- Cada fala adaptada deve ter entre 160 e 225 caracteres (NUNCA ultrapasse 225 caracteres).`;
+        const reqSceneMode = req.body.sceneMode || "1_cena_10s";
+        const targetMin = Number(req.body.targetMinChars) || (reqSceneMode === "1_cena_15s" ? 310 : 200);
+        const targetMax = Number(req.body.targetMaxChars) || (reqSceneMode === "1_cena_15s" ? 335 : 225);
+        const enforceStrictRange = Boolean(enforceRange200To225 || targetMax === 335);
+        const charRuleText = enforceStrictRange ? `- REGRA OBRIGAT\xD3RIA DE TAMANHO: A fala adaptada DEVE ter OBRIGATORIAMENTE ENTRE ${targetMin} E ${targetMax} CARACTERES (incluindo espa\xE7os e pontua\xE7\xE3o). NUNCA entregue menos de ${targetMin} caracteres e NUNCA ultrapasse ${targetMax} caracteres!` : `- Cada fala adaptada deve ter entre 160 e ${targetMax} caracteres (NUNCA ultrapasse ${targetMax} caracteres).`;
         const adaptSystem = `Voc\xEA \xE9 um Especialista S\xEAnior em Direct Response para TikTok Shop Brasil.
 Existe na mem\xF3ria do aplicativo um banco de 64 falas validadas de an\xFAncios reais que j\xE1 est\xE3o vendendo muito.
 Sua miss\xE3o \xE9 ADAPTAR as falas sorteadas do banco para o PRODUTO ATUAL do usu\xE1rio, seguindo estritamente estas regras:
@@ -3718,7 +3728,7 @@ Retorne SOMENTE um JSON estrito no formato:
 ${productInfo || productName || ""}
 - G\xEAnero do P\xFAblico: ${clientGender2 || "unissex"}
 - Apresentador(a): ${influencer || "Mulher"}
-${enforceRange200To225 ? "- TAMANHO OBRIGAT\xD3RIO: Estritamente entre 200 e 225 caracteres com espa\xE7os!" : ""}
+${enforceStrictRange ? `- TAMANHO OBRIGAT\xD3RIO: Estritamente entre ${targetMin} e ${targetMax} caracteres com espa\xE7os!` : ""}
 
 FALA 1 DO BANCO DE MEM\xD3RIA (${copy1?.id || "Copy 1"} - Produto original da copy: "${copy1?.originalProductType || ""}" - Mesmo produto? ${copy1?.isSameProduct ? "SIM" : "N\xC3O"}):
 Texto original da Fala 1 no banco: "${copy1?.originalText || ""}"
@@ -3747,15 +3757,15 @@ Sugest\xE3o base local da Fala 2: "${copy2?.localAdaptedText || ""}"` : ""}`;
         }
         let adapted1 = fixCommonSlips(normalizeVoiceText((parsed.adaptedCopy1 || copy1?.localAdaptedText || "").trim()));
         let adapted2 = fixCommonSlips(normalizeVoiceText((parsed.adaptedCopy2 || copy2?.localAdaptedText || "").trim()));
-        if (enforceRange200To225) {
-          if (adapted1) adapted1 = calibrateSpeechTo200_225(adapted1);
-          if (adapted2) adapted2 = calibrateSpeechTo200_225(adapted2);
+        if (enforceStrictRange) {
+          if (adapted1) adapted1 = calibrateSpeechToRange(adapted1, targetMin, targetMax);
+          if (adapted2) adapted2 = calibrateSpeechToRange(adapted2, targetMin, targetMax);
         } else {
-          if (adapted1.length > 225) {
-            adapted1 = condenseSpeechMinimallyTo225(adapted1, 225, 200);
+          if (adapted1.length > targetMax) {
+            adapted1 = condenseSpeechMinimallyTo225(adapted1, targetMax, targetMin);
           }
-          if (adapted2.length > 225) {
-            adapted2 = condenseSpeechMinimallyTo225(adapted2, 225, 200);
+          if (adapted2.length > targetMax) {
+            adapted2 = condenseSpeechMinimallyTo225(adapted2, targetMax, targetMin);
           }
         }
         return res.json({
@@ -3768,10 +3778,13 @@ Sugest\xE3o base local da Fala 2: "${copy2?.localAdaptedText || ""}"` : ""}`;
         console.warn("Erro ao adaptar copies do banco via IA, mantendo adapta\xE7\xE3o local:", err?.message || err);
         const fallback1 = req.body?.copy1?.localAdaptedText || "";
         const fallback2 = req.body?.copy2?.localAdaptedText || "";
+        const reqSceneMode = req.body?.sceneMode || "1_cena_10s";
+        const targetMin = Number(req.body?.targetMinChars) || (reqSceneMode === "1_cena_15s" ? 310 : 200);
+        const targetMax = Number(req.body?.targetMaxChars) || (reqSceneMode === "1_cena_15s" ? 335 : 225);
         return res.json({
           success: true,
-          adaptedCopy1: req.body?.enforceRange200To225 && fallback1 ? calibrateSpeechTo200_225(fallback1) : fallback1,
-          adaptedCopy2: req.body?.enforceRange200To225 && fallback2 ? calibrateSpeechTo200_225(fallback2) : fallback2
+          adaptedCopy1: req.body?.enforceRange200To225 && fallback1 ? calibrateSpeechToRange(fallback1, targetMin, targetMax) : fallback1,
+          adaptedCopy2: req.body?.enforceRange200To225 && fallback2 ? calibrateSpeechToRange(fallback2, targetMin, targetMax) : fallback2
         });
       }
     }
@@ -3781,18 +3794,21 @@ Sugest\xE3o base local da Fala 2: "${copy2?.localAdaptedText || ""}"` : ""}`;
         if (!inputSpeech) {
           return res.status(400).json({ success: false, error: "Texto n\xE3o fornecido para revis\xE3o." });
         }
+        const reqSceneMode = req.body.sceneMode || "1_cena_10s";
+        const maxLimit = Number(req.body.maxChars) || (reqSceneMode === "2_cenas_10s" && !req.body.isSingleScenePart ? 450 : reqSceneMode === "1_cena_15s" ? 335 : 225);
+        const minTarget = Number(req.body.minChars) || (maxLimit === 335 ? 310 : maxLimit === 450 ? 400 : 215);
         const cleanedInput = fixCommonSlips(inputSpeech);
         const charCount = cleanedInput.length;
-        const isUnderLimit = charCount <= 225;
+        const isUnderLimit = charCount <= maxLimit;
         const lengthInstruction = isUnderLimit ? `REGRA ABSOLUTA DE TAMANHO (N\xC3O ENCURTAR):
-O texto fornecido tem ${charCount} caracteres e J\xC1 EST\xC1 DENTRO do limite m\xE1ximo de 225 caracteres.
+O texto fornecido tem ${charCount} caracteres e J\xC1 EST\xC1 DENTRO do limite m\xE1ximo de ${maxLimit} caracteres.
 - \xC9 TERMINANTEMENTE PROIBIDO ENCURTAR, RESUMIR, CONDENSAR OU CORTAR QUALQUER FRASE OU PARTE DO TEXTO!
 - Mantenha o texto O MAIS ORIGINAL POSS\xCDVEL, preservando integralmente todas as frases, palavras, argumentos e detalhes originais que o usu\xE1rio escreveu.
 - O comprimento final deve permanecer praticamente id\xEAntico ao original (com pequenas varia\xE7\xF5es apenas pelas corre\xE7\xF5es gramaticais ou remo\xE7\xE3o de palavras duplicadas).
-- A \xDANICA raz\xE3o permitida para encurtar ou remover algo \xE9 se houver palavras repetidas ou gagueira (ex: "a\xED a\xED", "ele ele", "o o", "t\xE1 t\xE1", "trabalhar, trabalhar")!` : `REGRA DE TAMANHO (ENCURTAMENTO M\xCDNIMO NECESS\xC1RIO PORQUE EXCEDE 225 CARACTERES):
-O texto fornecido tem ${charCount} caracteres e EXCEDE o limite de 225 caracteres.
-- Voc\xEA DEVE enxugar O M\xCDNIMO POSS\xCDVEL para que o texto fique COLADO no limite de 225 caracteres: OBRIGATORIAMENTE ENTRE 215 E 225 CARACTERES (com espa\xE7os)!
-- NUNCA encurte para 180 ou 195 caracteres! Corte apenas pequenas redund\xE2ncias ou conectivos extras para pousar entre 215 e 225 caracteres, mantendo os argumentos do usu\xE1rio e a chamada de a\xE7\xE3o final.
+- A \xDANICA raz\xE3o permitida para encurtar ou remover algo \xE9 se houver palavras repetidas ou gagueira (ex: "a\xED a\xED", "ele ele", "o o", "t\xE1 t\xE1", "trabalhar, trabalhar")!` : `REGRA DE TAMANHO (ENCURTAMENTO M\xCDNIMO NECESS\xC1RIO PORQUE EXCEDE ${maxLimit} CARACTERES):
+O texto fornecido tem ${charCount} caracteres e EXCEDE o limite de ${maxLimit} caracteres.
+- Voc\xEA DEVE enxugar O M\xCDNIMO POSS\xCDVEL para que o texto fique COLADO no limite de ${maxLimit} caracteres: OBRIGATORIAMENTE ENTRE ${minTarget} E ${maxLimit} CARACTERES (com espa\xE7os)!
+- Corte apenas pequenas redund\xE2ncias ou conectivos extras para pousar entre ${minTarget} e ${maxLimit} caracteres, mantendo os argumentos do usu\xE1rio e a chamada de a\xE7\xE3o final.
 - NUNCA deixe frases cortadas pela metade; a \xFAltima frase deve estar completa com ponto final ou exclama\xE7\xE3o.`;
         const reviewSystem = `Voc\xEA \xE9 um REVISOR EDITORIAL DE ALTA FIDELIDADE para narra\xE7\xE3o por voz de IA no TikTok Shop Brasil.
 Sua miss\xE3o \xE9 aperfei\xE7oar o texto do usu\xE1rio mantendo fidelidade absoluta ao que ele escreveu ou ditou.
@@ -3815,11 +3831,11 @@ DIRETIVAS OBRIGAT\xD3RIAS:
    - "AMOLED" -> "Am\xF3led"
 5. PRESERVA\xC7\xC3O DE CONTE\xDADO:
    - N\xE3o invente argumentos novos e n\xE3o adicione chamadas para a\xE7\xE3o que o usu\xE1rio n\xE3o escreveu.
-   - ${isUnderLimit ? "LEMBRE-SE: Como o texto original tem <= 225 caracteres, PRESERVE 100% DAS FRASES DO TEXTO ORIGINAL, apenas corrigindo o portugu\xEAs, removendo repeti\xE7\xF5es e ajustando para leitura de IA." : "Enxugue o m\xEDnimo poss\xEDvel para ficar estritamente entre 215 e 225 caracteres mantendo todo o sentido."}
+   - ${isUnderLimit ? `LEMBRE-SE: Como o texto original tem <= ${maxLimit} caracteres, PRESERVE 100% DAS FRASES DO TEXTO ORIGINAL, apenas corrigindo o portugu\xEAs, removendo repeti\xE7\xF5es e ajustando para leitura de IA.` : `Enxugue o m\xEDnimo poss\xEDvel para ficar estritamente entre ${minTarget} e ${maxLimit} caracteres mantendo todo o sentido.`}
 6. FORMATO DE SA\xCDDA:
    - Retorne SOMENTE o texto final revisado, sem aspas, sem contagem de caracteres e sem explica\xE7\xF5es adicionais.`;
         const userPromptReview = isUnderLimit ? `TEXTO ORIGINAL PARA REVIS\xC3O (TEM ${charCount} CARACTERES - N\xC3O ENCURTAR, MANTENHA O TEXTO O MAIS ORIGINAL POSS\xCDVEL APENAS CORRIGINDO O PORTUGU\xCAS, PALAVRAS REPETIDAS E PONTUA\xC7\xC3O PARA IA):
-${cleanedInput}` : `TEXTO ORIGINAL PARA REVIS\xC3O (TEM ${charCount} CARACTERES - EXCEDE 225 CARACTERES, ENXUGUE O M\xCDNIMO POSS\xCDVEL PARA FICAR ENTRE 215 E 225 CARACTERES MANTENDO O SENTIDO E CALL TO ACTION):
+${cleanedInput}` : `TEXTO ORIGINAL PARA REVIS\xC3O (TEM ${charCount} CARACTERES - EXCEDE ${maxLimit} CARACTERES, ENXUGUE O M\xCDNIMO POSS\xCDVEL PARA FICAR ENTRE ${minTarget} E ${maxLimit} CARACTERES MANTENDO O SENTIDO E CALL TO ACTION):
 ${cleanedInput}`;
         const reviewedOutput = await executeFastAIText({
           systemPrompt: reviewSystem,
@@ -3832,14 +3848,14 @@ ${cleanedInput}`;
         reviewed = fixCommonSlips(normalizeVoiceText(reviewed));
         if (isUnderLimit && reviewed.length < cleanedInput.length - 10) {
           reviewed = cleanedInput;
-        } else if (!isUnderLimit && reviewed.length < 212) {
-          const minimallyCondensed = condenseSpeechMinimallyTo225(cleanedInput, 225, 215);
-          if (minimallyCondensed.length > reviewed.length && minimallyCondensed.length <= 225) {
+        } else if (!isUnderLimit && reviewed.length < minTarget - 3) {
+          const minimallyCondensed = condenseSpeechMinimallyTo225(cleanedInput, maxLimit, minTarget);
+          if (minimallyCondensed.length > reviewed.length && minimallyCondensed.length <= maxLimit) {
             reviewed = minimallyCondensed;
           }
         }
-        if (reviewed.length > 225) {
-          reviewed = condenseSpeechMinimallyTo225(reviewed, 225, 215);
+        if (reviewed.length > maxLimit) {
+          reviewed = condenseSpeechMinimallyTo225(reviewed, maxLimit, minTarget);
         }
         return res.json({
           success: true,
@@ -3852,8 +3868,12 @@ ${cleanedInput}`;
     }
     if (action === "generate_aurora_copy") {
       try {
-        const minLimit = 200;
-        const maxLimit = 225;
+        const reqSceneMode = req.body.sceneMode || "1_cena_10s";
+        const isSingleScenePart = Boolean(req.body.isSingleScenePart);
+        const scenePartIndex2 = Number(req.body.scenePartIndex) || 1;
+        const scene1CopyContext = String(req.body.scene1Copy || "").trim();
+        const minLimit = Number(req.body.targetMinChars) || (isSingleScenePart ? 200 : reqSceneMode === "1_cena_15s" ? 310 : reqSceneMode === "2_cenas_10s" ? 400 : 200);
+        const maxLimit = Number(req.body.targetMaxChars) || (isSingleScenePart ? 225 : reqSceneMode === "1_cena_15s" ? 335 : reqSceneMode === "2_cenas_10s" ? 450 : 225);
         const previousCopies = Array.isArray(req.body.previousCopies) ? req.body.previousCopies.filter((c) => typeof c === "string" && c.trim().length > 0) : [];
         const previousHooks = previousCopies.map((c) => c.trim().split(/\s+/).slice(0, 6).join(" ")).filter(Boolean);
         const hookVariationClause = previousHooks.length > 0 ? `
@@ -3863,6 +3883,32 @@ ${previousHooks.map((h, i) => `- Vers\xE3o ${i + 1}: "${h}..."`).join("\n")}
 - Voc\xEA DEVE criar uma copy com um HOOK COMPLETAMENTE DIFERENTE das vers\xF5es anteriores!
 - Varie OBRIGATORIAMENTE as primeiras 4 a 5 palavras e use uma abordagem de abertura in\xE9dita (ex: pergunta direta sobre dor/desejo, rea\xE7\xE3o de descoberta espont\xE2nea, compara\xE7\xE3o pr\xE1tica, detalhe surpreendente do produto, situa\xE7\xE3o do dia a dia, etc.).
 - NUNCA repita as mesmas primeiras palavras das vers\xF5es anteriores!` : "";
+        const modeStructureInstructions = maxLimit === 335 ? `INSTRU\xC7\xC3O ESPECIAL DE MODO 15 SEGUNDOS (AUTORIZA\xC7\xC3O EXPL\xCDCITA DE 310 A 335 CARACTERES):
+Neste modo de Uma Cena de 15 Segundos, voc\xEA est\xE1 EXPRESSAMENTE AUTORIZADA e OBRIGADA a produzir uma fala mais completa e envolvente, contendo ESTRITAMENTE ENTRE 310 E 335 CARACTERES (incluindo espa\xE7os e pontua\xE7\xE3o).
+NUNCA entregue menos de 310 caracteres e NUNCA ultrapasse 335 caracteres!
+Estruture a fala para preencher 15 segundos naturais de narra\xE7\xE3o com:
+1. Gancho forte e in\xE9dito de abertura que prenda a aten\xE7\xE3o nos primeiros segundos (aprox. 55-65 caracteres).
+2. Desenvolvimento completo com 3 benef\xEDcios concretos, detalhes reais de funcionamento e transforma\xE7\xE3o pr\xE1tica no dia a dia (aprox. 200-215 caracteres).
+3. Chamada natural e persuasiva para clicar no carrinho (aprox. 45-55 caracteres).
+Totalizando impreterivelmente entre 310 e 335 caracteres.` : maxLimit === 450 ? `INSTRU\xC7\xC3O ESPECIAL DE MODO DUAS CENAS \u2014 10 SEGUNDOS CADA (AT\xC9 450 CARACTERES TOTAIS):
+Neste modo de Duas Cenas de 10 Segundos cada (~20 segundos totais de v\xEDdeo), voc\xEA est\xE1 EXPRESSAMENTE AUTORIZADA a produzir uma narrativa cont\xEDnua completa contendo ENTRE 400 E 450 CARACTERES (incluindo espa\xE7os e pontua\xE7\xE3o, NUNCA ultrapassando 450 caracteres).
+IMPORTANTE \u2014 DIVIS\xC3O ORG\xC2NICA EM DUAS PARTES:
+A fala ser\xE1 exibida inteira para o usu\xE1rio aprovar e, em seguida, dividida em duas partes de at\xE9 225 caracteres cada (Cena 1 e Cena 2).
+Por isso, estruture o texto em DUAS METADES NARRATIVAS CONT\xCDNUAS separadas por um ponto final claro perto da metade do texto (~200 a 220 caracteres):
+- Primeira metade (Cena 1 \u2014 ~200 a 220 caracteres): Gancho forte de abertura + descoberta do produto + primeiro grande benef\xEDcio visual em uso (terminando com ponto final completo).
+- Segunda metade (Cena 2 \u2014 ~200 a 220 caracteres): Continua\xE7\xE3o direta da demonstra\xE7\xE3o (sem repetir o gancho!) + benef\xEDcios extras e diferenciais reais do produto + chamada para a\xE7\xE3o natural para conferir no carrinho.
+Totalizando entre 400 e 450 caracteres.` : isSingleScenePart && scenePartIndex2 === 2 && scene1CopyContext ? `INSTRU\xC7\xC3O DE CONTINUIDADE PARA A CENA 2 (200 A 225 CARACTERES):
+Esta fala \xE9 para a CENA 2 (segunda parte do v\xEDdeo), dando continuidade direta \xE0 Cena 1 cuja fala foi: "${scene1CopyContext}".
+- N\xC3O repita a abertura da Cena 1! Continue a explica\xE7\xE3o destacando novos benef\xEDcios reais do produto e finalize com uma chamada para a\xE7\xE3o natural (CTA).
+- A fala da Cena 2 DEVE ter OBRIGATORIAMENTE entre 200 e 225 caracteres (incluindo espa\xE7os).` : `REGRA MANDAT\xD3RIA DE CARACTERES (MUITO IMPORTANTE):
+A fala DEVE ter OBRIGATORIAMENTE entre 200 e 225 caracteres no total (contando espa\xE7os e pontua\xE7\xE3o).
+NUNCA entregue menos de 200 caracteres!
+NUNCA ultrapasse 225 caracteres!
+Estruture a fala com:
+1. Gancho direto e curioso de abertura (aprox. 40-45 caracteres, variando as primeiras 4 a 5 palavras).
+2. Explica\xE7\xE3o de 2 benef\xEDcios concretos com foco na usabilidade real (aprox. 120-135 caracteres).
+3. Chamada natural leve para conferir (aprox. 35-45 caracteres).
+Totalizando impreterivelmente entre 200 e 225 caracteres.`;
         const auroraSystem = `Voc\xEA \xE9 a AURORACOPY, uma especialista em copy para v\xEDdeos de TikTok Shop Brasil.
 Sua fun\xE7\xE3o \xE9 transformar as INFORMA\xC7\xD5ES DO PRODUTO fornecidas pelo usu\xE1rio em uma fala de alta reten\xE7\xE3o, natural, espec\xEDfica e persuasiva, pronta para ser usada como narra\xE7\xE3o de v\xEDdeo.
 
@@ -3877,15 +3923,7 @@ A fala nunca deve parecer propaganda tradicional, locu\xE7\xE3o institucional, d
 IGNORE COMO ARGUMENTO DE VENDA:
 Pre\xE7o, desconto, cupom, frete gr\xE1tis, parcelamento, promo\xE7\xE3o financeira. Mesmo que estejam presentes, n\xE3o baseie a copy neles.${hookVariationClause}
 
-REGRA MANDAT\xD3RIA DE CARACTERES (MUITO IMPORTANTE):
-A fala DEVE ter OBRIGATORIAMENTE entre 200 e 225 caracteres no total (contando espa\xE7os e pontua\xE7\xE3o).
-NUNCA entregue menos de 200 caracteres!
-NUNCA ultrapasse 225 caracteres!
-Estruture a fala com:
-1. Gancho direto e curioso de abertura (aprox. 40-45 caracteres, variando as primeiras 4 a 5 palavras).
-2. Explica\xE7\xE3o de 2 benef\xEDcios concretos com foco na usabilidade real (aprox. 120-135 caracteres).
-3. Chamada natural leve para conferir (aprox. 35-45 caracteres).
-Totalizando impreterivelmente entre 200 e 225 caracteres.
+${modeStructureInstructions}
 
 LINGUAGEM E VOZ IA:
 Portugu\xEAs do Brasil oral, simples, espont\xE2neo, natural.
@@ -3894,13 +3932,14 @@ Use detalhes reais presentes nas informa\xE7\xF5es do produto. NUNCA invente car
 
 FORMATO DE SA\xCDDA:
 Entregue SOMENTE a fala final, sem aspas, sem t\xEDtulos, sem explica\xE7\xF5es, sem contagem de caracteres.`;
+        const videoDurationLabel = maxLimit === 335 ? "15 segundos (Uma cena \u2014 15 segundos)" : maxLimit === 450 ? "20 segundos totais (Duas cenas de 10 segundos cada)" : "10 segundos";
         const auroraUser = `INFORMA\xC7\xD5ES DO PRODUTO:
 ${productInfo || productName}
 
 NOME DO PRODUTO: ${productName}
 ${additionalInstructions ? `INSTRU\xC7\xD5ES ADICIONAIS: ${additionalInstructions}` : ""}
 ${previousHooks.length > 0 ? `HOOKS J\xC1 USADOS (PROIBIDO REPETIR ESTAS PRIMEIRAS PALAVRAS): ${previousHooks.join(" | ")}` : ""}
-DURA\xC7\xC3O DO V\xCDDEO: 10 segundos.
+DURA\xC7\xC3O DO V\xCDDEO: ${videoDurationLabel}.
 TAMANHO OBRIGAT\xD3RIO: Estritamente entre ${minLimit} e ${maxLimit} caracteres (incluindo espa\xE7os).`;
         const auroraOutput = await executeFastAIText({
           systemPrompt: auroraSystem,
@@ -3909,7 +3948,7 @@ TAMANHO OBRIGAT\xD3RIO: Estritamente entre ${minLimit} e ${maxLimit} caracteres 
         });
         let rawSpeech = auroraOutput.text;
         rawSpeech = rawSpeech.replace(/^["'«“]|["'»”]$/g, "").trim();
-        rawSpeech = calibrateSpeechTo200_225(rawSpeech);
+        rawSpeech = calibrateSpeechToRange(rawSpeech, minLimit, maxLimit);
         return res.json({ success: true, auroraCopy: rawSpeech, usage: auroraOutput.usage });
       } catch (err) {
         return res.status(500).json({ success: false, error: err?.message || "Erro ao gerar Aurora Copy" });
@@ -3986,33 +4025,48 @@ DURA\xC7\xC3O M\xC1XIMA DO V\xCDDEO: ${duration} segundos. Limite estrito: at\xE
         console.warn("Falha no motor Aurora Copy, fallback para copy-base:", auroraErr?.message || auroraErr);
       }
     }
+    const expectedSceneCount = Number(req.body.sceneCount) === 6 ? 6 : 9;
+    const scenePartIndex = Number(req.body.scenePartIndex) === 2 ? 2 : 1;
+    const previousSceneContext = String(req.body.previousSceneContext || "").trim();
     const activeReqVars = Array.isArray(variations) ? variations.filter((v) => v && (v.photosCount > 0 || v.name)) : [];
     const variationsClause = activeReqVars.length >= 2 ? `
 - Varia\xE7\xF5es de cor do produto: ${activeReqVars.map((v) => v.name).join(", ")}
   REGRA MANDAT\xD3RIA DE NARRATIVA PROGRESSIVA CONT\xCDNUA (N\xC3O REPETIR CENAS):
-  As 9 cenas formam UMA \xDANICA DEMONSTRA\xC7\xC3O PROGRESSIVA DO PRODUTO acompanhando a copy do segundo 0 ao final.
-  PROIBIDO REPETIR CENAS OU REINICIAR A DEMONSTRA\xC7\xC3O PARA CADA COR! As 9 cenas seguem normalmente seu fluxo narrativo sem repeti\xE7\xF5es (apresenta\xE7\xE3o inicial -> funcionamento pr\xE1tico -> detalhes/macro -> benef\xEDcio no cen\xE1rio -> CTA).
+  As ${expectedSceneCount} cenas formam UMA \xDANICA DEMONSTRA\xC7\xC3O PROGRESSIVA DO PRODUTO acompanhando a copy do segundo 0 ao final.
+  PROIBIDO REPETIR CENAS OU REINICIAR A DEMONSTRA\xC7\xC3O PARA CADA COR! As ${expectedSceneCount} cenas seguem normalmente seu fluxo narrativo sem repeti\xE7\xF5es (apresenta\xE7\xE3o inicial -> funcionamento pr\xE1tico -> detalhes/macro -> benef\xEDcio no cen\xE1rio -> CTA).
   A \xDANICA diferen\xE7a \xE9 a cor em que o produto \xE9 retratado em cada grupo de quadros:
-  ${activeReqVars.length === 2 ? "\u2022 Cenas 1 a 4: produto retratado na 1\xAA Varia\xE7\xE3o (" + (activeReqVars[0]?.name || "1\xAA Cor") + ")\n  \u2022 Cenas 5 a 9: produto retratado na 2\xAA Varia\xE7\xE3o (" + (activeReqVars[1]?.name || "2\xAA Cor") + ")" : "\u2022 Cenas 1 a 3: produto retratado na 1\xAA Varia\xE7\xE3o (" + (activeReqVars[0]?.name || "1\xAA Cor") + ")\n  \u2022 Cenas 4 a 6: produto retratado na 2\xAA Varia\xE7\xE3o (" + (activeReqVars[1]?.name || "2\xAA Cor") + ")\n  \u2022 Cenas 7 a 9: produto retratado na 3\xAA Varia\xE7\xE3o (" + (activeReqVars[2]?.name || "3\xAA Cor") + ")"}
+  ${expectedSceneCount === 6 ? activeReqVars.length === 2 ? "\u2022 Cenas 1 a 3: produto retratado na 1\xAA Varia\xE7\xE3o (" + (activeReqVars[0]?.name || "1\xAA Cor") + ")\n  \u2022 Cenas 4 a 6: produto retratado na 2\xAA Varia\xE7\xE3o (" + (activeReqVars[1]?.name || "2\xAA Cor") + ")" : "\u2022 Cenas 1 a 2: produto retratado na 1\xAA Varia\xE7\xE3o (" + (activeReqVars[0]?.name || "1\xAA Cor") + ")\n  \u2022 Cenas 3 a 4: produto retratado na 2\xAA Varia\xE7\xE3o (" + (activeReqVars[1]?.name || "2\xAA Cor") + ")\n  \u2022 Cenas 5 a 6: produto retratado na 3\xAA Varia\xE7\xE3o (" + (activeReqVars[2]?.name || "3\xAA Cor") + ")" : activeReqVars.length === 2 ? "\u2022 Cenas 1 a 4: produto retratado na 1\xAA Varia\xE7\xE3o (" + (activeReqVars[0]?.name || "1\xAA Cor") + ")\n  \u2022 Cenas 5 a 9: produto retratado na 2\xAA Varia\xE7\xE3o (" + (activeReqVars[1]?.name || "2\xAA Cor") + ")" : "\u2022 Cenas 1 a 3: produto retratado na 1\xAA Varia\xE7\xE3o (" + (activeReqVars[0]?.name || "1\xAA Cor") + ")\n  \u2022 Cenas 4 a 6: produto retratado na 2\xAA Varia\xE7\xE3o (" + (activeReqVars[1]?.name || "2\xAA Cor") + ")\n  \u2022 Cenas 7 a 9: produto retratado na 3\xAA Varia\xE7\xE3o (" + (activeReqVars[2]?.name || "3\xAA Cor") + ")"}
   REGRA MANDAT\xD3RIA DE PRODUCT LOCK COM VARIA\xC7\xD5ES:
   NUNCA coloque no "productLock" a cor ou estampa de apenas uma das varia\xE7\xF5es (ex: PROIBIDO escrever "tecido azul-marinho com listras" no productLock se essa for apenas uma das varia\xE7\xF5es)!
   Descreva no "productLock" as caracter\xEDsticas universais da pe\xE7a e declare: "Varia\xE7\xF5es oficiais de cor: ${activeReqVars.map((v) => v.name).join(", ")}, todas corretas e representadas nos seus respectivos quadros do storyboard".
   Nas descri\xE7\xF5es das cenas, NUNCA cite a cor de uma varia\xE7\xE3o em cenas de outra varia\xE7\xE3o!` : "";
+    const twoScenesContinuityClause = expectedSceneCount === 6 ? scenePartIndex === 2 ? `
+- MODO DUAS CENAS (ESTA \xC9 A CENA 2 \u2014 6 QUADROS NUMERADOS DE 1 A 6 EM GRADE 2x3, DURA\xC7\xC3O 10 SEGUNDOS):
+  * REGRA INEGOCI\xC1VEL DE CONTINUIDADE NARRATIVA E VISUAL DA CENA 2:
+    Esta Cena 2 d\xE1 CONTINUIDADE DIRETA ao v\xEDdeo iniciado na Cena 1.
+    ${previousSceneContext ? `Resumo do que j\xE1 aconteceu na Cena 1 (N\xC3O REPETIR ESTAS A\xC7\xD5ES): ${previousSceneContext}` : ""}
+    \u2022 PROIBIDO repetir as cenas da Cena 1 ou reiniciar a apresenta\xE7\xE3o do zero!
+    \u2022 Avance na demonstra\xE7\xE3o pr\xE1tica, mostre novos \xE2ngulos/detalhes de funcionamento, prova de resultado real e finalize com o fechamento persuasivo (CTA) nos quadros 5 e 6.
+    \u2022 Mantenha 100% de continuidade de personagem (mesmo avatarDescription e mesma roupa), mesmo cen\xE1rio (scenarioDescription), mesma ilumina\xE7\xE3o e mesmo Product Lock da Cena 1!` : `
+- MODO DUAS CENAS (ESTA \xC9 A CENA 1 \u2014 6 QUADROS NUMERADOS DE 1 A 6 EM GRADE 2x3, DURA\xC7\xC3O 10 SEGUNDOS):
+  * Planeje EXATAMENTE 6 cenas numeradas de 1 a 6 (0.0s a 10.0s) representando o gancho visual imediato, a introdu\xE7\xE3o e o desenvolvimento inicial da demonstra\xE7\xE3o do produto.` : "";
     const systemInstruction = buildProdutos2PlanningSystemPrompt();
+    const charLimitNote = duration === 8 ? "M\xC1XIMO 199 CARACTERES COM ESPA\xC7OS" : duration === 15 ? "AT\xC9 335 CARACTERES COM ESPA\xC7OS" : "AT\xC9 225 CARACTERES COM ESPA\xC7OS";
     const userPrompt = `PLANEJAMENTO COPY-FIRST (MODO PRODUTOS 2.0):
 - Produto (nome curto): ${productName}
 - Sub-modo: ${subMode === "vestuario_masculino" ? `Vestu\xE1rio Masculino (${maleSubOption} - estilo ${maleClothStyle})` : "Produtos (Geral)"}
 - Nicho detectado: ${niche}
 - Informa\xE7\xF5es do produto: ${productInfo || productName}
 - Copy-base selecionada (${isCustomCopy ? "PERSONALIZADA PELO USU\xC1RIO - N\xC3O ALTERAR" : copyEngine === "aurora_copy" ? "GERADA POR AURORA COPY (IA CRIATIVA)" : "DO BANCO VALIDADO - ADAPTAR M\xCDNIMO POSS\xCDVEL"}): "${activeCopy}"
-- Dura\xE7\xE3o no Veo: ${duration} segundos (${duration === 8 ? "M\xC1XIMO 199 CARACTERES COM ESPA\xC7OS" : "AT\xC9 250 CARACTERES COM ESPA\xC7OS"})
+- Dura\xE7\xE3o no Veo: ${duration} segundos (${charLimitNote})
+- Quantidade obrigat\xF3ria de quadros no Storyboard: EXATAMENTE ${expectedSceneCount} cenas numeradas de 1 a ${expectedSceneCount} (${expectedSceneCount === 6 ? "grade 2x3: 2 colunas x 3 linhas" : "grade 3x3: 3 colunas x 3 linhas"})
 - Influencer (quem aparece e voz): ${influencer}
 - G\xEAnero do cliente (vocativo): ${clientGender} (se feminino, usar "Amiga" ou "Gente", NUNCA usar "menina")
 - Modo de fala: ${speechMode} (locu\xE7\xE3o R\xC1PIDA E EUF\xD3RICA, com tom animado como se estivesse contando uma novidade imperd\xEDvel)
 - Regra de frete gr\xE1tis: NUNCA mencione "frete gr\xE1tis" ou "frete gratuito" na fala, a menos que isso tenha sido informado diretamente nas informa\xE7\xF5es do produto.
 - Enquadramento: ${framing}
 - Cen\xE1rio: ${scenario === "padrao_uso" ? "Cen\xE1rio padr\xE3o de uso real do produto" : "Em casa (casa brasileira simples e aconchegante)"}
-- Instru\xE7\xF5es adicionais priorit\xE1rias: ${additionalInstructions || "Nenhuma"}${variationsClause}
+- Instru\xE7\xF5es adicionais priorit\xE1rias: ${additionalInstructions || "Nenhuma"}${variationsClause}${twoScenesContinuityClause}
 
 Retorne APENAS um objeto JSON v\xE1lido com as chaves:
 {
@@ -4029,14 +4083,14 @@ Retorne APENAS um objeto JSON v\xE1lido com as chaves:
     {
       "number": 1,
       "startTime": "0.0",
-      "endTime": "0.9",
+      "endTime": "${expectedSceneCount === 6 || duration === 15 ? "1.6" : "0.9"}",
       "framing": "string",
       "action": "string",
       "cameraMovement": "string",
       "storyboardDescription": "string"
     }
   ]
-} (exatamente 9 cenas numeradas de 1 a 9 somando ${duration}.0s).`;
+} (exatamente ${expectedSceneCount} cenas numeradas de 1 a ${expectedSceneCount} somando ${duration}.0s).`;
     const tryOrder = activeProfile === "gemini" ? ["gemini"] : ["openai"];
     for (const provider of tryOrder) {
       if (provider === "openai" && openAIProvider.isConfigured()) {
@@ -4070,7 +4124,8 @@ Retorne APENAS um objeto JSON v\xE1lido com as chaves:
             }
             const completion = await client.chat.completions.create(params);
             const parsed = JSON.parse(completion.choices[0]?.message?.content || "{}");
-            if (parsed && Array.isArray(parsed.scenes) && parsed.scenes.length === 9) {
+            if (parsed && Array.isArray(parsed.scenes) && parsed.scenes.length >= expectedSceneCount) {
+              parsed.scenes = parsed.scenes.slice(0, expectedSceneCount);
               if (typeof parsed.manufacturerLogoDescription === "string" && parsed.manufacturerLogoDescription.trim().length > 3) {
                 const logoLockEntry = `LOGOMARCA ORIGINAL DO FABRICANTE NO PRODUTO (OBRIGAT\xD3RIO REPRODUZIR 100% ID\xCANTICA): ${parsed.manufacturerLogoDescription.trim()}`;
                 const existingLocks = Array.isArray(parsed.productLock) ? parsed.productLock : [];
@@ -4129,7 +4184,8 @@ Retorne APENAS um objeto JSON v\xE1lido com as chaves:
               }
             });
             const parsed = JSON.parse(response.text || "{}");
-            if (parsed && Array.isArray(parsed.scenes) && parsed.scenes.length === 9) {
+            if (parsed && Array.isArray(parsed.scenes) && parsed.scenes.length >= expectedSceneCount) {
+              parsed.scenes = parsed.scenes.slice(0, expectedSceneCount);
               if (typeof parsed.manufacturerLogoDescription === "string" && parsed.manufacturerLogoDescription.trim().length > 3) {
                 const logoLockEntry = `LOGOMARCA ORIGINAL DO FABRICANTE NO PRODUTO (OBRIGAT\xD3RIO REPRODUZIR 100% ID\xCANTICA): ${parsed.manufacturerLogoDescription.trim()}`;
                 const existingLocks = Array.isArray(parsed.productLock) ? parsed.productLock : [];
@@ -4225,6 +4281,9 @@ app.post("/api/produtos2-generate-storyboard", async (req, res) => {
     if (!prompt) {
       return res.status(400).json({ success: false, error: "Prompt do storyboard n\xE3o fornecido." });
     }
+    const isSixFrames = Number(req.body.sceneCount) === 6 || /GRADE\s+2x3|EXATAMENTE\s+6\s+(?:QUADROS|CENAS)/i.test(String(prompt));
+    const frameCount = isSixFrames ? 6 : 9;
+    const gridLabel = isSixFrames ? "2x3 (2 colunas x 3 linhas)" : "3x3 (3 colunas x 3 linhas)";
     const photosList = Array.isArray(productPhotosBase64) ? productPhotosBase64.filter(Boolean) : [];
     const activeVariations = Array.isArray(variations) ? variations.filter(
       (v) => v.name && String(v.name).trim().length > 0 || Array.isArray(v.photos) && v.photos.length > 0
@@ -4239,7 +4298,7 @@ app.post("/api/produtos2-generate-storyboard", async (req, res) => {
 TRAVA OBRIGAT\xD3RIA DE LOGOMARCA DO FABRICANTE NO PRODUTO (FIDELIDADE 1:1):
 Nas fotos reais anexadas, o produto possui esta logomarca original de f\xE1brica:
 "${extractedLogo}".
-REGRA INEGOCI\xC1VEL: Em TODOS os quadrantes do storyboard 3x3 onde essa parte do produto aparecer, voc\xEA DEVE desenhar e reproduzir FIELMENTE essa exata logomarca do fabricante (mesmo s\xEDmbolo/desenho, mesma cor, mesmo tamanho e mesma posi\xE7\xE3o na pe\xE7a). \xC9 TERMINANTEMENTE PROIBIDO apagar, remover ou deixar lisa a \xE1rea onde fica a logomarca do fabricante!
+REGRA INEGOCI\xC1VEL: Em TODOS os quadrantes do storyboard onde essa parte do produto aparecer, voc\xEA DEVE desenhar e reproduzir FIELMENTE essa exata logomarca do fabricante (mesmo s\xEDmbolo/desenho, mesma cor, mesmo tamanho e mesma posi\xE7\xE3o na pe\xE7a). \xC9 TERMINANTEMENTE PROIBIDO apagar, remover ou deixar lisa a \xE1rea onde fica a logomarca do fabricante!
 ========================`;
       }
     }
@@ -4247,7 +4306,7 @@ REGRA INEGOCI\xC1VEL: Em TODOS os quadrantes do storyboard 3x3 onde essa parte d
     const effectivePrompt = correctionPrompt && correctionPrompt.trim() ? `${baseWithLogo}
 
 ========================
-CORRE\xC7\xC3O OBRIGAT\xD3RIA DE AUDITORIA DE FIDELIDADE DOS 9 QUADRANTES:
+CORRE\xC7\xC3O OBRIGAT\xD3RIA DE AUDITORIA DE FIDELIDADE DOS ${frameCount} QUADRANTES:
 ${correctionPrompt.trim()}
 ========================` : baseWithLogo;
     const activeProfile = req.body?.aiProfile || getRequestAIProfile(req);
@@ -4267,7 +4326,7 @@ ${correctionPrompt.trim()}
             productPhotoBase64: photosList[0] || "",
             productPhotosBase64: photosList,
             modelReferenceBase64: void 0,
-            // Sempre usa as fotos reais do produto como referência primária no storyboard 3x3
+            // Sempre usa as fotos reais do produto como referência primária no storyboard
             referenceFrameBase64: previousStoryboardImageBase64 || void 0,
             variationName: productName,
             productType: productName,
@@ -4308,13 +4367,13 @@ ${correctionPrompt.trim()}
               );
               const vIdx = matchedVarIdx >= 0 ? matchedVarIdx : Math.min(idx, activeVariations.length - 1);
               const varName = activeVariations[vIdx]?.name?.trim() || `Varia\xE7\xE3o ${vIdx + 1}`;
-              const frameRange = activeVariations.length === 2 ? vIdx === 0 ? "Quadros 1, 2, 3 e 4" : "Quadros 5, 6, 7, 8 e 9" : vIdx === 0 ? "Quadros 1, 2 e 3 (Linha 1)" : vIdx === 1 ? "Quadros 4, 5 e 6 (Linha 2)" : "Quadros 7, 8 e 9 (Linha 3)";
+              const frameRange = isSixFrames ? activeVariations.length === 2 ? vIdx === 0 ? "Quadros 1, 2 e 3" : "Quadros 4, 5 e 6" : vIdx === 0 ? "Quadros 1 e 2 (Linha 1)" : vIdx === 1 ? "Quadros 3 e 4 (Linha 2)" : "Quadros 5 e 6 (Linha 3)" : activeVariations.length === 2 ? vIdx === 0 ? "Quadros 1, 2, 3 e 4" : "Quadros 5, 6, 7, 8 e 9" : vIdx === 0 ? "Quadros 1, 2 e 3 (Linha 1)" : vIdx === 1 ? "Quadros 4, 5 e 6 (Linha 2)" : "Quadros 7, 8 e 9 (Linha 3)";
               parts.push({
                 text: `[FOTO DE REFER\xCANCIA REAL - VARIA\xC7\xC3O ${vIdx + 1}: ${varName.toUpperCase()}]: Esta foto define a cor/estilo para uso RIGOROSO nos ${frameRange}. O modelo, formato, pe\xE7as e logomarca do fabricante devem permanecer id\xEAnticos, mas a cor deve ser exatamente a desta foto nesses quadros espec\xEDficos!`
               });
             } else {
               parts.push({
-                text: `[FOTO DE REFER\xCANCIA REAL DO PRODUTO #${idx + 1} (${productName})]: Preserve 100% id\xEAnticos o formato, cor, propor\xE7\xE3o, textura, bot\xF5es e OBRIGATORIAMENTE A LOGOMARCA/EMBLEMA E TEXTOS DO FABRICANTE IMPRESSOS NO PRODUTO em todos os 9 quadros do storyboard 3x3. JAMAIS apague a logo original do produto.`
+                text: `[FOTO DE REFER\xCANCIA REAL DO PRODUTO #${idx + 1} (${productName})]: Preserve 100% id\xEAnticos o formato, cor, propor\xE7\xE3o, textura, bot\xF5es e OBRIGATORIAMENTE A LOGOMARCA/EMBLEMA E TEXTOS DO FABRICANTE IMPRESSOS NO PRODUTO em todos os ${frameCount} quadros do storyboard. JAMAIS apague a logo original do produto.`
               });
             }
           }
@@ -4324,18 +4383,18 @@ ${correctionPrompt.trim()}
           if (parsedPrev) {
             parts.push({ inlineData: parsedPrev });
             parts.push({
-              text: `[STORYBOARD ANTERIOR ENVIADO COMO REFER\xCANCIA DE BASE]: Esta imagem acima \xE9 o storyboard 3x3 gerado anteriormente. REGRA OBRIGAT\xD3RIA: Mantenha RIGOROSAMENTE ID\xCANTICOS todos os quadros que n\xE3o foram solicitados para altera\xE7\xE3o. Altere EXCLUSIVAMENTE os quadros apontados na instru\xE7\xE3o de corre\xE7\xE3o (especialmente as ordens do usu\xE1rio com prioridade soberana), aplicando a modifica\xE7\xE3o solicitada mantendo as demais cenas iguais.`
+              text: `[STORYBOARD ANTERIOR ENVIADO COMO REFER\xCANCIA DE BASE]: Esta imagem acima \xE9 o storyboard gerado anteriormente. REGRA OBRIGAT\xD3RIA: Mantenha RIGOROSAMENTE ID\xCANTICOS todos os quadros que n\xE3o foram solicitados para altera\xE7\xE3o. Altere EXCLUSIVAMENTE os quadros apontados na instru\xE7\xE3o de corre\xE7\xE3o (especialmente as ordens do usu\xE1rio com prioridade soberana), aplicando a modifica\xE7\xE3o solicitada mantendo as demais cenas iguais.`
             });
           }
         }
         parts.push({ text: effectivePrompt });
-        const variationInstructionRule = activeVariations.length >= 2 ? `- REGRA MANDAT\xD3RIA DE ALTERN\xC2NCIA DE CORES ENTRE OS QUADROS (GRADE 3x3): O produto possui ${activeVariations.length} varia\xE7\xF5es de cores/modelos. Voc\xEA DEVE OBRIGATORIAMENTE alternar as cores conforme a divis\xE3o especificada: ${activeVariations.length === 2 ? "Quadros 1 a 4 na Varia\xE7\xE3o 1 (" + (activeVariations[0]?.name || "1\xAA cor") + "); Quadros 5 a 9 na Varia\xE7\xE3o 2 (" + (activeVariations[1]?.name || "2\xAA cor") + ")" : "Quadros 1 a 3 na Varia\xE7\xE3o 1 (" + (activeVariations[0]?.name || "1\xAA cor") + "); Quadros 4 a 6 na Varia\xE7\xE3o 2 (" + (activeVariations[1]?.name || "2\xAA cor") + "); Quadros 7 a 9 na Varia\xE7\xE3o 3 (" + (activeVariations[2]?.name || "3\xAA cor") + ")"}. NUNCA gere todos os 9 quadros na mesma cor! \xC9 expressamente PROIBIDO usar uma \xFAnica cor para todo o storyboard quando h\xE1 varia\xE7\xF5es informadas. Apenas o modelo, formato e pe\xE7as permanecem id\xEAnticos, a cor DEVE alternar entre os blocos de quadros!` : `- PRODUCT LOCK ABSOLUTO: O produto em todos os 9 quadros onde aparece deve ser 100% id\xEAntico \xE0s fotos reais anexadas (mesmo formato, cor, textura, bot\xF5es, fun\xE7\xF5es, propor\xE7\xE3o e detalhes).`;
-        const systemInstructionText = `VOC\xCA \xC9 O GERADOR DE STORYBOARD 3x3 DO MODO PRODUTOS 2.0.
-- Gere UMA \xDANICA IMAGEM VERTICAL 9:16 (1080x1920) contendo uma grade 3x3 (3 colunas x 3 linhas) com EXATAMENTE 9 quadros fotogr\xE1ficos ultra-realistas numerados de 1 a 9 (selo circular branco pequeno no canto superior esquerdo de cada quadro com n\xFAmero preto).
+        const variationInstructionRule = activeVariations.length >= 2 ? `- REGRA MANDAT\xD3RIA DE ALTERN\xC2NCIA DE CORES ENTRE OS QUADROS: O produto possui ${activeVariations.length} varia\xE7\xF5es de cores/modelos. Voc\xEA DEVE OBRIGATORIAMENTE alternar as cores conforme a divis\xE3o especificada. NUNCA gere todos os ${frameCount} quadros na mesma cor! Apenas o modelo, formato e pe\xE7as permanecem id\xEAnticos, a cor DEVE alternar entre os blocos de quadros!` : `- PRODUCT LOCK ABSOLUTO: O produto em todos os ${frameCount} quadros onde aparece deve ser 100% id\xEAntico \xE0s fotos reais anexadas (mesmo formato, cor, textura, bot\xF5es, fun\xE7\xF5es, propor\xE7\xE3o e detalhes).`;
+        const systemInstructionText = `VOC\xCA \xC9 O GERADOR DE STORYBOARD DO MODO PRODUTOS 2.0.
+- Gere UMA \xDANICA IMAGEM VERTICAL 9:16 (1080x1920) contendo uma grade ${gridLabel} com EXATAMENTE ${frameCount} quadros fotogr\xE1ficos ultra-realistas numerados de 1 a ${frameCount} (selo circular branco pequeno no canto superior esquerdo de cada quadro com n\xFAmero preto).
 - Cantos arredondados nos quadros, separados por uma borda branca fina, sobre fundo branco.
 ${variationInstructionRule}
 - LOGOMARCA E MARCA DO FABRICANTE NO PRODUTO (OBRIGAT\xD3RIO): A marca, a logomarca, o emblema e os textos que j\xE1 est\xE3o impressos/estampados no pr\xF3prio produto nas fotos de refer\xEAncia DEVEM aparecer 100% id\xEAnticos, na mesma cor e no mesmo lugar da pe\xE7a, em todos os quadros em que aquela parte estiver vis\xEDvel. JAMAIS remova ou alise a logomarca do produto!
-- ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: N\xE3o adicione legendas flutuantes, textos publicit\xE1rios externos, pre\xE7os, setas, carrinho de compras, marca d'\xE1gua externa, @ ou logotipo do TikTok. Apenas os n\xFAmeros 1 a 9 nos selos circulares e a logomarca original do fabricante no pr\xF3prio produto.`;
+- ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: N\xE3o adicione legendas flutuantes, textos publicit\xE1rios externos, pre\xE7os, setas, carrinho de compras, marca d'\xE1gua externa, @ ou logotipo do TikTok. Apenas os n\xFAmeros 1 a ${frameCount} nos selos circulares e a logomarca original do fabricante no pr\xF3prio produto.`;
         const modelsToTry = [
           GEMINI_IMAGE_MODEL || "gemini-3.1-flash-image",
           GEMINI_IMAGE_FAST_MODEL || "gemini-3.1-flash-lite-image",
@@ -4421,30 +4480,32 @@ app.post("/api/produtos2-audit-storyboard", async (req, res) => {
     if (!storyboardImageBase64) {
       return res.status(400).json({ success: false, error: "Imagem do storyboard n\xE3o fornecida para auditoria." });
     }
+    const quadrantCount = Array.isArray(scenes) && scenes.length === 6 || Number(req.body?.quadrantCount) === 6 ? 6 : 9;
+    const gridDescription = quadrantCount === 6 ? "2x3 \u2014 6 Quadrantes (numerados de 1 a 6, da esquerda para a direita, de cima para baixo: Linha 1 = Cenas 1, 2; Linha 2 = Cenas 3, 4; Linha 3 = Cenas 5, 6)" : "3x3 \u2014 9 Quadrantes (numerados de 1 a 9, da esquerda para a direita, de cima para baixo: Linha 1 = Cenas 1, 2, 3; Linha 2 = Cenas 4, 5, 6; Linha 3 = Cenas 7, 8, 9)";
     const photosList = Array.isArray(productPhotosBase64) ? productPhotosBase64.filter(Boolean) : [];
     const activeVariations = Array.isArray(variations) ? variations.filter(
       (v) => v.name && String(v.name).trim().length > 0 || Array.isArray(v.photos) && v.photos.length > 0
     ) : [];
-    const scenesContext = Array.isArray(scenes) ? scenes.slice(0, 9).map((s, idx) => `Cena ${idx + 1}: ${s.framing || ""}. ${s.action || ""}`).join("\n") : "";
+    const scenesContext = Array.isArray(scenes) ? scenes.slice(0, quadrantCount).map((s, idx) => `Cena ${idx + 1}: ${s.framing || ""}. ${s.action || ""}`).join("\n") : "";
     const lockContext = Array.isArray(productLock) ? productLock.join("; ") : "";
     const variationsAuditRule = activeVariations.length >= 2 ? `
 PASSO 3 \u2014 REGRA DE OURO PARA M\xDALTIPLAS VARIA\xC7\xD5ES / CORES ANEXADAS (${activeVariations.length} VARIA\xC7\xD5ES V\xC1LIDAS):
 O usu\xE1rio anexou fotos de refer\xEAncia do produto em ${activeVariations.length} varia\xE7\xF5es/cores oficiais (${activeVariations.map((v, idx) => `Varia\xE7\xE3o ${idx + 1}: "${v.name || "Varia\xE7\xE3o " + (idx + 1)}"`).join(" | ")}).
-- REGRA DE APROVA\xC7\xC3O EM QUALQUER QUADRANTE (CENA 1 A CENA 9):
-  * Em QUALQUER um dos 9 quadrantes do storyboard, se o produto estiver retratado de forma ID\xCANTICA \xE0s fotos de refer\xEAncia de QUALQUER UMA das varia\xE7\xF5es anexadas (seja da Varia\xE7\xE3o 1, da Varia\xE7\xE3o 2 ou da Varia\xE7\xE3o 3), ELE EST\xC1 100% CERTO E DEVE SER APROVADO COM NOTA ALTA (90 a 100 \u2014 VERDE)!
-  * Exemplo: Se o usu\xE1rio anexou fotos do produto na cor Azul na Varia\xE7\xE3o 1 e fotos do produto na cor Vermelha na Varia\xE7\xE3o 2, qualquer quadrante onde o produto apare\xE7a Azul id\xEAntico \xE0s fotos da Varia\xE7\xE3o 1 est\xE1 CERTO (90-100), e qualquer quadrante onde o produto apare\xE7a Vermelho id\xEAntico \xE0s fotos da Varia\xE7\xE3o 2 est\xE1 CERTO (90-100), independentemente do n\xFAmero da cena (1 a 9)!
+- REGRA DE APROVA\xC7\xC3O EM QUALQUER QUADRANTE (CENA 1 A CENA ${quadrantCount}):
+  * Em QUALQUER um dos ${quadrantCount} quadrantes do storyboard, se o produto estiver retratado de forma ID\xCANTICA \xE0s fotos de refer\xEAncia de QUALQUER UMA das varia\xE7\xF5es anexadas (seja da Varia\xE7\xE3o 1, da Varia\xE7\xE3o 2 ou da Varia\xE7\xE3o 3), ELE EST\xC1 100% CERTO E DEVE SER APROVADO COM NOTA ALTA (90 a 100 \u2014 VERDE)!
+  * Exemplo: Se o usu\xE1rio anexou fotos do produto na cor Azul na Varia\xE7\xE3o 1 e fotos do produto na cor Vermelha na Varia\xE7\xE3o 2, qualquer quadrante onde o produto apare\xE7a Azul id\xEAntico \xE0s fotos da Varia\xE7\xE3o 1 est\xE1 CERTO (90-100), e qualquer quadrante onde o produto apare\xE7a Vermelho id\xEAntico \xE0s fotos da Varia\xE7\xE3o 2 est\xE1 CERTO (90-100), independentemente do n\xFAmero da cena (1 a ${quadrantCount})!
   * NUNCA d\xEA nota baixa porque um quadrante mostrou a Varia\xE7\xE3o 2 em vez da Varia\xE7\xE3o 1 (ou vice-versa). Qualquer uma das varia\xE7\xF5es anexadas \xE9 100% v\xE1lida em qualquer quadrante!
 - O QUE \xC9 PROIBIDO E DEVE SER REPROVADO (< 60 \u2014 VERMELHO):
   * O que N\xC3O pode acontecer \xE9 gerar no storyboard imagens do produto com apar\xEAncia, formato, logomarca ou COR DIFERENTE DE TODAS AS VARIA\xC7\xD5ES ANEXADAS (por exemplo: aparecer uma cor que n\xE3o existe em nenhuma das varia\xE7\xF5es anexadas, ou alterar o formato/logomarca do produto em rela\xE7\xE3o \xE0s fotos de refer\xEAncia daquela varia\xE7\xE3o).` : "";
-    const auditSystemInstruction = `Voc\xEA \xE9 o Fiscal Rigoroso de Fidelidade Visual de Produtos (Storyboard 3x3 \u2014 9 Quadrantes).
-Sua miss\xE3o \xE9 inspecionar CADA UM DOS 9 QUADRANTES (numerados de 1 a 9, da esquerda para a direita, de cima para baixo: Linha 1 = Cenas 1, 2, 3; Linha 2 = Cenas 4, 5, 6; Linha 3 = Cenas 7, 8, 9) da imagem de Storyboard gerada e comparar o produto com as FOTOS REAIS DE REFER\xCANCIA do produto "${productName}".
+    const auditSystemInstruction = `Voc\xEA \xE9 o Fiscal Rigoroso de Fidelidade Visual de Produtos (Storyboard ${gridDescription}).
+Sua miss\xE3o \xE9 inspecionar CADA UM DOS ${quadrantCount} QUADRANTES (numerados de 1 a ${quadrantCount}) da imagem de Storyboard gerada e comparar o produto com as FOTOS REAIS DE REFER\xCANCIA do produto "${productName}".
 
 PASSO 1 \u2014 VERIFICA\xC7\xC3O DA LOGOMARCA DO FABRICANTE NAS FOTOS DE REFER\xCANCIA:
 Primeiro, olhe com aten\xE7\xE3o m\xE1xima para as FOTOS DE REFER\xCANCIA REAIS do produto e identifique se o produto possui alguma LOGOMARCA, EMBLEMA, ESCUDO, S\xCDMBOLO ou NOME DA MARCA impresso/estampado/gravado nele (por exemplo: logomarca branca no topo do encosto de um banco de exerc\xEDcios, logo na lateral, emblema frontal, r\xF3tulo, etc.).
 - Preencha "hasReferenceLogo": true ou false.
 - Preencha "referenceLogoDescription": descri\xE7\xE3o exata da logomarca original vista na foto de refer\xEAncia e em qual parte do produto ela fica (ex: "Logomarca geom\xE9trica branca em formato de escudo no topo do encosto preto").
 
-PASSO 2 \u2014 REGRAS DE OURO DA FISCALIZA\xC7\xC3O POR QUADRANTE (CENA 1 A CENA 9):
+PASSO 2 \u2014 REGRAS DE OURO DA FISCALIZA\xC7\xC3O POR QUADRANTE (CENA 1 A CENA ${quadrantCount}):
 1. Se em algum quadrante aparecer SOMENTE o modelo/pessoa ou SOMENTE o cen\xE1rio, SEM o produto aparecer:
    - "productVisible": false
    - "logoPartVisible": false
@@ -4470,7 +4531,7 @@ PASSO 2 \u2014 REGRAS DE OURO DA FISCALIZA\xC7\xC3O POR QUADRANTE (CENA 1 A CENA
 CONTEXTO DO PRODUCT LOCK ESPERADO:
 ${lockContext}
 
-DESCRI\xC7\xC3O PLANEJADA DAS 9 CENAS:
+DESCRI\xC7\xC3O PLANEJADA DAS ${quadrantCount} CENAS:
 ${scenesContext}
 
 Retorne ESTRITAMENTE um objeto JSON v\xE1lido EM PORTUGU\xCAS com este formato exato:
@@ -4488,7 +4549,7 @@ Retorne ESTRITAMENTE um objeto JSON v\xE1lido EM PORTUGU\xCAS com este formato e
     }
   ]
 }
-O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "issue" sempre em portugu\xEAs do Brasil.`;
+O array "quadrants" DEVE conter exatamente ${quadrantCount} itens (sceneNumber 1 a ${quadrantCount}), com "issue" sempre em portugu\xEAs do Brasil.`;
     const activeProfile = req.body?.aiProfile || getRequestAIProfile(req);
     const tryOrder = activeProfile === "gemini" ? ["gemini"] : ["openai"];
     let rawQuadrants = null;
@@ -4535,7 +4596,7 @@ O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "iss
           }
           contentBlocks.push({
             type: "text",
-            text: "[IMAGEM GERADA \u2014 STORYBOARD 3x3 COM 9 CENAS NUMERADAS DE 1 A 9 PARA FISCALIZA\xC7\xC3O]:"
+            text: `[IMAGEM GERADA \u2014 STORYBOARD COM ${quadrantCount} CENAS NUMERADAS DE 1 A ${quadrantCount} PARA FISCALIZA\xC7\xC3O]:`
           });
           contentBlocks.push({
             type: "image_url",
@@ -4546,7 +4607,7 @@ O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "iss
           });
           contentBlocks.push({
             type: "text",
-            text: "Inspecione cada um dos 9 quadrantes (Cena 1 a Cena 9) comparando com as fotos reais de refer\xEAncia. Lembre-se: se houver m\xFAltiplas varia\xE7\xF5es anexadas, o produto \xE9 considerado 100% correto em qualquer quadrante desde que seja id\xEAntico a QUALQUER UMA das varia\xE7\xF5es anexadas! S\xF3 reprove se o produto tiver apar\xEAncia, formato, logomarca ou cor diferente de TODAS as varia\xE7\xF5es anexadas. Retorne o JSON em portugu\xEAs."
+            text: `Inspecione cada um dos ${quadrantCount} quadrantes (Cena 1 a Cena ${quadrantCount}) comparando com as fotos reais de refer\xEAncia. Lembre-se: se houver m\xFAltiplas varia\xE7\xF5es anexadas, o produto \xE9 considerado 100% correto em qualquer quadrante desde que seja id\xEAntico a QUALQUER UMA das varia\xE7\xF5es anexadas! S\xF3 reprove se o produto tiver apar\xEAncia, formato, logomarca ou cor diferente de TODAS as varia\xE7\xF5es anexadas. Retorne o JSON em portugu\xEAs.`
           });
           const modelsToTry = [OPENAI_AUDIT_MODEL || "gpt-5.6-luna", "gpt-4o", "gpt-4o-mini", OPENAI_BRAIN_MODEL];
           for (const modelCandidate of modelsToTry) {
@@ -4615,13 +4676,13 @@ O array "quadrants" DEVE conter exatamente 9 itens (sceneNumber 1 a 9), com "iss
           }
           const parsedStoryboard = parseInlineImage(storyboardImageBase64);
           if (parsedStoryboard) {
-            parts.push({ text: "[IMAGEM GERADA \u2014 STORYBOARD 3x3 (9 CENAS NUMERADAS DE 1 A 9)]:" });
+            parts.push({ text: `[IMAGEM GERADA \u2014 STORYBOARD (${quadrantCount} CENAS NUMERADAS DE 1 A ${quadrantCount})]:` });
             parts.push({ inlineData: parsedStoryboard });
           }
           parts.push({
             text: `${auditSystemInstruction}
 
-Analise cada um dos 9 quadrantes (Cena 1 a Cena 9) e retorne o JSON em portugu\xEAs.`
+Analise cada um dos ${quadrantCount} quadrantes (Cena 1 a Cena ${quadrantCount}) e retorne o JSON em portugu\xEAs.`
           });
           const geminiModels = [
             GEMINI_VISION_MODEL || "gemini-3.8-flash",
@@ -4663,7 +4724,7 @@ Analise cada um dos 9 quadrantes (Cena 1 a Cena 9) e retorne o JSON em portugu\x
         }
       }
     }
-    const normalizedQuadrants = Array.from({ length: 9 }, (_, i) => {
+    const normalizedQuadrants = Array.from({ length: quadrantCount }, (_, i) => {
       const sceneNum = i + 1;
       const found = (rawQuadrants || []).find((q) => Number(q.sceneNumber) === sceneNum) || (rawQuadrants || [])[i];
       const productVisible = found?.productVisible !== void 0 ? Boolean(found.productVisible) : true;
@@ -4733,7 +4794,7 @@ Analise cada um dos 9 quadrantes (Cena 1 a Cena 9) e retorne o JSON em portugu\x
     }
     const overallStatus = getAuditColorStatus(overallScore);
     const overallLabel = getAuditColorLabel(overallStatus, overallScore);
-    const summaryIssues = problemQuadrants.length > 0 ? problemQuadrants.map((q) => `${q.issue} (Nota: ${q.score}%)`) : ["Todas as 9 cenas est\xE3o com fidelidade acima de 90% em rela\xE7\xE3o \xE0s fotos de refer\xEAncia."];
+    const summaryIssues = problemQuadrants.length > 0 ? problemQuadrants.map((q) => `${q.issue} (Nota: ${q.score}%)`) : [`Todas as ${quadrantCount} cenas est\xE3o com fidelidade acima de 90% em rela\xE7\xE3o \xE0s fotos de refer\xEAncia.`];
     let correctionPrompt = "";
     const logoMandatoryNote = hasReferenceLogo && referenceLogoDescription ? `OBRIGAT\xD3RIO REPRODUZIR A LOGOMARCA ORIGINAL DO FABRICANTE NO PRODUTO: "${referenceLogoDescription}". JAMAIS deixe a superf\xEDcie lisa onde existe a logomarca nas fotos de refer\xEAncia!` : `OBRIGAT\xD3RIO preservar 100% id\xEAnticos a logomarca e os textos originais do fabricante impressos no pr\xF3prio produto nas fotos de refer\xEAncia.`;
     const variationMandatoryNote = activeVariations.length >= 2 ? `VARIA\xC7\xD5ES DE CORES OFICIAIS PERMITIDAS: ${activeVariations.map((v, idx) => `Varia\xE7\xE3o ${idx + 1} (${v.name || "Cor " + (idx + 1)})`).join(", ")}. O produto em cada quadrante deve ser 100% id\xEAntico a uma das varia\xE7\xF5es de refer\xEAncia anexadas, nunca com cor ou formato diferente das fotos anexadas!` : "";
@@ -4748,13 +4809,13 @@ Analise cada um dos 9 quadrantes (Cena 1 a Cena 9) e retorne o JSON em portugu\x
         approvedNums ? `MANTENHA A QUALIDADE E FIDELIDADE DAS CENAS J\xC1 APROVADAS (Cenas ${approvedNums}).` : "",
         `CORRIJA PRIORITARIAMENTE AS CENAS ONDE O PRODUTO FICOU DIFERENTE:`,
         fixesList,
-        `OBJETIVO OBRIGAT\xD3RIO: Atingir mais de 90% de similaridade em TODOS os 9 quadrantes, preservando logomarca do fabricante, textos impressos no produto, cores das varia\xE7\xF5es anexadas, formato e bot\xF5es 100% id\xEAnticos \xE0s fotos de refer\xEAncia.`
+        `OBJETIVO OBRIGAT\xD3RIO: Atingir mais de 90% de similaridade em TODOS os ${quadrantCount} quadrantes, preservando logomarca do fabricante, textos impressos no produto, cores das varia\xE7\xF5es anexadas, formato e bot\xF5es 100% id\xEAnticos \xE0s fotos de refer\xEAncia.`
       ].filter(Boolean).join("\n");
     } else {
       correctionPrompt = [
         logoMandatoryNote,
         variationMandatoryNote,
-        "Mantenha mais de 90% de similaridade em todos os 9 quadrantes, preservando logomarca do fabricante, textos impressos no produto, cores das varia\xE7\xF5es anexadas, bot\xF5es e formato 100% id\xEAnticos \xE0s fotos de refer\xEAncia."
+        `Mantenha mais de 90% de similaridade em todos os ${quadrantCount} quadrantes, preservando logomarca do fabricante, textos impressos no produto, cores das varia\xE7\xF5es anexadas, bot\xF5es e formato 100% id\xEAnticos \xE0s fotos de refer\xEAncia.`
       ].filter(Boolean).join(" ");
     }
     return res.json({
@@ -4780,7 +4841,7 @@ Analise cada um dos 9 quadrantes (Cena 1 a Cena 9) e retorne o JSON em portugu\x
     console.warn("Erro em /api/produtos2-audit-storyboard:", err?.message || err);
     return res.json({
       success: false,
-      error: err?.message || "Erro ao auditar os 9 quadrantes do storyboard."
+      error: err?.message || "Erro ao auditar os quadrantes do storyboard."
     });
   }
 });

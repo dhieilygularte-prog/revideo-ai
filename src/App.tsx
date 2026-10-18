@@ -94,6 +94,7 @@ export default function App() {
     productInfo: '',
     productName: '',
     duration: 10,
+    sceneMode: '1_cena_10s',
     customCopy: '',
     speechesGenerated: false,
     bancoCopy: '',
@@ -1228,10 +1229,113 @@ export default function App() {
     }
   };
 
-  const handleRecreateProdutos2WithCopy = async (newCopy: string, copySourceLabel?: string) => {
+  const handleRecreateProdutos2WithCopy = async (
+    newCopy: string,
+    copySourceLabel?: string,
+    sceneTarget: 1 | 2 = 1
+  ) => {
     if (!produtos2Result || isProcessingProdutos2) return;
     const trimmedCopy = (newCopy || '').trim();
     if (!trimmedCopy) return;
+
+    // Se estiver no modo "Duas cenas — 10 segundos cada", recria de forma 100% independente apenas a cena solicitada (Cena 1 ou Cena 2)
+    if (produtos2Result.sceneMode === '2_cenas_10s' && produtos2Result.scene2) {
+      if (sceneTarget === 2) {
+        setProdutos2Result((prev) =>
+          prev && prev.scene2
+            ? {
+                ...prev,
+                scene2: {
+                  ...prev.scene2,
+                  isRegeneratingStoryboard: true,
+                  storyboardError: undefined,
+                },
+              }
+            : prev
+        );
+      } else {
+        setProdutos2Result((prev) =>
+          prev ? { ...prev, isRegeneratingStoryboard: true, storyboardError: undefined } : null
+        );
+      }
+
+      try {
+        const { recreateSingleTwoScenesPartWithCopy } = await import(
+          './produtos2/produtos2Pipeline'
+        );
+        const singleRes = await recreateSingleTwoScenesPartWithCopy({
+          result: produtos2Result,
+          form: produtos2Form,
+          sceneTarget,
+          newCopy: trimmedCopy,
+          copySourceLabel,
+          aiProfile,
+        });
+
+        setProdutos2Result((prev) => {
+          if (!prev) return null;
+          let updated: Produtos2ResultState;
+          if (sceneTarget === 2 && prev.scene2) {
+            updated = {
+              ...prev,
+              scene2: {
+                ...prev.scene2,
+                finalCopy: singleRes.finalCopy,
+                copySourceLabel: singleRes.copySourceLabel,
+                visualMap: singleRes.visualMap,
+                scenes: singleRes.scenes,
+                storyboardPrompt: singleRes.storyboardPrompt,
+                storyboardImageUrl: singleRes.storyboardImageUrl || prev.scene2.storyboardImageUrl,
+                storyboardError: singleRes.storyboardError,
+                storyboardAudit: singleRes.storyboardAudit || prev.scene2.storyboardAudit,
+                veoPrompt: singleRes.veoPrompt,
+                isRegeneratingStoryboard: false,
+              },
+            };
+          } else {
+            updated = {
+              ...prev,
+              finalCopy: singleRes.finalCopy,
+              copySourceLabel: singleRes.copySourceLabel,
+              visualMap: singleRes.visualMap,
+              scenes: singleRes.scenes,
+              storyboardPrompt: singleRes.storyboardPrompt,
+              storyboardImageUrl: singleRes.storyboardImageUrl || prev.storyboardImageUrl,
+              storyboardError: singleRes.storyboardError,
+              storyboardAudit: singleRes.storyboardAudit || prev.storyboardAudit,
+              veoPrompt: singleRes.veoPrompt,
+              isRegeneratingStoryboard: false,
+            };
+          }
+
+          import('./utils/historyStorage')
+            .then(({ saveCreativeToHistory }) => {
+              saveCreativeToHistory(updated);
+            })
+            .catch(() => {});
+          return updated;
+        });
+
+        if (singleRes.storyboardImageUrl) {
+          playCompletionSound();
+        }
+      } catch (err: any) {
+        setProdutos2ErrorMessage(
+          err.message || `Erro ao recriar o Storyboard da Cena ${sceneTarget} com a nova copy.`
+        );
+        setProdutos2Result((prev) => {
+          if (!prev) return null;
+          if (sceneTarget === 2 && prev.scene2) {
+            return {
+              ...prev,
+              scene2: { ...prev.scene2, isRegeneratingStoryboard: false },
+            };
+          }
+          return { ...prev, isRegeneratingStoryboard: false };
+        });
+      }
+      return;
+    }
 
     setIsProcessingProdutos2(true);
     setProdutos2ProgressPercent(5);
@@ -1246,6 +1350,7 @@ export default function App() {
       subMode: produtos2Form.subMode || produtos2Result.subMode || 'produtos_geral',
       maleSubOption: produtos2Form.maleSubOption || produtos2Result.maleSubOption || 'calcados',
       duration: produtos2Form.duration || produtos2Result.duration || 10,
+      sceneMode: produtos2Form.sceneMode || produtos2Result.sceneMode || '1_cena_10s',
       speechMode: 'com_fala',
       useSpeechIntro: produtos2Form.useSpeechIntro ?? produtos2Result.useSpeechIntro,
       framing: produtos2Form.framing || produtos2Result.framing || 'com_rosto',
@@ -1364,17 +1469,37 @@ export default function App() {
     }
   };
 
-  const handleRegenerateProdutos2Storyboard = async (customCorrection?: string) => {
+  const handleRegenerateProdutos2Storyboard = async (
+    customCorrection?: string,
+    sceneTarget: 1 | 2 = 1
+  ) => {
     if (!produtos2Result) return;
-    setProdutos2Result((prev) =>
-      prev ? { ...prev, isRegeneratingStoryboard: true, storyboardError: undefined } : null
-    );
+    if (sceneTarget === 2 && produtos2Result.scene2) {
+      setProdutos2Result((prev) =>
+        prev && prev.scene2
+          ? {
+              ...prev,
+              scene2: {
+                ...prev.scene2,
+                isRegeneratingStoryboard: true,
+                storyboardError: undefined,
+              },
+            }
+          : prev
+      );
+    } else {
+      setProdutos2Result((prev) =>
+        prev ? { ...prev, isRegeneratingStoryboard: true, storyboardError: undefined } : null
+      );
+    }
+
     try {
       const { regenerateProdutos2Storyboard } = await import('./produtos2/produtos2Pipeline');
       const regen = await regenerateProdutos2Storyboard({
         result: produtos2Result,
         form: produtos2Form,
         customCorrection,
+        sceneTarget,
         aiProfile,
       });
       setProdutos2Result((prev) => {
@@ -1429,14 +1554,28 @@ export default function App() {
           setSessionTokenStats(updatedTokenUsage);
         }
 
-        const updatedResult = {
-          ...prev,
-          isRegeneratingStoryboard: false,
-          storyboardImageUrl: regen.imageUrl || prev.storyboardImageUrl,
-          storyboardAudit: regen.storyboardAudit || prev.storyboardAudit,
-          storyboardError: regen.error,
-          tokenUsage: updatedTokenUsage,
-        };
+        const updatedResult: Produtos2ResultState =
+          sceneTarget === 2 && prev.scene2
+            ? {
+                ...prev,
+                scene2: {
+                  ...prev.scene2,
+                  isRegeneratingStoryboard: false,
+                  storyboardImageUrl: regen.imageUrl || prev.scene2.storyboardImageUrl,
+                  storyboardAudit: regen.storyboardAudit || prev.scene2.storyboardAudit,
+                  storyboardError: regen.error,
+                },
+                tokenUsage: updatedTokenUsage,
+              }
+            : {
+                ...prev,
+                isRegeneratingStoryboard: false,
+                storyboardImageUrl: regen.imageUrl || prev.storyboardImageUrl,
+                storyboardAudit: regen.storyboardAudit || prev.storyboardAudit,
+                storyboardError: regen.error,
+                tokenUsage: updatedTokenUsage,
+              };
+
         import('./utils/historyStorage')
           .then(({ saveCreativeToHistory }) => {
             saveCreativeToHistory(updatedResult);
@@ -1448,15 +1587,24 @@ export default function App() {
         playCompletionSound();
       }
     } catch (err: any) {
-      setProdutos2Result((prev) =>
-        prev
-          ? {
-              ...prev,
+      setProdutos2Result((prev) => {
+        if (!prev) return null;
+        if (sceneTarget === 2 && prev.scene2) {
+          return {
+            ...prev,
+            scene2: {
+              ...prev.scene2,
               isRegeneratingStoryboard: false,
-              storyboardError: err?.message || 'Erro ao refazer storyboard',
-            }
-          : null
-      );
+              storyboardError: err?.message || 'Erro ao refazer storyboard da Cena 2',
+            },
+          };
+        }
+        return {
+          ...prev,
+          isRegeneratingStoryboard: false,
+          storyboardError: err?.message || 'Erro ao refazer storyboard',
+        };
+      });
     }
   };
 
@@ -1470,6 +1618,7 @@ export default function App() {
       productInfo: '',
       productName: '',
       duration: 10,
+      sceneMode: '1_cena_10s',
       customCopy: '',
       speechesGenerated: false,
       bancoCopy: '',
@@ -1528,6 +1677,7 @@ export default function App() {
       subMode: item.result.subMode || prev.subMode,
       maleSubOption: item.result.maleSubOption || prev.maleSubOption,
       duration: item.result.duration || prev.duration,
+      sceneMode: item.result.sceneMode || prev.sceneMode || '1_cena_10s',
       speechMode: item.result.speechMode || prev.speechMode,
       useSpeechIntro: item.result.useSpeechIntro ?? prev.useSpeechIntro,
       framing: item.result.framing || prev.framing,

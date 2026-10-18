@@ -1,7 +1,10 @@
 import {
+  Produtos2Duration,
   Produtos2FormState,
   Produtos2ResultState,
   Produtos2SceneItem,
+  Produtos2SceneMode,
+  Produtos2SecondSceneState,
   Produtos2StoryboardAudit,
   Produtos2VisualMapItem,
 } from './types';
@@ -14,6 +17,7 @@ import {
   generateProdutos2DescriptionHashtags,
   selectAndAdaptProdutos2Copy,
 } from './produtos2CopyBank';
+import { splitSpeechIntoTwoScenes } from './produtos2UserSpeechExtractor';
 import {
   buildDefaultProdutos2Plan,
   buildProdutos2StoryboardImagePrompt,
@@ -494,6 +498,7 @@ export async function auditProdutos2Storyboard(params: {
         ? sanitizeProductLockForVariations(productLock, variations, productName)
         : productLock;
 
+    const targetQCount = scenes.length === 6 ? 6 : 9;
     const res = await fetch('/api/produtos2-audit-storyboard', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -503,6 +508,7 @@ export async function auditProdutos2Storyboard(params: {
         productName,
         productLock: sanitizedLock,
         scenes,
+        sceneCount: targetQCount,
         variations: compressedVariations,
         aiProfile,
       }),
@@ -519,14 +525,15 @@ export async function auditProdutos2Storyboard(params: {
     console.warn('Aviso ao auditar quadrantes do storyboard:', err);
   }
 
+  const fallbackCount = scenes.length === 6 ? 6 : 9;
   // Fallback determinístico caso a rota de auditoria esteja indisponível
   return {
     audit: {
       overallScore: 94,
       overallStatus: 'green',
       overallLabel: 'Verde — Produto Idêntico (94%)',
-      summaryIssues: ['Todas as 9 cenas verificadas com fidelidade acima de 90%.'],
-      quadrants: Array.from({ length: 9 }, (_, i) => ({
+      summaryIssues: [`Todas as ${fallbackCount} cenas verificadas com fidelidade acima de 90%.`],
+      quadrants: Array.from({ length: fallbackCount }, (_, i) => ({
         sceneNumber: i + 1,
         productVisible: true,
         score: 94,
@@ -545,6 +552,11 @@ export async function runProdutos2Pipeline(params: {
   onProgress?: (percent: number, message: string) => void;
 }): Promise<Produtos2ResultState> {
   const { form, aiProfile = 'openai', onProgress } = params;
+  const sceneMode: Produtos2SceneMode = form.sceneMode || '1_cena_10s';
+  const isTwoScenes = sceneMode === '2_cenas_10s';
+  const effectiveDuration: Produtos2Duration =
+    sceneMode === '1_cena_15s' ? 15 : form.duration === 8 ? 8 : 10;
+  const targetSceneCount: 6 | 9 = isTwoScenes ? 6 : 9;
 
   onProgress?.(8, '1/6 Identificando produto, nicho e especificações...');
 
@@ -553,7 +565,7 @@ export async function runProdutos2Pipeline(params: {
   const finalProductName = (form.productName.trim() || specs.shortName || 'Produto').trim();
   const detectedNiche = form.detectedNiche || specs.niche || 'Produtos Gerais';
 
-  onProgress?.(18, '2/6 Sorteando e adaptando copy validada do banco...');
+  onProgress?.(18, '2/6 Preparando copy oficial do criativo...');
 
   // 2 & 3 & 4. Determinar a fala oficial com base na seleção do usuário (ou fallback)
   let finalCopy = '';
@@ -576,8 +588,12 @@ export async function runProdutos2Pipeline(params: {
     copyId = 'BANCO-02';
   } else if (form.bancoCopy || form.finalSelectedSpeech) {
     finalCopy = (form.finalSelectedSpeech || form.bancoCopy || '').trim();
-    copySourceLabel = 'Banco de Copies (Opção 1)';
-    copyId = 'BANCO-01';
+    copySourceLabel =
+      sceneMode === '1_cena_15s' || sceneMode === '2_cenas_10s'
+        ? 'Aurora Copy'
+        : 'Banco de Copies (Opção 1)';
+    copyId =
+      sceneMode === '1_cena_15s' || sceneMode === '2_cenas_10s' ? 'AURORA-01' : 'BANCO-01';
   } else if (form.customCopy && form.customCopy.trim()) {
     finalCopy = form.customCopy.trim();
     copySourceLabel = 'Fala do Usuário';
@@ -588,7 +604,7 @@ export async function runProdutos2Pipeline(params: {
       maleSubOption: form.maleSubOption,
       productName: finalProductName,
       productInfo: form.productInfo,
-      duration: form.duration,
+      duration: 10,
       customCopy: form.customCopy,
       clientGender: form.clientGender,
       influencer: form.influencer,
@@ -625,7 +641,21 @@ export async function runProdutos2Pipeline(params: {
 
   const allPhotos: string[] = [...prioritizedPhotos, ...otherPhotos];
 
-  onProgress?.(30, '3/6 Construindo Mapa Visual da Copy, Product Lock (incluindo logomarca) e 9 Micro-Cenas...');
+  // Se for modo Duas Cenas (10s cada), dividir a fala completa (até 450 caracteres) em duas partes coerentes de até 225 caracteres cada
+  const fullNarrativeCopy = finalCopy;
+  let part2Copy = '';
+  if (isTwoScenes) {
+    const [splitPart1, splitPart2] = splitSpeechIntoTwoScenes(fullNarrativeCopy);
+    finalCopy = splitPart1;
+    part2Copy = splitPart2;
+  }
+
+  onProgress?.(
+    30,
+    isTwoScenes
+      ? '3/6 Dividindo fala em 2 partes e planejando as 6 cenas da Cena 1...'
+      : '3/6 Construindo Mapa Visual da Copy, Product Lock (incluindo logomarca) e 9 Micro-Cenas...'
+  );
 
   // 5, 6 & 7. Planejamento Inicial Determinístico (garantia de estrutura e fallback)
   const fallbackPlan = buildDefaultProdutos2Plan({
@@ -636,7 +666,9 @@ export async function runProdutos2Pipeline(params: {
     maleSubOption: form.maleSubOption,
     maleClothStyle: form.maleClothStyle,
     finalCopy,
-    duration: form.duration,
+    duration: effectiveDuration,
+    sceneCount: targetSceneCount,
+    scenePartIndex: isTwoScenes ? 1 : undefined,
     influencerResolved: resolvedInfluencer,
     clientGender: form.clientGender,
     framing: form.framing,
@@ -654,11 +686,12 @@ export async function runProdutos2Pipeline(params: {
   let planUsage: any = null;
   let aiGeneratedHashtags: string[] | undefined = undefined;
 
+  const compressedPlanningPhotos = await Promise.all(
+    allPhotos.slice(0, 3).map((p) => compressImageForPayload(p, 1400, 0.88))
+  );
+
   // Refinamento Inteligente via IA (/api/produtos2-planning) analisando as fotos reais e a copy
   try {
-    const compressedPlanningPhotos = await Promise.all(
-      allPhotos.slice(0, 3).map((p) => compressImageForPayload(p, 1400, 0.88))
-    );
     const planRes = await fetch('/api/produtos2-planning', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -672,7 +705,10 @@ export async function runProdutos2Pipeline(params: {
         baseCopy: finalCopy,
         isCustomCopy: Boolean(form.customCopy && form.customCopy.trim()),
         copyEngine: form.copyEngine || 'banco',
-        duration: form.duration,
+        duration: effectiveDuration,
+        sceneMode,
+        sceneCount: targetSceneCount,
+        scenePartIndex: isTwoScenes ? 1 : undefined,
         influencer: resolvedInfluencer,
         clientGender: form.clientGender,
         speechMode: form.speechMode,
@@ -695,7 +731,13 @@ export async function runProdutos2Pipeline(params: {
         }
 
         // Se o usuário selecionou uma fala previamente (ou customCopy), preserva a fala escolhida!
-        if (form.speechesGenerated || form.bancoCopy || form.auroraCopy || (form.customCopy && form.customCopy.trim())) {
+        if (
+          isTwoScenes ||
+          form.speechesGenerated ||
+          form.bancoCopy ||
+          form.auroraCopy ||
+          (form.customCopy && form.customCopy.trim())
+        ) {
           // Mantém estritamente a fala escolhida e editada pelo usuário!
         } else if (form.copyEngine === 'aurora_copy' && d.finalCopy) {
           finalCopy = d.finalCopy;
@@ -741,8 +783,8 @@ export async function runProdutos2Pipeline(params: {
             scenes: String(m.scenes || ''),
           }));
         }
-        if (Array.isArray(d.scenes) && d.scenes.length === 9) {
-          const defaultTimings = getNineSceneTimings(form.duration);
+        if (Array.isArray(d.scenes) && d.scenes.length === targetSceneCount) {
+          const defaultTimings = getNineSceneTimings(effectiveDuration, targetSceneCount);
           const mappedScenes = d.scenes.map((sc: any, idx: number) => {
             const cleanFraming = stripTikTokOutsideSpeech(
               String(sc.framing || fallbackPlan.scenes[idx].framing).trim()
@@ -765,7 +807,6 @@ export async function runProdutos2Pipeline(params: {
             const cleanMovement = stripTikTokOutsideSpeech(
               String(sc.cameraMovement || fallbackPlan.scenes[idx].cameraMovement).trim()
             );
-            // Item 7.3: Garantir que a descrição usada na imagem e no prompt do Veo seja exatamente a mesma
             return {
               number: idx + 1,
               startTime: String(sc.startTime || defaultTimings[idx].start),
@@ -777,15 +818,14 @@ export async function runProdutos2Pipeline(params: {
             };
           });
 
-          // Proteção contra repetição indevida de ações entre variações (Cena 4 repetindo Cena 1 ou Cena 5 repetindo Cena 2)
           const isRepetitive =
             mappedScenes.length === 9 &&
-            (
-              (mappedScenes[3].action.length > 15 && mappedScenes[0].action.length > 15 &&
-               mappedScenes[3].action.toLowerCase().includes(mappedScenes[0].action.toLowerCase().slice(0, 25))) ||
-              (mappedScenes[4].action.length > 15 && mappedScenes[1].action.length > 15 &&
-               mappedScenes[4].action.toLowerCase().includes(mappedScenes[1].action.toLowerCase().slice(0, 25)))
-            );
+            ((mappedScenes[3].action.length > 15 &&
+              mappedScenes[0].action.length > 15 &&
+              mappedScenes[3].action.toLowerCase().includes(mappedScenes[0].action.toLowerCase().slice(0, 25))) ||
+              (mappedScenes[4].action.length > 15 &&
+                mappedScenes[1].action.length > 15 &&
+                mappedScenes[4].action.toLowerCase().includes(mappedScenes[1].action.toLowerCase().slice(0, 25))));
 
           if (isRepetitive) {
             console.warn('Detectada repetição indevida de cenas entre variações. Mantendo sequência progressiva do plano mestre.');
@@ -800,12 +840,11 @@ export async function runProdutos2Pipeline(params: {
     console.warn('Usando planejamento determinístico Copy-First:', planErr);
   }
 
-  // Checklist: garantir calibragem exata de caracteres (<=165 em 8s, <=235 em 10s), vocativo e prefixo de intro se selecionado
-  // 7. Calibrar e sanitizar a copy final (apenas se for Banco de Copies e não for Fala do Usuário nem Aurora Copy)
+  // 7. Calibrar e sanitizar a copy final (apenas no modo padrão de 10s se for Banco de Copies e não for Fala do Usuário nem Aurora Copy)
   const isUserCopy = form.selectedSpeechOption === 'user_speech' || Boolean(form.customCopy && form.customCopy.trim());
   const isAurora = form.selectedSpeechOption === 'aurora_copy' || form.copyEngine === 'aurora_copy';
 
-  if (!isUserCopy && !isAurora) {
+  if (sceneMode === '1_cena_10s' && !isUserCopy && !isAurora) {
     finalCopy = calibrateCopyToTargetWindow({
       copy: finalCopy,
       duration: form.duration,
@@ -815,12 +854,15 @@ export async function runProdutos2Pipeline(params: {
       useSpeechIntro: form.useSpeechIntro,
     });
     finalCopy = applySpeechIntro(finalCopy, Boolean(form.useSpeechIntro));
+  } else {
+    finalCopy = applySpeechIntro(finalCopy, Boolean(form.useSpeechIntro));
   }
 
-  // Garantir que a última cena termine exatamente em 10.0 ou 8.0
-  if (scenes.length === 9) {
+  // Garantir que a última cena termine exatamente na duração correta (10.0, 15.0 ou 8.0)
+  if (scenes.length === targetSceneCount) {
     scenes[0].startTime = '0.0';
-    scenes[8].endTime = form.duration === 8 ? '8.0' : '10.0';
+    scenes[targetSceneCount - 1].endTime =
+      effectiveDuration === 15 ? '15.0' : effectiveDuration === 8 ? '8.0' : '10.0';
   }
 
   // 8. PRIMEIRO: Construir e GERAR A IMAGEM DO STORYBOARD 1080x1920 (Seção 7.6)
@@ -833,6 +875,7 @@ export async function runProdutos2Pipeline(params: {
     framing: form.framing,
     scenarioDescription,
     scenes,
+    scenePartIndex: isTwoScenes ? 1 : undefined,
     additionalInstructions: form.additionalInstructions,
     variations: form.variations,
     isDialogue: form.isDialogue,
@@ -841,7 +884,12 @@ export async function runProdutos2Pipeline(params: {
     speakers: form.speakers,
   });
 
-  onProgress?.(52, '4/6 Gerando PRIMEIRO a imagem do Storyboard 3x3 (9 cenas numeradas 1080x1920)...');
+  onProgress?.(
+    isTwoScenes ? 42 : 52,
+    isTwoScenes
+      ? '4/6 Gerando Storyboard da Cena 1 (6 quadros numerados 1080x1920)...'
+      : '4/6 Gerando PRIMEIRO a imagem do Storyboard 3x3 (9 cenas numeradas 1080x1920)...'
+  );
 
   const imgGenResult = await requestStoryboardImageGeneration({
     prompt: storyboardPrompt,
@@ -856,11 +904,16 @@ export async function runProdutos2Pipeline(params: {
   const storyboardError = imgGenResult.error;
   const imgUsage = imgGenResult.usage;
 
-  // 9. FISCALIZAÇÃO DOS 9 QUADRANTES (Verifica cada uma das 9 cenas se o produto está idêntico às fotos reais)
+  // 9. FISCALIZAÇÃO DOS QUADRANTES (Verifica cada cena se o produto está idêntico às fotos reais)
   let storyboardAudit: Produtos2StoryboardAudit | undefined = undefined;
   let auditUsage: any = null;
   if (storyboardImageUrl) {
-    onProgress?.(78, '5/6 Fiscalizando fidelidade do produto em cada um dos 9 quadrantes do Storyboard...');
+    onProgress?.(
+      isTwoScenes ? 56 : 78,
+      isTwoScenes
+        ? 'Fiscalizando fidelidade do produto nos 6 quadrantes da Cena 1...'
+        : '5/6 Fiscalizando fidelidade do produto em cada um dos 9 quadrantes do Storyboard...'
+    );
     const auditRes = await auditProdutos2Storyboard({
       storyboardImageUrl,
       productPhotosBase64: allPhotos,
@@ -874,12 +927,10 @@ export async function runProdutos2Pipeline(params: {
     auditUsage = auditRes.usage;
   }
 
-  onProgress?.(92, '6/6 Gerando agora o Prompt do Veo 3 sincronizado com as 9 cenas da imagem...');
-
   // 10. DEPOIS QUE A IMAGEM ESTÁ PRONTA: Construir o Prompt completo do Veo 3 (Seção 8.1 e 8.2)
   const veoPrompt = buildProdutos2VeoPrompt({
     productName: finalProductName,
-    duration: form.duration,
+    duration: effectiveDuration,
     speechMode: form.speechMode,
     useSpeechIntro: form.useSpeechIntro,
     finalCopy,
@@ -889,6 +940,7 @@ export async function runProdutos2Pipeline(params: {
     avatarDescription,
     scenarioDescription,
     scenes,
+    scenePartIndex: isTwoScenes ? 1 : undefined,
     additionalInstructions: form.additionalInstructions,
     variations: form.variations,
     isDialogue: form.isDialogue,
@@ -897,7 +949,219 @@ export async function runProdutos2Pipeline(params: {
     speakers: form.speakers,
   });
 
-  // Gerar Descrição do Post + Hashtags para TikTok / Reels (Modo Ania portado para Produtos 2.0)
+  const resolvedSourceLabel =
+    form.selectedSpeechOption === 'user_speech'
+      ? 'Fala do Usuário'
+      : form.selectedSpeechOption === 'aurora_copy'
+      ? 'Aurora Copy'
+      : form.selectedSpeechOption === 'banco2'
+      ? 'Banco de Copies (Opção 2)'
+      : form.selectedSpeechOption === 'banco1'
+      ? sceneMode === '1_cena_10s'
+        ? 'Banco de Copies (Opção 1)'
+        : 'Aurora Copy'
+      : copySourceLabel;
+
+  // SE MODO DUAS CENAS (10s CADA): Planejar, gerar imagem, auditar e montar prompt para a CENA 2
+  let scene2State: Produtos2SecondSceneState | undefined = undefined;
+  if (isTwoScenes) {
+    onProgress?.(66, '5/6 Planejando a Cena 2 (continuação direta da narrativa — 6 quadros)...');
+    const fallbackPlan2 = buildDefaultProdutos2Plan({
+      productName: finalProductName,
+      productInfo: form.productInfo,
+      niche: detectedNiche,
+      subMode: form.subMode,
+      maleSubOption: form.maleSubOption,
+      maleClothStyle: form.maleClothStyle,
+      finalCopy: part2Copy,
+      duration: 10,
+      sceneCount: 6,
+      scenePartIndex: 2,
+      influencerResolved: resolvedInfluencer,
+      clientGender: form.clientGender,
+      framing: form.framing,
+      scenario: form.scenario,
+      additionalInstructions: form.additionalInstructions,
+      variationNames,
+      variations: form.variations,
+    });
+
+    let visualMap2: Produtos2VisualMapItem[] = fallbackPlan2.visualMap;
+    let scenes2: Produtos2SceneItem[] = fallbackPlan2.scenes;
+
+    try {
+      const previousSceneSummary = scenes
+        .map((s) => `Quadro ${s.number}: ${s.action}`)
+        .join(' | ');
+      const planRes2 = await fetch('/api/produtos2-planning', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productName: finalProductName,
+          productInfo: form.productInfo,
+          niche: detectedNiche,
+          subMode: form.subMode,
+          maleSubOption: form.maleSubOption,
+          maleClothStyle: form.maleClothStyle,
+          baseCopy: part2Copy,
+          isCustomCopy: true,
+          copyEngine: form.copyEngine || 'aurora_copy',
+          duration: 10,
+          sceneMode: '2_cenas_10s',
+          sceneCount: 6,
+          scenePartIndex: 2,
+          previousSceneContext: previousSceneSummary,
+          influencer: resolvedInfluencer,
+          clientGender: form.clientGender,
+          speechMode: form.speechMode,
+          framing: form.framing,
+          scenario: form.scenario,
+          additionalInstructions: form.additionalInstructions,
+          variations: (form.variations || []).map((v) => ({ name: v.name, photosCount: v.photos?.length || 0 })),
+          productPhotosBase64: compressedPlanningPhotos,
+          aiProfile,
+        }),
+      });
+
+      if (planRes2.ok) {
+        const planJson2 = await safeParseJsonResponse(planRes2);
+        if (planJson2 && planJson2.success && planJson2.data) {
+          const d2 = planJson2.data;
+          if (Array.isArray(d2.visualMap) && d2.visualMap.length >= 2) {
+            visualMap2 = d2.visualMap.map((m: any) => ({
+              excerpt: String(m.excerpt || ''),
+              intent: stripTikTokOutsideSpeech(String(m.intent || '')),
+              visualProof: stripTikTokOutsideSpeech(String(m.visualProof || '')),
+              scenes: String(m.scenes || ''),
+            }));
+          }
+          if (Array.isArray(d2.scenes) && d2.scenes.length === 6) {
+            const defaultTimings2 = getNineSceneTimings(10, 6);
+            scenes2 = d2.scenes.map((sc: any, idx: number) => {
+              const cleanFraming = stripTikTokOutsideSpeech(
+                String(sc.framing || fallbackPlan2.scenes[idx].framing).trim()
+              );
+              const rawAction = stripTikTokOutsideSpeech(
+                String(sc.action || fallbackPlan2.scenes[idx].action).trim()
+              )
+                .replace(/\[(?:Produto na cor\/variação|Variação de Cor|COR\/VARIAÇÃO|Variação)[^\]]*\]/gi, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+              const cleanAction =
+                form.scenario === 'padrao_uso'
+                  ? sanitizeScenarioDescriptionForMode(
+                      rawAction,
+                      form.scenario,
+                      rawAction,
+                      form.additionalInstructions
+                    )
+                  : rawAction;
+              const cleanMovement = stripTikTokOutsideSpeech(
+                String(sc.cameraMovement || fallbackPlan2.scenes[idx].cameraMovement).trim()
+              );
+              return {
+                number: idx + 1,
+                startTime: String(sc.startTime || defaultTimings2[idx].start),
+                endTime: String(sc.endTime || defaultTimings2[idx].end),
+                framing: cleanFraming,
+                action: cleanAction,
+                cameraMovement: cleanMovement,
+                storyboardDescription: `${cleanFraming}. ${cleanAction}`,
+              };
+            });
+          }
+        }
+      }
+    } catch (planErr2) {
+      console.warn('Usando planejamento determinístico da Cena 2:', planErr2);
+    }
+
+    if (scenes2.length === 6) {
+      scenes2[0].startTime = '0.0';
+      scenes2[5].endTime = '10.0';
+    }
+
+    // Usa o mesmo productLock, avatarDescription e scenarioDescription da Cena 1 para continuidade visual absoluta
+    const storyboardPrompt2 = buildProdutos2StoryboardImagePrompt({
+      productName: finalProductName,
+      productLock,
+      finalCopy: part2Copy,
+      visualMap: visualMap2,
+      avatarDescription,
+      framing: form.framing,
+      scenarioDescription,
+      scenes: scenes2,
+      scenePartIndex: 2,
+      additionalInstructions: form.additionalInstructions,
+      variations: form.variations,
+      isDialogue: form.isDialogue,
+      dialogueDescription: form.dialogueDescription,
+      dialogueScript: form.dialogueScript,
+      speakers: form.speakers,
+    });
+
+    onProgress?.(78, 'Gerando Storyboard da Cena 2 (6 quadros de continuação 1080x1920)...');
+    const imgGenResult2 = await requestStoryboardImageGeneration({
+      prompt: storyboardPrompt2,
+      productName: finalProductName,
+      allPhotos,
+      variations: form.variations,
+      additionalInstructions: form.additionalInstructions,
+      aiProfile,
+    });
+
+    let storyboardAudit2: Produtos2StoryboardAudit | undefined = undefined;
+    if (imgGenResult2.imageUrl) {
+      onProgress?.(90, 'Fiscalizando fidelidade do produto nos 6 quadrantes da Cena 2...');
+      const auditRes2 = await auditProdutos2Storyboard({
+        storyboardImageUrl: imgGenResult2.imageUrl,
+        productPhotosBase64: allPhotos,
+        productName: finalProductName,
+        productLock,
+        scenes: scenes2,
+        variations: form.variations,
+        aiProfile,
+      });
+      storyboardAudit2 = auditRes2.audit;
+    }
+
+    const veoPrompt2 = buildProdutos2VeoPrompt({
+      productName: finalProductName,
+      duration: 10,
+      speechMode: form.speechMode,
+      useSpeechIntro: false,
+      finalCopy: part2Copy,
+      influencerResolved: resolvedInfluencer,
+      framing: form.framing,
+      productLock,
+      avatarDescription,
+      scenarioDescription,
+      scenes: scenes2,
+      scenePartIndex: 2,
+      additionalInstructions: form.additionalInstructions,
+      variations: form.variations,
+      isDialogue: form.isDialogue,
+      dialogueDescription: form.dialogueDescription,
+      dialogueScript: form.dialogueScript,
+      speakers: form.speakers,
+    });
+
+    scene2State = {
+      finalCopy: part2Copy,
+      copySourceLabel: resolvedSourceLabel,
+      visualMap: visualMap2,
+      scenes: scenes2,
+      storyboardPrompt: storyboardPrompt2,
+      storyboardImageUrl: imgGenResult2.imageUrl,
+      storyboardError: imgGenResult2.error,
+      storyboardAudit: storyboardAudit2,
+      veoPrompt: veoPrompt2,
+    };
+  }
+
+  onProgress?.(96, '6/6 Finalizando Prompts do Veo 3 e Descrição com Hashtags...');
+
+  // Gerar Descrição do Post + Hashtags para TikTok / Reels (uma única vez)
   const { description, hashtags } = generateProdutos2DescriptionHashtags({
     productName: finalProductName,
     productInfo: form.productInfo,
@@ -905,7 +1169,7 @@ export async function runProdutos2Pipeline(params: {
     subMode: form.subMode,
     maleSubOption: form.maleSubOption,
     clientGender: form.clientGender,
-    finalCopy,
+    finalCopy: isTwoScenes ? `${finalCopy} ${part2Copy}`.trim() : finalCopy,
     aiHashtags: aiGeneratedHashtags,
   });
 
@@ -921,7 +1185,12 @@ export async function runProdutos2Pipeline(params: {
     aiProfile,
   });
 
-  onProgress?.(100, 'Concluído! Storyboard 9 cenas auditado e Prompt do Veo 3 gerados com sucesso.');
+  onProgress?.(
+    100,
+    isTwoScenes
+      ? 'Concluído! Storyboards das Cenas 1 e 2 (6 quadros cada) e Prompts Veo 3 gerados com sucesso.'
+      : 'Concluído! Storyboard 9 cenas auditado e Prompt do Veo 3 gerados com sucesso.'
+  );
 
   return {
     productName: finalProductName,
@@ -929,24 +1198,16 @@ export async function runProdutos2Pipeline(params: {
     detectedNiche,
     subMode: form.subMode,
     maleSubOption: form.maleSubOption,
-    duration: form.duration,
+    duration: effectiveDuration,
+    sceneMode,
     speechMode: form.speechMode,
     useSpeechIntro: form.useSpeechIntro,
     framing: form.framing,
     scenario: form.scenario,
     influencerResolved: resolvedInfluencer,
     clientGender: form.clientGender,
-    finalCopy: applySpeechIntro(finalCopy, Boolean(form.useSpeechIntro)),
-    copySourceLabel:
-      form.selectedSpeechOption === 'user_speech'
-        ? 'Fala do Usuário'
-        : form.selectedSpeechOption === 'aurora_copy'
-        ? 'Aurora Copy'
-        : form.selectedSpeechOption === 'banco2'
-        ? 'Banco de Copies (Opção 2)'
-        : form.selectedSpeechOption === 'banco1'
-        ? 'Banco de Copies (Opção 1)'
-        : copySourceLabel,
+    finalCopy,
+    copySourceLabel: resolvedSourceLabel,
     copyId:
       form.selectedSpeechOption === 'user_speech'
         ? 'USER-SPEECH'
@@ -966,6 +1227,7 @@ export async function runProdutos2Pipeline(params: {
     storyboardError,
     storyboardAudit,
     veoPrompt,
+    scene2: scene2State,
     variations: form.variations,
     additionalInstructions: form.additionalInstructions,
     isDialogue: form.isDialogue,
@@ -980,12 +1242,13 @@ export async function runProdutos2Pipeline(params: {
 
 /**
  * Refaz a imagem do storyboard corrigindo prioritariamente os quadrantes onde a auditoria detectou erro
- * e re-executa a fiscalização das 9 cenas automaticamente.
+ * e re-executa a fiscalização das cenas automaticamente. Suporta sceneTarget (1 ou 2) no modo Duas Cenas.
  */
 export async function regenerateProdutos2Storyboard(params: {
   result: Produtos2ResultState;
   form: Produtos2FormState;
   customCorrection?: string;
+  sceneTarget?: 1 | 2;
   aiProfile?: string;
 }): Promise<{
   imageUrl?: string;
@@ -993,7 +1256,19 @@ export async function regenerateProdutos2Storyboard(params: {
   error?: string;
   incrementalUsage?: IncrementalTokenUsage;
 }> {
-  const { result, form, customCorrection, aiProfile = 'openai' } = params;
+  const { result, form, customCorrection, sceneTarget = 1, aiProfile = 'openai' } = params;
+  const isTargetScene2 = sceneTarget === 2 && Boolean(result.scene2);
+  const targetStoryboardPrompt =
+    isTargetScene2 && result.scene2 ? result.scene2.storyboardPrompt : result.storyboardPrompt;
+  const targetPrevImageUrl =
+    isTargetScene2 && result.scene2 ? result.scene2.storyboardImageUrl : result.storyboardImageUrl;
+  const targetScenes =
+    isTargetScene2 && result.scene2 ? result.scene2.scenes : result.scenes;
+  const targetAuditCorrection =
+    (isTargetScene2 && result.scene2
+      ? result.scene2.storyboardAudit?.correctionPrompt
+      : result.storyboardAudit?.correctionPrompt) || '';
+
   const prioritizedPhotos: string[] = [];
   const otherPhotos: string[] = [];
   (form.variations || []).forEach((v) => {
@@ -1012,7 +1287,6 @@ export async function regenerateProdutos2Storyboard(params: {
   const allPhotos: string[] = [...prioritizedPhotos, ...otherPhotos];
 
   // Combina a ordem mandatória do usuário com qualquer observação secundária de auditoria
-  const auditCorrection = result.storyboardAudit?.correctionPrompt || '';
   let combinedCorrection = '';
 
   if (customCorrection && customCorrection.trim()) {
@@ -1027,20 +1301,20 @@ REGRAS ESTRITAS DE PRESERVAÇÃO E EXECUÇÃO:
 3. MODIFICAÇÃO FOCADA: Altere EXCLUSIVAMENTE o(s) quadro(s) indicado(s) pelo usuário, aplicando com fidelidade cirúrgica a alteração exata que ele pediu.
 4. Mantenha as mesmas pessoas, poses, cenários, iluminação e cores nos quadros que o usuário NÃO mandou alterar.
 ========================`;
-    if (auditCorrection.trim()) {
-      combinedCorrection += `\n\n[Observação secundária de auditoria das fotos reais do produto, para aplicar somente onde não conflitar com a ordem soberana do usuário]:\n${auditCorrection.trim()}`;
+    if (targetAuditCorrection.trim()) {
+      combinedCorrection += `\n\n[Observação secundária de auditoria das fotos reais do produto, para aplicar somente onde não conflitar com a ordem soberana do usuário]:\n${targetAuditCorrection.trim()}`;
     }
   } else {
-    combinedCorrection = auditCorrection.trim();
+    combinedCorrection = targetAuditCorrection.trim();
   }
 
   const genRes = await requestStoryboardImageGeneration({
-    prompt: result.storyboardPrompt,
+    prompt: targetStoryboardPrompt,
     productName: result.productName,
     allPhotos,
     variations: form.variations,
     additionalInstructions: form.additionalInstructions,
-    previousStoryboardImageBase64: result.storyboardImageUrl,
+    previousStoryboardImageBase64: targetPrevImageUrl,
     correctionPrompt: combinedCorrection || undefined,
     aiProfile,
   });
@@ -1049,13 +1323,13 @@ REGRAS ESTRITAS DE PRESERVAÇÃO E EXECUÇÃO:
     return { error: genRes.error };
   }
 
-  // Auditar imediatamente a nova imagem gerada nos 9 quadrantes
+  // Auditar imediatamente a nova imagem gerada
   const newAudit = await auditProdutos2Storyboard({
     storyboardImageUrl: genRes.imageUrl,
     productPhotosBase64: allPhotos,
     productName: result.productName,
     productLock: result.productLock,
-    scenes: result.scenes,
+    scenes: targetScenes,
     variations: form.variations,
     aiProfile,
   });
@@ -1088,7 +1362,9 @@ REGRAS ESTRITAS DE PRESERVAÇÃO E EXECUÇÃO:
     modelsUsed: Array.from(new Set([imgModel, auditModel])),
     detailedSteps: [
       {
-        step: 'Imagem Storyboard 3x3 (Correção / Refazer)',
+        step: isTargetScene2
+          ? 'Imagem Storyboard Cena 2 (Correção / Refazer)'
+          : 'Imagem Storyboard (Correção / Refazer)',
         model: imgModel,
         promptTokens: imgPrompt,
         completionTokens: 0,
@@ -1101,7 +1377,7 @@ REGRAS ESTRITAS DE PRESERVAÇÃO E EXECUÇÃO:
           : 'Refazer storyboard com ajustes de auditoria',
       },
       {
-        step: 'Fiscalização dos 9 Quadrantes (Pós-Correção)',
+        step: `Fiscalização dos ${targetScenes.length} Quadrantes (Pós-Correção)`,
         model: auditModel,
         promptTokens: auditPrompt,
         completionTokens: auditCand,
@@ -1109,7 +1385,7 @@ REGRAS ESTRITAS DE PRESERVAÇÃO E EXECUÇÃO:
         costUSD: auditCostUSD,
         costBRL: auditCostBRL,
         timestamp: new Date().toISOString(),
-        details: 'Re-auditoria completa dos 9 quadrantes',
+        details: `Re-auditoria completa dos ${targetScenes.length} quadrantes`,
       },
     ],
   };
@@ -1120,4 +1396,248 @@ REGRAS ESTRITAS DE PRESERVAÇÃO E EXECUÇÃO:
     incrementalUsage,
   };
 }
+
+/**
+ * No modo "Duas cenas — 10 segundos cada", recria de forma 100% independente apenas a Cena 1 ou a Cena 2
+ * com uma nova copy (replaneja os 6 quadros, gera novo storyboard 2x3, audita os 6 quadrantes e atualiza o prompt do Veo 3),
+ * preservando a outra cena totalmente intacta.
+ */
+export async function recreateSingleTwoScenesPartWithCopy(params: {
+  result: Produtos2ResultState;
+  form: Produtos2FormState;
+  sceneTarget: 1 | 2;
+  newCopy: string;
+  copySourceLabel?: string;
+  aiProfile?: string;
+}): Promise<{
+  finalCopy: string;
+  copySourceLabel: string;
+  visualMap: Produtos2VisualMapItem[];
+  scenes: Produtos2SceneItem[];
+  storyboardPrompt: string;
+  storyboardImageUrl?: string;
+  storyboardError?: string;
+  storyboardAudit?: Produtos2StoryboardAudit;
+  veoPrompt: string;
+}> {
+  const { result, form, sceneTarget, newCopy, copySourceLabel, aiProfile = 'openai' } = params;
+  const trimmedCopy = newCopy.trim();
+  const variationNames: string[] = [];
+  const prioritizedPhotos: string[] = [];
+  const otherPhotos: string[] = [];
+
+  (form.variations || result.variations || []).forEach((v) => {
+    if (v.name?.trim()) variationNames.push(v.name.trim());
+    const validPhotos = (v.photos || []).filter(Boolean);
+    if (validPhotos.length > 0) {
+      if (!prioritizedPhotos.includes(validPhotos[0])) {
+        prioritizedPhotos.push(validPhotos[0]);
+      }
+      validPhotos.slice(1).forEach((p) => {
+        if (!prioritizedPhotos.includes(p) && !otherPhotos.includes(p)) {
+          otherPhotos.push(p);
+        }
+      });
+    }
+  });
+  const allPhotos: string[] = [...prioritizedPhotos, ...otherPhotos];
+
+  const fallbackPlan = buildDefaultProdutos2Plan({
+    productName: result.productName,
+    productInfo: result.productInfo || form.productInfo,
+    niche: result.detectedNiche,
+    subMode: result.subMode,
+    maleSubOption: result.maleSubOption,
+    maleClothStyle: form.maleClothStyle,
+    finalCopy: trimmedCopy,
+    duration: 10,
+    sceneCount: 6,
+    scenePartIndex: sceneTarget,
+    influencerResolved: result.influencerResolved,
+    clientGender: result.clientGender,
+    framing: result.framing,
+    scenario: result.scenario,
+    additionalInstructions: result.additionalInstructions,
+    variationNames,
+    variations: result.variations || form.variations,
+  });
+
+  let visualMap: Produtos2VisualMapItem[] = fallbackPlan.visualMap;
+  let scenes: Produtos2SceneItem[] = fallbackPlan.scenes;
+
+  try {
+    const compressedPlanningPhotos = await Promise.all(
+      allPhotos.slice(0, 3).map((p) => compressImageForPayload(p, 1400, 0.88))
+    );
+    const previousSceneSummary =
+      sceneTarget === 2
+        ? (result.scenes || []).map((s) => `Quadro ${s.number}: ${s.action}`).join(' | ')
+        : undefined;
+
+    const planRes = await fetch('/api/produtos2-planning', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        productName: result.productName,
+        productInfo: result.productInfo || form.productInfo,
+        niche: result.detectedNiche,
+        subMode: result.subMode,
+        maleSubOption: result.maleSubOption,
+        maleClothStyle: form.maleClothStyle,
+        baseCopy: trimmedCopy,
+        isCustomCopy: true,
+        copyEngine: 'aurora_copy',
+        duration: 10,
+        sceneMode: '2_cenas_10s',
+        sceneCount: 6,
+        scenePartIndex: sceneTarget,
+        previousSceneContext: previousSceneSummary,
+        influencer: result.influencerResolved,
+        clientGender: result.clientGender,
+        speechMode: result.speechMode,
+        framing: result.framing,
+        scenario: result.scenario,
+        additionalInstructions: result.additionalInstructions,
+        variations: (result.variations || form.variations || []).map((v) => ({
+          name: v.name,
+          photosCount: v.photos?.length || 0,
+        })),
+        productPhotosBase64: compressedPlanningPhotos,
+        aiProfile,
+      }),
+    });
+
+    if (planRes.ok) {
+      const planJson = await safeParseJsonResponse(planRes);
+      if (planJson && planJson.success && planJson.data) {
+        const d = planJson.data;
+        if (Array.isArray(d.visualMap) && d.visualMap.length >= 2) {
+          visualMap = d.visualMap.map((m: any) => ({
+            excerpt: String(m.excerpt || ''),
+            intent: stripTikTokOutsideSpeech(String(m.intent || '')),
+            visualProof: stripTikTokOutsideSpeech(String(m.visualProof || '')),
+            scenes: String(m.scenes || ''),
+          }));
+        }
+        if (Array.isArray(d.scenes) && d.scenes.length === 6) {
+          const defaultTimings = getNineSceneTimings(10, 6);
+          scenes = d.scenes.map((sc: any, idx: number) => {
+            const cleanFraming = stripTikTokOutsideSpeech(
+              String(sc.framing || fallbackPlan.scenes[idx].framing).trim()
+            );
+            const rawAction = stripTikTokOutsideSpeech(
+              String(sc.action || fallbackPlan.scenes[idx].action).trim()
+            )
+              .replace(/\[(?:Produto na cor\/variação|Variação de Cor|COR\/VARIAÇÃO|Variação)[^\]]*\]/gi, '')
+              .replace(/\s+/g, ' ')
+              .trim();
+            const cleanAction =
+              result.scenario === 'padrao_uso'
+                ? sanitizeScenarioDescriptionForMode(
+                    rawAction,
+                    result.scenario,
+                    rawAction,
+                    result.additionalInstructions
+                  )
+                : rawAction;
+            const cleanMovement = stripTikTokOutsideSpeech(
+              String(sc.cameraMovement || fallbackPlan.scenes[idx].cameraMovement).trim()
+            );
+            return {
+              number: idx + 1,
+              startTime: String(sc.startTime || defaultTimings[idx].start),
+              endTime: String(sc.endTime || defaultTimings[idx].end),
+              framing: cleanFraming,
+              action: cleanAction,
+              cameraMovement: cleanMovement,
+              storyboardDescription: `${cleanFraming}. ${cleanAction}`,
+            };
+          });
+        }
+      }
+    }
+  } catch (err) {
+    console.warn(`Aviso ao replanejar Cena ${sceneTarget} isoladamente:`, err);
+  }
+
+  if (scenes.length === 6) {
+    scenes[0].startTime = '0.0';
+    scenes[5].endTime = '10.0';
+  }
+
+  const storyboardPrompt = buildProdutos2StoryboardImagePrompt({
+    productName: result.productName,
+    productLock: result.productLock,
+    finalCopy: trimmedCopy,
+    visualMap,
+    avatarDescription: result.avatarDescription,
+    framing: result.framing,
+    scenarioDescription: result.scenarioDescription,
+    scenes,
+    scenePartIndex: sceneTarget,
+    additionalInstructions: result.additionalInstructions,
+    variations: result.variations || form.variations,
+    isDialogue: result.isDialogue,
+    dialogueDescription: result.dialogueDescription,
+    dialogueScript: result.dialogueScript,
+    speakers: result.speakers,
+  });
+
+  const imgGen = await requestStoryboardImageGeneration({
+    prompt: storyboardPrompt,
+    productName: result.productName,
+    allPhotos,
+    variations: result.variations || form.variations,
+    additionalInstructions: result.additionalInstructions,
+    aiProfile,
+  });
+
+  let storyboardAudit: Produtos2StoryboardAudit | undefined = undefined;
+  if (imgGen.imageUrl) {
+    const auditRes = await auditProdutos2Storyboard({
+      storyboardImageUrl: imgGen.imageUrl,
+      productPhotosBase64: allPhotos,
+      productName: result.productName,
+      productLock: result.productLock,
+      scenes,
+      variations: result.variations || form.variations,
+      aiProfile,
+    });
+    storyboardAudit = auditRes.audit;
+  }
+
+  const veoPrompt = buildProdutos2VeoPrompt({
+    productName: result.productName,
+    duration: 10,
+    speechMode: result.speechMode,
+    useSpeechIntro: sceneTarget === 1 ? result.useSpeechIntro : false,
+    finalCopy: trimmedCopy,
+    influencerResolved: result.influencerResolved,
+    framing: result.framing,
+    productLock: result.productLock,
+    avatarDescription: result.avatarDescription,
+    scenarioDescription: result.scenarioDescription,
+    scenes,
+    scenePartIndex: sceneTarget,
+    additionalInstructions: result.additionalInstructions,
+    variations: result.variations || form.variations,
+    isDialogue: result.isDialogue,
+    dialogueDescription: result.dialogueDescription,
+    dialogueScript: result.dialogueScript,
+    speakers: result.speakers,
+  });
+
+  return {
+    finalCopy: trimmedCopy,
+    copySourceLabel: copySourceLabel || 'Personalizada / Editada',
+    visualMap,
+    scenes,
+    storyboardPrompt,
+    storyboardImageUrl: imgGen.imageUrl,
+    storyboardError: imgGen.error,
+    storyboardAudit,
+    veoPrompt,
+  };
+}
+
 
