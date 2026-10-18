@@ -1,9 +1,10 @@
 import { TokenUsageStats } from '../types';
+import type { Produtos2LeilaoResultState } from './produtos2Leilao';
 
 export type Produtos2SubMode = 'produtos_geral' | 'vestuario_masculino';
 export type Produtos2MaleSubOption = 'calcados' | 'roupas';
 export type Produtos2Duration = 8 | 10 | 15;
-export type Produtos2SceneMode = '1_cena_10s' | '1_cena_15s' | '2_cenas_10s';
+export type Produtos2SceneMode = '1_cena_10s' | '1_cena_15s' | '2_cenas_10s' | 'modo_leilao';
 export type Produtos2Influencer = 'Homem' | 'Mulher' | null;
 export type Produtos2ClientGender = 'Masculino' | 'Feminino' | 'Unissex';
 export type Produtos2SpeechMode = 'com_fala' | 'sem_fala';
@@ -53,6 +54,8 @@ export interface Produtos2FormState {
   detectedNiche?: string;
   duration: Produtos2Duration;
   sceneMode?: Produtos2SceneMode;
+  realPrice?: number;
+  realPriceRaw?: string;
   customCopy?: string;
   copyEngine?: Produtos2CopyEngine;
   // Fluxo de falas: Fala do usuário (se fornecida) + Banco 1 + Banco 2 + Aurora Copy
@@ -167,6 +170,7 @@ export interface Produtos2ResultState {
   storyboardAudit?: Produtos2StoryboardAudit;
   veoPrompt: string;
   scene2?: Produtos2SecondSceneState;
+  leilao?: Produtos2LeilaoResultState;
   variations?: Produtos2Variation[];
   additionalInstructions?: string;
   isDialogue?: boolean;

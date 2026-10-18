@@ -59,9 +59,60 @@ export async function exportProdutos2Zip(result: Produtos2ResultState): Promise<
   const { default: JSZip } = await import('jszip');
   const zip = new JSZip();
   const baseName = sanitizeProductFileName(result.productName);
+  const isLeilao = result.sceneMode === 'modo_leilao' && Boolean(result.leilao);
   const isTwoScenes = result.sceneMode === '2_cenas_10s' && Boolean(result.scene2);
 
-  if (isTwoScenes && result.scene2) {
+  if (isLeilao && result.leilao) {
+    // 1. Arquivos .txt dos 3 blocos (Instrução 2 - Seção 6)
+    zip.file('leilao_prompt_veo_1.txt', result.leilao.bloco1.veoPrompt || result.veoPrompt || '');
+    zip.file('leilao_prompt_veo_2.txt', result.leilao.bloco2.veoPrompt || '');
+    zip.file('leilao_prompt_veo_3.txt', result.leilao.bloco3.veoPrompt || '');
+
+    // 2. Imagens dos 3 blocos (Instrução 2 - Seção 6)
+    if (result.leilao.bloco1.storyboardImageUrl) {
+      try {
+        const bytes1 = await urlToUint8Array(result.leilao.bloco1.storyboardImageUrl);
+        zip.file('leilao_bloco1_quadros_1-2.png', bytes1);
+      } catch (err) {
+        console.warn('Erro ao anexar imagem do Bloco 1 no zip:', err);
+      }
+    }
+    if (result.leilao.bloco2.storyboardImageUrl) {
+      try {
+        const bytes2 = await urlToUint8Array(result.leilao.bloco2.storyboardImageUrl);
+        zip.file('leilao_bloco2_quadros_3-4-5.png', bytes2);
+      } catch (err) {
+        console.warn('Erro ao anexar imagem do Bloco 2 no zip:', err);
+      }
+    }
+    if (result.leilao.bloco3.storyboardImageUrl) {
+      try {
+        const bytes3 = await urlToUint8Array(result.leilao.bloco3.storyboardImageUrl);
+        zip.file('leilao_bloco3_quadro_6.png', bytes3);
+      } catch (err) {
+        console.warn('Erro ao anexar imagem do Bloco 3 no zip:', err);
+      }
+    }
+
+    // 3. Descrição do Post + Hashtags
+    const desc = result.description || result.descriptionHashtags;
+    if (desc) {
+      const descContent = `${desc}
+
+---
+FALA USADA NO MODO LEILÃO:
+Cena 1 (0-12s):
+"${result.leilao.speeches.cena1}"
+
+Cena 2 (12-24s):
+"${result.leilao.speeches.cena2}"
+
+Cena 3 (24-30s):
+"${result.leilao.speeches.cena3}"
+`;
+      zip.file('leilao_descricao_post.txt', descContent);
+    }
+  } else if (isTwoScenes && result.scene2) {
     // 1. Arquivos .txt com os prompts das Cenas 1 e 2
     zip.file(`${baseName} - Prompt - Cena 1.txt`, result.veoPrompt);
     zip.file(`${baseName} - Prompt - Cena 2.txt`, result.scene2.veoPrompt);

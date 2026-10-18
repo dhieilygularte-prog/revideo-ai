@@ -3336,11 +3336,23 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Prompt do storyboard não fornecido.' });
     }
 
+    const reqSceneCount = Number(req.body.sceneCount);
+    const isLeilao1 = reqSceneCount === 2;
+    const isLeilao2 = reqSceneCount === 3;
+    const isLeilao3 = reqSceneCount === 1;
     const isSixFrames =
-      Number(req.body.sceneCount) === 6 ||
+      reqSceneCount === 6 ||
       /GRADE\s+2x3|EXATAMENTE\s+6\s+(?:QUADROS|CENAS)/i.test(String(prompt));
-    const frameCount = isSixFrames ? 6 : 9;
-    const gridLabel = isSixFrames ? '2x3 (2 colunas x 3 linhas)' : '3x3 (3 colunas x 3 linhas)';
+    const frameCount = isLeilao1 ? 2 : isLeilao2 ? 3 : isLeilao3 ? 1 : isSixFrames ? 6 : 9;
+    const gridLabel = isLeilao1
+      ? '2 quadros fotográficos lado a lado (1 linha x 2 colunas)'
+      : isLeilao2
+      ? '3 quadros fotográficos lado a lado (1 linha x 3 colunas)'
+      : isLeilao3
+      ? '1 quadro fotográfico vertical único'
+      : isSixFrames
+      ? '2x3 (2 colunas x 3 linhas)'
+      : '3x3 (3 colunas x 3 linhas)';
 
     const photosList: string[] = Array.isArray(productPhotosBase64)
       ? productPhotosBase64.filter(Boolean)
@@ -3480,17 +3492,33 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
 
         parts.push({ text: effectivePrompt });
 
+        const isLeilaoBlock = isLeilao1 || isLeilao2 || isLeilao3;
         const variationInstructionRule =
           activeVariations.length >= 2
             ? `- REGRA MANDATÓRIA DE ALTERNÂNCIA DE CORES ENTRE OS QUADROS: O produto possui ${activeVariations.length} variações de cores/modelos. Você DEVE OBRIGATORIAMENTE alternar as cores conforme a divisão especificada. NUNCA gere todos os ${frameCount} quadros na mesma cor! Apenas o modelo, formato e peças permanecem idênticos, a cor DEVE alternar entre os blocos de quadros!`
-            : `- PRODUCT LOCK ABSOLUTO: O produto em todos os ${frameCount} quadros onde aparece deve ser 100% idêntico às fotos reais anexadas (mesmo formato, cor, textura, botões, funções, proporção e detalhes).`;
+            : `- PRODUCT LOCK ABSOLUTO: O produto em todos os quadros onde aparece deve ser 100% idêntico às fotos reais anexadas (mesmo formato, cor, textura, botões, funções, proporção e detalhes).`;
 
-        const systemInstructionText = `VOCÊ É O GERADOR DE STORYBOARD DO MODO PRODUTOS 2.0.
+        const systemInstructionText = isLeilaoBlock
+          ? `VOCÊ É O GERADOR DE STORYBOARD DO MODO LEILÃO.
+- Gere UMA IMAGEM fotográfica ultra-realista contendo ${gridLabel}.
+- Os quadros devem ser numerados com selos circulares brancos pequenos no canto superior direito de cada quadro com o número preto correspondente.
+- Cantos arredondados nos quadros, separados por uma borda branca fina, sobre fundo neutro.
+- ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: Não adicione legendas flutuantes, textos publicitários externos, preços, setas, carrinho de compras, marca d'água externa, @ ou logotipo do TikTok. Apenas os números nos selos circulares e a logomarca original do fabricante no próprio produto.
+- Fidelidade absoluta às fotos reais do produto em todos os quadros onde o produto aparece.`
+          : `VOCÊ É O GERADOR DE STORYBOARD DO MODO PRODUTOS 2.0.
 - Gere UMA ÚNICA IMAGEM VERTICAL 9:16 (1080x1920) contendo uma grade ${gridLabel} com EXATAMENTE ${frameCount} quadros fotográficos ultra-realistas numerados de 1 a ${frameCount} (selo circular branco pequeno no canto superior esquerdo de cada quadro com número preto).
 - Cantos arredondados nos quadros, separados por uma borda branca fina, sobre fundo branco.
 ${variationInstructionRule}
 - LOGOMARCA E MARCA DO FABRICANTE NO PRODUTO (OBRIGATÓRIO): A marca, a logomarca, o emblema e os textos que já estão impressos/estampados no próprio produto nas fotos de referência DEVEM aparecer 100% idênticos, na mesma cor e no mesmo lugar da peça, em todos os quadros em que aquela parte estiver visível. JAMAIS remova ou alise a logomarca do produto!
 - ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: Não adicione legendas flutuantes, textos publicitários externos, preços, setas, carrinho de compras, marca d'água externa, @ ou logotipo do TikTok. Apenas os números 1 a ${frameCount} nos selos circulares e a logomarca original do fabricante no próprio produto.`;
+
+        const chosenAspectRatio = isLeilao1
+          ? (req.body.aspectRatio || '4:3')
+          : isLeilao2
+          ? (req.body.aspectRatio || '16:9')
+          : isLeilao3
+          ? '9:16'
+          : '9:16';
 
         const modelsToTry = [
           GEMINI_IMAGE_MODEL || 'gemini-3.1-flash-image',
@@ -3506,7 +3534,7 @@ ${variationInstructionRule}
               config: {
                 systemInstruction: systemInstructionText,
                 imageConfig: {
-                  aspectRatio: '9:16',
+                  aspectRatio: chosenAspectRatio as any,
                 },
               },
             });

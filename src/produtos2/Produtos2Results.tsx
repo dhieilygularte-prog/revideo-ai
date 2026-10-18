@@ -17,6 +17,7 @@ import {
   Mic,
   Square,
   RotateCcw,
+  Gavel,
 } from 'lucide-react';
 import { Produtos2AuditColorStatus, Produtos2ResultState, VideoFidelityAudit } from './types';
 import {
@@ -34,7 +35,7 @@ import { TokenUsageStats } from '../types';
 interface Produtos2ResultsProps {
   result: Produtos2ResultState;
   onUpdateResult: React.Dispatch<React.SetStateAction<Produtos2ResultState | null>>;
-  onRegenerateStoryboard: (customCorrection?: string, sceneTarget?: 1 | 2) => void;
+  onRegenerateStoryboard: (customCorrection?: string, sceneTarget?: 1 | 2 | 3) => void;
   onRecreateStoryboardWithCopy?: (
     newCopy: string,
     copySourceLabel?: string,
@@ -125,6 +126,15 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
   const [descriptionCopied, setDescriptionCopied] = useState(false);
   const [hasCopiedDescriptionOnce, setHasCopiedDescriptionOnce] = useState(false);
   const [isExportingZip, setIsExportingZip] = useState(false);
+
+  // Modo Leilão: Estados de cópia dos 3 blocos
+  const isLeilao = result.sceneMode === 'modo_leilao';
+  const [copiedLeilao1, setCopiedLeilao1] = useState(false);
+  const [hasCopiedLeilao1Once, setHasCopiedLeilao1Once] = useState(false);
+  const [copiedLeilao2, setCopiedLeilao2] = useState(false);
+  const [hasCopiedLeilao2Once, setHasCopiedLeilao2Once] = useState(false);
+  const [copiedLeilao3, setCopiedLeilao3] = useState(false);
+  const [hasCopiedLeilao3Once, setHasCopiedLeilao3Once] = useState(false);
 
   // Trocar fala / Revisar texto / Geradores de Copy e Refazer Prompt (Cena 1 / Principal)
   const [speechInput, setSpeechInput] = useState(result.finalCopy || '');
@@ -991,6 +1001,512 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
   const copiedBlueSectionClass =
     'bg-gradient-to-br from-sky-900/85 via-blue-900/80 to-slate-900/95 border-2 border-sky-400 shadow-xl shadow-sky-950/60 ring-2 ring-sky-400/40';
   const defaultSectionClass = 'bg-zinc-900/90 border border-zinc-800 shadow-xl';
+
+  if (isLeilao && result.leilao) {
+    const leilao = result.leilao;
+    const bids = leilao.bids;
+    return (
+      <div className="space-y-6 animate-fade-in">
+        {/* CABEÇALHO DO MODO LEILÃO */}
+        <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-950/80 via-yellow-950/60 to-zinc-900 border border-amber-500/40 shadow-xl space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5">
+              <span className="px-3 py-1 rounded-lg bg-amber-400 text-slate-950 text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
+                <Gavel className="w-3.5 h-3.5" />
+                <span>Modo Leilão</span>
+              </span>
+              <h2 className="text-sm sm:text-base font-black text-white">
+                {result.productName} — 3 Blocos de Criativo
+              </h2>
+            </div>
+            <div className="flex items-center gap-2 text-xs font-mono font-bold flex-wrap">
+              <span className="text-zinc-300 bg-black/60 px-2.5 py-1 rounded-lg border border-zinc-800">
+                1º Lance: R$ {bids.l1.toLocaleString('pt-BR')} ({bids.l1Text})
+              </span>
+              <span className="text-emerald-300 bg-black/60 px-2.5 py-1 rounded-lg border border-emerald-500/30">
+                2º Lance: R$ {bids.l2.toLocaleString('pt-BR')} ({bids.l2Text})
+              </span>
+            </div>
+          </div>
+          <p className="text-xs text-amber-200/80">
+            Cada bloco contém sua imagem de referência fotográfica e o prompt correspondente para o Veo 3. Copie o prompt e anexe o storyboard de cada bloco para gerar as 3 tomadas do vídeo.
+          </p>
+        </div>
+
+        {/* ================================================================= */}
+        {/* BLOCO 1: SALÃO DE LEILÃO (0–12s | 2 Quadros Lado a Lado)          */}
+        {/* ================================================================= */}
+        <div className="p-5 sm:p-6 rounded-2xl bg-zinc-900/90 border border-zinc-800 shadow-xl space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800 pb-3">
+            <div className="flex items-center gap-2">
+              <span className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black text-sm flex items-center justify-center">
+                1
+              </span>
+              <div>
+                <h3 className="text-sm sm:text-base font-black text-white">
+                  Bloco 1 (0–12s) — Salão de Leilão
+                </h3>
+                <p className="text-[11px] text-zinc-400">
+                  Storyboard com 2 quadros lado a lado (2160 × 1920 px) · Salão aberto & Leiloeiro chocado com o celular
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (leilao.bloco1.storyboardImageUrl) {
+                  downloadProdutos2StoryboardImage(
+                    leilao.bloco1.storyboardImageUrl,
+                    'leilao_bloco1_quadros_1-2'
+                  );
+                }
+              }}
+              className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-emerald-600 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-zinc-700"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Baixar Imagem 1</span>
+            </button>
+          </div>
+
+          {/* Imagem do Storyboard Bloco 1 */}
+          <div className="relative rounded-2xl overflow-hidden bg-black/60 border border-zinc-800 group">
+            {leilao.bloco1.storyboardImageUrl ? (
+              <img
+                src={leilao.bloco1.storyboardImageUrl}
+                alt="Storyboard Bloco 1"
+                onClick={() => onOpenPreview(leilao.bloco1.storyboardImageUrl, 'Bloco 1 (Quadros 1 e 2)')}
+                className="w-full max-h-[460px] object-contain cursor-pointer transition-transform duration-300 group-hover:scale-[1.01]"
+              />
+            ) : (
+              <div className="h-64 flex items-center justify-center text-zinc-500 text-sm">
+                Imagem do Bloco 1 não disponível
+              </div>
+            )}
+          </div>
+
+          {/* Botão Refazer Imagem Bloco 1 */}
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => onRegenerateStoryboard(undefined, 1)}
+              disabled={Boolean(result.isRegeneratingStoryboard)}
+              className="px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-amber-600 text-amber-200 hover:text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer border border-zinc-700"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${result.isRegeneratingStoryboard ? 'animate-spin' : ''}`} />
+              <span>Refazer Imagem Bloco 1</span>
+            </button>
+          </div>
+
+          {/* Prompt do Veo 3 Bloco 1 */}
+          <div className={`p-4 rounded-xl transition-all ${copiedLeilao1 || hasCopiedLeilao1Once ? copiedBlueSectionClass : defaultSectionClass}`}>
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-white/10 mb-2">
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-sky-400" />
+                <span className="text-xs sm:text-sm font-black text-white">
+                  Prompt do Veo 3 — Bloco 1
+                </span>
+                {hasCopiedLeilao1Once && (
+                  <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-sky-300" />
+                    <span>COPIADO</span>
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(leilao.bloco1.veoPrompt || '');
+                  setCopiedLeilao1(true);
+                  setHasCopiedLeilao1Once(true);
+                  setTimeout(() => setCopiedLeilao1(false), 2500);
+                }}
+                className={`px-3.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+                  copiedLeilao1
+                    ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-950/40'
+                    : 'bg-sky-500 hover:bg-sky-400 text-white shadow-md shadow-sky-950/40'
+                }`}
+              >
+                {copiedLeilao1 ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 stroke-[3]" />
+                    <span>Copiado!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Copiar Prompt 1</span>
+                  </>
+                )}
+              </button>
+            </div>
+            <textarea
+              value={leilao.bloco1.veoPrompt || ''}
+              onChange={(e) => {
+                const val = e.target.value;
+                setHasCopiedLeilao1Once(false);
+                setCopiedLeilao1(false);
+                onUpdateResult((prev) => {
+                  if (!prev || !prev.leilao) return prev;
+                  return {
+                    ...prev,
+                    veoPrompt: val,
+                    leilao: {
+                      ...prev.leilao,
+                      bloco1: {
+                        ...prev.leilao.bloco1,
+                        veoPrompt: val,
+                      },
+                    },
+                  };
+                });
+              }}
+              rows={6}
+              className="w-full p-3 bg-black/60 border border-zinc-700/80 focus:border-sky-400 rounded-xl text-xs text-zinc-200 font-mono leading-relaxed resize-y"
+            />
+          </div>
+        </div>
+
+        {/* ================================================================= */}
+        {/* BLOCO 2: ESTÚDIO & REVELAÇÃO DO PRODUTO (12–24s | 3 Quadros)       */}
+        {/* ================================================================= */}
+        <div className="p-5 sm:p-6 rounded-2xl bg-zinc-900/90 border border-zinc-800 shadow-xl space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800 pb-3">
+            <div className="flex items-center gap-2">
+              <span className="w-7 h-7 rounded-lg bg-teal-500/20 text-teal-300 border border-teal-500/40 font-black text-sm flex items-center justify-center">
+                2
+              </span>
+              <div>
+                <h3 className="text-sm sm:text-base font-black text-white">
+                  Bloco 2 (12–24s) — Estúdio & Revelação do Produto
+                </h3>
+                <p className="text-[11px] text-zinc-400">
+                  Storyboard com 3 quadros lado a lado (3240 × 1920 px) · Pano preto & Revelação frontal & Close-up
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (leilao.bloco2.storyboardImageUrl) {
+                  downloadProdutos2StoryboardImage(
+                    leilao.bloco2.storyboardImageUrl,
+                    'leilao_bloco2_quadros_3-4-5'
+                  );
+                }
+              }}
+              className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-emerald-600 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-zinc-700"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Baixar Imagem 2</span>
+            </button>
+          </div>
+
+          {/* Imagem do Storyboard Bloco 2 */}
+          <div className="relative rounded-2xl overflow-hidden bg-black/60 border border-zinc-800 group">
+            {leilao.bloco2.storyboardImageUrl ? (
+              <img
+                src={leilao.bloco2.storyboardImageUrl}
+                alt="Storyboard Bloco 2"
+                onClick={() => onOpenPreview(leilao.bloco2.storyboardImageUrl, 'Bloco 2 (Quadros 3, 4 e 5)')}
+                className="w-full max-h-[460px] object-contain cursor-pointer transition-transform duration-300 group-hover:scale-[1.01]"
+              />
+            ) : (
+              <div className="h-64 flex items-center justify-center text-zinc-500 text-sm">
+                Imagem do Bloco 2 não disponível
+              </div>
+            )}
+          </div>
+
+          {/* Botão Refazer Imagem Bloco 2 */}
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => onRegenerateStoryboard(undefined, 2)}
+              disabled={Boolean(result.isRegeneratingStoryboard)}
+              className="px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-teal-600 text-teal-200 hover:text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer border border-zinc-700"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${result.isRegeneratingStoryboard ? 'animate-spin' : ''}`} />
+              <span>Refazer Imagem Bloco 2</span>
+            </button>
+          </div>
+
+          {/* Prompt do Veo 3 Bloco 2 */}
+          <div className={`p-4 rounded-xl transition-all ${copiedLeilao2 || hasCopiedLeilao2Once ? copiedBlueSectionClass : defaultSectionClass}`}>
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-white/10 mb-2">
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-sky-400" />
+                <span className="text-xs sm:text-sm font-black text-white">
+                  Prompt do Veo 3 — Bloco 2
+                </span>
+                {hasCopiedLeilao2Once && (
+                  <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-sky-300" />
+                    <span>COPIADO</span>
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(leilao.bloco2.veoPrompt || '');
+                  setCopiedLeilao2(true);
+                  setHasCopiedLeilao2Once(true);
+                  setTimeout(() => setCopiedLeilao2(false), 2500);
+                }}
+                className={`px-3.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+                  copiedLeilao2
+                    ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-950/40'
+                    : 'bg-sky-500 hover:bg-sky-400 text-white shadow-md shadow-sky-950/40'
+                }`}
+              >
+                {copiedLeilao2 ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 stroke-[3]" />
+                    <span>Copiado!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Copiar Prompt 2</span>
+                  </>
+                )}
+              </button>
+            </div>
+            <textarea
+              value={leilao.bloco2.veoPrompt || ''}
+              onChange={(e) => {
+                const val = e.target.value;
+                setHasCopiedLeilao2Once(false);
+                setCopiedLeilao2(false);
+                onUpdateResult((prev) => {
+                  if (!prev || !prev.leilao) return prev;
+                  return {
+                    ...prev,
+                    leilao: {
+                      ...prev.leilao,
+                      bloco2: {
+                        ...prev.leilao.bloco2,
+                        veoPrompt: val,
+                      },
+                    },
+                  };
+                });
+              }}
+              rows={6}
+              className="w-full p-3 bg-black/60 border border-zinc-700/80 focus:border-sky-400 rounded-xl text-xs text-zinc-200 font-mono leading-relaxed resize-y"
+            />
+          </div>
+        </div>
+
+        {/* ================================================================= */}
+        {/* BLOCO 3: LEILOEIRO NO TELÃO (24–30s | 1 Quadro 9:16)              */}
+        {/* ================================================================= */}
+        <div className="p-5 sm:p-6 rounded-2xl bg-zinc-900/90 border border-zinc-800 shadow-xl space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800 pb-3">
+            <div className="flex items-center gap-2">
+              <span className="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-black text-sm flex items-center justify-center">
+                3
+              </span>
+              <div>
+                <h3 className="text-sm sm:text-base font-black text-white">
+                  Bloco 3 (24–30s) — Chamada no Carrinho Laranja
+                </h3>
+                <p className="text-[11px] text-zinc-400">
+                  Imagem única vertical (1080 × 1920 px) · Leiloeiro apontando com produto no telão
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if (leilao.bloco3.storyboardImageUrl) {
+                  downloadProdutos2StoryboardImage(
+                    leilao.bloco3.storyboardImageUrl,
+                    'leilao_bloco3_quadro_6'
+                  );
+                }
+              }}
+              className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-emerald-600 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-zinc-700"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Baixar Imagem 3</span>
+            </button>
+          </div>
+
+          {/* Imagem do Storyboard Bloco 3 */}
+          <div className="relative rounded-2xl overflow-hidden bg-black/60 border border-zinc-800 group">
+            {leilao.bloco3.storyboardImageUrl ? (
+              <img
+                src={leilao.bloco3.storyboardImageUrl}
+                alt="Storyboard Bloco 3"
+                onClick={() => onOpenPreview(leilao.bloco3.storyboardImageUrl, 'Bloco 3 (Quadro 6)')}
+                className="w-full max-h-[460px] object-contain cursor-pointer transition-transform duration-300 group-hover:scale-[1.01]"
+              />
+            ) : (
+              <div className="h-64 flex items-center justify-center text-zinc-500 text-sm">
+                Imagem do Bloco 3 não disponível
+              </div>
+            )}
+          </div>
+
+          {/* Botão Refazer Imagem Bloco 3 */}
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => onRegenerateStoryboard(undefined, 3)}
+              disabled={Boolean(result.isRegeneratingStoryboard)}
+              className="px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-indigo-600 text-indigo-200 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer border border-zinc-700"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${result.isRegeneratingStoryboard ? 'animate-spin' : ''}`} />
+              <span>Refazer Imagem Bloco 3</span>
+            </button>
+          </div>
+
+          {/* Prompt do Veo 3 Bloco 3 */}
+          <div className={`p-4 rounded-xl transition-all ${copiedLeilao3 || hasCopiedLeilao3Once ? copiedBlueSectionClass : defaultSectionClass}`}>
+            <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-white/10 mb-2">
+              <div className="flex items-center gap-2">
+                <FileText className="w-4 h-4 text-sky-400" />
+                <span className="text-xs sm:text-sm font-black text-white">
+                  Prompt do Veo 3 — Bloco 3
+                </span>
+                {hasCopiedLeilao3Once && (
+                  <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-sky-300" />
+                    <span>COPIADO</span>
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(leilao.bloco3.veoPrompt || '');
+                  setCopiedLeilao3(true);
+                  setHasCopiedLeilao3Once(true);
+                  setTimeout(() => setCopiedLeilao3(false), 2500);
+                }}
+                className={`px-3.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+                  copiedLeilao3
+                    ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-950/40'
+                    : 'bg-sky-500 hover:bg-sky-400 text-white shadow-md shadow-sky-950/40'
+                }`}
+              >
+                {copiedLeilao3 ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 stroke-[3]" />
+                    <span>Copiado!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Copiar Prompt 3</span>
+                  </>
+                )}
+              </button>
+            </div>
+            <textarea
+              value={leilao.bloco3.veoPrompt || ''}
+              onChange={(e) => {
+                const val = e.target.value;
+                setHasCopiedLeilao3Once(false);
+                setCopiedLeilao3(false);
+                onUpdateResult((prev) => {
+                  if (!prev || !prev.leilao) return prev;
+                  return {
+                    ...prev,
+                    leilao: {
+                      ...prev.leilao,
+                      bloco3: {
+                        ...prev.leilao.bloco3,
+                        veoPrompt: val,
+                      },
+                    },
+                  };
+                });
+              }}
+              rows={6}
+              className="w-full p-3 bg-black/60 border border-zinc-700/80 focus:border-sky-400 rounded-xl text-xs text-zinc-200 font-mono leading-relaxed resize-y"
+            />
+          </div>
+        </div>
+
+        {/* DESCRIÇÃO DO POST + HASHTAGS */}
+        <div
+          className={`p-4 sm:p-5 rounded-2xl transition-all ${
+            hasCopiedDescriptionOnce ? copiedBlueSectionClass : defaultSectionClass
+          }`}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-white/10 mb-2">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-emerald-400" />
+              <span className="text-xs sm:text-sm font-black text-white">
+                Descrição do Post + Hashtags (TikTok & Reels)
+              </span>
+              {hasCopiedDescriptionOnce && (
+                <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-sky-300" />
+                  <span>COPIADO</span>
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={handleCopyDescription}
+              className={`px-4 py-2 rounded-xl font-black text-xs flex items-center gap-2 transition-all cursor-pointer ${
+                descriptionCopied
+                  ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-950/40'
+                  : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-950/40'
+              }`}
+            >
+              {descriptionCopied ? (
+                <>
+                  <Check className="w-4 h-4 stroke-[3]" />
+                  <span>Copiado!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4" />
+                  <span>Copiar Descrição</span>
+                </>
+              )}
+            </button>
+          </div>
+          <textarea
+            value={result.descriptionHashtags || result.description || ''}
+            onChange={(e) => {
+              const val = e.target.value;
+              setHasCopiedDescriptionOnce(false);
+              onUpdateResult((prev) => (prev ? { ...prev, description: val, descriptionHashtags: val } : null));
+            }}
+            rows={4}
+            className="w-full p-3 bg-black/60 border border-zinc-700/80 focus:border-emerald-400 rounded-xl text-xs text-zinc-200 font-sans leading-relaxed resize-y"
+          />
+        </div>
+
+        {/* BOTÃO BAIXAR TUDO (.ZIP) */}
+        <div className="pt-2">
+          <button
+            type="button"
+            onClick={handleDownloadZip}
+            disabled={isExportingZip}
+            className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-sky-600 hover:from-emerald-500 hover:via-teal-500 hover:to-sky-500 disabled:opacity-50 text-white font-black text-sm sm:text-base shadow-xl shadow-emerald-950/50 flex items-center justify-center gap-3 transition-all cursor-pointer"
+          >
+            {isExportingZip ? (
+              <>
+                <RefreshCw className="w-5 h-5 animate-spin" />
+                <span>Compactando 3 Imagens e 3 Prompts...</span>
+              </>
+            ) : (
+              <>
+                <Download className="w-5 h-5" />
+                <span>BAIXAR TUDO (.ZIP COM 3 IMAGENS + 3 PROMPTS TXT)</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">

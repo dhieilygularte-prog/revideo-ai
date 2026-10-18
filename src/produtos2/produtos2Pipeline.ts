@@ -26,6 +26,14 @@ import {
   sanitizeProductLockForVariations,
   sanitizeScenarioDescriptionForMode,
 } from './produtos2Prompts';
+import {
+  calculateLeilaoBids,
+  classifyProductSize,
+  buildLeilaoSpeeches,
+  buildLeilaoBlockPrompts,
+  extractPriceFromProductInfo,
+  LeilaoSpeechParts,
+} from './produtos2Leilao';
 
 export interface IncrementalTokenUsage {
   promptTokens: number;
@@ -327,6 +335,8 @@ async function requestStoryboardImageGeneration(params: {
   previousStoryboardImageBase64?: string;
   correctionPrompt?: string;
   aiProfile?: string;
+  sceneCount?: number;
+  aspectRatio?: string;
 }): Promise<{ imageUrl?: string; error?: string; usage?: any }> {
   const {
     prompt,
@@ -337,6 +347,8 @@ async function requestStoryboardImageGeneration(params: {
     previousStoryboardImageBase64,
     correctionPrompt,
     aiProfile = 'openai',
+    sceneCount,
+    aspectRatio,
   } = params;
 
   // Garante que a 1ª foto de CADA variação esteja presente nas referências enviadas
@@ -388,6 +400,8 @@ async function requestStoryboardImageGeneration(params: {
         previousStoryboardImageBase64: compressedPrev,
         correctionPrompt,
         aiProfile,
+        sceneCount,
+        aspectRatio,
       }),
     });
     const imgData = await safeParseJsonResponse(imgRes);
@@ -546,6 +560,233 @@ export async function auditProdutos2Storyboard(params: {
   };
 }
 
+/**
+ * Pipeline dedicado e 100% isolado do Modo Leilão (Instruções 1 e 2).
+ * Não altera nem interfere no fluxo dos modos de 1 cena e 2 cenas.
+ */
+export async function runProdutos2LeilaoPipeline(params: {
+  form: Produtos2FormState;
+  aiProfile?: string;
+  onProgress?: (percent: number, message: string) => void;
+}): Promise<Produtos2ResultState> {
+  const { form, aiProfile = 'openai', onProgress } = params;
+
+  onProgress?.(5, '1/5 Validando preço real e regras de lances do leilão...');
+
+  let realPrice = form.realPrice || 0;
+  if (!realPrice || realPrice <= 0) {
+    const extracted = extractPriceFromProductInfo(`${form.realPriceRaw || ''} ${form.productInfo}`);
+    if (extracted && extracted > 0) {
+      realPrice = extracted;
+    }
+  }
+
+  if (!realPrice || realPrice <= 0) {
+    throw new Error('Preço real do produto é obrigatório no Modo Leilão. Por favor, preencha o campo Preço Real.');
+  }
+
+  const bids = calculateLeilaoBids(realPrice);
+
+  onProgress?.(15, '2/5 Preparando falas dos 3 blocos do leilão...');
+
+  let speeches: LeilaoSpeechParts;
+  if (form.leilaoSpeech && form.leilaoSpeech.cena1 && form.leilaoSpeech.cena2 && form.leilaoSpeech.cena3) {
+    speeches = { ...form.leilaoSpeech };
+  } else {
+    const generated = buildLeilaoSpeeches({
+      productName: form.productName,
+      productInfo: form.productInfo,
+      realPrice,
+      additionalInstructions: form.additionalInstructions,
+      userSpeech: form.userSpeech,
+    });
+    speeches = generated.leilaoSpeech;
+  }
+
+  const productSize = classifyProductSize(form.productName, form.productInfo);
+  const blockPrompts = buildLeilaoBlockPrompts({
+    productName: form.productName || 'Produto',
+    productInfo: form.productInfo,
+    realPrice,
+    productSize,
+    additionalInstructions: form.additionalInstructions,
+    speeches,
+  });
+
+  const allPhotos: string[] = [
+    ...(form.productPhotosBase64 || []),
+    ...(form.variations || []).flatMap((v) => v.photos || []),
+  ].filter(Boolean);
+
+  // GERAÇÃO BLOCO 1 (Salão de Leilão, 2 quadros 1x2, 2160x1920)
+  onProgress?.(25, '3/5 Gerando Bloco 1 (Salão de Leilão - Quadros 1 e 2)...');
+  const imgRes1 = await requestStoryboardImageGeneration({
+    prompt: blockPrompts.bloco1ImagePrompt,
+    productName: form.productName,
+    allPhotos,
+    variations: form.variations,
+    additionalInstructions: form.additionalInstructions,
+    aiProfile,
+    sceneCount: 2,
+    aspectRatio: '4:3',
+  });
+  if (imgRes1.error && !imgRes1.imageUrl) {
+    throw new Error(`Falha ao gerar o Bloco 1 do Leilão: ${imgRes1.error}`);
+  }
+  const bloco1Img = imgRes1.imageUrl || '';
+
+  // GERAÇÃO BLOCO 2 (Estúdio Revelação, 3 quadros 1x3, 3240x1920)
+  onProgress?.(55, '4/5 Gerando Bloco 2 (Revelação do Produto em Estúdio - Quadros 3, 4 e 5)...');
+  const imgRes2 = await requestStoryboardImageGeneration({
+    prompt: blockPrompts.bloco2ImagePrompt,
+    productName: form.productName,
+    allPhotos,
+    variations: form.variations,
+    additionalInstructions: form.additionalInstructions,
+    aiProfile,
+    sceneCount: 3,
+    aspectRatio: '16:9',
+  });
+  if (imgRes2.error && !imgRes2.imageUrl) {
+    throw new Error(`Falha ao gerar o Bloco 2 do Leilão: ${imgRes2.error}`);
+  }
+  const bloco2Img = imgRes2.imageUrl || '';
+
+  // GERAÇÃO BLOCO 3 (Leiloeiro Apontando no Telão, 1 quadro vertical, 1080x1920)
+  onProgress?.(80, '5/5 Gerando Bloco 3 (Leiloeiro no Telão - Quadro 6)...');
+  const imgRes3 = await requestStoryboardImageGeneration({
+    prompt: blockPrompts.bloco3ImagePrompt,
+    productName: form.productName,
+    allPhotos,
+    variations: form.variations,
+    additionalInstructions: form.additionalInstructions,
+    aiProfile,
+    sceneCount: 1,
+    aspectRatio: '9:16',
+  });
+  if (imgRes3.error && !imgRes3.imageUrl) {
+    throw new Error(`Falha ao gerar o Bloco 3 do Leilão: ${imgRes3.error}`);
+  }
+  const bloco3Img = imgRes3.imageUrl || '';
+
+  onProgress?.(92, 'Gerando descrição do post e hashtags...');
+  let descriptionHashtags = '';
+  try {
+    descriptionHashtags = await generateProdutos2DescriptionHashtags({
+      productName: form.productName,
+      productInfo: form.productInfo,
+      copy: `${speeches.cena1}\n${speeches.cena2}\n${speeches.cena3}`,
+      niche: 'Leilão / E-commerce',
+      aiProfile,
+    });
+  } catch {
+    descriptionHashtags = `${(form.productName || 'PRODUTO').toUpperCase()} EM LEILÃO! #leilao #achadinhos #tiktokcompras #imperdivel #oferta`;
+  }
+
+  const totalCostUSD =
+    (imgRes1.usage?.costUSD || 0.02) +
+    (imgRes2.usage?.costUSD || 0.02) +
+    (imgRes3.usage?.costUSD || 0.02) +
+    0.01;
+  const totalCostBRL =
+    (imgRes1.usage?.costBRL || 0.12) +
+    (imgRes2.usage?.costBRL || 0.12) +
+    (imgRes3.usage?.costBRL || 0.12) +
+    0.06;
+
+  const tokenUsage: TokenUsageStats = {
+    promptTokens: 4500,
+    candidateTokens: 600,
+    totalTokens: 5100,
+    totalCostUSD: Math.round(totalCostUSD * 1000) / 1000,
+    estimatedCostBRL: Math.round(totalCostBRL * 100) / 100,
+    modelsUsed: [imgRes1.usage?.model || 'image-model'],
+    detailedSteps: [
+      {
+        step: 'Modo Leilão - Bloco 1 (Quadros 1 e 2)',
+        model: imgRes1.usage?.model || 'image',
+        costUSD: imgRes1.usage?.costUSD || 0.02,
+        costBRL: imgRes1.usage?.costBRL || 0.12,
+        timestamp: new Date().toLocaleTimeString('pt-BR'),
+      },
+      {
+        step: 'Modo Leilão - Bloco 2 (Quadros 3, 4 e 5)',
+        model: imgRes2.usage?.model || 'image',
+        costUSD: imgRes2.usage?.costUSD || 0.02,
+        costBRL: imgRes2.usage?.costBRL || 0.12,
+        timestamp: new Date().toLocaleTimeString('pt-BR'),
+      },
+      {
+        step: 'Modo Leilão - Bloco 3 (Quadro 6)',
+        model: imgRes3.usage?.model || 'image',
+        costUSD: imgRes3.usage?.costUSD || 0.02,
+        costBRL: imgRes3.usage?.costBRL || 0.12,
+        timestamp: new Date().toLocaleTimeString('pt-BR'),
+      },
+    ],
+  };
+
+  const fullCopy = `[Cena 1 | 0-12s]\n${speeches.cena1}\n\n[Cena 2 | 12-24s]\n${speeches.cena2}\n\n[Cena 3 | 24-30s]\n${speeches.cena3}`;
+
+  return {
+    sceneMode: 'modo_leilao',
+    productName: form.productName || 'Produto em Leilão',
+    detectedNiche: 'Leilão / E-commerce',
+    copy: fullCopy,
+    copySource: 'Modo Leilão',
+    copyId: 'LEILAO-01',
+    scenes: [
+      {
+        sceneNumber: 1,
+        timecode: '0–12s',
+        description: 'Salão clássico de leilão com leiloeiro e plateia.',
+        action: 'Leiloeiro ergue o martelo, recebe lances e fica chocado com o TikTok Shop.',
+      },
+      {
+        sceneNumber: 2,
+        timecode: '12–24s',
+        description: 'Estúdio de produto e revelação.',
+        action: 'Leiloeiro puxa o pano de veludo preto e revela o produto com 2 benefícios reais.',
+      },
+      {
+        sceneNumber: 3,
+        timecode: '24–30s',
+        description: 'Leiloeiro no púlpito apontando para a câmera e telão.',
+        action: 'Chamada para ação no carrinho laranja antes que o lote seja encerrado.',
+      },
+    ],
+    storyboardImageUrl: bloco1Img,
+    storyboardImagePrompt: blockPrompts.bloco1ImagePrompt,
+    veoPrompt: blockPrompts.veoPrompt1,
+    descriptionHashtags,
+    description: descriptionHashtags,
+    tokenUsage,
+    timestamp: new Date().toISOString(),
+    leilao: {
+      bids,
+      speeches,
+      bloco1: {
+        storyboardImageUrl: bloco1Img,
+        storyboardImagePrompt: blockPrompts.bloco1ImagePrompt,
+        veoPrompt: blockPrompts.veoPrompt1,
+        speechText: speeches.cena1,
+      },
+      bloco2: {
+        storyboardImageUrl: bloco2Img,
+        storyboardImagePrompt: blockPrompts.bloco2ImagePrompt,
+        veoPrompt: blockPrompts.veoPrompt2,
+        speechText: speeches.cena2,
+      },
+      bloco3: {
+        storyboardImageUrl: bloco3Img,
+        storyboardImagePrompt: blockPrompts.bloco3ImagePrompt,
+        veoPrompt: blockPrompts.veoPrompt3,
+        speechText: speeches.cena3,
+      },
+    },
+  };
+}
+
 export async function runProdutos2Pipeline(params: {
   form: Produtos2FormState;
   aiProfile?: string;
@@ -553,6 +794,12 @@ export async function runProdutos2Pipeline(params: {
 }): Promise<Produtos2ResultState> {
   const { form, aiProfile = 'openai', onProgress } = params;
   const sceneMode: Produtos2SceneMode = form.sceneMode || '1_cena_10s';
+
+  // Se for Modo Leilão, roda a pipeline dedicada sem tocar em nenhum dos demais modos
+  if (sceneMode === 'modo_leilao') {
+    return runProdutos2LeilaoPipeline(params);
+  }
+
   const isTwoScenes = sceneMode === '2_cenas_10s';
   const effectiveDuration: Produtos2Duration =
     sceneMode === '1_cena_15s' ? 15 : form.duration === 8 ? 8 : 10;
@@ -1248,7 +1495,7 @@ export async function regenerateProdutos2Storyboard(params: {
   result: Produtos2ResultState;
   form: Produtos2FormState;
   customCorrection?: string;
-  sceneTarget?: 1 | 2;
+  sceneTarget?: 1 | 2 | 3;
   aiProfile?: string;
 }): Promise<{
   imageUrl?: string;
@@ -1257,6 +1504,52 @@ export async function regenerateProdutos2Storyboard(params: {
   incrementalUsage?: IncrementalTokenUsage;
 }> {
   const { result, form, customCorrection, sceneTarget = 1, aiProfile = 'openai' } = params;
+
+  // Se for Modo Leilão, refaz exclusivamente o bloco selecionado (1, 2 ou 3)
+  if (result.sceneMode === 'modo_leilao' && result.leilao) {
+    const targetBlock = sceneTarget === 3 ? 3 : sceneTarget === 2 ? 2 : 1;
+    const targetPrompt =
+      targetBlock === 3
+        ? result.leilao.bloco3.storyboardImagePrompt
+        : targetBlock === 2
+        ? result.leilao.bloco2.storyboardImagePrompt
+        : result.leilao.bloco1.storyboardImagePrompt;
+    const targetPrevImg =
+      targetBlock === 3
+        ? result.leilao.bloco3.storyboardImageUrl
+        : targetBlock === 2
+        ? result.leilao.bloco2.storyboardImageUrl
+        : result.leilao.bloco1.storyboardImageUrl;
+    const targetCount = targetBlock === 3 ? 1 : targetBlock === 2 ? 3 : 2;
+    const targetAspect = targetBlock === 3 ? '9:16' : targetBlock === 2 ? '16:9' : '4:3';
+
+    const allPhotos: string[] = [
+      ...(form.productPhotosBase64 || []),
+      ...(form.variations || []).flatMap((v) => v.photos || []),
+    ].filter(Boolean);
+
+    const genRes = await requestStoryboardImageGeneration({
+      prompt: targetPrompt,
+      productName: result.productName,
+      allPhotos,
+      variations: form.variations,
+      additionalInstructions: form.additionalInstructions,
+      previousStoryboardImageBase64: targetPrevImg,
+      correctionPrompt: customCorrection || '',
+      aiProfile,
+      sceneCount: targetCount,
+      aspectRatio: targetAspect,
+    });
+
+    if (genRes.error && !genRes.imageUrl) {
+      return { error: genRes.error };
+    }
+
+    return {
+      imageUrl: genRes.imageUrl,
+    };
+  }
+
   const isTargetScene2 = sceneTarget === 2 && Boolean(result.scene2);
   const targetStoryboardPrompt =
     isTargetScene2 && result.scene2 ? result.scene2.storyboardPrompt : result.storyboardPrompt;

@@ -4281,9 +4281,13 @@ app.post("/api/produtos2-generate-storyboard", async (req, res) => {
     if (!prompt) {
       return res.status(400).json({ success: false, error: "Prompt do storyboard n\xE3o fornecido." });
     }
-    const isSixFrames = Number(req.body.sceneCount) === 6 || /GRADE\s+2x3|EXATAMENTE\s+6\s+(?:QUADROS|CENAS)/i.test(String(prompt));
-    const frameCount = isSixFrames ? 6 : 9;
-    const gridLabel = isSixFrames ? "2x3 (2 colunas x 3 linhas)" : "3x3 (3 colunas x 3 linhas)";
+    const reqSceneCount = Number(req.body.sceneCount);
+    const isLeilao1 = reqSceneCount === 2;
+    const isLeilao2 = reqSceneCount === 3;
+    const isLeilao3 = reqSceneCount === 1;
+    const isSixFrames = reqSceneCount === 6 || /GRADE\s+2x3|EXATAMENTE\s+6\s+(?:QUADROS|CENAS)/i.test(String(prompt));
+    const frameCount = isLeilao1 ? 2 : isLeilao2 ? 3 : isLeilao3 ? 1 : isSixFrames ? 6 : 9;
+    const gridLabel = isLeilao1 ? "2 quadros fotogr\xE1ficos lado a lado (1 linha x 2 colunas)" : isLeilao2 ? "3 quadros fotogr\xE1ficos lado a lado (1 linha x 3 colunas)" : isLeilao3 ? "1 quadro fotogr\xE1fico vertical \xFAnico" : isSixFrames ? "2x3 (2 colunas x 3 linhas)" : "3x3 (3 colunas x 3 linhas)";
     const photosList = Array.isArray(productPhotosBase64) ? productPhotosBase64.filter(Boolean) : [];
     const activeVariations = Array.isArray(variations) ? variations.filter(
       (v) => v.name && String(v.name).trim().length > 0 || Array.isArray(v.photos) && v.photos.length > 0
@@ -4388,13 +4392,20 @@ ${correctionPrompt.trim()}
           }
         }
         parts.push({ text: effectivePrompt });
-        const variationInstructionRule = activeVariations.length >= 2 ? `- REGRA MANDAT\xD3RIA DE ALTERN\xC2NCIA DE CORES ENTRE OS QUADROS: O produto possui ${activeVariations.length} varia\xE7\xF5es de cores/modelos. Voc\xEA DEVE OBRIGATORIAMENTE alternar as cores conforme a divis\xE3o especificada. NUNCA gere todos os ${frameCount} quadros na mesma cor! Apenas o modelo, formato e pe\xE7as permanecem id\xEAnticos, a cor DEVE alternar entre os blocos de quadros!` : `- PRODUCT LOCK ABSOLUTO: O produto em todos os ${frameCount} quadros onde aparece deve ser 100% id\xEAntico \xE0s fotos reais anexadas (mesmo formato, cor, textura, bot\xF5es, fun\xE7\xF5es, propor\xE7\xE3o e detalhes).`;
-        const systemInstructionText = `VOC\xCA \xC9 O GERADOR DE STORYBOARD DO MODO PRODUTOS 2.0.
+        const isLeilaoBlock = isLeilao1 || isLeilao2 || isLeilao3;
+        const variationInstructionRule = activeVariations.length >= 2 ? `- REGRA MANDAT\xD3RIA DE ALTERN\xC2NCIA DE CORES ENTRE OS QUADROS: O produto possui ${activeVariations.length} varia\xE7\xF5es de cores/modelos. Voc\xEA DEVE OBRIGATORIAMENTE alternar as cores conforme a divis\xE3o especificada. NUNCA gere todos os ${frameCount} quadros na mesma cor! Apenas o modelo, formato e pe\xE7as permanecem id\xEAnticos, a cor DEVE alternar entre os blocos de quadros!` : `- PRODUCT LOCK ABSOLUTO: O produto em todos os quadros onde aparece deve ser 100% id\xEAntico \xE0s fotos reais anexadas (mesmo formato, cor, textura, bot\xF5es, fun\xE7\xF5es, propor\xE7\xE3o e detalhes).`;
+        const systemInstructionText = isLeilaoBlock ? `VOC\xCA \xC9 O GERADOR DE STORYBOARD DO MODO LEIL\xC3O.
+- Gere UMA IMAGEM fotogr\xE1fica ultra-realista contendo ${gridLabel}.
+- Os quadros devem ser numerados com selos circulares brancos pequenos no canto superior direito de cada quadro com o n\xFAmero preto correspondente.
+- Cantos arredondados nos quadros, separados por uma borda branca fina, sobre fundo neutro.
+- ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: N\xE3o adicione legendas flutuantes, textos publicit\xE1rios externos, pre\xE7os, setas, carrinho de compras, marca d'\xE1gua externa, @ ou logotipo do TikTok. Apenas os n\xFAmeros nos selos circulares e a logomarca original do fabricante no pr\xF3prio produto.
+- Fidelidade absoluta \xE0s fotos reais do produto em todos os quadros onde o produto aparece.` : `VOC\xCA \xC9 O GERADOR DE STORYBOARD DO MODO PRODUTOS 2.0.
 - Gere UMA \xDANICA IMAGEM VERTICAL 9:16 (1080x1920) contendo uma grade ${gridLabel} com EXATAMENTE ${frameCount} quadros fotogr\xE1ficos ultra-realistas numerados de 1 a ${frameCount} (selo circular branco pequeno no canto superior esquerdo de cada quadro com n\xFAmero preto).
 - Cantos arredondados nos quadros, separados por uma borda branca fina, sobre fundo branco.
 ${variationInstructionRule}
 - LOGOMARCA E MARCA DO FABRICANTE NO PRODUTO (OBRIGAT\xD3RIO): A marca, a logomarca, o emblema e os textos que j\xE1 est\xE3o impressos/estampados no pr\xF3prio produto nas fotos de refer\xEAncia DEVEM aparecer 100% id\xEAnticos, na mesma cor e no mesmo lugar da pe\xE7a, em todos os quadros em que aquela parte estiver vis\xEDvel. JAMAIS remova ou alise a logomarca do produto!
 - ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: N\xE3o adicione legendas flutuantes, textos publicit\xE1rios externos, pre\xE7os, setas, carrinho de compras, marca d'\xE1gua externa, @ ou logotipo do TikTok. Apenas os n\xFAmeros 1 a ${frameCount} nos selos circulares e a logomarca original do fabricante no pr\xF3prio produto.`;
+        const chosenAspectRatio = isLeilao1 ? req.body.aspectRatio || "4:3" : isLeilao2 ? req.body.aspectRatio || "16:9" : isLeilao3 ? "9:16" : "9:16";
         const modelsToTry = [
           GEMINI_IMAGE_MODEL || "gemini-3.1-flash-image",
           GEMINI_IMAGE_FAST_MODEL || "gemini-3.1-flash-lite-image",
@@ -4408,7 +4419,7 @@ ${variationInstructionRule}
               config: {
                 systemInstruction: systemInstructionText,
                 imageConfig: {
-                  aspectRatio: "9:16"
+                  aspectRatio: chosenAspectRatio
                 }
               }
             });

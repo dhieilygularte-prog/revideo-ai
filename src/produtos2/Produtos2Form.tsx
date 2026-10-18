@@ -17,6 +17,7 @@ import {
   Copy,
   History,
   ArrowRight,
+  Gavel,
 } from 'lucide-react';
 import {
   Produtos2FormState,
@@ -30,6 +31,11 @@ import {
   selectAndAdaptProdutos2Copy,
 } from './produtos2CopyBank';
 import { extractUserSpeechFromInstructions } from './produtos2UserSpeechExtractor';
+import {
+  calculateLeilaoBids,
+  extractPriceFromProductInfo,
+  buildLeilaoSpeeches,
+} from './produtos2Leilao';
 import { AIProfile } from '../config/aiProfiles';
 import { TokenUsageStats } from '../types';
 import { useLoadingGif } from '../utils/loadingGifQueue';
@@ -262,6 +268,48 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
 
     try {
       const finalProductName = (form.productName.trim() || 'Produto').trim();
+
+      // MODO LEILÃO: GERAÇÃO DEDICADA DAS 3 CENAS
+      if (currentSceneMode === 'modo_leilao') {
+        let realPrice = form.realPrice || 0;
+        if (!realPrice || realPrice <= 0) {
+          const extracted = extractPriceFromProductInfo(`${form.realPriceRaw || ''} ${form.productInfo}`);
+          if (extracted && extracted > 0) {
+            realPrice = extracted;
+          }
+        }
+
+        if (!realPrice || realPrice <= 0) {
+          setSpeechesError('Por favor, informe o Preço real do produto para gerar as falas do Modo Leilão.');
+          setIsGeneratingSpeeches(false);
+          return;
+        }
+
+        const generated = buildLeilaoSpeeches({
+          productName: finalProductName,
+          productInfo: form.productInfo,
+          realPrice,
+          additionalInstructions: form.additionalInstructions,
+          userSpeech: form.userSpeech,
+        });
+
+        onChange((prev) => ({
+          ...prev,
+          realPrice,
+          realPriceRaw: String(realPrice),
+          leilaoSpeech: generated.leilaoSpeech,
+          userSpeech: generated.userSpeechParts
+            ? `${generated.userSpeechParts.cena1}\n\n${generated.userSpeechParts.cena2}\n\n${generated.userSpeechParts.cena3}`
+            : prev.userSpeech,
+          speechesGenerated: true,
+          selectedSpeechOption: 'leilao',
+          finalSelectedSpeech: `${generated.leilaoSpeech.cena1}\n\n${generated.leilaoSpeech.cena2}\n\n${generated.leilaoSpeech.cena3}`,
+        }));
+
+        setIsGeneratingSpeeches(false);
+        return;
+      }
+
       const hasInstructions = Boolean(form.additionalInstructions && form.additionalInstructions.trim());
 
       // 1. Extração IMEDIATA (0ms) da Fala do Usuário a partir de Instruções Adicionais respeitando o limite do modo selecionado
@@ -858,7 +906,9 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
     Boolean(form.productInfo.trim() || form.productName.trim());
 
   const hasSelectedSpeech = Boolean(
-    (form.selectedSpeechOption === 'user_speech'
+    (currentSceneMode === 'modo_leilao'
+      ? Boolean(form.leilaoSpeech?.cena1 && form.leilaoSpeech?.cena2 && form.leilaoSpeech?.cena3)
+      : form.selectedSpeechOption === 'user_speech'
       ? form.userSpeech?.trim()
       : form.selectedSpeechOption === 'aurora_copy'
       ? form.auroraCopy?.trim()
@@ -872,7 +922,11 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
     !isViewOnly &&
     !isProcessing &&
     !isMicRecording &&
-    Boolean(form.speechesGenerated || form.userSpeech || form.bancoCopy || form.bancoCopy2 || form.auroraCopy) &&
+    Boolean(
+      currentSceneMode === 'modo_leilao'
+        ? (form.speechesGenerated || form.leilaoSpeech) && (form.realPrice && form.realPrice > 0)
+        : form.speechesGenerated || form.userSpeech || form.bancoCopy || form.bancoCopy2 || form.auroraCopy
+    ) &&
     hasSelectedSpeech &&
     totalPhotosCount > 0;
 
@@ -1300,14 +1354,16 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
             </div>
             <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2.5 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
               <CheckCircle2 className="w-3 h-3 text-sky-300" />
-              {currentSceneMode === '1_cena_15s'
+              {currentSceneMode === 'modo_leilao'
+                ? 'Modo Leilão ✓'
+                : currentSceneMode === '1_cena_15s'
                 ? 'Uma cena — 15 segundos ✓'
                 : currentSceneMode === '2_cenas_10s'
                 ? 'Duas cenas — 10 segundos cada ✓'
                 : 'Uma cena — 10 segundos ✓'}
             </span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 bg-slate-950/90 p-1.5 rounded-xl border border-zinc-700/60">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 bg-slate-950/90 p-1.5 rounded-xl border border-zinc-700/60">
             <button
               type="button"
               disabled={isViewOnly}
@@ -1381,8 +1437,115 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
             >
               Duas cenas — 10 segundos cada
             </button>
+            <button
+              type="button"
+              disabled={isViewOnly}
+              onClick={() => {
+                if (isViewOnly) return;
+                onChange((prev) => {
+                  let pVal = prev.realPrice || 0;
+                  if (!pVal) {
+                    const extracted = extractPriceFromProductInfo(`${prev.realPriceRaw || ''} ${prev.productInfo}`);
+                    if (extracted && extracted > 0) pVal = extracted;
+                  }
+                  return {
+                    ...prev,
+                    sceneMode: 'modo_leilao',
+                    duration: 10,
+                    realPrice: pVal || undefined,
+                    realPriceRaw: pVal ? String(pVal) : prev.realPriceRaw || '',
+                  };
+                });
+              }}
+              className={`py-2.5 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                currentSceneMode === 'modo_leilao'
+                  ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 shadow-md shadow-amber-500/30'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <Gavel className="w-3.5 h-3.5" />
+              <span>Modo Leilão</span>
+            </button>
           </div>
         </div>
+
+        {/* Campo Preço real do produto (Obrigatório no Modo Leilão) */}
+        {currentSceneMode === 'modo_leilao' && (
+          <div className="md:col-span-12 p-4 rounded-2xl bg-amber-950/30 border border-amber-500/50 shadow-lg space-y-3 animate-fade-in">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <label className="text-sm font-black text-amber-300 flex items-center gap-2">
+                  <span>Preço real do produto</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-200 border border-amber-400/40">
+                    Obrigatório no Modo Leilão
+                  </span>
+                </label>
+                <p className="text-[11px] text-zinc-300 mt-0.5">
+                  Lido automaticamente das informações do produto ou preenchido manualmente.
+                </p>
+              </div>
+              {form.realPrice && form.realPrice > 0 ? (
+                <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded-lg border border-emerald-500/40">
+                  R$ {Number(form.realPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              ) : null}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 font-bold text-sm">
+                  R$
+                </span>
+                <input
+                  type="text"
+                  disabled={isViewOnly}
+                  value={form.realPriceRaw !== undefined ? form.realPriceRaw : (form.realPrice ? String(form.realPrice) : '')}
+                  onChange={(e) => {
+                    const valStr = e.target.value;
+                    const cleaned = valStr.replace(/[^\d.,]/g, '').replace(',', '.');
+                    const parsed = parseFloat(cleaned);
+                    onChange((prev) => ({
+                      ...prev,
+                      realPriceRaw: valStr,
+                      realPrice: !isNaN(parsed) && parsed > 0 ? parsed : undefined,
+                    }));
+                  }}
+                  placeholder="Ex.: 3848 ou 2399,90"
+                  className="w-full pl-10 pr-4 py-2.5 bg-black/60 border border-amber-500/40 focus:border-amber-400 focus:ring-1 focus:ring-amber-400 rounded-xl text-white font-mono text-sm placeholder-zinc-500"
+                />
+              </div>
+
+              {/* Lances calculados em tempo real */}
+              {(() => {
+                const effectivePrice = form.realPrice || 0;
+                if (!effectivePrice || effectivePrice <= 0) {
+                  return (
+                    <div className="text-xs text-amber-200/70 italic bg-black/40 p-2.5 rounded-xl border border-amber-500/20">
+                      Digite ou cole as informações com o preço do produto para calcular os lances de abertura.
+                    </div>
+                  );
+                }
+                const liveBids = calculateLeilaoBids(effectivePrice);
+                return (
+                  <div className="text-xs bg-black/60 p-2.5 rounded-xl border border-amber-500/30 space-y-1">
+                    <div className="flex items-center justify-between text-zinc-300">
+                      <span><strong>1º lance:</strong> R$ {liveBids.l1.toLocaleString('pt-BR')}</span>
+                      <span className="text-[10px] text-zinc-400 italic font-mono">({liveBids.l1Text})</span>
+                    </div>
+                    <div className="flex items-center justify-between text-emerald-300">
+                      <span><strong>2º lance:</strong> R$ {liveBids.l2.toLocaleString('pt-BR')}</span>
+                      <span className="text-[10px] text-emerald-400/80 italic font-mono">({liveBids.l2Text})</span>
+                    </div>
+                    <div className="text-[10px] text-sky-400 flex items-center gap-1 pt-0.5 border-t border-zinc-800">
+                      <CheckCircle2 className="w-3 h-3 text-sky-400" />
+                      <span>Regra conferida: 2º lance (R$ {liveBids.l2.toLocaleString('pt-BR')}) ≥ 125% do preço real (R$ {(effectivePrice * 1.25).toLocaleString('pt-BR')})</span>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        )}
 
         {/* 9. Enquadramento (Com rosto / Sem rosto / POV) */}
         <div className={`md:col-span-6 p-4 rounded-2xl space-y-2 flex flex-col justify-between ${activeAutoCardClass}`}>
@@ -1444,43 +1607,58 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
         {/* 10. Cenário */}
         <div className={`md:col-span-6 p-4 rounded-2xl space-y-2 flex flex-col justify-between ${activeAutoCardClass}`}>
           <div>
-            <label className="text-xs font-bold text-white block">10. Cenário</label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-white block">10. Cenário</label>
+              {currentSceneMode === 'modo_leilao' && (
+                <span className="text-[10px] text-amber-300 font-bold bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30">
+                  Fixo do leilão
+                </span>
+              )}
+            </div>
             <p className="text-[11px] text-zinc-300 mt-1 leading-snug">
-              Ambiente de gravação das cenas
+              {currentSceneMode === 'modo_leilao'
+                ? 'Salão clássico de leilão (Cenas 1 e 3) e Estúdio com pano preto (Cena 2)'
+                : 'Ambiente de gravação das cenas'}
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-1.5 bg-slate-950/90 p-1 rounded-xl border border-zinc-700/60">
-            <button
-              type="button"
-              disabled={isViewOnly}
-              onClick={() => {
-                if (isViewOnly) return;
-                onChange((prev) => ({ ...prev, scenario: 'padrao_uso' }));
-              }}
-              className={`py-2 px-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                form.scenario === 'padrao_uso'
-                  ? accentBtnClass
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              Padrão de uso
-            </button>
-            <button
-              type="button"
-              disabled={isViewOnly}
-              onClick={() => {
-                if (isViewOnly) return;
-                onChange((prev) => ({ ...prev, scenario: 'em_casa' }));
-              }}
-              className={`py-2 px-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                form.scenario === 'em_casa'
-                  ? accentBtnClass
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              Em casa
-            </button>
-          </div>
+          {currentSceneMode === 'modo_leilao' ? (
+            <div className="bg-slate-950/90 p-2.5 rounded-xl border border-amber-500/30 text-xs text-amber-200/90 font-medium text-center">
+              🏛️ Salão clássico luxuoso & Estúdio de produto
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-1.5 bg-slate-950/90 p-1 rounded-xl border border-zinc-700/60">
+              <button
+                type="button"
+                disabled={isViewOnly}
+                onClick={() => {
+                  if (isViewOnly) return;
+                  onChange((prev) => ({ ...prev, scenario: 'padrao_uso' }));
+                }}
+                className={`py-2 px-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  form.scenario === 'padrao_uso'
+                    ? accentBtnClass
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                Padrão de uso
+              </button>
+              <button
+                type="button"
+                disabled={isViewOnly}
+                onClick={() => {
+                  if (isViewOnly) return;
+                  onChange((prev) => ({ ...prev, scenario: 'em_casa' }));
+                }}
+                className={`py-2 px-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  form.scenario === 'em_casa'
+                    ? accentBtnClass
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                Em casa
+              </button>
+            </div>
+          )}
         </div>
 
         {/* 12. Estilo (Só Vestuário Masculino -> Roupas) */}
@@ -1829,8 +2007,159 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
           </div>
 
           <div className="space-y-4">
-            {/* FALA 1 — BANCO DE COPIES (Apenas no modo padrão de 10 segundos) */}
-            {is10sSingle && (
+            {currentSceneMode === 'modo_leilao' ? (
+              <div className="space-y-4">
+                <div className="p-4 sm:p-5 rounded-2xl bg-zinc-900/95 border-2 border-amber-500/60 shadow-xl space-y-4">
+                  <div className="flex items-center justify-between gap-2 border-b border-zinc-800 pb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center font-bold text-xs">
+                        🏛️
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-black text-amber-300">
+                          Roteiro Oficial do Leilão (Dividido em 3 Cenas)
+                        </h4>
+                        <p className="text-[11px] text-zinc-400">
+                          Cada cena sincronizada com os blocos visuais do Veo 3 (limite de 250 caracteres por cena).
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* CENA 1 */}
+                  <div className="p-3.5 rounded-xl bg-black/40 border border-zinc-800 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-black text-zinc-200">
+                        Cena 1 (0–12s) — Lances & Choque no Celular
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                          (form.leilaoSpeech?.cena1?.length || 0) > 250
+                            ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                            : 'bg-zinc-800 text-amber-300 border border-amber-500/30'
+                        }`}
+                      >
+                        {form.leilaoSpeech?.cena1?.length || 0} / 250
+                      </span>
+                    </div>
+                    <textarea
+                      disabled={isViewOnly}
+                      value={form.leilaoSpeech?.cena1 || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        onChange((prev) => {
+                          const updated = {
+                            ...(prev.leilaoSpeech || {
+                              cena1: '',
+                              cena2: '',
+                              cena3: '',
+                            }),
+                            cena1: val,
+                          };
+                          return {
+                            ...prev,
+                            leilaoSpeech: updated,
+                            finalSelectedSpeech: `${updated.cena1}\n\n${updated.cena2}\n\n${updated.cena3}`,
+                          };
+                        });
+                      }}
+                      rows={3}
+                      className="w-full p-2.5 bg-zinc-950 border border-zinc-800 focus:border-amber-400 rounded-lg text-xs text-white resize-y font-sans leading-relaxed"
+                      placeholder="Fala da Cena 1..."
+                    />
+                  </div>
+
+                  {/* CENA 2 */}
+                  <div className="p-3.5 rounded-xl bg-black/40 border border-zinc-800 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-black text-zinc-200">
+                        Cena 2 (12–24s) — Leilão Cancelado & 2 Benefícios Concretos
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                          (form.leilaoSpeech?.cena2?.length || 0) > 250
+                            ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                            : 'bg-zinc-800 text-amber-300 border border-amber-500/30'
+                        }`}
+                      >
+                        {form.leilaoSpeech?.cena2?.length || 0} / 250
+                      </span>
+                    </div>
+                    <textarea
+                      disabled={isViewOnly}
+                      value={form.leilaoSpeech?.cena2 || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        onChange((prev) => {
+                          const updated = {
+                            ...(prev.leilaoSpeech || {
+                              cena1: '',
+                              cena2: '',
+                              cena3: '',
+                            }),
+                            cena2: val,
+                          };
+                          return {
+                            ...prev,
+                            leilaoSpeech: updated,
+                            finalSelectedSpeech: `${updated.cena1}\n\n${updated.cena2}\n\n${updated.cena3}`,
+                          };
+                        });
+                      }}
+                      rows={3}
+                      className="w-full p-2.5 bg-zinc-950 border border-zinc-800 focus:border-amber-400 rounded-lg text-xs text-white resize-y font-sans leading-relaxed"
+                      placeholder="Fala da Cena 2..."
+                    />
+                  </div>
+
+                  {/* CENA 3 */}
+                  <div className="p-3.5 rounded-xl bg-black/40 border border-zinc-800 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-black text-zinc-200">
+                        Cena 3 (24–30s) — Chamada no Carrinho Laranja
+                      </span>
+                      <span
+                        className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                          (form.leilaoSpeech?.cena3?.length || 0) > 250
+                            ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                            : 'bg-zinc-800 text-amber-300 border border-amber-500/30'
+                        }`}
+                      >
+                        {form.leilaoSpeech?.cena3?.length || 0} / 250
+                      </span>
+                    </div>
+                    <textarea
+                      disabled={isViewOnly}
+                      value={form.leilaoSpeech?.cena3 || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        onChange((prev) => {
+                          const updated = {
+                            ...(prev.leilaoSpeech || {
+                              cena1: '',
+                              cena2: '',
+                              cena3: '',
+                            }),
+                            cena3: val,
+                          };
+                          return {
+                            ...prev,
+                            leilaoSpeech: updated,
+                            finalSelectedSpeech: `${updated.cena1}\n\n${updated.cena2}\n\n${updated.cena3}`,
+                          };
+                        });
+                      }}
+                      rows={3}
+                      className="w-full p-2.5 bg-zinc-950 border border-zinc-800 focus:border-amber-400 rounded-lg text-xs text-white resize-y font-sans leading-relaxed"
+                      placeholder="Fala da Cena 3..."
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* FALA 1 — BANCO DE COPIES (Apenas no modo padrão de 10 segundos) */}
+                {is10sSingle && (
               <div
                 onClick={() => {
                   if (isViewOnly) return;
@@ -2534,6 +2863,8 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                   )}
                 </button>
               </div>
+            )}
+              </>
             )}
           </div>
         </div>

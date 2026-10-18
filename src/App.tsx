@@ -1471,10 +1471,10 @@ export default function App() {
 
   const handleRegenerateProdutos2Storyboard = async (
     customCorrection?: string,
-    sceneTarget: 1 | 2 = 1
+    sceneTarget: 1 | 2 | 3 = 1
   ) => {
     if (!produtos2Result) return;
-    if (sceneTarget === 2 && produtos2Result.scene2) {
+    if (sceneTarget === 2 && produtos2Result.scene2 && produtos2Result.sceneMode === '2_cenas_10s') {
       setProdutos2Result((prev) =>
         prev && prev.scene2
           ? {
@@ -1552,6 +1552,40 @@ export default function App() {
             totalCalls: (curr.totalCalls || (curr.detailedSteps?.length || 0)) + (inc.detailedSteps?.length || 2),
           };
           setSessionTokenStats(updatedTokenUsage);
+        }
+
+        if (prev.sceneMode === 'modo_leilao' && prev.leilao) {
+          const updatedLeilao = { ...prev.leilao };
+          if (sceneTarget === 1 && updatedLeilao.bloco1) {
+            updatedLeilao.bloco1 = {
+              ...updatedLeilao.bloco1,
+              storyboardImageUrl: regen.imageUrl || updatedLeilao.bloco1.storyboardImageUrl,
+            };
+          } else if (sceneTarget === 2 && updatedLeilao.bloco2) {
+            updatedLeilao.bloco2 = {
+              ...updatedLeilao.bloco2,
+              storyboardImageUrl: regen.imageUrl || updatedLeilao.bloco2.storyboardImageUrl,
+            };
+          } else if (sceneTarget === 3 && updatedLeilao.bloco3) {
+            updatedLeilao.bloco3 = {
+              ...updatedLeilao.bloco3,
+              storyboardImageUrl: regen.imageUrl || updatedLeilao.bloco3.storyboardImageUrl,
+            };
+          }
+          const updatedResult: Produtos2ResultState = {
+            ...prev,
+            isRegeneratingStoryboard: false,
+            storyboardImageUrl: sceneTarget === 1 && regen.imageUrl ? regen.imageUrl : prev.storyboardImageUrl,
+            leilao: updatedLeilao,
+            storyboardError: regen.error,
+            tokenUsage: updatedTokenUsage,
+          };
+          import('./utils/historyStorage')
+            .then(({ saveCreativeToHistory }) => {
+              saveCreativeToHistory(updatedResult);
+            })
+            .catch(() => {});
+          return updatedResult;
         }
 
         const updatedResult: Produtos2ResultState =
