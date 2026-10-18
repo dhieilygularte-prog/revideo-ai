@@ -41,6 +41,8 @@ export interface GenerateSceneImageParams {
   hasUserProvidedModel?: boolean;
   isCloneMode?: boolean;
   preserveLocation?: boolean;
+  aspectRatio?: '9:16' | '16:9' | '1:1';
+  size?: '1024x1792' | '1792x1024' | '1024x1024';
 }
 
 export interface GenerateSceneImageResult {

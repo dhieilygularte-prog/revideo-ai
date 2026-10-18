@@ -870,7 +870,9 @@ Retorne estritamente um JSON estruturado:
       correctionPrompt,
       additionalInstructions = "",
       hasUserProvidedModel = false,
-      isCloneMode = false
+      isCloneMode = false,
+      aspectRatio,
+      size
     } = params;
     const client = this.getClient();
     let stepName = "imagem 1";
@@ -952,6 +954,8 @@ Mantenha o mesmo modelo/corte e caimento da pe\xE7a atual; troque somente cores 
       } else if (imageFiles.length > 0 && !isCloneMode) {
         baseImageFile = imageFiles[0];
       }
+      const isLandscape = aspectRatio === "16:9" || size === "1792x1024" || /16:9|horizontal|paisagem/i.test(effectivePrompt);
+      const chosenImageSize = size || (isLandscape ? "1792x1024" : OPENAI_IMAGE_SIZE);
       if (baseImageFile) {
         const editImageInput = referenceFrameBase64 ? baseImageFile : !modelReferenceBase64 && imageFiles.length > 1 ? imageFiles : baseImageFile;
         const editResponse = await client.images.edit({
@@ -959,7 +963,7 @@ Mantenha o mesmo modelo/corte e caimento da pe\xE7a atual; troque somente cores 
           image: editImageInput,
           prompt: effectivePrompt,
           quality: OPENAI_IMAGE_QUALITY,
-          size: OPENAI_IMAGE_SIZE
+          size: chosenImageSize
         });
         const b642 = editResponse.data?.[0]?.b64_json;
         if (b642) {
@@ -969,7 +973,7 @@ Mantenha o mesmo modelo/corte e caimento da pe\xE7a atual; troque somente cores 
             model: OPENAI_IMAGE_MODEL,
             costUSD: imgCost.costUSD,
             costBRL: imgCost.costBRL,
-            details: `Gera\xC3\xA7\xC3\xA3o com ${imageFiles.length} foto(s) de refer\xC3\xAAncia real em qualidade ${OPENAI_IMAGE_QUALITY}`
+            details: `Gera\xE7\xE3o com ${imageFiles.length} foto(s) de refer\xEAncia real em qualidade ${OPENAI_IMAGE_QUALITY} (${chosenImageSize})`
           });
           return {
             success: true,
@@ -989,7 +993,7 @@ Mantenha o mesmo modelo/corte e caimento da pe\xE7a atual; troque somente cores 
         model: OPENAI_IMAGE_MODEL,
         prompt: cleanPrompt,
         quality: OPENAI_IMAGE_QUALITY,
-        size: OPENAI_IMAGE_SIZE
+        size: chosenImageSize
       });
       const b64 = genResponse.data?.[0]?.b64_json;
       if (b64) {
@@ -2896,7 +2900,9 @@ app.post("/api/generate-scene-image", async (req, res) => {
           additionalInstructions,
           hasUserProvidedModel,
           isCloneMode,
-          preserveLocation
+          preserveLocation,
+          aspectRatio: req.body.aspectRatio,
+          size: req.body.size || (req.body.aspectRatio === "16:9" ? "1792x1024" : void 0)
         });
         return res.json(result);
       } catch (oiErr) {
@@ -3047,7 +3053,7 @@ DIRETIVA MESTRE 3: ZERO TATUAGENS. Pele 100% limpa, sem qualquer tatuagem em hom
           config: {
             systemInstruction: systemInstructionText,
             imageConfig: {
-              aspectRatio: "9:16"
+              aspectRatio: req.body.aspectRatio || "9:16"
             }
           }
         });
@@ -3094,7 +3100,9 @@ DIRETIVA MESTRE 3: ZERO TATUAGENS. Pele 100% limpa, sem qualquer tatuagem em hom
           additionalInstructions,
           hasUserProvidedModel,
           isCloneMode,
-          preserveLocation
+          preserveLocation,
+          aspectRatio: req.body.aspectRatio,
+          size: req.body.size || (req.body.aspectRatio === "16:9" ? "1792x1024" : void 0)
         });
         if (result.success && result.imageUrl) {
           return res.json(result);
@@ -3838,12 +3846,33 @@ Responda EXCLUSIVAMENTE em formato JSON com esta estrutura:
         const cena1 = cleanSpeech(parsed.cena1 || `Quem d\xE1 ${l1Text} reais nesse ${shortName}? Quem d\xE1 ${l2Text}? Dou-lhe uma! Pera\xED... Olha o valor desse ${shortName} no TikTok Shop. T\xE1 de gra\xE7a!`);
         const cena2 = cleanSpeech(parsed.cena2 || `Leil\xE3o cancelado! Esse \xE9 o ${fullName}. Alta performance e velocidade. Constru\xE7\xE3o refor\xE7ada de longa durabilidade.`);
         const cena3 = cleanSpeech(parsed.cena3 || `Por esse valor, n\xE3o tem como fazer leil\xE3o! Clica no carrinho laranja e garante o seu!`);
+        const cleanShortClean = shortName.replace(/[®™©℠]/g, "").trim();
+        const fallback1A = `Quem d\xE1 ${l1Text} reais nesse ${cleanShortClean}?`;
+        const fallback1B = `Quem d\xE1 ${l2Text}? Dou-lhe uma!`;
+        const fallback1C = `Pera\xED... Olha o valor desse ${cleanShortClean} no TikTok Shop. T\xE1 de gra\xE7a!`;
+        let c1A = fallback1A;
+        let c1B = fallback1B;
+        let c1C = fallback1C;
+        if (cena1.includes("Pera\xED")) {
+          const parts = cena1.split("Pera\xED");
+          const firstPart = parts[0]?.trim() || "";
+          c1C = `Pera\xED${parts[1] || ""}`.trim();
+          if (firstPart.includes("?")) {
+            const sub = firstPart.split("?");
+            c1A = `${sub[0]}?`.trim();
+            c1B = sub.slice(1).join("?").trim() || fallback1B;
+          } else {
+            c1A = firstPart;
+            c1B = fallback1B;
+          }
+        }
         return res.json({
           success: true,
           leilaoSpeech: {
             cena1,
-            cena1A: cena1.split("Pera\xED")[0]?.trim() || cena1,
-            cena1B: cena1.includes("Pera\xED") ? `Pera\xED${cena1.split("Pera\xED")[1]}`.trim() : "",
+            cena1A: c1A,
+            cena1B: c1B,
+            cena1C: c1C,
             cena2,
             cena2A: `Leil\xE3o cancelado! Esse \xE9 o ${fullName}.`,
             cena2B: cena2.replace(`Leil\xE3o cancelado! Esse \xE9 o ${fullName}.`, "").trim(),
@@ -4351,12 +4380,16 @@ app.post("/api/produtos2-generate-storyboard", async (req, res) => {
       return res.status(400).json({ success: false, error: "Prompt do storyboard n\xE3o fornecido." });
     }
     const reqSceneCount = Number(req.body.sceneCount);
-    const isLeilao1 = reqSceneCount === 2;
-    const isLeilao2 = reqSceneCount === 3;
-    const isLeilao3 = reqSceneCount === 1;
+    const isLeilaoBlockNum = Number(req.body.isLeilaoBlock) || 0;
+    const isLeilao1 = isLeilaoBlockNum === 1 || isLeilaoBlockNum === 0 && /BLOCO 1|QUADRO 1.*QUADRO 2.*QUADRO 3|CENA 1.*leiloeiro/i.test(String(prompt));
+    const isLeilao2 = isLeilaoBlockNum === 2 || isLeilaoBlockNum === 0 && /BLOCO 2|QUADRO 4.*QUADRO 5.*QUADRO 6|pano de veludo/i.test(String(prompt));
+    const isLeilao3 = isLeilaoBlockNum === 3 || isLeilaoBlockNum === 0 && /BLOCO 3|GERAÇÃO 3/i.test(String(prompt));
+    const isLeilaoBlock = isLeilao1 || isLeilao2 || isLeilao3;
     const isSixFrames = reqSceneCount === 6 || /GRADE\s+2x3|EXATAMENTE\s+6\s+(?:QUADROS|CENAS)/i.test(String(prompt));
-    const frameCount = isLeilao1 ? 2 : isLeilao2 ? 3 : isLeilao3 ? 1 : isSixFrames ? 6 : 9;
-    const gridLabel = isLeilao1 ? "2 quadros fotogr\xE1ficos lado a lado (1 linha x 2 colunas)" : isLeilao2 ? "3 quadros fotogr\xE1ficos lado a lado (1 linha x 3 colunas)" : isLeilao3 ? "1 quadro fotogr\xE1fico vertical \xFAnico" : isSixFrames ? "2x3 (2 colunas x 3 linhas)" : "3x3 (3 colunas x 3 linhas)";
+    const frameCount = isLeilao1 ? 3 : isLeilao2 ? 3 : isLeilao3 ? 1 : isSixFrames ? 6 : 9;
+    const gridLabel = isLeilao1 ? "3 quadros fotogr\xE1ficos verticais 9:16 lado a lado em uma \xFAnica imagem horizontal 16:9 (grade 1 linha x 3 colunas), com n\xFAmeros discretos 1, 2 e 3 em c\xEDrculos brancos no canto superior direito" : isLeilao2 ? "3 quadros fotogr\xE1ficos verticais 9:16 lado a lado em uma \xFAnica imagem horizontal 16:9 (grade 1 linha x 3 colunas), com n\xFAmeros discretos 4, 5 e 6 em c\xEDrculos brancos no canto superior direito" : isLeilao3 ? "1 quadro fotogr\xE1fico vertical \xFAnico 9:16 (sem n\xFAmero)" : isSixFrames ? "2x3 (2 colunas x 3 linhas)" : "3x3 (3 colunas x 3 linhas)";
+    const chosenAspectRatio = isLeilao1 || isLeilao2 || req.body.aspectRatio === "16:9" ? "16:9" : "9:16";
+    const chosenSize = chosenAspectRatio === "16:9" ? "1792x1024" : "1024x1792";
     const photosList = Array.isArray(productPhotosBase64) ? productPhotosBase64.filter(Boolean) : [];
     const activeVariations = Array.isArray(variations) ? variations.filter(
       (v) => v.name && String(v.name).trim().length > 0 || Array.isArray(v.photos) && v.photos.length > 0
@@ -4405,7 +4438,9 @@ ${correctionPrompt.trim()}
             productType: productName,
             additionalInstructions: [additionalInstructions, correctionPrompt].filter(Boolean).join(" | "),
             hasUserProvidedModel: false,
-            isCloneMode: false
+            isCloneMode: false,
+            aspectRatio: chosenAspectRatio,
+            size: chosenSize
           });
           if (result.success && result.imageUrl) {
             const imgUsage = {
@@ -4461,9 +4496,9 @@ ${correctionPrompt.trim()}
           }
         }
         parts.push({ text: effectivePrompt });
-        const isLeilaoBlock = isLeilao1 || isLeilao2 || isLeilao3;
+        const isLeilaoBlock2 = isLeilao1 || isLeilao2 || isLeilao3;
         const variationInstructionRule = activeVariations.length >= 2 ? `- REGRA MANDAT\xD3RIA DE ALTERN\xC2NCIA DE CORES ENTRE OS QUADROS: O produto possui ${activeVariations.length} varia\xE7\xF5es de cores/modelos. Voc\xEA DEVE OBRIGATORIAMENTE alternar as cores conforme a divis\xE3o especificada. NUNCA gere todos os ${frameCount} quadros na mesma cor! Apenas o modelo, formato e pe\xE7as permanecem id\xEAnticos, a cor DEVE alternar entre os blocos de quadros!` : `- PRODUCT LOCK ABSOLUTO: O produto em todos os quadros onde aparece deve ser 100% id\xEAntico \xE0s fotos reais anexadas (mesmo formato, cor, textura, bot\xF5es, fun\xE7\xF5es, propor\xE7\xE3o e detalhes).`;
-        const systemInstructionText = isLeilaoBlock ? `VOC\xCA \xC9 O GERADOR DE STORYBOARD DO MODO LEIL\xC3O.
+        const systemInstructionText = isLeilaoBlock2 ? `VOC\xCA \xC9 O GERADOR DE STORYBOARD DO MODO LEIL\xC3O.
 - Gere UMA IMAGEM fotogr\xE1fica ultra-realista contendo ${gridLabel}.
 - Os quadros devem ser numerados com selos circulares brancos pequenos no canto superior direito de cada quadro com o n\xFAmero preto correspondente.
 - Cantos arredondados nos quadros, separados por uma borda branca fina, sobre fundo neutro.
@@ -4474,7 +4509,7 @@ ${correctionPrompt.trim()}
 ${variationInstructionRule}
 - LOGOMARCA E MARCA DO FABRICANTE NO PRODUTO (OBRIGAT\xD3RIO): A marca, a logomarca, o emblema e os textos que j\xE1 est\xE3o impressos/estampados no pr\xF3prio produto nas fotos de refer\xEAncia DEVEM aparecer 100% id\xEAnticos, na mesma cor e no mesmo lugar da pe\xE7a, em todos os quadros em que aquela parte estiver vis\xEDvel. JAMAIS remova ou alise a logomarca do produto!
 - ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: N\xE3o adicione legendas flutuantes, textos publicit\xE1rios externos, pre\xE7os, setas, carrinho de compras, marca d'\xE1gua externa, @ ou logotipo do TikTok. Apenas os n\xFAmeros 1 a ${frameCount} nos selos circulares e a logomarca original do fabricante no pr\xF3prio produto.`;
-        const chosenAspectRatio = isLeilao1 ? req.body.aspectRatio || "16:9" : isLeilao2 ? req.body.aspectRatio || "16:9" : isLeilao3 ? "9:16" : "9:16";
+        const chosenAspectRatio2 = isLeilao1 ? req.body.aspectRatio || "16:9" : isLeilao2 ? req.body.aspectRatio || "16:9" : isLeilao3 ? "9:16" : "9:16";
         const modelsToTry = [
           GEMINI_IMAGE_MODEL || "gemini-3.1-flash-image",
           GEMINI_IMAGE_FAST_MODEL || "gemini-3.1-flash-lite-image",
@@ -4488,7 +4523,7 @@ ${variationInstructionRule}
               config: {
                 systemInstruction: systemInstructionText,
                 imageConfig: {
-                  aspectRatio: chosenAspectRatio
+                  aspectRatio: chosenAspectRatio2
                 }
               }
             });

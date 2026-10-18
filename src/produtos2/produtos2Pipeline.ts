@@ -337,6 +337,7 @@ async function requestStoryboardImageGeneration(params: {
   aiProfile?: string;
   sceneCount?: number;
   aspectRatio?: string;
+  isLeilaoBlock?: number;
 }): Promise<{ imageUrl?: string; error?: string; usage?: any }> {
   const {
     prompt,
@@ -349,6 +350,7 @@ async function requestStoryboardImageGeneration(params: {
     aiProfile = 'openai',
     sceneCount,
     aspectRatio,
+    isLeilaoBlock,
   } = params;
 
   // Garante que a 1ª foto de CADA variação esteja presente nas referências enviadas
@@ -402,6 +404,7 @@ async function requestStoryboardImageGeneration(params: {
         aiProfile,
         sceneCount,
         aspectRatio,
+        isLeilaoBlock,
       }),
     });
     const imgData = await safeParseJsonResponse(imgRes);
@@ -435,6 +438,8 @@ async function requestStoryboardImageGeneration(params: {
         additionalInstructions,
         isCloneMode: false,
         aiProfile,
+        aspectRatio,
+        isLeilaoBlock,
       }),
     });
     const fallbackData = await safeParseJsonResponse(fallbackRes);
@@ -645,8 +650,8 @@ export async function runProdutos2LeilaoPipeline(params: {
     ...(form.variations || []).flatMap((v) => v.photos || []),
   ].filter(Boolean);
 
-  // GERAÇÃO BLOCO 1 (Salão de Leilão, 2 quadros 1x2, 1920x1080 paisagem 16:9)
-  onProgress?.(25, '3/5 Gerando Bloco 1 (Salão de Leilão - Quadros 1 e 2)...');
+  // GERAÇÃO BLOCO 1 (Salão de Leilão, 3 quadros 1x3, 16:9 horizontal em alta resolução)
+  onProgress?.(25, '3/5 Gerando Storyboard 1 (Salão de Leilão - Quadros 1, 2 e 3)...');
   const imgRes1 = await requestStoryboardImageGeneration({
     prompt: blockPrompts.bloco1ImagePrompt,
     productName: form.productName,
@@ -654,16 +659,17 @@ export async function runProdutos2LeilaoPipeline(params: {
     variations: form.variations,
     additionalInstructions: form.additionalInstructions,
     aiProfile,
-    sceneCount: 2,
+    sceneCount: 3,
     aspectRatio: '16:9',
+    isLeilaoBlock: 1,
   });
   if (imgRes1.error && !imgRes1.imageUrl) {
     throw new Error(`Falha ao gerar o Bloco 1 do Leilão: ${imgRes1.error}`);
   }
   const bloco1Img = imgRes1.imageUrl || '';
 
-  // GERAÇÃO BLOCO 2 (Estúdio Revelação, 3 quadros 1x3, 1920x1080 paisagem 16:9)
-  onProgress?.(55, '4/5 Gerando Bloco 2 (Revelação do Produto em Estúdio - Quadros 3, 4 e 5)...');
+  // GERAÇÃO BLOCO 2 (Estúdio Revelação, 3 quadros 1x3, 16:9 horizontal em alta resolução)
+  onProgress?.(55, '4/5 Gerando Storyboard 2 (Revelação do Produto em Estúdio - Quadros 4, 5 e 6)...');
   const imgRes2 = await requestStoryboardImageGeneration({
     prompt: blockPrompts.bloco2ImagePrompt,
     productName: form.productName,
@@ -673,14 +679,15 @@ export async function runProdutos2LeilaoPipeline(params: {
     aiProfile,
     sceneCount: 3,
     aspectRatio: '16:9',
+    isLeilaoBlock: 2,
   });
   if (imgRes2.error && !imgRes2.imageUrl) {
     throw new Error(`Falha ao gerar o Bloco 2 do Leilão: ${imgRes2.error}`);
   }
   const bloco2Img = imgRes2.imageUrl || '';
 
-  // GERAÇÃO BLOCO 3 (Leiloeiro Apontando no Telão, 1 quadro vertical, 1080x1920)
-  onProgress?.(80, '5/5 Gerando Bloco 3 (Leiloeiro no Telão - Quadro 6)...');
+  // GERAÇÃO BLOCO 3 (Leiloeiro Apontando no Telão, 1 imagem vertical 9:16, 1080x1920 sem número)
+  onProgress?.(80, '5/5 Gerando Imagem Final (Leiloeiro Apontando)...');
   const imgRes3 = await requestStoryboardImageGeneration({
     prompt: blockPrompts.bloco3ImagePrompt,
     productName: form.productName,
@@ -690,6 +697,7 @@ export async function runProdutos2LeilaoPipeline(params: {
     aiProfile,
     sceneCount: 1,
     aspectRatio: '9:16',
+    isLeilaoBlock: 3,
   });
   if (imgRes3.error && !imgRes3.imageUrl) {
     throw new Error(`Falha ao gerar o Bloco 3 do Leilão: ${imgRes3.error}`);
@@ -1552,7 +1560,7 @@ export async function regenerateProdutos2Storyboard(params: {
         : targetBlock === 2
         ? result.leilao.bloco2.storyboardImageUrl
         : result.leilao.bloco1.storyboardImageUrl;
-    const targetCount = targetBlock === 3 ? 1 : targetBlock === 2 ? 3 : 2;
+    const targetCount = targetBlock === 3 ? 1 : 3;
     const targetAspect = targetBlock === 3 ? '9:16' : '16:9';
 
     const allPhotos: string[] = [
@@ -1571,6 +1579,7 @@ export async function regenerateProdutos2Storyboard(params: {
       aiProfile,
       sceneCount: targetCount,
       aspectRatio: targetAspect,
+      isLeilaoBlock: targetBlock,
     });
 
     if (genRes.error && !genRes.imageUrl) {

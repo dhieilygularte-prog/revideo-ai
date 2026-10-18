@@ -68,11 +68,11 @@ export async function exportProdutos2Zip(result: Produtos2ResultState): Promise<
     zip.file('leilao_prompt_veo_2.txt', result.leilao.bloco2.veoPrompt || '');
     zip.file('leilao_prompt_veo_3.txt', result.leilao.bloco3.veoPrompt || '');
 
-    // 2. Imagens dos 3 blocos (Instrução 2 - Seção 6)
+    // 2. Imagens dos 3 blocos (Instrução 2 - Seção 6 / Correção 3-Quadros)
     if (result.leilao.bloco1.storyboardImageUrl) {
       try {
         const bytes1 = await urlToUint8Array(result.leilao.bloco1.storyboardImageUrl);
-        zip.file('leilao_bloco1_quadros_1-2.png', bytes1);
+        zip.file('leilao_storyboard_1.png', bytes1);
       } catch (err) {
         console.warn('Erro ao anexar imagem do Bloco 1 no zip:', err);
       }
@@ -80,7 +80,7 @@ export async function exportProdutos2Zip(result: Produtos2ResultState): Promise<
     if (result.leilao.bloco2.storyboardImageUrl) {
       try {
         const bytes2 = await urlToUint8Array(result.leilao.bloco2.storyboardImageUrl);
-        zip.file('leilao_bloco2_quadros_3-4-5.png', bytes2);
+        zip.file('leilao_storyboard_2.png', bytes2);
       } catch (err) {
         console.warn('Erro ao anexar imagem do Bloco 2 no zip:', err);
       }
@@ -88,7 +88,7 @@ export async function exportProdutos2Zip(result: Produtos2ResultState): Promise<
     if (result.leilao.bloco3.storyboardImageUrl) {
       try {
         const bytes3 = await urlToUint8Array(result.leilao.bloco3.storyboardImageUrl);
-        zip.file('leilao_bloco3_quadro_6.png', bytes3);
+        zip.file('leilao_cena_final.png', bytes3);
       } catch (err) {
         console.warn('Erro ao anexar imagem do Bloco 3 no zip:', err);
       }

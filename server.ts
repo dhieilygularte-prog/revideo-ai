@@ -1661,6 +1661,8 @@ app.post('/api/generate-scene-image', async (req, res) => {
           hasUserProvidedModel,
           isCloneMode,
           preserveLocation,
+          aspectRatio: req.body.aspectRatio,
+          size: req.body.size || (req.body.aspectRatio === '16:9' ? '1792x1024' : undefined),
         });
         return res.json(result);
       } catch (oiErr: any) {
@@ -1839,7 +1841,7 @@ DIRETIVA MESTRE 3: ZERO TATUAGENS. Pele 100% limpa, sem qualquer tatuagem em hom
           config: {
             systemInstruction: systemInstructionText,
             imageConfig: {
-              aspectRatio: '9:16',
+              aspectRatio: (req.body.aspectRatio || '9:16') as any,
             },
           },
         });
@@ -1901,6 +1903,8 @@ DIRETIVA MESTRE 3: ZERO TATUAGENS. Pele 100% limpa, sem qualquer tatuagem em hom
           hasUserProvidedModel,
           isCloneMode,
           preserveLocation,
+          aspectRatio: req.body.aspectRatio,
+          size: req.body.size || (req.body.aspectRatio === '16:9' ? '1792x1024' : undefined),
         });
         if (result.success && result.imageUrl) {
           return res.json(result);
@@ -2777,12 +2781,36 @@ Responda EXCLUSIVAMENTE em formato JSON com esta estrutura:
         const cena2 = cleanSpeech(parsed.cena2 || `Leilão cancelado! Esse é o ${fullName}. Alta performance e velocidade. Construção reforçada de longa durabilidade.`);
         const cena3 = cleanSpeech(parsed.cena3 || `Por esse valor, não tem como fazer leilão! Clica no carrinho laranja e garante o seu!`);
 
+        const cleanShortClean = shortName.replace(/[®™©℠]/g, '').trim();
+        const fallback1A = `Quem dá ${l1Text} reais nesse ${cleanShortClean}?`;
+        const fallback1B = `Quem dá ${l2Text}? Dou-lhe uma!`;
+        const fallback1C = `Peraí... Olha o valor desse ${cleanShortClean} no TikTok Shop. Tá de graça!`;
+
+        let c1A = fallback1A;
+        let c1B = fallback1B;
+        let c1C = fallback1C;
+
+        if (cena1.includes('Peraí')) {
+          const parts = cena1.split('Peraí');
+          const firstPart = parts[0]?.trim() || '';
+          c1C = `Peraí${parts[1] || ''}`.trim();
+          if (firstPart.includes('?')) {
+            const sub = firstPart.split('?');
+            c1A = `${sub[0]}?`.trim();
+            c1B = sub.slice(1).join('?').trim() || fallback1B;
+          } else {
+            c1A = firstPart;
+            c1B = fallback1B;
+          }
+        }
+
         return res.json({
           success: true,
           leilaoSpeech: {
             cena1,
-            cena1A: cena1.split('Peraí')[0]?.trim() || cena1,
-            cena1B: cena1.includes('Peraí') ? `Peraí${cena1.split('Peraí')[1]}`.trim() : '',
+            cena1A: c1A,
+            cena1B: c1B,
+            cena1C: c1C,
             cena2,
             cena2A: `Leilão cancelado! Esse é o ${fullName}.`,
             cena2B: cena2.replace(`Leilão cancelado! Esse é o ${fullName}.`, '').trim(),
@@ -3420,22 +3448,30 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
     }
 
     const reqSceneCount = Number(req.body.sceneCount);
-    const isLeilao1 = reqSceneCount === 2;
-    const isLeilao2 = reqSceneCount === 3;
-    const isLeilao3 = reqSceneCount === 1;
+    const isLeilaoBlockNum = Number(req.body.isLeilaoBlock) || 0;
+    const isLeilao1 = isLeilaoBlockNum === 1 || (isLeilaoBlockNum === 0 && /BLOCO 1|QUADRO 1.*QUADRO 2.*QUADRO 3|CENA 1.*leiloeiro/i.test(String(prompt)));
+    const isLeilao2 = isLeilaoBlockNum === 2 || (isLeilaoBlockNum === 0 && /BLOCO 2|QUADRO 4.*QUADRO 5.*QUADRO 6|pano de veludo/i.test(String(prompt)));
+    const isLeilao3 = isLeilaoBlockNum === 3 || (isLeilaoBlockNum === 0 && /BLOCO 3|GERAÇÃO 3/i.test(String(prompt)));
+    const isLeilaoBlock = isLeilao1 || isLeilao2 || isLeilao3;
+
     const isSixFrames =
       reqSceneCount === 6 ||
       /GRADE\s+2x3|EXATAMENTE\s+6\s+(?:QUADROS|CENAS)/i.test(String(prompt));
-    const frameCount = isLeilao1 ? 2 : isLeilao2 ? 3 : isLeilao3 ? 1 : isSixFrames ? 6 : 9;
+    const frameCount = isLeilao1 ? 3 : isLeilao2 ? 3 : isLeilao3 ? 1 : isSixFrames ? 6 : 9;
     const gridLabel = isLeilao1
-      ? '2 quadros fotográficos lado a lado (1 linha x 2 colunas)'
+      ? '3 quadros fotográficos verticais 9:16 lado a lado em uma única imagem horizontal 16:9 (grade 1 linha x 3 colunas), com números discretos 1, 2 e 3 em círculos brancos no canto superior direito'
       : isLeilao2
-      ? '3 quadros fotográficos lado a lado (1 linha x 3 colunas)'
+      ? '3 quadros fotográficos verticais 9:16 lado a lado em uma única imagem horizontal 16:9 (grade 1 linha x 3 colunas), com números discretos 4, 5 e 6 em círculos brancos no canto superior direito'
       : isLeilao3
-      ? '1 quadro fotográfico vertical único'
+      ? '1 quadro fotográfico vertical único 9:16 (sem número)'
       : isSixFrames
       ? '2x3 (2 colunas x 3 linhas)'
       : '3x3 (3 colunas x 3 linhas)';
+
+    const chosenAspectRatio: '16:9' | '9:16' = (isLeilao1 || isLeilao2 || req.body.aspectRatio === '16:9')
+      ? '16:9'
+      : '9:16';
+    const chosenSize: '1792x1024' | '1024x1792' = chosenAspectRatio === '16:9' ? '1792x1024' : '1024x1792';
 
     const photosList: string[] = Array.isArray(productPhotosBase64)
       ? productPhotosBase64.filter(Boolean)
@@ -3490,6 +3526,8 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
             additionalInstructions: [additionalInstructions, correctionPrompt].filter(Boolean).join(' | '),
             hasUserProvidedModel: false,
             isCloneMode: false,
+            aspectRatio: chosenAspectRatio,
+            size: chosenSize,
           });
           if (result.success && result.imageUrl) {
             const imgUsage = {

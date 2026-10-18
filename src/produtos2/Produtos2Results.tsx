@@ -1043,8 +1043,8 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
         <LeilaoBlockSection
           blockNumber={1}
           title="Bloco 1 (0–12s) — Salão de Leilão"
-          subtitle="Storyboard paisagem 16:9 (1920 × 1080 px) contendo 2 quadros verticais 1080×1920 · Salão aberto & Leiloeiro chocado"
-          downloadFileName="leilao_bloco1_quadros_1-2"
+          subtitle="Storyboard horizontal 16:9 em alta resolução contendo 3 quadros verticais (1, 2 e 3) · Salão aberto & Leiloeiro chocado"
+          downloadFileName="leilao_storyboard_1"
           storyboardImageUrl={leilao.bloco1?.storyboardImageUrl}
           isRegeneratingStoryboard={Boolean(result.isRegeneratingStoryboard)}
           veoPrompt={leilao.bloco1?.veoPrompt || ''}
@@ -1126,13 +1126,13 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
         />
 
         {/* ================================================================= */}
-        {/* BLOCO 2: ESTÚDIO & REVELAÇÃO (12–24s | 3 Quadros 1920x1080)        */}
+        {/* BLOCO 2: ESTÚDIO & REVELAÇÃO (12–24s | 3 Quadros 16:9)            */}
         {/* ================================================================= */}
         <LeilaoBlockSection
           blockNumber={2}
           title="Bloco 2 (12–24s) — Estúdio & Revelação do Produto"
-          subtitle="Storyboard paisagem 16:9 (1920 × 1080 px) contendo 3 quadros verticais 1080×1920 · Pano preto & Revelação & Close"
-          downloadFileName="leilao_bloco2_quadros_3-4-5"
+          subtitle="Storyboard horizontal 16:9 em alta resolução contendo 3 quadros verticais (4, 5 e 6) · Pano preto & Revelação & Close"
+          downloadFileName="leilao_storyboard_2"
           storyboardImageUrl={leilao.bloco2?.storyboardImageUrl}
           isRegeneratingStoryboard={Boolean(result.isRegeneratingStoryboard)}
           veoPrompt={leilao.bloco2?.veoPrompt || ''}
@@ -1218,8 +1218,8 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
         <LeilaoBlockSection
           blockNumber={3}
           title="Bloco 3 (24–30s) — Chamada no Carrinho Laranja"
-          subtitle="Imagem única vertical 9:16 (1080 × 1920 px) · Leiloeiro apontando com produto no telão"
-          downloadFileName="leilao_bloco3_quadro_6"
+          subtitle="Imagem única vertical 9:16 (1080 × 1920 px, sem número) · Leiloeiro apontando com produto no telão"
+          downloadFileName="leilao_cena_final"
           storyboardImageUrl={leilao.bloco3?.storyboardImageUrl}
           isRegeneratingStoryboard={Boolean(result.isRegeneratingStoryboard)}
           veoPrompt={leilao.bloco3?.veoPrompt || ''}

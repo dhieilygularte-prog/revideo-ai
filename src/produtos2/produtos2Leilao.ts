@@ -18,6 +18,7 @@ export interface LeilaoSpeechParts {
   cena1: string;
   cena1A: string;
   cena1B: string;
+  cena1C?: string;
   cena2: string;
   cena2A: string;
   cena2B: string;
@@ -621,10 +622,11 @@ export function buildLeilaoSpeeches(params: {
   const l1Words = bids.l1Text || 'quatro mil';
   const l2Words = bids.l2Text || 'três mil';
 
-  // CENA 1: fiel ao modelo original
-  const cena1A = `Quem dá ${l1Words} reais nesse ${cleanShortName}? Quem dá ${l2Words}? Dou-lhe uma!`;
-  const cena1B = `Peraí... Olha o valor desse ${cleanShortName} no TikTok Shop. Tá de graça!`;
-  const cena1 = `${cena1A} ${cena1B}`.trim();
+  // CENA 1: fiel ao modelo original (dividida em 3 partes: 1A, 1B e 1C conforme Seção 3 da nova instrução)
+  const cena1A = `Quem dá ${l1Words} reais nesse ${cleanShortName}?`;
+  const cena1B = `Quem dá ${l2Words}? Dou-lhe uma!`;
+  const cena1C = `Peraí... Olha o valor desse ${cleanShortName} no TikTok Shop. Tá de graça!`;
+  const cena1 = `${cena1A} ${cena1B} ${cena1C}`.trim();
 
   // CENA 2: fiel ao modelo original
   // "Leilão cancelado! Esse é o [NOME COMPLETO]. [BENEFÍCIO 1]. [BENEFÍCIO 2]."
@@ -665,6 +667,7 @@ export function buildLeilaoSpeeches(params: {
     cena1,
     cena1A,
     cena1B,
+    cena1C,
     cena2,
     cena2A,
     cena2B,
@@ -761,70 +764,74 @@ export function buildLeilaoBlockPrompts(params: {
       : 'Produto pequeno/médio: enquadramento do peito para cima, mostrando o produto sobre o púlpito.';
 
   // =========================================================================
-  // BLOCO 1: STORYBOARD EM FORMATO PAISAGEM 16:9 (1920 x 1080 px)
-  // Contendo 2 quadros verticais 9:16 (1080 x 1920 px cada) lado a lado
-  // Imagem 1: Salão aberto com plateia e martelo erguido
-  // Imagem 2: Close do leiloeiro chocado olhando o celular
+  // STORYBOARD 1 (GERAÇÃO 1): UMA IMAGEM HORIZONTAL 16:9 (ALTA RESOLUÇÃO)
+  // Contendo 3 quadros verticais 9:16 lado a lado, numerados 1, 2 e 3
+  // Quadro 1: Salão de leilão aberto, câmera atrás da plateia, martelo erguido
+  // Quadro 2: NOVO, plano intermediário mais perto do palco, dos joelhos para cima
+  // Quadro 3: Close do leiloeiro chocado olhando o celular, produto no telão ao fundo
   // =========================================================================
-  const img1Desc = `Interior de uma casa de leilões luxuosa e clássica, estilo teatro europeu: lustres de cristal dourados, camarotes em dois andares com colunas e detalhes dourados, luz quente e elegante. Ao fundo, no centro, sobre um palco de piso de madeira clara, um leiloeiro de pé atrás de um púlpito de madeira escura, com o braço direito erguido segurando um martelo de leilão. O leiloeiro é ${presenterDesc}, de terno azul royal e camisa escura. Em primeiro plano, de costas para a câmera, uma plateia elegante de terno escuro sentada em cadeiras, várias pessoas levantando plaquinhas de lance brancas e lisas. Câmera na altura da plateia, atrás das pessoas, profundidade de campo, aparência de foto real de evento. Nenhum texto, número ou logotipo na imagem.`;
+  const bloco1ImagePrompt = `Com base nas fotos de referência do produto, crie UMA imagem horizontal 16:9 na maior resolução possível (ideal 3840 x 2160 pixels), em formato de storyboard, com 3 quadros verticais na proporção 9:16 lado a lado, da esquerda para a direita, separados por uma faixa branca fina. No canto superior direito de cada quadro, um círculo branco com o número em preto: 1, 2 e 3. Esses números são o ÚNICO texto da imagem. O mesmo apresentador, idêntico nos 3 quadros: ${presenterDesc}.
 
-  const img2Desc = `O mesmo leiloeiro da Imagem 1 (${presenterDesc}, terno azul royal, camisa escura), em plano médio da cintura para cima, atrás de um púlpito de madeira escura envernizada. Com a mão direita ele segura um martelo de leilão de madeira com anel dourado, apoiado na base sobre o púlpito. Com a mão esquerda ele segura um smartphone preto e olha para a tela com expressão de choque total: olhos arregalados, sobrancelhas levantadas, boca entreaberta. Relógio prateado no pulso. Fundo desfocado: salão de leilão moderno com plateia sentada levantando plaquinhas redondas brancas e lisas, e um telão ao fundo com luz azul suave. Luz quente de evento, bokeh, aparência de foto real. Nenhum texto, número, letreiro ou logotipo em lugar nenhum da imagem.`;
+QUADRO 1: interior de uma casa de leilões luxuosa e clássica, estilo teatro europeu: lustres de cristal dourados, camarotes em dois andares com colunas douradas, luz quente. Câmera atrás da plateia, na altura das pessoas. Ao fundo, no palco de piso de madeira clara, o leiloeiro de pé atrás de um púlpito de madeira escura, com o braço direito erguido segurando um martelo de leilão. Em primeiro plano, de costas, a plateia elegante de terno escuro, várias pessoas levantando plaquinhas de lance brancas e lisas.
 
-  const bloco1ImagePrompt = `MODO LEILÃO - BLOCO 1 (CENA 1). Storyboard fotorrealista em formato paisagem 16:9 (1920 x 1080 pixels) composto por EXATAMENTE 2 QUADROS verticais em proporção 9:16 (1080 x 1920 pixels cada) dispostos lado a lado na horizontal (grade 1 linha x 2 colunas). Cada quadro traz no canto superior direito um número de identificação discreto ("1" e "2"). O mesmo apresentador (${presenterDesc}) aparece com rigorosa continuidade física em ambos os quadros:
-- QUADRO 1 (Salão aberto de leilão): ${img1Desc}
-- QUADRO 2 (Close do leiloeiro chocado com o celular): ${img2Desc}
-REGRAS OBRIGATÓRIAS: Formato total da imagem: paisagem 16:9 (1920x1080 pixels), contendo internamente os 2 quadros verticais 9:16 lado a lado. Aparência de foto real de alta definição. Nenhum texto, número, letreiro ou logotipo em lugar nenhum da imagem, exceto os números 1 e 2 nos cantos superiores de cada quadro.`;
+QUADRO 2: o mesmo salão e o mesmo momento, com a câmera mais perto do palco. O leiloeiro de pé, de frente para a câmera, no centro, atrás do púlpito alto de madeira escura, com as duas mãos apoiadas e o martelo em cima do púlpito. Ele aparece dos joelhos para cima, com postura confiante. Em primeiro plano, desfocadas, mãos da plateia levantando plaquinhas brancas e lisas.
 
-  // =========================================================================
-  // BLOCO 2: STORYBOARD EM FORMATO PAISAGEM 16:9 (1920 x 1080 px)
-  // Contendo 3 quadros verticais 9:16 (1080 x 1920 px cada) lado a lado
-  // Imagem 3: Estúdio cinza, produto coberto com pano de veludo preto
-  // Imagem 4: Produto revelado no estúdio (frente principal para a câmera)
-  // Imagem 5: Close do produto em fundo totalmente preto com interação da mão
-  // =========================================================================
-  const img3Desc = `Estúdio fotográfico com fundo de cortinas cinza-claro, várias luzes spot penduradas no teto, refletores em tripés nas laterais e piso cinza-claro liso. À esquerda, ${pulpitDesc}, coberto por um pano de veludo preto que esconde completamente o ${productName} em cima dele (dá para perceber o volume e o formato do produto por baixo do pano, sem mostrar nenhuma parte dele). À direita, o mesmo apresentador das imagens anteriores (${presenterDesc}), de corpo inteiro, de terno azul royal de três peças com colete, camisa branca, gravata cinza e sapato marrom. Com uma mão ele segura a ponta do pano preto e com a outra aponta para o produto coberto, sorrindo com ar de suspense, prestes a revelar o que está embaixo. Iluminação de estúdio limpa, aparência de foto real. Nenhum texto ou logotipo.`;
+QUADRO 3: close do mesmo leiloeiro, da cintura para cima, atrás do púlpito de madeira escura envernizada. Com a mão direita ele segura o martelo de leilão (madeira com anel dourado) apoiado na base. Com a mão esquerda ele segura um smartphone preto e olha a tela em choque total: olhos arregalados, sobrancelhas levantadas, boca entreaberta. Fundo desfocado: plateia levantando plaquinhas redondas brancas e lisas, e um telão mostrando apenas a foto do produto das fotos de referência, de frente.
 
-  const img4Desc = `Com base nas fotos de referência do produto, o mesmo estúdio cinza da Imagem 3, com luzes spot no teto. O mesmo apresentador (${presenterDesc}, terno azul royal, camisa branca, gravata cinza) atrás de ${pulpitDesc}, sorrindo largo, com as duas mãos abertas, uma de cada lado do produto, num gesto de apresentação ("tcharam!"). Sobre o púlpito está o ${productName} das fotos de referência, com a frente principal virada de frente para a câmera, exatamente idêntico ao produto real das fotos: mesma cor, formato, proporção, logotipo do fabricante e acabamento. O pano preto não aparece mais. ${framingDescImg4} Iluminação de estúdio de produto, aparência de foto real. Nenhum texto extra.`;
-
-  const img5Desc = `Com base nas fotos de referência do produto, close-up em ângulo diagonal de 3/4 do ${productName} sobre uma superfície preta fosca, com fundo totalmente preto. Uma mão ${handDesc}, com a manga do terno escuro aparecendo, interage com o principal detalhe do produto. O produto tem que ser exatamente idêntico ao produto real das fotos (cor, acabamento, detalhes). Iluminação suave de estúdio de produto, com reflexos sutis. Aparência de comercial de produto de luxo. Nenhum texto.`;
-
-  const bloco2ImagePrompt = `MODO LEILÃO - BLOCO 2 (CENA 2). Storyboard fotorrealista em formato paisagem 16:9 (1920 x 1080 pixels) composto por EXATAMENTE 3 QUADROS verticais em proporção 9:16 (1080 x 1920 pixels cada) dispostos lado a lado na horizontal (grade 1 linha x 3 colunas). Cada quadro traz no canto superior direito um número de identificação discreto ("3", "4" e "5"). As fotos reais de referência do produto determinam com 100% de fidelidade a cor, formato, proporção e logomarca nos quadros 4 e 5. O mesmo apresentador (${presenterDesc}) aparece nos quadros 3 e 4:
-- QUADRO 3 (Estúdio com produto coberto pelo pano preto): ${img3Desc}
-- QUADRO 4 (Produto revelado de frente para a câmera): ${img4Desc}
-- QUADRO 5 (Close do produto em fundo preto): ${img5Desc}
-REGRAS OBRIGATÓRIAS: Formato total da imagem: paisagem 16:9 (1920x1080 pixels), contendo internamente os 3 quadros verticais 9:16 lado a lado. Aparência de foto real de alta definição. O produto nos quadros 4 e 5 deve ser 100% fidedigno às fotos de referência anexadas. Nenhum texto, número ou letreiro, exceto os números identificadores 3, 4 e 5 nos cantos superiores.`;
+Fotorrealista, aparência de foto real em todos os quadros, luz quente de evento. Nenhum texto, número, letreiro ou logotipo além dos números dos quadros: nada escrito no telão, no púlpito ou nas plaquinhas.`;
 
   // =========================================================================
-  // BLOCO 3: IMAGEM ÚNICA (1080 x 1920 px)
-  // Imagem 6: Leiloeiro apontando para a câmera, produto no telão ao fundo
+  // STORYBOARD 2 (GERAÇÃO 2): UMA IMAGEM HORIZONTAL 16:9 (ALTA RESOLUÇÃO)
+  // Contendo 3 quadros verticais 9:16 lado a lado, numerados 4, 5 e 6
+  // Quadro 4: Estúdio cinza, produto coberto pelo pano preto
+  // Quadro 5: Produto revelado de frente, apresentador de mãos abertas (tcharam!), produto grande
+  // Quadro 6: Close do produto em fundo preto, ocupando quase o quadro inteiro, mão interagindo
   // =========================================================================
-  const bloco3ImagePrompt = `MODO LEILÃO - BLOCO 3 (GERAÇÃO 3). Com base nas fotos de referência do produto, imagem fotorrealista vertical, exatamente 1080 x 1920 pixels. O mesmo apresentador das imagens anteriores (${presenterDesc}), de terno azul royal com lenço no bolso, camisa branca, gravata cinza estampada e um microfone headset discreto na bochecha. Ele está atrás de um púlpito de madeira escura liso, sem placa e sem nada escrito. À esquerda, sobre o púlpito, um martelo de leilão de madeira com anel dourado. Ele está inclinado para frente, apontando o dedo indicador direto para a câmera, sorrindo empolgado, de boca aberta como quem fala com entusiasmo. Fundo: salão de leilão clássico com colunas e plateia sentada. Atrás dele, um telão grande mostra apenas a foto do ${productName} das fotos de referência, de frente, exatamente idêntico ao produto real. Plano médio, luz quente, aparência de foto real. IMPORTANTE: nenhum texto, número, letreiro ou logotipo em lugar nenhum da imagem, nem no telão, nem no púlpito. Nenhum outro produto além desse.`;
+  const bloco2ImagePrompt = `Com base nas fotos de referência do produto, crie UMA imagem horizontal 16:9 na maior resolução possível (ideal 3840 x 2160 pixels), em formato de storyboard, com 3 quadros verticais na proporção 9:16 lado a lado, da esquerda para a direita, separados por uma faixa branca fina. No canto superior direito de cada quadro, um círculo branco com o número em preto: 4, 5 e 6. Esses números são o ÚNICO texto da imagem. O mesmo apresentador dos quadros anteriores, idêntico: ${presenterDesc}. O produto tem que ser EXATAMENTE idêntico às fotos de referência (cor, formato, proporção, logotipo, acabamento e detalhes), nítido e bem visível.
+
+QUADRO 4: estúdio fotográfico com fundo de cortinas cinza-claro, várias luzes spot penduradas no teto, refletores em tripés nas laterais e piso cinza-claro liso. À esquerda, ${pulpitDesc}, coberto por um pano de veludo preto que esconde completamente o ${productName} em cima dele (dá para perceber o volume e o formato do produto por baixo do pano, sem mostrar nenhuma parte dele). À direita, o mesmo apresentador (${presenterDesc}), de corpo inteiro, de terno azul royal de três peças com colete, camisa branca, gravata cinza e sapato marrom. Com uma mão ele segura a ponta do pano preto e com a outra aponta para o produto coberto, sorrindo com ar de suspense, prestes a revelar o que está embaixo. Iluminação de estúdio limpa, aparência de foto real.
+
+QUADRO 5: o mesmo estúdio cinza com luzes spot. O mesmo apresentador (${presenterDesc}) atrás de ${pulpitDesc}, sorrindo largo, com as duas mãos abertas, uma de cada lado do produto, num gesto de apresentação ("tcharam!"). Sobre o púlpito está o ${productName} das fotos de referência, com a frente principal virada de frente para a câmera, ocupando uma área grande do quadro, nítido e bem visível, exatamente idêntico ao produto real das fotos: mesma cor, formato, proporção, logotipo do fabricante e acabamento. O pano preto não aparece mais. ${framingDescImg4}.
+
+QUADRO 6: close-up em ângulo diagonal de 3/4 do ${productName} sobre uma superfície preta fosca, com fundo totalmente preto. O produto ocupa quase o quadro inteiro, nítido e bem visível. Uma mão ${handDesc}, com a manga do terno escuro aparecendo, interage com o principal detalhe do produto. O produto tem que ser exatamente idêntico ao produto real das fotos (cor, acabamento, detalhes).
+
+Fotorrealista, aparência de foto real em todos os quadros. Nenhum texto, letreiro ou logotipo além dos números dos quadros e do logotipo que já faz parte do próprio produto.`;
 
   // =========================================================================
-  // PROMPTS DO VEO 3 (SEÇÃO 8 DA INSTRUÇÃO 1)
+  // GERAÇÃO 3: IMAGEM ÚNICA VERTICAL 9:16 (1080 x 1920 px) SEM NÚMERO
+  // Leiloeiro apontando para a câmera, produto no telão ao fundo
+  // =========================================================================
+  const bloco3ImagePrompt = `Com base nas fotos de referência do produto, crie UMA imagem vertical de 1080 x 1920 pixels (proporção 9:16), em plano médio. O mesmo apresentador das imagens anteriores (${presenterDesc}), de terno azul royal com lenço no bolso, camisa branca, gravata cinza estampada e um microfone headset discreto na bochecha. Ele está atrás de um púlpito de madeira escura liso, sem placa e sem nada escrito. À esquerda, sobre o púlpito, um martelo de leilão de madeira com anel dourado. Ele está inclinado para frente, apontando o dedo indicador direto para a câmera, sorrindo empolgado, de boca aberta como quem fala com entusiasmo. Fundo: salão de leilão clássico com colunas e plateia sentada. Atrás dele, um telão grande mostra apenas a foto do ${productName} das fotos de referência, de frente, exatamente idêntico ao produto real. Fotorrealista, aparência de foto real, luz quente de evento. IMPORTANTE: nenhum número, texto, letreiro ou logotipo em lugar nenhum da imagem (NÃO coloque números de quadros nem nada escrito no telão ou púlpito).`;
+
+  // =========================================================================
+  // PROMPTS DO VEO 3 (SUBSTITUI OS ANTIGOS CONFORME NOVO DOCUMENTO)
   // =========================================================================
   const fala1A = speeches.cena1A || speeches.cena1;
   const fala1B = speeches.cena1B || speeches.cena1;
+  const fala1C = speeches.cena1C || speeches.cena1;
   const fala2A = speeches.cena2A || speeches.cena2;
   const fala2B = speeches.cena2B || speeches.cena2;
   const fala3 = speeches.cena3;
 
-  const veoPrompt1 = `Vídeo vertical 9:16, fotorrealista, 10 segundos, com um corte no meio. Use as imagens de referência como referência exata de cenário, personagem e enquadramento.
+  const veoPrompt1 = `Vídeo vertical 9:16, fotorrealista, 10 segundos. A imagem anexada é um storyboard com 3 quadros numerados (1, 2 e 3). O vídeo é vertical: cada quadro vira uma tomada em tela cheia, e os números e as faixas brancas do storyboard NÃO aparecem no vídeo. Siga a ordem dos quadros, mantendo cenário, personagem e enquadramento idênticos a cada quadro.
 
-TOMADA 1 (0 a 5 segundos) – Imagem 1: salão de leilão clássico e luxuoso, câmera atrás da plateia. O leiloeiro (${presenterDesc}) está atrás do púlpito no palco, ergue o martelo de leilão e fala alto, rápido e eufórico, no ritmo típico de leiloeiro, enquanto várias pessoas da plateia levantam as plaquinhas de lance. Leve movimento de câmera avançando para frente.
-Fala (português brasileiro, voz ${presenterVoice} grave e empolgada): "${fala1A}"
+TOMADA 1 (0 a 3 segundos) – QUADRO 1: plano aberto do salão de leilão, câmera atrás da plateia. O leiloeiro (${presenterDesc}) está no palco, ergue o martelo e fala alto e rápido, no ritmo de leiloeiro, enquanto a plateia levanta as plaquinhas. Leve avanço de câmera.
+Fala (português brasileiro, voz ${presenterVoice} grave e eufórica): "${fala1A}"
 
-TOMADA 2 (5 a 10 segundos) – corte seco para a Imagem 2: close do mesmo leiloeiro atrás do púlpito, segurando o martelo com uma mão e o celular com a outra. Ele trava o martelo no ar, olha o celular, arregala os olhos em choque, aproxima o celular do rosto e fala surpreso, rápido e indignado.
-Fala (português brasileiro, mesma voz): "${fala1B}"
+TOMADA 2 (3 a 5,5 segundos) – corte seco para o QUADRO 2: a câmera mais perto, o leiloeiro de frente, atrás do púlpito. Ele aponta para a plateia, pega o martelo e o ergue para bater, falando ainda mais rápido e animado. Mãos com plaquinhas em primeiro plano.
+Fala (mesma voz): "${fala1B}"
+
+TOMADA 3 (5,5 a 10 segundos) – corte seco para o QUADRO 3: close do leiloeiro com o martelo numa mão e o celular na outra. Ele trava o martelo no ar, olha o celular, arregala os olhos em choque, aproxima o celular do rosto e fala surpreso e indignado. O telão ao fundo mostra o produto, sem mudar.
+Fala (mesma voz): "${fala1C}"
 
 Áudio: burburinho da plateia e som ambiente de salão de leilão. Sem música, sem legendas, sem nenhum texto na tela.`;
 
-  const veoPrompt2 = `Vídeo vertical 9:16, fotorrealista, 10 segundos, com um corte no meio. Use as imagens de referência como referência exata de cenário, personagem e produto. O produto deve permanecer exatamente idêntico ao das imagens de referência, sem deformações.
+  const veoPrompt2 = `Vídeo vertical 9:16, fotorrealista, 10 segundos. A imagem anexada é um storyboard com 3 quadros numerados (4, 5 e 6). O vídeo é vertical: cada quadro vira uma tomada em tela cheia, e os números e as faixas brancas do storyboard NÃO aparecem no vídeo. O produto deve permanecer exatamente idêntico ao dos quadros, sem deformações.
 
-TOMADA 1 (0 a 5 segundos) – começa na Imagem 3: estúdio cinza com luzes spot. O apresentador (${presenterDesc}) puxa o pano de veludo preto de uma vez. No instante em que o pano sai, o produto aparece EXATAMENTE como na Imagem 4: na mesma posição, com a frente principal virada para a câmera desde o primeiro quadro. O produto NUNCA aparece de costas, de lado ou girando, e não se move sozinho. A câmera avança até o enquadramento da Imagem 4: o apresentador atrás do púlpito, sorrindo largo, com as duas mãos abertas ao lado do produto, apresentando com empolgação.
-Fala (português brasileiro, voz ${presenterVoice} grave, eufórica e rápida): "${fala2A}"
+TOMADA 1 (0 a 5 segundos) – começa no QUADRO 4: estúdio cinza com luzes spot. O apresentador (${presenterDesc}) puxa o pano de veludo preto de uma vez. No instante em que o pano sai, o produto aparece EXATAMENTE como no QUADRO 5: na mesma posição, com a frente principal virada para a câmera desde o primeiro quadro. O produto NUNCA aparece de costas, de lado ou girando, e não se move sozinho. A câmera avança até o enquadramento do QUADRO 5: o apresentador sorrindo largo, com as duas mãos abertas ao lado do produto.
+Fala (português brasileiro, voz ${presenterVoice} eufórica e rápida): "${fala2A}"
 
-TOMADA 2 (5 a 10 segundos) – corte seco para a Imagem 5: close do produto sobre superfície preta, com fundo preto. A mão interage com o principal detalhe do produto, igual à Imagem 5. Movimento de câmera lento e suave em volta do produto, estilo comercial de produto.
+TOMADA 2 (5 a 10 segundos) – corte seco para o QUADRO 6: close do produto sobre superfície preta, com fundo preto. A mão interage com o principal detalhe do produto, igual ao QUADRO 6. Movimento de câmera lento e suave em volta do produto, estilo comercial.
 Fala (mesma voz, em off, empolgada e clara): "${fala2B}"
 
 Áudio: som do pano sendo puxado na primeira tomada. Sem música, sem legendas, sem nenhum texto na tela.`;

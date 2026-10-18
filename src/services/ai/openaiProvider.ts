@@ -515,6 +515,8 @@ Retorne estritamente um JSON estruturado:
       additionalInstructions = '',
       hasUserProvidedModel = false,
       isCloneMode = false,
+      aspectRatio,
+      size,
     } = params;
 
     const client = this.getClient();
@@ -622,6 +624,10 @@ Mantenha o mesmo modelo/corte e caimento da peça atual; troque somente cores (p
         baseImageFile = imageFiles[0];
       }
 
+      // Calcula o tamanho da imagem conforme proporção solicitada (16:9 horizontal => 1792x1024, 9:16 vertical => 1024x1792)
+      const isLandscape = aspectRatio === '16:9' || size === '1792x1024' || /16:9|horizontal|paisagem/i.test(effectivePrompt);
+      const chosenImageSize = (size || (isLandscape ? '1792x1024' : OPENAI_IMAGE_SIZE)) as any;
+
       // Se temos arquivo de imagem de base válido para edição, usamos client.images.edit
       if (baseImageFile) {
         const editImageInput: any = referenceFrameBase64
@@ -632,7 +638,7 @@ Mantenha o mesmo modelo/corte e caimento da peça atual; troque somente cores (p
           image: editImageInput,
           prompt: effectivePrompt,
           quality: OPENAI_IMAGE_QUALITY,
-          size: OPENAI_IMAGE_SIZE,
+          size: chosenImageSize,
         });
 
         const b64 = editResponse.data?.[0]?.b64_json;
@@ -643,7 +649,7 @@ Mantenha o mesmo modelo/corte e caimento da peça atual; troque somente cores (p
             model: OPENAI_IMAGE_MODEL,
             costUSD: imgCost.costUSD,
             costBRL: imgCost.costBRL,
-            details: `GeraÃ§Ã£o com ${imageFiles.length} foto(s) de referÃªncia real em qualidade ${OPENAI_IMAGE_QUALITY}`,
+            details: `Geração com ${imageFiles.length} foto(s) de referência real em qualidade ${OPENAI_IMAGE_QUALITY} (${chosenImageSize})`,
           });
 
           return {
@@ -662,12 +668,12 @@ Mantenha o mesmo modelo/corte e caimento da peça atual; troque somente cores (p
         }
       }
 
-      // Caso nÃ£o haja arquivos de referÃªncia vÃ¡lidos, geraÃ§Ã£o direta
+      // Caso não haja arquivos de referência válidos, geração direta
       const genResponse = await client.images.generate({
         model: OPENAI_IMAGE_MODEL,
         prompt: cleanPrompt,
         quality: OPENAI_IMAGE_QUALITY,
-        size: OPENAI_IMAGE_SIZE,
+        size: chosenImageSize,
       });
 
       const b64 = genResponse.data?.[0]?.b64_json;

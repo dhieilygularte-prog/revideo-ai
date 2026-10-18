@@ -38,7 +38,6 @@ import {
 } from './produtos2Leilao';
 import { AIProfile } from '../config/aiProfiles';
 import { TokenUsageStats } from '../types';
-import { useLoadingGif } from '../utils/loadingGifQueue';
 import { ProgressBar } from '../components/ProgressBar';
 
 interface Produtos2FormProps {
@@ -131,7 +130,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
   const debounceTimerRef = useRef<number | null>(null);
   const instructionsTextareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const speechesLoadingGif = useLoadingGif(isGeneratingSpeeches);
+
 
   const currentSceneMode: Produtos2SceneMode = form.sceneMode || '1_cena_10s';
   const is10sSingle = currentSceneMode === '1_cena_10s';
@@ -1142,6 +1141,210 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
       {/* SEÇÃO 2 — PAINEL DE CAMPOS (Fundo azul para campos autopreenchidos)   */}
       {/* ===================================================================== */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+        {/* Seletor de Modo de cena (Posicionado antes de 1. Informações do produto) */}
+        <div className={`md:col-span-12 p-4 rounded-2xl space-y-2 transition-all duration-300 flex flex-col justify-between ${activeAutoCardClass}`}>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <label className="text-xs font-bold text-white block">Modo de cena</label>
+              <p className="text-[11px] text-zinc-300 mt-0.5 leading-snug">
+                Escolha o formato e a duração do vídeo a ser gerado
+              </p>
+            </div>
+            <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2.5 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3 text-sky-300" />
+              {currentSceneMode === 'modo_leilao'
+                ? 'Modo Leilão ✓'
+                : currentSceneMode === '1_cena_15s'
+                ? 'Uma cena — 15 segundos ✓'
+                : currentSceneMode === '2_cenas_10s'
+                ? 'Duas cenas — 10 segundos cada ✓'
+                : 'Uma cena — 10 segundos ✓'}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 bg-slate-950/90 p-1.5 rounded-xl border border-zinc-700/60">
+            <button
+              type="button"
+              disabled={isViewOnly}
+              onClick={() => {
+                if (isViewOnly) return;
+                onChange((prev) => ({
+                  ...prev,
+                  sceneMode: '1_cena_10s',
+                  duration: 10,
+                }));
+              }}
+              className={`py-2.5 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                currentSceneMode === '1_cena_10s'
+                  ? accentBtnClass
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              Uma cena — 10 segundos
+            </button>
+            <button
+              type="button"
+              disabled={isViewOnly}
+              onClick={() => {
+                if (isViewOnly) return;
+                onChange((prev) => {
+                  const shouldSwitchToAurora =
+                    prev.selectedSpeechOption === 'banco1' || prev.selectedSpeechOption === 'banco2';
+                  return {
+                    ...prev,
+                    sceneMode: '1_cena_15s',
+                    duration: 15,
+                    selectedSpeechOption: shouldSwitchToAurora ? 'aurora_copy' : prev.selectedSpeechOption,
+                    finalSelectedSpeech: shouldSwitchToAurora
+                      ? prev.auroraCopy || prev.finalSelectedSpeech
+                      : prev.finalSelectedSpeech,
+                  };
+                });
+              }}
+              className={`py-2.5 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                currentSceneMode === '1_cena_15s'
+                  ? accentBtnClass
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              Uma cena — 15 segundos
+            </button>
+            <button
+              type="button"
+              disabled={isViewOnly}
+              onClick={() => {
+                if (isViewOnly) return;
+                onChange((prev) => {
+                  const shouldSwitchToAurora =
+                    prev.selectedSpeechOption === 'banco1' || prev.selectedSpeechOption === 'banco2';
+                  return {
+                    ...prev,
+                    sceneMode: '2_cenas_10s',
+                    duration: 10,
+                    selectedSpeechOption: shouldSwitchToAurora ? 'aurora_copy' : prev.selectedSpeechOption,
+                    finalSelectedSpeech: shouldSwitchToAurora
+                      ? prev.auroraCopy || prev.finalSelectedSpeech
+                      : prev.finalSelectedSpeech,
+                  };
+                });
+              }}
+              className={`py-2.5 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                currentSceneMode === '2_cenas_10s'
+                  ? accentBtnClass
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              Duas cenas — 10 segundos cada
+            </button>
+            <button
+              type="button"
+              disabled={isViewOnly}
+              onClick={() => {
+                if (isViewOnly) return;
+                onChange((prev) => {
+                  let pVal = prev.realPrice || 0;
+                  if (!pVal) {
+                    const extracted = extractPriceFromProductInfo(`${prev.realPriceRaw || ''} ${prev.productInfo}`);
+                    if (extracted && extracted > 0) pVal = extracted;
+                  }
+                  return {
+                    ...prev,
+                    sceneMode: 'modo_leilao',
+                    duration: 10,
+                    realPrice: pVal || undefined,
+                    realPriceRaw: pVal ? String(pVal) : prev.realPriceRaw || '',
+                  };
+                });
+              }}
+              className={`py-2.5 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                currentSceneMode === 'modo_leilao'
+                  ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 shadow-md shadow-amber-500/30'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <Gavel className="w-3.5 h-3.5" />
+              <span>Modo Leilão</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Campo Preço real do produto (Obrigatório no Modo Leilão) */}
+        {currentSceneMode === 'modo_leilao' && (
+          <div className="md:col-span-12 p-4 rounded-2xl bg-amber-950/30 border border-amber-500/50 shadow-lg space-y-3 animate-fade-in">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <label className="text-sm font-black text-amber-300 flex items-center gap-2">
+                  <span>Preço real do produto</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-200 border border-amber-400/40">
+                    Obrigatório no Modo Leilão
+                  </span>
+                </label>
+                <p className="text-[11px] text-zinc-300 mt-0.5">
+                  Lido automaticamente das informações do produto ou preenchido manualmente.
+                </p>
+              </div>
+              {form.realPrice && form.realPrice > 0 ? (
+                <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded-lg border border-emerald-500/40">
+                  R$ {Number(form.realPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              ) : null}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 font-bold text-sm">
+                  R$
+                </span>
+                <input
+                  type="text"
+                  disabled={isViewOnly}
+                  value={form.realPriceRaw !== undefined ? form.realPriceRaw : (form.realPrice ? String(form.realPrice) : '')}
+                  onChange={(e) => {
+                    const valStr = e.target.value;
+                    const cleaned = valStr.replace(/[^\d.,]/g, '').replace(',', '.');
+                    const parsed = parseFloat(cleaned);
+                    onChange((prev) => ({
+                      ...prev,
+                      realPriceRaw: valStr,
+                      realPrice: !isNaN(parsed) && parsed > 0 ? parsed : undefined,
+                    }));
+                  }}
+                  placeholder="Ex.: 3848 ou 2399,90"
+                  className="w-full pl-10 pr-4 py-2.5 bg-black/60 border border-amber-500/40 focus:border-amber-400 focus:ring-1 focus:ring-amber-400 rounded-xl text-white font-mono text-sm placeholder-zinc-500"
+                />
+              </div>
+
+              {/* Lances calculados em tempo real */}
+              {(() => {
+                const effectivePrice = form.realPrice || 0;
+                if (!effectivePrice || effectivePrice <= 0) {
+                  return (
+                    <div className="text-xs text-amber-200/70 italic bg-black/40 p-2.5 rounded-xl border border-amber-500/20">
+                      Digite ou cole as informações com o preço do produto para calcular os lances de abertura.
+                    </div>
+                  );
+                }
+                const liveBids = calculateLeilaoBids(effectivePrice);
+                return (
+                  <div className="text-xs bg-black/60 p-2.5 rounded-xl border border-amber-500/30 space-y-1">
+                    <div className="flex items-center justify-between text-zinc-300">
+                      <span><strong>1º lance:</strong> R$ {liveBids.l1.toLocaleString('pt-BR')}</span>
+                      <span className="text-[10px] text-zinc-400 italic font-mono">({liveBids.l1Text})</span>
+                    </div>
+                    <div className="flex items-center justify-between text-emerald-300">
+                      <span><strong>2º lance:</strong> R$ {liveBids.l2.toLocaleString('pt-BR')}</span>
+                      <span className="text-[10px] text-emerald-400/80 italic font-mono">({liveBids.l2Text})</span>
+                    </div>
+                    <div className="text-[10px] text-sky-400 flex items-center gap-1 pt-0.5 border-t border-zinc-800">
+                      <CheckCircle2 className="w-3 h-3 text-sky-400" />
+                      <span>Regra conferida: 2º lance (R$ {liveBids.l2.toLocaleString('pt-BR')}) ≥ 125% do preço real (R$ {(effectivePrice * 1.25).toLocaleString('pt-BR')})</span>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        )}
+
         {/* 1. Informações do Produto */}
         <div
           className={`md:col-span-12 p-4 rounded-2xl transition-all duration-300 space-y-2 ${
@@ -1372,210 +1575,6 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
             </button>
           </div>
         </div>
-
-        {/* Seletor de Modo de cena (Posicionado entre 8. Fala e 9. Enquadramento) */}
-        <div className={`md:col-span-12 p-4 rounded-2xl space-y-2 transition-all duration-300 flex flex-col justify-between ${activeAutoCardClass}`}>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div>
-              <label className="text-xs font-bold text-white block">Modo de cena</label>
-              <p className="text-[11px] text-zinc-300 mt-0.5 leading-snug">
-                Escolha o formato e a duração do vídeo a ser gerado
-              </p>
-            </div>
-            <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2.5 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
-              <CheckCircle2 className="w-3 h-3 text-sky-300" />
-              {currentSceneMode === 'modo_leilao'
-                ? 'Modo Leilão ✓'
-                : currentSceneMode === '1_cena_15s'
-                ? 'Uma cena — 15 segundos ✓'
-                : currentSceneMode === '2_cenas_10s'
-                ? 'Duas cenas — 10 segundos cada ✓'
-                : 'Uma cena — 10 segundos ✓'}
-            </span>
-          </div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 bg-slate-950/90 p-1.5 rounded-xl border border-zinc-700/60">
-            <button
-              type="button"
-              disabled={isViewOnly}
-              onClick={() => {
-                if (isViewOnly) return;
-                onChange((prev) => ({
-                  ...prev,
-                  sceneMode: '1_cena_10s',
-                  duration: 10,
-                }));
-              }}
-              className={`py-2.5 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                currentSceneMode === '1_cena_10s'
-                  ? accentBtnClass
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              Uma cena — 10 segundos
-            </button>
-            <button
-              type="button"
-              disabled={isViewOnly}
-              onClick={() => {
-                if (isViewOnly) return;
-                onChange((prev) => {
-                  const shouldSwitchToAurora =
-                    prev.selectedSpeechOption === 'banco1' || prev.selectedSpeechOption === 'banco2';
-                  return {
-                    ...prev,
-                    sceneMode: '1_cena_15s',
-                    duration: 15,
-                    selectedSpeechOption: shouldSwitchToAurora ? 'aurora_copy' : prev.selectedSpeechOption,
-                    finalSelectedSpeech: shouldSwitchToAurora
-                      ? prev.auroraCopy || prev.finalSelectedSpeech
-                      : prev.finalSelectedSpeech,
-                  };
-                });
-              }}
-              className={`py-2.5 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                currentSceneMode === '1_cena_15s'
-                  ? accentBtnClass
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              Uma cena — 15 segundos
-            </button>
-            <button
-              type="button"
-              disabled={isViewOnly}
-              onClick={() => {
-                if (isViewOnly) return;
-                onChange((prev) => {
-                  const shouldSwitchToAurora =
-                    prev.selectedSpeechOption === 'banco1' || prev.selectedSpeechOption === 'banco2';
-                  return {
-                    ...prev,
-                    sceneMode: '2_cenas_10s',
-                    duration: 10,
-                    selectedSpeechOption: shouldSwitchToAurora ? 'aurora_copy' : prev.selectedSpeechOption,
-                    finalSelectedSpeech: shouldSwitchToAurora
-                      ? prev.auroraCopy || prev.finalSelectedSpeech
-                      : prev.finalSelectedSpeech,
-                  };
-                });
-              }}
-              className={`py-2.5 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                currentSceneMode === '2_cenas_10s'
-                  ? accentBtnClass
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              Duas cenas — 10 segundos cada
-            </button>
-            <button
-              type="button"
-              disabled={isViewOnly}
-              onClick={() => {
-                if (isViewOnly) return;
-                onChange((prev) => {
-                  let pVal = prev.realPrice || 0;
-                  if (!pVal) {
-                    const extracted = extractPriceFromProductInfo(`${prev.realPriceRaw || ''} ${prev.productInfo}`);
-                    if (extracted && extracted > 0) pVal = extracted;
-                  }
-                  return {
-                    ...prev,
-                    sceneMode: 'modo_leilao',
-                    duration: 10,
-                    realPrice: pVal || undefined,
-                    realPriceRaw: pVal ? String(pVal) : prev.realPriceRaw || '',
-                  };
-                });
-              }}
-              className={`py-2.5 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                currentSceneMode === 'modo_leilao'
-                  ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 shadow-md shadow-amber-500/30'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              <Gavel className="w-3.5 h-3.5" />
-              <span>Modo Leilão</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Campo Preço real do produto (Obrigatório no Modo Leilão) */}
-        {currentSceneMode === 'modo_leilao' && (
-          <div className="md:col-span-12 p-4 rounded-2xl bg-amber-950/30 border border-amber-500/50 shadow-lg space-y-3 animate-fade-in">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <label className="text-sm font-black text-amber-300 flex items-center gap-2">
-                  <span>Preço real do produto</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-200 border border-amber-400/40">
-                    Obrigatório no Modo Leilão
-                  </span>
-                </label>
-                <p className="text-[11px] text-zinc-300 mt-0.5">
-                  Lido automaticamente das informações do produto ou preenchido manualmente.
-                </p>
-              </div>
-              {form.realPrice && form.realPrice > 0 ? (
-                <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded-lg border border-emerald-500/40">
-                  R$ {Number(form.realPrice).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-              ) : null}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-              <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400 font-bold text-sm">
-                  R$
-                </span>
-                <input
-                  type="text"
-                  disabled={isViewOnly}
-                  value={form.realPriceRaw !== undefined ? form.realPriceRaw : (form.realPrice ? String(form.realPrice) : '')}
-                  onChange={(e) => {
-                    const valStr = e.target.value;
-                    const cleaned = valStr.replace(/[^\d.,]/g, '').replace(',', '.');
-                    const parsed = parseFloat(cleaned);
-                    onChange((prev) => ({
-                      ...prev,
-                      realPriceRaw: valStr,
-                      realPrice: !isNaN(parsed) && parsed > 0 ? parsed : undefined,
-                    }));
-                  }}
-                  placeholder="Ex.: 3848 ou 2399,90"
-                  className="w-full pl-10 pr-4 py-2.5 bg-black/60 border border-amber-500/40 focus:border-amber-400 focus:ring-1 focus:ring-amber-400 rounded-xl text-white font-mono text-sm placeholder-zinc-500"
-                />
-              </div>
-
-              {/* Lances calculados em tempo real */}
-              {(() => {
-                const effectivePrice = form.realPrice || 0;
-                if (!effectivePrice || effectivePrice <= 0) {
-                  return (
-                    <div className="text-xs text-amber-200/70 italic bg-black/40 p-2.5 rounded-xl border border-amber-500/20">
-                      Digite ou cole as informações com o preço do produto para calcular os lances de abertura.
-                    </div>
-                  );
-                }
-                const liveBids = calculateLeilaoBids(effectivePrice);
-                return (
-                  <div className="text-xs bg-black/60 p-2.5 rounded-xl border border-amber-500/30 space-y-1">
-                    <div className="flex items-center justify-between text-zinc-300">
-                      <span><strong>1º lance:</strong> R$ {liveBids.l1.toLocaleString('pt-BR')}</span>
-                      <span className="text-[10px] text-zinc-400 italic font-mono">({liveBids.l1Text})</span>
-                    </div>
-                    <div className="flex items-center justify-between text-emerald-300">
-                      <span><strong>2º lance:</strong> R$ {liveBids.l2.toLocaleString('pt-BR')}</span>
-                      <span className="text-[10px] text-emerald-400/80 italic font-mono">({liveBids.l2Text})</span>
-                    </div>
-                    <div className="text-[10px] text-sky-400 flex items-center gap-1 pt-0.5 border-t border-zinc-800">
-                      <CheckCircle2 className="w-3 h-3 text-sky-400" />
-                      <span>Regra conferida: 2º lance (R$ {liveBids.l2.toLocaleString('pt-BR')}) ≥ 125% do preço real (R$ {(effectivePrice * 1.25).toLocaleString('pt-BR')})</span>
-                    </div>
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-        )}
 
         {/* 9. Enquadramento (Com rosto / Sem rosto / POV) */}
         <div className={`md:col-span-6 p-4 rounded-2xl space-y-2 flex flex-col justify-between ${activeAutoCardClass}`}>
@@ -1947,24 +1946,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
       {/* 13. BOTÃO GERAR FALAS                                                 */}
       {/* ===================================================================== */}
       <div className="pt-2 space-y-3">
-        {isGeneratingSpeeches && speechesLoadingGif && (
-          <div
-            className="flex justify-center p-4 rounded-2xl border border-slate-700/60"
-            style={{ backgroundColor: '#1C293B' }}
-          >
-            <img
-              src={speechesLoadingGif}
-              alt="Gerando falas..."
-              style={{
-                width: '100%',
-                maxWidth: '840px',
-                borderRadius: '16px',
-                objectFit: 'contain',
-              }}
-              className="h-auto mx-auto shadow-2xl border border-zinc-800/80"
-            />
-          </div>
-        )}
+
 
         <button
           type="button"

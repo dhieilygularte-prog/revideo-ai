@@ -35,7 +35,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
         <img
           src={loadingGif}
           alt="Processando..."
-          style={{ width: '100%', maxWidth: '840px', borderRadius: '16px', objectFit: 'contain' }}
+          style={{ width: '100%', maxWidth: '588px', borderRadius: '16px', objectFit: 'contain' }}
           className="h-auto mx-auto shadow-2xl border border-zinc-700/60"
         />
         {statusMessage && (
