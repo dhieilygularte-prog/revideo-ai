@@ -618,7 +618,7 @@ export async function runProdutos2LeilaoPipeline(params: {
     ...(form.variations || []).flatMap((v) => v.photos || []),
   ].filter(Boolean);
 
-  // GERAÇÃO BLOCO 1 (Salão de Leilão, 2 quadros 1x2, 2160x1920)
+  // GERAÇÃO BLOCO 1 (Salão de Leilão, 2 quadros 1x2, 1920x1080 paisagem 16:9)
   onProgress?.(25, '3/5 Gerando Bloco 1 (Salão de Leilão - Quadros 1 e 2)...');
   const imgRes1 = await requestStoryboardImageGeneration({
     prompt: blockPrompts.bloco1ImagePrompt,
@@ -628,14 +628,14 @@ export async function runProdutos2LeilaoPipeline(params: {
     additionalInstructions: form.additionalInstructions,
     aiProfile,
     sceneCount: 2,
-    aspectRatio: '4:3',
+    aspectRatio: '16:9',
   });
   if (imgRes1.error && !imgRes1.imageUrl) {
     throw new Error(`Falha ao gerar o Bloco 1 do Leilão: ${imgRes1.error}`);
   }
   const bloco1Img = imgRes1.imageUrl || '';
 
-  // GERAÇÃO BLOCO 2 (Estúdio Revelação, 3 quadros 1x3, 3240x1920)
+  // GERAÇÃO BLOCO 2 (Estúdio Revelação, 3 quadros 1x3, 1920x1080 paisagem 16:9)
   onProgress?.(55, '4/5 Gerando Bloco 2 (Revelação do Produto em Estúdio - Quadros 3, 4 e 5)...');
   const imgRes2 = await requestStoryboardImageGeneration({
     prompt: blockPrompts.bloco2ImagePrompt,
@@ -671,16 +671,20 @@ export async function runProdutos2LeilaoPipeline(params: {
 
   onProgress?.(92, 'Gerando descrição do post e hashtags...');
   let descriptionHashtags = '';
+  let generatedHashtags: string[] = [];
   try {
-    descriptionHashtags = await generateProdutos2DescriptionHashtags({
+    const descResult = generateProdutos2DescriptionHashtags({
       productName: form.productName,
       productInfo: form.productInfo,
-      copy: `${speeches.cena1}\n${speeches.cena2}\n${speeches.cena3}`,
-      niche: 'Leilão / E-commerce',
-      aiProfile,
+      subMode: 'produtos_geral',
+      finalCopy: fullCopy,
     });
+    descriptionHashtags = descResult.description;
+    generatedHashtags = descResult.hashtags;
   } catch {
-    descriptionHashtags = `${(form.productName || 'PRODUTO').toUpperCase()} EM LEILÃO! #leilao #achadinhos #tiktokcompras #imperdivel #oferta`;
+    const cleanProdName = (form.productName || 'PRODUTO').toUpperCase();
+    descriptionHashtags = `${cleanProdName}! #achadinhos #tiktokcompras #viraltiktok #fypviral`;
+    generatedHashtags = ['#achadinhos', '#tiktokcompras', '#viraltiktok', '#fypviral'];
   }
 
   const totalCostUSD =
@@ -760,6 +764,7 @@ export async function runProdutos2LeilaoPipeline(params: {
     veoPrompt: blockPrompts.veoPrompt1,
     descriptionHashtags,
     description: descriptionHashtags,
+    hashtags: generatedHashtags,
     tokenUsage,
     timestamp: new Date().toISOString(),
     leilao: {
@@ -1521,7 +1526,7 @@ export async function regenerateProdutos2Storyboard(params: {
         ? result.leilao.bloco2.storyboardImageUrl
         : result.leilao.bloco1.storyboardImageUrl;
     const targetCount = targetBlock === 3 ? 1 : targetBlock === 2 ? 3 : 2;
-    const targetAspect = targetBlock === 3 ? '9:16' : targetBlock === 2 ? '16:9' : '4:3';
+    const targetAspect = targetBlock === 3 ? '9:16' : '16:9';
 
     const allPhotos: string[] = [
       ...(form.productPhotosBase64 || []),

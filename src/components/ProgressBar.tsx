@@ -28,7 +28,10 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-2xl space-y-4 animate-fade-in">
-      <div className="flex flex-col items-center justify-center gap-3 pb-2">
+      <div
+        className="flex flex-col items-center justify-center gap-3 p-4 rounded-2xl border border-slate-700/60"
+        style={{ backgroundColor: '#1C293B' }}
+      >
         <img
           src={loadingGif}
           alt="Processando..."

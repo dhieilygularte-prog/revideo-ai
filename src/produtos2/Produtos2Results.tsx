@@ -28,6 +28,7 @@ import {
 import { buildProdutos2VeoPrompt } from './produtos2Prompts';
 import { selectAndAdaptProdutos2Copy } from './produtos2CopyBank';
 import { VideoFidelityAuditor } from './VideoFidelityAuditor';
+import { LeilaoBlockSection } from './LeilaoBlockSection';
 import { MicroImageEditor } from '../components/MicroImageEditor';
 import { AIProfile } from '../config/aiProfiles';
 import { TokenUsageStats } from '../types';
@@ -127,14 +128,8 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
   const [hasCopiedDescriptionOnce, setHasCopiedDescriptionOnce] = useState(false);
   const [isExportingZip, setIsExportingZip] = useState(false);
 
-  // Modo Leilão: Estados de cópia dos 3 blocos
+  // Modo Leilão
   const isLeilao = result.sceneMode === 'modo_leilao';
-  const [copiedLeilao1, setCopiedLeilao1] = useState(false);
-  const [hasCopiedLeilao1Once, setHasCopiedLeilao1Once] = useState(false);
-  const [copiedLeilao2, setCopiedLeilao2] = useState(false);
-  const [hasCopiedLeilao2Once, setHasCopiedLeilao2Once] = useState(false);
-  const [copiedLeilao3, setCopiedLeilao3] = useState(false);
-  const [hasCopiedLeilao3Once, setHasCopiedLeilao3Once] = useState(false);
 
   // Trocar fala / Revisar texto / Geradores de Copy e Refazer Prompt (Cena 1 / Principal)
   const [speechInput, setSpeechInput] = useState(result.finalCopy || '');
@@ -1004,431 +999,305 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
 
   if (isLeilao && result.leilao) {
     const leilao = result.leilao;
-    const bids = leilao.bids;
+    const bids = leilao.bids || {
+      l1: leilao.l1 || 0,
+      l2: leilao.l2 || 0,
+      l1Text: leilao.l1Text || '',
+      l2Text: leilao.l2Text || '',
+    };
+
     return (
-      <div className="space-y-6 animate-fade-in">
+      <div
+        className="space-y-6 animate-fade-in p-4 sm:p-6 rounded-3xl"
+        style={{ backgroundColor: '#391503' }}
+      >
         {/* CABEÇALHO DO MODO LEILÃO */}
-        <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-950/80 via-yellow-950/60 to-zinc-900 border border-amber-500/40 shadow-xl space-y-2">
+        <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-amber-950/90 via-yellow-950/80 to-stone-900 border border-amber-500/50 shadow-2xl space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2.5">
-              <span className="px-3 py-1 rounded-lg bg-amber-400 text-slate-950 text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
+              <span className="px-3 py-1 rounded-lg bg-amber-400 text-slate-950 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-md">
                 <Gavel className="w-3.5 h-3.5" />
                 <span>Modo Leilão</span>
               </span>
               <h2 className="text-sm sm:text-base font-black text-white">
-                {result.productName} — 3 Blocos de Criativo
+                {result.productName} — 3 Blocos de Criativo (30s)
               </h2>
             </div>
             <div className="flex items-center gap-2 text-xs font-mono font-bold flex-wrap">
-              <span className="text-zinc-300 bg-black/60 px-2.5 py-1 rounded-lg border border-zinc-800">
+              <span className="text-zinc-200 bg-black/70 px-2.5 py-1 rounded-lg border border-amber-900/60">
                 1º Lance: R$ {bids.l1.toLocaleString('pt-BR')} ({bids.l1Text})
               </span>
-              <span className="text-emerald-300 bg-black/60 px-2.5 py-1 rounded-lg border border-emerald-500/30">
+              <span className="text-emerald-300 bg-black/70 px-2.5 py-1 rounded-lg border border-emerald-500/40">
                 2º Lance: R$ {bids.l2.toLocaleString('pt-BR')} ({bids.l2Text})
               </span>
             </div>
           </div>
-          <p className="text-xs text-amber-200/80">
-            Cada bloco contém sua imagem de referência fotográfica e o prompt correspondente para o Veo 3. Copie o prompt e anexe o storyboard de cada bloco para gerar as 3 tomadas do vídeo.
+          <p className="text-xs text-amber-200/90">
+            Cada bloco possui seu Storyboard, campo para editar a fala, refinamento do Prompt com IA e análise de fidelidade do vídeo. Copie o prompt e anexe o storyboard de cada bloco para gerar no Veo 3.
           </p>
         </div>
 
         {/* ================================================================= */}
-        {/* BLOCO 1: SALÃO DE LEILÃO (0–12s | 2 Quadros Lado a Lado)          */}
+        {/* BLOCO 1: SALÃO DE LEILÃO (0–12s | 2 Quadros 1920x1080 Paisagem)    */}
         {/* ================================================================= */}
-        <div className="p-5 sm:p-6 rounded-2xl bg-zinc-900/90 border border-zinc-800 shadow-xl space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800 pb-3">
-            <div className="flex items-center gap-2">
-              <span className="w-7 h-7 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 font-black text-sm flex items-center justify-center">
-                1
-              </span>
-              <div>
-                <h3 className="text-sm sm:text-base font-black text-white">
-                  Bloco 1 (0–12s) — Salão de Leilão
-                </h3>
-                <p className="text-[11px] text-zinc-400">
-                  Storyboard com 2 quadros lado a lado (2160 × 1920 px) · Salão aberto & Leiloeiro chocado com o celular
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                if (leilao.bloco1.storyboardImageUrl) {
-                  downloadProdutos2StoryboardImage(
-                    leilao.bloco1.storyboardImageUrl,
-                    'leilao_bloco1_quadros_1-2'
-                  );
-                }
-              }}
-              className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-emerald-600 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-zinc-700"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Baixar Imagem 1</span>
-            </button>
-          </div>
-
-          {/* Imagem do Storyboard Bloco 1 */}
-          <div className="relative rounded-2xl overflow-hidden bg-black/60 border border-zinc-800 group">
-            {leilao.bloco1.storyboardImageUrl ? (
-              <img
-                src={leilao.bloco1.storyboardImageUrl}
-                alt="Storyboard Bloco 1"
-                onClick={() => onOpenPreview(leilao.bloco1.storyboardImageUrl, 'Bloco 1 (Quadros 1 e 2)')}
-                className="w-full max-h-[460px] object-contain cursor-pointer transition-transform duration-300 group-hover:scale-[1.01]"
-              />
-            ) : (
-              <div className="h-64 flex items-center justify-center text-zinc-500 text-sm">
-                Imagem do Bloco 1 não disponível
-              </div>
-            )}
-          </div>
-
-          {/* Botão Refazer Imagem Bloco 1 */}
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={() => onRegenerateStoryboard(undefined, 1)}
-              disabled={Boolean(result.isRegeneratingStoryboard)}
-              className="px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-amber-600 text-amber-200 hover:text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer border border-zinc-700"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${result.isRegeneratingStoryboard ? 'animate-spin' : ''}`} />
-              <span>Refazer Imagem Bloco 1</span>
-            </button>
-          </div>
-
-          {/* Prompt do Veo 3 Bloco 1 */}
-          <div className={`p-4 rounded-xl transition-all ${copiedLeilao1 || hasCopiedLeilao1Once ? copiedBlueSectionClass : defaultSectionClass}`}>
-            <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-white/10 mb-2">
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-sky-400" />
-                <span className="text-xs sm:text-sm font-black text-white">
-                  Prompt do Veo 3 — Bloco 1
-                </span>
-                {hasCopiedLeilao1Once && (
-                  <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3 text-sky-300" />
-                    <span>COPIADO</span>
-                  </span>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  navigator.clipboard.writeText(leilao.bloco1.veoPrompt || '');
-                  setCopiedLeilao1(true);
-                  setHasCopiedLeilao1Once(true);
-                  setTimeout(() => setCopiedLeilao1(false), 2500);
-                }}
-                className={`px-3.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
-                  copiedLeilao1
-                    ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-950/40'
-                    : 'bg-sky-500 hover:bg-sky-400 text-white shadow-md shadow-sky-950/40'
-                }`}
-              >
-                {copiedLeilao1 ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 stroke-[3]" />
-                    <span>Copiado!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>Copiar Prompt 1</span>
-                  </>
-                )}
-              </button>
-            </div>
-            <textarea
-              value={leilao.bloco1.veoPrompt || ''}
-              onChange={(e) => {
-                const val = e.target.value;
-                setHasCopiedLeilao1Once(false);
-                setCopiedLeilao1(false);
-                onUpdateResult((prev) => {
-                  if (!prev || !prev.leilao) return prev;
-                  return {
-                    ...prev,
-                    veoPrompt: val,
-                    leilao: {
-                      ...prev.leilao,
-                      bloco1: {
-                        ...prev.leilao.bloco1,
-                        veoPrompt: val,
-                      },
-                    },
-                  };
-                });
-              }}
-              rows={6}
-              className="w-full p-3 bg-black/60 border border-zinc-700/80 focus:border-sky-400 rounded-xl text-xs text-zinc-200 font-mono leading-relaxed resize-y"
-            />
-          </div>
-        </div>
+        <LeilaoBlockSection
+          blockNumber={1}
+          title="Bloco 1 (0–12s) — Salão de Leilão"
+          subtitle="Storyboard paisagem 16:9 (1920 × 1080 px) contendo 2 quadros verticais 1080×1920 · Salão aberto & Leiloeiro chocado"
+          downloadFileName="leilao_bloco1_quadros_1-2"
+          storyboardImageUrl={leilao.bloco1?.storyboardImageUrl}
+          isRegeneratingStoryboard={Boolean(result.isRegeneratingStoryboard)}
+          veoPrompt={leilao.bloco1?.veoPrompt || ''}
+          speechText={leilao.bloco1?.speechText || leilao.speeches?.cena1 || ''}
+          productName={result.productName}
+          productLock={result.productLock}
+          referencePhotos={allReferencePhotos}
+          videoAudit={leilao.bloco1?.videoAudit}
+          aiProfile={aiProfile}
+          onUpdateVeoPrompt={(newPrompt) => {
+            onUpdateResult((prev) => {
+              if (!prev || !prev.leilao) return prev;
+              return {
+                ...prev,
+                veoPrompt: newPrompt,
+                leilao: {
+                  ...prev.leilao,
+                  bloco1: {
+                    ...prev.leilao.bloco1,
+                    veoPrompt: newPrompt,
+                  },
+                },
+              };
+            });
+          }}
+          onUpdateSpeech={(newSpeech) => {
+            onUpdateResult((prev) => {
+              if (!prev || !prev.leilao) return prev;
+              const updatedLeilao = { ...prev.leilao };
+              if (updatedLeilao.bloco1) {
+                updatedLeilao.bloco1 = { ...updatedLeilao.bloco1, speechText: newSpeech };
+              }
+              if (updatedLeilao.speeches) {
+                updatedLeilao.speeches = { ...updatedLeilao.speeches, cena1: newSpeech };
+              }
+              const full = `[Cena 1 | 0-12s]\n${newSpeech}\n\n[Cena 2 | 12-24s]\n${updatedLeilao.bloco2?.speechText || updatedLeilao.speeches?.cena2 || ''}\n\n[Cena 3 | 24-30s]\n${updatedLeilao.bloco3?.speechText || updatedLeilao.speeches?.cena3 || ''}`;
+              return {
+                ...prev,
+                copy: full,
+                finalCopy: full,
+                leilao: updatedLeilao,
+              };
+            });
+          }}
+          onRegenerateImage={(instruction) => onRegenerateStoryboard(instruction, 1)}
+          onAuditChange={(vAudit) => {
+            onUpdateResult((prev) => {
+              if (!prev || !prev.leilao) return prev;
+              return {
+                ...prev,
+                leilao: {
+                  ...prev.leilao,
+                  bloco1: {
+                    ...prev.leilao.bloco1,
+                    videoAudit: vAudit,
+                  },
+                },
+              };
+            });
+          }}
+          onAuditComplete={(vAudit, usage) => {
+            if (usage && onTokenUsageChange) {
+              onTokenUsageChange((prevStats: any) => ({
+                ...prevStats,
+                detailedSteps: [
+                  ...(prevStats?.detailedSteps || []),
+                  {
+                    step: `Auditoria de Vídeo Modo Leilão (Bloco 1)`,
+                    model: usage.model || 'gemini-2.5-flash',
+                    costUSD: usage.costUSD || 0.005,
+                    costBRL: usage.costBRL || 0.03,
+                    timestamp: new Date().toLocaleTimeString('pt-BR'),
+                  },
+                ],
+              }));
+            }
+          }}
+          onOpenPreview={onOpenPreview}
+        />
 
         {/* ================================================================= */}
-        {/* BLOCO 2: ESTÚDIO & REVELAÇÃO DO PRODUTO (12–24s | 3 Quadros)       */}
+        {/* BLOCO 2: ESTÚDIO & REVELAÇÃO (12–24s | 3 Quadros 1920x1080)        */}
         {/* ================================================================= */}
-        <div className="p-5 sm:p-6 rounded-2xl bg-zinc-900/90 border border-zinc-800 shadow-xl space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800 pb-3">
-            <div className="flex items-center gap-2">
-              <span className="w-7 h-7 rounded-lg bg-teal-500/20 text-teal-300 border border-teal-500/40 font-black text-sm flex items-center justify-center">
-                2
-              </span>
-              <div>
-                <h3 className="text-sm sm:text-base font-black text-white">
-                  Bloco 2 (12–24s) — Estúdio & Revelação do Produto
-                </h3>
-                <p className="text-[11px] text-zinc-400">
-                  Storyboard com 3 quadros lado a lado (3240 × 1920 px) · Pano preto & Revelação frontal & Close-up
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                if (leilao.bloco2.storyboardImageUrl) {
-                  downloadProdutos2StoryboardImage(
-                    leilao.bloco2.storyboardImageUrl,
-                    'leilao_bloco2_quadros_3-4-5'
-                  );
-                }
-              }}
-              className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-emerald-600 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-zinc-700"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Baixar Imagem 2</span>
-            </button>
-          </div>
-
-          {/* Imagem do Storyboard Bloco 2 */}
-          <div className="relative rounded-2xl overflow-hidden bg-black/60 border border-zinc-800 group">
-            {leilao.bloco2.storyboardImageUrl ? (
-              <img
-                src={leilao.bloco2.storyboardImageUrl}
-                alt="Storyboard Bloco 2"
-                onClick={() => onOpenPreview(leilao.bloco2.storyboardImageUrl, 'Bloco 2 (Quadros 3, 4 e 5)')}
-                className="w-full max-h-[460px] object-contain cursor-pointer transition-transform duration-300 group-hover:scale-[1.01]"
-              />
-            ) : (
-              <div className="h-64 flex items-center justify-center text-zinc-500 text-sm">
-                Imagem do Bloco 2 não disponível
-              </div>
-            )}
-          </div>
-
-          {/* Botão Refazer Imagem Bloco 2 */}
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={() => onRegenerateStoryboard(undefined, 2)}
-              disabled={Boolean(result.isRegeneratingStoryboard)}
-              className="px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-teal-600 text-teal-200 hover:text-slate-950 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer border border-zinc-700"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${result.isRegeneratingStoryboard ? 'animate-spin' : ''}`} />
-              <span>Refazer Imagem Bloco 2</span>
-            </button>
-          </div>
-
-          {/* Prompt do Veo 3 Bloco 2 */}
-          <div className={`p-4 rounded-xl transition-all ${copiedLeilao2 || hasCopiedLeilao2Once ? copiedBlueSectionClass : defaultSectionClass}`}>
-            <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-white/10 mb-2">
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-sky-400" />
-                <span className="text-xs sm:text-sm font-black text-white">
-                  Prompt do Veo 3 — Bloco 2
-                </span>
-                {hasCopiedLeilao2Once && (
-                  <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3 text-sky-300" />
-                    <span>COPIADO</span>
-                  </span>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  navigator.clipboard.writeText(leilao.bloco2.veoPrompt || '');
-                  setCopiedLeilao2(true);
-                  setHasCopiedLeilao2Once(true);
-                  setTimeout(() => setCopiedLeilao2(false), 2500);
-                }}
-                className={`px-3.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
-                  copiedLeilao2
-                    ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-950/40'
-                    : 'bg-sky-500 hover:bg-sky-400 text-white shadow-md shadow-sky-950/40'
-                }`}
-              >
-                {copiedLeilao2 ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 stroke-[3]" />
-                    <span>Copiado!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>Copiar Prompt 2</span>
-                  </>
-                )}
-              </button>
-            </div>
-            <textarea
-              value={leilao.bloco2.veoPrompt || ''}
-              onChange={(e) => {
-                const val = e.target.value;
-                setHasCopiedLeilao2Once(false);
-                setCopiedLeilao2(false);
-                onUpdateResult((prev) => {
-                  if (!prev || !prev.leilao) return prev;
-                  return {
-                    ...prev,
-                    leilao: {
-                      ...prev.leilao,
-                      bloco2: {
-                        ...prev.leilao.bloco2,
-                        veoPrompt: val,
-                      },
-                    },
-                  };
-                });
-              }}
-              rows={6}
-              className="w-full p-3 bg-black/60 border border-zinc-700/80 focus:border-sky-400 rounded-xl text-xs text-zinc-200 font-mono leading-relaxed resize-y"
-            />
-          </div>
-        </div>
+        <LeilaoBlockSection
+          blockNumber={2}
+          title="Bloco 2 (12–24s) — Estúdio & Revelação do Produto"
+          subtitle="Storyboard paisagem 16:9 (1920 × 1080 px) contendo 3 quadros verticais 1080×1920 · Pano preto & Revelação & Close"
+          downloadFileName="leilao_bloco2_quadros_3-4-5"
+          storyboardImageUrl={leilao.bloco2?.storyboardImageUrl}
+          isRegeneratingStoryboard={Boolean(result.isRegeneratingStoryboard)}
+          veoPrompt={leilao.bloco2?.veoPrompt || ''}
+          speechText={leilao.bloco2?.speechText || leilao.speeches?.cena2 || ''}
+          productName={result.productName}
+          productLock={result.productLock}
+          referencePhotos={allReferencePhotos}
+          videoAudit={leilao.bloco2?.videoAudit}
+          aiProfile={aiProfile}
+          onUpdateVeoPrompt={(newPrompt) => {
+            onUpdateResult((prev) => {
+              if (!prev || !prev.leilao) return prev;
+              return {
+                ...prev,
+                leilao: {
+                  ...prev.leilao,
+                  bloco2: {
+                    ...prev.leilao.bloco2,
+                    veoPrompt: newPrompt,
+                  },
+                },
+              };
+            });
+          }}
+          onUpdateSpeech={(newSpeech) => {
+            onUpdateResult((prev) => {
+              if (!prev || !prev.leilao) return prev;
+              const updatedLeilao = { ...prev.leilao };
+              if (updatedLeilao.bloco2) {
+                updatedLeilao.bloco2 = { ...updatedLeilao.bloco2, speechText: newSpeech };
+              }
+              if (updatedLeilao.speeches) {
+                updatedLeilao.speeches = { ...updatedLeilao.speeches, cena2: newSpeech };
+              }
+              const full = `[Cena 1 | 0-12s]\n${updatedLeilao.bloco1?.speechText || updatedLeilao.speeches?.cena1 || ''}\n\n[Cena 2 | 12-24s]\n${newSpeech}\n\n[Cena 3 | 24-30s]\n${updatedLeilao.bloco3?.speechText || updatedLeilao.speeches?.cena3 || ''}`;
+              return {
+                ...prev,
+                copy: full,
+                finalCopy: full,
+                leilao: updatedLeilao,
+              };
+            });
+          }}
+          onRegenerateImage={(instruction) => onRegenerateStoryboard(instruction, 2)}
+          onAuditChange={(vAudit) => {
+            onUpdateResult((prev) => {
+              if (!prev || !prev.leilao) return prev;
+              return {
+                ...prev,
+                leilao: {
+                  ...prev.leilao,
+                  bloco2: {
+                    ...prev.leilao.bloco2,
+                    videoAudit: vAudit,
+                  },
+                },
+              };
+            });
+          }}
+          onAuditComplete={(vAudit, usage) => {
+            if (usage && onTokenUsageChange) {
+              onTokenUsageChange((prevStats: any) => ({
+                ...prevStats,
+                detailedSteps: [
+                  ...(prevStats?.detailedSteps || []),
+                  {
+                    step: `Auditoria de Vídeo Modo Leilão (Bloco 2)`,
+                    model: usage.model || 'gemini-2.5-flash',
+                    costUSD: usage.costUSD || 0.005,
+                    costBRL: usage.costBRL || 0.03,
+                    timestamp: new Date().toLocaleTimeString('pt-BR'),
+                  },
+                ],
+              }));
+            }
+          }}
+          onOpenPreview={onOpenPreview}
+        />
 
         {/* ================================================================= */}
-        {/* BLOCO 3: LEILOEIRO NO TELÃO (24–30s | 1 Quadro 9:16)              */}
+        {/* BLOCO 3: LEILOEIRO NO TELÃO (24–30s | 1 Quadro 9:16 1080x1920)     */}
         {/* ================================================================= */}
-        <div className="p-5 sm:p-6 rounded-2xl bg-zinc-900/90 border border-zinc-800 shadow-xl space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800 pb-3">
-            <div className="flex items-center gap-2">
-              <span className="w-7 h-7 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-black text-sm flex items-center justify-center">
-                3
-              </span>
-              <div>
-                <h3 className="text-sm sm:text-base font-black text-white">
-                  Bloco 3 (24–30s) — Chamada no Carrinho Laranja
-                </h3>
-                <p className="text-[11px] text-zinc-400">
-                  Imagem única vertical (1080 × 1920 px) · Leiloeiro apontando com produto no telão
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                if (leilao.bloco3.storyboardImageUrl) {
-                  downloadProdutos2StoryboardImage(
-                    leilao.bloco3.storyboardImageUrl,
-                    'leilao_bloco3_quadro_6'
-                  );
-                }
-              }}
-              className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-emerald-600 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-zinc-700"
-            >
-              <Download className="w-3.5 h-3.5" />
-              <span>Baixar Imagem 3</span>
-            </button>
-          </div>
-
-          {/* Imagem do Storyboard Bloco 3 */}
-          <div className="relative rounded-2xl overflow-hidden bg-black/60 border border-zinc-800 group">
-            {leilao.bloco3.storyboardImageUrl ? (
-              <img
-                src={leilao.bloco3.storyboardImageUrl}
-                alt="Storyboard Bloco 3"
-                onClick={() => onOpenPreview(leilao.bloco3.storyboardImageUrl, 'Bloco 3 (Quadro 6)')}
-                className="w-full max-h-[460px] object-contain cursor-pointer transition-transform duration-300 group-hover:scale-[1.01]"
-              />
-            ) : (
-              <div className="h-64 flex items-center justify-center text-zinc-500 text-sm">
-                Imagem do Bloco 3 não disponível
-              </div>
-            )}
-          </div>
-
-          {/* Botão Refazer Imagem Bloco 3 */}
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={() => onRegenerateStoryboard(undefined, 3)}
-              disabled={Boolean(result.isRegeneratingStoryboard)}
-              className="px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-indigo-600 text-indigo-200 hover:text-white font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer border border-zinc-700"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${result.isRegeneratingStoryboard ? 'animate-spin' : ''}`} />
-              <span>Refazer Imagem Bloco 3</span>
-            </button>
-          </div>
-
-          {/* Prompt do Veo 3 Bloco 3 */}
-          <div className={`p-4 rounded-xl transition-all ${copiedLeilao3 || hasCopiedLeilao3Once ? copiedBlueSectionClass : defaultSectionClass}`}>
-            <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-white/10 mb-2">
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-sky-400" />
-                <span className="text-xs sm:text-sm font-black text-white">
-                  Prompt do Veo 3 — Bloco 3
-                </span>
-                {hasCopiedLeilao3Once && (
-                  <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3 text-sky-300" />
-                    <span>COPIADO</span>
-                  </span>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  navigator.clipboard.writeText(leilao.bloco3.veoPrompt || '');
-                  setCopiedLeilao3(true);
-                  setHasCopiedLeilao3Once(true);
-                  setTimeout(() => setCopiedLeilao3(false), 2500);
-                }}
-                className={`px-3.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
-                  copiedLeilao3
-                    ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-950/40'
-                    : 'bg-sky-500 hover:bg-sky-400 text-white shadow-md shadow-sky-950/40'
-                }`}
-              >
-                {copiedLeilao3 ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 stroke-[3]" />
-                    <span>Copiado!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>Copiar Prompt 3</span>
-                  </>
-                )}
-              </button>
-            </div>
-            <textarea
-              value={leilao.bloco3.veoPrompt || ''}
-              onChange={(e) => {
-                const val = e.target.value;
-                setHasCopiedLeilao3Once(false);
-                setCopiedLeilao3(false);
-                onUpdateResult((prev) => {
-                  if (!prev || !prev.leilao) return prev;
-                  return {
-                    ...prev,
-                    leilao: {
-                      ...prev.leilao,
-                      bloco3: {
-                        ...prev.leilao.bloco3,
-                        veoPrompt: val,
-                      },
-                    },
-                  };
-                });
-              }}
-              rows={6}
-              className="w-full p-3 bg-black/60 border border-zinc-700/80 focus:border-sky-400 rounded-xl text-xs text-zinc-200 font-mono leading-relaxed resize-y"
-            />
-          </div>
-        </div>
+        <LeilaoBlockSection
+          blockNumber={3}
+          title="Bloco 3 (24–30s) — Chamada no Carrinho Laranja"
+          subtitle="Imagem única vertical 9:16 (1080 × 1920 px) · Leiloeiro apontando com produto no telão"
+          downloadFileName="leilao_bloco3_quadro_6"
+          storyboardImageUrl={leilao.bloco3?.storyboardImageUrl}
+          isRegeneratingStoryboard={Boolean(result.isRegeneratingStoryboard)}
+          veoPrompt={leilao.bloco3?.veoPrompt || ''}
+          speechText={leilao.bloco3?.speechText || leilao.speeches?.cena3 || ''}
+          productName={result.productName}
+          productLock={result.productLock}
+          referencePhotos={allReferencePhotos}
+          videoAudit={leilao.bloco3?.videoAudit}
+          aiProfile={aiProfile}
+          onUpdateVeoPrompt={(newPrompt) => {
+            onUpdateResult((prev) => {
+              if (!prev || !prev.leilao) return prev;
+              return {
+                ...prev,
+                leilao: {
+                  ...prev.leilao,
+                  bloco3: {
+                    ...prev.leilao.bloco3,
+                    veoPrompt: newPrompt,
+                  },
+                },
+              };
+            });
+          }}
+          onUpdateSpeech={(newSpeech) => {
+            onUpdateResult((prev) => {
+              if (!prev || !prev.leilao) return prev;
+              const updatedLeilao = { ...prev.leilao };
+              if (updatedLeilao.bloco3) {
+                updatedLeilao.bloco3 = { ...updatedLeilao.bloco3, speechText: newSpeech };
+              }
+              if (updatedLeilao.speeches) {
+                updatedLeilao.speeches = { ...updatedLeilao.speeches, cena3: newSpeech };
+              }
+              const full = `[Cena 1 | 0-12s]\n${updatedLeilao.bloco1?.speechText || updatedLeilao.speeches?.cena1 || ''}\n\n[Cena 2 | 12-24s]\n${updatedLeilao.bloco2?.speechText || updatedLeilao.speeches?.cena2 || ''}\n\n[Cena 3 | 24-30s]\n${newSpeech}`;
+              return {
+                ...prev,
+                copy: full,
+                finalCopy: full,
+                leilao: updatedLeilao,
+              };
+            });
+          }}
+          onRegenerateImage={(instruction) => onRegenerateStoryboard(instruction, 3)}
+          onAuditChange={(vAudit) => {
+            onUpdateResult((prev) => {
+              if (!prev || !prev.leilao) return prev;
+              return {
+                ...prev,
+                leilao: {
+                  ...prev.leilao,
+                  bloco3: {
+                    ...prev.leilao.bloco3,
+                    videoAudit: vAudit,
+                  },
+                },
+              };
+            });
+          }}
+          onAuditComplete={(vAudit, usage) => {
+            if (usage && onTokenUsageChange) {
+              onTokenUsageChange((prevStats: any) => ({
+                ...prevStats,
+                detailedSteps: [
+                  ...(prevStats?.detailedSteps || []),
+                  {
+                    step: `Auditoria de Vídeo Modo Leilão (Bloco 3)`,
+                    model: usage.model || 'gemini-2.5-flash',
+                    costUSD: usage.costUSD || 0.005,
+                    costBRL: usage.costBRL || 0.03,
+                    timestamp: new Date().toLocaleTimeString('pt-BR'),
+                  },
+                ],
+              }));
+            }
+          }}
+          onOpenPreview={onOpenPreview}
+        />
 
         {/* DESCRIÇÃO DO POST + HASHTAGS */}
         <div

@@ -39,25 +39,38 @@ export interface LeilaoBlockItem {
   falaText: string;
 }
 
+export interface LeilaoBlockDetails {
+  storyboardImageUrl?: string;
+  storyboardImagePrompt?: string;
+  veoPrompt?: string;
+  speechText?: string;
+  videoAudit?: any;
+}
+
 export interface Produtos2LeilaoResultState {
-  realPrice: number;
-  l1: number;
-  l2: number;
-  l1Text: string;
-  l2Text: string;
-  productSize: 'pequeno_medio' | 'grande';
-  shortName: string;
-  fullName: string;
-  benefits: string[];
-  presenterDescription: string;
-  presenterGender: 'masculino' | 'feminino';
-  presenterVoice: string;
-  cena1Speech: string;
-  cena2Speech: string;
-  cena3Speech: string;
-  block1: LeilaoBlockItem;
-  block2: LeilaoBlockItem;
-  block3: LeilaoBlockItem;
+  realPrice?: number;
+  l1?: number;
+  l2?: number;
+  l1Text?: string;
+  l2Text?: string;
+  bids: LeilaoBidsResult;
+  speeches: LeilaoSpeechParts;
+  productSize?: 'pequeno_medio' | 'grande';
+  shortName?: string;
+  fullName?: string;
+  benefits?: string[];
+  presenterDescription?: string;
+  presenterGender?: 'masculino' | 'feminino';
+  presenterVoice?: string;
+  cena1Speech?: string;
+  cena2Speech?: string;
+  cena3Speech?: string;
+  block1?: LeilaoBlockItem;
+  block2?: LeilaoBlockItem;
+  block3?: LeilaoBlockItem;
+  bloco1: LeilaoBlockDetails;
+  bloco2: LeilaoBlockDetails;
+  bloco3: LeilaoBlockDetails;
 }
 
 /**
@@ -631,7 +644,8 @@ export function buildLeilaoBlockPrompts(params: {
       : 'Produto pequeno/médio: enquadramento do peito para cima, mostrando o produto sobre o púlpito.';
 
   // =========================================================================
-  // BLOCO 1: STORYBOARD 2 QUADROS LADO A LADO (2160 x 1920 px)
+  // BLOCO 1: STORYBOARD EM FORMATO PAISAGEM 16:9 (1920 x 1080 px)
+  // Contendo 2 quadros verticais 9:16 (1080 x 1920 px cada) lado a lado
   // Imagem 1: Salão aberto com plateia e martelo erguido
   // Imagem 2: Close do leiloeiro chocado olhando o celular
   // =========================================================================
@@ -639,13 +653,14 @@ export function buildLeilaoBlockPrompts(params: {
 
   const img2Desc = `O mesmo leiloeiro da Imagem 1 (${presenterDesc}, terno azul royal, camisa escura), em plano médio da cintura para cima, atrás de um púlpito de madeira escura envernizada. Com a mão direita ele segura um martelo de leilão de madeira com anel dourado, apoiado na base sobre o púlpito. Com a mão esquerda ele segura um smartphone preto e olha para a tela com expressão de choque total: olhos arregalados, sobrancelhas levantadas, boca entreaberta. Relógio prateado no pulso. Fundo desfocado: salão de leilão moderno com plateia sentada levantando plaquinhas redondas brancas e lisas, e um telão ao fundo com luz azul suave. Luz quente de evento, bokeh, aparência de foto real. Nenhum texto, número, letreiro ou logotipo em lugar nenhum da imagem.`;
 
-  const bloco1ImagePrompt = `MODO LEILÃO - BLOCO 1 (GERAÇÃO 1). Storyboard fotorrealista vertical composto por EXATAMENTE 2 QUADROS numerados dispostos lado a lado na horizontal (grade 1x2, 2 colunas e 1 linha), resolução total 2160 x 1920 pixels. Cada quadro possui proporção vertical 9:16 e traz no canto superior direito um número de identificação discreto ("1" e "2"). O mesmo apresentador (${presenterDesc}) aparece com rigorosa continuidade física em ambos os quadros:
+  const bloco1ImagePrompt = `MODO LEILÃO - BLOCO 1 (CENA 1). Storyboard fotorrealista em formato paisagem 16:9 (1920 x 1080 pixels) composto por EXATAMENTE 2 QUADROS verticais em proporção 9:16 (1080 x 1920 pixels cada) dispostos lado a lado na horizontal (grade 1 linha x 2 colunas). Cada quadro traz no canto superior direito um número de identificação discreto ("1" e "2"). O mesmo apresentador (${presenterDesc}) aparece com rigorosa continuidade física em ambos os quadros:
 - QUADRO 1 (Salão aberto de leilão): ${img1Desc}
 - QUADRO 2 (Close do leiloeiro chocado com o celular): ${img2Desc}
-REGRAS OBRIGATÓRIAS: Aparência de foto real de alta definição. Nenhum texto, número, letreiro ou logotipo em lugar nenhum da imagem, exceto os números 1 e 2 nos cantos superiores de cada quadro.`;
+REGRAS OBRIGATÓRIAS: Formato total da imagem: paisagem 16:9 (1920x1080 pixels), contendo internamente os 2 quadros verticais 9:16 lado a lado. Aparência de foto real de alta definição. Nenhum texto, número, letreiro ou logotipo em lugar nenhum da imagem, exceto os números 1 e 2 nos cantos superiores de cada quadro.`;
 
   // =========================================================================
-  // BLOCO 2: STORYBOARD 3 QUADROS LADO A LADO (3240 x 1920 px)
+  // BLOCO 2: STORYBOARD EM FORMATO PAISAGEM 16:9 (1920 x 1080 px)
+  // Contendo 3 quadros verticais 9:16 (1080 x 1920 px cada) lado a lado
   // Imagem 3: Estúdio cinza, produto coberto com pano de veludo preto
   // Imagem 4: Produto revelado no estúdio (frente principal para a câmera)
   // Imagem 5: Close do produto em fundo totalmente preto com interação da mão
@@ -656,11 +671,11 @@ REGRAS OBRIGATÓRIAS: Aparência de foto real de alta definição. Nenhum texto,
 
   const img5Desc = `Com base nas fotos de referência do produto, close-up em ângulo diagonal de 3/4 do ${productName} sobre uma superfície preta fosca, com fundo totalmente preto. Uma mão ${handDesc}, com a manga do terno escuro aparecendo, interage com o principal detalhe do produto. O produto tem que ser exatamente idêntico ao produto real das fotos (cor, acabamento, detalhes). Iluminação suave de estúdio de produto, com reflexos sutis. Aparência de comercial de produto de luxo. Nenhum texto.`;
 
-  const bloco2ImagePrompt = `MODO LEILÃO - BLOCO 2 (GERAÇÃO 2). Storyboard fotorrealista vertical composto por EXATAMENTE 3 QUADROS numerados dispostos lado a lado na horizontal (grade 1x3, 3 colunas e 1 linha), resolução total 3240 x 1920 pixels. Cada quadro possui proporção vertical 9:16 e traz no canto superior direito um número de identificação discreto ("3", "4" e "5"). As fotos reais de referência do produto determinam com 100% de fidelidade a cor, formato, proporção e logomarca nos quadros 4 e 5. O mesmo apresentador (${presenterDesc}) aparece nos quadros 3 e 4:
+  const bloco2ImagePrompt = `MODO LEILÃO - BLOCO 2 (CENA 2). Storyboard fotorrealista em formato paisagem 16:9 (1920 x 1080 pixels) composto por EXATAMENTE 3 QUADROS verticais em proporção 9:16 (1080 x 1920 pixels cada) dispostos lado a lado na horizontal (grade 1 linha x 3 colunas). Cada quadro traz no canto superior direito um número de identificação discreto ("3", "4" e "5"). As fotos reais de referência do produto determinam com 100% de fidelidade a cor, formato, proporção e logomarca nos quadros 4 e 5. O mesmo apresentador (${presenterDesc}) aparece nos quadros 3 e 4:
 - QUADRO 3 (Estúdio com produto coberto pelo pano preto): ${img3Desc}
 - QUADRO 4 (Produto revelado de frente para a câmera): ${img4Desc}
 - QUADRO 5 (Close do produto em fundo preto): ${img5Desc}
-REGRAS OBRIGATÓRIAS: Aparência de foto real de alta definição. O produto nos quadros 4 e 5 deve ser 100% fidedigno às fotos de referência anexadas. Nenhum texto, número ou letreiro, exceto os números identificadores 3, 4 e 5 nos cantos superiores.`;
+REGRAS OBRIGATÓRIAS: Formato total da imagem: paisagem 16:9 (1920x1080 pixels), contendo internamente os 3 quadros verticais 9:16 lado a lado. Aparência de foto real de alta definição. O produto nos quadros 4 e 5 deve ser 100% fidedigno às fotos de referência anexadas. Nenhum texto, número ou letreiro, exceto os números identificadores 3, 4 e 5 nos cantos superiores.`;
 
   // =========================================================================
   // BLOCO 3: IMAGEM ÚNICA (1080 x 1920 px)

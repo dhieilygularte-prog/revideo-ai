@@ -1918,7 +1918,10 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
       {/* ===================================================================== */}
       <div className="pt-2 space-y-3">
         {isGeneratingSpeeches && speechesLoadingGif && (
-          <div className="flex justify-center pb-1">
+          <div
+            className="flex justify-center p-4 rounded-2xl border border-slate-700/60"
+            style={{ backgroundColor: '#1C293B' }}
+          >
             <img
               src={speechesLoadingGif}
               alt="Gerando falas..."

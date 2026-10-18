@@ -3513,7 +3513,7 @@ ${variationInstructionRule}
 - ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: Não adicione legendas flutuantes, textos publicitários externos, preços, setas, carrinho de compras, marca d'água externa, @ ou logotipo do TikTok. Apenas os números 1 a ${frameCount} nos selos circulares e a logomarca original do fabricante no próprio produto.`;
 
         const chosenAspectRatio = isLeilao1
-          ? (req.body.aspectRatio || '4:3')
+          ? (req.body.aspectRatio || '16:9')
           : isLeilao2
           ? (req.body.aspectRatio || '16:9')
           : isLeilao3

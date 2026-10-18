@@ -4405,7 +4405,7 @@ ${correctionPrompt.trim()}
 ${variationInstructionRule}
 - LOGOMARCA E MARCA DO FABRICANTE NO PRODUTO (OBRIGAT\xD3RIO): A marca, a logomarca, o emblema e os textos que j\xE1 est\xE3o impressos/estampados no pr\xF3prio produto nas fotos de refer\xEAncia DEVEM aparecer 100% id\xEAnticos, na mesma cor e no mesmo lugar da pe\xE7a, em todos os quadros em que aquela parte estiver vis\xEDvel. JAMAIS remova ou alise a logomarca do produto!
 - ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: N\xE3o adicione legendas flutuantes, textos publicit\xE1rios externos, pre\xE7os, setas, carrinho de compras, marca d'\xE1gua externa, @ ou logotipo do TikTok. Apenas os n\xFAmeros 1 a ${frameCount} nos selos circulares e a logomarca original do fabricante no pr\xF3prio produto.`;
-        const chosenAspectRatio = isLeilao1 ? req.body.aspectRatio || "4:3" : isLeilao2 ? req.body.aspectRatio || "16:9" : isLeilao3 ? "9:16" : "9:16";
+        const chosenAspectRatio = isLeilao1 ? req.body.aspectRatio || "16:9" : isLeilao2 ? req.body.aspectRatio || "16:9" : isLeilao3 ? "9:16" : "9:16";
         const modelsToTry = [
           GEMINI_IMAGE_MODEL || "gemini-3.1-flash-image",
           GEMINI_IMAGE_FAST_MODEL || "gemini-3.1-flash-lite-image",
