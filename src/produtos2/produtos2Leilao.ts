@@ -789,25 +789,27 @@ export function buildLeilaoBlockPrompts(params: {
   // Contendo 3 colunas verticais lado a lado, numeradas 1, 2 e 3
   // O produto aparece em todos os 3 quadros no púlpito/plataforma e no telão ao fundo
   // =========================================================================
-  const bloco1ImagePrompt = `Com base nas fotos de referência do produto, crie UMA imagem panorâmica HORIZONTAL no formato 16:9 widescreen (1920 pixels de largura por 1080 pixels de altura, orientação paisagem / landscape de tela de computador ou TV). É TERMINANTEMENTE PROIBIDO gerar imagem vertical; a largura DEVE ser muito maior que a altura.
+  const bloco1ImagePrompt = `Com base nas fotos de referência do produto, crie UMA imagem horizontal no formato panorâmico 16:9 (1920x1080 pixels widescreen).
 
 ========================
-ESTRUTURA DE ALTURA TOTAL (OBRIGATÓRIO):
-A tela horizontal 16:9 é dividida igualmente em 3 colunas verticais lado a lado da esquerda para a direita (cada coluna com formato de tela cheia vertical 9:16 de smartphone, grade 1 linha x 3 colunas).
-ENQUADRAMENTO DE ALTURA TOTAL: Cada uma das 3 colunas verticais DEVE PREENCHER 100% DA ALTURA DA IMAGEM, do topo extremo à base extrema (de cima a baixo, ocupando todos os 1080 pixels de altura), exatamente como uma gravação de celular em pé.
-PROIBIÇÃO RIGOROSA DE BARRAS/LETTERBOX: É TERMINANTEMENTE PROIBIDO gerar faixas pretas, barras escuras, bordas ou letterbox em cima ou embaixo da imagem! Os quadros NÃO podem ser quadrados nem achatados no centro. Cada coluna vertical é alta, esbelta (proporção 9:16) e vai do topo da imagem até o chão/base da imagem.
-Separadores: linhas divisórias brancas finas entre as 3 colunas verticais.
-No canto superior direito de cada coluna, um pequeno círculo branco com o número em preto: 1, 2 e 3. Esses números são o ÚNICO texto da imagem.
+COMPOSIÇÃO OBRIGATÓRIA — TRÍPTICO DE 3 COLUNAS VERTICAIS LADO A LADO (horizontal 16:9 triptych composed of three vertical panels side-by-side):
+A imagem é uma tela panorâmica 16:9 dividida em TRÊS COLUNAS VERTICAIS LADO A LADO, da esquerda para a direita, como 3 telas de celular em pé colocadas uma ao lado da outra:
+- COLUNA 1 (Painel da ESQUERDA): ocupa de x=0 até 33% da largura. Círculo branco discreto com número 1 no canto superior direito.
+- COLUNA 2 (Painel do CENTRO): ocupa de 33% até 66% da largura. Círculo branco discreto com número 2 no canto superior direito.
+- COLUNA 3 (Painel da DIREITA): ocupa de 66% até 100% da largura. Círculo branco discreto com número 3 no canto superior direito.
+DIVISÃO: Duas linhas brancas retas e verticais dividem os 3 painéis (uma linha vertical separando a coluna esquerda da coluna central, e outra linha vertical separando a coluna central da coluna direita).
+PROIBIÇÃO RIGOROSA: NUNCA crie linhas ou faixas horizontais deitadas (NÃO empilhe uma cena sobre a outra). É TERMINANTEMENTE PROIBIDO empilhar na horizontal. As 3 cenas ficam EXCLUSIVAMENTE lado a lado em 3 colunas verticais (esquerda | meio | direita).
+Os números 1, 2 e 3 são o ÚNICO texto da imagem.
 ========================
 
 O mesmo apresentador, idêntico nos 3 quadros: ${presenterDesc}, com ${presenterClothing}.
 O ${productName} aparece nos 3 quadros, exatamente idêntico às fotos de referência (cor, formato, proporção, logotipo e acabamento), sempre na mesma posição: ${posicaoProduto}.
 
-QUADRO 1 (Coluna da esquerda): interior de uma casa de leilões luxuosa e clássica, estilo teatro europeu: lustres de cristal dourados, camarotes em dois andares com colunas douradas, luz quente. Câmera atrás da plateia, na altura das pessoas. No palco de piso de madeira clara, o apresentador de pé atrás do púlpito de madeira escura, com o braço direito erguido segurando um martelo de leilão, e o produto ao lado dele, visível. Ao fundo, acima do palco, um telão grande mostra apenas a foto do produto, de frente. Em primeiro plano, de costas, a plateia elegante de terno escuro, várias pessoas levantando plaquinhas de lance brancas e lisas.
+QUADRO 1 (Coluna vertical da esquerda): interior de uma casa de leilões luxuosa e clássica, estilo teatro europeu: lustres de cristal dourados, camarotes em dois andares com colunas douradas, luz quente. Câmera atrás da plateia, na altura das pessoas. No palco de piso de madeira clara, o apresentador de pé atrás do púlpito de madeira escura, com o braço direito erguido segurando um martelo de leilão, e o produto ao lado dele, visível. Ao fundo, acima do palco, um telão grande mostra apenas a foto do produto, de frente. Em primeiro plano, de costas, a plateia elegante de terno escuro, várias pessoas levantando plaquinhas de lance brancas e lisas.
 
-QUADRO 2 (Coluna central): o mesmo salão e o mesmo momento, com a câmera mais perto do palco. O apresentador de pé, de frente, atrás do púlpito, aparece dos joelhos para cima, com uma mão apoiada no púlpito e a outra apontando para a plateia, com postura confiante de leiloeiro. O produto está ao lado dele, bem visível e nítido, de frente para a câmera. O martelo fica do outro lado do púlpito. Em primeiro plano, desfocadas, mãos da plateia levantando plaquinhas brancas e lisas.
+QUADRO 2 (Coluna vertical central): o mesmo salão e o mesmo momento, com a câmera mais perto do palco. O apresentador de pé, de frente, atrás do púlpito, aparece dos joelhos para cima, com uma mão apoiada no púlpito e a outra apontando para a plateia, com postura confiante de leiloeiro. O produto está ao lado dele, bem visível e nítido, de frente para a câmera. O martelo fica do outro lado do púlpito. Em primeiro plano, desfocadas, mãos da plateia levantando plaquinhas brancas e lisas.
 
-QUADRO 3 (Coluna da direita): close do apresentador, da cintura para cima, atrás do púlpito. Com a mão direita ele segura o martelo de leilão (madeira com anel dourado) apoiado na base. Com a mão esquerda ele segura um smartphone preto e olha a tela em choque total: olhos arregalados, sobrancelhas levantadas, boca entreaberta. Em primeiro plano, no púlpito, o produto aparece grande, nítido e de frente para a câmera. Fundo desfocado: plateia com plaquinhas brancas e lisas e o telão com a foto do produto.
+QUADRO 3 (Coluna vertical da direita): close do apresentador, da cintura para cima, atrás do púlpito. Com a mão direita ele segura o martelo de leilão (madeira com anel dourado) apoiado na base. Com a mão esquerda ele segura um smartphone preto e olha a tela em choque total: olhos arregalados, sobrancelhas levantadas, boca entreaberta. Em primeiro plano, no púlpito, o produto aparece grande, nítido e de frente para a câmera. Fundo desfocado: plateia com plaquinhas brancas e lisas e o telão com a foto do produto.
 
 Fotorrealista, aparência de foto real em todos os quadros, luz quente de evento. Nenhum texto, número, letreiro ou logotipo além dos números dos quadros e do logotipo que já faz parte do próprio produto. Nenhum outro produto além desse.`;
 
@@ -817,25 +819,27 @@ Fotorrealista, aparência de foto real em todos os quadros, luz quente de evento
   // Quadro 4: Salão de leilão contínuo, produto no púlpito, apresentador de mãos abertas ("tcharam!")
   // Quadros 5 e 6: Closes do produto sobre superfície preta fosca e fundo preto destacando benefícios 1 e 2
   // =========================================================================
-  const bloco2ImagePrompt = `Com base nas fotos de referência do produto, crie UMA imagem panorâmica HORIZONTAL no formato 16:9 widescreen (1920 pixels de largura por 1080 pixels de altura, orientação paisagem / landscape de tela de computador ou TV). É TERMINANTEMENTE PROIBIDO gerar imagem vertical; a largura DEVE ser muito maior que a altura.
+  const bloco2ImagePrompt = `Com base nas fotos de referência do produto, crie UMA imagem horizontal no formato panorâmico 16:9 (1920x1080 pixels widescreen).
 
 ========================
-ESTRUTURA DE ALTURA TOTAL (OBRIGATÓRIO):
-A tela horizontal 16:9 é dividida igualmente em 3 colunas verticais lado a lado da esquerda para a direita (cada coluna com formato de tela cheia vertical 9:16 de smartphone, grade 1 linha x 3 colunas).
-ENQUADRAMENTO DE ALTURA TOTAL: Cada uma das 3 colunas verticais DEVE PREENCHER 100% DA ALTURA DA IMAGEM, do topo extremo à base extrema (de cima a baixo, ocupando todos os 1080 pixels de altura), exatamente como uma gravação de celular em pé.
-PROIBIÇÃO RIGOROSA DE BARRAS/LETTERBOX: É TERMINANTEMENTE PROIBIDO gerar faixas pretas, barras escuras, bordas ou letterbox em cima ou embaixo da imagem! Os quadros NÃO podem ser quadrados nem achatados no centro. Cada coluna vertical é alta, esbelta (proporção 9:16) e vai do topo da imagem até o chão/base da imagem.
-Separadores: linhas divisórias brancas finas entre as 3 colunas verticais.
-No canto superior direito de cada coluna, um pequeno círculo branco com o número em preto: 4, 5 e 6. Esses números são o ÚNICO texto da imagem.
+COMPOSIÇÃO OBRIGATÓRIA — TRÍPTICO DE 3 COLUNAS VERTICAIS LADO A LADO (horizontal 16:9 triptych composed of three vertical panels side-by-side):
+A imagem é uma tela panorâmica 16:9 dividida em TRÊS COLUNAS VERTICAIS LADO A LADO, da esquerda para a direita, como 3 telas de celular em pé colocadas uma ao lado da outra:
+- COLUNA 4 (Painel da ESQUERDA): ocupa de x=0 até 33% da largura. Círculo branco discreto com número 4 no canto superior direito.
+- COLUNA 5 (Painel do CENTRO): ocupa de 33% até 66% da largura. Círculo branco discreto com número 5 no canto superior direito.
+- COLUNA 6 (Painel da DIREITA): ocupa de 66% até 100% da largura. Círculo branco discreto com número 6 no canto superior direito.
+DIVISÃO: Duas linhas brancas retas e verticais dividem os 3 painéis (uma linha vertical separando a coluna esquerda da coluna central, e outra linha vertical separando a coluna central da coluna direita).
+PROIBIÇÃO RIGOROSA: NUNCA crie linhas ou faixas horizontais deitadas (NÃO empilhe uma cena sobre a outra). É TERMINANTEMENTE PROIBIDO empilhar na horizontal. As 3 cenas ficam EXCLUSIVAMENTE lado a lado em 3 colunas verticais (esquerda | meio | direita).
+Os números 4, 5 e 6 são o ÚNICO texto da imagem.
 ========================
 
 O mesmo apresentador dos quadros anteriores, idêntico: ${presenterDesc}, com ${presenterClothing}.
 O ${productName} é exatamente idêntico às fotos de referência (cor, formato, proporção, logotipo, acabamento e detalhes), nítido e bem visível em todos os quadros.
 
-QUADRO 4 (Coluna da esquerda): o mesmo salão de leilão clássico, com luz quente e a plateia desfocada ao fundo. O apresentador atrás do púlpito de madeira escura, enquadrado do peito para cima (${framingQuadro4}), sorrindo largo, com as duas mãos abertas em direção ao produto, num gesto de apresentação ("tcharam!"). O produto está ${posicaoProduto}, no centro da atenção, com a frente principal virada para a câmera, grande e nítido. O martelo fica deitado sobre o púlpito, do outro lado.
+QUADRO 4 (Coluna vertical da esquerda): o mesmo salão de leilão clássico, com luz quente e a plateia desfocada ao fundo. O apresentador atrás do púlpito de madeira escura, enquadrado do peito para cima (${framingQuadro4}), sorrindo largo, com as duas mãos abertas em direção ao produto, num gesto de apresentação ("tcharam!"). O produto está ${posicaoProduto}, no centro da atenção, com a frente principal virada para a câmera, grande e nítido. O martelo fica deitado sobre o púlpito, do outro lado.
 
-QUADRO 5 (Coluna central): close-up do produto em ângulo diagonal de 3/4, sobre uma superfície preta fosca, com fundo totalmente preto. Uma mão com a manga da roupa do apresentador aparecendo mostra o detalhe ligado ao benefício 1: ${beneficio1}. O produto ocupa quase o quadro inteiro. Iluminação suave de estúdio de produto, com reflexos sutis.
+QUADRO 5 (Coluna vertical central): close-up do produto em ângulo diagonal de 3/4, sobre uma superfície preta fosca, com fundo totalmente preto. Uma mão com a manga da roupa do apresentador aparecendo mostra o detalhe ligado ao benefício 1: ${beneficio1}. O produto ocupa quase o quadro inteiro. Iluminação suave de estúdio de produto, com reflexos sutis.
 
-QUADRO 6 (Coluna da direita): outro close-up do mesmo produto, de outro ângulo, sobre a mesma superfície preta, com fundo preto. A mão mostra o detalhe ligado ao benefício 2: ${beneficio2}. O produto ocupa quase o quadro inteiro. Mesma iluminação de produto.
+QUADRO 6 (Coluna vertical da direita): outro close-up do mesmo produto, de outro ângulo, sobre a mesma superfície preta, com fundo preto. A mão mostra o detalhe ligado ao benefício 2: ${beneficio2}. O produto ocupa quase o quadro inteiro. Mesma iluminação de produto.
 
 Fotorrealista, aparência de foto real e de comercial de produto. Nenhum texto, letreiro ou logotipo além dos números dos quadros e do logotipo que já faz parte do próprio produto. Nenhum outro produto além desse.`;
 

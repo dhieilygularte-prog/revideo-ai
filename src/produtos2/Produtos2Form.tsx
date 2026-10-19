@@ -1206,7 +1206,57 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
       {/* SEÇÃO 2 — PAINEL DE CAMPOS (Fundo azul para campos autopreenchidos)   */}
       {/* ===================================================================== */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-        {/* Seletor de Modo de cena (Posicionado antes de 1. Informações do produto) */}
+        {/* 1. Informações do Produto */}
+        <div
+          className={`md:col-span-12 p-4 rounded-2xl transition-all duration-300 space-y-2 ${
+            isInfoFilled ? activeAutoCardClass : normalCardClass
+          }`}
+        >
+          <label className="text-xs font-bold flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <span className="text-white">1. Informações do produto (Colar descrição / ficha técnica)</span>
+              <strong className="text-rose-400">*</strong>
+              {isInfoFilled && (
+                <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-sky-300" /> Analisado ✓
+                </span>
+              )}
+            </span>
+            <span className="text-[11px] text-sky-200/80 font-normal">
+              Reanalisa automaticamente (~600ms) e preenche os campos
+            </span>
+          </label>
+          <div className="relative">
+            <textarea
+              rows={3}
+              readOnly={isViewOnly}
+              value={form.productInfo}
+              onChange={(e) => handleProductInfoChange(e.target.value)}
+              placeholder="Cole aqui o título e a descrição completa do anúncio (watts, ml, tamanho, material, cor, benefícios)..."
+              className={`w-full p-3 pr-12 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-sky-400 resize-none font-sans ${
+                isInfoFilled
+                  ? 'bg-slate-950/85 border border-sky-400/60'
+                  : 'bg-zinc-950 border border-zinc-700/80'
+              }`}
+            />
+            {!isViewOnly && (
+              <button
+                type="button"
+                onClick={() => toggleMic('info')}
+                className={`absolute right-2.5 top-2.5 p-2 rounded-lg text-xs transition-all cursor-pointer ${
+                  activeMic === 'info'
+                    ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
+                    : 'bg-zinc-800 text-sky-300 hover:bg-zinc-700 border border-zinc-700'
+                }`}
+                title={activeMic === 'info' ? 'Parar gravação' : 'Ditar informações do produto'}
+              >
+                {activeMic === 'info' ? <Square className="w-4 h-4 fill-white" /> : <Mic className="w-4 h-4" />}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Seletor de Modo de cena (Posicionado após 1. Informações do produto) */}
         <div className={`md:col-span-12 p-4 rounded-2xl space-y-2 transition-all duration-300 flex flex-col justify-between ${activeAutoCardClass}`}>
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
@@ -1439,56 +1489,6 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
             </div>
           </div>
         )}
-
-        {/* 1. Informações do Produto */}
-        <div
-          className={`md:col-span-12 p-4 rounded-2xl transition-all duration-300 space-y-2 ${
-            isInfoFilled ? activeAutoCardClass : normalCardClass
-          }`}
-        >
-          <label className="text-xs font-bold flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              <span className="text-white">1. Informações do produto (Colar descrição / ficha técnica)</span>
-              <strong className="text-rose-400">*</strong>
-              {isInfoFilled && (
-                <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-sky-300" /> Analisado ✓
-                </span>
-              )}
-            </span>
-            <span className="text-[11px] text-sky-200/80 font-normal">
-              Reanalisa automaticamente (~600ms) e preenche os campos
-            </span>
-          </label>
-          <div className="relative">
-            <textarea
-              rows={3}
-              readOnly={isViewOnly}
-              value={form.productInfo}
-              onChange={(e) => handleProductInfoChange(e.target.value)}
-              placeholder="Cole aqui o título e a descrição completa do anúncio (watts, ml, tamanho, material, cor, benefícios)..."
-              className={`w-full p-3 pr-12 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-sky-400 resize-none font-sans ${
-                isInfoFilled
-                  ? 'bg-slate-950/85 border border-sky-400/60'
-                  : 'bg-zinc-950 border border-zinc-700/80'
-              }`}
-            />
-            {!isViewOnly && (
-              <button
-                type="button"
-                onClick={() => toggleMic('info')}
-                className={`absolute right-2.5 top-2.5 p-2 rounded-lg text-xs transition-all cursor-pointer ${
-                  activeMic === 'info'
-                    ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
-                    : 'bg-zinc-800 text-sky-300 hover:bg-zinc-700 border border-zinc-700'
-                }`}
-                title={activeMic === 'info' ? 'Parar gravação' : 'Ditar informações do produto'}
-              >
-                {activeMic === 'info' ? <Square className="w-4 h-4 fill-white" /> : <Mic className="w-4 h-4" />}
-              </button>
-            )}
-          </div>
-        </div>
 
         {/* 2. Nome do Produto (curto e falável) */}
         <div
