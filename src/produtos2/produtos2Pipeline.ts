@@ -601,6 +601,7 @@ export async function runProdutos2LeilaoPipeline(params: {
   onProgress?.(15, '2/5 Preparando falas dos 3 blocos do leilão...');
 
   let speeches: LeilaoSpeechParts;
+  let leilaoBenefits: string[] = [];
   if (form.leilaoSpeech && form.leilaoSpeech.cena1 && form.leilaoSpeech.cena2 && form.leilaoSpeech.cena3) {
     speeches = { ...form.leilaoSpeech };
   } else {
@@ -612,6 +613,7 @@ export async function runProdutos2LeilaoPipeline(params: {
       userSpeech: form.userSpeech,
     });
     speeches = generated.leilaoSpeech;
+    leilaoBenefits = generated.benefits;
 
     if (form.productInfo && form.productInfo.trim()) {
       try {
@@ -649,6 +651,7 @@ export async function runProdutos2LeilaoPipeline(params: {
     productSize,
     additionalInstructions: form.additionalInstructions,
     speeches,
+    benefits: leilaoBenefits,
   });
 
   const allPhotos: string[] = [
@@ -1832,13 +1835,13 @@ export async function regenerateProdutos2Storyboard(params: {
   // Se for Modo Leilão, refaz exclusivamente o bloco selecionado (1, 2 ou 3)
   if (result.sceneMode === 'modo_leilao' && result.leilao) {
     const targetBlock = sceneTarget === 3 ? 3 : sceneTarget === 2 ? 2 : 1;
-    const targetPrompt =
+    let targetPrompt =
       targetBlock === 3
         ? result.leilao.bloco3.storyboardImagePrompt
         : targetBlock === 2
         ? result.leilao.bloco2.storyboardImagePrompt
         : result.leilao.bloco1.storyboardImagePrompt;
-    const targetPrevImg =
+    let targetPrevImg =
       targetBlock === 3
         ? result.leilao.bloco3.storyboardImageUrl
         : targetBlock === 2
@@ -1847,13 +1850,24 @@ export async function regenerateProdutos2Storyboard(params: {
     const targetCount = targetBlock === 3 ? 1 : 3;
     const targetAspect = targetBlock === 3 ? '9:16' : '16:9';
 
+    // Se o usuário solicitou mudança de apresentador ou características específicas no customCorrection,
+    // atualizamos a especificação de apresentador no prompt
+    if (customCorrection && customCorrection.trim()) {
+      const cleanCustom = customCorrection.trim();
+      if (/mulher|homem|apresentador|apresentadora|grisalh|terno|idade|jovem/i.test(cleanCustom)) {
+        const { buildLeilaoPresenter } = await import('./produtos2Leilao');
+        const newPresenter = buildLeilaoPresenter(cleanCustom);
+        targetPrompt = `${targetPrompt}\n\n[ALTERAÇÃO MANDATÓRIA DO APRESENTADOR]: O apresentador em todos os quadros deve ser: ${newPresenter.presenterDescription}, com ${newPresenter.presenterClothing}. Substitua a descrição do apresentador anterior por esta.`;
+      }
+    }
+
     const allPhotos: string[] = [
       ...(form.productPhotosBase64 || []),
       ...(form.variations || []).flatMap((v) => v.photos || []),
     ].filter(Boolean);
 
     const genRes = await requestStoryboardImageGeneration({
-      prompt: targetPrompt,
+      prompt: targetPrompt || '',
       productName: result.productName,
       allPhotos,
       variations: form.variations,

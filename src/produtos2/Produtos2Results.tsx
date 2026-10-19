@@ -1127,12 +1127,12 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
         />
 
         {/* ================================================================= */}
-        {/* BLOCO 2: ESTÚDIO & REVELAÇÃO (12–24s | 3 Quadros 16:9)            */}
+        {/* BLOCO 2: APRESENTAÇÃO & CLOSES (12–24s | 3 Quadros 16:9)          */}
         {/* ================================================================= */}
         <LeilaoBlockSection
           blockNumber={2}
-          title="Bloco 2 (12–24s) — Estúdio & Revelação do Produto"
-          subtitle="Storyboard horizontal 16:9 em alta resolução contendo 3 quadros verticais (4, 5 e 6) · Pano preto & Revelação & Close"
+          title="Bloco 2 (12–24s) — Apresentação & Closes do Produto"
+          subtitle="Storyboard horizontal 16:9 em alta resolução contendo 3 quadros verticais (4, 5 e 6) · Salão de leilão & Closes em fundo preto"
           downloadFileName="leilao_storyboard_2"
           storyboardImageUrl={leilao.bloco2?.storyboardImageUrl}
           isRegeneratingStoryboard={Boolean(result.isRegeneratingStoryboard)}

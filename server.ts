@@ -1683,8 +1683,8 @@ app.post('/api/generate-scene-image', async (req, res) => {
           hasUserProvidedModel,
           isCloneMode,
           preserveLocation,
-          aspectRatio: req.body.aspectRatio,
-          size: req.body.size || (req.body.aspectRatio === '16:9' ? '1792x1024' : undefined),
+          aspectRatio: (req.body.isLeilaoBlock === 1 || req.body.isLeilaoBlock === 2 || req.body.aspectRatio === '16:9') ? '16:9' : (req.body.aspectRatio || '9:16'),
+          size: req.body.size || ((req.body.isLeilaoBlock === 1 || req.body.isLeilaoBlock === 2 || req.body.aspectRatio === '16:9') ? '1792x1024' : undefined),
         });
         return res.json(result);
       } catch (oiErr: any) {
@@ -1863,7 +1863,7 @@ DIRETIVA MESTRE 3: ZERO TATUAGENS. Pele 100% limpa, sem qualquer tatuagem em hom
           config: {
             systemInstruction: systemInstructionText,
             imageConfig: {
-              aspectRatio: (req.body.aspectRatio || '9:16') as any,
+              aspectRatio: ((req.body.isLeilaoBlock === 1 || req.body.isLeilaoBlock === 2 || req.body.aspectRatio === '16:9') ? '16:9' : (req.body.aspectRatio || '9:16')) as any,
             },
           },
         });
@@ -3553,16 +3553,34 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
 
     const reqSceneCount = Number(req.body.sceneCount);
     const isLeilaoBlockNum = Number(req.body.isLeilaoBlock) || 0;
-    const isLeilao1 = isLeilaoBlockNum === 1 || (isLeilaoBlockNum === 0 && /BLOCO 1|QUADRO 1.*QUADRO 2.*QUADRO 3|CENA 1.*leiloeiro|COLUNA 1.*QUADRO 1|leilao_storyboard_1/i.test(String(prompt)));
-    const isLeilao2 = isLeilaoBlockNum === 2 || (isLeilaoBlockNum === 0 && /BLOCO 2|QUADRO 4.*QUADRO 5.*QUADRO 6|pano de veludo|COLUNA 1.*QUADRO 4|leilao_storyboard_2/i.test(String(prompt)));
-    const isLeilao3 = isLeilaoBlockNum === 3 || (isLeilaoBlockNum === 0 && /BLOCO 3|GERAÇÃO 3|leilao_cena_final/i.test(String(prompt)));
+    const promptStr = String(prompt);
+
+    const isLeilao1 = isLeilaoBlockNum === 1 || (isLeilaoBlockNum === 0 && (
+      /leilao_storyboard_1/i.test(promptStr) ||
+      (/QUADRO 1/i.test(promptStr) && /QUADRO 2/i.test(promptStr) && /QUADRO 3/i.test(promptStr) && !/QUADRO 4/i.test(promptStr)) ||
+      /CENA 1.*leil/i.test(promptStr) ||
+      /BLOCO 1/i.test(promptStr)
+    ));
+
+    const isLeilao2 = isLeilaoBlockNum === 2 || (isLeilaoBlockNum === 0 && (
+      /leilao_storyboard_2/i.test(promptStr) ||
+      (/QUADRO 4/i.test(promptStr) && /QUADRO 5/i.test(promptStr) && /QUADRO 6/i.test(promptStr)) ||
+      /BLOCO 2/i.test(promptStr)
+    ));
+
+    const isLeilao3 = isLeilaoBlockNum === 3 || (isLeilaoBlockNum === 0 && (
+      /leilao_cena_final|BLOCO 3|GERAÇÃO 3/i.test(promptStr) ||
+      (/apontando o dedo indicador direto para a câmera/i.test(promptStr) && !/QUADRO 1/i.test(promptStr))
+    ));
     const isLeilaoBlock = isLeilao1 || isLeilao2 || isLeilao3;
 
     const isAchadinhosBlockNum = Number(req.body.isAchadinhosBlock) || 0;
-    const isAchadinhos1 = isAchadinhosBlockNum === 1 || (isAchadinhosBlockNum === 0 && /MODO AURORA ACHADINHOS.*CENA 1|Storyboard 1A\/1B\/1C|achadinhos_storyboard_1/i.test(String(prompt)));
-    const isAchadinhos2 = isAchadinhosBlockNum === 2 || (isAchadinhosBlockNum === 0 && /MODO AURORA ACHADINHOS.*CENA 2|Storyboard 2A\/2B\/2C|achadinhos_storyboard_2/i.test(String(prompt)));
-    const isAchadinhos3 = isAchadinhosBlockNum === 3 || (isAchadinhosBlockNum === 0 && /MODO AURORA ACHADINHOS.*CENA 3|Storyboard 3A\/3B\/3C|achadinhos_storyboard_3/i.test(String(prompt)));
+    const isAchadinhos1 = isAchadinhosBlockNum === 1 || (isAchadinhosBlockNum === 0 && (/MODO AURORA ACHADINHOS.*CENA 1/i.test(promptStr) || /Storyboard 1A\/1B\/1C|achadinhos_storyboard_1/i.test(promptStr)));
+    const isAchadinhos2 = isAchadinhosBlockNum === 2 || (isAchadinhosBlockNum === 0 && (/MODO AURORA ACHADINHOS.*CENA 2/i.test(promptStr) || /Storyboard 2A\/2B\/2C|achadinhos_storyboard_2/i.test(promptStr)));
+    const isAchadinhos3 = isAchadinhosBlockNum === 3 || (isAchadinhosBlockNum === 0 && (/MODO AURORA ACHADINHOS.*CENA 3/i.test(promptStr) || /Storyboard 3A\/3B\/3C|achadinhos_storyboard_3/i.test(promptStr)));
     const isAchadinhosBlock = isAchadinhos1 || isAchadinhos2 || isAchadinhos3;
+
+    const isLandscapeStoryboard = Boolean(isLeilao1 || isLeilao2 || isAchadinhosBlock || req.body.aspectRatio === '16:9' || (/horizontal|16:9|1920x1080|1792x1024|paisagem/i.test(promptStr) && !isLeilao3));
 
     const isSixFrames =
       reqSceneCount === 6 ||
@@ -3580,9 +3598,7 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
       ? '2x3 (2 colunas x 3 linhas)'
       : '3x3 (3 colunas x 3 linhas)';
 
-    const chosenAspectRatio: '16:9' | '9:16' = (isLeilao1 || isLeilao2 || isAchadinhosBlock || req.body.aspectRatio === '16:9')
-      ? '16:9'
-      : '9:16';
+    const chosenAspectRatio: '16:9' | '9:16' = isLandscapeStoryboard ? '16:9' : '9:16';
     const chosenSize: '1792x1024' | '1024x1792' = chosenAspectRatio === '16:9' ? '1792x1024' : '1024x1792';
 
     const photosList: string[] = Array.isArray(productPhotosBase64)
@@ -3611,9 +3627,16 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
       ? `${baseWithLogo}\n\n========================\nCORREÇÃO OBRIGATÓRIA DE AUDITORIA DE FIDELIDADE DOS ${frameCount} QUADRANTES:\n${correctionPrompt.trim()}\n========================`
       : baseWithLogo;
 
+    // Se a imagem de base enviada for vertical e o objetivo for horizontal 16:9, descartamos para não forçar a IA a desenhar em canvas vertical
+    let cleanPrevImage = previousStoryboardImageBase64;
+    if (isLandscapeStoryboard && previousStoryboardImageBase64 && checkIsImageBase64Vertical(previousStoryboardImageBase64)) {
+      console.warn('[Storyboard] previousStoryboardImageBase64 é vertical em pedido horizontal 16:9. Descartando imagem base.');
+      cleanPrevImage = undefined;
+    }
+
     const activeProfile = req.body?.aiProfile || getRequestAIProfile(req);
     // Para Storyboard 16:9 do Modo Leilão (Blocos 1 e 2) e Modo Achadinhos (Blocos 1, 2 e 3), se OpenAI estiver configurada prioriza OpenAI pois gera nativamente 1792x1024
-    const preferOpenAIForLandscape = (isLeilao1 || isLeilao2 || isAchadinhosBlock) && openAIProvider.isConfigured();
+    const preferOpenAIForLandscape = isLandscapeStoryboard && openAIProvider.isConfigured();
     const tryOrder: ('openai' | 'gemini')[] = preferOpenAIForLandscape
       ? ['openai', 'gemini']
       : activeProfile === 'gemini'
@@ -3637,7 +3660,7 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
             productPhotoBase64: photosList[0] || '',
             productPhotosBase64: photosList,
             modelReferenceBase64: undefined, // Sempre usa as fotos reais do produto como referência primária no storyboard
-            referenceFrameBase64: previousStoryboardImageBase64 || undefined,
+            referenceFrameBase64: cleanPrevImage || undefined,
             variationName: productName,
             productType: productName,
             additionalInstructions: [additionalInstructions, correctionPrompt].filter(Boolean).join(' | '),
@@ -3718,8 +3741,8 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
           }
         });
 
-        if (previousStoryboardImageBase64 && typeof previousStoryboardImageBase64 === 'string') {
-          const parsedPrev = parseInlineImage(previousStoryboardImageBase64);
+        if (cleanPrevImage && typeof cleanPrevImage === 'string') {
+          const parsedPrev = parseInlineImage(cleanPrevImage);
           if (parsedPrev) {
             parts.push({ inlineData: parsedPrev });
             parts.push({
@@ -3744,12 +3767,19 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
 - Fotografia ultrarrealista com textura de pele natural, iluminação de smartphone e cenário brasileiro cotidiano.
 - Fidelidade absoluta às fotos reais do produto.`
           : isLeilaoBlock
-          ? `VOCÊ É O GERADOR DE STORYBOARD DO MODO LEILÃO.
-- Gere UMA IMAGEM fotográfica ultra-realista contendo ${gridLabel}.
-- Os quadros devem ser numerados com selos circulares brancos pequenos no canto superior direito de cada quadro com o número preto correspondente.
-- Cantos arredondados nos quadros, separados por uma borda branca fina, sobre fundo neutro.
+          ? (isLeilao3
+            ? `VOCÊ É O GERADOR VISUAL DA CENA FINAL DO MODO LEILÃO.
+- Gere UMA ÚNICA IMAGEM VERTICAL 9:16 (1080x1920), plano médio fotorrealista.
+- SEM NÚMEROS DE QUADRO, sem faixas brancas e sem legendas sobrepostas.
+- Apresentador atrás do púlpito, apontando para a câmera, com o produto ao lado dele bem visível e o telão ao fundo mostrando a foto do produto.
+- Fidelidade absoluta às fotos reais do produto.`
+            : `VOCÊ É O GERADOR DE STORYBOARD DO MODO LEILÃO.
+- Gere UMA IMAGEM FOTOGRÁFICA HORIZONTAL 16:9 (WIDESCREEN 1920x1080) contendo ${gridLabel}.
+- É TERMINANTEMENTE PROIBIDO GERAR IMAGEM VERTICAL. A imagem DEVE ser mais larga do que alta (16:9).
+- Os 3 quadros verticais 9:16 devem ficar dispostos lado a lado na horizontal, separados por uma faixa branca fina vertical.
+- Os quadros devem ser numerados com selos circulares brancos pequenos no canto superior direito de cada quadro com o número preto correspondente (${isLeilao1 ? '1, 2 e 3' : '4, 5 e 6'}).
 - ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: Não adicione legendas flutuantes, textos publicitários externos, preços, setas, carrinho de compras, marca d'água externa, @ ou logotipo do TikTok. Apenas os números nos selos circulares e a logomarca original do fabricante no próprio produto.
-- Fidelidade absoluta às fotos reais do produto em todos os quadros onde o produto aparece.`
+- Fidelidade absoluta às fotos reais do produto em todos os quadros onde o produto aparece.`)
           : `VOCÊ É O GERADOR DE STORYBOARD DO MODO PRODUTOS 2.0.
 - Gere UMA ÚNICA IMAGEM VERTICAL 9:16 (1080x1920) contendo uma grade ${gridLabel} com EXATAMENTE ${frameCount} quadros fotográficos ultra-realistas numerados de 1 a ${frameCount} (selo circular branco pequeno no canto superior esquerdo de cada quadro com número preto).
 - Cantos arredondados nos quadros, separados por uma borda branca fina, sobre fundo branco.
@@ -3757,11 +3787,7 @@ ${variationInstructionRule}
 - LOGOMARCA E MARCA DO FABRICANTE NO PRODUTO (OBRIGATÓRIO): A marca, a logomarca, o emblema e os textos que já estão impressos/estampados no próprio produto nas fotos de referência DEVEM aparecer 100% idênticos, na mesma cor e no mesmo lugar da peça, em todos os quadros em que aquela parte estiver visível. JAMAIS remova ou alise a logomarca do produto!
 - ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: Não adicione legendas flutuantes, textos publicitários externos, preços, setas, carrinho de compras, marca d'água externa, @ ou logotipo do TikTok. Apenas os números 1 a ${frameCount} nos selos circulares e a logomarca original do fabricante no próprio produto.`;
 
-        const chosenAspectRatio = (isLeilao1 || isLeilao2 || isAchadinhosBlock)
-          ? (req.body.aspectRatio || '16:9')
-          : isLeilao3
-          ? '9:16'
-          : '9:16';
+        const geminiAspectRatio = isLandscapeStoryboard ? '16:9' : '9:16';
 
         const modelsToTry = [
           GEMINI_IMAGE_MODEL || 'gemini-3.1-flash-image',
@@ -3777,7 +3803,7 @@ ${variationInstructionRule}
               config: {
                 systemInstruction: systemInstructionText,
                 imageConfig: {
-                  aspectRatio: chosenAspectRatio as any,
+                  aspectRatio: geminiAspectRatio as any,
                 },
               },
             });
@@ -3786,9 +3812,9 @@ ${variationInstructionRule}
             if (candidates[0]?.content?.parts) {
               for (const part of candidates[0].content.parts) {
                 if (part.inlineData?.data) {
-                  // Se for Bloco 1 ou 2 do Leilão e o Gemini gerou imagem vertical por engano, tenta fallback para OpenAI
-                  if ((isLeilao1 || isLeilao2) && checkIsImageBase64Vertical(part.inlineData.data)) {
-                    console.warn('Gemini gerou imagem vertical em pedido 16:9. Tentando fallback para OpenAI 1792x1024...');
+                  // Se era para ser horizontal 16:9 e a imagem gerada saiu vertical, aciona recuperação
+                  if (isLandscapeStoryboard && checkIsImageBase64Vertical(part.inlineData.data)) {
+                    console.warn('Gemini gerou imagem vertical em pedido 16:9 horizontal! Tentando fallback para OpenAI 1792x1024...');
                     if (openAIProvider.isConfigured()) {
                       try {
                         const oiRes = await openAIProvider.generateSceneImage({
@@ -3807,6 +3833,47 @@ ${variationInstructionRule}
                       } catch (oiRetryErr: any) {
                         console.warn('Fallback OpenAI pós-Gemini vertical falhou:', oiRetryErr?.message);
                       }
+                    }
+
+                    // Se OpenAI não configurada ou falhou, tenta retry no Gemini com prompt reforçado sem imagem anterior
+                    try {
+                      const retryParts: any[] = [];
+                      photosList.slice(0, 3).forEach((pStr) => {
+                        const parsedP = parseInlineImage(pStr);
+                        if (parsedP) retryParts.push({ inlineData: parsedP });
+                      });
+                      retryParts.push({
+                        text: `ATENÇÃO CRÍTICA DE FORMATO: A imagem gerada DEVE ser OBRIGATORIAMENTE HORIZONTAL 16:9 (WIDESCREEN 1920x1080, formato paisagem, muito mais larga do que alta). NUNCA gere imagem vertical.\n\n${effectivePrompt}`,
+                      });
+                      const retryImgRes = await getGenAI().models.generateContent({
+                        model: modelCandidate,
+                        contents: { parts: retryParts },
+                        config: {
+                          systemInstruction: systemInstructionText,
+                          imageConfig: {
+                            aspectRatio: '16:9',
+                          },
+                        },
+                      });
+                      const retryPart = retryImgRes.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData?.data);
+                      if (retryPart?.inlineData?.data) {
+                        const retryMime = retryPart.inlineData.mimeType || 'image/png';
+                        return res.json({
+                          success: true,
+                          imageUrl: `data:${retryMime};base64,${retryPart.inlineData.data}`,
+                          costBRL: 0.08,
+                          usage: {
+                            promptTokens: 1800,
+                            completionTokens: 0,
+                            totalTokens: 1800,
+                            costUSD: 0.014,
+                            costBRL: 0.08,
+                            model: modelCandidate,
+                          },
+                        });
+                      }
+                    } catch (retryErr: any) {
+                      console.warn('Retry Gemini horizontal falhou:', retryErr?.message);
                     }
                   }
 

@@ -649,9 +649,15 @@ Mantenha o mesmo modelo/corte e caimento da peça atual; troque somente cores (p
         return false;
       };
 
-      // Quando for Storyboard horizontal 16:9 widescreen e não for uma edição de quadro anterior existente,
+      // Se é horizontal 16:9 e a imagem de referência anterior era vertical, descartamos ela para não herdar o formato vertical
+      if (isLandscape && referenceFrameBase64 && checkIsVertical(referenceFrameBase64)) {
+        console.warn('[OpenAIProvider] referenceFrameBase64 é vertical em pedido 16:9 horizontal. Descartando imagem base para gerar horizontal limpa.');
+        baseImageFile = null;
+      }
+
+      // Quando for Storyboard horizontal 16:9 widescreen e não houver baseImageFile válida,
       // usamos client.images.generate diretamente para NÃO herdar o canvas vertical da foto de celular do produto.
-      if (isLandscape && !referenceFrameBase64) {
+      if (isLandscape && !baseImageFile) {
         const genLandscapeRes = await client.images.generate({
           model: OPENAI_IMAGE_MODEL,
           prompt: effectivePrompt,
