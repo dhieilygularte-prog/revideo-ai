@@ -36,6 +36,9 @@ import {
   extractPriceFromProductInfo,
   buildLeilaoSpeeches,
 } from './produtos2Leilao';
+import {
+  buildAchadinhosSpeeches,
+} from './produtos2Achadinhos';
 import { AIProfile } from '../config/aiProfiles';
 import { TokenUsageStats } from '../types';
 import { ProgressBar } from '../components/ProgressBar';
@@ -136,8 +139,9 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
   const is10sSingle = currentSceneMode === '1_cena_10s';
   const is15sSingle = currentSceneMode === '1_cena_15s';
   const isTwoScenes = currentSceneMode === '2_cenas_10s';
-  const speechMaxChars = isTwoScenes ? 450 : is15sSingle ? 335 : 225;
-  const speechMinChars = isTwoScenes ? 400 : is15sSingle ? 310 : 200;
+  const isAchadinhos = currentSceneMode === 'modo_achadinhos';
+  const speechMaxChars = isAchadinhos ? 675 : isTwoScenes ? 450 : is15sSingle ? 335 : 225;
+  const speechMinChars = isAchadinhos ? 600 : isTwoScenes ? 400 : is15sSingle ? 310 : 200;
 
   const handleCopySpeech = (text: string, key: string) => {
     if (!text) return;
@@ -333,6 +337,65 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
           speechesGenerated: true,
           selectedSpeechOption: 'leilao',
           finalSelectedSpeech: `${finalLeilaoSpeech.cena1}\n\n${finalLeilaoSpeech.cena2}\n\n${finalLeilaoSpeech.cena3}`,
+        }));
+
+        setIsGeneratingSpeeches(false);
+        return;
+      }
+
+      // MODO ACHADINHOS: GERAÇÃO DEDICADA DAS FALAS (3 CENAS DE 10S - ATÉ 675 CARACTERES TOTAL)
+      if (currentSceneMode === 'modo_achadinhos') {
+        const generated = buildAchadinhosSpeeches({
+          productName: finalProductName,
+          productInfo: form.productInfo,
+          additionalInstructions: form.additionalInstructions,
+          userSpeech: form.userSpeech,
+          clientGender: form.clientGender,
+        });
+
+        let finalAchadinhosSpeech = generated.speeches;
+        let finalAuroraText = generated.auroraSpeech;
+
+        // Tenta gerar via IA no servidor para máxima fidelidade à Versão 5.0
+        if (form.productInfo && form.productInfo.trim()) {
+          try {
+            const res = await fetch('/api/produtos2-planning', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'generate_achadinhos_speeches',
+                productName: finalProductName,
+                productInfo: form.productInfo,
+                additionalInstructions: form.additionalInstructions,
+                userSpeech: form.userSpeech,
+              }),
+            });
+            if (res.ok) {
+              const data = await res.json();
+              if (data.success && data.achadinhosSpeech) {
+                finalAchadinhosSpeech = data.achadinhosSpeech;
+                finalAuroraText = data.achadinhosSpeech.full || `${data.achadinhosSpeech.cena1}\n\n${data.achadinhosSpeech.cena2}\n\n${data.achadinhosSpeech.cena3}`;
+              }
+            }
+          } catch (e) {
+            console.warn('Fallback para falas locais do modo achadinhos:', e);
+          }
+        }
+
+        const userSpeechText = generated.userSpeech || (form.userSpeech && form.userSpeech.trim()) || undefined;
+        const initialSelectedOption: 'user_speech' | 'aurora_copy' = userSpeechText ? 'user_speech' : 'aurora_copy';
+        const initialFinalSpeech = initialSelectedOption === 'user_speech' ? userSpeechText! : finalAuroraText;
+
+        onChange((prev) => ({
+          ...prev,
+          auroraCopy: finalAuroraText,
+          userSpeech: userSpeechText,
+          hasUserSpeech: Boolean(userSpeechText),
+          achadinhosSpeech: finalAchadinhosSpeech,
+          speechesGenerated: true,
+          selectedSpeechOption: initialSelectedOption,
+          finalSelectedSpeech: initialFinalSpeech,
+          copyEngine: 'aurora_copy',
         }));
 
         setIsGeneratingSpeeches(false);
@@ -937,6 +1000,8 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
   const hasSelectedSpeech = Boolean(
     (currentSceneMode === 'modo_leilao'
       ? Boolean(form.leilaoSpeech?.cena1 && form.leilaoSpeech?.cena2 && form.leilaoSpeech?.cena3)
+      : currentSceneMode === 'modo_achadinhos'
+      ? Boolean(form.auroraCopy?.trim() || form.userSpeech?.trim() || form.finalSelectedSpeech?.trim())
       : form.selectedSpeechOption === 'user_speech'
       ? form.userSpeech?.trim()
       : form.selectedSpeechOption === 'aurora_copy'
@@ -1152,7 +1217,9 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
             </div>
             <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2.5 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
               <CheckCircle2 className="w-3 h-3 text-sky-300" />
-              {currentSceneMode === 'modo_leilao'
+              {currentSceneMode === 'modo_achadinhos'
+                ? 'Modo Achadinhos (3 Cenas de 10s) ✓'
+                : currentSceneMode === 'modo_leilao'
                 ? 'Modo Leilão ✓'
                 : currentSceneMode === '1_cena_15s'
                 ? 'Uma cena — 15 segundos ✓'
@@ -1161,7 +1228,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                 : 'Uma cena — 10 segundos ✓'}
             </span>
           </div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 bg-slate-950/90 p-1.5 rounded-xl border border-zinc-700/60">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 bg-slate-950/90 p-1.5 rounded-xl border border-zinc-700/60">
             <button
               type="button"
               disabled={isViewOnly}
@@ -1257,12 +1324,40 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
               }}
               className={`py-2.5 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                 currentSceneMode === 'modo_leilao'
-                  ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 shadow-md shadow-amber-500/30'
+                  ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black shadow-md shadow-amber-500/30'
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
               <Gavel className="w-3.5 h-3.5" />
               <span>Modo Leilão</span>
+            </button>
+            <button
+              type="button"
+              disabled={isViewOnly}
+              onClick={() => {
+                if (isViewOnly) return;
+                onChange((prev) => {
+                  const shouldSwitchToAurora =
+                    prev.selectedSpeechOption === 'banco1' || prev.selectedSpeechOption === 'banco2';
+                  return {
+                    ...prev,
+                    sceneMode: 'modo_achadinhos',
+                    duration: 10,
+                    selectedSpeechOption: shouldSwitchToAurora ? 'aurora_copy' : prev.selectedSpeechOption,
+                    finalSelectedSpeech: shouldSwitchToAurora
+                      ? prev.auroraCopy || prev.finalSelectedSpeech
+                      : prev.finalSelectedSpeech,
+                  };
+                });
+              }}
+              className={`py-2.5 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                currentSceneMode === 'modo_achadinhos'
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-slate-950 font-black shadow-md shadow-emerald-500/30'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Modo Achadinhos</span>
             </button>
           </div>
         </div>
@@ -1998,6 +2093,8 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
               <p className="text-xs text-zinc-400 mt-1">
                 {isViewOnly
                   ? 'Modo somente visualização: selecione ou clique em Copiar para copiar qualquer uma das falas.'
+                  : isAchadinhos
+                  ? 'Modo Aurora Achadinhos (3 Cenas de 10s): a fala de até 675 caracteres é 100% editável. Ao gerar o vídeo, ela será dividida internamente em 3 cenas de até 225 caracteres cada.'
                   : isTwoScenes
                   ? 'Modo Duas cenas (10s cada): todas as falas são 100% editáveis. Máximo de 450 caracteres (será dividida em duas partes de até 225 caracteres cada ao gerar os storyboards).'
                   : is15sSingle
@@ -2010,6 +2107,8 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
               <span>
                 {form.selectedSpeechOption === 'user_speech'
                   ? 'Fala do Usuário Selecionada'
+                  : isAchadinhos
+                  ? 'Fala da Aurora Achadinhos Selecionada'
                   : is10sSingle && form.selectedSpeechOption === 'banco1'
                   ? 'Fala 1 Selecionada'
                   : is10sSingle && form.selectedSpeechOption === 'banco2'
@@ -2561,7 +2660,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                       )}
                     </div>
                     <h4 className="text-xs sm:text-sm font-black text-white">
-                      {is10sSingle ? 'Fala 3 — Aurora Copy' : 'Fala 1 — Aurora Copy'}
+                      {isAchadinhos ? 'Fala da Aurora Achadinhos' : is10sSingle ? 'Fala 3 — Aurora Copy' : 'Fala 1 — Aurora Copy'}
                     </h4>
                   </div>
 
@@ -2623,7 +2722,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
 
                 <div className="relative" onClick={(e) => e.stopPropagation()}>
                   <textarea
-                    rows={isTwoScenes ? 4 : 3}
+                    rows={isAchadinhos ? 5 : isTwoScenes ? 4 : 3}
                     readOnly={isViewOnly}
                     value={form.auroraCopy || ''}
                     onChange={(e) => {
@@ -2635,7 +2734,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                         finalSelectedSpeech: prev.selectedSpeechOption === 'aurora_copy' ? val : prev.finalSelectedSpeech,
                       }));
                     }}
-                    placeholder="Fala criada pela Aurora Copy..."
+                    placeholder={isAchadinhos ? 'Fala gerada pela Aurora Achadinhos (3 cenas integradas de até 675 caracteres)...' : 'Fala criada pela Aurora Copy...'}
                     className={`w-full p-3.5 pr-12 rounded-xl bg-zinc-950/90 text-xs sm:text-sm leading-relaxed font-sans shadow-inner resize-y transition-colors ${
                       (form.auroraCopy?.length || 0) > speechMaxChars
                         ? 'text-rose-400 border-2 border-rose-500 focus:border-rose-400'
@@ -2738,7 +2837,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                       </div>
                       <h4 className="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wide flex items-center gap-1.5">
                         <Sparkles className="w-4 h-4 text-amber-400" />
-                        <span>{is10sSingle ? 'Fala 4 — Fala do Usuário' : 'Fala 2 — Fala do Usuário'}</span>
+                        <span>{isAchadinhos ? 'Fala do Usuário (Modo Achadinhos)' : is10sSingle ? 'Fala 4 — Fala do Usuário' : 'Fala 2 — Fala do Usuário'}</span>
                       </h4>
                     </div>
 
@@ -2800,7 +2899,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
 
                   <div className="relative" onClick={(e) => e.stopPropagation()}>
                     <textarea
-                      rows={isTwoScenes ? 4 : 3}
+                      rows={isAchadinhos ? 5 : isTwoScenes ? 4 : 3}
                       readOnly={isViewOnly}
                       value={form.userSpeech || ''}
                       onChange={(e) => {
@@ -2812,7 +2911,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                           finalSelectedSpeech: prev.selectedSpeechOption === 'user_speech' ? val : prev.finalSelectedSpeech,
                         }));
                       }}
-                      placeholder="Fala extraída das Instruções Adicionais..."
+                      placeholder={isAchadinhos ? 'Fala do Usuário para o Modo Achadinhos (até 675 caracteres)...' : 'Fala extraída das Instruções Adicionais...'}
                       className={`w-full p-3.5 pr-12 rounded-xl bg-zinc-950/90 text-xs sm:text-sm leading-relaxed font-sans shadow-inner resize-y transition-colors ${
                         (form.userSpeech?.length || 0) > speechMaxChars
                           ? 'text-rose-400 border-2 border-rose-500 focus:border-rose-400'

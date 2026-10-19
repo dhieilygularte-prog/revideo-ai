@@ -1,10 +1,11 @@
 import { TokenUsageStats } from '../types';
 import type { Produtos2LeilaoResultState } from './produtos2Leilao';
+import type { Produtos2AchadinhosResultState, AchadinhosSpeechParts } from './produtos2Achadinhos';
 
 export type Produtos2SubMode = 'produtos_geral' | 'vestuario_masculino';
 export type Produtos2MaleSubOption = 'calcados' | 'roupas';
 export type Produtos2Duration = 8 | 10 | 15;
-export type Produtos2SceneMode = '1_cena_10s' | '1_cena_15s' | '2_cenas_10s' | 'modo_leilao';
+export type Produtos2SceneMode = '1_cena_10s' | '1_cena_15s' | '2_cenas_10s' | 'modo_leilao' | 'modo_achadinhos';
 export type Produtos2Influencer = 'Homem' | 'Mulher' | null;
 export type Produtos2ClientGender = 'Masculino' | 'Feminino' | 'Unissex';
 export type Produtos2SpeechMode = 'com_fala' | 'sem_fala';
@@ -65,6 +66,7 @@ export interface Produtos2FormState {
   bancoCopy?: string;
   bancoCopy2?: string;
   auroraCopy?: string;
+  achadinhosSpeech?: AchadinhosSpeechParts;
   selectedSpeechOption?: 'user_speech' | 'banco1' | 'banco2' | 'aurora_copy';
   finalSelectedSpeech?: string;
   isDialogue?: boolean;
@@ -171,6 +173,7 @@ export interface Produtos2ResultState {
   veoPrompt: string;
   scene2?: Produtos2SecondSceneState;
   leilao?: Produtos2LeilaoResultState;
+  achadinhos?: Produtos2AchadinhosResultState;
   variations?: Produtos2Variation[];
   additionalInstructions?: string;
   isDialogue?: boolean;

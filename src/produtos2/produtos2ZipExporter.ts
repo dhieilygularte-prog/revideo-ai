@@ -60,9 +60,60 @@ export async function exportProdutos2Zip(result: Produtos2ResultState): Promise<
   const zip = new JSZip();
   const baseName = sanitizeProductFileName(result.productName);
   const isLeilao = result.sceneMode === 'modo_leilao' && Boolean(result.leilao);
+  const isAchadinhos = result.sceneMode === 'modo_achadinhos' && Boolean(result.achadinhos);
   const isTwoScenes = result.sceneMode === '2_cenas_10s' && Boolean(result.scene2);
 
-  if (isLeilao && result.leilao) {
+  if (isAchadinhos && result.achadinhos) {
+    // 1. Arquivos .txt dos 3 prompts do Modo Achadinhos (Versão 5.0)
+    zip.file('achadinhos_prompt_1.txt', result.achadinhos.bloco1.veoPrompt || result.veoPrompt || '');
+    zip.file('achadinhos_prompt_2.txt', result.achadinhos.bloco2.veoPrompt || '');
+    zip.file('achadinhos_prompt_3.txt', result.achadinhos.bloco3.veoPrompt || '');
+
+    // 2. Imagens dos 3 storyboards horizontais 16:9
+    if (result.achadinhos.bloco1.storyboardImageUrl) {
+      try {
+        const bytes1 = await urlToUint8Array(result.achadinhos.bloco1.storyboardImageUrl);
+        zip.file('achadinhos_storyboard_1.png', bytes1);
+      } catch (err) {
+        console.warn('Erro ao anexar imagem do Storyboard 1 no zip:', err);
+      }
+    }
+    if (result.achadinhos.bloco2.storyboardImageUrl) {
+      try {
+        const bytes2 = await urlToUint8Array(result.achadinhos.bloco2.storyboardImageUrl);
+        zip.file('achadinhos_storyboard_2.png', bytes2);
+      } catch (err) {
+        console.warn('Erro ao anexar imagem do Storyboard 2 no zip:', err);
+      }
+    }
+    if (result.achadinhos.bloco3.storyboardImageUrl) {
+      try {
+        const bytes3 = await urlToUint8Array(result.achadinhos.bloco3.storyboardImageUrl);
+        zip.file('achadinhos_storyboard_3.png', bytes3);
+      } catch (err) {
+        console.warn('Erro ao anexar imagem do Storyboard 3 no zip:', err);
+      }
+    }
+
+    // 3. Descrição do Post + Hashtags + Falas
+    const desc = result.description || result.descriptionHashtags;
+    if (desc) {
+      const descContent = `${desc}
+
+---
+FALAS DO MODO AURORA ACHADINHOS (3 CENAS DE 10S):
+Cena 1 (0-10s):
+"${result.achadinhos.speeches.cena1}"
+
+Cena 2 (10-20s):
+"${result.achadinhos.speeches.cena2}"
+
+Cena 3 (20-30s):
+"${result.achadinhos.speeches.cena3}"
+`;
+      zip.file('achadinhos_descricao_post.txt', descContent);
+    }
+  } else if (isLeilao && result.leilao) {
     // 1. Arquivos .txt dos 3 blocos (Instrução 2 - Seção 6)
     zip.file('leilao_prompt_veo_1.txt', result.leilao.bloco1.veoPrompt || result.veoPrompt || '');
     zip.file('leilao_prompt_veo_2.txt', result.leilao.bloco2.veoPrompt || '');

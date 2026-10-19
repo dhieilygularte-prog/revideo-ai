@@ -3971,6 +3971,80 @@ Responda EXCLUSIVAMENTE em formato JSON com esta estrutura:
         return res.status(500).json({ success: false, error: err?.message || "Erro ao gerar falas do leil\xE3o." });
       }
     }
+    if (action === "generate_achadinhos_speeches") {
+      try {
+        const prodName = (productName || req.body.productName || "Achadinho").trim();
+        const pInfo = (productInfo || req.body.productInfo || "").trim();
+        const addInstr = (req.body.additionalInstructions || "").trim();
+        const userProvided = (req.body.userSpeech || "").trim();
+        const achadinhosPrompt = `Voc\xEA \xE9 o motor criativo oficial do MODO AURORA ACHADINHOS (Vers\xE3o 5.0) para v\xEDdeos do TikTok Shop Brasil.
+Sua miss\xE3o \xE9 gerar as falas das 3 CENAS DE 10 SEGUNDOS (dura\xE7\xE3o total: 30 segundos) para o produto: "${prodName}".
+Informa\xE7\xF5es reais e caracter\xEDsticas do produto:
+"""
+${pInfo}
+"""
+${addInstr ? `Instru\xE7\xF5es adicionais / contexto do usu\xE1rio:
+"""
+${addInstr}
+"""
+` : ""}
+
+REGRAS INEGOCI\xC1VEIS DA VERS\xC3O 5.0:
+1. LIMITE ESTRITO DE CARACTERES: Cada cena DEVE ter no m\xE1ximo 225 caracteres (incluindo espa\xE7os e pontua\xE7\xE3o).
+2. ESTRUTURA OBRIGAT\xD3RIA DA NARRATIVA:
+   - CENA 1 (0 a 10s | Hook + Apresenta\xE7\xE3o): Comece com um hook espont\xE2neo da biblioteca de achadinhos (ex: "Gente, olha o que eu achei!", "Voc\xEAs precisam ver isso aqui!", "Olha esse achadinho que apareceu pra mim!", "Como \xE9 que eu n\xE3o conhecia isso antes?") e apresente o produto com naturalidade. Se houver pre\xE7o confirmado nas informa\xE7\xF5es, pode cit\xE1-lo.
+   - CENA 2 (10 a 20s | Corpo + Benef\xEDcio + Demonstra\xE7\xE3o): Mostre a utilidade real na pr\xE1tica, transformando 1 ou 2 caracter\xEDsticas reais em benef\xEDcio concreto pro dia a dia ("Caracter\xEDstica real -> benef\xEDcio pr\xE1tico -> demonstra\xE7\xE3o visual").
+   - CENA 3 (20 a 30s | Fechamento + CTA): Conclua o argumento e fa\xE7a um convite acolhedor e natural para conferir no carrinho do TikTok Shop (ex: "Se voc\xEA gostou, d\xE1 uma olhadinha no carrinho!", "Se fez sentido pra voc\xEA, confere l\xE1 no carrinho!", "D\xE1 uma olhadinha no carrinho e garante o seu!").
+3. FIDELIDADE AO PRODUTO & REALISMO: Nunca invente funcionalidades, pre\xE7os ou garantias inexistentes.
+4. OTIMIZA\xC7\xC3O PARA IA: Nunca use s\xEDmbolos como \xAE, \u2122, \xA9, asteriscos, numerais de lista ou retic\xEAncias longas. Escreva texto corrido, coloquial brasileiro natural e perfeito para voz sintetizada.
+
+Responda EXCLUSIVAMENTE em formato JSON com esta estrutura:
+{
+  "cena1": "texto da cena 1 (m\xE1x 225 caracteres)",
+  "cena2": "texto da cena 2 (m\xE1x 225 caracteres)",
+  "cena3": "texto da cena 3 (m\xE1x 225 caracteres)"
+}`;
+        const aiOutput = await executeFastAIText({
+          systemPrompt: "Voc\xEA \xE9 um redator s\xEAnior de achadinhos virais para TikTok Shop Brasil. Responda apenas em JSON v\xE1lido.",
+          userPrompt: achadinhosPrompt,
+          jsonMode: true,
+          temperature: 0.3
+        });
+        const rawJson = aiOutput.text.replace(/```json\s*/i, "").replace(/```\s*$/i, "").trim();
+        let parsed = JSON.parse(rawJson);
+        const cleanSpeech = (t, max = 225) => {
+          let s = normalizeVoiceText(t).replace(/[®™©℠]/g, "").replace(/[*_~•|/\\#]/g, " ").replace(/\.{2,}/g, ".").replace(/\s+/g, " ").trim();
+          if (s.length > max) {
+            const cut = s.slice(0, max);
+            const lastPunct = Math.max(cut.lastIndexOf("."), cut.lastIndexOf("!"), cut.lastIndexOf("?"));
+            if (lastPunct > max * 0.7) s = cut.slice(0, lastPunct + 1).trim();
+            else s = cut.trim();
+          }
+          return s;
+        };
+        const cena1 = cleanSpeech(parsed.cena1 || `Gente, olha o que eu achei! Voc\xEAs precisam ver esse ${prodName} de pertinho!`, 225);
+        const cena2 = cleanSpeech(parsed.cena2 || `Olha a facilidade e a praticidade disso no dia a dia. Resolve aquela tarefa rapidinho!`, 225);
+        const cena3 = cleanSpeech(parsed.cena3 || `Se fez sentido pra voc\xEA, d\xE1 uma olhadinha no carrinho e confere todos os detalhes!`, 225);
+        const full = `${cena1}
+
+${cena2}
+
+${cena3}`;
+        return res.json({
+          success: true,
+          achadinhosSpeech: {
+            cena1,
+            cena2,
+            cena3,
+            full
+          },
+          usage: aiOutput.usage
+        });
+      } catch (err) {
+        console.warn("Erro ao gerar falas achadinhos com IA:", err?.message || err);
+        return res.status(500).json({ success: false, error: err?.message || "Erro ao gerar falas do achadinhos." });
+      }
+    }
     if (action === "normalize_speech_for_ai" || action === "review_user_speech") {
       try {
         const inputSpeech = (req.body.text || req.body.speech || baseCopy || "").trim();
@@ -3978,7 +4052,7 @@ Responda EXCLUSIVAMENTE em formato JSON com esta estrutura:
           return res.status(400).json({ success: false, error: "Texto n\xE3o fornecido para revis\xE3o." });
         }
         const reqSceneMode = req.body.sceneMode || "1_cena_10s";
-        const maxLimit = Number(req.body.maxChars) || (reqSceneMode === "2_cenas_10s" && !req.body.isSingleScenePart ? 450 : reqSceneMode === "1_cena_15s" ? 335 : 225);
+        const maxLimit = Number(req.body.maxChars) || (reqSceneMode === "modo_achadinhos" && !req.body.isSingleScenePart ? 675 : reqSceneMode === "2_cenas_10s" && !req.body.isSingleScenePart ? 450 : reqSceneMode === "1_cena_15s" ? 335 : 225);
         const minTarget = Number(req.body.minChars) || (maxLimit === 335 ? 310 : maxLimit === 450 ? 400 : 215);
         const cleanedInput = fixCommonSlips(inputSpeech);
         const charCount = cleanedInput.length;
@@ -4470,10 +4544,15 @@ app.post("/api/produtos2-generate-storyboard", async (req, res) => {
     const isLeilao2 = isLeilaoBlockNum === 2 || isLeilaoBlockNum === 0 && /BLOCO 2|QUADRO 4.*QUADRO 5.*QUADRO 6|pano de veludo|COLUNA 1.*QUADRO 4|leilao_storyboard_2/i.test(String(prompt));
     const isLeilao3 = isLeilaoBlockNum === 3 || isLeilaoBlockNum === 0 && /BLOCO 3|GERAÇÃO 3|leilao_cena_final/i.test(String(prompt));
     const isLeilaoBlock = isLeilao1 || isLeilao2 || isLeilao3;
+    const isAchadinhosBlockNum = Number(req.body.isAchadinhosBlock) || 0;
+    const isAchadinhos1 = isAchadinhosBlockNum === 1 || isAchadinhosBlockNum === 0 && /MODO AURORA ACHADINHOS.*CENA 1|Storyboard 1A\/1B\/1C|achadinhos_storyboard_1/i.test(String(prompt));
+    const isAchadinhos2 = isAchadinhosBlockNum === 2 || isAchadinhosBlockNum === 0 && /MODO AURORA ACHADINHOS.*CENA 2|Storyboard 2A\/2B\/2C|achadinhos_storyboard_2/i.test(String(prompt));
+    const isAchadinhos3 = isAchadinhosBlockNum === 3 || isAchadinhosBlockNum === 0 && /MODO AURORA ACHADINHOS.*CENA 3|Storyboard 3A\/3B\/3C|achadinhos_storyboard_3/i.test(String(prompt));
+    const isAchadinhosBlock = isAchadinhos1 || isAchadinhos2 || isAchadinhos3;
     const isSixFrames = reqSceneCount === 6 || /GRADE\s+2x3|EXATAMENTE\s+6\s+(?:QUADROS|CENAS)/i.test(String(prompt));
-    const frameCount = isLeilao1 ? 3 : isLeilao2 ? 3 : isLeilao3 ? 1 : isSixFrames ? 6 : 9;
-    const gridLabel = isLeilao1 ? "3 quadros fotogr\xE1ficos verticais 9:16 lado a lado em uma \xFAnica imagem horizontal 16:9 (grade 1 linha x 3 colunas), com n\xFAmeros discretos 1, 2 e 3 em c\xEDrculos brancos no canto superior direito" : isLeilao2 ? "3 quadros fotogr\xE1ficos verticais 9:16 lado a lado em uma \xFAnica imagem horizontal 16:9 (grade 1 linha x 3 colunas), com n\xFAmeros discretos 4, 5 e 6 em c\xEDrculos brancos no canto superior direito" : isLeilao3 ? "1 quadro fotogr\xE1fico vertical \xFAnico 9:16 (sem n\xFAmero)" : isSixFrames ? "2x3 (2 colunas x 3 linhas)" : "3x3 (3 colunas x 3 linhas)";
-    const chosenAspectRatio = isLeilao1 || isLeilao2 || req.body.aspectRatio === "16:9" ? "16:9" : "9:16";
+    const frameCount = isLeilao1 || isLeilao2 || isAchadinhosBlock ? 3 : isLeilao3 ? 1 : isSixFrames ? 6 : 9;
+    const gridLabel = isAchadinhosBlock ? "3 quadros fotogr\xE1ficos verticais 9:16 lado a lado em uma \xFAnica imagem horizontal 16:9 (grade 1 linha x 3 colunas: Quadro A \xE0 esquerda, Quadro B ao centro, Quadro C \xE0 direita), sem n\xFAmeros, sem bal\xF5es e sem legendas sobrepostas" : isLeilao1 ? "3 quadros fotogr\xE1ficos verticais 9:16 lado a lado em uma \xFAnica imagem horizontal 16:9 (grade 1 linha x 3 colunas), com n\xFAmeros discretos 1, 2 e 3 em c\xEDrculos brancos no canto superior direito" : isLeilao2 ? "3 quadros fotogr\xE1ficos verticais 9:16 lado a lado em uma \xFAnica imagem horizontal 16:9 (grade 1 linha x 3 colunas), com n\xFAmeros discretos 4, 5 e 6 em c\xEDrculos brancos no canto superior direito" : isLeilao3 ? "1 quadro fotogr\xE1fico vertical \xFAnico 9:16 (sem n\xFAmero)" : isSixFrames ? "2x3 (2 colunas x 3 linhas)" : "3x3 (3 colunas x 3 linhas)";
+    const chosenAspectRatio = isLeilao1 || isLeilao2 || isAchadinhosBlock || req.body.aspectRatio === "16:9" ? "16:9" : "9:16";
     const chosenSize = chosenAspectRatio === "16:9" ? "1792x1024" : "1024x1792";
     const photosList = Array.isArray(productPhotosBase64) ? productPhotosBase64.filter(Boolean) : [];
     const activeVariations = Array.isArray(variations) ? variations.filter(
@@ -4501,7 +4580,7 @@ CORRE\xC7\xC3O OBRIGAT\xD3RIA DE AUDITORIA DE FIDELIDADE DOS ${frameCount} QUADR
 ${correctionPrompt.trim()}
 ========================` : baseWithLogo;
     const activeProfile = req.body?.aiProfile || getRequestAIProfile(req);
-    const preferOpenAIForLandscape = (isLeilao1 || isLeilao2) && openAIProvider.isConfigured();
+    const preferOpenAIForLandscape = (isLeilao1 || isLeilao2 || isAchadinhosBlock) && openAIProvider.isConfigured();
     const tryOrder = preferOpenAIForLandscape ? ["openai", "gemini"] : activeProfile === "gemini" ? openAIProvider.isConfigured() ? ["gemini", "openai"] : ["gemini"] : process.env.GEMINI_API_KEY ? ["openai", "gemini"] : ["openai"];
     let lastErrorMessage = "";
     for (const provider of tryOrder) {
@@ -4584,7 +4663,12 @@ ${correctionPrompt.trim()}
         parts.push({ text: effectivePrompt });
         const isLeilaoBlock2 = isLeilao1 || isLeilao2 || isLeilao3;
         const variationInstructionRule = activeVariations.length >= 2 ? `- REGRA MANDAT\xD3RIA DE ALTERN\xC2NCIA DE CORES ENTRE OS QUADROS: O produto possui ${activeVariations.length} varia\xE7\xF5es de cores/modelos. Voc\xEA DEVE OBRIGATORIAMENTE alternar as cores conforme a divis\xE3o especificada. NUNCA gere todos os ${frameCount} quadros na mesma cor! Apenas o modelo, formato e pe\xE7as permanecem id\xEAnticos, a cor DEVE alternar entre os blocos de quadros!` : `- PRODUCT LOCK ABSOLUTO: O produto em todos os quadros onde aparece deve ser 100% id\xEAntico \xE0s fotos reais anexadas (mesmo formato, cor, textura, bot\xF5es, fun\xE7\xF5es, propor\xE7\xE3o e detalhes).`;
-        const systemInstructionText = isLeilaoBlock2 ? `VOC\xCA \xC9 O GERADOR DE STORYBOARD DO MODO LEIL\xC3O.
+        const systemInstructionText = isAchadinhosBlock ? `VOC\xCA \xC9 O MOTOR VISUAL DO MODO AURORA ACHADINHOS (3 CENAS DE 10S).
+- Gere UMA IMAGEM FOTOGR\xC1FICA HORIZONTAL 16:9 (1920x1080) composta por exatamente 3 quadros verticais de propor\xE7\xE3o aproximada 9:16, organizados lado a lado da esquerda para a direita (Quadro A \xE0 esquerda, Quadro B no centro, Quadro C \xE0 direita).
+- Os tr\xEAs quadros devem representar instantes sucessivos de uma a\xE7\xE3o cont\xEDnua da mesma personagem, mesmo produto e mesmo ambiente.
+- SEM N\xDAMEROS, SEM BAL\xD5ES E SEM TEXTOS: \xC9 terminantemente proibido colocar letras A/B/C sobre a imagem, n\xFAmeros, legendas, t\xEDtulos, bal\xF5es ou marcas d'\xE1gua.
+- Fotografia ultrarrealista com textura de pele natural, ilumina\xE7\xE3o de smartphone e cen\xE1rio brasileiro cotidiano.
+- Fidelidade absoluta \xE0s fotos reais do produto.` : isLeilaoBlock2 ? `VOC\xCA \xC9 O GERADOR DE STORYBOARD DO MODO LEIL\xC3O.
 - Gere UMA IMAGEM fotogr\xE1fica ultra-realista contendo ${gridLabel}.
 - Os quadros devem ser numerados com selos circulares brancos pequenos no canto superior direito de cada quadro com o n\xFAmero preto correspondente.
 - Cantos arredondados nos quadros, separados por uma borda branca fina, sobre fundo neutro.
@@ -4595,7 +4679,7 @@ ${correctionPrompt.trim()}
 ${variationInstructionRule}
 - LOGOMARCA E MARCA DO FABRICANTE NO PRODUTO (OBRIGAT\xD3RIO): A marca, a logomarca, o emblema e os textos que j\xE1 est\xE3o impressos/estampados no pr\xF3prio produto nas fotos de refer\xEAncia DEVEM aparecer 100% id\xEAnticos, na mesma cor e no mesmo lugar da pe\xE7a, em todos os quadros em que aquela parte estiver vis\xEDvel. JAMAIS remova ou alise a logomarca do produto!
 - ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: N\xE3o adicione legendas flutuantes, textos publicit\xE1rios externos, pre\xE7os, setas, carrinho de compras, marca d'\xE1gua externa, @ ou logotipo do TikTok. Apenas os n\xFAmeros 1 a ${frameCount} nos selos circulares e a logomarca original do fabricante no pr\xF3prio produto.`;
-        const chosenAspectRatio2 = isLeilao1 ? req.body.aspectRatio || "16:9" : isLeilao2 ? req.body.aspectRatio || "16:9" : isLeilao3 ? "9:16" : "9:16";
+        const chosenAspectRatio2 = isLeilao1 || isLeilao2 || isAchadinhosBlock ? req.body.aspectRatio || "16:9" : isLeilao3 ? "9:16" : "9:16";
         const modelsToTry = [
           GEMINI_IMAGE_MODEL || "gemini-3.1-flash-image",
           GEMINI_IMAGE_FAST_MODEL || "gemini-3.1-flash-lite-image",

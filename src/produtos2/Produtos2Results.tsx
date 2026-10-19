@@ -29,6 +29,7 @@ import { buildProdutos2VeoPrompt } from './produtos2Prompts';
 import { selectAndAdaptProdutos2Copy } from './produtos2CopyBank';
 import { VideoFidelityAuditor } from './VideoFidelityAuditor';
 import { LeilaoBlockSection } from './LeilaoBlockSection';
+import { AchadinhosBlockSection } from './AchadinhosBlockSection';
 import { MicroImageEditor } from '../components/MicroImageEditor';
 import { AIProfile } from '../config/aiProfiles';
 import { TokenUsageStats } from '../types';
@@ -1364,6 +1365,368 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
               <>
                 <RefreshCw className="w-5 h-5 animate-spin" />
                 <span>Compactando 3 Imagens e 3 Prompts...</span>
+              </>
+            ) : (
+              <>
+                <Download className="w-5 h-5" />
+                <span>BAIXAR TUDO (.ZIP COM 3 IMAGENS + 3 PROMPTS TXT)</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // MODO AURORA ACHADINHOS (3 CENAS DE 10S) — VERSÃO 5.0
+  // Cor de fundo: Verde escuro quase preto (#021a0d)
+  // =========================================================================
+  const isAchadinhos = result.sceneMode === 'modo_achadinhos' && Boolean(result.achadinhos);
+  if (isAchadinhos && result.achadinhos) {
+    const achadinhos = result.achadinhos;
+
+    return (
+      <div
+        className="space-y-6 animate-fade-in p-4 sm:p-6 rounded-3xl"
+        style={{ backgroundColor: '#021a0d' }}
+      >
+        {/* CABEÇALHO DO MODO ACHADINHOS */}
+        <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-950/95 via-teal-950/90 to-zinc-950 border border-emerald-500/50 shadow-2xl space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5">
+              <span className="px-3 py-1 rounded-lg bg-emerald-500 text-slate-950 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-md shadow-emerald-950/50">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Modo Aurora Achadinhos</span>
+              </span>
+              <h2 className="text-sm sm:text-base font-black text-white">
+                {result.productName} — 3 Cenas de 10s (30s no Total)
+              </h2>
+            </div>
+            <span className="text-xs font-mono font-bold text-emerald-300 bg-black/70 px-2.5 py-1 rounded-lg border border-emerald-500/40">
+              3 Storyboards 16:9 (9 Quadros Verticais) · 3 Vídeos OmniFlash / Veo 3
+            </span>
+          </div>
+          <p className="text-xs text-emerald-200/90">
+            Cada cena possui seu Storyboard horizontal 16:9 (composto por 3 quadros verticais A, B e C), campo individual para edição da fala (até 225 caracteres), refinamento de prompt com IA e análise de fidelidade do vídeo.
+          </p>
+        </div>
+
+        {/* ================================================================= */}
+        {/* CENA 1: HOOK & DESCOBERTA (0–10s | 3 Quadros A, B, C em 16:9)     */}
+        {/* ================================================================= */}
+        <AchadinhosBlockSection
+          blockNumber={1}
+          title="Cena 1 (0–10s) — Hook & Descoberta"
+          subtitle="Storyboard horizontal 16:9 contendo 3 quadros verticais (A: Início, B: Transição, C: Destaque) · Descoberta e Apresentação"
+          downloadFileName="achadinhos_storyboard_1"
+          storyboardImageUrl={achadinhos.bloco1?.storyboardImageUrl}
+          isRegeneratingStoryboard={Boolean(result.isRegeneratingStoryboard)}
+          veoPrompt={achadinhos.bloco1?.veoPrompt || ''}
+          speechText={achadinhos.bloco1?.speechText || achadinhos.speeches?.cena1 || ''}
+          productName={result.productName}
+          productLock={result.productLock}
+          referencePhotos={allReferencePhotos}
+          videoAudit={achadinhos.bloco1?.videoAudit}
+          aiProfile={aiProfile}
+          onUpdateVeoPrompt={(newPrompt) => {
+            onUpdateResult((prev) => {
+              if (!prev || !prev.achadinhos) return prev;
+              return {
+                ...prev,
+                veoPrompt: newPrompt,
+                achadinhos: {
+                  ...prev.achadinhos,
+                  bloco1: {
+                    ...prev.achadinhos.bloco1,
+                    veoPrompt: newPrompt,
+                  },
+                },
+              };
+            });
+          }}
+          onUpdateSpeech={(newSpeech) => {
+            onUpdateResult((prev) => {
+              if (!prev || !prev.achadinhos) return prev;
+              const updated = { ...prev.achadinhos };
+              if (updated.bloco1) updated.bloco1 = { ...updated.bloco1, speechText: newSpeech };
+              if (updated.speeches) updated.speeches = { ...updated.speeches, cena1: newSpeech };
+              const full = `[Cena 1 | 0-10s]\n${newSpeech}\n\n[Cena 2 | 10-20s]\n${updated.bloco2?.speechText || updated.speeches?.cena2 || ''}\n\n[Cena 3 | 20-30s]\n${updated.bloco3?.speechText || updated.speeches?.cena3 || ''}`;
+              return {
+                ...prev,
+                copy: full,
+                finalCopy: full,
+                achadinhos: updated,
+              };
+            });
+          }}
+          onRegenerateImage={(instruction) => onRegenerateStoryboard(instruction, 1)}
+          onAuditChange={(vAudit) => {
+            onUpdateResult((prev) => {
+              if (!prev || !prev.achadinhos) return prev;
+              return {
+                ...prev,
+                achadinhos: {
+                  ...prev.achadinhos,
+                  bloco1: {
+                    ...prev.achadinhos.bloco1,
+                    videoAudit: vAudit,
+                  },
+                },
+              };
+            });
+          }}
+          onAuditComplete={(vAudit, usage) => {
+            if (usage && onTokenUsageChange) {
+              onTokenUsageChange((prevStats: any) => ({
+                ...prevStats,
+                detailedSteps: [
+                  ...(prevStats?.detailedSteps || []),
+                  {
+                    step: `Auditoria de Vídeo Modo Achadinhos (Cena 1)`,
+                    model: usage.model || 'gemini-2.5-flash',
+                    costUSD: usage.costUSD || 0.005,
+                    costBRL: usage.costBRL || 0.03,
+                    timestamp: new Date().toLocaleTimeString('pt-BR'),
+                  },
+                ],
+              }));
+            }
+          }}
+          onOpenPreview={onOpenPreview}
+        />
+
+        {/* ================================================================= */}
+        {/* CENA 2: DEMONSTRAÇÃO & BENEFÍCIO (10–20s | 3 Quadros em 16:9)    */}
+        {/* ================================================================= */}
+        <AchadinhosBlockSection
+          blockNumber={2}
+          title="Cena 2 (10–20s) — Demonstração & Benefício"
+          subtitle="Storyboard horizontal 16:9 contendo 3 quadros verticais (A: Preparação, B: Ação em uso, C: Resultado visual) · Utilidade Prática"
+          downloadFileName="achadinhos_storyboard_2"
+          storyboardImageUrl={achadinhos.bloco2?.storyboardImageUrl}
+          isRegeneratingStoryboard={Boolean(result.isRegeneratingStoryboard)}
+          veoPrompt={achadinhos.bloco2?.veoPrompt || ''}
+          speechText={achadinhos.bloco2?.speechText || achadinhos.speeches?.cena2 || ''}
+          productName={result.productName}
+          productLock={result.productLock}
+          referencePhotos={allReferencePhotos}
+          videoAudit={achadinhos.bloco2?.videoAudit}
+          aiProfile={aiProfile}
+          onUpdateVeoPrompt={(newPrompt) => {
+            onUpdateResult((prev) => {
+              if (!prev || !prev.achadinhos) return prev;
+              return {
+                ...prev,
+                achadinhos: {
+                  ...prev.achadinhos,
+                  bloco2: {
+                    ...prev.achadinhos.bloco2,
+                    veoPrompt: newPrompt,
+                  },
+                },
+              };
+            });
+          }}
+          onUpdateSpeech={(newSpeech) => {
+            onUpdateResult((prev) => {
+              if (!prev || !prev.achadinhos) return prev;
+              const updated = { ...prev.achadinhos };
+              if (updated.bloco2) updated.bloco2 = { ...updated.bloco2, speechText: newSpeech };
+              if (updated.speeches) updated.speeches = { ...updated.speeches, cena2: newSpeech };
+              const full = `[Cena 1 | 0-10s]\n${updated.bloco1?.speechText || updated.speeches?.cena1 || ''}\n\n[Cena 2 | 10-20s]\n${newSpeech}\n\n[Cena 3 | 20-30s]\n${updated.bloco3?.speechText || updated.speeches?.cena3 || ''}`;
+              return {
+                ...prev,
+                copy: full,
+                finalCopy: full,
+                achadinhos: updated,
+              };
+            });
+          }}
+          onRegenerateImage={(instruction) => onRegenerateStoryboard(instruction, 2)}
+          onAuditChange={(vAudit) => {
+            onUpdateResult((prev) => {
+              if (!prev || !prev.achadinhos) return prev;
+              return {
+                ...prev,
+                achadinhos: {
+                  ...prev.achadinhos,
+                  bloco2: {
+                    ...prev.achadinhos.bloco2,
+                    videoAudit: vAudit,
+                  },
+                },
+              };
+            });
+          }}
+          onAuditComplete={(vAudit, usage) => {
+            if (usage && onTokenUsageChange) {
+              onTokenUsageChange((prevStats: any) => ({
+                ...prevStats,
+                detailedSteps: [
+                  ...(prevStats?.detailedSteps || []),
+                  {
+                    step: `Auditoria de Vídeo Modo Achadinhos (Cena 2)`,
+                    model: usage.model || 'gemini-2.5-flash',
+                    costUSD: usage.costUSD || 0.005,
+                    costBRL: usage.costBRL || 0.03,
+                    timestamp: new Date().toLocaleTimeString('pt-BR'),
+                  },
+                ],
+              }));
+            }
+          }}
+          onOpenPreview={onOpenPreview}
+        />
+
+        {/* ================================================================= */}
+        {/* CENA 3: FECHAMENTO & CTA NO CARRINHO (20–30s | 3 Quadros em 16:9) */}
+        {/* ================================================================= */}
+        <AchadinhosBlockSection
+          blockNumber={3}
+          title="Cena 3 (20–30s) — Fechamento & CTA no Carrinho"
+          subtitle="Storyboard horizontal 16:9 contendo 3 quadros verticais (A: Retomada, B: Conclusão, C: Indicação natural do carrinho)"
+          downloadFileName="achadinhos_storyboard_3"
+          storyboardImageUrl={achadinhos.bloco3?.storyboardImageUrl}
+          isRegeneratingStoryboard={Boolean(result.isRegeneratingStoryboard)}
+          veoPrompt={achadinhos.bloco3?.veoPrompt || ''}
+          speechText={achadinhos.bloco3?.speechText || achadinhos.speeches?.cena3 || ''}
+          productName={result.productName}
+          productLock={result.productLock}
+          referencePhotos={allReferencePhotos}
+          videoAudit={achadinhos.bloco3?.videoAudit}
+          aiProfile={aiProfile}
+          onUpdateVeoPrompt={(newPrompt) => {
+            onUpdateResult((prev) => {
+              if (!prev || !prev.achadinhos) return prev;
+              return {
+                ...prev,
+                achadinhos: {
+                  ...prev.achadinhos,
+                  bloco3: {
+                    ...prev.achadinhos.bloco3,
+                    veoPrompt: newPrompt,
+                  },
+                },
+              };
+            });
+          }}
+          onUpdateSpeech={(newSpeech) => {
+            onUpdateResult((prev) => {
+              if (!prev || !prev.achadinhos) return prev;
+              const updated = { ...prev.achadinhos };
+              if (updated.bloco3) updated.bloco3 = { ...updated.bloco3, speechText: newSpeech };
+              if (updated.speeches) updated.speeches = { ...updated.speeches, cena3: newSpeech };
+              const full = `[Cena 1 | 0-10s]\n${updated.bloco1?.speechText || updated.speeches?.cena1 || ''}\n\n[Cena 2 | 10-20s]\n${updated.bloco2?.speechText || updated.speeches?.cena2 || ''}\n\n[Cena 3 | 20-30s]\n${newSpeech}`;
+              return {
+                ...prev,
+                copy: full,
+                finalCopy: full,
+                achadinhos: updated,
+              };
+            });
+          }}
+          onRegenerateImage={(instruction) => onRegenerateStoryboard(instruction, 3)}
+          onAuditChange={(vAudit) => {
+            onUpdateResult((prev) => {
+              if (!prev || !prev.achadinhos) return prev;
+              return {
+                ...prev,
+                achadinhos: {
+                  ...prev.achadinhos,
+                  bloco3: {
+                    ...prev.achadinhos.bloco3,
+                    videoAudit: vAudit,
+                  },
+                },
+              };
+            });
+          }}
+          onAuditComplete={(vAudit, usage) => {
+            if (usage && onTokenUsageChange) {
+              onTokenUsageChange((prevStats: any) => ({
+                ...prevStats,
+                detailedSteps: [
+                  ...(prevStats?.detailedSteps || []),
+                  {
+                    step: `Auditoria de Vídeo Modo Achadinhos (Cena 3)`,
+                    model: usage.model || 'gemini-2.5-flash',
+                    costUSD: usage.costUSD || 0.005,
+                    costBRL: usage.costBRL || 0.03,
+                    timestamp: new Date().toLocaleTimeString('pt-BR'),
+                  },
+                ],
+              }));
+            }
+          }}
+          onOpenPreview={onOpenPreview}
+        />
+
+        {/* DESCRIÇÃO DO POST + HASHTAGS */}
+        <div
+          className={`p-4 sm:p-5 rounded-2xl transition-all ${
+            hasCopiedDescriptionOnce ? copiedBlueSectionClass : defaultSectionClass
+          }`}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-white/10 mb-2">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-emerald-400" />
+              <span className="text-xs sm:text-sm font-black text-white">
+                Descrição do Post + Hashtags (TikTok & Reels)
+              </span>
+              {hasCopiedDescriptionOnce && (
+                <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-sky-300" />
+                  <span>COPIADO</span>
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={handleCopyDescription}
+              className={`px-4 py-2 rounded-xl font-black text-xs flex items-center gap-2 transition-all cursor-pointer ${
+                descriptionCopied
+                  ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-950/40'
+                  : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-950/40'
+              }`}
+            >
+              {descriptionCopied ? (
+                <>
+                  <Check className="w-4 h-4 stroke-[3]" />
+                  <span>Copiado!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4" />
+                  <span>Copiar Descrição</span>
+                </>
+              )}
+            </button>
+          </div>
+          <textarea
+            value={result.descriptionHashtags || result.description || ''}
+            onChange={(e) => {
+              const val = e.target.value;
+              setHasCopiedDescriptionOnce(false);
+              onUpdateResult((prev) => (prev ? { ...prev, description: val, descriptionHashtags: val } : null));
+            }}
+            rows={4}
+            className="w-full p-3 bg-black/60 border border-zinc-700/80 focus:border-emerald-400 rounded-xl text-xs text-zinc-200 font-sans leading-relaxed resize-y"
+          />
+        </div>
+
+        {/* BOTÃO BAIXAR TUDO (.ZIP) */}
+        <div className="pt-2">
+          <button
+            type="button"
+            onClick={handleDownloadZip}
+            disabled={isExportingZip}
+            className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-sky-600 hover:from-emerald-500 hover:via-teal-500 hover:to-sky-500 disabled:opacity-50 text-white font-black text-sm sm:text-base shadow-xl shadow-emerald-950/50 flex items-center justify-center gap-3 transition-all cursor-pointer"
+          >
+            {isExportingZip ? (
+              <>
+                <RefreshCw className="w-5 h-5 animate-spin" />
+                <span>Compactando 3 Storyboards e 3 Prompts...</span>
               </>
             ) : (
               <>

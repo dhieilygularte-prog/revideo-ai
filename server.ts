@@ -2847,6 +2847,86 @@ Responda EXCLUSIVAMENTE em formato JSON com esta estrutura:
       }
     }
 
+    // Ação: Geração inteligente das 3 falas do MODO ACHADINHOS (Versão 5.0 - 3 Cenas de 10s, até 225 chars por cena)
+    if (action === 'generate_achadinhos_speeches') {
+      try {
+        const prodName = (productName || req.body.productName || 'Achadinho').trim();
+        const pInfo = (productInfo || req.body.productInfo || '').trim();
+        const addInstr = (req.body.additionalInstructions || '').trim();
+        const userProvided = (req.body.userSpeech || '').trim();
+
+        const achadinhosPrompt = `Você é o motor criativo oficial do MODO AURORA ACHADINHOS (Versão 5.0) para vídeos do TikTok Shop Brasil.
+Sua missão é gerar as falas das 3 CENAS DE 10 SEGUNDOS (duração total: 30 segundos) para o produto: "${prodName}".
+Informações reais e características do produto:
+"""
+${pInfo}
+"""
+${addInstr ? `Instruções adicionais / contexto do usuário:\n"""\n${addInstr}\n"""\n` : ''}
+
+REGRAS INEGOCIÁVEIS DA VERSÃO 5.0:
+1. LIMITE ESTRITO DE CARACTERES: Cada cena DEVE ter no máximo 225 caracteres (incluindo espaços e pontuação).
+2. ESTRUTURA OBRIGATÓRIA DA NARRATIVA:
+   - CENA 1 (0 a 10s | Hook + Apresentação): Comece com um hook espontâneo da biblioteca de achadinhos (ex: "Gente, olha o que eu achei!", "Vocês precisam ver isso aqui!", "Olha esse achadinho que apareceu pra mim!", "Como é que eu não conhecia isso antes?") e apresente o produto com naturalidade. Se houver preço confirmado nas informações, pode citá-lo.
+   - CENA 2 (10 a 20s | Corpo + Benefício + Demonstração): Mostre a utilidade real na prática, transformando 1 ou 2 características reais em benefício concreto pro dia a dia ("Característica real -> benefício prático -> demonstração visual").
+   - CENA 3 (20 a 30s | Fechamento + CTA): Conclua o argumento e faça um convite acolhedor e natural para conferir no carrinho do TikTok Shop (ex: "Se você gostou, dá uma olhadinha no carrinho!", "Se fez sentido pra você, confere lá no carrinho!", "Dá uma olhadinha no carrinho e garante o seu!").
+3. FIDELIDADE AO PRODUTO & REALISMO: Nunca invente funcionalidades, preços ou garantias inexistentes.
+4. OTIMIZAÇÃO PARA IA: Nunca use símbolos como ®, ™, ©, asteriscos, numerais de lista ou reticências longas. Escreva texto corrido, coloquial brasileiro natural e perfeito para voz sintetizada.
+
+Responda EXCLUSIVAMENTE em formato JSON com esta estrutura:
+{
+  "cena1": "texto da cena 1 (máx 225 caracteres)",
+  "cena2": "texto da cena 2 (máx 225 caracteres)",
+  "cena3": "texto da cena 3 (máx 225 caracteres)"
+}`;
+
+        const aiOutput = await executeFastAIText({
+          systemPrompt: 'Você é um redator sênior de achadinhos virais para TikTok Shop Brasil. Responda apenas em JSON válido.',
+          userPrompt: achadinhosPrompt,
+          jsonMode: true,
+          temperature: 0.3,
+        });
+
+        const rawJson = aiOutput.text.replace(/```json\s*/i, '').replace(/```\s*$/i, '').trim();
+        let parsed = JSON.parse(rawJson);
+
+        const cleanSpeech = (t: string, max = 225) => {
+          let s = normalizeVoiceText(t)
+            .replace(/[®™©℠]/g, '')
+            .replace(/[*_~•|/\\#]/g, ' ')
+            .replace(/\.{2,}/g, '.')
+            .replace(/\s+/g, ' ')
+            .trim();
+          if (s.length > max) {
+            const cut = s.slice(0, max);
+            const lastPunct = Math.max(cut.lastIndexOf('.'), cut.lastIndexOf('!'), cut.lastIndexOf('?'));
+            if (lastPunct > max * 0.7) s = cut.slice(0, lastPunct + 1).trim();
+            else s = cut.trim();
+          }
+          return s;
+        };
+
+        const cena1 = cleanSpeech(parsed.cena1 || `Gente, olha o que eu achei! Vocês precisam ver esse ${prodName} de pertinho!`, 225);
+        const cena2 = cleanSpeech(parsed.cena2 || `Olha a facilidade e a praticidade disso no dia a dia. Resolve aquela tarefa rapidinho!`, 225);
+        const cena3 = cleanSpeech(parsed.cena3 || `Se fez sentido pra você, dá uma olhadinha no carrinho e confere todos os detalhes!`, 225);
+
+        const full = `${cena1}\n\n${cena2}\n\n${cena3}`;
+
+        return res.json({
+          success: true,
+          achadinhosSpeech: {
+            cena1,
+            cena2,
+            cena3,
+            full,
+          },
+          usage: aiOutput.usage,
+        });
+      } catch (err: any) {
+        console.warn('Erro ao gerar falas achadinhos com IA:', err?.message || err);
+        return res.status(500).json({ success: false, error: err?.message || 'Erro ao gerar falas do achadinhos.' });
+      }
+    }
+
     // Ação 2: Revisão conservadora de texto (Botão "Revisar texto" na geração e na tela final do storyboard)
     if (action === 'normalize_speech_for_ai' || action === 'review_user_speech') {
       try {
@@ -2858,7 +2938,9 @@ Responda EXCLUSIVAMENTE em formato JSON com esta estrutura:
         const reqSceneMode = req.body.sceneMode || '1_cena_10s';
         const maxLimit =
           Number(req.body.maxChars) ||
-          (reqSceneMode === '2_cenas_10s' && !req.body.isSingleScenePart
+          (reqSceneMode === 'modo_achadinhos' && !req.body.isSingleScenePart
+            ? 675
+            : reqSceneMode === '2_cenas_10s' && !req.body.isSingleScenePart
             ? 450
             : reqSceneMode === '1_cena_15s'
             ? 335
@@ -3476,11 +3558,19 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
     const isLeilao3 = isLeilaoBlockNum === 3 || (isLeilaoBlockNum === 0 && /BLOCO 3|GERAÇÃO 3|leilao_cena_final/i.test(String(prompt)));
     const isLeilaoBlock = isLeilao1 || isLeilao2 || isLeilao3;
 
+    const isAchadinhosBlockNum = Number(req.body.isAchadinhosBlock) || 0;
+    const isAchadinhos1 = isAchadinhosBlockNum === 1 || (isAchadinhosBlockNum === 0 && /MODO AURORA ACHADINHOS.*CENA 1|Storyboard 1A\/1B\/1C|achadinhos_storyboard_1/i.test(String(prompt)));
+    const isAchadinhos2 = isAchadinhosBlockNum === 2 || (isAchadinhosBlockNum === 0 && /MODO AURORA ACHADINHOS.*CENA 2|Storyboard 2A\/2B\/2C|achadinhos_storyboard_2/i.test(String(prompt)));
+    const isAchadinhos3 = isAchadinhosBlockNum === 3 || (isAchadinhosBlockNum === 0 && /MODO AURORA ACHADINHOS.*CENA 3|Storyboard 3A\/3B\/3C|achadinhos_storyboard_3/i.test(String(prompt)));
+    const isAchadinhosBlock = isAchadinhos1 || isAchadinhos2 || isAchadinhos3;
+
     const isSixFrames =
       reqSceneCount === 6 ||
       /GRADE\s+2x3|EXATAMENTE\s+6\s+(?:QUADROS|CENAS)/i.test(String(prompt));
-    const frameCount = isLeilao1 ? 3 : isLeilao2 ? 3 : isLeilao3 ? 1 : isSixFrames ? 6 : 9;
-    const gridLabel = isLeilao1
+    const frameCount = (isLeilao1 || isLeilao2 || isAchadinhosBlock) ? 3 : isLeilao3 ? 1 : isSixFrames ? 6 : 9;
+    const gridLabel = isAchadinhosBlock
+      ? '3 quadros fotográficos verticais 9:16 lado a lado em uma única imagem horizontal 16:9 (grade 1 linha x 3 colunas: Quadro A à esquerda, Quadro B ao centro, Quadro C à direita), sem números, sem balões e sem legendas sobrepostas'
+      : isLeilao1
       ? '3 quadros fotográficos verticais 9:16 lado a lado em uma única imagem horizontal 16:9 (grade 1 linha x 3 colunas), com números discretos 1, 2 e 3 em círculos brancos no canto superior direito'
       : isLeilao2
       ? '3 quadros fotográficos verticais 9:16 lado a lado em uma única imagem horizontal 16:9 (grade 1 linha x 3 colunas), com números discretos 4, 5 e 6 em círculos brancos no canto superior direito'
@@ -3490,7 +3580,7 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
       ? '2x3 (2 colunas x 3 linhas)'
       : '3x3 (3 colunas x 3 linhas)';
 
-    const chosenAspectRatio: '16:9' | '9:16' = (isLeilao1 || isLeilao2 || req.body.aspectRatio === '16:9')
+    const chosenAspectRatio: '16:9' | '9:16' = (isLeilao1 || isLeilao2 || isAchadinhosBlock || req.body.aspectRatio === '16:9')
       ? '16:9'
       : '9:16';
     const chosenSize: '1792x1024' | '1024x1792' = chosenAspectRatio === '16:9' ? '1792x1024' : '1024x1792';
@@ -3522,8 +3612,8 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
       : baseWithLogo;
 
     const activeProfile = req.body?.aiProfile || getRequestAIProfile(req);
-    // Para Storyboard 16:9 do Modo Leilão (Blocos 1 e 2), se OpenAI estiver configurada prioriza OpenAI pois gera nativamente 1792x1024
-    const preferOpenAIForLandscape = (isLeilao1 || isLeilao2) && openAIProvider.isConfigured();
+    // Para Storyboard 16:9 do Modo Leilão (Blocos 1 e 2) e Modo Achadinhos (Blocos 1, 2 e 3), se OpenAI estiver configurada prioriza OpenAI pois gera nativamente 1792x1024
+    const preferOpenAIForLandscape = (isLeilao1 || isLeilao2 || isAchadinhosBlock) && openAIProvider.isConfigured();
     const tryOrder: ('openai' | 'gemini')[] = preferOpenAIForLandscape
       ? ['openai', 'gemini']
       : activeProfile === 'gemini'
@@ -3646,7 +3736,14 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
             ? `- REGRA MANDATÓRIA DE ALTERNÂNCIA DE CORES ENTRE OS QUADROS: O produto possui ${activeVariations.length} variações de cores/modelos. Você DEVE OBRIGATORIAMENTE alternar as cores conforme a divisão especificada. NUNCA gere todos os ${frameCount} quadros na mesma cor! Apenas o modelo, formato e peças permanecem idênticos, a cor DEVE alternar entre os blocos de quadros!`
             : `- PRODUCT LOCK ABSOLUTO: O produto em todos os quadros onde aparece deve ser 100% idêntico às fotos reais anexadas (mesmo formato, cor, textura, botões, funções, proporção e detalhes).`;
 
-        const systemInstructionText = isLeilaoBlock
+        const systemInstructionText = isAchadinhosBlock
+          ? `VOCÊ É O MOTOR VISUAL DO MODO AURORA ACHADINHOS (3 CENAS DE 10S).
+- Gere UMA IMAGEM FOTOGRÁFICA HORIZONTAL 16:9 (1920x1080) composta por exatamente 3 quadros verticais de proporção aproximada 9:16, organizados lado a lado da esquerda para a direita (Quadro A à esquerda, Quadro B no centro, Quadro C à direita).
+- Os três quadros devem representar instantes sucessivos de uma ação contínua da mesma personagem, mesmo produto e mesmo ambiente.
+- SEM NÚMEROS, SEM BALÕES E SEM TEXTOS: É terminantemente proibido colocar letras A/B/C sobre a imagem, números, legendas, títulos, balões ou marcas d'água.
+- Fotografia ultrarrealista com textura de pele natural, iluminação de smartphone e cenário brasileiro cotidiano.
+- Fidelidade absoluta às fotos reais do produto.`
+          : isLeilaoBlock
           ? `VOCÊ É O GERADOR DE STORYBOARD DO MODO LEILÃO.
 - Gere UMA IMAGEM fotográfica ultra-realista contendo ${gridLabel}.
 - Os quadros devem ser numerados com selos circulares brancos pequenos no canto superior direito de cada quadro com o número preto correspondente.
@@ -3660,9 +3757,7 @@ ${variationInstructionRule}
 - LOGOMARCA E MARCA DO FABRICANTE NO PRODUTO (OBRIGATÓRIO): A marca, a logomarca, o emblema e os textos que já estão impressos/estampados no próprio produto nas fotos de referência DEVEM aparecer 100% idênticos, na mesma cor e no mesmo lugar da peça, em todos os quadros em que aquela parte estiver visível. JAMAIS remova ou alise a logomarca do produto!
 - ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: Não adicione legendas flutuantes, textos publicitários externos, preços, setas, carrinho de compras, marca d'água externa, @ ou logotipo do TikTok. Apenas os números 1 a ${frameCount} nos selos circulares e a logomarca original do fabricante no próprio produto.`;
 
-        const chosenAspectRatio = isLeilao1
-          ? (req.body.aspectRatio || '16:9')
-          : isLeilao2
+        const chosenAspectRatio = (isLeilao1 || isLeilao2 || isAchadinhosBlock)
           ? (req.body.aspectRatio || '16:9')
           : isLeilao3
           ? '9:16'

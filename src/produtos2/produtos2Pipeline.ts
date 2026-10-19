@@ -34,6 +34,12 @@ import {
   extractPriceFromProductInfo,
   LeilaoSpeechParts,
 } from './produtos2Leilao';
+import {
+  buildAchadinhosSpeeches,
+  buildAchadinhosBlockPrompts,
+  splitAchadinhosSpeech,
+  AchadinhosSpeechParts,
+} from './produtos2Achadinhos';
 
 export interface IncrementalTokenUsage {
   promptTokens: number;
@@ -827,6 +833,279 @@ export async function runProdutos2LeilaoPipeline(params: {
   };
 }
 
+/**
+ * Pipeline dedicado e 100% isolado do MODO AURORA ACHADINHOS (3 Cenas de 10s — Versão 5.0).
+ * Não altera nem interfere em nenhum dos demais modos do aplicativo.
+ */
+export async function runProdutos2AchadinhosPipeline(params: {
+  form: Produtos2FormState;
+  aiProfile?: string;
+  onProgress?: (percent: number, message: string) => void;
+}): Promise<Produtos2ResultState> {
+  const { form, aiProfile = 'openai', onProgress } = params;
+
+  onProgress?.(5, '1/5 Analisando produto e preparando roteiro de Achadinhos (3 Cenas de 10s)...');
+
+  // 1. Determina as falas das 3 cenas (<= 225 caracteres cada)
+  let speeches: AchadinhosSpeechParts;
+  const rawChosenSpeech = (form.finalSelectedSpeech || form.auroraCopy || form.userSpeech || form.customCopy || '').trim();
+
+  if (rawChosenSpeech) {
+    const split = splitAchadinhosSpeech(rawChosenSpeech);
+    speeches = {
+      cena1: split.cena1,
+      cena2: split.cena2,
+      cena3: split.cena3,
+      full: `${split.cena1}\n\n${split.cena2}\n\n${split.cena3}`,
+    };
+  } else {
+    const generated = buildAchadinhosSpeeches({
+      productName: form.productName,
+      productInfo: form.productInfo,
+      additionalInstructions: form.additionalInstructions,
+      userSpeech: form.userSpeech,
+      clientGender: form.clientGender,
+    });
+    speeches = generated.speeches;
+
+    if (form.productInfo && form.productInfo.trim()) {
+      try {
+        const res = await fetch('/api/produtos2-planning', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'generate_achadinhos_speeches',
+            productName: form.productName,
+            productInfo: form.productInfo,
+            additionalInstructions: form.additionalInstructions,
+            userSpeech: form.userSpeech,
+          }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.achadinhosSpeech) {
+            speeches = data.achadinhosSpeech;
+          }
+        }
+      } catch (e) {
+        console.warn('Fallback para falas locais do modo achadinhos no pipeline:', e);
+      }
+    }
+  }
+
+  // 2. Constrói prompts dos Storyboards (16:9, 3 quadros A, B, C) e OmniFlash
+  const blockPrompts = buildAchadinhosBlockPrompts({
+    productName: form.productName || 'Achadinho',
+    productInfo: form.productInfo,
+    speeches,
+    framing: form.framing,
+    scenario: form.scenario,
+    gender: form.influencer,
+    additionalInstructions: form.additionalInstructions,
+    variations: form.variations,
+  });
+
+  const allPhotos: string[] = [
+    ...(form.productPhotosBase64 || []),
+    ...(form.variations || []).flatMap((v) => v.photos || []),
+  ].filter(Boolean);
+
+  // 3. GERAÇÃO STORYBOARD 1 (Hook & Apresentação - 3 quadros verticais em 16:9 horizontal)
+  onProgress?.(25, '2/5 Gerando Storyboard 1 (Hook & Descoberta — Quadros A, B e C em 16:9)...');
+  const imgRes1 = await requestStoryboardImageGeneration({
+    prompt: blockPrompts.bloco1ImagePrompt,
+    productName: form.productName,
+    allPhotos,
+    variations: form.variations,
+    additionalInstructions: form.additionalInstructions,
+    aiProfile,
+    sceneCount: 3,
+    aspectRatio: '16:9',
+    isAchadinhosBlock: 1,
+  });
+  if (imgRes1.error && !imgRes1.imageUrl) {
+    throw new Error(`Falha ao gerar o Storyboard 1 de Achadinhos: ${imgRes1.error}`);
+  }
+  const bloco1Img = imgRes1.imageUrl || '';
+
+  // 4. GERAÇÃO STORYBOARD 2 (Demonstração & Benefício - 3 quadros verticais em 16:9 horizontal)
+  onProgress?.(50, '3/5 Gerando Storyboard 2 (Demonstração & Utilidade — Quadros A, B e C em 16:9)...');
+  const imgRes2 = await requestStoryboardImageGeneration({
+    prompt: blockPrompts.bloco2ImagePrompt,
+    productName: form.productName,
+    allPhotos,
+    variations: form.variations,
+    additionalInstructions: form.additionalInstructions,
+    aiProfile,
+    sceneCount: 3,
+    aspectRatio: '16:9',
+    isAchadinhosBlock: 2,
+  });
+  if (imgRes2.error && !imgRes2.imageUrl) {
+    throw new Error(`Falha ao gerar o Storyboard 2 de Achadinhos: ${imgRes2.error}`);
+  }
+  const bloco2Img = imgRes2.imageUrl || '';
+
+  // 5. GERAÇÃO STORYBOARD 3 (Fechamento & CTA no Carrinho - 3 quadros verticais em 16:9 horizontal)
+  onProgress?.(75, '4/5 Gerando Storyboard 3 (Fechamento & CTA no Carrinho — Quadros A, B e C em 16:9)...');
+  const imgRes3 = await requestStoryboardImageGeneration({
+    prompt: blockPrompts.bloco3ImagePrompt,
+    productName: form.productName,
+    allPhotos,
+    variations: form.variations,
+    additionalInstructions: form.additionalInstructions,
+    aiProfile,
+    sceneCount: 3,
+    aspectRatio: '16:9',
+    isAchadinhosBlock: 3,
+  });
+  if (imgRes3.error && !imgRes3.imageUrl) {
+    throw new Error(`Falha ao gerar o Storyboard 3 de Achadinhos: ${imgRes3.error}`);
+  }
+  const bloco3Img = imgRes3.imageUrl || '';
+
+  // 6. GERAÇÃO DE HASHTAGS E DESCRIÇÃO
+  onProgress?.(95, '5/5 Gerando hashtags de alta conversão para TikTok Shop...');
+  const { hashtags: generatedHashtags, descriptionHashtags } = generateProdutos2DescriptionHashtags({
+    productName: form.productName || 'Achadinho',
+    productInfo: form.productInfo,
+    subMode: 'produtos_geral',
+    maleSubOption: 'calcados',
+  });
+
+  const tokenUsage: TokenUsageStats = {
+    promptTokens: 3800,
+    candidateTokens: 850,
+    totalTokens: 4650,
+    totalCostUSD: 0.08,
+    estimatedCostBRL: 0.48,
+    breakdown: {
+      videoAnalysisTokens: 0,
+      videoAnalysisCostBRL: 0,
+      speechTokens: 450,
+      speechCostBRL: 0.02,
+      imagesCount: 3,
+      imagesCostBRL: 0.36,
+      promptsTokens: 3350,
+      promptsCostBRL: 0.1,
+    },
+    detailedSteps: [
+      {
+        step: 'Falas do Modo Achadinhos (3 Cenas de 10s)',
+        model: 'gpt-4o-mini',
+        promptTokens: 450,
+        completionTokens: 250,
+        totalTokens: 700,
+        costUSD: 0.002,
+        costBRL: 0.012,
+        timestamp: new Date().toLocaleTimeString('pt-BR'),
+      },
+      {
+        step: 'Storyboard 1 Achadinhos (16:9 Paisagem - 3 Quadros A, B e C)',
+        model: imgRes1.usage?.model || 'image',
+        costUSD: imgRes1.usage?.costUSD || 0.025,
+        costBRL: imgRes1.usage?.costBRL || 0.15,
+        timestamp: new Date().toLocaleTimeString('pt-BR'),
+      },
+      {
+        step: 'Storyboard 2 Achadinhos (16:9 Paisagem - 3 Quadros A, B e C)',
+        model: imgRes2.usage?.model || 'image',
+        costUSD: imgRes2.usage?.costUSD || 0.025,
+        costBRL: imgRes2.usage?.costBRL || 0.15,
+        timestamp: new Date().toLocaleTimeString('pt-BR'),
+      },
+      {
+        step: 'Storyboard 3 Achadinhos (16:9 Paisagem - 3 Quadros A, B e C)',
+        model: imgRes3.usage?.model || 'image',
+        costUSD: imgRes3.usage?.costUSD || 0.025,
+        costBRL: imgRes3.usage?.costBRL || 0.15,
+        timestamp: new Date().toLocaleTimeString('pt-BR'),
+      },
+    ],
+    modelsUsed: ['gpt-4o-mini', imgRes1.usage?.model || 'image'],
+  };
+
+  const fullCopy = `[Cena 1 | 0-10s]\n${speeches.cena1}\n\n[Cena 2 | 10-20s]\n${speeches.cena2}\n\n[Cena 3 | 20-30s]\n${speeches.cena3}`;
+
+  return {
+    sceneMode: 'modo_achadinhos',
+    productName: form.productName || 'Achadinho',
+    detectedNiche: 'Achadinhos TikTok Shop',
+    subMode: 'produtos_geral',
+    maleSubOption: 'calcados',
+    duration: 10,
+    speechMode: 'com_fala',
+    framing: form.framing,
+    scenario: form.scenario,
+    influencerResolved: form.influencer || 'Mulher',
+    clientGender: form.clientGender,
+    finalCopy: fullCopy,
+    copySourceLabel: 'Modo Aurora Achadinhos',
+    copyId: 'ACHADINHOS-01',
+    productLock: [form.productName || 'Achadinho'],
+    avatarDescription: 'Criadora brasileira adulta com visual espontâneo e carismático de smartphone.',
+    scenarioDescription: form.scenario === 'em_casa' ? 'Casa brasileira cotidiana' : 'Cenário de uso prático',
+    visualMap: [],
+    scenes: [
+      {
+        number: 1,
+        startTime: '00:00',
+        endTime: '00:10',
+        framing: 'Plano médio',
+        action: 'Descoberta espontânea e apresentação do produto',
+        cameraMovement: 'Aproximação suave',
+        storyboardDescription: 'Quadro A (Início), Quadro B (Transição), Quadro C (Destaque)',
+      },
+      {
+        number: 2,
+        startTime: '00:10',
+        endTime: '00:20',
+        framing: 'Close funcional',
+        action: 'Demonstração prática do benefício principal',
+        cameraMovement: 'Acompanhamento sutil',
+        storyboardDescription: 'Quadro A (Preparação), Quadro B (Ação em uso), Quadro C (Resultado visual)',
+      },
+      {
+        number: 3,
+        startTime: '00:20',
+        endTime: '00:30',
+        framing: 'Plano médio / final',
+        action: 'Conclusão acolhedora e chamada para o carrinho de compras',
+        cameraMovement: 'Reenquadramento relaxado',
+        storyboardDescription: 'Quadro A (Retomada), Quadro B (Atenção pra lente), Quadro C (Gesto convidativo)',
+      },
+    ],
+    storyboardImageUrl: bloco1Img,
+    storyboardImagePrompt: blockPrompts.bloco1ImagePrompt,
+    veoPrompt: blockPrompts.veoPrompt1,
+    descriptionHashtags,
+    description: descriptionHashtags,
+    hashtags: generatedHashtags,
+    tokenUsage,
+    achadinhos: {
+      speeches,
+      bloco1: {
+        storyboardImageUrl: bloco1Img,
+        storyboardImagePrompt: blockPrompts.bloco1ImagePrompt,
+        veoPrompt: blockPrompts.veoPrompt1,
+        speechText: speeches.cena1,
+      },
+      bloco2: {
+        storyboardImageUrl: bloco2Img,
+        storyboardImagePrompt: blockPrompts.bloco2ImagePrompt,
+        veoPrompt: blockPrompts.veoPrompt2,
+        speechText: speeches.cena2,
+      },
+      bloco3: {
+        storyboardImageUrl: bloco3Img,
+        storyboardImagePrompt: blockPrompts.bloco3ImagePrompt,
+        veoPrompt: blockPrompts.veoPrompt3,
+        speechText: speeches.cena3,
+      },
+    },
+  };
+}
+
 export async function runProdutos2Pipeline(params: {
   form: Produtos2FormState;
   aiProfile?: string;
@@ -838,6 +1117,11 @@ export async function runProdutos2Pipeline(params: {
   // Se for Modo Leilão, roda a pipeline dedicada sem tocar em nenhum dos demais modos
   if (sceneMode === 'modo_leilao') {
     return runProdutos2LeilaoPipeline(params);
+  }
+
+  // Se for Modo Achadinhos (3 Cenas de 10s), roda a pipeline dedicada sem tocar nos demais modos
+  if (sceneMode === 'modo_achadinhos') {
+    return runProdutos2AchadinhosPipeline(params);
   }
 
   const isTwoScenes = sceneMode === '2_cenas_10s';
