@@ -1124,6 +1124,26 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
             }
           }}
           onOpenPreview={onOpenPreview}
+          onUpdateImage={(newUrl) => {
+            onUpdateResult((prev) => {
+              if (!prev || !prev.leilao) return prev;
+              const updatedLeilao = { ...prev.leilao };
+              if (updatedLeilao.bloco1) {
+                updatedLeilao.bloco1 = { ...updatedLeilao.bloco1, storyboardImageUrl: newUrl };
+              }
+              const updatedResult = {
+                ...prev,
+                storyboardImageUrl: newUrl,
+                leilao: updatedLeilao,
+              };
+              import('../utils/historyStorage')
+                .then(({ saveCreativeToHistory }) => {
+                  saveCreativeToHistory(updatedResult);
+                })
+                .catch(() => {});
+              return updatedResult;
+            });
+          }}
         />
 
         {/* ================================================================= */}
@@ -1211,6 +1231,25 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
             }
           }}
           onOpenPreview={onOpenPreview}
+          onUpdateImage={(newUrl) => {
+            onUpdateResult((prev) => {
+              if (!prev || !prev.leilao) return prev;
+              const updatedLeilao = { ...prev.leilao };
+              if (updatedLeilao.bloco2) {
+                updatedLeilao.bloco2 = { ...updatedLeilao.bloco2, storyboardImageUrl: newUrl };
+              }
+              const updatedResult = {
+                ...prev,
+                leilao: updatedLeilao,
+              };
+              import('../utils/historyStorage')
+                .then(({ saveCreativeToHistory }) => {
+                  saveCreativeToHistory(updatedResult);
+                })
+                .catch(() => {});
+              return updatedResult;
+            });
+          }}
         />
 
         {/* ================================================================= */}

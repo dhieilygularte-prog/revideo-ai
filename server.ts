@@ -3587,11 +3587,11 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
       /GRADE\s+2x3|EXATAMENTE\s+6\s+(?:QUADROS|CENAS)/i.test(String(prompt));
     const frameCount = (isLeilao1 || isLeilao2 || isAchadinhosBlock) ? 3 : isLeilao3 ? 1 : isSixFrames ? 6 : 9;
     const gridLabel = isAchadinhosBlock
-      ? '3 quadros fotográficos verticais 9:16 lado a lado em uma única imagem horizontal 16:9 (grade 1 linha x 3 colunas: Quadro A à esquerda, Quadro B ao centro, Quadro C à direita), sem números, sem balões e sem legendas sobrepostas'
+      ? '3 colunas verticais lado a lado em uma única imagem horizontal 16:9 widescreen (grade 1 linha x 3 colunas: Quadro A à esquerda, Quadro B ao centro, Quadro C à direita), sem números, sem balões e sem legendas sobrepostas'
       : isLeilao1
-      ? '3 quadros fotográficos verticais 9:16 lado a lado em uma única imagem horizontal 16:9 (grade 1 linha x 3 colunas), com números discretos 1, 2 e 3 em círculos brancos no canto superior direito'
+      ? '3 colunas verticais lado a lado em uma única tela horizontal 16:9 widescreen (1920x1080), com números discretos 1, 2 e 3 em círculos brancos no canto superior direito'
       : isLeilao2
-      ? '3 quadros fotográficos verticais 9:16 lado a lado em uma única imagem horizontal 16:9 (grade 1 linha x 3 colunas), com números discretos 4, 5 e 6 em círculos brancos no canto superior direito'
+      ? '3 colunas verticais lado a lado em uma única tela horizontal 16:9 widescreen (1920x1080), com números discretos 4, 5 e 6 em círculos brancos no canto superior direito'
       : isLeilao3
       ? '1 quadro fotográfico vertical único 9:16 (sem número)'
       : isSixFrames
@@ -3775,11 +3775,11 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
 - Fidelidade absoluta às fotos reais do produto.`
             : `VOCÊ É O GERADOR DE STORYBOARD DO MODO LEILÃO.
 - Gere UMA IMAGEM FOTOGRÁFICA HORIZONTAL 16:9 (WIDESCREEN 1920x1080) contendo ${gridLabel}.
-- É TERMINANTEMENTE PROIBIDO GERAR IMAGEM VERTICAL. A imagem DEVE ser mais larga do que alta (16:9).
-- Os 3 quadros verticais 9:16 devem ficar dispostos lado a lado na horizontal, separados por uma faixa branca fina vertical.
-- Os quadros devem ser numerados com selos circulares brancos pequenos no canto superior direito de cada quadro com o número preto correspondente (${isLeilao1 ? '1, 2 e 3' : '4, 5 e 6'}).
+- É TERMINANTEMENTE PROIBIDO GERAR IMAGEM VERTICAL. A imagem DEVE ser panorâmica e muito mais larga do que alta (formato horizontal 16:9 paisagem).
+- As 3 colunas verticais devem ficar dispostas lado a lado na horizontal dividindo igualmente a largura da tela panorâmica 16:9, separadas por uma linha divisória branca fina vertical.
+- As colunas devem ser numeradas com selos circulares brancos pequenos no canto superior direito de cada coluna com o número preto correspondente (${isLeilao1 ? '1, 2 e 3' : '4, 5 e 6'}).
 - ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: Não adicione legendas flutuantes, textos publicitários externos, preços, setas, carrinho de compras, marca d'água externa, @ ou logotipo do TikTok. Apenas os números nos selos circulares e a logomarca original do fabricante no próprio produto.
-- Fidelidade absoluta às fotos reais do produto em todos os quadros onde o produto aparece.`)
+- Fidelidade absoluta às fotos reais do produto em todas as colunas onde o produto aparece.`)
           : `VOCÊ É O GERADOR DE STORYBOARD DO MODO PRODUTOS 2.0.
 - Gere UMA ÚNICA IMAGEM VERTICAL 9:16 (1080x1920) contendo uma grade ${gridLabel} com EXATAMENTE ${frameCount} quadros fotográficos ultra-realistas numerados de 1 a ${frameCount} (selo circular branco pequeno no canto superior esquerdo de cada quadro com número preto).
 - Cantos arredondados nos quadros, separados por uma borda branca fina, sobre fundo branco.
@@ -3856,7 +3856,7 @@ ${variationInstructionRule}
                         },
                       });
                       const retryPart = retryImgRes.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData?.data);
-                      if (retryPart?.inlineData?.data) {
+                      if (retryPart?.inlineData?.data && !checkIsImageBase64Vertical(retryPart.inlineData.data)) {
                         const retryMime = retryPart.inlineData.mimeType || 'image/png';
                         return res.json({
                           success: true,

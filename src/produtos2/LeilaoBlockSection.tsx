@@ -39,6 +39,7 @@ interface LeilaoBlockSectionProps {
   onAuditChange: (vAudit: VideoFidelityAudit) => void;
   onAuditComplete?: (vAudit: VideoFidelityAudit, usage: any) => void;
   onOpenPreview: (url: string, title: string) => void;
+  onUpdateImage?: (newUrl: string) => void;
 }
 
 export const LeilaoBlockSection: React.FC<LeilaoBlockSectionProps> = ({
@@ -61,6 +62,7 @@ export const LeilaoBlockSection: React.FC<LeilaoBlockSectionProps> = ({
   onAuditChange,
   onAuditComplete,
   onOpenPreview,
+  onUpdateImage,
 }) => {
   // 1. Estado da fala
   const [speechInput, setSpeechInput] = useState(speechText || '');
@@ -336,6 +338,18 @@ export const LeilaoBlockSection: React.FC<LeilaoBlockSectionProps> = ({
               src={storyboardImageUrl}
               alt={`Storyboard Bloco ${blockNumber}`}
               onClick={() => onOpenPreview(storyboardImageUrl, title)}
+              onLoad={async (e) => {
+                if ((blockNumber === 1 || blockNumber === 2) && onUpdateImage) {
+                  const target = e.currentTarget;
+                  if (target.naturalHeight > target.naturalWidth) {
+                    const { ensureLandscapeStoryboardImage } = await import('./produtos2Pipeline');
+                    const normalized = await ensureLandscapeStoryboardImage(storyboardImageUrl);
+                    if (normalized && normalized !== storyboardImageUrl) {
+                      onUpdateImage(normalized);
+                    }
+                  }
+                }
+              }}
               className="w-full max-h-[480px] object-contain cursor-pointer transition-transform duration-300 group-hover:scale-[1.01]"
             />
             {/* Botão Ampliar */}
@@ -350,9 +364,14 @@ export const LeilaoBlockSection: React.FC<LeilaoBlockSectionProps> = ({
             {/* Botão Baixar sobre a imagem */}
             <button
               type="button"
-              onClick={(e) => {
+              onClick={async (e) => {
                 e.stopPropagation();
-                downloadProdutos2StoryboardImage(storyboardImageUrl, downloadFileName);
+                let urlToDownload = storyboardImageUrl;
+                if ((blockNumber === 1 || blockNumber === 2) && storyboardImageUrl) {
+                  const { ensureLandscapeStoryboardImage } = await import('./produtos2Pipeline');
+                  urlToDownload = await ensureLandscapeStoryboardImage(storyboardImageUrl);
+                }
+                downloadProdutos2StoryboardImage(urlToDownload, downloadFileName);
               }}
               className="absolute bottom-2.5 right-2.5 p-2 rounded-xl bg-black/80 hover:bg-emerald-600 text-white border border-white/25 shadow-lg transition-all cursor-pointer flex items-center justify-center"
               title={`Baixar ${downloadFileName}.png`}

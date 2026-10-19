@@ -4557,7 +4557,7 @@ app.post("/api/produtos2-generate-storyboard", async (req, res) => {
     const isLandscapeStoryboard = Boolean(isLeilao1 || isLeilao2 || isAchadinhosBlock || req.body.aspectRatio === "16:9" || /horizontal|16:9|1920x1080|1792x1024|paisagem/i.test(promptStr) && !isLeilao3);
     const isSixFrames = reqSceneCount === 6 || /GRADE\s+2x3|EXATAMENTE\s+6\s+(?:QUADROS|CENAS)/i.test(String(prompt));
     const frameCount = isLeilao1 || isLeilao2 || isAchadinhosBlock ? 3 : isLeilao3 ? 1 : isSixFrames ? 6 : 9;
-    const gridLabel = isAchadinhosBlock ? "3 quadros fotogr\xE1ficos verticais 9:16 lado a lado em uma \xFAnica imagem horizontal 16:9 (grade 1 linha x 3 colunas: Quadro A \xE0 esquerda, Quadro B ao centro, Quadro C \xE0 direita), sem n\xFAmeros, sem bal\xF5es e sem legendas sobrepostas" : isLeilao1 ? "3 quadros fotogr\xE1ficos verticais 9:16 lado a lado em uma \xFAnica imagem horizontal 16:9 (grade 1 linha x 3 colunas), com n\xFAmeros discretos 1, 2 e 3 em c\xEDrculos brancos no canto superior direito" : isLeilao2 ? "3 quadros fotogr\xE1ficos verticais 9:16 lado a lado em uma \xFAnica imagem horizontal 16:9 (grade 1 linha x 3 colunas), com n\xFAmeros discretos 4, 5 e 6 em c\xEDrculos brancos no canto superior direito" : isLeilao3 ? "1 quadro fotogr\xE1fico vertical \xFAnico 9:16 (sem n\xFAmero)" : isSixFrames ? "2x3 (2 colunas x 3 linhas)" : "3x3 (3 colunas x 3 linhas)";
+    const gridLabel = isAchadinhosBlock ? "3 colunas verticais lado a lado em uma \xFAnica imagem horizontal 16:9 widescreen (grade 1 linha x 3 colunas: Quadro A \xE0 esquerda, Quadro B ao centro, Quadro C \xE0 direita), sem n\xFAmeros, sem bal\xF5es e sem legendas sobrepostas" : isLeilao1 ? "3 colunas verticais lado a lado em uma \xFAnica tela horizontal 16:9 widescreen (1920x1080), com n\xFAmeros discretos 1, 2 e 3 em c\xEDrculos brancos no canto superior direito" : isLeilao2 ? "3 colunas verticais lado a lado em uma \xFAnica tela horizontal 16:9 widescreen (1920x1080), com n\xFAmeros discretos 4, 5 e 6 em c\xEDrculos brancos no canto superior direito" : isLeilao3 ? "1 quadro fotogr\xE1fico vertical \xFAnico 9:16 (sem n\xFAmero)" : isSixFrames ? "2x3 (2 colunas x 3 linhas)" : "3x3 (3 colunas x 3 linhas)";
     const chosenAspectRatio = isLandscapeStoryboard ? "16:9" : "9:16";
     const chosenSize = chosenAspectRatio === "16:9" ? "1792x1024" : "1024x1792";
     const photosList = Array.isArray(productPhotosBase64) ? productPhotosBase64.filter(Boolean) : [];
@@ -4685,11 +4685,11 @@ ${correctionPrompt.trim()}
 - Apresentador atr\xE1s do p\xFAlpito, apontando para a c\xE2mera, com o produto ao lado dele bem vis\xEDvel e o tel\xE3o ao fundo mostrando a foto do produto.
 - Fidelidade absoluta \xE0s fotos reais do produto.` : `VOC\xCA \xC9 O GERADOR DE STORYBOARD DO MODO LEIL\xC3O.
 - Gere UMA IMAGEM FOTOGR\xC1FICA HORIZONTAL 16:9 (WIDESCREEN 1920x1080) contendo ${gridLabel}.
-- \xC9 TERMINANTEMENTE PROIBIDO GERAR IMAGEM VERTICAL. A imagem DEVE ser mais larga do que alta (16:9).
-- Os 3 quadros verticais 9:16 devem ficar dispostos lado a lado na horizontal, separados por uma faixa branca fina vertical.
-- Os quadros devem ser numerados com selos circulares brancos pequenos no canto superior direito de cada quadro com o n\xFAmero preto correspondente (${isLeilao1 ? "1, 2 e 3" : "4, 5 e 6"}).
+- \xC9 TERMINANTEMENTE PROIBIDO GERAR IMAGEM VERTICAL. A imagem DEVE ser panor\xE2mica e muito mais larga do que alta (formato horizontal 16:9 paisagem).
+- As 3 colunas verticais devem ficar dispostas lado a lado na horizontal dividindo igualmente a largura da tela panor\xE2mica 16:9, separadas por uma linha divis\xF3ria branca fina vertical.
+- As colunas devem ser numeradas com selos circulares brancos pequenos no canto superior direito de cada coluna com o n\xFAmero preto correspondente (${isLeilao1 ? "1, 2 e 3" : "4, 5 e 6"}).
 - ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: N\xE3o adicione legendas flutuantes, textos publicit\xE1rios externos, pre\xE7os, setas, carrinho de compras, marca d'\xE1gua externa, @ ou logotipo do TikTok. Apenas os n\xFAmeros nos selos circulares e a logomarca original do fabricante no pr\xF3prio produto.
-- Fidelidade absoluta \xE0s fotos reais do produto em todos os quadros onde o produto aparece.` : `VOC\xCA \xC9 O GERADOR DE STORYBOARD DO MODO PRODUTOS 2.0.
+- Fidelidade absoluta \xE0s fotos reais do produto em todas as colunas onde o produto aparece.` : `VOC\xCA \xC9 O GERADOR DE STORYBOARD DO MODO PRODUTOS 2.0.
 - Gere UMA \xDANICA IMAGEM VERTICAL 9:16 (1080x1920) contendo uma grade ${gridLabel} com EXATAMENTE ${frameCount} quadros fotogr\xE1ficos ultra-realistas numerados de 1 a ${frameCount} (selo circular branco pequeno no canto superior esquerdo de cada quadro com n\xFAmero preto).
 - Cantos arredondados nos quadros, separados por uma borda branca fina, sobre fundo branco.
 ${variationInstructionRule}
@@ -4760,7 +4760,7 @@ ${effectivePrompt}`
                         }
                       });
                       const retryPart = retryImgRes.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data);
-                      if (retryPart?.inlineData?.data) {
+                      if (retryPart?.inlineData?.data && !checkIsImageBase64Vertical(retryPart.inlineData.data)) {
                         const retryMime = retryPart.inlineData.mimeType || "image/png";
                         return res.json({
                           success: true,

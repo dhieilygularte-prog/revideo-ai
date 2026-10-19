@@ -329,6 +329,59 @@ async function compressImageForPayload(
 }
 
 /**
+ * Garante que a imagem de um Storyboard Horizontal (16:9 widescreen, 1920x1080)
+ * nunca seja entregue na vertical (ex: 585x1024 com 3 quadros espremidos).
+ * Se o modelo gerou uma imagem mais alta do que larga (h > w), descompacta e expande
+ * horizontalmente para 1920x1080, restaurando cada uma das 3 colunas para sua proporção correta 640x1080.
+ */
+export async function ensureLandscapeStoryboardImage(dataUrl?: string): Promise<string> {
+  if (!dataUrl || typeof dataUrl !== 'string') return dataUrl || '';
+  if (typeof document === 'undefined' || typeof Image === 'undefined') {
+    return dataUrl;
+  }
+
+  return new Promise<string>((resolve) => {
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const w = img.naturalWidth || img.width || 0;
+          const h = img.naturalHeight || img.height || 0;
+          if (w > 0 && h > 0 && h > w) {
+            console.warn(
+              `[Storyboard Normalizer] Detectada imagem vertical (${w}x${h}) em pedido horizontal 16:9. Descomprimindo para tela cheia panorâmica 1920x1080...`
+            );
+            const canvas = document.createElement('canvas');
+            canvas.width = 1920;
+            canvas.height = 1080;
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.imageSmoothingEnabled = true;
+              ctx.imageSmoothingQuality = 'high';
+              ctx.drawImage(img, 0, 0, 1920, 1080);
+              const normalized = canvas.toDataURL('image/jpeg', 0.95);
+              resolve(normalized);
+              return;
+            }
+          }
+          resolve(dataUrl);
+        } catch (err) {
+          console.warn('[Storyboard Normalizer] Falha ao processar canvas, mantendo original:', err);
+          resolve(dataUrl);
+        }
+      };
+      img.onerror = () => {
+        resolve(dataUrl);
+      };
+      img.src = dataUrl;
+    } catch {
+      resolve(dataUrl);
+    }
+  });
+}
+
+/**
  * Chama a geração da imagem do Storyboard 3x3 com retry automático e rota de fallback (/api/generate-scene-image)
  * Suporta envio da imagem anterior e do correctionPrompt cirúrgico para refazer corrigindo os quadrantes com erro.
  */
@@ -344,6 +397,7 @@ async function requestStoryboardImageGeneration(params: {
   sceneCount?: number;
   aspectRatio?: string;
   isLeilaoBlock?: number;
+  isAchadinhosBlock?: number;
 }): Promise<{ imageUrl?: string; error?: string; usage?: any }> {
   const {
     prompt,
@@ -357,7 +411,18 @@ async function requestStoryboardImageGeneration(params: {
     sceneCount,
     aspectRatio,
     isLeilaoBlock,
+    isAchadinhosBlock,
   } = params;
+
+  const isLandscape = Boolean(
+    aspectRatio === '16:9' ||
+    isLeilaoBlock === 1 ||
+    isLeilaoBlock === 2 ||
+    isAchadinhosBlock === 1 ||
+    isAchadinhosBlock === 2 ||
+    isAchadinhosBlock === 3 ||
+    (/horizontal|16:9|1920x1080|1792x1024|paisagem/i.test(prompt) && isLeilaoBlock !== 3)
+  );
 
   // Garante que a 1ª foto de CADA variação esteja presente nas referências enviadas
   let rawSubset: string[] = [];
@@ -409,14 +474,18 @@ async function requestStoryboardImageGeneration(params: {
         correctionPrompt,
         aiProfile,
         sceneCount,
-        aspectRatio,
+        aspectRatio: isLandscape ? '16:9' : (aspectRatio || '9:16'),
         isLeilaoBlock,
+        isAchadinhosBlock,
       }),
     });
     const imgData = await safeParseJsonResponse(imgRes);
     if (imgData && imgData.success && imgData.imageUrl) {
+      const finalUrl = isLandscape
+        ? await ensureLandscapeStoryboardImage(imgData.imageUrl)
+        : imgData.imageUrl;
       return {
-        imageUrl: imgData.imageUrl,
+        imageUrl: finalUrl,
         usage: imgData.usage || defaultImgUsage,
       };
     }
@@ -444,14 +513,17 @@ async function requestStoryboardImageGeneration(params: {
         additionalInstructions,
         isCloneMode: false,
         aiProfile,
-        aspectRatio,
+        aspectRatio: isLandscape ? '16:9' : (aspectRatio || '9:16'),
         isLeilaoBlock,
       }),
     });
     const fallbackData = await safeParseJsonResponse(fallbackRes);
     if (fallbackData && fallbackData.success && fallbackData.imageUrl) {
+      const finalUrl = isLandscape
+        ? await ensureLandscapeStoryboardImage(fallbackData.imageUrl)
+        : fallbackData.imageUrl;
       return {
-        imageUrl: fallbackData.imageUrl,
+        imageUrl: finalUrl,
         usage: fallbackData.usage || defaultImgUsage,
       };
     }
@@ -675,7 +747,7 @@ export async function runProdutos2LeilaoPipeline(params: {
   if (imgRes1.error && !imgRes1.imageUrl) {
     throw new Error(`Falha ao gerar o Bloco 1 do Leilão: ${imgRes1.error}`);
   }
-  const bloco1Img = imgRes1.imageUrl || '';
+  const bloco1Img = await ensureLandscapeStoryboardImage(imgRes1.imageUrl || '');
 
   // GERAÇÃO BLOCO 2 (Estúdio Revelação, 3 quadros 1x3, 16:9 horizontal em alta resolução)
   onProgress?.(55, '4/5 Gerando Storyboard 2 (Revelação do Produto em Estúdio - Quadros 4, 5 e 6)...');
@@ -693,7 +765,7 @@ export async function runProdutos2LeilaoPipeline(params: {
   if (imgRes2.error && !imgRes2.imageUrl) {
     throw new Error(`Falha ao gerar o Bloco 2 do Leilão: ${imgRes2.error}`);
   }
-  const bloco2Img = imgRes2.imageUrl || '';
+  const bloco2Img = await ensureLandscapeStoryboardImage(imgRes2.imageUrl || '');
 
   // GERAÇÃO BLOCO 3 (Leiloeiro Apontando no Telão, 1 imagem vertical 9:16, 1080x1920 sem número)
   onProgress?.(80, '5/5 Gerando Imagem Final (Leiloeiro Apontando)...');
@@ -1884,8 +1956,13 @@ export async function regenerateProdutos2Storyboard(params: {
       return { error: genRes.error };
     }
 
+    const finalImg =
+      targetBlock === 3
+        ? genRes.imageUrl
+        : await ensureLandscapeStoryboardImage(genRes.imageUrl);
+
     return {
-      imageUrl: genRes.imageUrl,
+      imageUrl: finalImg,
     };
   }
 
