@@ -956,6 +956,51 @@ Mantenha o mesmo modelo/corte e caimento da pe\xE7a atual; troque somente cores 
       }
       const isLandscape = aspectRatio === "16:9" || size === "1792x1024" || /16:9|horizontal|paisagem/i.test(effectivePrompt);
       const chosenImageSize = size || (isLandscape ? "1792x1024" : OPENAI_IMAGE_SIZE);
+      const checkIsVertical = (rawB64) => {
+        try {
+          const buf = Buffer.from(rawB64, "base64");
+          if (buf[0] === 137 && buf[1] === 80 && buf[2] === 78 && buf[3] === 71 && buf.length >= 24) {
+            return buf.readUInt32BE(20) > buf.readUInt32BE(16);
+          }
+          if (buf[0] === 255 && buf[1] === 216) {
+            let offset = 2;
+            while (offset < buf.length - 8) {
+              if (buf[offset] !== 255) break;
+              const marker = buf[offset + 1];
+              if (marker === 192 || marker === 194) {
+                return buf.readUInt16BE(offset + 5) > buf.readUInt16BE(offset + 7);
+              }
+              offset += 2 + buf.readUInt16BE(offset + 2);
+            }
+          }
+        } catch {
+        }
+        return false;
+      };
+      if (isLandscape && !referenceFrameBase64) {
+        const genLandscapeRes = await client.images.generate({
+          model: OPENAI_IMAGE_MODEL,
+          prompt: effectivePrompt,
+          quality: OPENAI_IMAGE_QUALITY,
+          size: "1792x1024"
+        });
+        const b64Land = genLandscapeRes.data?.[0]?.b64_json;
+        if (b64Land) {
+          const imgCost = globalCostTracker.calculateImageCost(OPENAI_IMAGE_QUALITY);
+          globalCostTracker.recordCall({
+            step: stepName,
+            model: OPENAI_IMAGE_MODEL,
+            costUSD: imgCost.costUSD,
+            costBRL: imgCost.costBRL,
+            details: `Gera\xE7\xE3o horizontal 16:9 nativa (${chosenImageSize})`
+          });
+          return {
+            success: true,
+            imageUrl: `data:image/png;base64,${b64Land}`,
+            costBRL: imgCost.costBRL
+          };
+        }
+      }
       if (baseImageFile) {
         const editImageInput = referenceFrameBase64 ? baseImageFile : !modelReferenceBase64 && imageFiles.length > 1 ? imageFiles : baseImageFile;
         const editResponse = await client.images.edit({
@@ -967,6 +1012,24 @@ Mantenha o mesmo modelo/corte e caimento da pe\xE7a atual; troque somente cores 
         });
         const b642 = editResponse.data?.[0]?.b64_json;
         if (b642) {
+          if (isLandscape && checkIsVertical(b642)) {
+            console.warn("[OpenAIProvider] Imagem editada saiu vertical em pedido 16:9. Refazendo via images.generate horizontal...");
+            const genRetry = await client.images.generate({
+              model: OPENAI_IMAGE_MODEL,
+              prompt: effectivePrompt,
+              quality: OPENAI_IMAGE_QUALITY,
+              size: "1792x1024"
+            });
+            const b64Retry = genRetry.data?.[0]?.b64_json;
+            if (b64Retry) {
+              const imgCost2 = globalCostTracker.calculateImageCost(OPENAI_IMAGE_QUALITY);
+              return {
+                success: true,
+                imageUrl: `data:image/png;base64,${b64Retry}`,
+                costBRL: imgCost2.costBRL
+              };
+            }
+          }
           const imgCost = globalCostTracker.calculateImageCost(OPENAI_IMAGE_QUALITY);
           globalCostTracker.recordCall({
             step: stepName,
@@ -1587,6 +1650,28 @@ function parseInlineImage(imgStr) {
     };
   }
   return null;
+}
+function checkIsImageBase64Vertical(rawB64) {
+  try {
+    const clean = rawB64.replace(/^data:image\/[a-zA-Z0-9+.-]+;base64,/i, "").replace(/[\r\n\s]/g, "");
+    const buf = Buffer.from(clean, "base64");
+    if (buf[0] === 137 && buf[1] === 80 && buf[2] === 78 && buf[3] === 71 && buf.length >= 24) {
+      return buf.readUInt32BE(20) > buf.readUInt32BE(16);
+    }
+    if (buf[0] === 255 && buf[1] === 216) {
+      let offset = 2;
+      while (offset < buf.length - 8) {
+        if (buf[offset] !== 255) break;
+        const marker = buf[offset + 1];
+        if (marker === 192 || marker === 194) {
+          return buf.readUInt16BE(offset + 5) > buf.readUInt16BE(offset + 7);
+        }
+        offset += 2 + buf.readUInt16BE(offset + 2);
+      }
+    }
+  } catch {
+  }
+  return false;
 }
 function parseInlineAudio(audioStr) {
   if (!audioStr || typeof audioStr !== "string") return null;
@@ -4381,9 +4466,9 @@ app.post("/api/produtos2-generate-storyboard", async (req, res) => {
     }
     const reqSceneCount = Number(req.body.sceneCount);
     const isLeilaoBlockNum = Number(req.body.isLeilaoBlock) || 0;
-    const isLeilao1 = isLeilaoBlockNum === 1 || isLeilaoBlockNum === 0 && /BLOCO 1|QUADRO 1.*QUADRO 2.*QUADRO 3|CENA 1.*leiloeiro/i.test(String(prompt));
-    const isLeilao2 = isLeilaoBlockNum === 2 || isLeilaoBlockNum === 0 && /BLOCO 2|QUADRO 4.*QUADRO 5.*QUADRO 6|pano de veludo/i.test(String(prompt));
-    const isLeilao3 = isLeilaoBlockNum === 3 || isLeilaoBlockNum === 0 && /BLOCO 3|GERAÇÃO 3/i.test(String(prompt));
+    const isLeilao1 = isLeilaoBlockNum === 1 || isLeilaoBlockNum === 0 && /BLOCO 1|QUADRO 1.*QUADRO 2.*QUADRO 3|CENA 1.*leiloeiro|COLUNA 1.*QUADRO 1|leilao_storyboard_1/i.test(String(prompt));
+    const isLeilao2 = isLeilaoBlockNum === 2 || isLeilaoBlockNum === 0 && /BLOCO 2|QUADRO 4.*QUADRO 5.*QUADRO 6|pano de veludo|COLUNA 1.*QUADRO 4|leilao_storyboard_2/i.test(String(prompt));
+    const isLeilao3 = isLeilaoBlockNum === 3 || isLeilaoBlockNum === 0 && /BLOCO 3|GERAÇÃO 3|leilao_cena_final/i.test(String(prompt));
     const isLeilaoBlock = isLeilao1 || isLeilao2 || isLeilao3;
     const isSixFrames = reqSceneCount === 6 || /GRADE\s+2x3|EXATAMENTE\s+6\s+(?:QUADROS|CENAS)/i.test(String(prompt));
     const frameCount = isLeilao1 ? 3 : isLeilao2 ? 3 : isLeilao3 ? 1 : isSixFrames ? 6 : 9;
@@ -4416,7 +4501,8 @@ CORRE\xC7\xC3O OBRIGAT\xD3RIA DE AUDITORIA DE FIDELIDADE DOS ${frameCount} QUADR
 ${correctionPrompt.trim()}
 ========================` : baseWithLogo;
     const activeProfile = req.body?.aiProfile || getRequestAIProfile(req);
-    const tryOrder = activeProfile === "gemini" ? ["gemini"] : ["openai"];
+    const preferOpenAIForLandscape = (isLeilao1 || isLeilao2) && openAIProvider.isConfigured();
+    const tryOrder = preferOpenAIForLandscape ? ["openai", "gemini"] : activeProfile === "gemini" ? openAIProvider.isConfigured() ? ["gemini", "openai"] : ["gemini"] : process.env.GEMINI_API_KEY ? ["openai", "gemini"] : ["openai"];
     let lastErrorMessage = "";
     for (const provider of tryOrder) {
       if (provider === "openai") {
@@ -4531,6 +4617,28 @@ ${variationInstructionRule}
             if (candidates[0]?.content?.parts) {
               for (const part of candidates[0].content.parts) {
                 if (part.inlineData?.data) {
+                  if ((isLeilao1 || isLeilao2) && checkIsImageBase64Vertical(part.inlineData.data)) {
+                    console.warn("Gemini gerou imagem vertical em pedido 16:9. Tentando fallback para OpenAI 1792x1024...");
+                    if (openAIProvider.isConfigured()) {
+                      try {
+                        const oiRes = await openAIProvider.generateSceneImage({
+                          prompt: effectivePrompt,
+                          productPhotoBase64: photosList[0] || "",
+                          productPhotosBase64: photosList,
+                          variationName: productName,
+                          productType: productName,
+                          additionalInstructions: [additionalInstructions, correctionPrompt].filter(Boolean).join(" | "),
+                          aspectRatio: "16:9",
+                          size: "1792x1024"
+                        });
+                        if (oiRes.success && oiRes.imageUrl) {
+                          return res.json(oiRes);
+                        }
+                      } catch (oiRetryErr) {
+                        console.warn("Fallback OpenAI p\xF3s-Gemini vertical falhou:", oiRetryErr?.message);
+                      }
+                    }
+                  }
                   const mime = part.inlineData.mimeType || "image/png";
                   return res.json({
                     success: true,
@@ -4551,6 +4659,26 @@ ${variationInstructionRule}
           } catch (imgErr) {
             lastErrorMessage = imgErr?.message || "Erro ao gerar imagem do storyboard";
             console.warn(`Tentativa storyboard com ${modelCandidate} falhou:`, lastErrorMessage);
+          }
+        }
+        if (openAIProvider.isConfigured()) {
+          try {
+            console.log("Gemini falhou ou esgotou cota. Tentando fallback autom\xE1tico para OpenAI...");
+            const oiRes = await openAIProvider.generateSceneImage({
+              prompt: effectivePrompt,
+              productPhotoBase64: photosList[0] || "",
+              productPhotosBase64: photosList,
+              variationName: productName,
+              productType: productName,
+              additionalInstructions: [additionalInstructions, correctionPrompt].filter(Boolean).join(" | "),
+              aspectRatio: chosenAspectRatio2,
+              size: chosenSize
+            });
+            if (oiRes.success && oiRes.imageUrl) {
+              return res.json(oiRes);
+            }
+          } catch (fbErr) {
+            console.warn("Fallback p\xF3s-Gemini para OpenAI falhou:", fbErr?.message);
           }
         }
       }

@@ -628,6 +628,54 @@ Mantenha o mesmo modelo/corte e caimento da peça atual; troque somente cores (p
       const isLandscape = aspectRatio === '16:9' || size === '1792x1024' || /16:9|horizontal|paisagem/i.test(effectivePrompt);
       const chosenImageSize = (size || (isLandscape ? '1792x1024' : OPENAI_IMAGE_SIZE)) as any;
 
+      const checkIsVertical = (rawB64: string): boolean => {
+        try {
+          const buf = Buffer.from(rawB64, 'base64');
+          if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47 && buf.length >= 24) {
+            return buf.readUInt32BE(20) > buf.readUInt32BE(16);
+          }
+          if (buf[0] === 0xFF && buf[1] === 0xD8) {
+            let offset = 2;
+            while (offset < buf.length - 8) {
+              if (buf[offset] !== 0xFF) break;
+              const marker = buf[offset + 1];
+              if (marker === 0xC0 || marker === 0xC2) {
+                return buf.readUInt16BE(offset + 5) > buf.readUInt16BE(offset + 7);
+              }
+              offset += 2 + buf.readUInt16BE(offset + 2);
+            }
+          }
+        } catch {}
+        return false;
+      };
+
+      // Quando for Storyboard horizontal 16:9 widescreen e não for uma edição de quadro anterior existente,
+      // usamos client.images.generate diretamente para NÃO herdar o canvas vertical da foto de celular do produto.
+      if (isLandscape && !referenceFrameBase64) {
+        const genLandscapeRes = await client.images.generate({
+          model: OPENAI_IMAGE_MODEL,
+          prompt: effectivePrompt,
+          quality: OPENAI_IMAGE_QUALITY,
+          size: '1792x1024',
+        });
+        const b64Land = genLandscapeRes.data?.[0]?.b64_json;
+        if (b64Land) {
+          const imgCost = globalCostTracker.calculateImageCost(OPENAI_IMAGE_QUALITY);
+          globalCostTracker.recordCall({
+            step: stepName,
+            model: OPENAI_IMAGE_MODEL,
+            costUSD: imgCost.costUSD,
+            costBRL: imgCost.costBRL,
+            details: `Geração horizontal 16:9 nativa (${chosenImageSize})`,
+          });
+          return {
+            success: true,
+            imageUrl: `data:image/png;base64,${b64Land}`,
+            costBRL: imgCost.costBRL,
+          };
+        }
+      }
+
       // Se temos arquivo de imagem de base válido para edição, usamos client.images.edit
       if (baseImageFile) {
         const editImageInput: any = referenceFrameBase64
@@ -643,6 +691,26 @@ Mantenha o mesmo modelo/corte e caimento da peça atual; troque somente cores (p
 
         const b64 = editResponse.data?.[0]?.b64_json;
         if (b64) {
+          // Se era para ser horizontal 16:9 mas a imagem gerada saiu vertical, refaz nativamente com generate
+          if (isLandscape && checkIsVertical(b64)) {
+            console.warn('[OpenAIProvider] Imagem editada saiu vertical em pedido 16:9. Refazendo via images.generate horizontal...');
+            const genRetry = await client.images.generate({
+              model: OPENAI_IMAGE_MODEL,
+              prompt: effectivePrompt,
+              quality: OPENAI_IMAGE_QUALITY,
+              size: '1792x1024',
+            });
+            const b64Retry = genRetry.data?.[0]?.b64_json;
+            if (b64Retry) {
+              const imgCost = globalCostTracker.calculateImageCost(OPENAI_IMAGE_QUALITY);
+              return {
+                success: true,
+                imageUrl: `data:image/png;base64,${b64Retry}`,
+                costBRL: imgCost.costBRL,
+              };
+            }
+          }
+
           const imgCost = globalCostTracker.calculateImageCost(OPENAI_IMAGE_QUALITY);
           globalCostTracker.recordCall({
             step: stepName,

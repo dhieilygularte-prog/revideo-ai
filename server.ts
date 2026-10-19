@@ -129,6 +129,28 @@ function parseInlineImage(imgStr: string): { mimeType: string; data: string } | 
   return null;
 }
 
+function checkIsImageBase64Vertical(rawB64: string): boolean {
+  try {
+    const clean = rawB64.replace(/^data:image\/[a-zA-Z0-9+.-]+;base64,/i, '').replace(/[\r\n\s]/g, '');
+    const buf = Buffer.from(clean, 'base64');
+    if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47 && buf.length >= 24) {
+      return buf.readUInt32BE(20) > buf.readUInt32BE(16);
+    }
+    if (buf[0] === 0xFF && buf[1] === 0xD8) {
+      let offset = 2;
+      while (offset < buf.length - 8) {
+        if (buf[offset] !== 0xFF) break;
+        const marker = buf[offset + 1];
+        if (marker === 0xC0 || marker === 0xC2) {
+          return buf.readUInt16BE(offset + 5) > buf.readUInt16BE(offset + 7);
+        }
+        offset += 2 + buf.readUInt16BE(offset + 2);
+      }
+    }
+  } catch {}
+  return false;
+}
+
 // Parse audio base64 (e.g. data:audio/wav;base64,... or data:audio/webm;codecs=opus;base64,...)
 function parseInlineAudio(audioStr: string): { mimeType: string; data: string } | null {
   if (!audioStr || typeof audioStr !== 'string') return null;
@@ -3449,9 +3471,9 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
 
     const reqSceneCount = Number(req.body.sceneCount);
     const isLeilaoBlockNum = Number(req.body.isLeilaoBlock) || 0;
-    const isLeilao1 = isLeilaoBlockNum === 1 || (isLeilaoBlockNum === 0 && /BLOCO 1|QUADRO 1.*QUADRO 2.*QUADRO 3|CENA 1.*leiloeiro/i.test(String(prompt)));
-    const isLeilao2 = isLeilaoBlockNum === 2 || (isLeilaoBlockNum === 0 && /BLOCO 2|QUADRO 4.*QUADRO 5.*QUADRO 6|pano de veludo/i.test(String(prompt)));
-    const isLeilao3 = isLeilaoBlockNum === 3 || (isLeilaoBlockNum === 0 && /BLOCO 3|GERAÇÃO 3/i.test(String(prompt)));
+    const isLeilao1 = isLeilaoBlockNum === 1 || (isLeilaoBlockNum === 0 && /BLOCO 1|QUADRO 1.*QUADRO 2.*QUADRO 3|CENA 1.*leiloeiro|COLUNA 1.*QUADRO 1|leilao_storyboard_1/i.test(String(prompt)));
+    const isLeilao2 = isLeilaoBlockNum === 2 || (isLeilaoBlockNum === 0 && /BLOCO 2|QUADRO 4.*QUADRO 5.*QUADRO 6|pano de veludo|COLUNA 1.*QUADRO 4|leilao_storyboard_2/i.test(String(prompt)));
+    const isLeilao3 = isLeilaoBlockNum === 3 || (isLeilaoBlockNum === 0 && /BLOCO 3|GERAÇÃO 3|leilao_cena_final/i.test(String(prompt)));
     const isLeilaoBlock = isLeilao1 || isLeilao2 || isLeilao3;
 
     const isSixFrames =
@@ -3500,8 +3522,13 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
       : baseWithLogo;
 
     const activeProfile = req.body?.aiProfile || getRequestAIProfile(req);
-    const tryOrder: ('openai' | 'gemini')[] =
-      activeProfile === 'gemini' ? ['gemini'] : ['openai'];
+    // Para Storyboard 16:9 do Modo Leilão (Blocos 1 e 2), se OpenAI estiver configurada prioriza OpenAI pois gera nativamente 1792x1024
+    const preferOpenAIForLandscape = (isLeilao1 || isLeilao2) && openAIProvider.isConfigured();
+    const tryOrder: ('openai' | 'gemini')[] = preferOpenAIForLandscape
+      ? ['openai', 'gemini']
+      : activeProfile === 'gemini'
+      ? (openAIProvider.isConfigured() ? ['gemini', 'openai'] : ['gemini'])
+      : (process.env.GEMINI_API_KEY ? ['openai', 'gemini'] : ['openai']);
 
     let lastErrorMessage = '';
 
@@ -3664,6 +3691,30 @@ ${variationInstructionRule}
             if (candidates[0]?.content?.parts) {
               for (const part of candidates[0].content.parts) {
                 if (part.inlineData?.data) {
+                  // Se for Bloco 1 ou 2 do Leilão e o Gemini gerou imagem vertical por engano, tenta fallback para OpenAI
+                  if ((isLeilao1 || isLeilao2) && checkIsImageBase64Vertical(part.inlineData.data)) {
+                    console.warn('Gemini gerou imagem vertical em pedido 16:9. Tentando fallback para OpenAI 1792x1024...');
+                    if (openAIProvider.isConfigured()) {
+                      try {
+                        const oiRes = await openAIProvider.generateSceneImage({
+                          prompt: effectivePrompt,
+                          productPhotoBase64: photosList[0] || '',
+                          productPhotosBase64: photosList,
+                          variationName: productName,
+                          productType: productName,
+                          additionalInstructions: [additionalInstructions, correctionPrompt].filter(Boolean).join(' | '),
+                          aspectRatio: '16:9',
+                          size: '1792x1024',
+                        });
+                        if (oiRes.success && oiRes.imageUrl) {
+                          return res.json(oiRes);
+                        }
+                      } catch (oiRetryErr: any) {
+                        console.warn('Fallback OpenAI pós-Gemini vertical falhou:', oiRetryErr?.message);
+                      }
+                    }
+                  }
+
                   const mime = part.inlineData.mimeType || 'image/png';
                   return res.json({
                     success: true,
@@ -3684,6 +3735,28 @@ ${variationInstructionRule}
           } catch (imgErr: any) {
             lastErrorMessage = imgErr?.message || 'Erro ao gerar imagem do storyboard';
             console.warn(`Tentativa storyboard com ${modelCandidate} falhou:`, lastErrorMessage);
+          }
+        }
+
+        // Se o Gemini falhou por cota/crédito ou erro e a OpenAI estiver disponível, tenta fallback para OpenAI
+        if (openAIProvider.isConfigured()) {
+          try {
+            console.log('Gemini falhou ou esgotou cota. Tentando fallback automático para OpenAI...');
+            const oiRes = await openAIProvider.generateSceneImage({
+              prompt: effectivePrompt,
+              productPhotoBase64: photosList[0] || '',
+              productPhotosBase64: photosList,
+              variationName: productName,
+              productType: productName,
+              additionalInstructions: [additionalInstructions, correctionPrompt].filter(Boolean).join(' | '),
+              aspectRatio: chosenAspectRatio,
+              size: chosenSize,
+            });
+            if (oiRes.success && oiRes.imageUrl) {
+              return res.json(oiRes);
+            }
+          } catch (fbErr: any) {
+            console.warn('Fallback pós-Gemini para OpenAI falhou:', fbErr?.message);
           }
         }
       }

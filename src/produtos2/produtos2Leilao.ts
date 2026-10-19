@@ -764,38 +764,46 @@ export function buildLeilaoBlockPrompts(params: {
       : 'Produto pequeno/médio: enquadramento do peito para cima, mostrando o produto sobre o púlpito.';
 
   // =========================================================================
-  // STORYBOARD 1 (GERAÇÃO 1): UMA IMAGEM HORIZONTAL 16:9 (ALTA RESOLUÇÃO)
+  // STORYBOARD 1 (GERAÇÃO 1): UMA IMAGEM HORIZONTAL 16:9 (1920x1080 / 1792x1024)
   // Contendo 3 quadros verticais 9:16 lado a lado, numerados 1, 2 e 3
-  // Quadro 1: Salão de leilão aberto, câmera atrás da plateia, martelo erguido
-  // Quadro 2: NOVO, plano intermediário mais perto do palco, dos joelhos para cima
-  // Quadro 3: Close do leiloeiro chocado olhando o celular, produto no telão ao fundo
+  // Coluna 1 (Esquerda): Salão de leilão aberto, câmera atrás da plateia, martelo erguido
+  // Coluna 2 (Centro): Plano intermediário mais perto do palco, dos joelhos para cima
+  // Coluna 3 (Direita): Close do leiloeiro chocado olhando o celular, produto no telão ao fundo
   // =========================================================================
-  const bloco1ImagePrompt = `Com base nas fotos de referência do produto, crie UMA imagem horizontal 16:9 na maior resolução possível (ideal 3840 x 2160 pixels), em formato de storyboard, com 3 quadros verticais na proporção 9:16 lado a lado, da esquerda para a direita, separados por uma faixa branca fina. No canto superior direito de cada quadro, um círculo branco com o número em preto: 1, 2 e 3. Esses números são o ÚNICO texto da imagem. O mesmo apresentador, idêntico nos 3 quadros: ${presenterDesc}.
+  const bloco1ImagePrompt = `Com base nas fotos de referência do produto, crie UMA imagem horizontal 16:9 no formato paisagem widescreen em alta resolução (1920x1080 px ou 3840x2160 px). A imagem DEVE ser mais larga do que alta (paisagem horizontal). É terminantemente PROIBIDO gerar uma imagem vertical.
 
-QUADRO 1: interior de uma casa de leilões luxuosa e clássica, estilo teatro europeu: lustres de cristal dourados, camarotes em dois andares com colunas douradas, luz quente. Câmera atrás da plateia, na altura das pessoas. Ao fundo, no palco de piso de madeira clara, o leiloeiro de pé atrás de um púlpito de madeira escura, com o braço direito erguido segurando um martelo de leilão. Em primeiro plano, de costas, a plateia elegante de terno escuro, várias pessoas levantando plaquinhas de lance brancas e lisas.
+LAYOUT DO STORYBOARD: Exatamente 3 quadros verticais (proporção 9:16) posicionados LADO A LADO na horizontal em uma única linha (coluna 1 à esquerda, coluna 2 no centro, coluna 3 à direita), separados por uma faixa branca fina vertical entre eles.
+No canto superior direito de cada quadro, um círculo branco com o número em preto correspondente: 1, 2 e 3. Esses números são o ÚNICO texto da imagem.
+O mesmo apresentador, com visual idêntico nos 3 quadros: ${presenterDesc}.
 
-QUADRO 2: o mesmo salão e o mesmo momento, com a câmera mais perto do palco. O leiloeiro de pé, de frente para a câmera, no centro, atrás do púlpito alto de madeira escura, com as duas mãos apoiadas e o martelo em cima do púlpito. Ele aparece dos joelhos para cima, com postura confiante. Em primeiro plano, desfocadas, mãos da plateia levantando plaquinhas brancas e lisas.
+- COLUNA 1 (ESQUERDA - QUADRO 1 - PLANO ABERTO): interior de uma casa de leilões luxuosa e clássica, estilo teatro europeu: lustres de cristal dourados, camarotes em dois andares com colunas douradas, luz quente de evento. Câmera atrás da plateia elegante, na altura das pessoas. Ao fundo, no palco com piso de madeira clara, o leiloeiro de pé atrás de um púlpito de madeira escura com o braço direito erguido segurando um martelo de leilão. Em primeiro plano, de costas, a plateia elegante de terno escuro, várias pessoas levantando plaquinhas de lance brancas e lisas. Círculo branco com o número 1 no canto superior direito.
 
-QUADRO 3: close do mesmo leiloeiro, da cintura para cima, atrás do púlpito de madeira escura envernizada. Com a mão direita ele segura o martelo de leilão (madeira com anel dourado) apoiado na base. Com a mão esquerda ele segura um smartphone preto e olha a tela em choque total: olhos arregalados, sobrancelhas levantadas, boca entreaberta. Fundo desfocado: plateia levantando plaquinhas redondas brancas e lisas, e um telão mostrando apenas a foto do produto das fotos de referência, de frente.
+- COLUNA 2 (CENTRO - QUADRO 2 - PLANO INTERMEDIÁRIO): o mesmo salão de leilão e o mesmo momento, com a câmera mais perto do palco. O leiloeiro de pé, de frente para a câmera, no centro, atrás do púlpito alto de madeira escura, com as duas mãos apoiadas e o martelo em cima do púlpito. Ele aparece dos joelhos para cima, com postura confiante. Em primeiro plano, desfocadas, mãos da plateia levantando plaquinhas brancas e lisas. Círculo branco com o número 2 no canto superior direito.
 
-Fotorrealista, aparência de foto real em todos os quadros, luz quente de evento. Nenhum texto, número, letreiro ou logotipo além dos números dos quadros: nada escrito no telão, no púlpito ou nas plaquinhas.`;
+- COLUNA 3 (DIREITA - QUADRO 3 - CLOSE-UP): close do mesmo leiloeiro, da cintura para cima, atrás do púlpito de madeira escura envernizada. Com a mão direita ele segura o martelo de leilão apoiado na base. Com a mão esquerda ele segura um smartphone preto e olha a tela em choque total: olhos arregalados, sobrancelhas levantadas, boca entreaberta. Fundo desfocado: plateia com plaquinhas brancas e um telão nítido mostrando a foto do ${productName} das fotos de referência, de frente. Círculo branco com o número 3 no canto superior direito.
+
+Fotorrealista, aparência de foto real cinematográfica em todas as colunas. Imagem horizontal 16:9. Nenhum texto ou logotipo além dos números 1, 2 e 3 nos círculos dos quadros: nada escrito no telão, no púlpito ou nas plaquinhas.`;
 
   // =========================================================================
-  // STORYBOARD 2 (GERAÇÃO 2): UMA IMAGEM HORIZONTAL 16:9 (ALTA RESOLUÇÃO)
+  // STORYBOARD 2 (GERAÇÃO 2): UMA IMAGEM HORIZONTAL 16:9 (1920x1080 / 1792x1024)
   // Contendo 3 quadros verticais 9:16 lado a lado, numerados 4, 5 e 6
-  // Quadro 4: Estúdio cinza, produto coberto pelo pano preto
-  // Quadro 5: Produto revelado de frente, apresentador de mãos abertas (tcharam!), produto grande
-  // Quadro 6: Close do produto em fundo preto, ocupando quase o quadro inteiro, mão interagindo
+  // Coluna 1 (Esquerda): Estúdio cinza, produto coberto pelo pano preto
+  // Coluna 2 (Centro): Produto revelado de frente, apresentador de mãos abertas (tcharam!), produto grande
+  // Coluna 3 (Direita): Close do produto em fundo preto, ocupando quase o quadro inteiro, mão interagindo
   // =========================================================================
-  const bloco2ImagePrompt = `Com base nas fotos de referência do produto, crie UMA imagem horizontal 16:9 na maior resolução possível (ideal 3840 x 2160 pixels), em formato de storyboard, com 3 quadros verticais na proporção 9:16 lado a lado, da esquerda para a direita, separados por uma faixa branca fina. No canto superior direito de cada quadro, um círculo branco com o número em preto: 4, 5 e 6. Esses números são o ÚNICO texto da imagem. O mesmo apresentador dos quadros anteriores, idêntico: ${presenterDesc}. O produto tem que ser EXATAMENTE idêntico às fotos de referência (cor, formato, proporção, logotipo, acabamento e detalhes), nítido e bem visível.
+  const bloco2ImagePrompt = `Com base nas fotos de referência do produto, crie UMA imagem horizontal 16:9 no formato paisagem widescreen em alta resolução (1920x1080 px ou 3840x2160 px). A imagem DEVE ser mais larga do que alta (paisagem horizontal). É terminantemente PROIBIDO gerar uma imagem vertical.
 
-QUADRO 4: estúdio fotográfico com fundo de cortinas cinza-claro, várias luzes spot penduradas no teto, refletores em tripés nas laterais e piso cinza-claro liso. À esquerda, ${pulpitDesc}, coberto por um pano de veludo preto que esconde completamente o ${productName} em cima dele (dá para perceber o volume e o formato do produto por baixo do pano, sem mostrar nenhuma parte dele). À direita, o mesmo apresentador (${presenterDesc}), de corpo inteiro, de terno azul royal de três peças com colete, camisa branca, gravata cinza e sapato marrom. Com uma mão ele segura a ponta do pano preto e com a outra aponta para o produto coberto, sorrindo com ar de suspense, prestes a revelar o que está embaixo. Iluminação de estúdio limpa, aparência de foto real.
+LAYOUT DO STORYBOARD: Exatamente 3 quadros verticais (proporção 9:16) posicionados LADO A LADO na horizontal em uma única linha (coluna 1 à esquerda, coluna 2 no centro, coluna 3 à direita), separados por uma faixa branca fina vertical entre eles.
+No canto superior direito de cada quadro, um círculo branco com o número em preto correspondente: 4, 5 e 6. Esses números são o ÚNICO texto da imagem.
+O mesmo apresentador dos quadros anteriores, com visual idêntico: ${presenterDesc}. O produto deve ser EXATAMENTE IDÊNTICO às fotos de referência (mesma cor, formato, proporção, logotipo do fabricante e acabamento), nítido e em grande destaque.
 
-QUADRO 5: o mesmo estúdio cinza com luzes spot. O mesmo apresentador (${presenterDesc}) atrás de ${pulpitDesc}, sorrindo largo, com as duas mãos abertas, uma de cada lado do produto, num gesto de apresentação ("tcharam!"). Sobre o púlpito está o ${productName} das fotos de referência, com a frente principal virada de frente para a câmera, ocupando uma área grande do quadro, nítido e bem visível, exatamente idêntico ao produto real das fotos: mesma cor, formato, proporção, logotipo do fabricante e acabamento. O pano preto não aparece mais. ${framingDescImg4}.
+- COLUNA 1 (ESQUERDA - QUADRO 4 - SUSPENSE): estúdio fotográfico com cortinas cinza-claro ao fundo, luzes spot no teto, refletores laterais e piso cinza-claro liso. À esquerda, ${pulpitDesc}, coberto por um pano de veludo preto que esconde completamente o ${productName} em cima dele (percebe-se o volume por baixo do pano, sem mostrar nenhuma parte do produto). À direita, o apresentador (${presenterDesc}), de corpo inteiro, de terno azul royal de três peças com colete, camisa branca e gravata cinza. Com uma mão ele segura a ponta do pano preto e com a outra aponta para o produto coberto, sorrindo com ar de suspense. Círculo branco com o número 4 no canto superior direito.
 
-QUADRO 6: close-up em ângulo diagonal de 3/4 do ${productName} sobre uma superfície preta fosca, com fundo totalmente preto. O produto ocupa quase o quadro inteiro, nítido e bem visível. Uma mão ${handDesc}, com a manga do terno escuro aparecendo, interage com o principal detalhe do produto. O produto tem que ser exatamente idêntico ao produto real das fotos (cor, acabamento, detalhes).
+- COLUNA 2 (CENTRO - QUADRO 5 - REVELAÇÃO DO PRODUTO): o mesmo estúdio cinza com luzes spot. O mesmo apresentador (${presenterDesc}) atrás de ${pulpitDesc}, sorrindo com expressão alegre, com as duas mãos abertas ao lado do produto num gesto de apresentação ("tcharam!"). Sobre o púlpito está o ${productName} das fotos de referência, virado de frente para a câmera, OCUPANDO UMA ÁREA GRANDE E EM DESTAQUE DO QUADRO, nítido e bem visível, 100% idêntico às fotos reais: mesma cor, proporção, botões, tela e logotipo do fabricante. O pano preto não aparece mais. ${framingDescImg4}. Círculo branco com o número 5 no canto superior direito.
 
-Fotorrealista, aparência de foto real em todos os quadros. Nenhum texto, letreiro ou logotipo além dos números dos quadros e do logotipo que já faz parte do próprio produto.`;
+- COLUNA 3 (DIREITA - QUADRO 6 - CLOSE-UP DO PRODUTO): close-up cinematográfico em ângulo diagonal de 3/4 do ${productName} sobre superfície preta fosca, com fundo totalmente preto. O produto OCUPA QUASE O QUADRO INTEIRO, com iluminação de produto comercial de luxo, destacando cada detalhe físico real. Uma mão ${handDesc}, com a manga do terno azul escuro aparecendo, toca ou aponta para o principal detalhe do produto. O produto é 100% idêntico ao produto real das fotos. Círculo branco com o número 6 no canto superior direito.
+
+Fotorrealista, fotografia comercial de estúdio em alta resolução. Imagem horizontal 16:9. Nenhum texto ou logotipo além dos números 4, 5 e 6 nos círculos dos quadros e o logotipo original do fabricante no próprio produto.`;
 
   // =========================================================================
   // GERAÇÃO 3: IMAGEM ÚNICA VERTICAL 9:16 (1080 x 1920 px) SEM NÚMERO
