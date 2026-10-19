@@ -330,9 +330,10 @@ async function compressImageForPayload(
 
 /**
  * Garante que a imagem de um Storyboard Horizontal (16:9 widescreen, 1920x1080)
- * nunca seja entregue na vertical (ex: 585x1024 com 3 quadros espremidos).
- * Se o modelo gerou uma imagem mais alta do que larga (h > w), descompacta e expande
- * horizontalmente para 1920x1080, restaurando cada uma das 3 colunas para sua proporção correta 640x1080.
+ * preencha 100% da altura da imagem, do topo até a base, sem faixas pretas horizontais
+ * (letterbox) e sem deformar as 3 colunas verticais em quadradinhos no centro.
+ * Se a IA gerou barras pretas em cima/embaixo ou uma imagem vertical, recorta o conteúdo ativo
+ * e expande para tela cheia 1920x1080, restaurando cada uma das 3 colunas para proporção vertical cheia (640x1080).
  */
 export async function ensureLandscapeStoryboardImage(dataUrl?: string): Promise<string> {
   if (!dataUrl || typeof dataUrl !== 'string') return dataUrl || '';
@@ -348,7 +349,13 @@ export async function ensureLandscapeStoryboardImage(dataUrl?: string): Promise<
         try {
           const w = img.naturalWidth || img.width || 0;
           const h = img.naturalHeight || img.height || 0;
-          if (w > 0 && h > 0 && h > w) {
+          if (w === 0 || h === 0) {
+            resolve(dataUrl);
+            return;
+          }
+
+          // Caso 1: Imagem gerada na vertical (h > w)
+          if (h > w) {
             console.warn(
               `[Storyboard Normalizer] Detectada imagem vertical (${w}x${h}) em pedido horizontal 16:9. Descomprimindo para tela cheia panorâmica 1920x1080...`
             );
@@ -360,11 +367,110 @@ export async function ensureLandscapeStoryboardImage(dataUrl?: string): Promise<
               ctx.imageSmoothingEnabled = true;
               ctx.imageSmoothingQuality = 'high';
               ctx.drawImage(img, 0, 0, 1920, 1080);
-              const normalized = canvas.toDataURL('image/jpeg', 0.95);
-              resolve(normalized);
+              resolve(canvas.toDataURL('image/jpeg', 0.95));
               return;
             }
           }
+
+          // Caso 2: Imagem horizontal (w >= h) — Detectar e remover letterboxing (barras pretas/escuras no topo e na base)
+          // que causam as imagens ficarem "quadradinhas no centro" em vez de ocuparem de cima a baixo.
+          try {
+            const sampleW = 320;
+            const sampleH = Math.round((h / w) * 320);
+            const detectCanvas = document.createElement('canvas');
+            detectCanvas.width = sampleW;
+            detectCanvas.height = sampleH;
+            const dctx = detectCanvas.getContext('2d');
+
+            if (dctx) {
+              dctx.drawImage(img, 0, 0, sampleW, sampleH);
+              const imgData = dctx.getImageData(0, 0, sampleW, sampleH);
+              const data = imgData.data;
+
+              // Verifica se uma linha horizontal é barra preta/escura
+              const isRowDark = (rowY: number): boolean => {
+                let brightCount = 0;
+                let tested = 0;
+                const step = 4;
+                for (let x = 12; x < sampleW - 12; x += step) {
+                  const idx = (rowY * sampleW + x) * 4;
+                  const r = data[idx];
+                  const g = data[idx + 1];
+                  const b = data[idx + 2];
+                  // Se o pixel tem brilho perceptível
+                  if (r > 36 || g > 36 || b > 36) {
+                    brightCount++;
+                  }
+                  tested++;
+                }
+                return brightCount / tested < 0.05;
+              };
+
+              let topDarkRows = 0;
+              for (let y = 0; y < Math.floor(sampleH * 0.45); y++) {
+                if (isRowDark(y)) {
+                  topDarkRows++;
+                } else {
+                  break;
+                }
+              }
+
+              let bottomDarkRows = 0;
+              for (let y = sampleH - 1; y >= Math.floor(sampleH * 0.55); y--) {
+                if (isRowDark(y)) {
+                  bottomDarkRows++;
+                } else {
+                  break;
+                }
+              }
+
+              const topRatio = topDarkRows / sampleH;
+              const bottomRatio = bottomDarkRows / sampleH;
+
+              // Se há barras pretas relevantes acima e abaixo (ao menos ~6% em cada margem ou >15% no total)
+              if ((topRatio >= 0.06 && bottomRatio >= 0.06) || (topRatio + bottomRatio >= 0.15)) {
+                const cropTopPx = Math.round((topDarkRows / sampleH) * h);
+                const cropBottomPx = Math.round(((sampleH - bottomDarkRows) / sampleH) * h);
+                const cropHeightPx = cropBottomPx - cropTopPx;
+
+                if (cropHeightPx > 60 && cropHeightPx < h) {
+                  console.log(
+                    `[Storyboard Normalizer] Letterbox removido (${topDarkRows} rows topo, ${bottomDarkRows} base). Expandindo 3 colunas verticais para 100% da altura (1920x1080)...`
+                  );
+                  const outCanvas = document.createElement('canvas');
+                  outCanvas.width = 1920;
+                  outCanvas.height = 1080;
+                  const outCtx = outCanvas.getContext('2d');
+                  if (outCtx) {
+                    outCtx.imageSmoothingEnabled = true;
+                    outCtx.imageSmoothingQuality = 'high';
+                    // Desenha apenas o conteúdo ativo esticado verticalmente de cima a baixo (100% height)
+                    outCtx.drawImage(img, 0, cropTopPx, w, cropHeightPx, 0, 0, 1920, 1080);
+                    resolve(outCanvas.toDataURL('image/jpeg', 0.95));
+                    return;
+                  }
+                }
+              }
+            }
+          } catch (letterboxErr) {
+            console.warn('[Storyboard Normalizer] Erro na detecção de letterbox:', letterboxErr);
+          }
+
+          // Se a imagem já é 1920x1080 sem letterbox, redimensiona suavemente se diferir de 1920x1080
+          if (w !== 1920 || h !== 1080) {
+            const outCanvas = document.createElement('canvas');
+            outCanvas.width = 1920;
+            outCanvas.height = 1080;
+            const outCtx = outCanvas.getContext('2d');
+            if (outCtx) {
+              outCtx.imageSmoothingEnabled = true;
+              outCtx.imageSmoothingQuality = 'high';
+              outCtx.drawImage(img, 0, 0, 1920, 1080);
+              resolve(outCanvas.toDataURL('image/jpeg', 0.95));
+              return;
+            }
+          }
+
           resolve(dataUrl);
         } catch (err) {
           console.warn('[Storyboard Normalizer] Falha ao processar canvas, mantendo original:', err);
@@ -415,13 +521,12 @@ async function requestStoryboardImageGeneration(params: {
   } = params;
 
   const isLandscape = Boolean(
-    aspectRatio === '16:9' ||
     isLeilaoBlock === 1 ||
     isLeilaoBlock === 2 ||
     isAchadinhosBlock === 1 ||
     isAchadinhosBlock === 2 ||
     isAchadinhosBlock === 3 ||
-    (/horizontal|16:9|1920x1080|1792x1024|paisagem/i.test(prompt) && isLeilaoBlock !== 3)
+    (aspectRatio === '16:9' && isLeilaoBlock !== 3)
   );
 
   // Garante que a 1ª foto de CADA variação esteja presente nas referências enviadas
@@ -1544,6 +1649,8 @@ export async function runProdutos2Pipeline(params: {
     variations: form.variations,
     additionalInstructions: form.additionalInstructions,
     aiProfile,
+    sceneCount: targetSceneCount,
+    aspectRatio: '9:16',
   });
 
   const storyboardImageUrl = imgGenResult.imageUrl;
@@ -1754,6 +1861,8 @@ export async function runProdutos2Pipeline(params: {
       variations: form.variations,
       additionalInstructions: form.additionalInstructions,
       aiProfile,
+      sceneCount: 6,
+      aspectRatio: '9:16',
     });
 
     let storyboardAudit2: Produtos2StoryboardAudit | undefined = undefined;
@@ -2026,6 +2135,8 @@ REGRAS ESTRITAS DE PRESERVAÇÃO E EXECUÇÃO:
     previousStoryboardImageBase64: targetPrevImageUrl,
     correctionPrompt: combinedCorrection || undefined,
     aiProfile,
+    sceneCount: isTwoScenes ? 6 : 9,
+    aspectRatio: '9:16',
   });
 
   if (!genRes.imageUrl) {
@@ -2299,6 +2410,8 @@ export async function recreateSingleTwoScenesPartWithCopy(params: {
     variations: result.variations || form.variations,
     additionalInstructions: result.additionalInstructions,
     aiProfile,
+    sceneCount: 6,
+    aspectRatio: '9:16',
   });
 
   let storyboardAudit: Produtos2StoryboardAudit | undefined = undefined;

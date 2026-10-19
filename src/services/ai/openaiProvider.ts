@@ -625,7 +625,7 @@ Mantenha o mesmo modelo/corte e caimento da peça atual; troque somente cores (p
       }
 
       // Calcula o tamanho da imagem conforme proporção solicitada (16:9 horizontal => 1792x1024, 9:16 vertical => 1024x1792)
-      const isLandscape = aspectRatio === '16:9' || size === '1792x1024' || /16:9|horizontal|paisagem/i.test(effectivePrompt);
+      const isLandscape = (aspectRatio === '16:9' || size === '1792x1024') && aspectRatio !== '9:16';
       const chosenImageSize = (size || (isLandscape ? '1792x1024' : OPENAI_IMAGE_SIZE)) as any;
 
       const checkIsVertical = (rawB64: string): boolean => {

@@ -3580,7 +3580,16 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
     const isAchadinhos3 = isAchadinhosBlockNum === 3 || (isAchadinhosBlockNum === 0 && (/MODO AURORA ACHADINHOS.*CENA 3/i.test(promptStr) || /Storyboard 3A\/3B\/3C|achadinhos_storyboard_3/i.test(promptStr)));
     const isAchadinhosBlock = isAchadinhos1 || isAchadinhos2 || isAchadinhos3;
 
-    const isLandscapeStoryboard = Boolean(isLeilao1 || isLeilao2 || isAchadinhosBlock || req.body.aspectRatio === '16:9' || (/horizontal|16:9|1920x1080|1792x1024|paisagem/i.test(promptStr) && !isLeilao3));
+    const isStrictlyVerticalMode =
+      req.body.sceneMode === '1_cena_10s' ||
+      req.body.sceneMode === '1_cena_15s' ||
+      req.body.sceneMode === '2_cenas_10s' ||
+      req.body.aspectRatio === '9:16' ||
+      isLeilao3;
+
+    const isLandscapeStoryboard =
+      !isStrictlyVerticalMode &&
+      Boolean(isLeilao1 || isLeilao2 || isAchadinhosBlock || req.body.aspectRatio === '16:9');
 
     const isSixFrames =
       reqSceneCount === 6 ||

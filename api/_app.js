@@ -954,7 +954,7 @@ Mantenha o mesmo modelo/corte e caimento da pe\xE7a atual; troque somente cores 
       } else if (imageFiles.length > 0 && !isCloneMode) {
         baseImageFile = imageFiles[0];
       }
-      const isLandscape = aspectRatio === "16:9" || size === "1792x1024" || /16:9|horizontal|paisagem/i.test(effectivePrompt);
+      const isLandscape = (aspectRatio === "16:9" || size === "1792x1024") && aspectRatio !== "9:16";
       const chosenImageSize = size || (isLandscape ? "1792x1024" : OPENAI_IMAGE_SIZE);
       const checkIsVertical = (rawB64) => {
         try {
@@ -4554,7 +4554,8 @@ app.post("/api/produtos2-generate-storyboard", async (req, res) => {
     const isAchadinhos2 = isAchadinhosBlockNum === 2 || isAchadinhosBlockNum === 0 && (/MODO AURORA ACHADINHOS.*CENA 2/i.test(promptStr) || /Storyboard 2A\/2B\/2C|achadinhos_storyboard_2/i.test(promptStr));
     const isAchadinhos3 = isAchadinhosBlockNum === 3 || isAchadinhosBlockNum === 0 && (/MODO AURORA ACHADINHOS.*CENA 3/i.test(promptStr) || /Storyboard 3A\/3B\/3C|achadinhos_storyboard_3/i.test(promptStr));
     const isAchadinhosBlock = isAchadinhos1 || isAchadinhos2 || isAchadinhos3;
-    const isLandscapeStoryboard = Boolean(isLeilao1 || isLeilao2 || isAchadinhosBlock || req.body.aspectRatio === "16:9" || /horizontal|16:9|1920x1080|1792x1024|paisagem/i.test(promptStr) && !isLeilao3);
+    const isStrictlyVerticalMode = req.body.sceneMode === "1_cena_10s" || req.body.sceneMode === "1_cena_15s" || req.body.sceneMode === "2_cenas_10s" || req.body.aspectRatio === "9:16" || isLeilao3;
+    const isLandscapeStoryboard = !isStrictlyVerticalMode && Boolean(isLeilao1 || isLeilao2 || isAchadinhosBlock || req.body.aspectRatio === "16:9");
     const isSixFrames = reqSceneCount === 6 || /GRADE\s+2x3|EXATAMENTE\s+6\s+(?:QUADROS|CENAS)/i.test(String(prompt));
     const frameCount = isLeilao1 || isLeilao2 || isAchadinhosBlock ? 3 : isLeilao3 ? 1 : isSixFrames ? 6 : 9;
     const gridLabel = isAchadinhosBlock ? "3 colunas verticais lado a lado em uma \xFAnica imagem horizontal 16:9 widescreen (grade 1 linha x 3 colunas: Quadro A \xE0 esquerda, Quadro B ao centro, Quadro C \xE0 direita), sem n\xFAmeros, sem bal\xF5es e sem legendas sobrepostas" : isLeilao1 ? "3 colunas verticais lado a lado em uma \xFAnica tela horizontal 16:9 widescreen (1920x1080), com n\xFAmeros discretos 1, 2 e 3 em c\xEDrculos brancos no canto superior direito" : isLeilao2 ? "3 colunas verticais lado a lado em uma \xFAnica tela horizontal 16:9 widescreen (1920x1080), com n\xFAmeros discretos 4, 5 e 6 em c\xEDrculos brancos no canto superior direito" : isLeilao3 ? "1 quadro fotogr\xE1fico vertical \xFAnico 9:16 (sem n\xFAmero)" : isSixFrames ? "2x3 (2 colunas x 3 linhas)" : "3x3 (3 colunas x 3 linhas)";

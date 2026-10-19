@@ -790,7 +790,15 @@ export function buildLeilaoBlockPrompts(params: {
   // O produto aparece em todos os 3 quadros no púlpito/plataforma e no telão ao fundo
   // =========================================================================
   const bloco1ImagePrompt = `Com base nas fotos de referência do produto, crie UMA imagem panorâmica HORIZONTAL no formato 16:9 widescreen (1920 pixels de largura por 1080 pixels de altura, orientação paisagem / landscape de tela de computador ou TV). É TERMINANTEMENTE PROIBIDO gerar imagem vertical; a largura DEVE ser muito maior que a altura.
-A tela horizontal 16:9 é dividida igualmente em 3 colunas verticais lado a lado da esquerda para a direita (cada coluna com formato de tela de smartphone, grade 1 linha x 3 colunas), separadas por uma linha divisória branca fina. No canto superior direito de cada coluna, um pequeno círculo branco com o número em preto: 1, 2 e 3. Esses números são o ÚNICO texto da imagem.
+
+========================
+ESTRUTURA DE ALTURA TOTAL (OBRIGATÓRIO):
+A tela horizontal 16:9 é dividida igualmente em 3 colunas verticais lado a lado da esquerda para a direita (cada coluna com formato de tela cheia vertical 9:16 de smartphone, grade 1 linha x 3 colunas).
+ENQUADRAMENTO DE ALTURA TOTAL: Cada uma das 3 colunas verticais DEVE PREENCHER 100% DA ALTURA DA IMAGEM, do topo extremo à base extrema (de cima a baixo, ocupando todos os 1080 pixels de altura), exatamente como uma gravação de celular em pé.
+PROIBIÇÃO RIGOROSA DE BARRAS/LETTERBOX: É TERMINANTEMENTE PROIBIDO gerar faixas pretas, barras escuras, bordas ou letterbox em cima ou embaixo da imagem! Os quadros NÃO podem ser quadrados nem achatados no centro. Cada coluna vertical é alta, esbelta (proporção 9:16) e vai do topo da imagem até o chão/base da imagem.
+Separadores: linhas divisórias brancas finas entre as 3 colunas verticais.
+No canto superior direito de cada coluna, um pequeno círculo branco com o número em preto: 1, 2 e 3. Esses números são o ÚNICO texto da imagem.
+========================
 
 O mesmo apresentador, idêntico nos 3 quadros: ${presenterDesc}, com ${presenterClothing}.
 O ${productName} aparece nos 3 quadros, exatamente idêntico às fotos de referência (cor, formato, proporção, logotipo e acabamento), sempre na mesma posição: ${posicaoProduto}.
@@ -810,7 +818,15 @@ Fotorrealista, aparência de foto real em todos os quadros, luz quente de evento
   // Quadros 5 e 6: Closes do produto sobre superfície preta fosca e fundo preto destacando benefícios 1 e 2
   // =========================================================================
   const bloco2ImagePrompt = `Com base nas fotos de referência do produto, crie UMA imagem panorâmica HORIZONTAL no formato 16:9 widescreen (1920 pixels de largura por 1080 pixels de altura, orientação paisagem / landscape de tela de computador ou TV). É TERMINANTEMENTE PROIBIDO gerar imagem vertical; a largura DEVE ser muito maior que a altura.
-A tela horizontal 16:9 é dividida igualmente em 3 colunas verticais lado a lado da esquerda para a direita (cada coluna com formato de tela de smartphone, grade 1 linha x 3 colunas), separadas por uma linha divisória branca fina. No canto superior direito de cada coluna, um pequeno círculo branco com o número em preto: 4, 5 e 6. Esses números são o ÚNICO texto da imagem.
+
+========================
+ESTRUTURA DE ALTURA TOTAL (OBRIGATÓRIO):
+A tela horizontal 16:9 é dividida igualmente em 3 colunas verticais lado a lado da esquerda para a direita (cada coluna com formato de tela cheia vertical 9:16 de smartphone, grade 1 linha x 3 colunas).
+ENQUADRAMENTO DE ALTURA TOTAL: Cada uma das 3 colunas verticais DEVE PREENCHER 100% DA ALTURA DA IMAGEM, do topo extremo à base extrema (de cima a baixo, ocupando todos os 1080 pixels de altura), exatamente como uma gravação de celular em pé.
+PROIBIÇÃO RIGOROSA DE BARRAS/LETTERBOX: É TERMINANTEMENTE PROIBIDO gerar faixas pretas, barras escuras, bordas ou letterbox em cima ou embaixo da imagem! Os quadros NÃO podem ser quadrados nem achatados no centro. Cada coluna vertical é alta, esbelta (proporção 9:16) e vai do topo da imagem até o chão/base da imagem.
+Separadores: linhas divisórias brancas finas entre as 3 colunas verticais.
+No canto superior direito de cada coluna, um pequeno círculo branco com o número em preto: 4, 5 e 6. Esses números são o ÚNICO texto da imagem.
+========================
 
 O mesmo apresentador dos quadros anteriores, idêntico: ${presenterDesc}, com ${presenterClothing}.
 O ${productName} é exatamente idêntico às fotos de referência (cor, formato, proporção, logotipo, acabamento e detalhes), nítido e bem visível em todos os quadros.
