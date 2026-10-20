@@ -11,20 +11,76 @@ function downloadBlob(blob: Blob, filename: string) {
   setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
-async function urlToUint8Array(url: string): Promise<Uint8Array> {
-  if (url.startsWith('data:')) {
-    const base64Data = url.split(',')[1];
-    const binaryStr = atob(base64Data);
-    const len = binaryStr.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i++) {
-      bytes[i] = binaryStr.charCodeAt(i);
-    }
-    return bytes;
+export async function ensureHighResStoryboardBlob(
+  imageUrl: string,
+  targetWidth = 2160,
+  targetHeight = 3840
+): Promise<Blob> {
+  if (typeof document === 'undefined' || typeof Image === 'undefined') {
+    const res = await fetch(imageUrl);
+    return await res.blob();
   }
-  const res = await fetch(url);
-  const buffer = await res.arrayBuffer();
-  return new Uint8Array(buffer);
+
+  return new Promise<Blob>((resolve) => {
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const w = img.naturalWidth || img.width || 0;
+          const h = img.naturalHeight || img.height || 0;
+          const isLandscape = w > h;
+          const outW = isLandscape ? 3840 : targetWidth;
+          const outH = isLandscape ? 2160 : targetHeight;
+
+          const canvas = document.createElement('canvas');
+          canvas.width = outW;
+          canvas.height = outH;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            fetch(imageUrl).then((r) => r.blob()).then(resolve).catch(() => resolve(new Blob()));
+            return;
+          }
+
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, 0, 0, outW, outH);
+          canvas.toBlob((blob) => {
+            if (blob) resolve(blob);
+            else fetch(imageUrl).then((r) => r.blob()).then(resolve).catch(() => resolve(new Blob()));
+          }, 'image/png');
+        } catch {
+          fetch(imageUrl).then((r) => r.blob()).then(resolve).catch(() => resolve(new Blob()));
+        }
+      };
+      img.onerror = () => fetch(imageUrl).then((r) => r.blob()).then(resolve).catch(() => resolve(new Blob()));
+      img.src = imageUrl;
+    } catch {
+      fetch(imageUrl).then((r) => r.blob()).then(resolve).catch(() => resolve(new Blob()));
+    }
+  });
+}
+
+async function urlToUint8Array(url: string): Promise<Uint8Array> {
+  try {
+    const blob = await ensureHighResStoryboardBlob(url, 2160, 3840);
+    const buffer = await blob.arrayBuffer();
+    return new Uint8Array(buffer);
+  } catch {
+    if (url.startsWith('data:')) {
+      const base64Data = url.split(',')[1];
+      const binaryStr = atob(base64Data);
+      const len = binaryStr.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryStr.charCodeAt(i);
+      }
+      return bytes;
+    }
+    const res = await fetch(url);
+    const buffer = await res.arrayBuffer();
+    return new Uint8Array(buffer);
+  }
 }
 
 export function sanitizeProductFileName(productName: string): string {
@@ -35,18 +91,14 @@ export function sanitizeProductFileName(productName: string): string {
   return clean || 'Produto';
 }
 
-export function downloadProdutos2StoryboardImage(
+export async function downloadProdutos2StoryboardImage(
   imageUrl: string,
   productName: string,
   sceneSuffix?: string
 ) {
+  const blob = await ensureHighResStoryboardBlob(imageUrl, 2160, 3840);
   const baseName = sanitizeProductFileName(productName);
-  const a = document.createElement('a');
-  a.href = imageUrl;
-  a.download = sceneSuffix ? `${baseName} - ${sceneSuffix}.png` : `${baseName}.png`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  downloadBlob(blob, sceneSuffix ? `${baseName} - ${sceneSuffix}.png` : `${baseName}.png`);
 }
 
 /**
