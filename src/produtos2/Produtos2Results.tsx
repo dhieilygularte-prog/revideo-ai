@@ -104,6 +104,7 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
   referencePhotos = [],
 }) => {
   const sceneMode = result.sceneMode || (result.duration === 15 ? '1_cena_15s' : '1_cena_10s');
+  const is4Scenes = sceneMode === '1_cena_10s_4f' || (result.scenes && result.scenes.length === 4);
   const isTwoScenes = sceneMode === '2_cenas_10s' && Boolean(result.scene2);
   const is15sSingle = sceneMode === '1_cena_15s';
   const maxCharsScene1 = is15sSingle ? 335 : 225;
@@ -313,6 +314,7 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
           avatarDescription: prev.avatarDescription,
           scenarioDescription: prev.scenarioDescription,
           scenes: prev.scenes,
+          sceneCount: is4Scenes ? 4 : prev.sceneMode === '2_cenas_10s' ? 6 : 9,
           scenePartIndex: prev.sceneMode === '2_cenas_10s' ? 1 : undefined,
           additionalInstructions: prev.additionalInstructions,
           variations: prev.variations,
@@ -975,7 +977,7 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
   const safeFileName = sanitizeProductFileName(result.productName);
   const audit = result.storyboardAudit;
   const auditStyles = getStatusClasses(audit?.overallStatus || 'green');
-  const quadrantLimit1 = isTwoScenes ? 6 : 9;
+  const quadrantLimit1 = is4Scenes ? 4 : isTwoScenes ? 6 : 9;
   const problemQuadrants = (audit?.quadrants || [])
     .slice(0, quadrantLimit1)
     .filter((q) => q.productVisible && q.score < 90);
@@ -2019,6 +2021,8 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
               <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-wide">
                 {isTwoScenes
                   ? 'Storyboard da Cena 1 (Grade 2×3 · 6 Quadros · 1080×1920)'
+                  : is4Scenes
+                  ? 'Storyboard 2×2 (4 Cenas · 1080×1920)'
                   : 'Storyboard 3×3 (9 Cenas · 1080×1920)'}
               </h3>
               <p className="text-[11px] text-zinc-400">
@@ -2070,6 +2074,8 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
                       result.storyboardImageUrl!,
                       isTwoScenes
                         ? `Storyboard Cena 1 (6 Quadros) — ${result.productName}`
+                        : is4Scenes
+                        ? `Storyboard 4 Cenas — ${result.productName}`
                         : `Storyboard 9 Cenas — ${result.productName}`
                     )
                   }
@@ -2083,6 +2089,8 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
                       result.storyboardImageUrl!,
                       isTwoScenes
                         ? `Storyboard Cena 1 (6 Quadros) — ${result.productName}`
+                        : is4Scenes
+                        ? `Storyboard 4 Cenas — ${result.productName}`
                         : `Storyboard 9 Cenas — ${result.productName}`
                     )
                   }
@@ -2160,8 +2168,8 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
                 </span>
               </div>
 
-              {/* Grade dos Quadrantes (6 no modo Duas Cenas, 9 nos modos de 1 cena) */}
-              <div className="grid grid-cols-3 gap-1.5">
+              {/* Grade dos Quadrantes (4 no modo 4F, 6 no modo Duas Cenas, 9 nos modos de 1 cena) */}
+              <div className={`grid ${is4Scenes ? 'grid-cols-2' : 'grid-cols-3'} gap-1.5`}>
                 {audit.quadrants.slice(0, quadrantLimit1).map((q) => {
                   const qStyle = getStatusClasses(q.status);
                   return (
@@ -2397,6 +2405,8 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
                 <span>
                   {isTwoScenes
                     ? 'Prompt do Veo 3 — Cena 1 (10s · 6 Micro-Cenas)'
+                    : is4Scenes
+                    ? 'Prompt do Veo 3 (10s · 4 Cenas)'
                     : `Prompt do Veo 3 (${result.duration}s · 9 Micro-Cenas)`}
                 </span>
                 {hasCopiedPromptOnce && (

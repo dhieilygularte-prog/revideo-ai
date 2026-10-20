@@ -91,12 +91,29 @@ export interface SceneVariationInfo {
 export function getSceneVariationInfo(
   sceneNumber: number,
   variations: { name?: string; photos?: string[] }[] = [],
-  totalScenes: 6 | 9 = 9
+  totalScenes: 4 | 6 | 9 = 9
 ): SceneVariationInfo | null {
   const active = (variations || []).filter(
     (v) => (v.name && v.name.trim().length > 0) || (v.photos && v.photos.length > 0)
   );
   if (active.length <= 1) return null;
+
+  if (totalScenes === 4) {
+    if (active.length === 2) {
+      const idx = sceneNumber <= 2 ? 0 : 1;
+      return {
+        variationIndex: idx,
+        variationName: active[idx].name?.trim() || `Variação ${idx + 1}`,
+        totalVariations: 2,
+      };
+    }
+    const idx = sceneNumber === 1 ? 0 : sceneNumber === 2 ? 1 : 2;
+    return {
+      variationIndex: idx,
+      variationName: active[idx].name?.trim() || `Variação ${idx + 1}`,
+      totalVariations: Math.min(3, active.length),
+    };
+  }
 
   if (totalScenes === 6) {
     if (active.length === 2) {
@@ -421,7 +438,7 @@ export function buildProdutos2StoryboardImagePrompt(params: {
   dialogueDescription?: string;
   dialogueScript?: string;
   speakers?: Array<{ speaker: string; gender?: string; speech: string }>;
-  sceneCount?: 6 | 9;
+  sceneCount?: 4 | 6 | 9;
   scenePartIndex?: 1 | 2;
 }): string {
   const {
@@ -444,9 +461,11 @@ export function buildProdutos2StoryboardImagePrompt(params: {
     scenePartIndex = 1,
   } = params;
 
-  const totalScenes: 6 | 9 = explicitSceneCount || (scenes.length === 6 ? 6 : 9);
+  const totalScenes: 4 | 6 | 9 = explicitSceneCount || (scenes.length === 4 ? 4 : scenes.length === 6 ? 6 : 9);
   const gridDesc =
-    totalScenes === 6
+    totalScenes === 4
+      ? 'grade 2x2 (2 colunas x 2 linhas), com EXATAMENTE 4 cenas em quadrantes grandes de alta resolução (Quadro 1 topo esquerdo, Quadro 2 topo direito, Quadro 3 inferior esquerdo, Quadro 4 inferior direito)'
+      : totalScenes === 6
       ? 'grade 2x3 (2 colunas x 3 linhas), com EXATAMENTE 6 cenas numeradas de 1 a 6'
       : 'grade 3x3 (3 colunas x 3 linhas), com EXATAMENTE 9 cenas numeradas de 1 a 9';
 
@@ -492,10 +511,17 @@ export function buildProdutos2StoryboardImagePrompt(params: {
     variationsBlock = `
 
 ═══════════════════════════════════════════════════════════════════
-REGRA MANDATÓRIA E INEGOCIÁVEL — DIVISÃO DE CORES DO PRODUTO (${totalScenes === 6 ? 'GRADE 2x3' : 'GRADE 3x3'}):
+REGRA MANDATÓRIA E INEGOCIÁVEL — DIVISÃO DE CORES DO PRODUTO (${totalScenes === 4 ? 'GRADE 2x2' : totalScenes === 6 ? 'GRADE 2x3' : 'GRADE 3x3'}):
 O produto possui ${activeVars.length} variações de cor/modelo anexadas nas fotos de referência:
 ${
-  totalScenes === 6
+  totalScenes === 4
+    ? activeVars.length === 2
+      ? `• Quadros 1 e 2 (Linha 1 do Storyboard): O produto DEVE ser retratado OBRIGATORIAMENTE na COR/VARIAÇÃO 1: ${activeVars[0].name || '1ª Cor'}.
+• Quadros 3 e 4 (Linha 2 do Storyboard): O produto DEVE ser retratado OBRIGATORIAMENTE na COR/VARIAÇÃO 2: ${activeVars[1].name || '2ª Cor'}.`
+      : `• Quadro 1 (Topo esquerdo): O produto DEVE ser retratado na COR/VARIAÇÃO 1: ${activeVars[0].name || '1ª Cor'}.
+• Quadro 2 (Topo direito): O produto DEVE ser retratado na COR/VARIAÇÃO 2: ${activeVars[1].name || '2ª Cor'}.
+• Quadros 3 e 4 (Linha inferior): O produto DEVE ser retratado na COR/VARIAÇÃO 3: ${activeVars[2].name || '3ª Cor'}.`
+    : totalScenes === 6
     ? activeVars.length === 2
       ? `• Quadros 1, 2 e 3 (metade inicial): O produto DEVE ser retratado OBRIGATORIAMENTE na COR/VARIAÇÃO 1: ${activeVars[0].name || '1ª Cor'}.
 • Quadros 4, 5 e 6 (segunda metade): O produto DEVE ser retratado OBRIGATORIAMENTE na COR/VARIAÇÃO 2: ${activeVars[1].name || '2ª Cor'}.`
@@ -601,7 +627,7 @@ export function buildProdutos2VeoPrompt(params: {
   dialogueDescription?: string;
   dialogueScript?: string;
   speakers?: Array<{ speaker: string; gender?: string; speech: string }>;
-  sceneCount?: 6 | 9;
+  sceneCount?: 4 | 6 | 9;
   scenePartIndex?: 1 | 2;
 }): string {
   const {
@@ -626,7 +652,12 @@ export function buildProdutos2VeoPrompt(params: {
     scenePartIndex = 1,
   } = params;
 
-  const totalScenes: 6 | 9 = explicitSceneCount || (scenes.length === 6 ? 6 : 9);
+  const totalScenes: 4 | 6 | 9 = explicitSceneCount || (scenes.length === 4 ? 4 : scenes.length === 6 ? 6 : 9);
+
+  if (totalScenes === 4) {
+    return buildProdutos2VeoPrompt4Scenes(params);
+  }
+
   const gridLabel = totalScenes === 6 ? (scenePartIndex === 2 ? '2x3 (Cena 2)' : '2x3 (Cena 1)') : '3x3';
 
   const dialogueInfo = detectDialogueInfo({
@@ -1035,12 +1066,250 @@ ${prioritySection}`;
 }
 
 /**
- * Calcula os tempos das cenas somando exatamente 10.0s, 15.0s ou 8.0s (suportando 9 ou 6 cenas)
+ * Constrói o Prompt dedicado do Veo 3 para o Modo 4 Cenas (Grade 2x2, 10s)
+ * Estrutura em 10 Seções seguindo estritamente as diretrizes de fidelidade e UGC.
+ */
+export function buildProdutos2VeoPrompt4Scenes(params: {
+  productName: string;
+  duration?: Produtos2Duration;
+  speechMode: Produtos2SpeechMode;
+  useSpeechIntro?: boolean;
+  finalCopy: string;
+  influencerResolved: 'Homem' | 'Mulher';
+  framing: Produtos2Framing;
+  productLock: string[];
+  avatarDescription: string;
+  scenarioDescription: string;
+  scenes: Produtos2SceneItem[];
+  additionalInstructions?: string;
+  variations?: { name: string; photos: string[] }[];
+  isDialogue?: boolean;
+  dialogueDescription?: string;
+  dialogueScript?: string;
+  speakers?: Array<{ speaker: string; gender?: string; speech: string }>;
+}): string {
+  const {
+    productName,
+    duration: _duration = 10,
+    speechMode: _speechMode,
+    useSpeechIntro = false,
+    finalCopy,
+    influencerResolved,
+    framing,
+    productLock = [],
+    avatarDescription,
+    scenarioDescription,
+    scenes = [],
+    additionalInstructions,
+    variations = [],
+  } = params;
+
+  const safeSpeech = applySpeechIntro(finalCopy, Boolean(useSpeechIntro));
+  const activeVars = (variations || []).filter((v) => v.photos && v.photos.length > 0);
+  const isPackaged = isPackagedProductOnly(
+    productName,
+    '',
+    `${productLock.join(' ')} ${additionalInstructions || ''} ${safeSpeech}`
+  );
+
+  const isPov = framing === 'pov';
+  const isAdultMale = influencerResolved === 'Homem';
+  const voiceGender = isAdultMale ? 'MASCULINA' : 'FEMININA';
+  const presenterLabel = isAdultMale ? 'um homem brasileiro' : 'uma mãe brasileira';
+  const personTitle = isAdultMale ? 'pai' : 'mãe';
+
+  // 1. Objetivo Principal
+  const povOrPresenterGoalClause = isPov
+    ? `em primeira pessoa (POV) mostrando apenas as mãos e antebraços ${isAdultMale ? 'masculinos' : 'femininos'}, apresentando uma oferta em ${scenarioDescription}`
+    : `por ${presenterLabel} apresentando uma oferta em sua própria casa (${scenarioDescription})`;
+
+  const packagedGoalWarning = isPackaged
+    ? `O vídeo deve mostrar exclusivamente os pacotes fechados de ${productName}. Não abrir as embalagens. Não retirar produtos de dentro dos pacotes. Não mostrar fraldas ou itens soltos, abertos ou qualquer conteúdo interno fora do pacote.`
+    : `O produto deve ser retratado estritamente conforme as referências reais anexadas, sem adicionar peças, botões ou detalhes não visíveis.`;
+
+  // 2. Correspondência dos Quadros
+  const sList = scenes.slice(0, 4);
+  const shortScenes = sList.map((sc, i) => {
+    const rawAction = (sc.action || sc.storyboardDescription || `cena ${i + 1}`).trim();
+    return `- Quadro ${i + 1}: ${rawAction.slice(0, 110).replace(/[.]+$/, '')}.`;
+  });
+
+  const continuityElements = isPov
+    ? `as mesmas mãos, o mesmo cenário, o mesmo produto e a mesma iluminação`
+    : `o mesmo personagem, as mesmas roupas, o mesmo cenário e o mesmo produto`;
+
+  // 3. Product Lock
+  const sanitizedProductLock = activeVars.length >= 2
+    ? sanitizeProductLockForVariations(productLock, activeVars, productName)
+    : productLock;
+  const productLockBullets = sanitizedProductLock
+    .map((item) => `- ${item.replace(/^[-•*]\s*/, '')}`)
+    .join('\n');
+
+  const productLockColorClause = activeVars.length >= 2
+    ? `Manter o modelo e detalhes do produto idênticos. Nas cenas onde o produto alternar de cor entre os quadros do storyboard (Quadros 1 a 4), reproduza com total fidelidade em cada cena a cor exata retratada no respectivo Quadro correspondente do storyboard anexado.`
+    : `Não alterar a aparência do produto entre as cenas. Não redesenhar, não trocar cor, não acrescentar peças e não simplificar detalhes.`;
+
+  // 4. Personagem / POV e Ambiente
+  let charactersOrPovSection = '';
+  if (isPov) {
+    charactersOrPovSection = `Vídeo filmado exclusivamente em primeira pessoa (POV). NUNCA mostrar o rosto, a cabeça, o tronco ou as pernas do apresentador.
+Mostrar apenas mãos e antebraços ${isAdultMale ? 'masculinos' : 'femininos'}, com movimentos humanos naturais e foco bem definido no produto.
+O fundo pode ficar suavemente desfocado, mas o produto precisa permanecer visível e reconhecível.
+Cenário: ${scenarioDescription}, com iluminação natural. Manter o mesmo ambiente e a mesma iluminação durante as quatro cenas.`;
+  } else {
+    charactersOrPovSection = `${avatarDescription}.
+A personagem deve parecer uma pessoa real gravando um vídeo espontâneo para compartilhar uma descoberta útil.
+Cenário: ${scenarioDescription}.
+Estética de gravação de smartphone, movimentos humanos naturais, textura de pele realista e iluminação natural.
+Manter a mesma pessoa, as mesmas roupas, o mesmo ambiente e a mesma iluminação nas quatro cenas.`;
+  }
+
+  // 5. Quatro Cenas
+  const sceneTimings = [
+    { start: '0,0', end: '2,5', title: 'GANCHO E APRESENTAÇÃO DO PRODUTO' },
+    { start: '2,5', end: '5,0', title: 'MOSTRANDO A QUANTIDADE E CONTEXTO' },
+    { start: '5,0', end: '7,5', title: 'DETALHE DO PRODUTO E ESPECIFICAÇÃO' },
+    { start: '7,5', end: '10,0', title: 'APROVAÇÃO, RECOMENDAÇÃO E CHAMADA FINAL' },
+  ];
+
+  const fourScenesBlocks = sceneTimings.map((t, idx) => {
+    const sc = sList[idx];
+    const num = idx + 1;
+    let desc = sc ? getUnifiedSceneDescription(sc) : '';
+    desc = sanitizeSceneFidelityAction(desc, productName);
+    if (activeVars.length >= 2) {
+      desc = sanitizeSceneColorAdjectivesForVeo(desc, num, activeVars, productName);
+    }
+    const cam = sc?.cameraMovement ? ` ${sc.cameraMovement.trim()}` : '';
+
+    return `### CENA ${num} — ${t.start} A ${t.end} SEGUNDOS | ${t.title}
+Reproduzir fielmente a composição do Quadro ${num} do storyboard anexado.
+${desc}${cam}
+Manter enquadramento vertical 9:16 preenchendo a tela inteira com alta nitidez. Não mostrar bordas do storyboard.`;
+  }).join('\n\n');
+
+  // 6. Locução
+  const locucaoTitle = `VOZ ${voiceGender} BRASILEIRA`;
+  const locucaoBody = `Utilizar uma única voz ${voiceGender.toLowerCase()} adulta, brasileira, natural, espontânea e empolgada.
+A voz deve soar como a de um(a) ${personTitle} compartilhando com outras pessoas uma descoberta real e vantajosa.
+Tom de conversa informal, como um vídeo UGC autêntico de recomendação.`;
+
+  // 7. Ritmo e Direção
+  const direcaoVozBody = `A voz deve ser animada, convincente e espontânea, com ritmo ágil e entonação de descoberta.
+Evitar pausas longas, voz robótica ou entonação de comercial publicitário tradicional.
+A fala deve começar logo no início do vídeo e continuar fluida ao longo das quatro cenas, sem cortes e sem reiniciar a cada mudança de cena.
+${!isPov ? 'Os movimentos dos lábios devem acompanhar com sincronia labial natural as falas quando o rosto estiver visível.' : 'A locução ocorre em narração contínua enquanto as mãos manuseiam o produto.'}`;
+
+  // 8. Áudio e Limpeza Visual
+  const speechWordsAudioOnlyLines: string[] = [];
+  const lowerCopy = safeSpeech.toLowerCase();
+  if (lowerCopy.includes('tiktok') || lowerCopy.includes('tik tok')) {
+    speechWordsAudioOnlyLines.push(
+      `- A palavra "TikTok" existe SOMENTE NA LOCUÇÃO. Não adicionar logotipo, perfil ou texto de TikTok na tela.`
+    );
+  }
+  if (lowerCopy.includes('carrinho') || lowerCopy.includes('carrinho laranja')) {
+    speechWordsAudioOnlyLines.push(
+      `- A palavra "carrinho" existe SOMENTE NA LOCUÇÃO. Não desenhar carrinho físico nem botão gráfico.`
+    );
+  }
+
+  // 9. Continuidade
+  const regrasContinuidadeBody = `Manter o mesmo produto, a mesma bancada/mesa, o mesmo ambiente, ${isPov ? 'as mesmas mãos' : 'a mesma pessoa e roupas'} e a mesma iluminação durante todo o vídeo.
+${isPov ? 'As mãos devem ter anatomia natural: cinco dedos por mão, proporções anatômicas exatas e movimentos fluidos sem atravessar o produto.' : 'Movimentos humanos espontâneos e naturais.'}
+Não alterar as dimensões, marca ou detalhes do produto entre os cortes.
+${isPackaged ? 'Não abrir, rasgar ou deslacrar nenhuma embalagem. Não mostrar itens soltos.' : ''}
+A câmera deve trabalhar com movimentos suaves de aproximação (push-in) e estabilização de smartphone de alta qualidade.`;
+
+  const fullPrompt = `# PROMPT VEO / OMNI 3 — ${productName.toUpperCase()}
+## VÍDEO UGC REALISTA — 10 SEGUNDOS — STORYBOARD DE 4 CENAS
+
+### 1. OBJETIVO PRINCIPAL
+Crie um vídeo vertical 9:16, com duração total de 10 segundos, em estilo UGC extremamente realista, como uma gravação espontânea feita com smartphone ${povOrPresenterGoalClause}.
+Use as imagens de referência do produto e o storyboard de quatro quadros anexado.
+**REGRA ABSOLUTA: A FIDELIDADE VISUAL DO PRODUTO TEM PRIORIDADE SOBRE QUALQUER EFEITO CINEMATOGRÁFICO.**
+${packagedGoalWarning}
+
+### 2. REFERÊNCIAS VISUAIS E CORRESPONDÊNCIA DOS QUADROS
+O storyboard anexado contém quatro quadros, organizados em uma grade 2x2. Use cada quadro como referência visual independente para a respectiva cena:
+${shortScenes.join('\n')}
+Transforme cada quadro em uma cena realista, filmada em movimento, preservando ${continuityElements} e a continuidade visual.
+**PROIBIDO mostrar a grade do storyboard no vídeo.** Não reproduzir a colagem, as divisões, as bordas ou a imagem completa dos quatro quadros. Não usar a imagem do storyboard como primeiro frame. Cada cena deve ocupar a tela inteira, em formato vertical 9:16.
+
+### 3. PRODUCT LOCK — FIDELIDADE ABSOLUTA AO PRODUTO
+Utilize as fotografias originais anexadas como autoridade visual máxima para a aparência do produto.
+Preserve rigorosamente todos os detalhes visíveis nas referências:
+${productLockBullets}
+Não redesenhar. Não trocar a marca. Não inventar textos, selos ou botões. Não alterar as cores.
+${productLockColorClause}
+
+### 4. ${isPov ? 'PONTO DE VISTA (POV) E AMBIENTE' : 'PERSONAGEM E AMBIENTE'}
+${charactersOrPovSection}
+
+### 5. STORYBOARD — QUATRO CENAS EM 10 SEGUNDOS
+${fourScenesBlocks}
+
+### 6. LOCUÇÃO — ${locucaoTitle}
+${locucaoBody}
+FALAR EXATAMENTE O TEXTO A SEGUIR:
+“${safeSpeech}”
+Não acrescentar frases. Não repetir palavras. Não criar uma segunda voz. A fala deve começar no início do vídeo e continuar sobre as quatro cenas, sem reiniciar a locução nos cortes.
+
+### 7. DIREÇÃO E RITMO DA LOCUÇÃO
+${direcaoVozBody}
+
+### 8. ÁUDIO E LIMPEZA VISUAL
+Áudio com a voz ${voiceGender.toLowerCase()} e som ambiente natural muito discreto. Não adicionar música estridente, efeitos sonoros artificiais ou outras vozes.
+O vídeo deve mostrar somente a cena filmada.
+Proibido:
+- Legendas.
+- Textos promocionais sobrepostos.
+- Preços na tela.
+- Números flutuantes.
+- Stickers.
+- Logotipos de redes sociais.
+- Nome de usuário ou @.
+- Marca-d'água.
+- Interface de aplicativo.
+- Ícones ou botões de compra.
+- Carrinho de compras desenhado ou sobreposto.
+${speechWordsAudioOnlyLines.join('\n')}
+Exceção: os logotipos, marcas e dados que já estão impressos no próprio produto conforme as referências.
+
+### 9. REGRAS DE CONTINUIDADE E PREVENÇÃO DE ERROS
+${regrasContinuidadeBody}
+
+### 10. PRIORIDADES FINAIS
+1. Fidelidade visual máxima às fotografias originais de ${productName}.
+2. Exatamente o produto conforme referências em todas as cenas.
+3. ${isPackaged ? 'Nenhum produto solto e nenhuma embalagem aberta ou rasgada.' : 'Nenhuma peça ou botão inventado.'}
+4. ${isPov ? 'Somente mãos e antebraços com anatomia natural; nenhum rosto.' : 'Mesmo personagem, roupas e cenário consistentes.'}
+5. Quatro cenas na ordem exata do storyboard (Quadro 1 ao 4).
+6. Vídeo vertical 9:16, com aparência UGC realista de smartphone.
+7. Locução ${voiceGender.toLowerCase()} brasileira, contínua e empolgada.
+8. Nenhum texto ou elemento gráfico acrescentado à tela.
+9. Não mostrar a imagem do storyboard no vídeo final.
+O resultado deve parecer uma gravação autêntica e real, com ${productName} claramente visível e fiel ao produto original.`;
+
+  return appendFidelityLockToVeoPrompt(fullPrompt);
+}
+
+/**
+ * Calcula os tempos das cenas somando exatamente 10.0s, 15.0s ou 8.0s (suportando 4, 6 ou 9 cenas)
  */
 export function getNineSceneTimings(
   duration: Produtos2Duration,
-  sceneCount: 6 | 9 = 9
+  sceneCount: 4 | 6 | 9 = 9
 ): { start: string; end: string }[] {
+  if (sceneCount === 4) {
+    return [
+      { start: '0.0', end: '2.5' },
+      { start: '2.5', end: '5.0' },
+      { start: '5.0', end: '7.5' },
+      { start: '7.5', end: '10.0' },
+    ];
+  }
   if (sceneCount === 6) {
     return [
       { start: '0.0', end: '1.6' },
@@ -1261,7 +1530,7 @@ export function buildDefaultProdutos2Plan(params: {
   additionalInstructions?: string;
   variationNames: string[];
   variations?: { name: string; photos: string[] }[];
-  sceneCount?: 6 | 9;
+  sceneCount?: 4 | 6 | 9;
   scenePartIndex?: 1 | 2;
 }): {
   productLock: string[];
@@ -1345,7 +1614,34 @@ export function buildDefaultProdutos2Plan(params: {
   const sLast = sentences[sentences.length - 1] || s1;
 
   const visualMap: Produtos2VisualMapItem[] =
-    sceneCount === 6
+    sceneCount === 4
+      ? [
+          {
+            excerpt: s1,
+            intent: 'Gancho visual e apresentação do produto',
+            visualProof: `Apresentação clara revelando ${productName} com destaque e nitidez`,
+            scenes: '1',
+          },
+          {
+            excerpt: s2,
+            intent: 'Demonstração de quantidade / valor e contexto',
+            visualProof: `${productName} organizado e destacado no ambiente de uso`,
+            scenes: '2',
+          },
+          {
+            excerpt: s3,
+            intent: 'Detalhe do produto e especificações reais',
+            visualProof: `Aproximação em detalhe destacando especificações e identidade visual de ${productName}`,
+            scenes: '3',
+          },
+          {
+            excerpt: sLast,
+            intent: 'Aprovação, recomendação e chamada final (CTA)',
+            visualProof: `Recomendação calorosa com ${productName} em destaque`,
+            scenes: '4',
+          },
+        ]
+      : sceneCount === 6
       ? [
           {
             excerpt: s1,
@@ -1561,7 +1857,14 @@ export function buildDefaultProdutos2Plan(params: {
   }
 
   const selectedRawScenes =
-    sceneCount === 6
+    sceneCount === 4
+      ? [
+          rawScenes[0], // Cena 1: gancho visual e apresentação imediata
+          rawScenes[1], // Cena 2: contexto / quantidade organizada
+          rawScenes[5] || rawScenes[2], // Cena 3: detalhe do produto e especificações
+          rawScenes[rawScenes.length - 1], // Cena 4: aprovação, recomendação e chamada final
+        ]
+      : sceneCount === 6
       ? scenePartIndex === 2
         ? rawScenes.slice(3, 9) // Cenas de continuidade, detalhes, prova física e CTA final
         : rawScenes.slice(0, 6) // Cenas de gancho, introdução e desenvolvimento inicial

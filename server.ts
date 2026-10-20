@@ -3257,7 +3257,8 @@ DURAÇÃO MÁXIMA DO VÍDEO: ${duration} segundos. Limite estrito: até ${maxLim
       }
     }
 
-    const expectedSceneCount: 6 | 9 = Number(req.body.sceneCount) === 6 ? 6 : 9;
+    const expectedSceneCount: 4 | 6 | 9 =
+      Number(req.body.sceneCount) === 4 ? 4 : Number(req.body.sceneCount) === 6 ? 6 : 9;
     const scenePartIndex: 1 | 2 = Number(req.body.scenePartIndex) === 2 ? 2 : 1;
     const previousSceneContext = String(req.body.previousSceneContext || '').trim();
 
@@ -3272,7 +3273,11 @@ DURAÇÃO MÁXIMA DO VÍDEO: ${duration} segundos. Limite estrito: até ${maxLim
   PROIBIDO REPETIR CENAS OU REINICIAR A DEMONSTRAÇÃO PARA CADA COR! As ${expectedSceneCount} cenas seguem normalmente seu fluxo narrativo sem repetições (apresentação inicial -> funcionamento prático -> detalhes/macro -> benefício no cenário -> CTA).
   A ÚNICA diferença é a cor em que o produto é retratado em cada grupo de quadros:
   ${
-    expectedSceneCount === 6
+    expectedSceneCount === 4
+      ? activeReqVars.length === 2
+        ? '• Cenas 1 e 2: produto retratado na 1ª Variação (' + (activeReqVars[0]?.name || '1ª Cor') + ')\n  • Cenas 3 e 4: produto retratado na 2ª Variação (' + (activeReqVars[1]?.name || '2ª Cor') + ')'
+        : '• Cena 1: 1ª Variação\n  • Cena 2: 2ª Variação\n  • Cenas 3 e 4: 3ª Variação'
+      : expectedSceneCount === 6
       ? activeReqVars.length === 2
         ? '• Cenas 1 a 3: produto retratado na 1ª Variação (' + (activeReqVars[0]?.name || '1ª Cor') + ')\n  • Cenas 4 a 6: produto retratado na 2ª Variação (' + (activeReqVars[1]?.name || '2ª Cor') + ')'
         : '• Cenas 1 a 2: produto retratado na 1ª Variação (' + (activeReqVars[0]?.name || '1ª Cor') + ')\n  • Cenas 3 a 4: produto retratado na 2ª Variação (' + (activeReqVars[1]?.name || '2ª Cor') + ')\n  • Cenas 5 a 6: produto retratado na 3ª Variação (' + (activeReqVars[2]?.name || '3ª Cor') + ')'
@@ -3319,7 +3324,7 @@ DURAÇÃO MÁXIMA DO VÍDEO: ${duration} segundos. Limite estrito: até ${maxLim
 - Informações do produto (USO EXCLUSIVO PARA FALA/COPY — PROIBIDO USAR PARA INVENTAR CENAS VISUAIS OU ABRIR EMBALAGENS): ${productInfo || productName}${packagingPlanningWarning}
 - Copy-base selecionada (${isCustomCopy ? 'PERSONALIZADA PELO USUÁRIO - NÃO ALTERAR' : copyEngine === 'aurora_copy' ? 'GERADA POR AURORA COPY (IA CRIATIVA)' : 'DO BANCO VALIDADO - ADAPTAR MÍNIMO POSSÍVEL'}): "${activeCopy}"
 - Duração no Veo: ${duration} segundos (${charLimitNote})
-- Quantidade obrigatória de quadros no Storyboard: EXATAMENTE ${expectedSceneCount} cenas numeradas de 1 a ${expectedSceneCount} (${expectedSceneCount === 6 ? 'grade 2x3: 2 colunas x 3 linhas' : 'grade 3x3: 3 colunas x 3 linhas'})
+- Quantidade obrigatória de quadros no Storyboard: EXATAMENTE ${expectedSceneCount} cenas numeradas de 1 a ${expectedSceneCount} (${expectedSceneCount === 4 ? 'grade 2x2: 2 colunas x 2 linhas' : expectedSceneCount === 6 ? 'grade 2x3: 2 colunas x 3 linhas' : 'grade 3x3: 3 colunas x 3 linhas'})
 - Influencer (quem aparece e voz): ${influencer}
 - Gênero do cliente (vocativo): ${clientGender} (se feminino, usar "Amiga" ou "Gente", NUNCA usar "menina")
 - Modo de fala: ${speechMode} (locução RÁPIDA E EUFÓRICA, com tom animado como se estivesse contando uma novidade imperdível)
@@ -3343,7 +3348,7 @@ Retorne APENAS um objeto JSON válido com as chaves:
     {
       "number": 1,
       "startTime": "0.0",
-      "endTime": "${expectedSceneCount === 6 || duration === 15 ? '1.6' : '0.9'}",
+      "endTime": "${expectedSceneCount === 4 ? '2.5' : expectedSceneCount === 6 || duration === 15 ? '1.6' : '0.9'}",
       "framing": "string",
       "action": "string",
       "cameraMovement": "string",
@@ -3598,6 +3603,7 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
     const isAchadinhosBlock = isAchadinhos1 || isAchadinhos2 || isAchadinhos3;
 
     const isStrictlyVerticalMode =
+      req.body.sceneMode === '1_cena_10s_4f' ||
       req.body.sceneMode === '1_cena_10s' ||
       req.body.sceneMode === '1_cena_15s' ||
       req.body.sceneMode === '2_cenas_10s' ||
@@ -3608,14 +3614,21 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
       (isAchadinhosBlock || (req.body.aspectRatio === '16:9' && !isLeilaoMode)) &&
       !isStrictlyVerticalMode;
 
+    const isFourFrames =
+      reqSceneCount === 4 ||
+      req.body.sceneMode === '1_cena_10s_4f' ||
+      /GRADE\s+2x2|EXATAMENTE\s+4\s+(?:QUADROS|CENAS)/i.test(String(prompt));
     const isSixFrames =
-      reqSceneCount === 6 ||
-      /GRADE\s+2x3|EXATAMENTE\s+6\s+(?:QUADROS|CENAS)/i.test(String(prompt));
-    const frameCount = isAchadinhosBlock ? 3 : isLeilaoMode ? 1 : isSixFrames ? 6 : 9;
+      !isFourFrames &&
+      (reqSceneCount === 6 ||
+      /GRADE\s+2x3|EXATAMENTE\s+6\s+(?:QUADROS|CENAS)/i.test(String(prompt)));
+    const frameCount = isAchadinhosBlock ? 3 : isLeilaoMode ? 1 : isFourFrames ? 4 : isSixFrames ? 6 : 9;
     const gridLabel = isAchadinhosBlock
       ? '3 colunas verticais lado a lado em uma única imagem horizontal 16:9 widescreen (grade 1 linha x 3 colunas: Quadro A à esquerda, Quadro B ao centro, Quadro C à direita), sem números, sem balões e sem legendas sobrepostas'
       : isLeilaoMode
       ? '1 quadro fotográfico vertical único 9:16 (sem número)'
+      : isFourFrames
+      ? '2x2 (2 colunas x 2 linhas), com 4 quadrantes grandes e nítidos (Quadro 1 topo esquerdo, Quadro 2 topo direito, Quadro 3 inferior esquerdo, Quadro 4 inferior direito)'
       : isSixFrames
       ? '2x3 (2 colunas x 3 linhas)'
       : '3x3 (3 colunas x 3 linhas)';
@@ -3991,10 +4004,16 @@ app.post('/api/produtos2-audit-storyboard', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Imagem do storyboard não fornecida para auditoria.' });
     }
 
-    const quadrantCount: 6 | 9 =
-      (Array.isArray(scenes) && scenes.length === 6) || Number(req.body?.quadrantCount) === 6 ? 6 : 9;
+    const quadrantCount: 4 | 6 | 9 =
+      (Array.isArray(scenes) && scenes.length === 4) || Number(req.body?.quadrantCount) === 4
+        ? 4
+        : (Array.isArray(scenes) && scenes.length === 6) || Number(req.body?.quadrantCount) === 6
+        ? 6
+        : 9;
     const gridDescription =
-      quadrantCount === 6
+      quadrantCount === 4
+        ? '2x2 — 4 Quadrantes grandes (numerados de 1 a 4, da esquerda para a direita, de cima para baixo: Linha 1 = Cenas 1, 2; Linha 2 = Cenas 3, 4)'
+        : quadrantCount === 6
         ? '2x3 — 6 Quadrantes (numerados de 1 a 6, da esquerda para a direita, de cima para baixo: Linha 1 = Cenas 1, 2; Linha 2 = Cenas 3, 4; Linha 3 = Cenas 5, 6)'
         : '3x3 — 9 Quadrantes (numerados de 1 a 9, da esquerda para a direita, de cima para baixo: Linha 1 = Cenas 1, 2, 3; Linha 2 = Cenas 4, 5, 6; Linha 3 = Cenas 7, 8, 9)';
 

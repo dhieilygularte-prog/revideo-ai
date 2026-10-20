@@ -135,8 +135,8 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
   const instructionsTextareaRef = useRef<HTMLTextAreaElement | null>(null);
 
 
-  const currentSceneMode: Produtos2SceneMode = form.sceneMode || '1_cena_10s';
-  const is10sSingle = currentSceneMode === '1_cena_10s';
+  const currentSceneMode: Produtos2SceneMode = form.sceneMode || '1_cena_10s_4f';
+  const is10sSingle = currentSceneMode === '1_cena_10s' || currentSceneMode === '1_cena_10s_4f';
   const is15sSingle = currentSceneMode === '1_cena_15s';
   const isTwoScenes = currentSceneMode === '2_cenas_10s';
   const isAchadinhos = currentSceneMode === 'modo_achadinhos';
@@ -1272,13 +1272,36 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                 : currentSceneMode === 'modo_leilao'
                 ? 'Modo Leilão ✓'
                 : currentSceneMode === '1_cena_15s'
-                ? 'Uma cena — 15 segundos ✓'
+                ? '1 Cena 15S ✓'
                 : currentSceneMode === '2_cenas_10s'
-                ? 'Duas cenas — 10 segundos cada ✓'
-                : 'Uma cena — 10 segundos ✓'}
+                ? '2 Cenas 10S ✓'
+                : currentSceneMode === '1_cena_10s'
+                ? '1 Cena 10S (9 Frames) ✓'
+                : '1 Cena 10S 4F ✓'}
             </span>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 bg-slate-950/90 p-1.5 rounded-xl border border-zinc-700/60">
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 bg-slate-950/90 p-1.5 rounded-xl border border-zinc-700/60">
+            {/* 1. 1 Cena 10S 4F (Padrão) */}
+            <button
+              type="button"
+              disabled={isViewOnly}
+              onClick={() => {
+                if (isViewOnly) return;
+                onChange((prev) => ({
+                  ...prev,
+                  sceneMode: '1_cena_10s_4f',
+                  duration: 10,
+                }));
+              }}
+              className={`py-2.5 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                currentSceneMode === '1_cena_10s_4f'
+                  ? accentBtnClass
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              1 Cena 10S 4F
+            </button>
+            {/* 2. 1 Cena 10S (Original 9 Frames) */}
             <button
               type="button"
               disabled={isViewOnly}
@@ -1296,8 +1319,9 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
-              Uma cena — 10 segundos
+              1 Cena 10S
             </button>
+            {/* 3. 1 Cena 15S */}
             <button
               type="button"
               disabled={isViewOnly}
@@ -1323,8 +1347,9 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
-              Uma cena — 15 segundos
+              1 Cena 15S
             </button>
+            {/* 4. 2 Cenas 10S */}
             <button
               type="button"
               disabled={isViewOnly}
@@ -1350,8 +1375,9 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
-              Duas cenas — 10 segundos cada
+              2 Cenas 10S
             </button>
+            {/* 5. Modo Leilão */}
             <button
               type="button"
               disabled={isViewOnly}
@@ -1381,6 +1407,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
               <Gavel className="w-3.5 h-3.5" />
               <span>Modo Leilão</span>
             </button>
+            {/* 6. Modo Achadinhos */}
             <button
               type="button"
               disabled={isViewOnly}

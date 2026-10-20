@@ -1302,6 +1302,27 @@ function isPackagedProductOnly(productName, productInfo, extraContext) {
 }
 function getCanonicalPackagedScene(index, productName, totalCount = 9, partIndex = 1) {
   const p = (productName || "Produto").trim();
+  if (totalCount === 4) {
+    const canonical4 = [
+      {
+        framing: "Plano m\xE9dio frontal com rosto",
+        action: `Apresentadora segurando com os dois bra\xE7os os pacotes fechados de ${p} agrupados diante do peito, com sorriso largo e entusiasmo apresentando o kit \xE0 c\xE2mera.`
+      },
+      {
+        framing: "Plano m\xE9dio sobre a bancada/mesa",
+        action: `Os pacotes fechados de ${p} organizados sobre a mesa ou bancada. Apresentadora ao lado apresentando o conjunto com as m\xE3os, destacando a quantidade do kit com gestos naturais.`
+      },
+      {
+        framing: "Close-up aproximado na embalagem",
+        action: `Enquadramento mais pr\xF3ximo dos pacotes fechados de ${p} sobre a bancada. Dedo indicador apontando delicadamente para o logotipo e informa\xE7\xF5es impressas na frente da embalagem lacrada.`
+      },
+      {
+        framing: "Close com recomenda\xE7\xE3o e aprova\xE7\xE3o",
+        action: `Apresentadora demonstrando entusiasmo e abra\xE7ando delicadamente os pacotes fechados de ${p} com sorriso espont\xE2neo e convite amig\xE1vel de recomenda\xE7\xE3o.`
+      }
+    ];
+    return canonical4[Math.min(index, canonical4.length - 1)];
+  }
   if (totalCount === 6 && partIndex === 2) {
     const part2 = [
       {
@@ -1383,7 +1404,7 @@ function sanitizeSceneFidelityAction(action, productName, isPackaged) {
 function sanitizeAllScenesForFidelity(scenes, productName, productInfo, scenePartIndex = 1) {
   if (!Array.isArray(scenes)) return scenes;
   const isPackaged = isPackagedProductOnly(productName, productInfo);
-  const totalCount = scenes.length === 6 ? 6 : 9;
+  const totalCount = scenes.length === 4 ? 4 : scenes.length === 6 ? 6 : 9;
   return scenes.map((sc, idx) => {
     let cleanAction = sc.action;
     let cleanFraming = (sc.framing || "").trim();
@@ -4488,7 +4509,7 @@ DURA\xC7\xC3O M\xC1XIMA DO V\xCDDEO: ${duration} segundos. Limite estrito: at\xE
         console.warn("Falha no motor Aurora Copy, fallback para copy-base:", auroraErr?.message || auroraErr);
       }
     }
-    const expectedSceneCount = Number(req.body.sceneCount) === 6 ? 6 : 9;
+    const expectedSceneCount = Number(req.body.sceneCount) === 4 ? 4 : Number(req.body.sceneCount) === 6 ? 6 : 9;
     const scenePartIndex = Number(req.body.scenePartIndex) === 2 ? 2 : 1;
     const previousSceneContext = String(req.body.previousSceneContext || "").trim();
     const activeReqVars = Array.isArray(variations) ? variations.filter((v) => v && (v.photosCount > 0 || v.name)) : [];
@@ -4498,7 +4519,7 @@ DURA\xC7\xC3O M\xC1XIMA DO V\xCDDEO: ${duration} segundos. Limite estrito: at\xE
   As ${expectedSceneCount} cenas formam UMA \xDANICA DEMONSTRA\xC7\xC3O PROGRESSIVA DO PRODUTO acompanhando a copy do segundo 0 ao final.
   PROIBIDO REPETIR CENAS OU REINICIAR A DEMONSTRA\xC7\xC3O PARA CADA COR! As ${expectedSceneCount} cenas seguem normalmente seu fluxo narrativo sem repeti\xE7\xF5es (apresenta\xE7\xE3o inicial -> funcionamento pr\xE1tico -> detalhes/macro -> benef\xEDcio no cen\xE1rio -> CTA).
   A \xDANICA diferen\xE7a \xE9 a cor em que o produto \xE9 retratado em cada grupo de quadros:
-  ${expectedSceneCount === 6 ? activeReqVars.length === 2 ? "\u2022 Cenas 1 a 3: produto retratado na 1\xAA Varia\xE7\xE3o (" + (activeReqVars[0]?.name || "1\xAA Cor") + ")\n  \u2022 Cenas 4 a 6: produto retratado na 2\xAA Varia\xE7\xE3o (" + (activeReqVars[1]?.name || "2\xAA Cor") + ")" : "\u2022 Cenas 1 a 2: produto retratado na 1\xAA Varia\xE7\xE3o (" + (activeReqVars[0]?.name || "1\xAA Cor") + ")\n  \u2022 Cenas 3 a 4: produto retratado na 2\xAA Varia\xE7\xE3o (" + (activeReqVars[1]?.name || "2\xAA Cor") + ")\n  \u2022 Cenas 5 a 6: produto retratado na 3\xAA Varia\xE7\xE3o (" + (activeReqVars[2]?.name || "3\xAA Cor") + ")" : activeReqVars.length === 2 ? "\u2022 Cenas 1 a 4: produto retratado na 1\xAA Varia\xE7\xE3o (" + (activeReqVars[0]?.name || "1\xAA Cor") + ")\n  \u2022 Cenas 5 a 9: produto retratado na 2\xAA Varia\xE7\xE3o (" + (activeReqVars[1]?.name || "2\xAA Cor") + ")" : "\u2022 Cenas 1 a 3: produto retratado na 1\xAA Varia\xE7\xE3o (" + (activeReqVars[0]?.name || "1\xAA Cor") + ")\n  \u2022 Cenas 4 a 6: produto retratado na 2\xAA Varia\xE7\xE3o (" + (activeReqVars[1]?.name || "2\xAA Cor") + ")\n  \u2022 Cenas 7 a 9: produto retratado na 3\xAA Varia\xE7\xE3o (" + (activeReqVars[2]?.name || "3\xAA Cor") + ")"}
+  ${expectedSceneCount === 4 ? activeReqVars.length === 2 ? "\u2022 Cenas 1 e 2: produto retratado na 1\xAA Varia\xE7\xE3o (" + (activeReqVars[0]?.name || "1\xAA Cor") + ")\n  \u2022 Cenas 3 e 4: produto retratado na 2\xAA Varia\xE7\xE3o (" + (activeReqVars[1]?.name || "2\xAA Cor") + ")" : "\u2022 Cena 1: 1\xAA Varia\xE7\xE3o\n  \u2022 Cena 2: 2\xAA Varia\xE7\xE3o\n  \u2022 Cenas 3 e 4: 3\xAA Varia\xE7\xE3o" : expectedSceneCount === 6 ? activeReqVars.length === 2 ? "\u2022 Cenas 1 a 3: produto retratado na 1\xAA Varia\xE7\xE3o (" + (activeReqVars[0]?.name || "1\xAA Cor") + ")\n  \u2022 Cenas 4 a 6: produto retratado na 2\xAA Varia\xE7\xE3o (" + (activeReqVars[1]?.name || "2\xAA Cor") + ")" : "\u2022 Cenas 1 a 2: produto retratado na 1\xAA Varia\xE7\xE3o (" + (activeReqVars[0]?.name || "1\xAA Cor") + ")\n  \u2022 Cenas 3 a 4: produto retratado na 2\xAA Varia\xE7\xE3o (" + (activeReqVars[1]?.name || "2\xAA Cor") + ")\n  \u2022 Cenas 5 a 6: produto retratado na 3\xAA Varia\xE7\xE3o (" + (activeReqVars[2]?.name || "3\xAA Cor") + ")" : activeReqVars.length === 2 ? "\u2022 Cenas 1 a 4: produto retratado na 1\xAA Varia\xE7\xE3o (" + (activeReqVars[0]?.name || "1\xAA Cor") + ")\n  \u2022 Cenas 5 a 9: produto retratado na 2\xAA Varia\xE7\xE3o (" + (activeReqVars[1]?.name || "2\xAA Cor") + ")" : "\u2022 Cenas 1 a 3: produto retratado na 1\xAA Varia\xE7\xE3o (" + (activeReqVars[0]?.name || "1\xAA Cor") + ")\n  \u2022 Cenas 4 a 6: produto retratado na 2\xAA Varia\xE7\xE3o (" + (activeReqVars[1]?.name || "2\xAA Cor") + ")\n  \u2022 Cenas 7 a 9: produto retratado na 3\xAA Varia\xE7\xE3o (" + (activeReqVars[2]?.name || "3\xAA Cor") + ")"}
   REGRA MANDAT\xD3RIA DE PRODUCT LOCK COM VARIA\xC7\xD5ES:
   NUNCA coloque no "productLock" a cor ou estampa de apenas uma das varia\xE7\xF5es (ex: PROIBIDO escrever "tecido azul-marinho com listras" no productLock se essa for apenas uma das varia\xE7\xF5es)!
   Descreva no "productLock" as caracter\xEDsticas universais da pe\xE7a e declare: "Varia\xE7\xF5es oficiais de cor: ${activeReqVars.map((v) => v.name).join(", ")}, todas corretas e representadas nos seus respectivos quadros do storyboard".
@@ -4525,7 +4546,7 @@ DURA\xC7\xC3O M\xC1XIMA DO V\xCDDEO: ${duration} segundos. Limite estrito: at\xE
 - Informa\xE7\xF5es do produto (USO EXCLUSIVO PARA FALA/COPY \u2014 PROIBIDO USAR PARA INVENTAR CENAS VISUAIS OU ABRIR EMBALAGENS): ${productInfo || productName}${packagingPlanningWarning}
 - Copy-base selecionada (${isCustomCopy ? "PERSONALIZADA PELO USU\xC1RIO - N\xC3O ALTERAR" : copyEngine === "aurora_copy" ? "GERADA POR AURORA COPY (IA CRIATIVA)" : "DO BANCO VALIDADO - ADAPTAR M\xCDNIMO POSS\xCDVEL"}): "${activeCopy}"
 - Dura\xE7\xE3o no Veo: ${duration} segundos (${charLimitNote})
-- Quantidade obrigat\xF3ria de quadros no Storyboard: EXATAMENTE ${expectedSceneCount} cenas numeradas de 1 a ${expectedSceneCount} (${expectedSceneCount === 6 ? "grade 2x3: 2 colunas x 3 linhas" : "grade 3x3: 3 colunas x 3 linhas"})
+- Quantidade obrigat\xF3ria de quadros no Storyboard: EXATAMENTE ${expectedSceneCount} cenas numeradas de 1 a ${expectedSceneCount} (${expectedSceneCount === 4 ? "grade 2x2: 2 colunas x 2 linhas" : expectedSceneCount === 6 ? "grade 2x3: 2 colunas x 3 linhas" : "grade 3x3: 3 colunas x 3 linhas"})
 - Influencer (quem aparece e voz): ${influencer}
 - G\xEAnero do cliente (vocativo): ${clientGender} (se feminino, usar "Amiga" ou "Gente", NUNCA usar "menina")
 - Modo de fala: ${speechMode} (locu\xE7\xE3o R\xC1PIDA E EUF\xD3RICA, com tom animado como se estivesse contando uma novidade imperd\xEDvel)
@@ -4549,7 +4570,7 @@ Retorne APENAS um objeto JSON v\xE1lido com as chaves:
     {
       "number": 1,
       "startTime": "0.0",
-      "endTime": "${expectedSceneCount === 6 || duration === 15 ? "1.6" : "0.9"}",
+      "endTime": "${expectedSceneCount === 4 ? "2.5" : expectedSceneCount === 6 || duration === 15 ? "1.6" : "0.9"}",
       "framing": "string",
       "action": "string",
       "cameraMovement": "string",
@@ -4767,11 +4788,12 @@ app.post("/api/produtos2-generate-storyboard", async (req, res) => {
     const isAchadinhos2 = isAchadinhosBlockNum === 2 || isAchadinhosBlockNum === 0 && (/MODO AURORA ACHADINHOS.*CENA 2/i.test(promptStr) || /Storyboard 2A\/2B\/2C|achadinhos_storyboard_2/i.test(promptStr));
     const isAchadinhos3 = isAchadinhosBlockNum === 3 || isAchadinhosBlockNum === 0 && (/MODO AURORA ACHADINHOS.*CENA 3/i.test(promptStr) || /Storyboard 3A\/3B\/3C|achadinhos_storyboard_3/i.test(promptStr));
     const isAchadinhosBlock = isAchadinhos1 || isAchadinhos2 || isAchadinhos3;
-    const isStrictlyVerticalMode = req.body.sceneMode === "1_cena_10s" || req.body.sceneMode === "1_cena_15s" || req.body.sceneMode === "2_cenas_10s" || isLeilaoMode || req.body.aspectRatio === "9:16" && !isAchadinhosBlock;
+    const isStrictlyVerticalMode = req.body.sceneMode === "1_cena_10s_4f" || req.body.sceneMode === "1_cena_10s" || req.body.sceneMode === "1_cena_15s" || req.body.sceneMode === "2_cenas_10s" || isLeilaoMode || req.body.aspectRatio === "9:16" && !isAchadinhosBlock;
     const isLandscapeStoryboard = (isAchadinhosBlock || req.body.aspectRatio === "16:9" && !isLeilaoMode) && !isStrictlyVerticalMode;
-    const isSixFrames = reqSceneCount === 6 || /GRADE\s+2x3|EXATAMENTE\s+6\s+(?:QUADROS|CENAS)/i.test(String(prompt));
-    const frameCount = isAchadinhosBlock ? 3 : isLeilaoMode ? 1 : isSixFrames ? 6 : 9;
-    const gridLabel = isAchadinhosBlock ? "3 colunas verticais lado a lado em uma \xFAnica imagem horizontal 16:9 widescreen (grade 1 linha x 3 colunas: Quadro A \xE0 esquerda, Quadro B ao centro, Quadro C \xE0 direita), sem n\xFAmeros, sem bal\xF5es e sem legendas sobrepostas" : isLeilaoMode ? "1 quadro fotogr\xE1fico vertical \xFAnico 9:16 (sem n\xFAmero)" : isSixFrames ? "2x3 (2 colunas x 3 linhas)" : "3x3 (3 colunas x 3 linhas)";
+    const isFourFrames = reqSceneCount === 4 || req.body.sceneMode === "1_cena_10s_4f" || /GRADE\s+2x2|EXATAMENTE\s+4\s+(?:QUADROS|CENAS)/i.test(String(prompt));
+    const isSixFrames = !isFourFrames && (reqSceneCount === 6 || /GRADE\s+2x3|EXATAMENTE\s+6\s+(?:QUADROS|CENAS)/i.test(String(prompt)));
+    const frameCount = isAchadinhosBlock ? 3 : isLeilaoMode ? 1 : isFourFrames ? 4 : isSixFrames ? 6 : 9;
+    const gridLabel = isAchadinhosBlock ? "3 colunas verticais lado a lado em uma \xFAnica imagem horizontal 16:9 widescreen (grade 1 linha x 3 colunas: Quadro A \xE0 esquerda, Quadro B ao centro, Quadro C \xE0 direita), sem n\xFAmeros, sem bal\xF5es e sem legendas sobrepostas" : isLeilaoMode ? "1 quadro fotogr\xE1fico vertical \xFAnico 9:16 (sem n\xFAmero)" : isFourFrames ? "2x2 (2 colunas x 2 linhas), com 4 quadrantes grandes e n\xEDtidos (Quadro 1 topo esquerdo, Quadro 2 topo direito, Quadro 3 inferior esquerdo, Quadro 4 inferior direito)" : isSixFrames ? "2x3 (2 colunas x 3 linhas)" : "3x3 (3 colunas x 3 linhas)";
     const chosenAspectRatio = isLandscapeStoryboard ? "16:9" : "9:16";
     const chosenSize = chosenAspectRatio === "16:9" ? "1792x1024" : "1024x1792";
     const photosList = Array.isArray(productPhotosBase64) ? productPhotosBase64.filter(Boolean) : [];
@@ -5089,8 +5111,8 @@ app.post("/api/produtos2-audit-storyboard", async (req, res) => {
     if (!storyboardImageBase64) {
       return res.status(400).json({ success: false, error: "Imagem do storyboard n\xE3o fornecida para auditoria." });
     }
-    const quadrantCount = Array.isArray(scenes) && scenes.length === 6 || Number(req.body?.quadrantCount) === 6 ? 6 : 9;
-    const gridDescription = quadrantCount === 6 ? "2x3 \u2014 6 Quadrantes (numerados de 1 a 6, da esquerda para a direita, de cima para baixo: Linha 1 = Cenas 1, 2; Linha 2 = Cenas 3, 4; Linha 3 = Cenas 5, 6)" : "3x3 \u2014 9 Quadrantes (numerados de 1 a 9, da esquerda para a direita, de cima para baixo: Linha 1 = Cenas 1, 2, 3; Linha 2 = Cenas 4, 5, 6; Linha 3 = Cenas 7, 8, 9)";
+    const quadrantCount = Array.isArray(scenes) && scenes.length === 4 || Number(req.body?.quadrantCount) === 4 ? 4 : Array.isArray(scenes) && scenes.length === 6 || Number(req.body?.quadrantCount) === 6 ? 6 : 9;
+    const gridDescription = quadrantCount === 4 ? "2x2 \u2014 4 Quadrantes grandes (numerados de 1 a 4, da esquerda para a direita, de cima para baixo: Linha 1 = Cenas 1, 2; Linha 2 = Cenas 3, 4)" : quadrantCount === 6 ? "2x3 \u2014 6 Quadrantes (numerados de 1 a 6, da esquerda para a direita, de cima para baixo: Linha 1 = Cenas 1, 2; Linha 2 = Cenas 3, 4; Linha 3 = Cenas 5, 6)" : "3x3 \u2014 9 Quadrantes (numerados de 1 a 9, da esquerda para a direita, de cima para baixo: Linha 1 = Cenas 1, 2, 3; Linha 2 = Cenas 4, 5, 6; Linha 3 = Cenas 7, 8, 9)";
     const photosList = Array.isArray(productPhotosBase64) ? productPhotosBase64.filter(Boolean) : [];
     const activeVariations = Array.isArray(variations) ? variations.filter(
       (v) => v.name && String(v.name).trim().length > 0 || Array.isArray(v.photos) && v.photos.length > 0
@@ -5730,6 +5752,7 @@ Audite os frames acima e retorne o JSON estritamente no schema solicitado.`
 }
 app.post("/api/produtos2-audit-video", handleProdutos2AuditVideo);
 async function startServer() {
+  console.log("[startServer] Chamada startServer() recebida. NODE_ENV:", process.env.NODE_ENV, "PORT:", PORT);
   if (process.env.NODE_ENV !== "production" && !process.env.VERCEL) {
     const pkgName = "vite";
     const { createServer: createViteServer } = await import(
@@ -5774,10 +5797,7 @@ async function startServer() {
     }
   });
 }
-var isDirectRun = Boolean(
-  process.argv[1] && (process.argv[1].endsWith("server.ts") || process.argv[1].endsWith("server.js") || process.argv[1].includes("tsx"))
-);
-if (isDirectRun && !process.env.VERCEL) {
+if (!process.env.VERCEL) {
   startServer();
 }
 var server_default = app;

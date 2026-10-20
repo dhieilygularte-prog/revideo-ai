@@ -5,7 +5,7 @@ import type { Produtos2AchadinhosResultState, AchadinhosSpeechParts } from './pr
 export type Produtos2SubMode = 'produtos_geral' | 'vestuario_masculino';
 export type Produtos2MaleSubOption = 'calcados' | 'roupas';
 export type Produtos2Duration = 8 | 10 | 15;
-export type Produtos2SceneMode = '1_cena_10s' | '1_cena_15s' | '2_cenas_10s' | 'modo_leilao' | 'modo_achadinhos';
+export type Produtos2SceneMode = '1_cena_10s_4f' | '1_cena_10s' | '1_cena_15s' | '2_cenas_10s' | 'modo_leilao' | 'modo_achadinhos';
 export type Produtos2Influencer = 'Homem' | 'Mulher' | null;
 export type Produtos2ClientGender = 'Masculino' | 'Feminino' | 'Unissex';
 export type Produtos2SpeechMode = 'com_fala' | 'sem_fala';

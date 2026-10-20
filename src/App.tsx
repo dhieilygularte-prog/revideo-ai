@@ -94,7 +94,7 @@ export default function App() {
     productInfo: '',
     productName: '',
     duration: 10,
-    sceneMode: '1_cena_10s',
+    sceneMode: '1_cena_10s_4f',
     customCopy: '',
     speechesGenerated: false,
     bancoCopy: '',
@@ -1658,8 +1658,11 @@ export default function App() {
       });
       if (regen.imageUrl) {
         playCompletionSound();
+      } else if (regen.error) {
+        alert(`Erro ao refazer o storyboard: ${regen.error}`);
       }
     } catch (err: any) {
+      alert(`Falha ao refazer o storyboard: ${err?.message || err}`);
       setProdutos2Result((prev) => {
         if (!prev) return null;
         if (sceneTarget === 2 && prev.scene2) {
@@ -1691,7 +1694,7 @@ export default function App() {
       productInfo: '',
       productName: '',
       duration: 10,
-      sceneMode: '1_cena_10s',
+      sceneMode: '1_cena_10s_4f',
       customCopy: '',
       speechesGenerated: false,
       bancoCopy: '',

@@ -1326,7 +1326,7 @@ export async function runProdutos2Pipeline(params: {
   onProgress?: (percent: number, message: string) => void;
 }): Promise<Produtos2ResultState> {
   const { form, aiProfile = 'openai', onProgress } = params;
-  const sceneMode: Produtos2SceneMode = form.sceneMode || '1_cena_10s';
+  const sceneMode: Produtos2SceneMode = form.sceneMode || '1_cena_10s_4f';
 
   // Se for Modo Leilão, roda a pipeline dedicada sem tocar em nenhum dos demais modos
   if (sceneMode === 'modo_leilao') {
@@ -1338,10 +1338,11 @@ export async function runProdutos2Pipeline(params: {
     return runProdutos2AchadinhosPipeline(params);
   }
 
+  const is4Scenes = sceneMode === '1_cena_10s_4f';
   const isTwoScenes = sceneMode === '2_cenas_10s';
   const effectiveDuration: Produtos2Duration =
     sceneMode === '1_cena_15s' ? 15 : form.duration === 8 ? 8 : 10;
-  const targetSceneCount: 6 | 9 = isTwoScenes ? 6 : 9;
+  const targetSceneCount: 4 | 6 | 9 = is4Scenes ? 4 : isTwoScenes ? 6 : 9;
 
   onProgress?.(8, '1/6 Identificando produto, nicho e especificações...');
 
@@ -1439,6 +1440,8 @@ export async function runProdutos2Pipeline(params: {
     30,
     isTwoScenes
       ? '3/6 Dividindo fala em 2 partes e planejando as 6 cenas da Cena 1...'
+      : is4Scenes
+      ? '3/6 Construindo Mapa Visual da Copy, Product Lock e 4 Cenas (Grade 2x2)...'
       : '3/6 Construindo Mapa Visual da Copy, Product Lock (incluindo logomarca) e 9 Micro-Cenas...'
   );
 
@@ -1630,7 +1633,7 @@ export async function runProdutos2Pipeline(params: {
   const isUserCopy = form.selectedSpeechOption === 'user_speech' || Boolean(form.customCopy && form.customCopy.trim());
   const isAurora = form.selectedSpeechOption === 'aurora_copy' || form.copyEngine === 'aurora_copy';
 
-  if (sceneMode === '1_cena_10s' && !isUserCopy && !isAurora) {
+  if ((sceneMode === '1_cena_10s' || sceneMode === '1_cena_10s_4f') && !isUserCopy && !isAurora) {
     finalCopy = calibrateCopyToTargetWindow({
       copy: finalCopy,
       duration: form.duration,
@@ -1662,6 +1665,7 @@ export async function runProdutos2Pipeline(params: {
     scenarioDescription,
     scenes,
     productInfo: form.productInfo,
+    sceneCount: targetSceneCount,
     scenePartIndex: isTwoScenes ? 1 : undefined,
     additionalInstructions: form.additionalInstructions,
     variations: form.variations,
@@ -1675,6 +1679,8 @@ export async function runProdutos2Pipeline(params: {
     isTwoScenes ? 42 : 52,
     isTwoScenes
       ? '4/6 Gerando Storyboard da Cena 1 (6 quadros numerados 1080x1920)...'
+      : is4Scenes
+      ? '4/6 Gerando Storyboard 2x2 (4 cenas em alta resolução 1080x1920)...'
       : '4/6 Gerando PRIMEIRO a imagem do Storyboard 3x3 (9 cenas numeradas 1080x1920)...'
   );
 
@@ -1702,6 +1708,8 @@ export async function runProdutos2Pipeline(params: {
       isTwoScenes ? 56 : 78,
       isTwoScenes
         ? 'Fiscalizando fidelidade do produto nos 6 quadrantes da Cena 1...'
+        : is4Scenes
+        ? '5/6 Fiscalizando fidelidade do produto nos 4 quadrantes do Storyboard 2x2...'
         : '5/6 Fiscalizando fidelidade do produto em cada um dos 9 quadrantes do Storyboard...'
     );
     const auditRes = await auditProdutos2Storyboard({
@@ -1730,6 +1738,7 @@ export async function runProdutos2Pipeline(params: {
     avatarDescription,
     scenarioDescription,
     scenes,
+    sceneCount: targetSceneCount,
     scenePartIndex: isTwoScenes ? 1 : undefined,
     additionalInstructions: form.additionalInstructions,
     variations: form.variations,
@@ -1747,7 +1756,7 @@ export async function runProdutos2Pipeline(params: {
       : form.selectedSpeechOption === 'banco2'
       ? 'Banco de Copies (Opção 2)'
       : form.selectedSpeechOption === 'banco1'
-      ? sceneMode === '1_cena_10s'
+      ? (sceneMode === '1_cena_10s' || sceneMode === '1_cena_10s_4f')
         ? 'Banco de Copies (Opção 1)'
         : 'Aurora Copy'
       : copySourceLabel;
@@ -2202,10 +2211,17 @@ export async function regenerateProdutos2Storyboard(params: {
     (isTargetScene2 && result.scene2
       ? result.scene2.storyboardAudit?.correctionPrompt
       : result.storyboardAudit?.correctionPrompt) || '';
+  const is4Scenes = result.sceneMode === '1_cena_10s_4f' || (targetScenes && targetScenes.length === 4);
+
+  const effectiveVariations = (form.variations && form.variations.length > 0)
+    ? form.variations
+    : (result.variations && result.variations.length > 0)
+      ? result.variations
+      : [];
 
   const prioritizedPhotos: string[] = [];
   const otherPhotos: string[] = [];
-  (form.variations || []).forEach((v) => {
+  effectiveVariations.forEach((v) => {
     const validPhotos = (v.photos || []).filter(Boolean);
     if (validPhotos.length > 0) {
       if (!prioritizedPhotos.includes(validPhotos[0])) {
@@ -2219,6 +2235,9 @@ export async function regenerateProdutos2Storyboard(params: {
     }
   });
   const allPhotos: string[] = [...prioritizedPhotos, ...otherPhotos];
+  if (allPhotos.length === 0 && Array.isArray(form.productPhotosBase64) && form.productPhotosBase64.length > 0) {
+    allPhotos.push(...form.productPhotosBase64.filter(Boolean));
+  }
 
   // Combina a ordem mandatória do usuário com qualquer observação secundária de auditoria
   let combinedCorrection = '';
@@ -2246,14 +2265,14 @@ REGRAS ESTRITAS DE PRESERVAÇÃO E EXECUÇÃO:
   const genRes = await requestStoryboardImageGeneration({
     prompt: targetStoryboardPrompt,
     productName: result.productName,
-    productInfo: form.productInfo,
+    productInfo: form.productInfo || result.productInfo || '',
     allPhotos,
-    variations: form.variations,
+    variations: effectiveVariations,
     additionalInstructions: form.additionalInstructions,
     previousStoryboardImageBase64: targetPrevImageUrl,
     correctionPrompt: combinedCorrection || undefined,
     aiProfile,
-    sceneCount: isTwoScenes ? 6 : 9,
+    sceneCount: is4Scenes ? 4 : isTwoScenes ? 6 : 9,
     aspectRatio: '9:16',
   });
 
@@ -2268,7 +2287,7 @@ REGRAS ESTRITAS DE PRESERVAÇÃO E EXECUÇÃO:
     productName: result.productName,
     productLock: result.productLock,
     scenes: targetScenes,
-    variations: form.variations,
+    variations: effectiveVariations,
     aiProfile,
   });
 

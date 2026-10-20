@@ -73,8 +73,30 @@ export function isPackagedProductOnly(productName: string, productInfo?: string,
  * Retorna as cenas canônicas oficiais para produtos em pacotes fechados / combos de embalagens.
  * Todas as cenas manuseiam EXCLUSIVAMENTE a embalagem fechada, sem abrir ou inventar itens internos soltos.
  */
-export function getCanonicalPackagedScene(index: number, productName: string, totalCount: 6 | 9 = 9, partIndex: 1 | 2 = 1): { framing: string; action: string } {
+export function getCanonicalPackagedScene(index: number, productName: string, totalCount: 4 | 6 | 9 = 9, partIndex: 1 | 2 = 1): { framing: string; action: string } {
   const p = (productName || 'Produto').trim();
+
+  if (totalCount === 4) {
+    const canonical4 = [
+      {
+        framing: 'Plano médio frontal com rosto',
+        action: `Apresentadora segurando com os dois braços os pacotes fechados de ${p} agrupados diante do peito, com sorriso largo e entusiasmo apresentando o kit à câmera.`,
+      },
+      {
+        framing: 'Plano médio sobre a bancada/mesa',
+        action: `Os pacotes fechados de ${p} organizados sobre a mesa ou bancada. Apresentadora ao lado apresentando o conjunto com as mãos, destacando a quantidade do kit com gestos naturais.`,
+      },
+      {
+        framing: 'Close-up aproximado na embalagem',
+        action: `Enquadramento mais próximo dos pacotes fechados de ${p} sobre a bancada. Dedo indicador apontando delicadamente para o logotipo e informações impressas na frente da embalagem lacrada.`,
+      },
+      {
+        framing: 'Close com recomendação e aprovação',
+        action: `Apresentadora demonstrando entusiasmo e abraçando delicadamente os pacotes fechados de ${p} com sorriso espontâneo e convite amigável de recomendação.`,
+      },
+    ];
+    return canonical4[Math.min(index, canonical4.length - 1)];
+  }
 
   if (totalCount === 6 && partIndex === 2) {
     const part2 = [
@@ -202,7 +224,7 @@ export function sanitizeAllScenesForFidelity<T extends { action: string; storybo
 ): T[] {
   if (!Array.isArray(scenes)) return scenes;
   const isPackaged = isPackagedProductOnly(productName, productInfo);
-  const totalCount: 6 | 9 = scenes.length === 6 ? 6 : 9;
+  const totalCount: 4 | 6 | 9 = scenes.length === 4 ? 4 : scenes.length === 6 ? 6 : 9;
 
   return scenes.map((sc, idx) => {
     let cleanAction = sc.action;
