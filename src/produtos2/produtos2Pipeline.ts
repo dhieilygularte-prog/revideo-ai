@@ -442,12 +442,11 @@ async function requestStoryboardImageGeneration(params: {
   } = params;
 
   const isLandscape = Boolean(
-    isLeilaoBlock === 1 ||
-    isLeilaoBlock === 2 ||
-    isAchadinhosBlock === 1 ||
-    isAchadinhosBlock === 2 ||
-    isAchadinhosBlock === 3 ||
-    (aspectRatio === '16:9' && isLeilaoBlock !== 3)
+    (isAchadinhosBlock === 1 ||
+      isAchadinhosBlock === 2 ||
+      isAchadinhosBlock === 3 ||
+      aspectRatio === '16:9') &&
+      !isLeilaoBlock
   );
 
   // Garante que a 1ª foto de CADA variação esteja presente nas referências enviadas
@@ -758,46 +757,98 @@ export async function runProdutos2LeilaoPipeline(params: {
     ...(form.variations || []).flatMap((v) => v.photos || []),
   ].filter(Boolean);
 
-  // GERAÇÃO BLOCO 1 (Salão de Leilão, 3 quadros 1x3, 16:9 horizontal em alta resolução)
-  onProgress?.(25, '3/5 Gerando Storyboard 1 (Salão de Leilão - Quadros 1, 2 e 3)...');
-  const imgRes1 = await requestStoryboardImageGeneration({
-    prompt: blockPrompts.bloco1ImagePrompt,
+  // GERAÇÃO BLOCO 1 (Salão de Leilão: 2 imagens verticais 9:16 independentes em 1080x1920)
+  onProgress?.(22, '3/5 Gerando Imagem 1 do Bloco 1 (Salão de Leilão - Plano Aberto)...');
+  const imgRes1_1 = await requestStoryboardImageGeneration({
+    prompt: blockPrompts.bloco1Image1Prompt,
     productName: form.productName,
     allPhotos,
     variations: form.variations,
     additionalInstructions: form.additionalInstructions,
     aiProfile,
-    sceneCount: 3,
-    aspectRatio: '16:9',
+    sceneCount: 1,
+    aspectRatio: '9:16',
     isLeilaoBlock: 1,
   });
-  if (imgRes1.error && !imgRes1.imageUrl) {
-    throw new Error(`Falha ao gerar o Bloco 1 do Leilão: ${imgRes1.error}`);
+  if (imgRes1_1.error && !imgRes1_1.imageUrl) {
+    throw new Error(`Falha ao gerar a Imagem 1 do Bloco 1 do Leilão: ${imgRes1_1.error}`);
   }
-  const bloco1Img = await ensureLandscapeStoryboardImage(imgRes1.imageUrl || '');
 
-  // GERAÇÃO BLOCO 2 (Estúdio Revelação, 3 quadros 1x3, 16:9 horizontal em alta resolução)
-  onProgress?.(55, '4/5 Gerando Storyboard 2 (Revelação do Produto em Estúdio - Quadros 4, 5 e 6)...');
-  const imgRes2 = await requestStoryboardImageGeneration({
-    prompt: blockPrompts.bloco2ImagePrompt,
+  onProgress?.(35, '3/5 Gerando Imagem 2 do Bloco 1 (Leiloeiro Chocado com Smartphone)...');
+  const imgRes1_2 = await requestStoryboardImageGeneration({
+    prompt: blockPrompts.bloco1Image2Prompt,
     productName: form.productName,
     allPhotos,
     variations: form.variations,
     additionalInstructions: form.additionalInstructions,
     aiProfile,
-    sceneCount: 3,
-    aspectRatio: '16:9',
+    sceneCount: 1,
+    aspectRatio: '9:16',
+    isLeilaoBlock: 1,
+  });
+  if (imgRes1_2.error && !imgRes1_2.imageUrl) {
+    throw new Error(`Falha ao gerar a Imagem 2 do Bloco 1 do Leilão: ${imgRes1_2.error}`);
+  }
+
+  const bloco1Images = [imgRes1_1.imageUrl, imgRes1_2.imageUrl].filter(Boolean) as string[];
+  const bloco1Img = bloco1Images[0] || '';
+
+  // GERAÇÃO BLOCO 2 (Revelação & Closes: 3 imagens verticais 9:16 independentes em 1080x1920)
+  onProgress?.(48, '4/5 Gerando Imagem 3 do Bloco 2 (Apresentação do Produto no Púlpito)...');
+  const imgRes2_1 = await requestStoryboardImageGeneration({
+    prompt: blockPrompts.bloco2Image3Prompt,
+    productName: form.productName,
+    allPhotos,
+    variations: form.variations,
+    additionalInstructions: form.additionalInstructions,
+    aiProfile,
+    sceneCount: 1,
+    aspectRatio: '9:16',
     isLeilaoBlock: 2,
   });
-  if (imgRes2.error && !imgRes2.imageUrl) {
-    throw new Error(`Falha ao gerar o Bloco 2 do Leilão: ${imgRes2.error}`);
+  if (imgRes2_1.error && !imgRes2_1.imageUrl) {
+    throw new Error(`Falha ao gerar a Imagem 3 do Bloco 2 do Leilão: ${imgRes2_1.error}`);
   }
-  const bloco2Img = await ensureLandscapeStoryboardImage(imgRes2.imageUrl || '');
 
-  // GERAÇÃO BLOCO 3 (Leiloeiro Apontando no Telão, 1 imagem vertical 9:16, 1080x1920 sem número)
-  onProgress?.(80, '5/5 Gerando Imagem Final (Leiloeiro Apontando)...');
+  onProgress?.(60, '4/5 Gerando Imagem 4 do Bloco 2 (Close Benefício 1 em Fundo Preto)...');
+  const imgRes2_2 = await requestStoryboardImageGeneration({
+    prompt: blockPrompts.bloco2Image4Prompt,
+    productName: form.productName,
+    allPhotos,
+    variations: form.variations,
+    additionalInstructions: form.additionalInstructions,
+    aiProfile,
+    sceneCount: 1,
+    aspectRatio: '9:16',
+    isLeilaoBlock: 2,
+  });
+  if (imgRes2_2.error && !imgRes2_2.imageUrl) {
+    throw new Error(`Falha ao gerar a Imagem 4 do Bloco 2 do Leilão: ${imgRes2_2.error}`);
+  }
+
+  onProgress?.(72, '4/5 Gerando Imagem 5 do Bloco 2 (Close Benefício 2 em Fundo Preto)...');
+  const imgRes2_3 = await requestStoryboardImageGeneration({
+    prompt: blockPrompts.bloco2Image5Prompt,
+    productName: form.productName,
+    allPhotos,
+    variations: form.variations,
+    additionalInstructions: form.additionalInstructions,
+    aiProfile,
+    sceneCount: 1,
+    aspectRatio: '9:16',
+    isLeilaoBlock: 2,
+  });
+  if (imgRes2_3.error && !imgRes2_3.imageUrl) {
+    throw new Error(`Falha ao gerar a Imagem 5 do Bloco 2 do Leilão: ${imgRes2_3.error}`);
+  }
+
+  const bloco2Images = [imgRes2_1.imageUrl, imgRes2_2.imageUrl, imgRes2_3.imageUrl].filter(Boolean) as string[];
+  const bloco2Img = bloco2Images[0] || '';
+
+  // GERAÇÃO BLOCO 3 (Leiloeiro Apontando no Telão: 1 imagem vertical 9:16 independente em 1080x1920)
+  onProgress?.(84, '5/5 Gerando Imagem 6 do Bloco 3 (Leiloeiro Apontando para o Carrinho Laranja)...');
   const imgRes3 = await requestStoryboardImageGeneration({
-    prompt: blockPrompts.bloco3ImagePrompt,
+    prompt: blockPrompts.bloco3Image6Prompt,
     productName: form.productName,
     allPhotos,
     variations: form.variations,
@@ -810,7 +861,8 @@ export async function runProdutos2LeilaoPipeline(params: {
   if (imgRes3.error && !imgRes3.imageUrl) {
     throw new Error(`Falha ao gerar o Bloco 3 do Leilão: ${imgRes3.error}`);
   }
-  const bloco3Img = imgRes3.imageUrl || '';
+  const bloco3Images = [imgRes3.imageUrl].filter(Boolean) as string[];
+  const bloco3Img = bloco3Images[0] || '';
 
   onProgress?.(92, 'Gerando descrição do post e hashtags...');
   let descriptionHashtags = '';
@@ -830,51 +882,65 @@ export async function runProdutos2LeilaoPipeline(params: {
     generatedHashtags = ['#achadinhos', '#tiktokcompras', '#viraltiktok', '#fypviral'];
   }
 
-  const totalCostUSD =
-    (imgRes1.usage?.costUSD || 0.02) +
-    (imgRes2.usage?.costUSD || 0.02) +
-    (imgRes3.usage?.costUSD || 0.02) +
-    0.01;
-  const totalCostBRL =
-    (imgRes1.usage?.costBRL || 0.12) +
-    (imgRes2.usage?.costBRL || 0.12) +
-    (imgRes3.usage?.costBRL || 0.12) +
-    0.06;
+  const allUsages = [imgRes1_1.usage, imgRes1_2.usage, imgRes2_1.usage, imgRes2_2.usage, imgRes2_3.usage, imgRes3.usage];
+  const totalCostUSD = allUsages.reduce((acc, u) => acc + (u?.costUSD || 0.02), 0) + 0.01;
+  const totalCostBRL = allUsages.reduce((acc, u) => acc + (u?.costBRL || 0.12), 0) + 0.06;
 
   const tokenUsage: TokenUsageStats = {
-    promptTokens: 4500,
+    promptTokens: 8500,
     candidateTokens: 600,
-    totalTokens: 5100,
+    totalTokens: 9100,
     totalCostUSD: Math.round(totalCostUSD * 1000) / 1000,
     estimatedCostBRL: Math.round(totalCostBRL * 100) / 100,
-    modelsUsed: [imgRes1.usage?.model || 'image-model'],
+    modelsUsed: [imgRes1_1.usage?.model || 'image-model'],
     breakdown: {
       videoAnalysisTokens: 0,
       videoAnalysisCostBRL: 0,
       speechTokens: 0,
       speechCostBRL: 0,
-      imagesCount: 3,
+      imagesCount: 6,
       imagesCostBRL: Math.round(totalCostBRL * 100) / 100,
-      promptsTokens: 4500,
+      promptsTokens: 8500,
       promptsCostBRL: 0,
     },
     detailedSteps: [
       {
-        step: 'Modo Leilão - Bloco 1 (Quadros 1 e 2)',
-        model: imgRes1.usage?.model || 'image',
-        costUSD: imgRes1.usage?.costUSD || 0.02,
-        costBRL: imgRes1.usage?.costBRL || 0.12,
+        step: 'Modo Leilão - Bloco 1 (Imagem 1: Salão Aberto)',
+        model: imgRes1_1.usage?.model || 'image',
+        costUSD: imgRes1_1.usage?.costUSD || 0.02,
+        costBRL: imgRes1_1.usage?.costBRL || 0.12,
         timestamp: new Date().toLocaleTimeString('pt-BR'),
       },
       {
-        step: 'Modo Leilão - Bloco 2 (Quadros 3, 4 e 5)',
-        model: imgRes2.usage?.model || 'image',
-        costUSD: imgRes2.usage?.costUSD || 0.02,
-        costBRL: imgRes2.usage?.costBRL || 0.12,
+        step: 'Modo Leilão - Bloco 1 (Imagem 2: Leiloeiro Chocado)',
+        model: imgRes1_2.usage?.model || 'image',
+        costUSD: imgRes1_2.usage?.costUSD || 0.02,
+        costBRL: imgRes1_2.usage?.costBRL || 0.12,
         timestamp: new Date().toLocaleTimeString('pt-BR'),
       },
       {
-        step: 'Modo Leilão - Bloco 3 (Quadro 6)',
+        step: 'Modo Leilão - Bloco 2 (Imagem 3: Revelação no Púlpito)',
+        model: imgRes2_1.usage?.model || 'image',
+        costUSD: imgRes2_1.usage?.costUSD || 0.02,
+        costBRL: imgRes2_1.usage?.costBRL || 0.12,
+        timestamp: new Date().toLocaleTimeString('pt-BR'),
+      },
+      {
+        step: 'Modo Leilão - Bloco 2 (Imagem 4: Close Benefício 1)',
+        model: imgRes2_2.usage?.model || 'image',
+        costUSD: imgRes2_2.usage?.costUSD || 0.02,
+        costBRL: imgRes2_2.usage?.costBRL || 0.12,
+        timestamp: new Date().toLocaleTimeString('pt-BR'),
+      },
+      {
+        step: 'Modo Leilão - Bloco 2 (Imagem 5: Close Benefício 2)',
+        model: imgRes2_3.usage?.model || 'image',
+        costUSD: imgRes2_3.usage?.costUSD || 0.02,
+        costBRL: imgRes2_3.usage?.costBRL || 0.12,
+        timestamp: new Date().toLocaleTimeString('pt-BR'),
+      },
+      {
+        step: 'Modo Leilão - Bloco 3 (Imagem 6: Chamada no Carrinho)',
         model: imgRes3.usage?.model || 'image',
         costUSD: imgRes3.usage?.costUSD || 0.02,
         costBRL: imgRes3.usage?.costBRL || 0.12,
@@ -944,18 +1010,24 @@ export async function runProdutos2LeilaoPipeline(params: {
       bids,
       speeches,
       bloco1: {
+        images: bloco1Images,
+        imagePrompts: [blockPrompts.bloco1Image1Prompt, blockPrompts.bloco1Image2Prompt],
         storyboardImageUrl: bloco1Img,
         storyboardImagePrompt: blockPrompts.bloco1ImagePrompt,
         veoPrompt: blockPrompts.veoPrompt1,
         speechText: speeches.cena1,
       },
       bloco2: {
+        images: bloco2Images,
+        imagePrompts: [blockPrompts.bloco2Image3Prompt, blockPrompts.bloco2Image4Prompt, blockPrompts.bloco2Image5Prompt],
         storyboardImageUrl: bloco2Img,
         storyboardImagePrompt: blockPrompts.bloco2ImagePrompt,
         veoPrompt: blockPrompts.veoPrompt2,
         speechText: speeches.cena2,
       },
       bloco3: {
+        images: bloco3Images,
+        imagePrompts: [blockPrompts.bloco3Image6Prompt],
         storyboardImageUrl: bloco3Img,
         storyboardImagePrompt: blockPrompts.bloco3ImagePrompt,
         veoPrompt: blockPrompts.veoPrompt3,
@@ -1957,31 +2029,55 @@ export async function regenerateProdutos2Storyboard(params: {
   customCorrection?: string;
   sceneTarget?: 1 | 2 | 3;
   aiProfile?: string;
+  imageIndex?: number;
 }): Promise<{
   imageUrl?: string;
+  images?: string[];
   storyboardAudit?: Produtos2StoryboardAudit;
   error?: string;
   incrementalUsage?: IncrementalTokenUsage;
 }> {
-  const { result, form, customCorrection, sceneTarget = 1, aiProfile = 'openai' } = params;
+  const { result, form, customCorrection, sceneTarget = 1, aiProfile = 'openai', imageIndex } = params;
 
-  // Se for Modo Leilão, refaz exclusivamente o bloco selecionado (1, 2 ou 3)
+  // Se for Modo Leilão, refaz exclusivamente a imagem vertical 9:16 selecionada (1080x1920)
   if (result.sceneMode === 'modo_leilao' && result.leilao) {
     const targetBlock = sceneTarget === 3 ? 3 : sceneTarget === 2 ? 2 : 1;
-    let targetPrompt =
+    const blockData =
       targetBlock === 3
-        ? result.leilao.bloco3.storyboardImagePrompt
+        ? result.leilao.bloco3
         : targetBlock === 2
-        ? result.leilao.bloco2.storyboardImagePrompt
-        : result.leilao.bloco1.storyboardImagePrompt;
-    let targetPrevImg =
-      targetBlock === 3
-        ? result.leilao.bloco3.storyboardImageUrl
-        : targetBlock === 2
-        ? result.leilao.bloco2.storyboardImageUrl
-        : result.leilao.bloco1.storyboardImageUrl;
-    const targetCount = targetBlock === 3 ? 1 : 3;
-    const targetAspect = targetBlock === 3 ? '9:16' : '16:9';
+        ? result.leilao.bloco2
+        : result.leilao.bloco1;
+    let blockImages = [
+      ...(blockData.images || (blockData.storyboardImageUrl ? [blockData.storyboardImageUrl] : [])),
+    ];
+    let blockPrompts = [
+      ...(blockData.imagePrompts ||
+        (blockData.storyboardImagePrompt ? [blockData.storyboardImagePrompt] : [])),
+    ];
+
+    let targetIdx =
+      typeof imageIndex === 'number' && imageIndex >= 0 && imageIndex < blockImages.length
+        ? imageIndex
+        : 0;
+    if (typeof imageIndex !== 'number' && customCorrection) {
+      if (
+        /imagem\s*2|quadro\s*2|segund[ao]\s*imagem/i.test(customCorrection) &&
+        blockImages.length >= 2
+      ) {
+        targetIdx = 1;
+      } else if (
+        /imagem\s*3|quadro\s*3|terceir[ao]\s*imagem/i.test(customCorrection) &&
+        blockImages.length >= 3
+      ) {
+        targetIdx = 2;
+      } else if (/imagem\s*1|quadro\s*1|primeir[ao]\s*imagem/i.test(customCorrection)) {
+        targetIdx = 0;
+      }
+    }
+
+    let targetPrompt = blockPrompts[targetIdx] || blockData.storyboardImagePrompt || '';
+    let targetPrevImg = blockImages[targetIdx] || blockData.storyboardImageUrl;
 
     // Se o usuário solicitou mudança de apresentador ou características específicas no customCorrection,
     // atualizamos a especificação de apresentador no prompt
@@ -2008,8 +2104,8 @@ export async function regenerateProdutos2Storyboard(params: {
       previousStoryboardImageBase64: targetPrevImg,
       correctionPrompt: customCorrection || '',
       aiProfile,
-      sceneCount: targetCount,
-      aspectRatio: targetAspect,
+      sceneCount: 1,
+      aspectRatio: '9:16',
       isLeilaoBlock: targetBlock,
     });
 
@@ -2017,13 +2113,16 @@ export async function regenerateProdutos2Storyboard(params: {
       return { error: genRes.error };
     }
 
-    const finalImg =
-      targetBlock === 3
-        ? genRes.imageUrl
-        : await ensureLandscapeStoryboardImage(genRes.imageUrl);
+    const finalImg = genRes.imageUrl || '';
+    if (blockImages.length > 0) {
+      blockImages[targetIdx] = finalImg;
+    } else {
+      blockImages = [finalImg];
+    }
 
     return {
       imageUrl: finalImg,
+      images: blockImages,
     };
   }
 

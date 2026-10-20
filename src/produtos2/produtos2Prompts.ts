@@ -11,6 +11,10 @@ import {
   Produtos2VisualMapItem,
 } from './types';
 import { applySpeechIntro } from './produtos2CopyBank';
+import {
+  appendFidelityLockToVeoPrompt,
+  sanitizeSceneFidelityAction,
+} from './produtos2FidelityLock';
 
 /**
  * Retorna a descrição canônica unificada de uma cena (mesma pessoa, mesma ação e mesmo enquadramento
@@ -915,7 +919,7 @@ ${framingPersonRule}`;
     return `- A Cena ${n} corresponde estritamente ao Quadro ${n} do storyboard anexado.`;
   }).join('\n');
 
-  return `Crie um vídeo vertical 9:16, ultra-realista, com aparência de gravação real feita com smartphone (estilo UGC), com duração total de ${duration} segundos.
+  const fullPrompt = `Crie um vídeo vertical 9:16, ultra-realista, com aparência de gravação real feita com smartphone (estilo UGC), com duração total de ${duration} segundos.
 
 VÍDEO LIMPO — REGRA ABSOLUTA:
 O vídeo é uma filmagem original e limpa. O quadro inteiro mostra somente a cena filmada, do primeiro ao último frame.
@@ -1001,6 +1005,8 @@ NÃO adicionar botão de compra.
 NÃO adicionar stickers.
 
 ${prioritySection}`;
+
+  return appendFidelityLockToVeoPrompt(fullPrompt);
 }
 
 /**
@@ -1377,7 +1383,7 @@ export function buildDefaultProdutos2Plan(params: {
     rawScenes = [
       {
         framing: 'Close POV em primeira pessoa',
-        action: `Mãos masculinas abrindo a caixa e segurando o ${productName} de frente para a câmera, revelando o design lateral e frontal.`,
+        action: `Mãos masculinas segurando o ${productName} de frente para a câmera, revelando o design lateral e frontal.`,
         cameraMovement: 'Leve push-in focado no calçado.',
       },
       {
@@ -1540,7 +1546,7 @@ export function buildDefaultProdutos2Plan(params: {
   const scenes: Produtos2SceneItem[] = selectedRawScenes.map((sc, idx) => {
     const num = idx + 1;
     const varInfo = getSceneVariationInfo(num, activePlanVars, sceneCount);
-    const cleanAction = sc.action.trim();
+    const cleanAction = sanitizeSceneFidelityAction(sc.action.trim());
     return {
       number: num,
       startTime: timings[idx].start,

@@ -24,6 +24,7 @@ interface LeilaoBlockSectionProps {
   title: string;
   subtitle: string;
   downloadFileName: string;
+  images?: string[];
   storyboardImageUrl?: string;
   isRegeneratingStoryboard?: boolean;
   veoPrompt: string;
@@ -35,7 +36,7 @@ interface LeilaoBlockSectionProps {
   aiProfile?: AIProfile;
   onUpdateVeoPrompt: (val: string) => void;
   onUpdateSpeech: (val: string) => void;
-  onRegenerateImage: (instruction?: string) => void;
+  onRegenerateImage: (instruction?: string, imageIndex?: number) => void;
   onAuditChange: (vAudit: VideoFidelityAudit) => void;
   onAuditComplete?: (vAudit: VideoFidelityAudit, usage: any) => void;
   onOpenPreview: (url: string, title: string) => void;
@@ -47,6 +48,7 @@ export const LeilaoBlockSection: React.FC<LeilaoBlockSectionProps> = ({
   title,
   subtitle,
   downloadFileName,
+  images,
   storyboardImageUrl,
   isRegeneratingStoryboard,
   veoPrompt,
@@ -62,7 +64,7 @@ export const LeilaoBlockSection: React.FC<LeilaoBlockSectionProps> = ({
   onAuditChange,
   onAuditComplete,
   onOpenPreview,
-  onUpdateImage,
+  onUpdateImage: _onUpdateImage,
 }) => {
   // 1. Estado da fala
   const [speechInput, setSpeechInput] = useState(speechText || '');
@@ -289,6 +291,43 @@ export const LeilaoBlockSection: React.FC<LeilaoBlockSectionProps> = ({
 
   const maxChars = 250;
 
+  // Metadados das imagens verticais de cada bloco
+  const blockMeta = React.useMemo(() => {
+    if (blockNumber === 1) {
+      return {
+        labels: [
+          'Imagem 1 — Salão de Leilão (Plano Aberto)',
+          'Imagem 2 — Leiloeiro Chocado com Smartphone',
+        ],
+        files: ['leilao_cena1_imagem1', 'leilao_cena1_imagem2'],
+        gridClass: 'grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto',
+      };
+    }
+    if (blockNumber === 2) {
+      return {
+        labels: [
+          'Imagem 3 — Revelação no Púlpito ("Tcharam!")',
+          'Imagem 4 — Close Benefício 1 (Fundo Preto)',
+          'Imagem 5 — Close Benefício 2 (Fundo Preto)',
+        ],
+        files: ['leilao_cena2_imagem3', 'leilao_cena2_imagem4', 'leilao_cena2_imagem5'],
+        gridClass: 'grid grid-cols-1 sm:grid-cols-3 gap-3.5 max-w-4xl mx-auto',
+      };
+    }
+    return {
+      labels: ['Imagem 6 — Leiloeiro Apontando (Carrinho Laranja)'],
+      files: ['leilao_cena3_imagem6'],
+      gridClass: 'max-w-xs mx-auto',
+    };
+  }, [blockNumber]);
+
+  const activeImageList =
+    images && images.length > 0
+      ? images
+      : storyboardImageUrl
+      ? [storyboardImageUrl]
+      : [];
+
   return (
     <div className="p-5 sm:p-6 rounded-2xl bg-zinc-900/95 border border-amber-900/50 shadow-2xl space-y-5">
       {/* 1. CABEÇALHO DO BLOCO */}
@@ -308,83 +347,80 @@ export const LeilaoBlockSection: React.FC<LeilaoBlockSectionProps> = ({
         <button
           type="button"
           onClick={() => {
-            if (storyboardImageUrl) {
-              downloadProdutos2StoryboardImage(storyboardImageUrl, downloadFileName);
-            }
+            activeImageList.forEach((imgUrl, idx) => {
+              const fileName = blockMeta.files[idx] || `${downloadFileName}_imagem${idx + 1}`;
+              downloadProdutos2StoryboardImage(imgUrl, fileName);
+            });
           }}
-          disabled={!storyboardImageUrl}
+          disabled={activeImageList.length === 0}
           className="px-3.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-emerald-600 disabled:opacity-50 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-zinc-700 shadow-sm"
         >
           <Download className="w-3.5 h-3.5" />
-          <span>Baixar Imagem {blockNumber}</span>
+          <span>Baixar Imagens (Bloco {blockNumber})</span>
         </button>
       </div>
 
-      {/* 2. IMAGEM DO STORYBOARD */}
-      <div className="relative rounded-2xl overflow-hidden bg-black/60 border border-zinc-800 group shadow-inner">
-        {isRegeneratingStoryboard ? (
-          <div className="h-72 flex flex-col items-center justify-center p-6 text-center gap-3">
-            <RefreshCw className="w-8 h-8 text-amber-400 animate-spin" />
-            <p className="text-xs font-bold text-amber-200">
-              Refazendo imagem do Bloco {blockNumber}...
-            </p>
-            <p className="text-[11px] text-zinc-400">
-              Preservando continuidade física do leiloeiro e fidelidade absoluta do produto
-            </p>
-          </div>
-        ) : storyboardImageUrl ? (
-          <>
-            <img
-              src={storyboardImageUrl}
-              alt={`Storyboard Bloco ${blockNumber}`}
-              onClick={() => onOpenPreview(storyboardImageUrl, title)}
-              onLoad={async (e) => {
-                if ((blockNumber === 1 || blockNumber === 2) && onUpdateImage) {
-                  const target = e.currentTarget;
-                  if (target.naturalHeight > target.naturalWidth) {
-                    const { ensureLandscapeStoryboardImage } = await import('./produtos2Pipeline');
-                    const normalized = await ensureLandscapeStoryboardImage(storyboardImageUrl);
-                    if (normalized && normalized !== storyboardImageUrl) {
-                      onUpdateImage(normalized);
-                    }
-                  }
-                }
-              }}
-              className="w-full max-h-[480px] object-contain cursor-pointer transition-transform duration-300 group-hover:scale-[1.01]"
-            />
-            {/* Botão Ampliar */}
-            <button
-              type="button"
-              onClick={() => onOpenPreview(storyboardImageUrl, title)}
-              className="absolute top-2.5 right-2.5 p-2 rounded-lg bg-black/75 hover:bg-black/90 text-white border border-white/20 opacity-0 group-hover:opacity-100 transition-all cursor-pointer shadow-lg"
-              title="Visualizar em tela cheia"
-            >
-              <Eye className="w-4 h-4" />
-            </button>
-            {/* Botão Baixar sobre a imagem */}
-            <button
-              type="button"
-              onClick={async (e) => {
-                e.stopPropagation();
-                let urlToDownload = storyboardImageUrl;
-                if ((blockNumber === 1 || blockNumber === 2) && storyboardImageUrl) {
-                  const { ensureLandscapeStoryboardImage } = await import('./produtos2Pipeline');
-                  urlToDownload = await ensureLandscapeStoryboardImage(storyboardImageUrl);
-                }
-                downloadProdutos2StoryboardImage(urlToDownload, downloadFileName);
-              }}
-              className="absolute bottom-2.5 right-2.5 p-2 rounded-xl bg-black/80 hover:bg-emerald-600 text-white border border-white/25 shadow-lg transition-all cursor-pointer flex items-center justify-center"
-              title={`Baixar ${downloadFileName}.png`}
-            >
-              <Download className="w-4 h-4" />
-            </button>
-          </>
-        ) : (
-          <div className="h-64 flex items-center justify-center text-zinc-500 text-sm">
-            Imagem do Bloco {blockNumber} não disponível
-          </div>
-        )}
-      </div>
+      {/* 2. IMAGENS VERTICAIS 9:16 DO STORYBOARD (1080x1920) */}
+      {isRegeneratingStoryboard ? (
+        <div className="h-72 flex flex-col items-center justify-center p-6 text-center gap-3 rounded-2xl bg-black/60 border border-zinc-800 shadow-inner">
+          <RefreshCw className="w-8 h-8 text-amber-400 animate-spin" />
+          <p className="text-xs font-bold text-amber-200">
+            Refazendo imagem do Bloco {blockNumber}...
+          </p>
+          <p className="text-[11px] text-zinc-400">
+            Preservando continuidade física do leiloeiro e fidelidade absoluta do produto
+          </p>
+        </div>
+      ) : activeImageList.length > 0 ? (
+        <div className={blockMeta.gridClass}>
+          {activeImageList.map((imgUrl, idx) => {
+            const label = blockMeta.labels[idx] || `Imagem ${idx + 1}`;
+            const fileName = blockMeta.files[idx] || `${downloadFileName}_${idx + 1}`;
+            return (
+              <div key={idx} className="space-y-1.5 flex flex-col items-center w-full">
+                <div className="w-full flex items-center justify-between px-1">
+                  <span className="text-[11px] font-bold text-amber-300/90 truncate" title={label}>
+                    {label}
+                  </span>
+                </div>
+                <div className="relative aspect-[9/16] w-full rounded-2xl overflow-hidden bg-black/60 border border-zinc-800 group shadow-lg">
+                  <img
+                    src={imgUrl}
+                    alt={label}
+                    onClick={() => onOpenPreview(imgUrl, label)}
+                    className="w-full h-full object-cover cursor-pointer transition-transform duration-300 group-hover:scale-[1.02]"
+                  />
+                  {/* Botão Ampliar */}
+                  <button
+                    type="button"
+                    onClick={() => onOpenPreview(imgUrl, label)}
+                    className="absolute top-2.5 right-2.5 p-2 rounded-lg bg-black/75 hover:bg-black/90 text-white border border-white/20 opacity-0 group-hover:opacity-100 transition-all cursor-pointer shadow-lg"
+                    title="Visualizar em tela cheia"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </button>
+                  {/* Botão Baixar individual */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      downloadProdutos2StoryboardImage(imgUrl, fileName);
+                    }}
+                    className="absolute bottom-2.5 right-2.5 p-2 rounded-xl bg-black/80 hover:bg-emerald-600 text-white border border-white/25 shadow-lg transition-all cursor-pointer flex items-center justify-center"
+                    title={`Baixar ${fileName}.png`}
+                  >
+                    <Download className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="h-64 flex items-center justify-center text-zinc-500 text-sm rounded-2xl bg-black/60 border border-zinc-800">
+          Imagens do Bloco {blockNumber} não disponíveis
+        </div>
+      )}
 
       {/* 3. DITAR MUDANÇAS QUE SE DESEJA NA IMAGEM DO STORYBOARD */}
       <div className="p-3.5 rounded-xl bg-black/40 border border-amber-900/40 space-y-2">

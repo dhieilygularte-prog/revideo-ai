@@ -1471,7 +1471,8 @@ export default function App() {
 
   const handleRegenerateProdutos2Storyboard = async (
     customCorrection?: string,
-    sceneTarget: 1 | 2 | 3 = 1
+    sceneTarget: 1 | 2 | 3 = 1,
+    imageIndex?: number
   ) => {
     if (!produtos2Result) return;
     if (sceneTarget === 2 && produtos2Result.scene2 && produtos2Result.sceneMode === '2_cenas_10s') {
@@ -1501,6 +1502,7 @@ export default function App() {
         customCorrection,
         sceneTarget,
         aiProfile,
+        imageIndex,
       });
       setProdutos2Result((prev) => {
         if (!prev) return null;
@@ -1559,16 +1561,19 @@ export default function App() {
           if (sceneTarget === 1 && updatedLeilao.bloco1) {
             updatedLeilao.bloco1 = {
               ...updatedLeilao.bloco1,
+              images: regen.images || updatedLeilao.bloco1.images,
               storyboardImageUrl: regen.imageUrl || updatedLeilao.bloco1.storyboardImageUrl,
             };
           } else if (sceneTarget === 2 && updatedLeilao.bloco2) {
             updatedLeilao.bloco2 = {
               ...updatedLeilao.bloco2,
+              images: regen.images || updatedLeilao.bloco2.images,
               storyboardImageUrl: regen.imageUrl || updatedLeilao.bloco2.storyboardImageUrl,
             };
           } else if (sceneTarget === 3 && updatedLeilao.bloco3) {
             updatedLeilao.bloco3 = {
               ...updatedLeilao.bloco3,
+              images: regen.images || updatedLeilao.bloco3.images,
               storyboardImageUrl: regen.imageUrl || updatedLeilao.bloco3.storyboardImageUrl,
             };
           }

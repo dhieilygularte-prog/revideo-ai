@@ -11,6 +11,7 @@
  */
 
 import { Produtos2Variation } from './types';
+import { appendFidelityLockToVeoPrompt, buildProductFidelityDirectives } from './produtos2FidelityLock';
 
 export interface AchadinhosSpeechParts {
   cena1: string; // Hook + Apresentação (até 225 chars)
@@ -426,7 +427,8 @@ QUADRO C — APRESENTAÇÃO CONCLUÍDA (À DIREITA):
 A personagem destaca o produto ${pName} de maneira mais clara, aproximando-o discretamente da câmera para evidenciar sua qualidade e acabamento, preparando para a demonstração da próxima cena.
 
 COMPOSIÇÃO:
-Três painéis verticais independentes alinhados horizontalmente em uma única imagem 16:9, com separação visual limpa. Ultrarrealismo, aparência de foto espontânea tirada com smartphone moderno, iluminação natural, sem logos inventados, sem textos gráficos ou legendas na imagem.`;
+Três painéis verticais independentes alinhados horizontalmente em uma única imagem 16:9, com separação visual limpa. Ultrarrealismo, aparência de foto espontânea tirada com smartphone moderno, iluminação natural, sem logos inventados, sem textos gráficos ou legendas na imagem.
+${buildProductFidelityDirectives(info)}`;
 
   const bloco2ImagePrompt = `Gere um storyboard fotográfico horizontal em proporção 16:9 (1920x1080), composto por exatamente três quadros verticais de proporção aproximada 9:16, organizados lado a lado da esquerda para a direita (Quadro A à esquerda, Quadro B ao centro, Quadro C à direita).
 
@@ -451,7 +453,8 @@ QUADRO C — RESULTADO (À DIREITA):
 A ação concluída comprovando visualmente o benefício e a utilidade do ${pName}. Expressão de satisfação sincera e facilidade.
 
 COMPOSIÇÃO:
-Três quadros verticais independentes lado a lado em imagem horizontal 16:9. Fotografia de smartphone, luz natural brasileira, sem textos, sem marcas d'água, sem distorções anatômicas.`;
+Três quadros verticais independentes lado a lado em imagem horizontal 16:9. Fotografia de smartphone, luz natural brasileira, sem textos, sem marcas d'água, sem distorções anatômicas.
+${buildProductFidelityDirectives(info)}`;
 
   const bloco3ImagePrompt = `Gere um storyboard fotográfico horizontal em proporção 16:9 (1920x1080), composto por exatamente três quadros verticais de proporção aproximada 9:16, organizados lado a lado da esquerda para a direita (Quadro A à esquerda, Quadro B ao centro, Quadro C à direita).
 
@@ -476,7 +479,8 @@ QUADRO C — CONCLUSÃO (À DIREITA):
 Composição final espontânea e acolhedora, com a personagem apresentando o produto e fazendo um gesto sutil e natural de indicação para conferir o carrinho de compras.
 
 COMPOSIÇÃO:
-Três painéis verticais em única imagem horizontal 16:9. Sem botões falsos, sem elementos de interface gráfica, estética real de smartphone em ambiente brasileiro.`;
+Três painéis verticais em única imagem horizontal 16:9. Sem botões falsos, sem elementos de interface gráfica, estética real de smartphone em ambiente brasileiro.
+${buildProductFidelityDirectives(info)}`;
 
   // --------------------------------------------------------------------------
   // PROMPTS DO OMNIFLASH / VEO 3 (Versão 5.0 - Seção 18)
@@ -562,8 +566,9 @@ Ultra-realistic Brazilian social-media content recorded on a high-quality smartp
     bloco1ImagePrompt,
     bloco2ImagePrompt,
     bloco3ImagePrompt,
-    veoPrompt1,
-    veoPrompt2,
-    veoPrompt3,
+    veoPrompt1: appendFidelityLockToVeoPrompt(veoPrompt1),
+    veoPrompt2: appendFidelityLockToVeoPrompt(veoPrompt2),
+    veoPrompt3: appendFidelityLockToVeoPrompt(veoPrompt3),
   };
 }
+

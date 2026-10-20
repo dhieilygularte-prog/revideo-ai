@@ -5,6 +5,7 @@
  * - INSTRUÇÃO 2 — MODO LEILÃO: O QUE IMPLEMENTAR NO APLICATIVO
  */
 
+import { appendFidelityLockToVeoPrompt, buildProductFidelityDirectives } from './produtos2FidelityLock';
 
 export interface LeilaoBidsResult {
   l1: number;
@@ -42,6 +43,8 @@ export interface LeilaoBlockItem {
 
 export interface LeilaoBlockDetails {
   storyboardImageUrl?: string;
+  images?: string[];
+  imagePrompts?: string[];
   storyboardImagePrompt?: string;
   veoPrompt?: string;
   speechText?: string;
@@ -753,6 +756,12 @@ export function buildLeilaoBlockPrompts(params: {
   speeches: LeilaoSpeechParts;
   benefits?: string[];
 }): {
+  bloco1Image1Prompt: string;
+  bloco1Image2Prompt: string;
+  bloco2Image3Prompt: string;
+  bloco2Image4Prompt: string;
+  bloco2Image5Prompt: string;
+  bloco3Image6Prompt: string;
   bloco1ImagePrompt: string;
   bloco2ImagePrompt: string;
   bloco3ImagePrompt: string;
@@ -783,115 +792,137 @@ export function buildLeilaoBlockPrompts(params: {
       ? 'enquadramento mais aberto, mostrando o produto inteiro sobre a plataforma baixa ao lado do púlpito'
       : 'mostrando o produto sobre o púlpito';
 
-  // =========================================================================
-  // STORYBOARD 1 (GERAÇÃO 1): UMA IMAGEM HORIZONTAL 16:9 (1920x1080 / 3840x2160)
-  // Contendo 3 colunas verticais lado a lado, numeradas 1, 2 e 3
-  // O produto aparece em todos os 3 quadros no púlpito/plataforma e no telão ao fundo
-  // =========================================================================
-  const bloco1ImagePrompt = `Wide 16:9 horizontal panoramic storyboard image (1920x1080) composed of THREE TALL VERTICAL PANELS side-by-side (tríptico de 3 colunas verticais lado a lado, como 3 telas de smartphone 9:16 em pé).
-
-PROPORÇÃO E ALINHAMENTO OBRIGATÓRIO (PROPORTION DIRECTIVE):
-- Cada uma das 3 colunas é uma tela vertical completa (proporção 9:16) que vai DO TOPO EXATO ATÉ A BASE EXATA da imagem, preenchendo 100% da altura vertical sem cortes e sem faixas pretas horizontais em cima ou embaixo.
-- COLUNA 1 (Painel esquerdo): x=0 a 33% da largura. Círculo branco pequeno com número 1 no topo.
-- COLUNA 2 (Painel central): x=33% a 66% da largura. Círculo branco pequeno com número 2 no topo.
-- COLUNA 3 (Painel direito): x=66% a 100% da largura. Círculo branco pequeno com número 3 no topo.
-- PROIBIÇÃO ABSOLUTA: NUNCA crie faixas ou linhas horizontais deitadas. NUNCA empilhe cenas uma em cima da outra. As 3 cenas ficam ESTRITAMENTE lado a lado em 3 colunas verticais em pé.
-- REGRA DE PRODUTO LACRADO / EMBALAGEM: Se as fotos de referência forem de embalagem/pacote/caixa fechada (como pacotes de fraldas), NUNCA invente ou mostre o produto aberto por dentro. Mostre sempre o pacote/embalagem fechada exatamente como fotografado!
-
-O mesmo apresentador, idêntico nos 3 quadros: ${presenterDesc}, com ${presenterClothing}.
-O ${productName} aparece nos 3 quadros, exatamente idêntico às fotos de referência (cor, formato, proporção, logotipo e acabamento), sempre na mesma posição: ${posicaoProduto}.
-
-QUADRO 1 (Coluna vertical da esquerda 9:16): interior de uma casa de leilões luxuosa e clássica, estilo teatro europeu: lustres de cristal dourados, camarotes em dois andares com colunas douradas, luz quente. Câmera atrás da plateia, na altura das pessoas. No palco de piso de madeira clara, o apresentador de pé atrás do púlpito de madeira escura, com o braço direito erguido segurando um martelo de leilão, e o produto ao lado dele, visível. Ao fundo, acima do palco, um telão grande mostra apenas a foto do produto, de frente. Em primeiro plano, de costas, a plateia elegante de terno escuro, várias pessoas levantando plaquinhas de lance brancas e lisas.
-
-QUADRO 2 (Coluna vertical central 9:16): o mesmo salão e o mesmo momento, com a câmera mais perto do palco. O apresentador de pé, de frente, atrás do púlpito, aparece dos joelhos para cima, com uma mão apoiada no púlpito e a outra apontando para a plateia, com postura confiante de leiloeiro. O produto está ao lado dele, bem visível e nítido, de frente para a câmera. O martelo fica do outro lado do púlpito. Em primeiro plano, desfocadas, mãos da plateia levantando plaquinhas brancas e lisas.
-
-QUADRO 3 (Coluna vertical da direita 9:16): close do apresentador, da cintura para cima, atrás do púlpito. Com a mão direita ele segura o martelo de leilão (madeira com anel dourado) apoiado na base. Com a mão esquerda ele segura um smartphone preto e olha a tela em choque total: olhos arregalados, sobrancelhas levantadas, boca entreaberta. Em primeiro plano, no púlpito, o produto aparece grande, nítido e de frente para a câmera. Fundo desfocado: plateia com plaquinhas brancas e lisas e o telão com a foto do produto.
-
-Fotorrealista, aparência de foto real em todos os quadros, luz quente de evento. Nenhum texto além dos números dos quadros e do logotipo que já faz parte do próprio produto.`;
+  const fidelityDirectives = buildProductFidelityDirectives(productInfo);
 
   // =========================================================================
-  // STORYBOARD 2 (GERAÇÃO 2): UMA IMAGEM HORIZONTAL 16:9 (1920x1080 / 3840x2160)
-  // Contendo 3 colunas verticais lado a lado, numeradas 4, 5 e 6
+  // BLOCO 1: DUAS IMAGENS VERTICAIS INDEPENDENTES 9:16 (1080 x 1920 px)
+  // Imagem 1: Salão de leilão, plano aberto (plateia e leiloeiro ao fundo)
+  // Imagem 2: Leiloeiro chocado olhando o celular (plano médio no púlpito)
   // =========================================================================
-  const bloco2ImagePrompt = `Wide 16:9 horizontal panoramic storyboard image (1920x1080) composed of THREE TALL VERTICAL PANELS side-by-side (tríptico de 3 colunas verticais lado a lado, como 3 telas de smartphone 9:16 em pé).
+  const bloco1Image1Prompt = `Com base nas fotos de referência do produto, imagem fotorrealista vertical, exatamente 1080 x 1920 pixels.
+Interior de uma casa de leilões luxuosa e clássica, estilo teatro europeu: lustres de cristal dourados, camarotes em dois andares com colunas douradas, luz quente e elegante.
+Ao fundo, no centro, sobre um palco de piso de madeira clara, um leiloeiro de pé atrás de um púlpito de madeira escura, com o braço direito erguido segurando um martelo de leilão de madeira.
+O leiloeiro é ${presenterDesc}, com ${presenterClothing}.
+Ao lado do leiloeiro sobre o púlpito/plataforma está o ${productName}, visível, de frente e idêntico às fotos de referência.
+Ao fundo, acima do palco, um telão grande mostra apenas a foto do mesmo ${productName}, de frente.
+Em primeiro plano, de costas para a câmera, uma plateia elegante de terno escuro sentada em cadeiras, várias pessoas levantando plaquinhas de lance brancas e lisas.
+Câmera na altura da plateia, profundidade de campo, aparência de foto real de evento.
+${fidelityDirectives}
+Nenhum texto, número, letreiro ou logotipo na imagem além do logotipo que já faz parte do próprio produto.`;
 
-PROPORÇÃO E ALINHAMENTO OBRIGATÓRIO (PROPORTION DIRECTIVE):
-- Cada uma das 3 colunas (4, 5 e 6) é uma tela vertical completa (proporção 9:16) que vai DO TOPO EXATO ATÉ A BASE EXATA da imagem, preenchendo 100% da altura vertical.
-- COLUNA 4 (Painel esquerdo): x=0 a 33% da largura. Círculo branco pequeno com número 4 no topo.
-- COLUNA 5 (Painel central): x=33% a 66% da largura. Círculo branco pequeno com número 5 no topo.
-- COLUNA 6 (Painel direito): x=66% a 100% da largura. Círculo branco pequeno com número 6 no topo.
-- PROIBIÇÃO DE QUADRADOS NO CENTRO: As colunas 5 e 6 NÃO são quadradinhos flutuantes no centro com bordas vazias! Cada coluna deve preencher de cima a baixo toda a altura do painel com fotografia comercial de estúdio em alta definição.
-- PROIBIÇÃO DE EMPILHAMENTO: NUNCA empilhe cenas horizontalmente. As 3 cenas ficam ESTRITAMENTE lado a lado em 3 colunas verticais em pé.
-- REGRA DE PRODUTO LACRADO / EMBALAGEM: Se as fotos de referência forem de embalagem/pacote/caixa fechada, mostre sempre o pacote fechado sem abrir nem inventar conteúdo interno!
-
-O mesmo apresentador dos quadros anteriores, idêntico: ${presenterDesc}, com ${presenterClothing}.
-O ${productName} é exatamente idêntico às fotos de referência (cor, formato, proporção, logotipo, acabamento e detalhes), nítido e bem visível em todos os quadros.
-
-QUADRO 4 (Coluna vertical da esquerda 9:16): o mesmo salão de leilão clássico, com luz quente e a plateia desfocada ao fundo. O apresentador atrás do púlpito de madeira escura, enquadrado do peito para cima (${framingQuadro4}), sorrindo largo, com as duas mãos abertas em direção ao produto, num gesto de apresentação ("tcharam!"). O produto está ${posicaoProduto}, no centro da atenção, com a frente principal virada para a câmera, grande e nítido. O martelo fica deitado sobre o púlpito, do outro lado.
-
-QUADRO 5 (Coluna vertical central 9:16): close-up macro em alta definição do produto em ângulo diagonal de 3/4, preenchendo toda a altura da coluna vertical, em ambiente de estúdio com iluminação premium de comercial. Uma mão com a manga da roupa do apresentador mostra o detalhe ligado ao benefício 1: ${beneficio1}. O produto ganha destaque total na imagem.
-
-QUADRO 6 (Coluna vertical da direita 9:16): outro close-up detalhado do mesmo produto de outro ângulo, preenchendo toda a altura da coluna vertical, em ambiente de estúdio com iluminação suave. A mão mostra o detalhe ligado ao benefício 2: ${beneficio2}. O produto ganha destaque total na imagem.
-
-Fotorrealista, aparência de foto real e de comercial de produto premium. Nenhum texto além dos números dos quadros e do logotipo que já faz parte do próprio produto.`;
-
-  // =========================================================================
-  // GERAÇÃO 3: IMAGEM ÚNICA VERTICAL 9:16 (1080 x 1920 px) SEM NÚMERO
-  // Apresentador apontando para a câmera, produto ao lado dele no púlpito e no telão ao fundo
-  // =========================================================================
-  const bloco3ImagePrompt = `Com base nas fotos de referência do produto, crie uma imagem fotorrealista vertical, exatamente 1080 x 1920 pixels. O mesmo apresentador das imagens anteriores (${presenterDesc}), com ${presenterClothing} e um microfone headset discreto na bochecha. Ele está atrás de um púlpito de madeira escura liso, sem placa e sem nada escrito, no salão de leilão clássico com colunas e plateia sentada ao fundo. Ao lado dele está o ${productName}, ${posicaoProduto}, bem visível, grande, nítido e de frente para a câmera, exatamente idêntico às fotos de referência. Ele está inclinado para frente, apontando o dedo indicador direto para a câmera, com a outra mão apoiada perto do produto, sorrindo empolgado, de boca aberta como quem fala com entusiasmo. Atrás dele, o telão mostra apenas a foto do mesmo produto. O martelo de leilão fica deitado sobre o púlpito. Plano médio, luz quente, aparência de foto real. IMPORTANTE: nenhum texto, número, letreiro ou logotipo em lugar nenhum da imagem, além do logotipo que já faz parte do próprio produto. Nenhum outro produto além desse.`;
+  const bloco1Image2Prompt = `Com base nas fotos de referência do produto, imagem fotorrealista vertical, exatamente 1080 x 1920 pixels.
+O mesmo leiloeiro da Imagem 1 (${presenterDesc}, com ${presenterClothing}), em plano médio da cintura para cima, atrás de um púlpito de madeira escura envernizada.
+Com a mão direita ele segura um martelo de leilão de madeira com anel dourado, apoiado na base sobre o púlpito.
+Com a mão esquerda ele segura um smartphone preto e olha para a tela com expressão de choque total: olhos arregalados, sobrancelhas levantadas, boca entreaberta. Relógio prateado no pulso.
+Sobre o púlpito ao lado dele está o ${productName}, bem visível, nítido, grande e de frente para a câmera, exatamente idêntico às fotos de referência.
+Fundo desfocado: salão de leilão clássico com plateia e telão ao fundo mostrando o ${productName}.
+Luz quente de evento, bokeh suave, aparência de foto real.
+${fidelityDirectives}
+Nenhum texto, número, letreiro ou logotipo em lugar nenhum da imagem.`;
 
   // =========================================================================
-  // PROMPTS DO VEO 3 (CONFORME SEÇÃO 7 DA CORREÇÃO 2)
-  // Regra comum: produto parado, sempre visível, de frente e idêntico
+  // BLOCO 2: TRÊS IMAGENS VERTICAIS INDEPENDENTES 9:16 (1080 x 1920 px)
+  // Imagem 3: Apresentador no púlpito apresentando o produto de frente ("tcharam!")
+  // Imagem 4: Close comercial do produto em fundo preto (Benefício 1)
+  // Imagem 5: Close comercial do produto em fundo preto (Benefício 2)
+  // =========================================================================
+  const bloco2Image3Prompt = `Com base nas fotos de referência do produto, imagem fotorrealista vertical, exatamente 1080 x 1920 pixels.
+O mesmo salão de leilão clássico com colunas e iluminação quente.
+O mesmo apresentador das imagens anteriores (${presenterDesc}, com ${presenterClothing}) atrás do púlpito de madeira escura, sorrindo largo, com as duas mãos abertas, uma de cada lado do produto, num gesto eufórico de apresentação ("tcharam!").
+Sobre o púlpito está o ${productName} das fotos de referência, com a frente principal virada de frente para a câmera, exatamente idêntico ao produto real: mesma cor, formato, proporção, logotipo e acabamento.
+${framingQuadro4}.
+O martelo de leilão fica deitado sobre o púlpito.
+Iluminação límpida de estúdio/salão, aparência de foto real de alta conversão.
+${fidelityDirectives}
+Nenhum texto extra além do próprio produto.`;
+
+  const bloco2Image4Prompt = `Com base nas fotos de referência do produto, imagem fotorrealista vertical, exatamente 1080 x 1920 pixels.
+Close-up em ângulo diagonal de 3/4 do ${productName} sobre uma superfície preta fosca, com fundo totalmente preto.
+Uma mão com a manga da roupa do apresentador interage com o principal detalhe do produto ligado ao benefício: ${beneficio1}.
+O produto tem que ser exatamente idêntico ao produto real das fotos (mesma cor, proporção, logotipo e acabamento).
+Iluminação suave de estúdio comercial de produto, com reflexos sutis de borda, preenchendo o enquadramento vertical.
+${fidelityDirectives}
+Nenhum texto, número ou letreiro na imagem.`;
+
+  const bloco2Image5Prompt = `Com base nas fotos de referência do produto, imagem fotorrealista vertical, exatamente 1080 x 1920 pixels.
+Outro close-up nítido e detalhado do mesmo ${productName} sobre superfície preta fosca e fundo preto.
+Uma mão com a manga da roupa do apresentador interage com o detalhe ligado ao benefício: ${beneficio2}.
+O produto é rigorosa e perfeitamente idêntico às fotos de referência (mesma cor, botões, acabamento e dimensões).
+Iluminação de estúdio comercial premium, aparência de propaganda oficial.
+${fidelityDirectives}
+Nenhum texto, número ou logotipo estranho.`;
+
+  // =========================================================================
+  // BLOCO 3: UMA IMAGEM VERTICAL INDEPENDENTE 9:16 (1080 x 1920 px)
+  // Imagem 6: Leiloeiro apontando para a câmera e carrinho laranja, produto no púlpito e telão
+  // =========================================================================
+  const bloco3Image6Prompt = `Com base nas fotos de referência do produto, imagem fotorrealista vertical, exatamente 1080 x 1920 pixels.
+O mesmo apresentador das imagens anteriores (${presenterDesc}), com ${presenterClothing} e um microfone headset discreto na bochecha.
+Ele está atrás de um púlpito de madeira escura liso, sem placa e sem nada escrito, no salão de leilão clássico com colunas e plateia sentada ao fundo.
+Ao lado dele está o ${productName}, ${posicaoProduto}, bem visível, grande, nítido e de frente para a câmera, exatamente idêntico às fotos de referência.
+Ele está inclinado para frente, apontando o dedo indicador direto para a câmera e com a outra mão indicando para baixo em direção ao carrinho laranja, sorrindo empolgado, de boca aberta como quem fala com entusiasmo.
+Atrás dele, um telão grande mostra apenas a foto do mesmo ${productName}, de frente.
+O martelo de leilão fica deitado sobre o púlpito.
+Plano médio, luz quente, aparência de foto real.
+${fidelityDirectives}
+IMPORTANTE: nenhum texto, número, letreiro ou logotipo em lugar nenhum da imagem além do logotipo que já faz parte do próprio produto. Nenhum outro produto além desse.`;
+
+  // Aliases para compatibilidade
+  const bloco1ImagePrompt = bloco1Image1Prompt;
+  const bloco2ImagePrompt = bloco2Image3Prompt;
+  const bloco3ImagePrompt = bloco3Image6Prompt;
+
+  // =========================================================================
+  // PROMPTS DO VEO 3 (COM TRAVA OBRIGATÓRIA DE FIDELIDADE VISUAL)
+  // Geração 1: Imagens 1 e 2 (0-12s)
+  // Geração 2: Imagens 3, 4 e 5 (12-24s)
+  // Geração 3: Imagem 6 (24-30s)
   // =========================================================================
   const fala1A = speeches.cena1A || speeches.cena1;
   const fala1B = speeches.cena1B || speeches.cena1;
-  const fala1C = speeches.cena1C || speeches.cena1;
   const fala2A = speeches.cena2A || speeches.cena2;
   const fala2B = speeches.cena2B || speeches.cena2;
-  const fala2C = speeches.cena2C || speeches.cena2B || speeches.cena2;
   const fala3 = speeches.cena3;
 
-  const veoPrompt1 = `Vídeo vertical 9:16, fotorrealista, 10 segundos. A imagem anexada é um storyboard com 3 quadros numerados (1, 2 e 3). Cada quadro vira uma tomada em tela cheia, na ordem. Os números e as faixas brancas do storyboard NÃO aparecem no vídeo. Mantenha cenário, personagem, produto e enquadramento idênticos a cada quadro. O produto está visível nas 3 tomadas, sempre parado, na mesma posição, de frente para a câmera e idêntico ao do storyboard. Ele nunca some, gira, vira de costas ou muda de formato.
+  const rawVeoPrompt1 = `Vídeo vertical 9:16, fotorrealista, 10 segundos, com um corte no meio. Use as imagens de referência como referência exata de cenário, personagem e enquadramento. O produto está presente e visível em todas as tomadas, exatamente idêntico às fotos de referência.
 
-TOMADA 1 (0 a 3 segundos) – QUADRO 1: plano aberto do salão de leilão, câmera atrás da plateia. O apresentador (${presenterDesc}) está no palco, ao lado do produto, ergue o martelo e fala alto e rápido, no ritmo de leiloeiro, enquanto a plateia levanta as plaquinhas. O telão ao fundo mostra o produto. Leve avanço de câmera.
+TOMADA 1 (0 a 5 segundos) – Imagem 1: salão de leilão clássico e luxuoso, câmera atrás da plateia. O leiloeiro (${presenterDesc}) está atrás do púlpito no palco, ao lado do produto, ergue o martelo de leilão e fala alto, rápido e eufórico, no ritmo típico de leiloeiro, enquanto várias pessoas da plateia levantam as plaquinhas de lance. O telão ao fundo mostra o produto. Leve movimento de câmera avançando para frente.
 Fala (português brasileiro, voz ${presenterVoice} grave e eufórica): "${fala1A}"
 
-TOMADA 2 (3 a 5,5 segundos) – corte seco para o QUADRO 2: câmera mais perto, o apresentador de frente, atrás do púlpito, com o produto ao lado bem visível. Ele aponta para a plateia, pega o martelo e o ergue para bater, falando ainda mais rápido e animado.
-Fala (mesma voz): "${fala1B}"
-
-TOMADA 3 (5,5 a 10 segundos) – corte seco para o QUADRO 3: close do apresentador com o martelo numa mão e o celular na outra, com o produto em primeiro plano no púlpito, nítido. Ele trava o martelo no ar, olha o celular, arregala os olhos em choque, aproxima o celular do rosto e fala surpreso e indignado.
-Fala (mesma voz): "${fala1C}"
+TOMADA 2 (5 a 10 segundos) – corte seco para a Imagem 2: close do mesmo leiloeiro atrás do púlpito, segurando o martelo com uma mão e o smartphone com a outra, com o produto nítido em primeiro plano sobre o púlpito. Ele trava o martelo no ar, olha o celular, arregala os olhos em choque, aproxima o celular do rosto e fala surpreso, rápido e indignado.
+Fala (português brasileiro, mesma voz): "${fala1B}"
 
 Áudio: burburinho da plateia e som ambiente de salão de leilão. Sem música, sem legendas, sem nenhum texto na tela.`;
 
-  const veoPrompt2 = `Vídeo vertical 9:16, fotorrealista, 10 segundos. A imagem anexada é um storyboard com 3 quadros numerados (4, 5 e 6). Cada quadro vira uma tomada em tela cheia, na ordem. Os números e as faixas brancas do storyboard NÃO aparecem no vídeo. O produto está visível nas 3 tomadas e permanece exatamente idêntico ao do storyboard: mesma cor, formato, logotipo e detalhes, sem deformações. Ele nunca some, nunca é coberto, nunca vira de costas e não gira sozinho.
+  const rawVeoPrompt2 = `Vídeo vertical 9:16, fotorrealista, 10 segundos, com um corte no meio. Use as imagens de referência como referência exata de cenário, personagem e produto. O produto deve permanecer exatamente idêntico ao das imagens de referência, sem deformações. O produto NUNCA aparece de costas, de lado ou girando, e não se move sozinho.
 
-TOMADA 1 (0 a 3,5 segundos) – QUADRO 4: salão de leilão. O apresentador (${presenterDesc}) bate o martelo uma vez, abre um sorriso largo e abre as duas mãos em direção ao produto, que está no púlpito de frente para a câmera, exatamente como no QUADRO 4, apresentando com empolgação.
+TOMADA 1 (0 a 5 segundos) – Imagem 3: apresentação no salão/estúdio. O apresentador (${presenterDesc}) atrás do púlpito, sorrindo largo, com as duas mãos abertas ao lado do produto, apresentando com empolgação de frente para a câmera ("tcharam!"). A câmera avança suavemente valorizando o produto de frente.
 Fala (português brasileiro, voz ${presenterVoice} eufórica e rápida): "${fala2A}"
 
-TOMADA 2 (3,5 a 7 segundos) – corte seco para o QUADRO 5: close do produto sobre superfície preta, com fundo preto. A mão mostra o detalhe do primeiro benefício, igual ao QUADRO 5. Movimento de câmera lento e suave, estilo comercial.
+TOMADA 2 (5 a 10 segundos) – corte seco para as Imagens 4 e 5: close do produto sobre superfície preta fosca, com fundo preto. A mão interage com o principal detalhe do produto. Movimento de câmera lento e suave em volta do produto, estilo comercial de produto premium.
 Fala (mesma voz, em off, empolgada e clara): "${fala2B}"
 
-TOMADA 3 (7 a 10 segundos) – corte seco para o QUADRO 6: outro close do produto, de outro ângulo, sobre fundo preto. A mão mostra o detalhe do segundo benefício, igual ao QUADRO 6. Movimento de câmera lento e suave.
-Fala (mesma voz, em off): "${fala2C}"
+Áudio: som ambiente limpo. Sem música, sem legendas, sem nenhum texto na tela.`;
 
-Áudio: uma batida de martelo no início. Sem música, sem legendas, sem nenhum texto na tela.`;
+  const rawVeoPrompt3 = `Vídeo vertical 9:16, fotorrealista, 10 segundos, tomada única. Use a imagem anexada como referência exata de cenário, personagem, produto e enquadramento. O produto ao lado do apresentador e no telão permanece visível o tempo todo, parado, de frente e idêntico ao da imagem.
 
-  const veoPrompt3 = `Vídeo vertical 9:16, fotorrealista, 10 segundos, tomada única. Use a imagem anexada como referência exata de cenário, personagem, produto e enquadramento. O produto ao lado do apresentador e no telão permanece visível o tempo todo, parado, de frente e idêntico ao da imagem.
-
-O apresentador (${presenterDesc}), com microfone headset, está atrás do púlpito no salão de leilão, com o produto ao lado dele e a plateia ao fundo. Ele se inclina para frente, aponta o dedo indicador para a câmera, depois toca levemente o produto com a outra mão e aponta para baixo, para o canto inferior da tela, sorrindo animado e falando com urgência, rápido e eufórico, como quem dá a última chance.
+O apresentador (${presenterDesc}), com microfone headset, está atrás do púlpito no salão de leilão, com o produto ao lado dele e a plateia ao fundo. Ele se inclina para frente, aponta o dedo indicador para a câmera e depois aponta para baixo, para o canto inferior da tela (carrinho laranja), sorrindo animado e falando com urgência, rápido e eufórico, como quem dá a última chance.
 Fala (português brasileiro, voz ${presenterVoice} grave e empolgada): "${fala3}"
 
 Câmera fixa com leve aproximação lenta. Áudio: burburinho leve da plateia ao fundo. Sem música, sem legendas, sem nenhum texto na tela.`;
 
   return {
+    bloco1Image1Prompt,
+    bloco1Image2Prompt,
+    bloco2Image3Prompt,
+    bloco2Image4Prompt,
+    bloco2Image5Prompt,
+    bloco3Image6Prompt,
     bloco1ImagePrompt,
     bloco2ImagePrompt,
     bloco3ImagePrompt,
-    veoPrompt1,
-    veoPrompt2,
-    veoPrompt3,
+    veoPrompt1: appendFidelityLockToVeoPrompt(rawVeoPrompt1),
+    veoPrompt2: appendFidelityLockToVeoPrompt(rawVeoPrompt2),
+    veoPrompt3: appendFidelityLockToVeoPrompt(rawVeoPrompt3),
   };
 }

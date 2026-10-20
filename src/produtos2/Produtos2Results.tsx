@@ -37,7 +37,11 @@ import { TokenUsageStats } from '../types';
 interface Produtos2ResultsProps {
   result: Produtos2ResultState;
   onUpdateResult: React.Dispatch<React.SetStateAction<Produtos2ResultState | null>>;
-  onRegenerateStoryboard: (customCorrection?: string, sceneTarget?: 1 | 2 | 3) => void;
+  onRegenerateStoryboard: (
+    customCorrection?: string,
+    sceneTarget?: 1 | 2 | 3,
+    imageIndex?: number
+  ) => void;
   onRecreateStoryboardWithCopy?: (
     newCopy: string,
     copySourceLabel?: string,
@@ -1075,13 +1079,14 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
         </div>
 
         {/* ================================================================= */}
-        {/* BLOCO 1: SALÃO DE LEILÃO (0–12s | 2 Quadros 1920x1080 Paisagem)    */}
+        {/* BLOCO 1: SALÃO DE LEILÃO (0–12s | 2 Imagens Verticais 1080x1920)   */}
         {/* ================================================================= */}
         <LeilaoBlockSection
           blockNumber={1}
           title="Bloco 1 (0–12s) — Salão de Leilão"
-          subtitle="Storyboard horizontal 16:9 em alta resolução contendo 3 quadros verticais (1, 2 e 3) · Salão aberto & Leiloeiro chocado"
-          downloadFileName="leilao_storyboard_1"
+          subtitle="2 imagens verticais 9:16 independentes (1080 × 1920 px) · Salão aberto (Img 1) & Leiloeiro chocado com smartphone (Img 2)"
+          downloadFileName="leilao_cena1"
+          images={leilao.bloco1?.images}
           storyboardImageUrl={leilao.bloco1?.storyboardImageUrl}
           isRegeneratingStoryboard={Boolean(result.isRegeneratingStoryboard)}
           veoPrompt={leilao.bloco1?.veoPrompt || ''}
@@ -1126,7 +1131,7 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
               };
             });
           }}
-          onRegenerateImage={(instruction) => onRegenerateStoryboard(instruction, 1)}
+          onRegenerateImage={(instruction, imgIdx) => onRegenerateStoryboard(instruction, 1, imgIdx)}
           onAuditChange={(vAudit) => {
             onUpdateResult((prev) => {
               if (!prev || !prev.leilao) return prev;
@@ -1169,13 +1174,14 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
         />
 
         {/* ================================================================= */}
-        {/* BLOCO 2: APRESENTAÇÃO & CLOSES (12–24s | 3 Quadros 16:9)          */}
+        {/* BLOCO 2: APRESENTAÇÃO & CLOSES (12–24s | 3 Imagens 1080x1920)     */}
         {/* ================================================================= */}
         <LeilaoBlockSection
           blockNumber={2}
           title="Bloco 2 (12–24s) — Apresentação & Closes do Produto"
-          subtitle="Storyboard horizontal 16:9 em alta resolução contendo 3 quadros verticais (4, 5 e 6) · Salão de leilão & Closes em fundo preto"
-          downloadFileName="leilao_storyboard_2"
+          subtitle="3 imagens verticais 9:16 independentes (1080 × 1920 px) · Apresentador (Img 3), Close Benefício 1 (Img 4), Close Benefício 2 (Img 5)"
+          downloadFileName="leilao_cena2"
+          images={leilao.bloco2?.images}
           storyboardImageUrl={leilao.bloco2?.storyboardImageUrl}
           isRegeneratingStoryboard={Boolean(result.isRegeneratingStoryboard)}
           veoPrompt={leilao.bloco2?.veoPrompt || ''}
@@ -1219,7 +1225,7 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
               };
             });
           }}
-          onRegenerateImage={(instruction) => onRegenerateStoryboard(instruction, 2)}
+          onRegenerateImage={(instruction, imgIdx) => onRegenerateStoryboard(instruction, 2, imgIdx)}
           onAuditChange={(vAudit) => {
             onUpdateResult((prev) => {
               if (!prev || !prev.leilao) return prev;
@@ -1261,13 +1267,14 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
         />
 
         {/* ================================================================= */}
-        {/* BLOCO 3: LEILOEIRO NO TELÃO (24–30s | 1 Quadro 9:16 1080x1920)     */}
+        {/* BLOCO 3: LEILOEIRO NO TELÃO (24–30s | 1 Imagem 1080x1920)          */}
         {/* ================================================================= */}
         <LeilaoBlockSection
           blockNumber={3}
           title="Bloco 3 (24–30s) — Chamada no Carrinho Laranja"
-          subtitle="Imagem única vertical 9:16 (1080 × 1920 px, sem número) · Leiloeiro apontando com produto no telão"
-          downloadFileName="leilao_cena_final"
+          subtitle="Imagem única vertical 9:16 independente (1080 × 1920 px, sem número) · Leiloeiro apontando com produto no telão (Img 6)"
+          downloadFileName="leilao_cena3"
+          images={leilao.bloco3?.images}
           storyboardImageUrl={leilao.bloco3?.storyboardImageUrl}
           isRegeneratingStoryboard={Boolean(result.isRegeneratingStoryboard)}
           veoPrompt={leilao.bloco3?.veoPrompt || ''}
@@ -1311,7 +1318,7 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
               };
             });
           }}
-          onRegenerateImage={(instruction) => onRegenerateStoryboard(instruction, 3)}
+          onRegenerateImage={(instruction, imgIdx) => onRegenerateStoryboard(instruction, 3, imgIdx)}
           onAuditChange={(vAudit) => {
             onUpdateResult((prev) => {
               if (!prev || !prev.leilao) return prev;

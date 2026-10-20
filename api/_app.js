@@ -1261,6 +1261,42 @@ REGRAS CR\xCDTICAS:
 - "peca": substantivo curto do produto em min\xFAsculas (ex: pijama, calca, bermuda, tenis, sandalia, vestido).`;
 }
 
+// src/produtos2/produtos2FidelityLock.ts
+var PRODUCT_VISUAL_FIDELITY_LOCK_BLOCK = `PRODUCT VISUAL FIDELITY LOCK \u2014 STRICT REFERENCE CONSTRAINTS:
+
+Use the provided product reference images as the sole visual authority for the exact physical appearance of the product.
+
+Never invent, infer, reconstruct, hallucinate, or reveal any product surface, side, rear view, bottom view, internal component, hidden detail, accessory, connector, texture, label, color variation, or physical feature that is not clearly supported by the provided reference images.
+
+Do not rotate, turn, orbit around, flip, tilt, or move the camera around the product in a way that reveals any unreferenced surface or undocumented angle.
+
+Do not generate a reverse angle, a new perspective, or a three-dimensional view that exposes previously unseen parts of the product.
+
+Keep the product within the documented viewpoints and visible surfaces of the reference images throughout the entire video.
+
+Any camera movement must remain within the visual information established by the references. Prefer static framing, controlled push-ins, controlled pull-backs, or movements that do not reveal unknown surfaces.
+
+If the product is shown only from the front, keep it front-facing. Do not reveal its sides, rear, bottom, or internal construction unless those specific views are explicitly documented in the reference images.
+
+If only a closed package is shown, do not open it, remove its contents, or reveal individual items inside unless those items and their appearance are explicitly documented in the reference images.
+
+Preserve the exact product identity, proportions, shape, color, visible components, packaging, labels, and other documented details.
+
+When a requested action would require inventing an unknown product feature or revealing an undocumented surface, do not perform that action. Use an alternative camera framing or scene action that preserves the documented appearance.
+
+Reference fidelity takes absolute priority over cinematic creativity, camera movement, scene variety, and visual enhancement.
+
+Never fabricate visual information about the product.`;
+function appendFidelityLockToVeoPrompt(prompt) {
+  if (!prompt || typeof prompt !== "string") return prompt || "";
+  if (prompt.includes("PRODUCT VISUAL FIDELITY LOCK")) {
+    return prompt;
+  }
+  return `${PRODUCT_VISUAL_FIDELITY_LOCK_BLOCK}
+
+${prompt.trim()}`;
+}
+
 // src/produtos2/produtos2Prompts.ts
 function buildProdutos2PlanningSystemPrompt() {
   return `Voc\xEA \xE9 o Diretor Criativo Copy-First do Modo Produtos 2.0.
@@ -2801,7 +2837,9 @@ Reescreva o prompt completo aplicando esta corre\xE7\xE3o com m\xE1xima qualidad
         });
         const refined = completion.choices[0]?.message?.content?.trim();
         if (refined) {
-          return res.json({ success: true, refinedPrompt: refined.replace(/^```[a-zA-Z]*\n?/, "").replace(/\n?```$/, "").trim() });
+          const cleanRefined = refined.replace(/^```[a-zA-Z]*\n?/, "").replace(/\n?```$/, "").trim();
+          const finalRefined = currentPrompt.includes("PRODUCT VISUAL FIDELITY LOCK") ? appendFidelityLockToVeoPrompt(cleanRefined) : cleanRefined;
+          return res.json({ success: true, refinedPrompt: finalRefined });
         }
       } catch (err) {
         console.warn("Erro ao refinar prompt via OpenAI:", err?.message || err);
@@ -2823,7 +2861,9 @@ ${userMessage}`
         });
         const geminiText = geminiRes.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
         if (geminiText) {
-          return res.json({ success: true, refinedPrompt: geminiText.replace(/^```[a-zA-Z]*\n?/, "").replace(/\n?```$/, "").trim() });
+          const cleanGemini = geminiText.replace(/^```[a-zA-Z]*\n?/, "").replace(/\n?```$/, "").trim();
+          const finalRefined = currentPrompt.includes("PRODUCT VISUAL FIDELITY LOCK") ? appendFidelityLockToVeoPrompt(cleanGemini) : cleanGemini;
+          return res.json({ success: true, refinedPrompt: finalRefined });
         }
       } catch (gemErr) {
         console.warn("Erro ao refinar prompt via Gemini:", gemErr?.message || gemErr);
@@ -2995,8 +3035,8 @@ app.post("/api/generate-scene-image", async (req, res) => {
           hasUserProvidedModel,
           isCloneMode,
           preserveLocation,
-          aspectRatio: req.body.isLeilaoBlock === 1 || req.body.isLeilaoBlock === 2 || req.body.aspectRatio === "16:9" ? "16:9" : req.body.aspectRatio || "9:16",
-          size: req.body.size || (req.body.isLeilaoBlock === 1 || req.body.isLeilaoBlock === 2 || req.body.aspectRatio === "16:9" ? "1792x1024" : void 0)
+          aspectRatio: req.body.aspectRatio === "16:9" && !req.body.isLeilaoBlock ? "16:9" : req.body.aspectRatio || "9:16",
+          size: req.body.size || (req.body.aspectRatio === "16:9" && !req.body.isLeilaoBlock ? "1792x1024" : void 0)
         });
         return res.json(result);
       } catch (oiErr) {
@@ -4553,19 +4593,17 @@ app.post("/api/produtos2-generate-storyboard", async (req, res) => {
     const reqSceneCount = Number(req.body.sceneCount);
     const isLeilaoBlockNum = Number(req.body.isLeilaoBlock) || 0;
     const promptStr = String(prompt);
-    const isLeilao1 = isLeilaoBlockNum === 1 || isLeilaoBlockNum === 0 && (/leilao_storyboard_1/i.test(promptStr) || /QUADRO 1/i.test(promptStr) && /QUADRO 2/i.test(promptStr) && /QUADRO 3/i.test(promptStr) && !/QUADRO 4/i.test(promptStr) || /CENA 1.*leil/i.test(promptStr) || /BLOCO 1/i.test(promptStr));
-    const isLeilao2 = isLeilaoBlockNum === 2 || isLeilaoBlockNum === 0 && (/leilao_storyboard_2/i.test(promptStr) || /QUADRO 4/i.test(promptStr) && /QUADRO 5/i.test(promptStr) && /QUADRO 6/i.test(promptStr) || /BLOCO 2/i.test(promptStr));
-    const isLeilao3 = isLeilaoBlockNum === 3 || isLeilaoBlockNum === 0 && (/leilao_cena_final|BLOCO 3|GERAÇÃO 3/i.test(promptStr) || /apontando o dedo indicador direto para a câmera/i.test(promptStr) && !/QUADRO 1/i.test(promptStr));
+    const isLeilaoMode = req.body.sceneMode === "modo_leilao" || isLeilaoBlockNum > 0 || /MODO LEILÃO|leilao_/i.test(promptStr);
     const isAchadinhosBlockNum = Number(req.body.isAchadinhosBlock) || 0;
     const isAchadinhos1 = isAchadinhosBlockNum === 1 || isAchadinhosBlockNum === 0 && (/MODO AURORA ACHADINHOS.*CENA 1/i.test(promptStr) || /Storyboard 1A\/1B\/1C|achadinhos_storyboard_1/i.test(promptStr));
     const isAchadinhos2 = isAchadinhosBlockNum === 2 || isAchadinhosBlockNum === 0 && (/MODO AURORA ACHADINHOS.*CENA 2/i.test(promptStr) || /Storyboard 2A\/2B\/2C|achadinhos_storyboard_2/i.test(promptStr));
     const isAchadinhos3 = isAchadinhosBlockNum === 3 || isAchadinhosBlockNum === 0 && (/MODO AURORA ACHADINHOS.*CENA 3/i.test(promptStr) || /Storyboard 3A\/3B\/3C|achadinhos_storyboard_3/i.test(promptStr));
     const isAchadinhosBlock = isAchadinhos1 || isAchadinhos2 || isAchadinhos3;
-    const isStrictlyVerticalMode = req.body.sceneMode === "1_cena_10s" || req.body.sceneMode === "1_cena_15s" || req.body.sceneMode === "2_cenas_10s" || isLeilao3 || req.body.aspectRatio === "9:16" && !isLeilao1 && !isLeilao2 && !isAchadinhosBlock;
-    const isLandscapeStoryboard = (isLeilao1 || isLeilao2 || isAchadinhosBlock || req.body.aspectRatio === "16:9") && !isStrictlyVerticalMode;
+    const isStrictlyVerticalMode = req.body.sceneMode === "1_cena_10s" || req.body.sceneMode === "1_cena_15s" || req.body.sceneMode === "2_cenas_10s" || isLeilaoMode || req.body.aspectRatio === "9:16" && !isAchadinhosBlock;
+    const isLandscapeStoryboard = (isAchadinhosBlock || req.body.aspectRatio === "16:9" && !isLeilaoMode) && !isStrictlyVerticalMode;
     const isSixFrames = reqSceneCount === 6 || /GRADE\s+2x3|EXATAMENTE\s+6\s+(?:QUADROS|CENAS)/i.test(String(prompt));
-    const frameCount = isLeilao1 || isLeilao2 || isAchadinhosBlock ? 3 : isLeilao3 ? 1 : isSixFrames ? 6 : 9;
-    const gridLabel = isAchadinhosBlock ? "3 colunas verticais lado a lado em uma \xFAnica imagem horizontal 16:9 widescreen (grade 1 linha x 3 colunas: Quadro A \xE0 esquerda, Quadro B ao centro, Quadro C \xE0 direita), sem n\xFAmeros, sem bal\xF5es e sem legendas sobrepostas" : isLeilao1 ? "3 colunas verticais lado a lado em uma \xFAnica tela horizontal 16:9 widescreen (1920x1080), com n\xFAmeros discretos 1, 2 e 3 em c\xEDrculos brancos no canto superior direito" : isLeilao2 ? "3 colunas verticais lado a lado em uma \xFAnica tela horizontal 16:9 widescreen (1920x1080), com n\xFAmeros discretos 4, 5 e 6 em c\xEDrculos brancos no canto superior direito" : isLeilao3 ? "1 quadro fotogr\xE1fico vertical \xFAnico 9:16 (sem n\xFAmero)" : isSixFrames ? "2x3 (2 colunas x 3 linhas)" : "3x3 (3 colunas x 3 linhas)";
+    const frameCount = isAchadinhosBlock ? 3 : isLeilaoMode ? 1 : isSixFrames ? 6 : 9;
+    const gridLabel = isAchadinhosBlock ? "3 colunas verticais lado a lado em uma \xFAnica imagem horizontal 16:9 widescreen (grade 1 linha x 3 colunas: Quadro A \xE0 esquerda, Quadro B ao centro, Quadro C \xE0 direita), sem n\xFAmeros, sem bal\xF5es e sem legendas sobrepostas" : isLeilaoMode ? "1 quadro fotogr\xE1fico vertical \xFAnico 9:16 (sem n\xFAmero)" : isSixFrames ? "2x3 (2 colunas x 3 linhas)" : "3x3 (3 colunas x 3 linhas)";
     const chosenAspectRatio = isLandscapeStoryboard ? "16:9" : "9:16";
     const chosenSize = chosenAspectRatio === "16:9" ? "1792x1024" : "1024x1792";
     const photosList = Array.isArray(productPhotosBase64) ? productPhotosBase64.filter(Boolean) : [];
@@ -4688,24 +4726,17 @@ ${correctionPrompt.trim()}
           }
         }
         parts.push({ text: effectivePrompt });
-        const isLeilaoBlock = isLeilao1 || isLeilao2 || isLeilao3;
         const variationInstructionRule = activeVariations.length >= 2 ? `- REGRA MANDAT\xD3RIA DE ALTERN\xC2NCIA DE CORES ENTRE OS QUADROS: O produto possui ${activeVariations.length} varia\xE7\xF5es de cores/modelos. Voc\xEA DEVE OBRIGATORIAMENTE alternar as cores conforme a divis\xE3o especificada. NUNCA gere todos os ${frameCount} quadros na mesma cor! Apenas o modelo, formato e pe\xE7as permanecem id\xEAnticos, a cor DEVE alternar entre os blocos de quadros!` : `- PRODUCT LOCK ABSOLUTO: O produto em todos os quadros onde aparece deve ser 100% id\xEAntico \xE0s fotos reais anexadas (mesmo formato, cor, textura, bot\xF5es, fun\xE7\xF5es, propor\xE7\xE3o e detalhes).`;
         const systemInstructionText = isAchadinhosBlock ? `VOC\xCA \xC9 O MOTOR VISUAL DO MODO AURORA ACHADINHOS (3 CENAS DE 10S).
 - Gere UMA IMAGEM FOTOGR\xC1FICA HORIZONTAL 16:9 (1920x1080) composta por exatamente 3 quadros verticais de propor\xE7\xE3o aproximada 9:16, organizados lado a lado da esquerda para a direita (Quadro A \xE0 esquerda, Quadro B no centro, Quadro C \xE0 direita).
 - Os tr\xEAs quadros devem representar instantes sucessivos de uma a\xE7\xE3o cont\xEDnua da mesma personagem, mesmo produto e mesmo ambiente.
 - SEM N\xDAMEROS, SEM BAL\xD5ES E SEM TEXTOS: \xC9 terminantemente proibido colocar letras A/B/C sobre a imagem, n\xFAmeros, legendas, t\xEDtulos, bal\xF5es ou marcas d'\xE1gua.
 - Fotografia ultrarrealista com textura de pele natural, ilumina\xE7\xE3o de smartphone e cen\xE1rio brasileiro cotidiano.
-- Fidelidade absoluta \xE0s fotos reais do produto.` : isLeilaoBlock ? isLeilao3 ? `VOC\xCA \xC9 O GERADOR VISUAL DA CENA FINAL DO MODO LEIL\xC3O.
-- Gere UMA \xDANICA IMAGEM VERTICAL 9:16 (1080x1920), plano m\xE9dio fotorrealista.
+- Fidelidade absoluta \xE0s fotos reais do produto.` : isLeilaoMode ? `VOC\xCA \xC9 O GERADOR VISUAL DO MODO LEIL\xC3O.
+- Gere UMA \xDANICA IMAGEM VERTICAL 9:16 (1080x1920), fotorrealista.
 - SEM N\xDAMEROS DE QUADRO, sem faixas brancas e sem legendas sobrepostas.
-- Apresentador atr\xE1s do p\xFAlpito, apontando para a c\xE2mera, com o produto ao lado dele bem vis\xEDvel e o tel\xE3o ao fundo mostrando a foto do produto.
-- Fidelidade absoluta \xE0s fotos reais do produto.` : `VOC\xCA \xC9 O GERADOR DE STORYBOARD DO MODO LEIL\xC3O.
-- Gere UMA IMAGEM FOTOGR\xC1FICA HORIZONTAL 16:9 (WIDESCREEN 1920x1080) contendo ${gridLabel}.
-- \xC9 TERMINANTEMENTE PROIBIDO GERAR IMAGEM VERTICAL. A imagem DEVE ser panor\xE2mica e muito mais larga do que alta (formato horizontal 16:9 paisagem).
-- As 3 colunas verticais devem ficar dispostas lado a lado na horizontal dividindo igualmente a largura da tela panor\xE2mica 16:9, separadas por uma linha divis\xF3ria branca fina vertical.
-- As colunas devem ser numeradas com selos circulares brancos pequenos no canto superior direito de cada coluna com o n\xFAmero preto correspondente (${isLeilao1 ? "1, 2 e 3" : "4, 5 e 6"}).
-- ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: N\xE3o adicione legendas flutuantes, textos publicit\xE1rios externos, pre\xE7os, setas, carrinho de compras, marca d'\xE1gua externa, @ ou logotipo do TikTok. Apenas os n\xFAmeros nos selos circulares e a logomarca original do fabricante no pr\xF3prio produto.
-- Fidelidade absoluta \xE0s fotos reais do produto em todas as colunas onde o produto aparece.` : `VOC\xCA \xC9 O GERADOR DE STORYBOARD DO MODO PRODUTOS 2.0.
+- Enquadramento vertical 9:16 cinematogr\xE1fico de alta qualidade comercial.
+- Fidelidade absoluta \xE0s fotos reais do produto em todos os detalhes.` : `VOC\xCA \xC9 O GERADOR DE STORYBOARD DO MODO PRODUTOS 2.0.
 - Gere UMA \xDANICA IMAGEM VERTICAL 9:16 (1080x1920) contendo uma grade ${gridLabel} com EXATAMENTE ${frameCount} quadros fotogr\xE1ficos ultra-realistas numerados de 1 a ${frameCount} (selo circular branco pequeno no canto superior esquerdo de cada quadro com n\xFAmero preto).
 - Cantos arredondados nos quadros, separados por uma borda branca fina, sobre fundo branco.
 ${variationInstructionRule}

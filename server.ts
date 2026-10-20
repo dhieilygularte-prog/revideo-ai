@@ -32,6 +32,7 @@ import {
   extractUserSpeechFromInstructions,
   fixCommonSlips,
 } from './src/produtos2/produtos2UserSpeechExtractor';
+import { appendFidelityLockToVeoPrompt } from './src/produtos2/produtos2FidelityLock';
 
 dotenv.config();
 
@@ -1467,7 +1468,11 @@ Reescreva o prompt completo aplicando esta correção com máxima qualidade.`;
         });
         const refined = completion.choices[0]?.message?.content?.trim();
         if (refined) {
-          return res.json({ success: true, refinedPrompt: refined.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim() });
+          const cleanRefined = refined.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
+          const finalRefined = currentPrompt.includes('PRODUCT VISUAL FIDELITY LOCK')
+            ? appendFidelityLockToVeoPrompt(cleanRefined)
+            : cleanRefined;
+          return res.json({ success: true, refinedPrompt: finalRefined });
         }
       } catch (err: any) {
         console.warn('Erro ao refinar prompt via OpenAI:', err?.message || err);
@@ -1489,7 +1494,11 @@ Reescreva o prompt completo aplicando esta correção com máxima qualidade.`;
         });
         const geminiText = geminiRes.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
         if (geminiText) {
-          return res.json({ success: true, refinedPrompt: geminiText.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim() });
+          const cleanGemini = geminiText.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
+          const finalRefined = currentPrompt.includes('PRODUCT VISUAL FIDELITY LOCK')
+            ? appendFidelityLockToVeoPrompt(cleanGemini)
+            : cleanGemini;
+          return res.json({ success: true, refinedPrompt: finalRefined });
         }
       } catch (gemErr: any) {
         console.warn('Erro ao refinar prompt via Gemini:', gemErr?.message || gemErr);
@@ -1682,8 +1691,8 @@ app.post('/api/generate-scene-image', async (req, res) => {
           hasUserProvidedModel,
           isCloneMode,
           preserveLocation,
-          aspectRatio: (req.body.isLeilaoBlock === 1 || req.body.isLeilaoBlock === 2 || req.body.aspectRatio === '16:9') ? '16:9' : (req.body.aspectRatio || '9:16'),
-          size: req.body.size || ((req.body.isLeilaoBlock === 1 || req.body.isLeilaoBlock === 2 || req.body.aspectRatio === '16:9') ? '1792x1024' : undefined),
+          aspectRatio: (req.body.aspectRatio === '16:9' && !req.body.isLeilaoBlock) ? '16:9' : (req.body.aspectRatio || '9:16'),
+          size: req.body.size || ((req.body.aspectRatio === '16:9' && !req.body.isLeilaoBlock) ? '1792x1024' : undefined),
         });
         return res.json(result);
       } catch (oiErr: any) {
@@ -3552,23 +3561,10 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
     const isLeilaoBlockNum = Number(req.body.isLeilaoBlock) || 0;
     const promptStr = String(prompt);
 
-    const isLeilao1 = isLeilaoBlockNum === 1 || (isLeilaoBlockNum === 0 && (
-      /leilao_storyboard_1/i.test(promptStr) ||
-      (/QUADRO 1/i.test(promptStr) && /QUADRO 2/i.test(promptStr) && /QUADRO 3/i.test(promptStr) && !/QUADRO 4/i.test(promptStr)) ||
-      /CENA 1.*leil/i.test(promptStr) ||
-      /BLOCO 1/i.test(promptStr)
-    ));
-
-    const isLeilao2 = isLeilaoBlockNum === 2 || (isLeilaoBlockNum === 0 && (
-      /leilao_storyboard_2/i.test(promptStr) ||
-      (/QUADRO 4/i.test(promptStr) && /QUADRO 5/i.test(promptStr) && /QUADRO 6/i.test(promptStr)) ||
-      /BLOCO 2/i.test(promptStr)
-    ));
-
-    const isLeilao3 = isLeilaoBlockNum === 3 || (isLeilaoBlockNum === 0 && (
-      /leilao_cena_final|BLOCO 3|GERAÇÃO 3/i.test(promptStr) ||
-      (/apontando o dedo indicador direto para a câmera/i.test(promptStr) && !/QUADRO 1/i.test(promptStr))
-    ));
+    const isLeilaoMode =
+      req.body.sceneMode === 'modo_leilao' ||
+      isLeilaoBlockNum > 0 ||
+      /MODO LEILÃO|leilao_/i.test(promptStr);
 
     const isAchadinhosBlockNum = Number(req.body.isAchadinhosBlock) || 0;
     const isAchadinhos1 = isAchadinhosBlockNum === 1 || (isAchadinhosBlockNum === 0 && (/MODO AURORA ACHADINHOS.*CENA 1/i.test(promptStr) || /Storyboard 1A\/1B\/1C|achadinhos_storyboard_1/i.test(promptStr)));
@@ -3580,24 +3576,20 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
       req.body.sceneMode === '1_cena_10s' ||
       req.body.sceneMode === '1_cena_15s' ||
       req.body.sceneMode === '2_cenas_10s' ||
-      isLeilao3 ||
-      (req.body.aspectRatio === '9:16' && !isLeilao1 && !isLeilao2 && !isAchadinhosBlock);
+      isLeilaoMode ||
+      (req.body.aspectRatio === '9:16' && !isAchadinhosBlock);
 
     const isLandscapeStoryboard =
-      (isLeilao1 || isLeilao2 || isAchadinhosBlock || req.body.aspectRatio === '16:9') &&
+      (isAchadinhosBlock || (req.body.aspectRatio === '16:9' && !isLeilaoMode)) &&
       !isStrictlyVerticalMode;
 
     const isSixFrames =
       reqSceneCount === 6 ||
       /GRADE\s+2x3|EXATAMENTE\s+6\s+(?:QUADROS|CENAS)/i.test(String(prompt));
-    const frameCount = (isLeilao1 || isLeilao2 || isAchadinhosBlock) ? 3 : isLeilao3 ? 1 : isSixFrames ? 6 : 9;
+    const frameCount = isAchadinhosBlock ? 3 : isLeilaoMode ? 1 : isSixFrames ? 6 : 9;
     const gridLabel = isAchadinhosBlock
       ? '3 colunas verticais lado a lado em uma única imagem horizontal 16:9 widescreen (grade 1 linha x 3 colunas: Quadro A à esquerda, Quadro B ao centro, Quadro C à direita), sem números, sem balões e sem legendas sobrepostas'
-      : isLeilao1
-      ? '3 colunas verticais lado a lado em uma única tela horizontal 16:9 widescreen (1920x1080), com números discretos 1, 2 e 3 em círculos brancos no canto superior direito'
-      : isLeilao2
-      ? '3 colunas verticais lado a lado em uma única tela horizontal 16:9 widescreen (1920x1080), com números discretos 4, 5 e 6 em círculos brancos no canto superior direito'
-      : isLeilao3
+      : isLeilaoMode
       ? '1 quadro fotográfico vertical único 9:16 (sem número)'
       : isSixFrames
       ? '2x3 (2 colunas x 3 linhas)'
@@ -3760,7 +3752,6 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
 
         parts.push({ text: effectivePrompt });
 
-        const isLeilaoBlock = isLeilao1 || isLeilao2 || isLeilao3;
         const variationInstructionRule =
           activeVariations.length >= 2
             ? `- REGRA MANDATÓRIA DE ALTERNÂNCIA DE CORES ENTRE OS QUADROS: O produto possui ${activeVariations.length} variações de cores/modelos. Você DEVE OBRIGATORIAMENTE alternar as cores conforme a divisão especificada. NUNCA gere todos os ${frameCount} quadros na mesma cor! Apenas o modelo, formato e peças permanecem idênticos, a cor DEVE alternar entre os blocos de quadros!`
@@ -3773,20 +3764,12 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
 - SEM NÚMEROS, SEM BALÕES E SEM TEXTOS: É terminantemente proibido colocar letras A/B/C sobre a imagem, números, legendas, títulos, balões ou marcas d'água.
 - Fotografia ultrarrealista com textura de pele natural, iluminação de smartphone e cenário brasileiro cotidiano.
 - Fidelidade absoluta às fotos reais do produto.`
-          : isLeilaoBlock
-          ? (isLeilao3
-            ? `VOCÊ É O GERADOR VISUAL DA CENA FINAL DO MODO LEILÃO.
-- Gere UMA ÚNICA IMAGEM VERTICAL 9:16 (1080x1920), plano médio fotorrealista.
+          : isLeilaoMode
+          ? `VOCÊ É O GERADOR VISUAL DO MODO LEILÃO.
+- Gere UMA ÚNICA IMAGEM VERTICAL 9:16 (1080x1920), fotorrealista.
 - SEM NÚMEROS DE QUADRO, sem faixas brancas e sem legendas sobrepostas.
-- Apresentador atrás do púlpito, apontando para a câmera, com o produto ao lado dele bem visível e o telão ao fundo mostrando a foto do produto.
-- Fidelidade absoluta às fotos reais do produto.`
-            : `VOCÊ É O GERADOR DE STORYBOARD DO MODO LEILÃO.
-- Gere UMA IMAGEM FOTOGRÁFICA HORIZONTAL 16:9 (WIDESCREEN 1920x1080) contendo ${gridLabel}.
-- É TERMINANTEMENTE PROIBIDO GERAR IMAGEM VERTICAL. A imagem DEVE ser panorâmica e muito mais larga do que alta (formato horizontal 16:9 paisagem).
-- As 3 colunas verticais devem ficar dispostas lado a lado na horizontal dividindo igualmente a largura da tela panorâmica 16:9, separadas por uma linha divisória branca fina vertical.
-- As colunas devem ser numeradas com selos circulares brancos pequenos no canto superior direito de cada coluna com o número preto correspondente (${isLeilao1 ? '1, 2 e 3' : '4, 5 e 6'}).
-- ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: Não adicione legendas flutuantes, textos publicitários externos, preços, setas, carrinho de compras, marca d'água externa, @ ou logotipo do TikTok. Apenas os números nos selos circulares e a logomarca original do fabricante no próprio produto.
-- Fidelidade absoluta às fotos reais do produto em todas as colunas onde o produto aparece.`)
+- Enquadramento vertical 9:16 cinematográfico de alta qualidade comercial.
+- Fidelidade absoluta às fotos reais do produto em todos os detalhes.`
           : `VOCÊ É O GERADOR DE STORYBOARD DO MODO PRODUTOS 2.0.
 - Gere UMA ÚNICA IMAGEM VERTICAL 9:16 (1080x1920) contendo uma grade ${gridLabel} com EXATAMENTE ${frameCount} quadros fotográficos ultra-realistas numerados de 1 a ${frameCount} (selo circular branco pequeno no canto superior esquerdo de cada quadro com número preto).
 - Cantos arredondados nos quadros, separados por uma borda branca fina, sobre fundo branco.

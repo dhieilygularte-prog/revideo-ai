@@ -119,27 +119,50 @@ Cena 3 (20-30s):
     zip.file('leilao_prompt_veo_2.txt', result.leilao.bloco2.veoPrompt || '');
     zip.file('leilao_prompt_veo_3.txt', result.leilao.bloco3.veoPrompt || '');
 
-    // 2. Imagens dos 3 blocos (Instrução 2 - Seção 6 / Correção 3-Quadros)
-    if (result.leilao.bloco1.storyboardImageUrl) {
+    // 2. Imagens dos 3 blocos (6 imagens verticais 9:16 independentes em 1080x1920)
+    // Bloco 1: Imagem 1 (Salão aberto) e Imagem 2 (Leiloeiro chocado)
+    const b1List =
+      result.leilao.bloco1.images && result.leilao.bloco1.images.length > 0
+        ? result.leilao.bloco1.images
+        : result.leilao.bloco1.storyboardImageUrl
+        ? [result.leilao.bloco1.storyboardImageUrl]
+        : [];
+    for (let i = 0; i < b1List.length; i++) {
       try {
-        const bytes1 = await urlToUint8Array(result.leilao.bloco1.storyboardImageUrl);
-        zip.file('leilao_storyboard_1.png', bytes1);
+        const bytes = await urlToUint8Array(b1List[i]);
+        zip.file(`leilao_cena1_imagem${i + 1}.png`, bytes);
       } catch (err) {
-        console.warn('Erro ao anexar imagem do Bloco 1 no zip:', err);
+        console.warn(`Erro ao anexar imagem ${i + 1} do Bloco 1 no zip:`, err);
       }
     }
-    if (result.leilao.bloco2.storyboardImageUrl) {
+
+    // Bloco 2: Imagem 3 (Apresentação), Imagem 4 (Close 1) e Imagem 5 (Close 2)
+    const b2List =
+      result.leilao.bloco2.images && result.leilao.bloco2.images.length > 0
+        ? result.leilao.bloco2.images
+        : result.leilao.bloco2.storyboardImageUrl
+        ? [result.leilao.bloco2.storyboardImageUrl]
+        : [];
+    for (let i = 0; i < b2List.length; i++) {
       try {
-        const bytes2 = await urlToUint8Array(result.leilao.bloco2.storyboardImageUrl);
-        zip.file('leilao_storyboard_2.png', bytes2);
+        const bytes = await urlToUint8Array(b2List[i]);
+        zip.file(`leilao_cena2_imagem${i + 3}.png`, bytes);
       } catch (err) {
-        console.warn('Erro ao anexar imagem do Bloco 2 no zip:', err);
+        console.warn(`Erro ao anexar imagem ${i + 3} do Bloco 2 no zip:`, err);
       }
     }
-    if (result.leilao.bloco3.storyboardImageUrl) {
+
+    // Bloco 3: Imagem 6 (Leiloeiro Apontando para o Carrinho Laranja)
+    const b3List =
+      result.leilao.bloco3.images && result.leilao.bloco3.images.length > 0
+        ? result.leilao.bloco3.images
+        : result.leilao.bloco3.storyboardImageUrl
+        ? [result.leilao.bloco3.storyboardImageUrl]
+        : [];
+    for (let i = 0; i < b3List.length; i++) {
       try {
-        const bytes3 = await urlToUint8Array(result.leilao.bloco3.storyboardImageUrl);
-        zip.file('leilao_cena_final.png', bytes3);
+        const bytes = await urlToUint8Array(b3List[i]);
+        zip.file(`leilao_cena3_imagem6.png`, bytes);
       } catch (err) {
         console.warn('Erro ao anexar imagem do Bloco 3 no zip:', err);
       }
