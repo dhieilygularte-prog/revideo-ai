@@ -421,6 +421,7 @@ async function requestStoryboardImageGeneration(params: {
   prompt: string;
   productName: string;
   allPhotos: string[];
+  productInfo?: string;
   variations?: { name: string; photos: string[] }[];
   additionalInstructions?: string;
   previousStoryboardImageBase64?: string;
@@ -435,6 +436,7 @@ async function requestStoryboardImageGeneration(params: {
     prompt,
     productName,
     allPhotos,
+    productInfo,
     variations,
     additionalInstructions,
     previousStoryboardImageBase64,
@@ -489,7 +491,7 @@ async function requestStoryboardImageGeneration(params: {
     model: aiProfile === 'gemini' ? 'gemini-3.1-flash-image' : 'gpt-image-2.5-sunburst',
   };
 
-  const cleanGenerationPrompt = sanitizeStoryboardPromptForFidelity(prompt, productName);
+  const cleanGenerationPrompt = sanitizeStoryboardPromptForFidelity(prompt, productName, productInfo);
 
   // Tentativa 1: Rota dedicada /api/produtos2-generate-storyboard
   try {
@@ -499,6 +501,7 @@ async function requestStoryboardImageGeneration(params: {
       body: JSON.stringify({
         prompt: cleanGenerationPrompt,
         productName,
+        productInfo,
         productPhotosBase64: photosSubset,
         variations,
         additionalInstructions,
@@ -1658,6 +1661,7 @@ export async function runProdutos2Pipeline(params: {
     framing: form.framing,
     scenarioDescription,
     scenes,
+    productInfo: form.productInfo,
     scenePartIndex: isTwoScenes ? 1 : undefined,
     additionalInstructions: form.additionalInstructions,
     variations: form.variations,
@@ -1677,6 +1681,7 @@ export async function runProdutos2Pipeline(params: {
   const imgGenResult = await requestStoryboardImageGeneration({
     prompt: storyboardPrompt,
     productName: finalProductName,
+    productInfo: form.productInfo,
     allPhotos,
     variations: form.variations,
     additionalInstructions: form.additionalInstructions,
@@ -1879,6 +1884,7 @@ export async function runProdutos2Pipeline(params: {
       framing: form.framing,
       scenarioDescription,
       scenes: scenes2,
+      productInfo: form.productInfo,
       scenePartIndex: 2,
       additionalInstructions: form.additionalInstructions,
       variations: form.variations,
@@ -1892,6 +1898,7 @@ export async function runProdutos2Pipeline(params: {
     const imgGenResult2 = await requestStoryboardImageGeneration({
       prompt: storyboardPrompt2,
       productName: finalProductName,
+      productInfo: form.productInfo,
       allPhotos,
       variations: form.variations,
       additionalInstructions: form.additionalInstructions,
@@ -2239,6 +2246,7 @@ REGRAS ESTRITAS DE PRESERVAÇÃO E EXECUÇÃO:
   const genRes = await requestStoryboardImageGeneration({
     prompt: targetStoryboardPrompt,
     productName: result.productName,
+    productInfo: form.productInfo,
     allPhotos,
     variations: form.variations,
     additionalInstructions: form.additionalInstructions,
@@ -2496,6 +2504,7 @@ export async function recreateSingleTwoScenesPartWithCopy(params: {
     scenes[5].endTime = '10.0';
   }
 
+  const effectiveProductInfo = (result as any).productInfo || form.productInfo;
   const storyboardPrompt = buildProdutos2StoryboardImagePrompt({
     productName: result.productName,
     productLock: result.productLock,
@@ -2505,6 +2514,7 @@ export async function recreateSingleTwoScenesPartWithCopy(params: {
     framing: result.framing,
     scenarioDescription: result.scenarioDescription,
     scenes,
+    productInfo: effectiveProductInfo,
     scenePartIndex: sceneTarget,
     additionalInstructions: result.additionalInstructions,
     variations: result.variations || form.variations,
@@ -2517,6 +2527,7 @@ export async function recreateSingleTwoScenesPartWithCopy(params: {
   const imgGen = await requestStoryboardImageGeneration({
     prompt: storyboardPrompt,
     productName: result.productName,
+    productInfo: effectiveProductInfo,
     allPhotos,
     variations: result.variations || form.variations,
     additionalInstructions: result.additionalInstructions,

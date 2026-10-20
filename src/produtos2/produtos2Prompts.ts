@@ -15,8 +15,10 @@ import {
   appendFidelityLockToVeoPrompt,
   isPackagedProductOnly,
   sanitizeAllScenesForFidelity,
+  sanitizeProductLockForFidelity,
   sanitizeSceneFidelityAction,
   sanitizeStoryboardPromptForFidelity,
+  sanitizeVisualMapForFidelity,
 } from './produtos2FidelityLock';
 
 /**
@@ -412,6 +414,7 @@ export function buildProdutos2StoryboardImagePrompt(params: {
   framing: Produtos2Framing;
   scenarioDescription: string;
   scenes: Produtos2SceneItem[];
+  productInfo?: string;
   additionalInstructions?: string;
   variations?: { name: string; photos: string[] }[];
   isDialogue?: boolean;
@@ -430,6 +433,7 @@ export function buildProdutos2StoryboardImagePrompt(params: {
     framing,
     scenarioDescription,
     scenes,
+    productInfo,
     additionalInstructions,
     variations = [],
     isDialogue,
@@ -462,7 +466,14 @@ export function buildProdutos2StoryboardImagePrompt(params: {
       ? 'sem rosto (enquadrar sempre do pescoço para baixo, o rosto nunca aparece em nenhum quadro)'
       : 'POV em primeira pessoa (mostrar somente as mãos do usuário interagindo com o produto, nunca mostrar rosto ou corpo)';
 
-  const visualMapLines = visualMap
+  const isPackaged = isPackagedProductOnly(
+    productName,
+    productInfo,
+    `${(productLock || []).join(' ')} ${additionalInstructions || ''} ${finalCopy}`
+  );
+
+  const sanitizedVisualMap = sanitizeVisualMapForFidelity(visualMap, productName, productInfo);
+  const visualMapLines = sanitizedVisualMap
     .map((m) => `"${m.excerpt}" → ${m.intent} (${m.visualProof}) → cenas ${m.scenes}`)
     .join('\n');
 
@@ -470,10 +481,11 @@ export function buildProdutos2StoryboardImagePrompt(params: {
     (v) => (v.name && v.name.trim().length > 0) || (v.photos && v.photos.length > 0)
   );
 
+  const fidelityLocked = sanitizeProductLockForFidelity(productLock, productName, productInfo);
   const sanitizedProductLock =
     activeVars.length >= 2
-      ? sanitizeProductLockForVariations(productLock, activeVars, productName)
-      : productLock;
+      ? sanitizeProductLockForVariations(fidelityLocked, activeVars, productName)
+      : fidelityLocked;
 
   let variationsBlock = '';
   if (activeVars.length >= 2) {
@@ -502,11 +514,10 @@ PROIBIÇÃO ABSOLUTA: NUNCA gere todos os ${totalScenes} quadros na mesma cor! �
 ═══════════════════════════════════════════════════════════════════`;
   }
 
-  const isPackaged = isPackagedProductOnly(productName);
-  const sanitizedScenes = sanitizeAllScenesForFidelity(scenes, productName);
+  const sanitizedScenes = sanitizeAllScenesForFidelity(scenes, productName, productInfo, scenePartIndex);
 
   const packagedNotice = isPackaged
-    ? `\n\n═══════════════════════════════════════════════════════════════════\n⚠️ REGRA INEGOCIÁVEL DE EMBALAGEM FECHADA / PACOTES LACRADOS (TIKTOK SHOP):\nO produto nas fotos de referência consiste em PACOTES FECHADOS / EMBALAGEM LACRADA.\nÉ TERMINANTEMENTE E SEVERAMENTE PROIBIDO desenhar o pacote aberto, rasgado, fraldas avulsas/soltas fora do pacote, partes internas soltas ou qualquer teste derramando líquidos/água!\nEm TODOS OS ${totalScenes} QUADROS, o que deve ser desenhado e manipulado é EXCLUSIVAMENTE o PACOTE FECHADO idêntico às fotos reais anexadas!\n═══════════════════════════════════════════════════════════════════\n`
+    ? `\n\n═══════════════════════════════════════════════════════════════════\n⚠️ REGRA INEGOCIÁVEL DE EMBALAGEM FECHADA / PACOTES LACRADOS (TIKTOK SHOP):\nO produto nas fotos de referência consiste em PACOTES FECHADOS / EMBALAGEM LACRADA.\nÉ TERMINANTEMENTE E SEVERAMENTE PROIBIDO desenhar o pacote aberto, rasgado, fraldas avulsas/soltas fora do pacote, partes internas soltas, estampas internas não fotografadas (como Galinha Pintadinha em fralda avulsa) ou qualquer teste derramando líquidos/água!\nEm TODOS OS ${totalScenes} QUADROS (1 A ${totalScenes}), o que deve ser desenhado e manipulado pela apresentadora é EXCLUSIVAMENTE o PACOTE FECHADO idêntico às fotos reais anexadas!\n═══════════════════════════════════════════════════════════════════\n`
     : '';
 
   const scenesLines = sanitizedScenes
@@ -565,7 +576,7 @@ Mantenha continuidade de produto, logomarca original do fabricante no produto, p
 Adicionar SOMENTE os números 1 a ${totalScenes} em pequenos selos circulares brancos com número preto, no canto superior esquerdo de cada quadro.
 PROIBIÇÃO EXCLUSIVA DE INTERFACE EXTERNA: NÃO adicionar frases flutuantes na tela, legendas, textos publicitários externos, ícone de carrinho de compras, botões, setas, preços, interface de aplicativo, logotipo do TikTok ou de rede social, nome de usuário/@ ou marca d'água externa (mantendo obrigatoriamente a logomarca original do fabricante impressa no próprio produto).`;
 
-  return sanitizeStoryboardPromptForFidelity(rawPrompt, productName);
+  return sanitizeStoryboardPromptForFidelity(rawPrompt, productName, productInfo);
 }
 
 /**
@@ -1573,7 +1584,7 @@ export function buildDefaultProdutos2Plan(params: {
     };
   });
 
-  const scenes = sanitizeAllScenesForFidelity(rawPlanScenes, productName, productInfo);
+  const scenes = sanitizeAllScenesForFidelity(rawPlanScenes, productName, productInfo, scenePartIndex);
 
   return {
     productLock,

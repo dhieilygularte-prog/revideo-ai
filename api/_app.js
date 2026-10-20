@@ -1296,38 +1296,145 @@ function appendFidelityLockToVeoPrompt(prompt) {
 
 ${prompt.trim()}`;
 }
-function isPackagedProductOnly(productName, productInfo) {
-  const combined = `${productName || ""} ${productInfo || ""}`.toLowerCase();
-  return /\b(fralda|fraldas|babysec|pampers|huggies|cremer|mamy|len[çc]o|len[çc]os|toalha|toalhinhas?|absorvente|absorventes)\b/i.test(combined) || /\b(pacote|pacotes|combo de pacotes|fardo|fardos|embalagem fechada|embalagem lacrada|caixa fechada|pote lacrado)\b/i.test(combined);
+function isPackagedProductOnly(productName, productInfo, extraContext) {
+  const combined = `${productName || ""} ${productInfo || ""} ${extraContext || ""}`.toLowerCase();
+  return /\b(fralda|fraldas|babysec|pampers|huggies|cremer|mamy|len[çc]o|len[çc]os|toalha|toalhinhas?|absorvente|absorventes)\b/i.test(combined) || /\b(pacote|pacotes|combo de pacotes|fardo|fardos|embalagem fechada|embalagem lacrada|caixa fechada|pote lacrado)\b/i.test(combined) || /galinha\s*pintadinha/i.test(combined);
+}
+function getCanonicalPackagedScene(index, productName, totalCount = 9, partIndex = 1) {
+  const p = (productName || "Produto").trim();
+  if (totalCount === 6 && partIndex === 2) {
+    const part2 = [
+      {
+        framing: "Plano m\xE9dio sobre a mesa",
+        action: `Apresentadora organizando os pacotes fechados de ${p} em fila sobre a mesa ou c\xF4moda com postura acolhedora.`
+      },
+      {
+        framing: "Close-up frontal com rosto",
+        action: `Apresentadora segurando um pacote fechado de ${p} de frente para a c\xE2mera, sorrindo e mostrando a embalagem original com nitidez.`
+      },
+      {
+        framing: "Plano aberto no quarto",
+        action: `Vis\xE3o mais ampla mostrando os pacotes fechados de ${p} organizados na prateleira ou bancada, evidenciando a praticidade do combo.`
+      },
+      {
+        framing: "Plano m\xE9dio com rosto",
+        action: `Apresentadora em p\xE9 atr\xE1s da pilha de pacotes fechados de ${p} sobre a mesa, com as m\xE3os apoiadas neles e sorriso largo de satisfa\xE7\xE3o.`
+      },
+      {
+        framing: "Close com o pacote fechado",
+        action: `Apresentadora segurando com carinho o pacote fechado de ${p} junto ao peito com express\xE3o feliz e segura.`
+      },
+      {
+        framing: "Plano m\xE9dio de fechamento e CTA",
+        action: `Apresentadora segurando o pacote fechado de ${p} em destaque com uma das m\xE3os e apontando amigavelmente para o carrinho de compras.`
+      }
+    ];
+    return part2[Math.min(index, part2.length - 1)];
+  }
+  const canonical9 = [
+    {
+      framing: "Plano m\xE9dio frontal com rosto",
+      action: `Apresentadora segurando com as duas m\xE3os a pilha com os pacotes fechados de ${p}, exibindo o combo completo de frente para a c\xE2mera com sorriso entusiasmado.`
+    },
+    {
+      framing: "Plano m\xE9dio aproximado",
+      action: `Apresentadora aproxima os pacotes fechados de ${p} da c\xE2mera, destacando a embalagem frontal lacrada e a logomarca oficial com alta nitidez.`
+    },
+    {
+      framing: "Plano m\xE9dio sobre a mesa/c\xF4moda",
+      action: `Apresentadora apoia a pilha de pacotes fechados de ${p} organizados sobre a c\xF4moda ou mesa, apontando com o dedo indicador para a quantidade.`
+    },
+    {
+      framing: "Plano m\xE9dio din\xE2mico de volume",
+      action: `Apresentadora segurando dois pacotes fechados de ${p} lado a lado diante do peito, evidenciando o tamanho e a quantidade que vem no kit.`
+    },
+    {
+      framing: "Close-up frontal com rosto",
+      action: `Apresentadora segurando um pacote fechado de ${p} de frente para a c\xE2mera, sorrindo e mostrando as ilustra\xE7\xF5es e selos oficiais impressos na pr\xF3pria embalagem de refer\xEAncia.`
+    },
+    {
+      framing: "Macro fechado na embalagem",
+      action: `Macro focado na frente da embalagem lacrada de ${p}. Dedo indicador apontando para a indica\xE7\xE3o de tamanho e quantidade de unidades impressas no pacote fechado.`
+    },
+    {
+      framing: "Plano m\xE9dio aberto contextual",
+      action: `Apresentadora organizando os pacotes fechados de ${p} na prateleira ou c\xF4moda do quarto, mostrando como o estoque fica pr\xE1tico e organizado no dia a dia.`
+    },
+    {
+      framing: "Plano m\xE9dio com rosto",
+      action: `Apresentadora em p\xE9 atr\xE1s da pilha completa de pacotes fechados de ${p} sobre a mesa, com as m\xE3os apoiadas nos pacotes e sorriso largo de satisfa\xE7\xE3o.`
+    },
+    {
+      framing: "Close com rosto e recomenda\xE7\xE3o",
+      action: `Apresentadora segurando com carinho o pacote fechado de ${p} nos bra\xE7os, olhando para a c\xE2mera e fazendo um gesto amig\xE1vel convidando para conferir no carrinho de compras.`
+    }
+  ];
+  return canonical9[Math.min(index, canonical9.length - 1)];
 }
 function sanitizeSceneFidelityAction(action, productName, isPackaged) {
   if (!action) return action;
   const packaged = isPackaged ?? (productName ? isPackagedProductOnly(productName) : false);
-  let clean = action.replace(/\b(?:abrindo|rasgando|deslacrando)\s+(?:o|a|os|as|um|uma)?\s*(?:pacote|embalagem|caixa|fralda|sacola|pl[aá]stico|lacre)[^,.;]*/gi, "segurando o pacote fechado de frente com clareza").replace(/\b(?:tirando|retirando|puxando|sacando)\s+(?:o|a|os|as|uma?)\s*(?:fralda|unidade|item|conte[uú]do|produto)[^,.;]*/gi, "posicionando e exibindo os pacotes fechados").replace(/\b(?:desdobrando|esticando|abrindo)\s+(?:a|o)?\s*(?:fralda|produto|item)[^,.;]*/gi, "apresentando a embalagem fechada de frente").replace(/\bfraldas?\s+(?:abertas?|soltas?|desdobradas?|fora do pacote)[^,.;]*/gi, "pacote fechado de fraldas").replace(/\b(?:com\s+)?estampa\s+(?:d[aeo]|divertida|infantil|colorida)?\s*(?:galinha\s*pintadinha|desenho|personagem)?[^,.;]*/gi, "arte e logomarca oficiais impressas na pr\xF3pria embalagem de refer\xEAncia").replace(/\b(?:tocando|passando a m[aã]o|sentindo)\s+(?:a\s+)?(?:textura|maciez|toque)\s*(?:d[aeo]\s*(?:fralda|algod[aã]o|tecido interno|gel))?[^,.;]*/gi, "dedo apontando para as especifica\xE7\xF5es e selo de qualidade impressos na frente da embalagem fechada").replace(/\bdedo\s+pressionando\s+(?:a\s+)?(?:fralda|superf[ií]cie interna|algod[aã]o)[^,.;]*/gi, "m\xE3o segurando com firmeza o pacote fechado").replace(/\b(?:jogando|[aá]gua|despejando|derramando|copo d'?\s*[aá]gua|teste de absor[çc][aã]o|l[ií]quido azul|absorvendo)[^,.;]*/gi, "apresentando os pacotes fechados organizados no cen\xE1rio, destacando a praticidade do combo").replace(/\b(?:indicador de umidade|linha indicadora|fralda molhada|fralda usada|efeito azul)[^,.;]*/gi, "pacotes fechados organizados em destaque na c\xF4moda ou bancada").replace(/\bmostrando a parte traseira\b/gi, "mostrando a frente documentada nas fotos").replace(/\bmostrando o verso\b/gi, "mostrando a frente do produto").replace(/\bvirando o produto de costas\b/gi, "mantendo o produto de frente").replace(/\s+/g, " ").trim();
+  let clean = action.replace(/\b(?:abrindo|rasgando|deslacrando)\s+[^,.;]*/gi, "segurando o pacote fechado de frente com clareza").replace(/\b(?:tirando|retirando|puxando|sacando)\s+(?:uma?|o|a|os|as|do|da|das|dos)?[^,.;]*(?:fralda|unidade|item|conte[uú]do|produto)[^,.;]*/gi, "posicionando e exibindo os pacotes fechados").replace(/\b(?:desdobrando|esticando|abrindo)\s+[^,.;]*/gi, "apresentando a embalagem fechada de frente").replace(/\b(?:el[aá]sticos?|abas?|fitas?|laterais|barreiras?|revestimento|forro|núcleo|camada|gel)[^,.;]*/gi, "especifica\xE7\xF5es e detalhes impressos na embalagem lacrada").replace(/\bfraldas?\s+(?:abertas?|soltas?|desdobradas?|fora do pacote|de dentro)[^,.;]*/gi, "pacote fechado de fraldas").replace(/\b(?:com\s+)?estampa\s+(?:d[aeo]|divertida|infantil|colorida)?\s*(?:galinha\s*pintadinha|desenho|personagem)?[^,.;]*/gi, "arte e logomarca oficiais impressas na pr\xF3pria embalagem de refer\xEAncia").replace(/\b(?:tocando|passando a m[aã]o|sentindo)\s+[^,.;]*/gi, "dedo apontando para as especifica\xE7\xF5es e selo de qualidade impressos na frente da embalagem fechada").replace(/\bdedo\s+pressionando\s+[^,.;]*/gi, "m\xE3o segurando com firmeza o pacote fechado").replace(/\b(?:jogando|[aá]gua|despejando|derramando|copo d'?\s*[aá]gua|teste de absor[çc][aã]o|l[ií]quido azul|absorvendo)[^,.;]*/gi, "apresentando os pacotes fechados organizados no cen\xE1rio, destacando a praticidade do combo").replace(/\b(?:indicador de umidade|linha indicadora|fralda molhada|fralda usada|efeito azul)[^,.;]*/gi, "pacotes fechados organizados em destaque na c\xF4moda ou bancada").replace(/\bmostrando a parte traseira\b/gi, "mostrando a frente documentada nas fotos").replace(/\bmostrando o verso\b/gi, "mostrando a frente do produto").replace(/\bvirando o produto de costas\b/gi, "mantendo o produto de frente").replace(/\s+/g, " ").trim();
   if (packaged) {
-    clean = clean.replace(/\bfralda\b(?!\s+(?:babysec|pampers|huggies|fechada))/gi, "pacote de fraldas").replace(/\bfraldas\b(?!\s+(?:babysec|pampers|huggies|fechadas))/gi, "pacotes de fraldas");
+    clean = clean.replace(/\bfralda\b(?!\s+(?:babysec|pampers|huggies|fechada))/gi, "pacote de fraldas fechado").replace(/\bfraldas\b(?!\s+(?:babysec|pampers|huggies|fechadas))/gi, "pacotes de fraldas fechados");
   }
   return clean;
 }
-function sanitizeAllScenesForFidelity(scenes, productName, productInfo) {
+function sanitizeAllScenesForFidelity(scenes, productName, productInfo, scenePartIndex = 1) {
   if (!Array.isArray(scenes)) return scenes;
   const isPackaged = isPackagedProductOnly(productName, productInfo);
-  return scenes.map((sc) => {
-    const cleanAction = sanitizeSceneFidelityAction(sc.action, productName, isPackaged);
-    const cleanFraming = (sc.framing || "").trim();
+  const totalCount = scenes.length === 6 ? 6 : 9;
+  return scenes.map((sc, idx) => {
+    let cleanAction = sc.action;
+    let cleanFraming = (sc.framing || "").trim();
+    if (isPackaged) {
+      const canonical = getCanonicalPackagedScene(idx, productName, totalCount, scenePartIndex);
+      cleanAction = canonical.action;
+      cleanFraming = canonical.framing;
+    } else {
+      cleanAction = sanitizeSceneFidelityAction(sc.action, productName, false);
+    }
     const updatedDesc = cleanFraming ? `${cleanFraming}. ${cleanAction}` : cleanAction;
     return {
       ...sc,
+      framing: cleanFraming,
       action: cleanAction,
       storyboardDescription: updatedDesc
     };
   });
 }
+function sanitizeProductLockForFidelity(productLock, productName, productInfo) {
+  if (!Array.isArray(productLock)) return productLock;
+  const isPackaged = isPackagedProductOnly(productName, productInfo, productLock.join(" "));
+  if (!isPackaged) return productLock;
+  const p = (productName || "Produto").trim();
+  const filtered = productLock.map(
+    (l) => String(l).replace(/\b(?:com\s+)?estampa\s+(?:d[aeo]|divertida|infantil|colorida)?\s*(?:galinha\s*pintadinha|desenho|personagem)?[^,.;]*/gi, "arte e logomarca oficiais impressas na pr\xF3pria embalagem lacrada").replace(/galinha\s*pintadinha/gi, "embalagem oficial").replace(/\b(?:el[aá]sticos?|abas?|fitas?|forro|revestimento interno|núcleo|camada|gel|absorção)[^,.;]*/gi, "embalagem lacrada de f\xE1brica").replace(/\bfraldas?\s+(?:abertas?|soltas?|desdobradas?|fora do pacote|de dentro)[^,.;]*/gi, "pacote fechado de fraldas").replace(/\bfralda\b(?!\s+(?:babysec|pampers|huggies|fechada))/gi, "pacote de fraldas fechado").replace(/\bfraldas\b(?!\s+(?:babysec|pampers|huggies|fechadas))/gi, "pacotes de fraldas fechados").trim()
+  ).filter((l) => !/solt[ao]|abert[ao]|estic|rasg|derram|líquido|teste/i.test(l));
+  return [
+    `EMBALAGEM LACRADA DE F\xC1BRICA: O produto nas fotos de refer\xEAncia consiste exclusivamente em pacotes fechados de ${p}. \xC9 expressamente proibido abrir o pacote, rasgar ou desenhar fraldas soltas/abertas fora da embalagem.`,
+    `IDENTIDADE VISUAL DA EMBALAGEM: Cores, logomarcas oficiais e identidade gr\xE1fica frontal dos pacotes lacrados de ${p} rigorosamente id\xEAnticas \xE0s fotos reais anexadas.`,
+    ...filtered
+  ];
+}
+function sanitizeVisualMapForFidelity(visualMap, productName, productInfo) {
+  if (!Array.isArray(visualMap)) return visualMap;
+  const isPackaged = isPackagedProductOnly(productName, productInfo);
+  if (!isPackaged) return visualMap;
+  const p = (productName || "Produto").trim();
+  return visualMap.map((item) => {
+    let cleanProof = (item.visualProof || "").replace(/\b(?:desdobrando|esticando|abrindo|rasgando)\s+[^,.;]*/gi, `apresentando os pacotes fechados de ${p}`).replace(/\b(?:el[aá]sticos?|abas?|fitas?|forro|revestimento interno|gel|algodão|camada|núcleo)[^,.;]*/gi, "especifica\xE7\xF5es impressas na embalagem").replace(/\b(?:fralda|item)\s+(?:aberta|solta|fora do pacote)[^,.;]*/gi, `pacote fechado de ${p}`).replace(/\bfralda\b(?!\s+(?:babysec|pampers|huggies|fechada))/gi, `pacote fechado de ${p}`).replace(/\bfraldas\b(?!\s+(?:babysec|pampers|huggies|fechadas))/gi, `pacotes fechados de ${p}`).replace(/\b(?:jogando|[aá]gua|despejando|derramando|copo d'?\s*[aá]gua|teste de absor[çc][aã]o)[^,.;]*/gi, "apresentando a pilha de pacotes fechados").replace(/galinha\s*pintadinha/gi, "embalagem de refer\xEAncia");
+    return {
+      ...item,
+      visualProof: cleanProof
+    };
+  });
+}
 function sanitizeStoryboardPromptForFidelity(prompt, productName, productInfo) {
   if (!prompt || typeof prompt !== "string") return prompt || "";
-  const isPackaged = isPackagedProductOnly(productName || "", productInfo);
+  const isPackaged = isPackagedProductOnly(productName || "", productInfo, prompt);
   if (!isPackaged) return prompt;
-  return prompt.replace(/\b(?:abrindo|rasgando|deslacrando)\s+(?:o|a|os|as|um|uma)?\s*(?:pacote|embalagem|caixa|fralda)[^,.;\n]*/gi, "segurando o pacote fechado de frente").replace(/\b(?:tirando|retirando|puxando)\s+(?:o|a|os|as|uma?)\s*(?:fralda|unidade|item)[^,.;\n]*/gi, "exibindo os pacotes fechados de frente").replace(/\b(?:desdobrando|esticando)\s+(?:a|o)?\s*fralda[^,.;\n]*/gi, "apresentando o pacote fechado").replace(/\bfraldas?\s+(?:abertas?|soltas?|desdobradas?|fora do pacote)[^,.;\n]*/gi, "pacote fechado de fraldas").replace(/\b(?:jogando|despejando|derramando)\s+[aá]gua[^,.;\n]*/gi, "destacando os pacotes fechados").replace(/\bcopo d'?\s*[aá]gua[^,.;\n]*/gi, "pacote fechado de fraldas").replace(/\bteste de absor[çc][aã]o[^,.;\n]*/gi, "destaque dos pacotes fechados").replace(/\bindicador de umidade[^,.;\n]*/gi, "pacotes fechados organizados na bancada").replace(/\btocando a textura da fralda[^,.;\n]*/gi, "apontando para o selo oficial impresso na embalagem fechada");
+  return prompt.replace(/\b(?:abrindo|rasgando|deslacrando)\s+[^,.;\n]*/gi, "segurando o pacote fechado de frente").replace(/\b(?:tirando|retirando|puxando)\s+[^,.;\n]*(?:fralda|unidade|item)[^,.;\n]*/gi, "exibindo os pacotes fechados de frente").replace(/\b(?:desdobrando|esticando)\s+[^,.;\n]*/gi, "apresentando o pacote fechado").replace(/\b(?:el[aá]sticos?|abas?|fitas?|forro|revestimento interno|núcleo|camada|gel|absorção)[^,.;\n]*/gi, "especifica\xE7\xF5es na embalagem lacrada de f\xE1brica").replace(/\bfraldas?\s+(?:abertas?|soltas?|desdobradas?|fora do pacote|de dentro)[^,.;\n]*/gi, "pacote fechado de fraldas").replace(/\b(?:com\s+)?estampa\s+(?:d[aeo]|divertida|infantil|colorida)?\s*(?:galinha\s*pintadinha|desenho|personagem)?[^,.;\n]*/gi, "arte e logomarca oficiais impressas na embalagem de refer\xEAncia").replace(/galinha\s*pintadinha/gi, "embalagem de refer\xEAncia").replace(/\b(?:jogando|despejando|derramando)\s+[aá]gua[^,.;\n]*/gi, "destacando os pacotes fechados").replace(/\bcopo d'?\s*[aá]gua[^,.;\n]*/gi, "pacote fechado de fraldas").replace(/\bteste de absor[çc][aã]o[^,.;\n]*/gi, "destaque dos pacotes fechados").replace(/\bindicador de umidade[^,.;\n]*/gi, "pacotes fechados organizados na bancada").replace(/\btocando a textura da fralda[^,.;\n]*/gi, "apontando para o selo oficial impresso na embalagem fechada").replace(/\bfralda\b(?!\s+(?:babysec|pampers|huggies|fechada))/gi, "pacote de fraldas fechado").replace(/\bfraldas\b(?!\s+(?:babysec|pampers|huggies|fechadas))/gi, "pacotes de fraldas fechados");
 }
 
 // src/produtos2/produtos2Prompts.ts
@@ -3056,7 +3163,7 @@ app.post("/api/generate-scene-image", async (req, res) => {
     if (!prompt) {
       return res.status(400).json({ success: false, error: "Prompt n\xE3o fornecido" });
     }
-    const effectivePrompt = sanitizeStoryboardPromptForFidelity(prompt, productType);
+    const effectivePrompt = sanitizeStoryboardPromptForFidelity(prompt, productType, req.body.productInfo);
     const activeProfile = req.body?.aiProfile || getRequestAIProfile(req);
     if (activeProfile === "openai") {
       if (!openAIProvider.isConfigured()) {
@@ -4493,7 +4600,11 @@ Retorne APENAS um objeto JSON v\xE1lido com as chaves:
                   ...existingLocks.filter((l) => !String(l).includes(parsed.manufacturerLogoDescription.trim()))
                 ];
               }
-              parsed.scenes = sanitizeAllScenesForFidelity(parsed.scenes, productName, productInfo);
+              parsed.scenes = sanitizeAllScenesForFidelity(parsed.scenes, productName, productInfo, scenePartIndex);
+              parsed.productLock = sanitizeProductLockForFidelity(parsed.productLock, productName, productInfo);
+              if (Array.isArray(parsed.visualMap)) {
+                parsed.visualMap = sanitizeVisualMapForFidelity(parsed.visualMap, productName, productInfo);
+              }
               parsed.finalCopy = activeCopy;
               parsed.copySourceLabel = copySourceLabel;
               const promptTok = completion.usage?.prompt_tokens || 3400;
@@ -4554,7 +4665,11 @@ Retorne APENAS um objeto JSON v\xE1lido com as chaves:
                   ...existingLocks.filter((l) => !String(l).includes(parsed.manufacturerLogoDescription.trim()))
                 ];
               }
-              parsed.scenes = sanitizeAllScenesForFidelity(parsed.scenes, productName, productInfo);
+              parsed.scenes = sanitizeAllScenesForFidelity(parsed.scenes, productName, productInfo, scenePartIndex);
+              parsed.productLock = sanitizeProductLockForFidelity(parsed.productLock, productName, productInfo);
+              if (Array.isArray(parsed.visualMap)) {
+                parsed.visualMap = sanitizeVisualMapForFidelity(parsed.visualMap, productName, productInfo);
+              }
               parsed.finalCopy = activeCopy;
               parsed.copySourceLabel = copySourceLabel;
               const promptTok = response.usageMetadata?.promptTokenCount || 3400;
@@ -4633,6 +4748,7 @@ app.post("/api/produtos2-generate-storyboard", async (req, res) => {
     const {
       prompt,
       productName = "Produto",
+      productInfo = "",
       productPhotosBase64 = [],
       variations = [],
       additionalInstructions = "",
@@ -4676,7 +4792,15 @@ REGRA INEGOCI\xC1VEL: Em TODOS os quadrantes do storyboard onde essa parte do pr
 ========================`;
       }
     }
-    const packagingFidelityDirective = `
+    const isPackaged = isPackagedProductOnly(productName, productInfo, promptStr);
+    const packagingFidelityDirective = isPackaged ? `
+
+========================
+REGRA SAGRADA DE EMBALAGEM FECHADA / PACOTES LACRADOS (TIKTOK SHOP COMPLIANCE):
+1. O produto consiste EXCLUSIVAMENTE em PACOTES FECHADOS / EMBALAGEM LACRADA de ${productName}.
+2. \xC9 TERMINANTEMENTE E SEVERAMENTE PROIBIDO: NUNCA desenhe pacotes abertos ou rasgados; NUNCA desenhe fraldas ou itens soltos/desdobrados fora da embalagem; NUNCA desenhe estampas de personagens em pe\xE7as avulsas, el\xE1sticos, fitas ou forro interno; NUNCA desenhe testes derramando \xE1gua ou l\xEDquidos!
+3. EM TODOS OS ${frameCount} QUADROS, o que deve ser mostrado, manuseado e exibido pela apresentadora \xE9 100% EXCLUSIVAMENTE o PACOTE FECHADO LACRADO id\xEAntico \xE0s fotos reais anexadas!
+========================` : `
 
 ========================
 REGRA SAGRADA DE FIDELIDADE AO PRODUTO ANEXADO \u2014 NUNCA INVENTAR PARTES N\xC3O FOTOGRAFADAS OU CONTE\xDADO DE EMBALAGEM LACRADA (ANTI-REJEI\xC7\xC3O DO TIKTOK):
@@ -4684,7 +4808,7 @@ REGRA SAGRADA DE FIDELIDADE AO PRODUTO ANEXADO \u2014 NUNCA INVENTAR PARTES N\xC
 2. REGRA DE EMBALAGEM / PACOTE FECHADO / CAIXA: Se as fotos de refer\xEAncia mostram o produto lacrado em sua embalagem original, pacote fechado ou caixa (exemplo: pacotes de fraldas fechados, pote fechado, caixa lacrada) e N\xC3O h\xE1 fotos do item avulso fora da embalagem, \xC9 EXPRESSAMENTE E TERMINANTEMENTE PROIBIDO inventar, abrir ou desenhar o produto solto fora da embalagem (exemplo: NUNCA desenhe uma fralda aberta se o usu\xE1rio enviou fotos dos pacotes de fraldas fechados). Em TODOS os quadros, o que deve ser mostrado e manuseado \xE9 o PACOTE/EMBALAGEM/CAIXA FECHADA exatamente como nas fotos reais!
 3. \xC2NGULOS E DETALHES N\xC3O VIS\xCDVEIS: \xC9 terminantemente proibido inventar outro lado, bot\xF5es, acess\xF3rios ou partes traseiras que n\xE3o estejam vis\xEDveis nas fotos de refer\xEAncia anexadas.
 ========================`;
-    const sanitizedPrompt = sanitizeStoryboardPromptForFidelity(promptStr, productName);
+    const sanitizedPrompt = sanitizeStoryboardPromptForFidelity(promptStr, productName, productInfo);
     const baseWithLogo = `${sanitizedPrompt}${logoEnforcementBlock}${packagingFidelityDirective}`;
     const effectivePrompt = correctionPrompt && correctionPrompt.trim() ? `${baseWithLogo}
 

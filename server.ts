@@ -36,7 +36,9 @@ import {
   appendFidelityLockToVeoPrompt,
   isPackagedProductOnly,
   sanitizeAllScenesForFidelity,
+  sanitizeProductLockForFidelity,
   sanitizeStoryboardPromptForFidelity,
+  sanitizeVisualMapForFidelity,
 } from './src/produtos2/produtos2FidelityLock';
 
 dotenv.config();
@@ -1670,7 +1672,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Prompt não fornecido' });
     }
 
-    const effectivePrompt = sanitizeStoryboardPromptForFidelity(prompt, productType);
+    const effectivePrompt = sanitizeStoryboardPromptForFidelity(prompt, productType, req.body.productInfo);
 
     // ─── ROTEAMENTO BASEADO NO PERFIL DE IA SELECIONADO ────────────────────
     const activeProfile = req.body?.aiProfile || getRequestAIProfile(req);
@@ -3399,7 +3401,11 @@ Retorne APENAS um objeto JSON válido com as chaves:
                   ...existingLocks.filter((l: string) => !String(l).includes(parsed.manufacturerLogoDescription.trim())),
                 ];
               }
-              parsed.scenes = sanitizeAllScenesForFidelity(parsed.scenes, productName, productInfo);
+              parsed.scenes = sanitizeAllScenesForFidelity(parsed.scenes, productName, productInfo, scenePartIndex);
+              parsed.productLock = sanitizeProductLockForFidelity(parsed.productLock, productName, productInfo);
+              if (Array.isArray(parsed.visualMap)) {
+                parsed.visualMap = sanitizeVisualMapForFidelity(parsed.visualMap, productName, productInfo);
+              }
               parsed.finalCopy = activeCopy;
               parsed.copySourceLabel = copySourceLabel;
               const promptTok = completion.usage?.prompt_tokens || 3400;
@@ -3465,7 +3471,11 @@ Retorne APENAS um objeto JSON válido com as chaves:
                   ...existingLocks.filter((l: string) => !String(l).includes(parsed.manufacturerLogoDescription.trim())),
                 ];
               }
-              parsed.scenes = sanitizeAllScenesForFidelity(parsed.scenes, productName, productInfo);
+              parsed.scenes = sanitizeAllScenesForFidelity(parsed.scenes, productName, productInfo, scenePartIndex);
+              parsed.productLock = sanitizeProductLockForFidelity(parsed.productLock, productName, productInfo);
+              if (Array.isArray(parsed.visualMap)) {
+                parsed.visualMap = sanitizeVisualMapForFidelity(parsed.visualMap, productName, productInfo);
+              }
               parsed.finalCopy = activeCopy;
               parsed.copySourceLabel = copySourceLabel;
               const promptTok = response.usageMetadata?.promptTokenCount || 3400;
@@ -3560,6 +3570,7 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
     const {
       prompt,
       productName = 'Produto',
+      productInfo = '',
       productPhotosBase64 = [],
       variations = [],
       additionalInstructions = '',
@@ -3633,9 +3644,12 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
       }
     }
 
-    const packagingFidelityDirective = `\n\n========================\nREGRA SAGRADA DE FIDELIDADE AO PRODUTO ANEXADO — NUNCA INVENTAR PARTES NÃO FOTOGRAFADAS OU CONTEÚDO DE EMBALAGEM LACRADA (ANTI-REJEIÇÃO DO TIKTOK):\n1. O produto deve ser retratado RIGOROSA E EXCLUSIVAMENTE com base no que está visível nas fotos de referência anexadas pelo usuário!\n2. REGRA DE EMBALAGEM / PACOTE FECHADO / CAIXA: Se as fotos de referência mostram o produto lacrado em sua embalagem original, pacote fechado ou caixa (exemplo: pacotes de fraldas fechados, pote fechado, caixa lacrada) e NÃO há fotos do item avulso fora da embalagem, É EXPRESSAMENTE E TERMINANTEMENTE PROIBIDO inventar, abrir ou desenhar o produto solto fora da embalagem (exemplo: NUNCA desenhe uma fralda aberta se o usuário enviou fotos dos pacotes de fraldas fechados). Em TODOS os quadros, o que deve ser mostrado e manuseado é o PACOTE/EMBALAGEM/CAIXA FECHADA exatamente como nas fotos reais!\n3. ÂNGULOS E DETALHES NÃO VISÍVEIS: É terminantemente proibido inventar outro lado, botões, acessórios ou partes traseiras que não estejam visíveis nas fotos de referência anexadas.\n========================`;
+    const isPackaged = isPackagedProductOnly(productName, productInfo, promptStr);
+    const packagingFidelityDirective = isPackaged
+      ? `\n\n========================\nREGRA SAGRADA DE EMBALAGEM FECHADA / PACOTES LACRADOS (TIKTOK SHOP COMPLIANCE):\n1. O produto consiste EXCLUSIVAMENTE em PACOTES FECHADOS / EMBALAGEM LACRADA de ${productName}.\n2. É TERMINANTEMENTE E SEVERAMENTE PROIBIDO: NUNCA desenhe pacotes abertos ou rasgados; NUNCA desenhe fraldas ou itens soltos/desdobrados fora da embalagem; NUNCA desenhe estampas de personagens em peças avulsas, elásticos, fitas ou forro interno; NUNCA desenhe testes derramando água ou líquidos!\n3. EM TODOS OS ${frameCount} QUADROS, o que deve ser mostrado, manuseado e exibido pela apresentadora é 100% EXCLUSIVAMENTE o PACOTE FECHADO LACRADO idêntico às fotos reais anexadas!\n========================`
+      : `\n\n========================\nREGRA SAGRADA DE FIDELIDADE AO PRODUTO ANEXADO — NUNCA INVENTAR PARTES NÃO FOTOGRAFADAS OU CONTEÚDO DE EMBALAGEM LACRADA (ANTI-REJEIÇÃO DO TIKTOK):\n1. O produto deve ser retratado RIGOROSA E EXCLUSIVAMENTE com base no que está visível nas fotos de referência anexadas pelo usuário!\n2. REGRA DE EMBALAGEM / PACOTE FECHADO / CAIXA: Se as fotos de referência mostram o produto lacrado em sua embalagem original, pacote fechado ou caixa (exemplo: pacotes de fraldas fechados, pote fechado, caixa lacrada) e NÃO há fotos do item avulso fora da embalagem, É EXPRESSAMENTE E TERMINANTEMENTE PROIBIDO inventar, abrir ou desenhar o produto solto fora da embalagem (exemplo: NUNCA desenhe uma fralda aberta se o usuário enviou fotos dos pacotes de fraldas fechados). Em TODOS os quadros, o que deve ser mostrado e manuseado é o PACOTE/EMBALAGEM/CAIXA FECHADA exatamente como nas fotos reais!\n3. ÂNGULOS E DETALHES NÃO VISÍVEIS: É terminantemente proibido inventar outro lado, botões, acessórios ou partes traseiras que não estejam visíveis nas fotos de referência anexadas.\n========================`;
 
-    const sanitizedPrompt = sanitizeStoryboardPromptForFidelity(promptStr, productName);
+    const sanitizedPrompt = sanitizeStoryboardPromptForFidelity(promptStr, productName, productInfo);
     const baseWithLogo = `${sanitizedPrompt}${logoEnforcementBlock}${packagingFidelityDirective}`;
     const effectivePrompt = correctionPrompt && correctionPrompt.trim()
       ? `${baseWithLogo}\n\n========================\nCORREÇÃO OBRIGATÓRIA DE AUDITORIA DE FIDELIDADE DOS ${frameCount} QUADRANTES:\n${correctionPrompt.trim()}\n========================`
@@ -4770,6 +4784,7 @@ app.post('/api/produtos2-audit-video', handleProdutos2AuditVideo);
 
 // Setup Vite middleware in dev or static serve in prod
 async function startServer() {
+  console.log('[startServer] Chamada startServer() recebida. NODE_ENV:', process.env.NODE_ENV, 'PORT:', PORT);
   if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
     const pkgName = 'vite';
     const { createServer: createViteServer } = await import(/* @vite-ignore */ pkgName);
@@ -4813,12 +4828,7 @@ async function startServer() {
   });
 }
 
-const isDirectRun = Boolean(
-  process.argv[1] &&
-  (process.argv[1].endsWith('server.ts') || process.argv[1].endsWith('server.js') || process.argv[1].includes('tsx'))
-);
-
-if (isDirectRun && !process.env.VERCEL) {
+if (!process.env.VERCEL) {
   startServer();
 }
 
