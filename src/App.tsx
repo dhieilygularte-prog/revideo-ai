@@ -1588,6 +1588,40 @@ export default function App() {
           return updatedResult;
         }
 
+        if (prev.sceneMode === 'modo_achadinhos' && prev.achadinhos) {
+          const updatedAchadinhos = { ...prev.achadinhos };
+          if (sceneTarget === 1 && updatedAchadinhos.bloco1) {
+            updatedAchadinhos.bloco1 = {
+              ...updatedAchadinhos.bloco1,
+              storyboardImageUrl: regen.imageUrl || updatedAchadinhos.bloco1.storyboardImageUrl,
+            };
+          } else if (sceneTarget === 2 && updatedAchadinhos.bloco2) {
+            updatedAchadinhos.bloco2 = {
+              ...updatedAchadinhos.bloco2,
+              storyboardImageUrl: regen.imageUrl || updatedAchadinhos.bloco2.storyboardImageUrl,
+            };
+          } else if (sceneTarget === 3 && updatedAchadinhos.bloco3) {
+            updatedAchadinhos.bloco3 = {
+              ...updatedAchadinhos.bloco3,
+              storyboardImageUrl: regen.imageUrl || updatedAchadinhos.bloco3.storyboardImageUrl,
+            };
+          }
+          const updatedResult: Produtos2ResultState = {
+            ...prev,
+            isRegeneratingStoryboard: false,
+            storyboardImageUrl: sceneTarget === 1 && regen.imageUrl ? regen.imageUrl : prev.storyboardImageUrl,
+            achadinhos: updatedAchadinhos,
+            storyboardError: regen.error,
+            tokenUsage: updatedTokenUsage,
+          };
+          import('./utils/historyStorage')
+            .then(({ saveCreativeToHistory }) => {
+              saveCreativeToHistory(updatedResult);
+            })
+            .catch(() => {});
+          return updatedResult;
+        }
+
         const updatedResult: Produtos2ResultState =
           sceneTarget === 2 && prev.scene2
             ? {

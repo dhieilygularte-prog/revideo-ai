@@ -28,7 +28,6 @@ import { AIProfile } from './src/config/aiProfiles';
 import { buildAniaPlanningSystemPrompt } from './src/ania/aniaPrompts';
 import { buildProdutos2PlanningSystemPrompt } from './src/produtos2/produtos2Prompts';
 import {
-  fitSpeechCloseToLimit,
   condenseSpeechMinimallyTo225,
   extractUserSpeechFromInstructions,
   fixCommonSlips,
@@ -2485,8 +2484,6 @@ app.post('/api/produtos2-planning', async (req, res) => {
       return clean;
     };
 
-    const calibrateSpeechTo200_225 = (text: string): string => calibrateSpeechToRange(text, 200, 225);
-
     // Ação 1: Detectar e condensar com inteligência máxima a fala do usuário a partir das Instruções Adicionais
     if (action === 'detect_and_review_user_speech') {
       try {
@@ -2861,7 +2858,7 @@ Informações reais e características do produto:
 """
 ${pInfo}
 """
-${addInstr ? `Instruções adicionais / contexto do usuário:\n"""\n${addInstr}\n"""\n` : ''}
+${addInstr ? `Instruções adicionais / contexto do usuário:\n"""\n${addInstr}\n"""\n` : ''}${userProvided ? `Fala sugerida / base fornecida pelo usuário:\n"""\n${userProvided}\n"""\n` : ''}
 
 REGRAS INEGOCIÁVEIS DA VERSÃO 5.0:
 1. LIMITE ESTRITO DE CARACTERES: Cada cena DEVE ter no máximo 225 caracteres (incluindo espaços e pontuação).
@@ -3572,7 +3569,6 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
       /leilao_cena_final|BLOCO 3|GERAÇÃO 3/i.test(promptStr) ||
       (/apontando o dedo indicador direto para a câmera/i.test(promptStr) && !/QUADRO 1/i.test(promptStr))
     ));
-    const isLeilaoBlock = isLeilao1 || isLeilao2 || isLeilao3;
 
     const isAchadinhosBlockNum = Number(req.body.isAchadinhosBlock) || 0;
     const isAchadinhos1 = isAchadinhosBlockNum === 1 || (isAchadinhosBlockNum === 0 && (/MODO AURORA ACHADINHOS.*CENA 1/i.test(promptStr) || /Storyboard 1A\/1B\/1C|achadinhos_storyboard_1/i.test(promptStr)));
@@ -3584,12 +3580,12 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
       req.body.sceneMode === '1_cena_10s' ||
       req.body.sceneMode === '1_cena_15s' ||
       req.body.sceneMode === '2_cenas_10s' ||
-      req.body.aspectRatio === '9:16' ||
-      isLeilao3;
+      isLeilao3 ||
+      (req.body.aspectRatio === '9:16' && !isLeilao1 && !isLeilao2 && !isAchadinhosBlock);
 
     const isLandscapeStoryboard =
-      !isStrictlyVerticalMode &&
-      Boolean(isLeilao1 || isLeilao2 || isAchadinhosBlock || req.body.aspectRatio === '16:9');
+      (isLeilao1 || isLeilao2 || isAchadinhosBlock || req.body.aspectRatio === '16:9') &&
+      !isStrictlyVerticalMode;
 
     const isSixFrames =
       reqSceneCount === 6 ||
@@ -3631,7 +3627,9 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
       }
     }
 
-    const baseWithLogo = `${prompt}${logoEnforcementBlock}`;
+    const packagingFidelityDirective = `\n\n========================\nREGRA SAGRADA DE FIDELIDADE AO PRODUTO ANEXADO — NUNCA INVENTAR PARTES NÃO FOTOGRAFADAS OU CONTEÚDO DE EMBALAGEM LACRADA (ANTI-REJEIÇÃO DO TIKTOK):\n1. O produto deve ser retratado RIGOROSA E EXCLUSIVAMENTE com base no que está visível nas fotos de referência anexadas pelo usuário!\n2. REGRA DE EMBALAGEM / PACOTE FECHADO / CAIXA: Se as fotos de referência mostram o produto lacrado em sua embalagem original, pacote fechado ou caixa (exemplo: pacotes de fraldas fechados, pote fechado, caixa lacrada) e NÃO há fotos do item avulso fora da embalagem, É EXPRESSAMENTE E TERMINANTEMENTE PROIBIDO inventar, abrir ou desenhar o produto solto fora da embalagem (exemplo: NUNCA desenhe uma fralda aberta se o usuário enviou fotos dos pacotes de fraldas fechados). Em TODOS os quadros, o que deve ser mostrado e manuseado é o PACOTE/EMBALAGEM/CAIXA FECHADA exatamente como nas fotos reais!\n3. ÂNGULOS E DETALHES NÃO VISÍVEIS: É terminantemente proibido inventar outro lado, botões, acessórios ou partes traseiras que não estejam visíveis nas fotos de referência anexadas.\n========================`;
+
+    const baseWithLogo = `${prompt}${logoEnforcementBlock}${packagingFidelityDirective}`;
     const effectivePrompt = correctionPrompt && correctionPrompt.trim()
       ? `${baseWithLogo}\n\n========================\nCORREÇÃO OBRIGATÓRIA DE AUDITORIA DE FIDELIDADE DOS ${frameCount} QUADRANTES:\n${correctionPrompt.trim()}\n========================`
       : baseWithLogo;

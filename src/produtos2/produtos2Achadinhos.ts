@@ -200,9 +200,6 @@ export function splitAchadinhosSpeech(fullSpeech: string): {
   }
 
   // 1. Tenta identificar marcadores explícitos de cena como [Cena 1], Cena 1:, etc.
-  const sceneRegex = /(?:\[?Cena\s*([123])\]?:?|(?:\n{2,}))/i;
-  const partsByLabel: { [key: number]: string } = {};
-
   const explicitMatch1 = raw.match(/(?:\[?Cena\s*1\]?:?)([\s\S]*?)(?=(?:\[?Cena\s*2\]?:?)|$)/i);
   const explicitMatch2 = raw.match(/(?:\[?Cena\s*2\]?:?)([\s\S]*?)(?=(?:\[?Cena\s*3\]?:?)|$)/i);
   const explicitMatch3 = raw.match(/(?:\[?Cena\s*3\]?:?)([\s\S]*?)$/i);

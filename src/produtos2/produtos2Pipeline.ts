@@ -357,16 +357,21 @@ export async function ensureLandscapeStoryboardImage(dataUrl?: string): Promise<
           // Caso 1: Imagem gerada na vertical (h > w)
           if (h > w) {
             console.warn(
-              `[Storyboard Normalizer] Detectada imagem vertical (${w}x${h}) em pedido horizontal 16:9. Descomprimindo para tela cheia panorâmica 1920x1080...`
+              `[Storyboard Normalizer] Detectada imagem vertical (${w}x${h}) em pedido horizontal 16:9. Preservando proporção natural centralizada 1920x1080 sem distorcer...`
             );
             const canvas = document.createElement('canvas');
             canvas.width = 1920;
             canvas.height = 1080;
             const ctx = canvas.getContext('2d');
             if (ctx) {
+              ctx.fillStyle = '#09090b';
+              ctx.fillRect(0, 0, 1920, 1080);
               ctx.imageSmoothingEnabled = true;
               ctx.imageSmoothingQuality = 'high';
-              ctx.drawImage(img, 0, 0, 1920, 1080);
+              const targetH = 1080;
+              const targetW = (w / h) * targetH;
+              const offsetX = (1920 - targetW) / 2;
+              ctx.drawImage(img, offsetX, 0, targetW, targetH);
               resolve(canvas.toDataURL('image/jpeg', 0.95));
               return;
             }
@@ -736,6 +741,7 @@ export async function runProdutos2LeilaoPipeline(params: {
     }
   }
 
+  const fullCopy = `[Cena 1 | 0-12s]\n${speeches.cena1}\n\n[Cena 2 | 12-24s]\n${speeches.cena2}\n\n[Cena 3 | 24-30s]\n${speeches.cena3}`;
   const productSize = classifyProductSize(form.productName, form.productInfo);
   const blockPrompts = buildLeilaoBlockPrompts({
     productName: form.productName || 'Produto',
@@ -842,6 +848,16 @@ export async function runProdutos2LeilaoPipeline(params: {
     totalCostUSD: Math.round(totalCostUSD * 1000) / 1000,
     estimatedCostBRL: Math.round(totalCostBRL * 100) / 100,
     modelsUsed: [imgRes1.usage?.model || 'image-model'],
+    breakdown: {
+      videoAnalysisTokens: 0,
+      videoAnalysisCostBRL: 0,
+      speechTokens: 0,
+      speechCostBRL: 0,
+      imagesCount: 3,
+      imagesCostBRL: Math.round(totalCostBRL * 100) / 100,
+      promptsTokens: 4500,
+      promptsCostBRL: 0,
+    },
     detailedSteps: [
       {
         step: 'Modo Leilão - Bloco 1 (Quadros 1 e 2)',
@@ -867,37 +883,57 @@ export async function runProdutos2LeilaoPipeline(params: {
     ],
   };
 
-  const fullCopy = `[Cena 1 | 0-12s]\n${speeches.cena1}\n\n[Cena 2 | 12-24s]\n${speeches.cena2}\n\n[Cena 3 | 24-30s]\n${speeches.cena3}`;
-
   return {
     sceneMode: 'modo_leilao',
     productName: form.productName || 'Produto em Leilão',
+    productInfo: form.productInfo,
     detectedNiche: 'Leilão / E-commerce',
-    copy: fullCopy,
-    copySource: 'Modo Leilão',
+    subMode: form.subMode || 'produtos_geral',
+    maleSubOption: form.maleSubOption || 'calcados',
+    duration: 10,
+    speechMode: form.speechMode || 'com_fala',
+    framing: form.framing,
+    scenario: form.scenario,
+    influencerResolved: form.influencer || 'Homem',
+    clientGender: form.clientGender,
+    productLock: [form.productName || 'Produto em Leilão'],
+    avatarDescription: 'Leiloeiro carismático e expressivo em salão de leilões clássico.',
+    scenarioDescription: 'Salão clássico de leilões com plateia e telão eletrônico.',
+    visualMap: [],
+    finalCopy: fullCopy,
+    copySourceLabel: 'Modo Leilão',
     copyId: 'LEILAO-01',
     scenes: [
       {
-        sceneNumber: 1,
-        timecode: '0–12s',
-        description: 'Salão clássico de leilão com leiloeiro e plateia.',
+        number: 1,
+        startTime: '0.0s',
+        endTime: '12.0s',
+        framing: 'Plano aberto',
         action: 'Leiloeiro ergue o martelo, recebe lances e fica chocado com o TikTok Shop.',
+        cameraMovement: 'Avanço suave',
+        storyboardDescription: 'Salão clássico de leilão com leiloeiro e plateia.',
       },
       {
-        sceneNumber: 2,
-        timecode: '12–24s',
-        description: 'Estúdio de produto e revelação.',
+        number: 2,
+        startTime: '12.0s',
+        endTime: '24.0s',
+        framing: 'Close de produto',
         action: 'Leiloeiro puxa o pano de veludo preto e revela o produto com 2 benefícios reais.',
+        cameraMovement: 'Travelling suave',
+        storyboardDescription: 'Estúdio de produto e revelação.',
       },
       {
-        sceneNumber: 3,
-        timecode: '24–30s',
-        description: 'Leiloeiro no púlpito apontando para a câmera e telão.',
+        number: 3,
+        startTime: '24.0s',
+        endTime: '30.0s',
+        framing: 'Plano médio',
         action: 'Chamada para ação no carrinho laranja antes que o lote seja encerrado.',
+        cameraMovement: 'Push-in final',
+        storyboardDescription: 'Leiloeiro no púlpito apontando para a câmera e telão.',
       },
     ],
     storyboardImageUrl: bloco1Img,
-    storyboardImagePrompt: blockPrompts.bloco1ImagePrompt,
+    storyboardPrompt: blockPrompts.bloco1ImagePrompt,
     veoPrompt: blockPrompts.veoPrompt1,
     descriptionHashtags,
     description: descriptionHashtags,
@@ -1062,7 +1098,7 @@ export async function runProdutos2AchadinhosPipeline(params: {
 
   // 6. GERAÇÃO DE HASHTAGS E DESCRIÇÃO
   onProgress?.(95, '5/5 Gerando hashtags de alta conversão para TikTok Shop...');
-  const { hashtags: generatedHashtags, descriptionHashtags } = generateProdutos2DescriptionHashtags({
+  const { hashtags: generatedHashtags, description: descriptionHashtags } = generateProdutos2DescriptionHashtags({
     productName: form.productName || 'Achadinho',
     productInfo: form.productInfo,
     subMode: 'produtos_geral',
@@ -1172,7 +1208,7 @@ export async function runProdutos2AchadinhosPipeline(params: {
       },
     ],
     storyboardImageUrl: bloco1Img,
-    storyboardImagePrompt: blockPrompts.bloco1ImagePrompt,
+    storyboardPrompt: blockPrompts.bloco1ImagePrompt,
     veoPrompt: blockPrompts.veoPrompt1,
     descriptionHashtags,
     description: descriptionHashtags,
@@ -1991,6 +2027,53 @@ export async function regenerateProdutos2Storyboard(params: {
     };
   }
 
+  // Se for Modo Achadinhos, refaz exclusivamente o bloco selecionado (1, 2 ou 3)
+  if (result.sceneMode === 'modo_achadinhos' && result.achadinhos) {
+    const targetBlock = sceneTarget === 3 ? 3 : sceneTarget === 2 ? 2 : 1;
+    const targetPrompt =
+      targetBlock === 3
+        ? result.achadinhos.bloco3.storyboardImagePrompt
+        : targetBlock === 2
+        ? result.achadinhos.bloco2.storyboardImagePrompt
+        : result.achadinhos.bloco1.storyboardImagePrompt;
+    const targetPrevImg =
+      targetBlock === 3
+        ? result.achadinhos.bloco3.storyboardImageUrl
+        : targetBlock === 2
+        ? result.achadinhos.bloco2.storyboardImageUrl
+        : result.achadinhos.bloco1.storyboardImageUrl;
+
+    const allPhotos: string[] = [
+      ...(form.productPhotosBase64 || []),
+      ...(form.variations || []).flatMap((v) => v.photos || []),
+    ].filter(Boolean);
+
+    const genRes = await requestStoryboardImageGeneration({
+      prompt: targetPrompt || '',
+      productName: result.productName,
+      allPhotos,
+      variations: form.variations,
+      additionalInstructions: form.additionalInstructions,
+      previousStoryboardImageBase64: targetPrevImg,
+      correctionPrompt: customCorrection || '',
+      aiProfile,
+      sceneCount: 3,
+      aspectRatio: '16:9',
+      isAchadinhosBlock: targetBlock,
+    });
+
+    if (genRes.error && !genRes.imageUrl) {
+      return { error: genRes.error };
+    }
+
+    const finalImg = await ensureLandscapeStoryboardImage(genRes.imageUrl);
+
+    return {
+      imageUrl: finalImg,
+    };
+  }
+
+  const isTwoScenes = result.sceneMode === '2_cenas_10s';
   const isTargetScene2 = sceneTarget === 2 && Boolean(result.scene2);
   const targetStoryboardPrompt =
     isTargetScene2 && result.scene2 ? result.scene2.storyboardPrompt : result.storyboardPrompt;
@@ -2034,6 +2117,7 @@ REGRAS ESTRITAS DE PRESERVAÇÃO E EXECUÇÃO:
 2. PRESERVAÇÃO RIGOROSA DOS DEMAIS QUADROS: Se o usuário solicitou refazer, trocar ou modificar quadros específicos (ex: "refaz a imagem 5 do storyboard", "refaz a imagem 1 do storyboard e mantém as outras iguais", etc.), você DEVE OBRIGATORIAMENTE MANTER RIGOROSAMENTE IDÊNTICOS TODOS OS DEMAIS QUADROS do storyboard anterior enviado como referência.
 3. MODIFICAÇÃO FOCADA: Altere EXCLUSIVAMENTE o(s) quadro(s) indicado(s) pelo usuário, aplicando com fidelidade cirúrgica a alteração exata que ele pediu.
 4. Mantenha as mesmas pessoas, poses, cenários, iluminação e cores nos quadros que o usuário NÃO mandou alterar.
+5. REGRA SAGRADA DE EMBALAGEM / PACOTE LACRADO (FIDELIDADE 1:1): NUNCA invente botões, detalhes ou partes não visíveis nas fotos de referência. Se o produto estiver em embalagem fechada, caixa ou pacote lacrado (ex: pacotes de fraldas fechados), NUNCA desenhe o produto aberto ou o conteúdo de dentro fora da embalagem! O pacote deve permanecer fechado e lacrado em todas as cenas!
 ========================`;
     if (targetAuditCorrection.trim()) {
       combinedCorrection += `\n\n[Observação secundária de auditoria das fotos reais do produto, para aplicar somente onde não conflitar com a ordem soberana do usuário]:\n${targetAuditCorrection.trim()}`;

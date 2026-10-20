@@ -8,7 +8,6 @@ import {
   CheckCircle2,
   Eye,
   Edit3,
-  Sparkles,
   Mic,
   Square,
   Wand2,
@@ -54,7 +53,7 @@ export const AchadinhosBlockSection: React.FC<AchadinhosBlockSectionProps> = ({
   productLock,
   referencePhotos,
   videoAudit,
-  aiProfile,
+  aiProfile: _aiProfile,
   onUpdateVeoPrompt,
   onUpdateSpeech,
   onRegenerateImage,
@@ -556,13 +555,11 @@ export const AchadinhosBlockSection: React.FC<AchadinhosBlockSectionProps> = ({
           productName={productName}
           productLock={productLock}
           referencePhotos={referencePhotos}
-          duration={10}
           onAuditComplete={(vAudit, usage) => {
             onAuditChange(vAudit);
             onAuditComplete?.(vAudit, usage);
           }}
           initialAudit={videoAudit}
-          aiProfile={aiProfile}
         />
       </div>
     </div>

@@ -189,6 +189,42 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
     }
   }, [result.scene2?.veoPrompt]);
 
+  const appendTokenAuditStep = (stepName: string, usage: any) => {
+    if (!onTokenUsageChange || !usage) return;
+    const curr = result.tokenUsage || {
+      promptTokens: 0,
+      candidateTokens: 0,
+      totalTokens: 0,
+      estimatedCostBRL: 0,
+      totalCostUSD: 0,
+      breakdown: {
+        videoAnalysisTokens: 0,
+        videoAnalysisCostBRL: 0,
+        speechTokens: 0,
+        speechCostBRL: 0,
+        imagesCount: 0,
+        imagesCostBRL: 0,
+        promptsTokens: 0,
+        promptsCostBRL: 0,
+      },
+      detailedSteps: [],
+      modelsUsed: [],
+    };
+    onTokenUsageChange({
+      ...curr,
+      detailedSteps: [
+        ...(curr.detailedSteps || []),
+        {
+          step: stepName,
+          model: usage.model || 'gemini-2.5-flash',
+          costUSD: usage.costUSD || 0.005,
+          costBRL: usage.costBRL || 0.03,
+          timestamp: new Date().toLocaleTimeString('pt-BR'),
+        },
+      ],
+    });
+  };
+
   const stopSpeechMicrophone = () => {
     if (speechRecRef.current) {
       try {
@@ -1106,22 +1142,8 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
               };
             });
           }}
-          onAuditComplete={(vAudit, usage) => {
-            if (usage && onTokenUsageChange) {
-              onTokenUsageChange((prevStats: any) => ({
-                ...prevStats,
-                detailedSteps: [
-                  ...(prevStats?.detailedSteps || []),
-                  {
-                    step: `Auditoria de Vídeo Modo Leilão (Bloco 1)`,
-                    model: usage.model || 'gemini-2.5-flash',
-                    costUSD: usage.costUSD || 0.005,
-                    costBRL: usage.costBRL || 0.03,
-                    timestamp: new Date().toLocaleTimeString('pt-BR'),
-                  },
-                ],
-              }));
-            }
+          onAuditComplete={(_vAudit, usage) => {
+            appendTokenAuditStep('Auditoria de Vídeo Modo Leilão (Bloco 1)', usage);
           }}
           onOpenPreview={onOpenPreview}
           onUpdateImage={(newUrl) => {
@@ -1213,22 +1235,8 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
               };
             });
           }}
-          onAuditComplete={(vAudit, usage) => {
-            if (usage && onTokenUsageChange) {
-              onTokenUsageChange((prevStats: any) => ({
-                ...prevStats,
-                detailedSteps: [
-                  ...(prevStats?.detailedSteps || []),
-                  {
-                    step: `Auditoria de Vídeo Modo Leilão (Bloco 2)`,
-                    model: usage.model || 'gemini-2.5-flash',
-                    costUSD: usage.costUSD || 0.005,
-                    costBRL: usage.costBRL || 0.03,
-                    timestamp: new Date().toLocaleTimeString('pt-BR'),
-                  },
-                ],
-              }));
-            }
+          onAuditComplete={(_vAudit, usage) => {
+            appendTokenAuditStep('Auditoria de Vídeo Modo Leilão (Bloco 2)', usage);
           }}
           onOpenPreview={onOpenPreview}
           onUpdateImage={(newUrl) => {
@@ -1319,22 +1327,8 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
               };
             });
           }}
-          onAuditComplete={(vAudit, usage) => {
-            if (usage && onTokenUsageChange) {
-              onTokenUsageChange((prevStats: any) => ({
-                ...prevStats,
-                detailedSteps: [
-                  ...(prevStats?.detailedSteps || []),
-                  {
-                    step: `Auditoria de Vídeo Modo Leilão (Bloco 3)`,
-                    model: usage.model || 'gemini-2.5-flash',
-                    costUSD: usage.costUSD || 0.005,
-                    costBRL: usage.costBRL || 0.03,
-                    timestamp: new Date().toLocaleTimeString('pt-BR'),
-                  },
-                ],
-              }));
-            }
+          onAuditComplete={(_vAudit, usage) => {
+            appendTokenAuditStep('Auditoria de Vídeo Modo Leilão (Bloco 3)', usage);
           }}
           onOpenPreview={onOpenPreview}
         />
@@ -1515,22 +1509,8 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
               };
             });
           }}
-          onAuditComplete={(vAudit, usage) => {
-            if (usage && onTokenUsageChange) {
-              onTokenUsageChange((prevStats: any) => ({
-                ...prevStats,
-                detailedSteps: [
-                  ...(prevStats?.detailedSteps || []),
-                  {
-                    step: `Auditoria de Vídeo Modo Achadinhos (Cena 1)`,
-                    model: usage.model || 'gemini-2.5-flash',
-                    costUSD: usage.costUSD || 0.005,
-                    costBRL: usage.costBRL || 0.03,
-                    timestamp: new Date().toLocaleTimeString('pt-BR'),
-                  },
-                ],
-              }));
-            }
+          onAuditComplete={(_vAudit, usage) => {
+            appendTokenAuditStep('Auditoria de Vídeo Modo Achadinhos (Cena 1)', usage);
           }}
           onOpenPreview={onOpenPreview}
         />
@@ -1598,22 +1578,8 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
               };
             });
           }}
-          onAuditComplete={(vAudit, usage) => {
-            if (usage && onTokenUsageChange) {
-              onTokenUsageChange((prevStats: any) => ({
-                ...prevStats,
-                detailedSteps: [
-                  ...(prevStats?.detailedSteps || []),
-                  {
-                    step: `Auditoria de Vídeo Modo Achadinhos (Cena 2)`,
-                    model: usage.model || 'gemini-2.5-flash',
-                    costUSD: usage.costUSD || 0.005,
-                    costBRL: usage.costBRL || 0.03,
-                    timestamp: new Date().toLocaleTimeString('pt-BR'),
-                  },
-                ],
-              }));
-            }
+          onAuditComplete={(_vAudit, usage) => {
+            appendTokenAuditStep('Auditoria de Vídeo Modo Achadinhos (Cena 2)', usage);
           }}
           onOpenPreview={onOpenPreview}
         />
@@ -1681,22 +1647,8 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
               };
             });
           }}
-          onAuditComplete={(vAudit, usage) => {
-            if (usage && onTokenUsageChange) {
-              onTokenUsageChange((prevStats: any) => ({
-                ...prevStats,
-                detailedSteps: [
-                  ...(prevStats?.detailedSteps || []),
-                  {
-                    step: `Auditoria de Vídeo Modo Achadinhos (Cena 3)`,
-                    model: usage.model || 'gemini-2.5-flash',
-                    costUSD: usage.costUSD || 0.005,
-                    costBRL: usage.costBRL || 0.03,
-                    timestamp: new Date().toLocaleTimeString('pt-BR'),
-                  },
-                ],
-              }));
-            }
+          onAuditComplete={(_vAudit, usage) => {
+            appendTokenAuditStep('Auditoria de Vídeo Modo Achadinhos (Cena 3)', usage);
           }}
           onOpenPreview={onOpenPreview}
         />

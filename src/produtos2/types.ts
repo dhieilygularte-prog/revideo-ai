@@ -1,5 +1,5 @@
 import { TokenUsageStats } from '../types';
-import type { Produtos2LeilaoResultState } from './produtos2Leilao';
+import type { Produtos2LeilaoResultState, LeilaoSpeechParts } from './produtos2Leilao';
 import type { Produtos2AchadinhosResultState, AchadinhosSpeechParts } from './produtos2Achadinhos';
 
 export type Produtos2SubMode = 'produtos_geral' | 'vestuario_masculino';
@@ -67,7 +67,9 @@ export interface Produtos2FormState {
   bancoCopy2?: string;
   auroraCopy?: string;
   achadinhosSpeech?: AchadinhosSpeechParts;
-  selectedSpeechOption?: 'user_speech' | 'banco1' | 'banco2' | 'aurora_copy';
+  leilaoSpeech?: LeilaoSpeechParts;
+  productPhotosBase64?: string[];
+  selectedSpeechOption?: 'user_speech' | 'banco1' | 'banco2' | 'aurora_copy' | 'leilao' | 'achadinhos';
   finalSelectedSpeech?: string;
   isDialogue?: boolean;
   dialogueDescription?: string;
@@ -182,8 +184,12 @@ export interface Produtos2ResultState {
   speakers?: Array<{ speaker: string; gender?: string; speech: string }>;
   description?: string;
   hashtags?: string[];
+  descriptionHashtags?: string;
+  leilaoSpeech?: LeilaoSpeechParts;
   tokenUsage?: TokenUsageStats;
   videoAudit?: VideoFidelityAudit;
+  copy?: string;
+  timestamp?: string;
 }
 
 export interface VideoAuditFrameItem {

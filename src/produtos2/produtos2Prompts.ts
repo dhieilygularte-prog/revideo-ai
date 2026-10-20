@@ -530,6 +530,10 @@ PROIBIÇÃO ABSOLUTA: NUNCA gere todos os ${totalScenes} quadros na mesma cor! �
 
 Use as fotos anexadas como referência absoluta do produto. Preserve fielmente (PRODUCT LOCK): ${sanitizedProductLock.join('; ')}.
 ${productIdentityRule}
+REGRA SAGRADA DE FIDELIDADE TOTAL AO PRODUTO ANEXADO — NUNCA INVENTAR PARTES NÃO FOTOGRAFADAS, ÂNGULOS NÃO VISÍVEIS OU CONTEÚDO DE EMBALAGENS LACRADAS (ANTI-INCONSISTÊNCIA DO TIKTOK):
+- O produto deve ser retratado RIGOROSA E EXCLUSIVAMENTE como aparece nas fotos de referência anexadas pelo usuário.
+- PRODUTO EM EMBALAGEM FECHADA / PACOTE LACRADO / CAIXA: Se as fotos de referência mostram o produto lacrado em sua embalagem, pacote fechado ou caixa (exemplo: pacotes de fraldas fechados, pote fechado, caixa de produto lacrada) e NÃO há fotos do item avulso fora da embalagem, É EXPRESSAMENTE E TERMINANTEMENTE PROIBIDO inventar, abrir ou desenhar o produto fora do pacote (ex: NUNCA desenhe uma fralda aberta ou o conteúdo interno solto se o usuário só enviou fotos dos pacotes de fraldas fechados). Em TODOS os quadros, o que deve ser mostrado e manuseado é o PACOTE/EMBALAGEM/CAIXA FECHADA exatamente como nas fotos reais!
+- ÂNGULOS, BOTÕES E DETALHES NÃO VISÍVEIS: É proibido inventar outro lado, botões, acessórios ou partes que não estejam visíveis nas fotos de referência anexadas. Se apenas a frente do produto foi enviada, todas as tomadas devem retratar o produto de frente ou nos ângulos visíveis nas fotos de referência. NENHUM botão, zíper, estampa, cor ou detalhe pode ser inventado diferente do fotografado.
 REGRA OBRIGATÓRIA DE LOGOMARCA DO FABRICANTE NO PRODUTO: A marca, a logomarca, o emblema/símbolo e os textos originais do fabricante que estão impressos, estampados ou gravados no próprio produto nas fotos de referência DEVEM aparecer 100% idênticos (mesmo desenho, formato, cor, proporção e posição exata na peça, como no encosto, painel ou corpo do produto) em TODOS os quadros onde essa parte do produto estiver visível. JAMAIS remova, apague ou deixe lisa a área onde fica a logomarca original do fabricante no produto!
 A copy selecionada para este criativo é:
 "${finalCopy}"
@@ -571,6 +575,7 @@ export function buildProdutos2VeoPrompt(params: {
   dialogueScript?: string;
   speakers?: Array<{ speaker: string; gender?: string; speech: string }>;
   sceneCount?: 6 | 9;
+  scenePartIndex?: 1 | 2;
 }): string {
   const {
     productName,
@@ -591,10 +596,11 @@ export function buildProdutos2VeoPrompt(params: {
     dialogueScript,
     speakers,
     sceneCount: explicitSceneCount,
+    scenePartIndex = 1,
   } = params;
 
   const totalScenes: 6 | 9 = explicitSceneCount || (scenes.length === 6 ? 6 : 9);
-  const gridLabel = totalScenes === 6 ? '2x3' : '3x3';
+  const gridLabel = totalScenes === 6 ? (scenePartIndex === 2 ? '2x3 (Cena 2)' : '2x3 (Cena 1)') : '3x3';
 
   const dialogueInfo = detectDialogueInfo({
     isDialogue,
@@ -1487,7 +1493,7 @@ export function buildDefaultProdutos2Plan(params: {
       },
       {
         framing: 'Close rápido e dinâmico de ação',
-        action: `Mão adulta acionando/preparando/abrindo ${productName} na prática para provar o primeiro argumento da fala.`,
+        action: `Mão adulta manuseando e apresentando ${productName} de frente na prática (se embalagem/pacote lacrado, mantém o pacote fechado sem abrir nem inventar conteúdo interno).`,
         cameraMovement: 'Push-in rápido focado na ação das mãos.',
       },
       {
@@ -1571,6 +1577,11 @@ REGRA DE OURO INVIOLÁVEL — LOGOMARCA DO FABRICANTE NO PRODUTO vs ELEMENTOS DE
 - Preencha obrigatoriamente o campo "manufacturerLogoDescription" descrevendo com precisão cirúrgica a logomarca/marca visível no produto (formato, desenho, letras/símbolo, cor exata e localização exata na peça, ex.: "Logomarca geométrica branca em formato de escudo hexagonal com 'W' estilizado centralizada na parte superior do encosto preto do banco").
 - O 1º item do array "productLock" DEVE ser essa descrição exata da logomarca do fabricante e a exigência de que ela apareça idêntica em todas as cenas onde aquela parte do produto estiver visível.
 - Nas descrições das cenas ("scenes") em que a parte do produto com a logomarca aparece, mencione explicitamente a presença da logomarca original no local exato (ex.: "...exibindo o encosto preto com a logomarca branca original do fabricante no topo").
+
+REGRA SAGRADA DE FIDELIDADE AO PRODUTO ANEXADO — PROIBIÇÃO ABSOLUTA DE INVENTAR PARTES NÃO FOTOGRAFADAS, CONTEÚDO DE EMBALAGENS LACRADAS OU ÂNGULOS NÃO VISÍVEIS (ANTI-REJEIÇÃO DO TIKTOK):
+- O produto deve ser retratado RIGOROSA E EXCLUSIVAMENTE com base no que está visível nas fotos de referência anexadas pelo usuário!
+- REGRA DE PRODUTO LACRADO / EMBALAGEM FECHADA / PACOTE: Se as fotos de referência mostram o produto fechado em sua embalagem original, pacote lacrado ou caixa (exemplo: pacotes de fraldas fechados, caixa de produto lacrada, pote lacrado) e NÃO há fotos do item avulso solto fora da embalagem, É EXPRESSAMENTE E TERMINANTEMENTE PROIBIDO inventar, abrir ou desenhar o produto solto fora da embalagem (exemplo: NUNCA desenhe uma fralda aberta ou o conteúdo interno se o usuário só enviou fotos dos pacotes de fraldas fechados). Em TODAS as cenas, o que deve ser mostrado e manuseado é o PACOTE/EMBALAGEM/CAIXA FECHADA exatamente como nas fotos reais (sendo segurado de frente, apoiado no cenário, apontando para os detalhes visíveis do pacote, etc.)!
+- REGRA DE ÂNGULOS E BOTÕES NÃO VISÍVEIS: É terminantemente proibido inventar outro lado, botões, acessórios ou partes traseiras que não estejam visíveis nas fotos de referência anexadas. Se apenas a frente do produto foi enviada, todas as tomadas devem retratar o produto de frente ou nos ângulos visíveis nas fotos de referência. NENHUM botão, detalhe construtivo ou peça diferente do fotografado pode aparecer.
 
 Sua tarefa é receber:
 1) As fotos reais do produto;

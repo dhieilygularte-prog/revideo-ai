@@ -331,8 +331,8 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
           realPrice,
           realPriceRaw: String(realPrice),
           leilaoSpeech: finalLeilaoSpeech,
-          userSpeech: generated.userSpeechParts
-            ? `${generated.userSpeechParts.cena1}\n\n${generated.userSpeechParts.cena2}\n\n${generated.userSpeechParts.cena3}`
+          userSpeech: generated.userSpeechLeilao
+            ? `${generated.userSpeechLeilao.cena1}\n\n${generated.userSpeechLeilao.cena2}\n\n${generated.userSpeechLeilao.cena3}`
             : prev.userSpeech,
           speechesGenerated: true,
           selectedSpeechOption: 'leilao',
@@ -2162,14 +2162,12 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                       onChange={(e) => {
                         const val = e.target.value;
                         onChange((prev) => {
-                          const updated = {
-                            ...(prev.leilaoSpeech || {
-                              cena1: '',
-                              cena2: '',
-                              cena3: '',
-                            }),
-                            cena1: val,
+                          const base = prev.leilaoSpeech || {
+                            cena1: '', cena1A: '', cena1B: '', cena1C: '',
+                            cena2: '', cena2A: '', cena2B: '', cena2C: '',
+                            cena3: '', full: '',
                           };
+                          const updated = { ...base, cena1: val };
                           return {
                             ...prev,
                             leilaoSpeech: updated,
@@ -2205,14 +2203,12 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                       onChange={(e) => {
                         const val = e.target.value;
                         onChange((prev) => {
-                          const updated = {
-                            ...(prev.leilaoSpeech || {
-                              cena1: '',
-                              cena2: '',
-                              cena3: '',
-                            }),
-                            cena2: val,
+                          const base = prev.leilaoSpeech || {
+                            cena1: '', cena1A: '', cena1B: '', cena1C: '',
+                            cena2: '', cena2A: '', cena2B: '', cena2C: '',
+                            cena3: '', full: '',
                           };
+                          const updated = { ...base, cena2: val };
                           return {
                             ...prev,
                             leilaoSpeech: updated,
@@ -2248,14 +2244,12 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                       onChange={(e) => {
                         const val = e.target.value;
                         onChange((prev) => {
-                          const updated = {
-                            ...(prev.leilaoSpeech || {
-                              cena1: '',
-                              cena2: '',
-                              cena3: '',
-                            }),
-                            cena3: val,
+                          const base = prev.leilaoSpeech || {
+                            cena1: '', cena1A: '', cena1B: '', cena1C: '',
+                            cena2: '', cena2A: '', cena2B: '', cena2C: '',
+                            cena3: '', full: '',
                           };
+                          const updated = { ...base, cena3: val };
                           return {
                             ...prev,
                             leilaoSpeech: updated,

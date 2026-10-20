@@ -2313,8 +2313,6 @@ export function adaptBankCopyToProduct(
   const desseProd = isFem ? `dessa ${spokenName}` : `desse ${spokenName}`;
   const umProd = isFem ? `uma ${spokenName}` : `um ${spokenName}`;
   const oSeu = isFem ? 'a sua' : 'o seu';
-  const eleEla = isFem ? 'ela' : 'ele';
-  const EleEla = isFem ? 'Ela' : 'Ele';
 
   const isActualToy = /\b(brinquedo|carrinho|triciclo|jipe|boneca|patinete|jogo|blocos|nerf|pista|controle remoto|drift)\b/i.test(
     fullTargetNorm

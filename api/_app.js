@@ -1275,6 +1275,11 @@ REGRA DE OURO INVIOL\xC1VEL \u2014 LOGOMARCA DO FABRICANTE NO PRODUTO vs ELEMENT
 - O 1\xBA item do array "productLock" DEVE ser essa descri\xE7\xE3o exata da logomarca do fabricante e a exig\xEAncia de que ela apare\xE7a id\xEAntica em todas as cenas onde aquela parte do produto estiver vis\xEDvel.
 - Nas descri\xE7\xF5es das cenas ("scenes") em que a parte do produto com a logomarca aparece, mencione explicitamente a presen\xE7a da logomarca original no local exato (ex.: "...exibindo o encosto preto com a logomarca branca original do fabricante no topo").
 
+REGRA SAGRADA DE FIDELIDADE AO PRODUTO ANEXADO \u2014 PROIBI\xC7\xC3O ABSOLUTA DE INVENTAR PARTES N\xC3O FOTOGRAFADAS, CONTE\xDADO DE EMBALAGENS LACRADAS OU \xC2NGULOS N\xC3O VIS\xCDVEIS (ANTI-REJEI\xC7\xC3O DO TIKTOK):
+- O produto deve ser retratado RIGOROSA E EXCLUSIVAMENTE com base no que est\xE1 vis\xEDvel nas fotos de refer\xEAncia anexadas pelo usu\xE1rio!
+- REGRA DE PRODUTO LACRADO / EMBALAGEM FECHADA / PACOTE: Se as fotos de refer\xEAncia mostram o produto fechado em sua embalagem original, pacote lacrado ou caixa (exemplo: pacotes de fraldas fechados, caixa de produto lacrada, pote lacrado) e N\xC3O h\xE1 fotos do item avulso solto fora da embalagem, \xC9 EXPRESSAMENTE E TERMINANTEMENTE PROIBIDO inventar, abrir ou desenhar o produto solto fora da embalagem (exemplo: NUNCA desenhe uma fralda aberta ou o conte\xFAdo interno se o usu\xE1rio s\xF3 enviou fotos dos pacotes de fraldas fechados). Em TODAS as cenas, o que deve ser mostrado e manuseado \xE9 o PACOTE/EMBALAGEM/CAIXA FECHADA exatamente como nas fotos reais (sendo segurado de frente, apoiado no cen\xE1rio, apontando para os detalhes vis\xEDveis do pacote, etc.)!
+- REGRA DE \xC2NGULOS E BOT\xD5ES N\xC3O VIS\xCDVEIS: \xC9 terminantemente proibido inventar outro lado, bot\xF5es, acess\xF3rios ou partes traseiras que n\xE3o estejam vis\xEDveis nas fotos de refer\xEAncia anexadas. Se apenas a frente do produto foi enviada, todas as tomadas devem retratar o produto de frente ou nos \xE2ngulos vis\xEDveis nas fotos de refer\xEAncia. NENHUM bot\xE3o, detalhe construtivo ou pe\xE7a diferente do fotografado pode aparecer.
+
 Sua tarefa \xE9 receber:
 1) As fotos reais do produto;
 2) As "Informa\xE7\xF5es do produto" e "Nome do produto";
@@ -3673,7 +3678,6 @@ ${userPrompt2}` }]
       }
       return clean;
     };
-    const calibrateSpeechTo200_225 = (text) => calibrateSpeechToRange(text, 200, 225);
     if (action === "detect_and_review_user_speech") {
       try {
         const textToAnalyze = (additionalInstructions || req.body.text || "").trim();
@@ -3990,6 +3994,10 @@ ${pInfo}
 ${addInstr ? `Instru\xE7\xF5es adicionais / contexto do usu\xE1rio:
 """
 ${addInstr}
+"""
+` : ""}${userProvided ? `Fala sugerida / base fornecida pelo usu\xE1rio:
+"""
+${userProvided}
 """
 ` : ""}
 
@@ -4548,14 +4556,13 @@ app.post("/api/produtos2-generate-storyboard", async (req, res) => {
     const isLeilao1 = isLeilaoBlockNum === 1 || isLeilaoBlockNum === 0 && (/leilao_storyboard_1/i.test(promptStr) || /QUADRO 1/i.test(promptStr) && /QUADRO 2/i.test(promptStr) && /QUADRO 3/i.test(promptStr) && !/QUADRO 4/i.test(promptStr) || /CENA 1.*leil/i.test(promptStr) || /BLOCO 1/i.test(promptStr));
     const isLeilao2 = isLeilaoBlockNum === 2 || isLeilaoBlockNum === 0 && (/leilao_storyboard_2/i.test(promptStr) || /QUADRO 4/i.test(promptStr) && /QUADRO 5/i.test(promptStr) && /QUADRO 6/i.test(promptStr) || /BLOCO 2/i.test(promptStr));
     const isLeilao3 = isLeilaoBlockNum === 3 || isLeilaoBlockNum === 0 && (/leilao_cena_final|BLOCO 3|GERAÇÃO 3/i.test(promptStr) || /apontando o dedo indicador direto para a câmera/i.test(promptStr) && !/QUADRO 1/i.test(promptStr));
-    const isLeilaoBlock = isLeilao1 || isLeilao2 || isLeilao3;
     const isAchadinhosBlockNum = Number(req.body.isAchadinhosBlock) || 0;
     const isAchadinhos1 = isAchadinhosBlockNum === 1 || isAchadinhosBlockNum === 0 && (/MODO AURORA ACHADINHOS.*CENA 1/i.test(promptStr) || /Storyboard 1A\/1B\/1C|achadinhos_storyboard_1/i.test(promptStr));
     const isAchadinhos2 = isAchadinhosBlockNum === 2 || isAchadinhosBlockNum === 0 && (/MODO AURORA ACHADINHOS.*CENA 2/i.test(promptStr) || /Storyboard 2A\/2B\/2C|achadinhos_storyboard_2/i.test(promptStr));
     const isAchadinhos3 = isAchadinhosBlockNum === 3 || isAchadinhosBlockNum === 0 && (/MODO AURORA ACHADINHOS.*CENA 3/i.test(promptStr) || /Storyboard 3A\/3B\/3C|achadinhos_storyboard_3/i.test(promptStr));
     const isAchadinhosBlock = isAchadinhos1 || isAchadinhos2 || isAchadinhos3;
-    const isStrictlyVerticalMode = req.body.sceneMode === "1_cena_10s" || req.body.sceneMode === "1_cena_15s" || req.body.sceneMode === "2_cenas_10s" || req.body.aspectRatio === "9:16" || isLeilao3;
-    const isLandscapeStoryboard = !isStrictlyVerticalMode && Boolean(isLeilao1 || isLeilao2 || isAchadinhosBlock || req.body.aspectRatio === "16:9");
+    const isStrictlyVerticalMode = req.body.sceneMode === "1_cena_10s" || req.body.sceneMode === "1_cena_15s" || req.body.sceneMode === "2_cenas_10s" || isLeilao3 || req.body.aspectRatio === "9:16" && !isLeilao1 && !isLeilao2 && !isAchadinhosBlock;
+    const isLandscapeStoryboard = (isLeilao1 || isLeilao2 || isAchadinhosBlock || req.body.aspectRatio === "16:9") && !isStrictlyVerticalMode;
     const isSixFrames = reqSceneCount === 6 || /GRADE\s+2x3|EXATAMENTE\s+6\s+(?:QUADROS|CENAS)/i.test(String(prompt));
     const frameCount = isLeilao1 || isLeilao2 || isAchadinhosBlock ? 3 : isLeilao3 ? 1 : isSixFrames ? 6 : 9;
     const gridLabel = isAchadinhosBlock ? "3 colunas verticais lado a lado em uma \xFAnica imagem horizontal 16:9 widescreen (grade 1 linha x 3 colunas: Quadro A \xE0 esquerda, Quadro B ao centro, Quadro C \xE0 direita), sem n\xFAmeros, sem bal\xF5es e sem legendas sobrepostas" : isLeilao1 ? "3 colunas verticais lado a lado em uma \xFAnica tela horizontal 16:9 widescreen (1920x1080), com n\xFAmeros discretos 1, 2 e 3 em c\xEDrculos brancos no canto superior direito" : isLeilao2 ? "3 colunas verticais lado a lado em uma \xFAnica tela horizontal 16:9 widescreen (1920x1080), com n\xFAmeros discretos 4, 5 e 6 em c\xEDrculos brancos no canto superior direito" : isLeilao3 ? "1 quadro fotogr\xE1fico vertical \xFAnico 9:16 (sem n\xFAmero)" : isSixFrames ? "2x3 (2 colunas x 3 linhas)" : "3x3 (3 colunas x 3 linhas)";
@@ -4579,7 +4586,15 @@ REGRA INEGOCI\xC1VEL: Em TODOS os quadrantes do storyboard onde essa parte do pr
 ========================`;
       }
     }
-    const baseWithLogo = `${prompt}${logoEnforcementBlock}`;
+    const packagingFidelityDirective = `
+
+========================
+REGRA SAGRADA DE FIDELIDADE AO PRODUTO ANEXADO \u2014 NUNCA INVENTAR PARTES N\xC3O FOTOGRAFADAS OU CONTE\xDADO DE EMBALAGEM LACRADA (ANTI-REJEI\xC7\xC3O DO TIKTOK):
+1. O produto deve ser retratado RIGOROSA E EXCLUSIVAMENTE com base no que est\xE1 vis\xEDvel nas fotos de refer\xEAncia anexadas pelo usu\xE1rio!
+2. REGRA DE EMBALAGEM / PACOTE FECHADO / CAIXA: Se as fotos de refer\xEAncia mostram o produto lacrado em sua embalagem original, pacote fechado ou caixa (exemplo: pacotes de fraldas fechados, pote fechado, caixa lacrada) e N\xC3O h\xE1 fotos do item avulso fora da embalagem, \xC9 EXPRESSAMENTE E TERMINANTEMENTE PROIBIDO inventar, abrir ou desenhar o produto solto fora da embalagem (exemplo: NUNCA desenhe uma fralda aberta se o usu\xE1rio enviou fotos dos pacotes de fraldas fechados). Em TODOS os quadros, o que deve ser mostrado e manuseado \xE9 o PACOTE/EMBALAGEM/CAIXA FECHADA exatamente como nas fotos reais!
+3. \xC2NGULOS E DETALHES N\xC3O VIS\xCDVEIS: \xC9 terminantemente proibido inventar outro lado, bot\xF5es, acess\xF3rios ou partes traseiras que n\xE3o estejam vis\xEDveis nas fotos de refer\xEAncia anexadas.
+========================`;
+    const baseWithLogo = `${prompt}${logoEnforcementBlock}${packagingFidelityDirective}`;
     const effectivePrompt = correctionPrompt && correctionPrompt.trim() ? `${baseWithLogo}
 
 ========================
@@ -4673,14 +4688,14 @@ ${correctionPrompt.trim()}
           }
         }
         parts.push({ text: effectivePrompt });
-        const isLeilaoBlock2 = isLeilao1 || isLeilao2 || isLeilao3;
+        const isLeilaoBlock = isLeilao1 || isLeilao2 || isLeilao3;
         const variationInstructionRule = activeVariations.length >= 2 ? `- REGRA MANDAT\xD3RIA DE ALTERN\xC2NCIA DE CORES ENTRE OS QUADROS: O produto possui ${activeVariations.length} varia\xE7\xF5es de cores/modelos. Voc\xEA DEVE OBRIGATORIAMENTE alternar as cores conforme a divis\xE3o especificada. NUNCA gere todos os ${frameCount} quadros na mesma cor! Apenas o modelo, formato e pe\xE7as permanecem id\xEAnticos, a cor DEVE alternar entre os blocos de quadros!` : `- PRODUCT LOCK ABSOLUTO: O produto em todos os quadros onde aparece deve ser 100% id\xEAntico \xE0s fotos reais anexadas (mesmo formato, cor, textura, bot\xF5es, fun\xE7\xF5es, propor\xE7\xE3o e detalhes).`;
         const systemInstructionText = isAchadinhosBlock ? `VOC\xCA \xC9 O MOTOR VISUAL DO MODO AURORA ACHADINHOS (3 CENAS DE 10S).
 - Gere UMA IMAGEM FOTOGR\xC1FICA HORIZONTAL 16:9 (1920x1080) composta por exatamente 3 quadros verticais de propor\xE7\xE3o aproximada 9:16, organizados lado a lado da esquerda para a direita (Quadro A \xE0 esquerda, Quadro B no centro, Quadro C \xE0 direita).
 - Os tr\xEAs quadros devem representar instantes sucessivos de uma a\xE7\xE3o cont\xEDnua da mesma personagem, mesmo produto e mesmo ambiente.
 - SEM N\xDAMEROS, SEM BAL\xD5ES E SEM TEXTOS: \xC9 terminantemente proibido colocar letras A/B/C sobre a imagem, n\xFAmeros, legendas, t\xEDtulos, bal\xF5es ou marcas d'\xE1gua.
 - Fotografia ultrarrealista com textura de pele natural, ilumina\xE7\xE3o de smartphone e cen\xE1rio brasileiro cotidiano.
-- Fidelidade absoluta \xE0s fotos reais do produto.` : isLeilaoBlock2 ? isLeilao3 ? `VOC\xCA \xC9 O GERADOR VISUAL DA CENA FINAL DO MODO LEIL\xC3O.
+- Fidelidade absoluta \xE0s fotos reais do produto.` : isLeilaoBlock ? isLeilao3 ? `VOC\xCA \xC9 O GERADOR VISUAL DA CENA FINAL DO MODO LEIL\xC3O.
 - Gere UMA \xDANICA IMAGEM VERTICAL 9:16 (1080x1920), plano m\xE9dio fotorrealista.
 - SEM N\xDAMEROS DE QUADRO, sem faixas brancas e sem legendas sobrepostas.
 - Apresentador atr\xE1s do p\xFAlpito, apontando para a c\xE2mera, com o produto ao lado dele bem vis\xEDvel e o tel\xE3o ao fundo mostrando a foto do produto.
