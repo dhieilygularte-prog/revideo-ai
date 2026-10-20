@@ -13,7 +13,10 @@ import {
 import { applySpeechIntro } from './produtos2CopyBank';
 import {
   appendFidelityLockToVeoPrompt,
+  isPackagedProductOnly,
+  sanitizeAllScenesForFidelity,
   sanitizeSceneFidelityAction,
+  sanitizeStoryboardPromptForFidelity,
 } from './produtos2FidelityLock';
 
 /**
@@ -499,7 +502,14 @@ PROIBIÇÃO ABSOLUTA: NUNCA gere todos os ${totalScenes} quadros na mesma cor! �
 ═══════════════════════════════════════════════════════════════════`;
   }
 
-  const scenesLines = scenes
+  const isPackaged = isPackagedProductOnly(productName);
+  const sanitizedScenes = sanitizeAllScenesForFidelity(scenes, productName);
+
+  const packagedNotice = isPackaged
+    ? `\n\n═══════════════════════════════════════════════════════════════════\n⚠️ REGRA INEGOCIÁVEL DE EMBALAGEM FECHADA / PACOTES LACRADOS (TIKTOK SHOP):\nO produto nas fotos de referência consiste em PACOTES FECHADOS / EMBALAGEM LACRADA.\nÉ TERMINANTEMENTE E SEVERAMENTE PROIBIDO desenhar o pacote aberto, rasgado, fraldas avulsas/soltas fora do pacote, partes internas soltas ou qualquer teste derramando líquidos/água!\nEm TODOS OS ${totalScenes} QUADROS, o que deve ser desenhado e manipulado é EXCLUSIVAMENTE o PACOTE FECHADO idêntico às fotos reais anexadas!\n═══════════════════════════════════════════════════════════════════\n`
+    : '';
+
+  const scenesLines = sanitizedScenes
     .slice(0, totalScenes)
     .map((sc, i) => {
       const varInfo = getSceneVariationInfo(i + 1, activeVars, totalScenes);
@@ -530,7 +540,7 @@ PROIBIÇÃO ABSOLUTA: NUNCA gere todos os ${totalScenes} quadros na mesma cor! �
     ? `PERSONAGENS EM CENA E INTERAÇÃO (DIÁLOGO): Dois personagens principais em interação direta e expressiva (Mulher e Homem), mantendo rigorosa continuidade física, de roupas e de traços em todos os ${totalScenes} quadros. ${avatarDescription}. Enquadramento: ${framingLabel}.${dialogueScriptBlock}`
     : `PERSONAGEM: ${avatarDescription}, o mesmo em todos os quadros. Enquadramento: ${framingLabel}.`;
 
-  return `Crie UMA ÚNICA IMAGEM VERTICAL 1080x1920 (9:16) de storyboard fotográfico ultra-realista em ${gridDesc} em ordem de leitura (esquerda para direita, de cima para baixo). Quadros de tamanho igual, cantos arredondados, separados por uma borda branca fina, fundo branco.${variationsBlock}${scenePartNote}
+  const rawPrompt = `Crie UMA ÚNICA IMAGEM VERTICAL 1080x1920 (9:16) de storyboard fotográfico ultra-realista em ${gridDesc} em ordem de leitura (esquerda para direita, de cima para baixo). Quadros de tamanho igual, cantos arredondados, separados por uma borda branca fina, fundo branco.${variationsBlock}${scenePartNote}${packagedNotice}
 
 Use as fotos anexadas como referência absoluta do produto. Preserve fielmente (PRODUCT LOCK): ${sanitizedProductLock.join('; ')}.
 ${productIdentityRule}
@@ -554,6 +564,8 @@ ${scenesLines}
 Mantenha continuidade de produto, logomarca original do fabricante no produto, personagem, ambiente e iluminação entre as cenas relacionadas. Cada quadro deve parecer uma fotografia real e utilizável como referência de futura animação.
 Adicionar SOMENTE os números 1 a ${totalScenes} em pequenos selos circulares brancos com número preto, no canto superior esquerdo de cada quadro.
 PROIBIÇÃO EXCLUSIVA DE INTERFACE EXTERNA: NÃO adicionar frases flutuantes na tela, legendas, textos publicitários externos, ícone de carrinho de compras, botões, setas, preços, interface de aplicativo, logotipo do TikTok ou de rede social, nome de usuário/@ ou marca d'água externa (mantendo obrigatoriamente a logomarca original do fabricante impressa no próprio produto).`;
+
+  return sanitizeStoryboardPromptForFidelity(rawPrompt, productName);
 }
 
 /**
@@ -700,13 +712,15 @@ export function buildProdutos2VeoPrompt(params: {
   const manTikTokSentence = manSentences.find((s) => /tiktok|comprei/i.test(s)) || (manSentences.length >= 3 ? manSentences[manSentences.length - 2] : '');
   const manCtaSentence = manSentences.find((s) => /carrinho|adquir|garant|toque|toca/i.test(s)) || manSentences[manSentences.length - 1] || '';
 
-  const scenesBlock = scenes
+  const sanitizedInputScenes = sanitizeAllScenesForFidelity(scenes, productName);
+  const scenesBlock = sanitizedInputScenes
     .slice(0, totalScenes)
     .map((sc, idx) => {
       const num = idx + 1;
       const isLast = num === totalScenes;
       const unifiedDesc = getUnifiedSceneDescription(sc);
       let actionText = `${unifiedDesc} ${sc.cameraMovement || ''}`.trim();
+      actionText = sanitizeSceneFidelityAction(actionText, productName);
       if (speechMode === 'sem_fala' && isLast) {
         actionText = actionText.replace(/falando para a câmera/gi, 'sorrindo e mostrando o produto para a câmera');
       }
@@ -1543,10 +1557,10 @@ export function buildDefaultProdutos2Plan(params: {
       : rawScenes.slice(0, 9);
 
   const activePlanVars = (variations || []).filter((v) => v.photos && v.photos.length > 0);
-  const scenes: Produtos2SceneItem[] = selectedRawScenes.map((sc, idx) => {
+  const rawPlanScenes: Produtos2SceneItem[] = selectedRawScenes.map((sc, idx) => {
     const num = idx + 1;
     const varInfo = getSceneVariationInfo(num, activePlanVars, sceneCount);
-    const cleanAction = sanitizeSceneFidelityAction(sc.action.trim());
+    const cleanAction = sanitizeSceneFidelityAction(sc.action.trim(), productName);
     return {
       number: num,
       startTime: timings[idx].start,
@@ -1558,6 +1572,8 @@ export function buildDefaultProdutos2Plan(params: {
       variationName: varInfo?.variationName,
     };
   });
+
+  const scenes = sanitizeAllScenesForFidelity(rawPlanScenes, productName, productInfo);
 
   return {
     productLock,
@@ -1586,12 +1602,25 @@ REGRA DE OURO INVIOLÁVEL — LOGOMARCA DO FABRICANTE NO PRODUTO vs ELEMENTOS DE
 
 REGRA SAGRADA DE FIDELIDADE AO PRODUTO ANEXADO — PROIBIÇÃO ABSOLUTA DE INVENTAR PARTES NÃO FOTOGRAFADAS, CONTEÚDO DE EMBALAGENS LACRADAS OU ÂNGULOS NÃO VISÍVEIS (ANTI-REJEIÇÃO DO TIKTOK):
 - O produto deve ser retratado RIGOROSA E EXCLUSIVAMENTE com base no que está visível nas fotos de referência anexadas pelo usuário!
-- REGRA DE PRODUTO LACRADO / EMBALAGEM FECHADA / PACOTE: Se as fotos de referência mostram o produto fechado em sua embalagem original, pacote lacrado ou caixa (exemplo: pacotes de fraldas fechados, caixa de produto lacrada, pote lacrado) e NÃO há fotos do item avulso solto fora da embalagem, É EXPRESSAMENTE E TERMINANTEMENTE PROIBIDO inventar, abrir ou desenhar o produto solto fora da embalagem (exemplo: NUNCA desenhe uma fralda aberta ou o conteúdo interno se o usuário só enviou fotos dos pacotes de fraldas fechados). Em TODAS as cenas, o que deve ser mostrado e manuseado é o PACOTE/EMBALAGEM/CAIXA FECHADA exatamente como nas fotos reais (sendo segurado de frente, apoiado no cenário, apontando para os detalhes visíveis do pacote, etc.)!
+- REGRA CRÍTICA SOBRE "INFORMAÇÕES DO PRODUTO" (TEXTO vs IMAGEM):
+  * As "Informações do produto" e descrição textual servem EXCLUSIVAMENTE para construir ou adaptar a copy/fala falada (locução).
+  * É TERMINANTEMENTE PROIBIDO usar o texto de "Informações do produto" para inventar cenas visuais, desenhar produtos abertos ou criar detalhes que NÃO estão fotografados nas fotos de referência!
+  * Exemplo Real: se o texto descreve "estampa da galinha pintadinha", "tecnologia de absorção 12h", "gel", "toque de algodão" ou "indicador de umidade", mas as fotos anexadas mostram apenas PACOTES FECHADOS / EMBALAGENS LACRADAS, você NUNCA PODE criar cenas abrindo o pacote, tirando uma fralda de dentro, mostrando a fralda aberta, jogando água na fralda ou tocando no algodão! A imagem do storyboard é 100% sobre o que foi fotografado!
+- REGRA DE PRODUTO LACRADO / EMBALAGEM FECHADA / PACOTES (ex.: pacotes de fraldas fechados, caixas de cosméticos, potes lacrados, combos):
+  * Se as fotos de referência mostram apenas a embalagem fechada ou o pacote lacrado e NÃO há fotos do item avulso solto fora do pacote:
+  * TODAS as 9 cenas (ou 6 cenas) DEVEM retratar e manusear EXCLUSIVAMENTE a EMBALAGEM FECHADA / O PACOTE FECHADO!
+  * NENHUMA cena pode abrir a embalagem, rasgar o plástico, tirar o produto de dentro, mostrar o produto solto/aberto ou fazer testes de absorção/líquidos.
+  * O que fazer nas cenas de demonstração de produto em pacote/embalagem fechada:
+    - Cenas 1–2: Segurar os pacotes fechados de frente, mostrando o combo/estoque com clareza;
+    - Cenas 3–4: Empilhar os pacotes fechados sobre a bancada, cômoda ou mesa de forma organizada;
+    - Cenas 5–6: Apontar com o dedo para os selos, marca, quantidade e benefícios impressos NA PRÓPRIA EMBALAGEM de referência;
+    - Cenas 7–8: Mostrar os pacotes fechados integrados ao ambiente de uso (ex.: quarto do bebê com os pacotes organizados na prateleira);
+    - Cena 9: Abraçar/segurar os pacotes fechados com sorriso de satisfação e recomendação para o carrinho.
 - REGRA DE ÂNGULOS E BOTÕES NÃO VISÍVEIS: É terminantemente proibido inventar outro lado, botões, acessórios ou partes traseiras que não estejam visíveis nas fotos de referência anexadas. Se apenas a frente do produto foi enviada, todas as tomadas devem retratar o produto de frente ou nos ângulos visíveis nas fotos de referência. NENHUM botão, detalhe construtivo ou peça diferente do fotografado pode aparecer.
 
 Sua tarefa é receber:
-1) As fotos reais do produto;
-2) As "Informações do produto" e "Nome do produto";
+1) As fotos reais do produto (FONTE ÚNICA E ABSOLUTA PARA O STORYBOARD E CENAS VISUAIS);
+2) As "Informações do produto" e "Nome do produto" (FONTE EXCLUSIVA PARA A COPY/FALA E NICHO, NUNCA PARA CRIAR CENAS VISUAIS);
 3) A "Copy-base selecionada do banco" (ou copy nova/adaptada do molde do nicho);
 4) As configurações (duração 10s ou 8s, influencer, gênero do cliente, fala, enquadramento, cenário, instruções adicionais, variações anexadas).
 

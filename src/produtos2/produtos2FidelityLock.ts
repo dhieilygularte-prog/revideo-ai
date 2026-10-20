@@ -58,18 +58,97 @@ REGRA GLOBAL CRÍTICA DE FIDELIDADE VISUAL AO PRODUTO — PROIBIÇÃO ABSOLUTA D
 }
 
 /**
+ * Detecta se o produto e um item vendido em pacote/embalagem fechada (ex.: fraldas, lencos, caixas, combos).
+ */
+export function isPackagedProductOnly(productName: string, productInfo?: string): boolean {
+  const combined = `${productName || ''} ${productInfo || ''}`.toLowerCase();
+  return (
+    /\b(fralda|fraldas|babysec|pampers|huggies|cremer|mamy|len[çc]o|len[çc]os|toalha|toalhinhas?|absorvente|absorventes)\b/i.test(combined) ||
+    /\b(pacote|pacotes|combo de pacotes|fardo|fardos|embalagem fechada|embalagem lacrada|caixa fechada|pote lacrado)\b/i.test(combined)
+  );
+}
+
+/**
  * Sanitiza descricoes de cenas para impedir qualquer comando de abrir caixas,
  * rasgar embalagens ou inventar itens internos soltos quando nao documentados.
  */
-export function sanitizeSceneFidelityAction(action: string): string {
+export function sanitizeSceneFidelityAction(action: string, productName?: string, isPackaged?: boolean): string {
   if (!action) return action;
-  return action
-    .replace(/\babrindo a caixa\b/gi, 'segurando a embalagem fechada')
-    .replace(/\babrindo o pacote\b/gi, 'segurando o pacote fechado')
-    .replace(/\brasgando o pacote\b/gi, 'apoiando o pacote')
-    .replace(/\btirando da caixa\b/gi, 'destacando a embalagem')
-    .replace(/\brevelando a fralda solta\b/gi, 'destacando o pacote fechado')
-    .replace(/\bmostrando a parte traseira\b/gi, 'mostrando a frente documentada')
-    .replace(/\bmostrando o verso\b/gi, 'mostrando a frente')
+
+  const packaged = isPackaged ?? (productName ? isPackagedProductOnly(productName) : false);
+
+  let clean = action
+    // Abertura de embalagens
+    .replace(/\b(?:abrindo|rasgando|deslacrando)\s+(?:o|a|os|as|um|uma)?\s*(?:pacote|embalagem|caixa|fralda|sacola|pl[aá]stico|lacre)[^,.;]*/gi, 'segurando o pacote fechado de frente com clareza')
+    .replace(/\b(?:tirando|retirando|puxando|sacando)\s+(?:o|a|os|as|uma?)\s*(?:fralda|unidade|item|conte[uú]do|produto)[^,.;]*/gi, 'posicionando e exibindo os pacotes fechados')
+    .replace(/\b(?:desdobrando|esticando|abrindo)\s+(?:a|o)?\s*(?:fralda|produto|item)[^,.;]*/gi, 'apresentando a embalagem fechada de frente')
+    // Itens soltos nao documentados
+    .replace(/\bfraldas?\s+(?:abertas?|soltas?|desdobradas?|fora do pacote)[^,.;]*/gi, 'pacote fechado de fraldas')
+    .replace(/\b(?:com\s+)?estampa\s+(?:d[aeo]|divertida|infantil|colorida)?\s*(?:galinha\s*pintadinha|desenho|personagem)?[^,.;]*/gi, 'arte e logomarca oficiais impressas na própria embalagem de referência')
+    // Textura interna e toques em pecas internas
+    .replace(/\b(?:tocando|passando a m[aã]o|sentindo)\s+(?:a\s+)?(?:textura|maciez|toque)\s*(?:d[aeo]\s*(?:fralda|algod[aã]o|tecido interno|gel))?[^,.;]*/gi, 'dedo apontando para as especificações e selo de qualidade impressos na frente da embalagem fechada')
+    .replace(/\bdedo\s+pressionando\s+(?:a\s+)?(?:fralda|superf[ií]cie interna|algod[aã]o)[^,.;]*/gi, 'mão segurando com firmeza o pacote fechado')
+    // Testes com liquidos e absorcao
+    .replace(/\b(?:jogando|[aá]gua|despejando|derramando|copo d'?\s*[aá]gua|teste de absor[çc][aã]o|l[ií]quido azul|absorvendo)[^,.;]*/gi, 'apresentando os pacotes fechados organizados no cenário, destacando a praticidade do combo')
+    // Indicador de umidade e estados usados
+    .replace(/\b(?:indicador de umidade|linha indicadora|fralda molhada|fralda usada|efeito azul)[^,.;]*/gi, 'pacotes fechados organizados em destaque na cômoda ou bancada')
+    // Angulos traseiros e versos
+    .replace(/\bmostrando a parte traseira\b/gi, 'mostrando a frente documentada nas fotos')
+    .replace(/\bmostrando o verso\b/gi, 'mostrando a frente do produto')
+    .replace(/\bvirando o produto de costas\b/gi, 'mantendo o produto de frente')
+    .replace(/\s+/g, ' ')
     .trim();
+
+  if (packaged) {
+    // Para produtos estritamente embalados (fraldas, etc), reforca que tudo e o pacote fechado
+    clean = clean
+      .replace(/\bfralda\b(?!\s+(?:babysec|pampers|huggies|fechada))/gi, 'pacote de fraldas')
+      .replace(/\bfraldas\b(?!\s+(?:babysec|pampers|huggies|fechadas))/gi, 'pacotes de fraldas');
+  }
+
+  return clean;
 }
+
+/**
+ * Sanitiza todas as cenas de uma lista para blindar contra invencoes visuais de produtos embalados.
+ */
+export function sanitizeAllScenesForFidelity<T extends { action: string; storyboardDescription?: string; framing?: string }>(
+  scenes: T[],
+  productName: string,
+  productInfo?: string
+): T[] {
+  if (!Array.isArray(scenes)) return scenes;
+  const isPackaged = isPackagedProductOnly(productName, productInfo);
+
+  return scenes.map((sc) => {
+    const cleanAction = sanitizeSceneFidelityAction(sc.action, productName, isPackaged);
+    const cleanFraming = (sc.framing || '').trim();
+    const updatedDesc = cleanFraming ? `${cleanFraming}. ${cleanAction}` : cleanAction;
+    return {
+      ...sc,
+      action: cleanAction,
+      storyboardDescription: updatedDesc,
+    };
+  });
+}
+
+/**
+ * Higieniza o texto bruto do prompt do storyboard antes de enviar para os motores de imagem (OpenAI/Gemini).
+ */
+export function sanitizeStoryboardPromptForFidelity(prompt: string, productName?: string, productInfo?: string): string {
+  if (!prompt || typeof prompt !== 'string') return prompt || '';
+  const isPackaged = isPackagedProductOnly(productName || '', productInfo);
+  if (!isPackaged) return prompt;
+
+  return prompt
+    .replace(/\b(?:abrindo|rasgando|deslacrando)\s+(?:o|a|os|as|um|uma)?\s*(?:pacote|embalagem|caixa|fralda)[^,.;\n]*/gi, 'segurando o pacote fechado de frente')
+    .replace(/\b(?:tirando|retirando|puxando)\s+(?:o|a|os|as|uma?)\s*(?:fralda|unidade|item)[^,.;\n]*/gi, 'exibindo os pacotes fechados de frente')
+    .replace(/\b(?:desdobrando|esticando)\s+(?:a|o)?\s*fralda[^,.;\n]*/gi, 'apresentando o pacote fechado')
+    .replace(/\bfraldas?\s+(?:abertas?|soltas?|desdobradas?|fora do pacote)[^,.;\n]*/gi, 'pacote fechado de fraldas')
+    .replace(/\b(?:jogando|despejando|derramando)\s+[aá]gua[^,.;\n]*/gi, 'destacando os pacotes fechados')
+    .replace(/\bcopo d'?\s*[aá]gua[^,.;\n]*/gi, 'pacote fechado de fraldas')
+    .replace(/\bteste de absor[çc][aã]o[^,.;\n]*/gi, 'destaque dos pacotes fechados')
+    .replace(/\bindicador de umidade[^,.;\n]*/gi, 'pacotes fechados organizados na bancada')
+    .replace(/\btocando a textura da fralda[^,.;\n]*/gi, 'apontando para o selo oficial impresso na embalagem fechada');
+}
+

@@ -1296,6 +1296,39 @@ function appendFidelityLockToVeoPrompt(prompt) {
 
 ${prompt.trim()}`;
 }
+function isPackagedProductOnly(productName, productInfo) {
+  const combined = `${productName || ""} ${productInfo || ""}`.toLowerCase();
+  return /\b(fralda|fraldas|babysec|pampers|huggies|cremer|mamy|len[çc]o|len[çc]os|toalha|toalhinhas?|absorvente|absorventes)\b/i.test(combined) || /\b(pacote|pacotes|combo de pacotes|fardo|fardos|embalagem fechada|embalagem lacrada|caixa fechada|pote lacrado)\b/i.test(combined);
+}
+function sanitizeSceneFidelityAction(action, productName, isPackaged) {
+  if (!action) return action;
+  const packaged = isPackaged ?? (productName ? isPackagedProductOnly(productName) : false);
+  let clean = action.replace(/\b(?:abrindo|rasgando|deslacrando)\s+(?:o|a|os|as|um|uma)?\s*(?:pacote|embalagem|caixa|fralda|sacola|pl[aá]stico|lacre)[^,.;]*/gi, "segurando o pacote fechado de frente com clareza").replace(/\b(?:tirando|retirando|puxando|sacando)\s+(?:o|a|os|as|uma?)\s*(?:fralda|unidade|item|conte[uú]do|produto)[^,.;]*/gi, "posicionando e exibindo os pacotes fechados").replace(/\b(?:desdobrando|esticando|abrindo)\s+(?:a|o)?\s*(?:fralda|produto|item)[^,.;]*/gi, "apresentando a embalagem fechada de frente").replace(/\bfraldas?\s+(?:abertas?|soltas?|desdobradas?|fora do pacote)[^,.;]*/gi, "pacote fechado de fraldas").replace(/\b(?:com\s+)?estampa\s+(?:d[aeo]|divertida|infantil|colorida)?\s*(?:galinha\s*pintadinha|desenho|personagem)?[^,.;]*/gi, "arte e logomarca oficiais impressas na pr\xF3pria embalagem de refer\xEAncia").replace(/\b(?:tocando|passando a m[aã]o|sentindo)\s+(?:a\s+)?(?:textura|maciez|toque)\s*(?:d[aeo]\s*(?:fralda|algod[aã]o|tecido interno|gel))?[^,.;]*/gi, "dedo apontando para as especifica\xE7\xF5es e selo de qualidade impressos na frente da embalagem fechada").replace(/\bdedo\s+pressionando\s+(?:a\s+)?(?:fralda|superf[ií]cie interna|algod[aã]o)[^,.;]*/gi, "m\xE3o segurando com firmeza o pacote fechado").replace(/\b(?:jogando|[aá]gua|despejando|derramando|copo d'?\s*[aá]gua|teste de absor[çc][aã]o|l[ií]quido azul|absorvendo)[^,.;]*/gi, "apresentando os pacotes fechados organizados no cen\xE1rio, destacando a praticidade do combo").replace(/\b(?:indicador de umidade|linha indicadora|fralda molhada|fralda usada|efeito azul)[^,.;]*/gi, "pacotes fechados organizados em destaque na c\xF4moda ou bancada").replace(/\bmostrando a parte traseira\b/gi, "mostrando a frente documentada nas fotos").replace(/\bmostrando o verso\b/gi, "mostrando a frente do produto").replace(/\bvirando o produto de costas\b/gi, "mantendo o produto de frente").replace(/\s+/g, " ").trim();
+  if (packaged) {
+    clean = clean.replace(/\bfralda\b(?!\s+(?:babysec|pampers|huggies|fechada))/gi, "pacote de fraldas").replace(/\bfraldas\b(?!\s+(?:babysec|pampers|huggies|fechadas))/gi, "pacotes de fraldas");
+  }
+  return clean;
+}
+function sanitizeAllScenesForFidelity(scenes, productName, productInfo) {
+  if (!Array.isArray(scenes)) return scenes;
+  const isPackaged = isPackagedProductOnly(productName, productInfo);
+  return scenes.map((sc) => {
+    const cleanAction = sanitizeSceneFidelityAction(sc.action, productName, isPackaged);
+    const cleanFraming = (sc.framing || "").trim();
+    const updatedDesc = cleanFraming ? `${cleanFraming}. ${cleanAction}` : cleanAction;
+    return {
+      ...sc,
+      action: cleanAction,
+      storyboardDescription: updatedDesc
+    };
+  });
+}
+function sanitizeStoryboardPromptForFidelity(prompt, productName, productInfo) {
+  if (!prompt || typeof prompt !== "string") return prompt || "";
+  const isPackaged = isPackagedProductOnly(productName || "", productInfo);
+  if (!isPackaged) return prompt;
+  return prompt.replace(/\b(?:abrindo|rasgando|deslacrando)\s+(?:o|a|os|as|um|uma)?\s*(?:pacote|embalagem|caixa|fralda)[^,.;\n]*/gi, "segurando o pacote fechado de frente").replace(/\b(?:tirando|retirando|puxando)\s+(?:o|a|os|as|uma?)\s*(?:fralda|unidade|item)[^,.;\n]*/gi, "exibindo os pacotes fechados de frente").replace(/\b(?:desdobrando|esticando)\s+(?:a|o)?\s*fralda[^,.;\n]*/gi, "apresentando o pacote fechado").replace(/\bfraldas?\s+(?:abertas?|soltas?|desdobradas?|fora do pacote)[^,.;\n]*/gi, "pacote fechado de fraldas").replace(/\b(?:jogando|despejando|derramando)\s+[aá]gua[^,.;\n]*/gi, "destacando os pacotes fechados").replace(/\bcopo d'?\s*[aá]gua[^,.;\n]*/gi, "pacote fechado de fraldas").replace(/\bteste de absor[çc][aã]o[^,.;\n]*/gi, "destaque dos pacotes fechados").replace(/\bindicador de umidade[^,.;\n]*/gi, "pacotes fechados organizados na bancada").replace(/\btocando a textura da fralda[^,.;\n]*/gi, "apontando para o selo oficial impresso na embalagem fechada");
+}
 
 // src/produtos2/produtos2Prompts.ts
 function buildProdutos2PlanningSystemPrompt() {
@@ -1313,12 +1346,25 @@ REGRA DE OURO INVIOL\xC1VEL \u2014 LOGOMARCA DO FABRICANTE NO PRODUTO vs ELEMENT
 
 REGRA SAGRADA DE FIDELIDADE AO PRODUTO ANEXADO \u2014 PROIBI\xC7\xC3O ABSOLUTA DE INVENTAR PARTES N\xC3O FOTOGRAFADAS, CONTE\xDADO DE EMBALAGENS LACRADAS OU \xC2NGULOS N\xC3O VIS\xCDVEIS (ANTI-REJEI\xC7\xC3O DO TIKTOK):
 - O produto deve ser retratado RIGOROSA E EXCLUSIVAMENTE com base no que est\xE1 vis\xEDvel nas fotos de refer\xEAncia anexadas pelo usu\xE1rio!
-- REGRA DE PRODUTO LACRADO / EMBALAGEM FECHADA / PACOTE: Se as fotos de refer\xEAncia mostram o produto fechado em sua embalagem original, pacote lacrado ou caixa (exemplo: pacotes de fraldas fechados, caixa de produto lacrada, pote lacrado) e N\xC3O h\xE1 fotos do item avulso solto fora da embalagem, \xC9 EXPRESSAMENTE E TERMINANTEMENTE PROIBIDO inventar, abrir ou desenhar o produto solto fora da embalagem (exemplo: NUNCA desenhe uma fralda aberta ou o conte\xFAdo interno se o usu\xE1rio s\xF3 enviou fotos dos pacotes de fraldas fechados). Em TODAS as cenas, o que deve ser mostrado e manuseado \xE9 o PACOTE/EMBALAGEM/CAIXA FECHADA exatamente como nas fotos reais (sendo segurado de frente, apoiado no cen\xE1rio, apontando para os detalhes vis\xEDveis do pacote, etc.)!
+- REGRA CR\xCDTICA SOBRE "INFORMA\xC7\xD5ES DO PRODUTO" (TEXTO vs IMAGEM):
+  * As "Informa\xE7\xF5es do produto" e descri\xE7\xE3o textual servem EXCLUSIVAMENTE para construir ou adaptar a copy/fala falada (locu\xE7\xE3o).
+  * \xC9 TERMINANTEMENTE PROIBIDO usar o texto de "Informa\xE7\xF5es do produto" para inventar cenas visuais, desenhar produtos abertos ou criar detalhes que N\xC3O est\xE3o fotografados nas fotos de refer\xEAncia!
+  * Exemplo Real: se o texto descreve "estampa da galinha pintadinha", "tecnologia de absor\xE7\xE3o 12h", "gel", "toque de algod\xE3o" ou "indicador de umidade", mas as fotos anexadas mostram apenas PACOTES FECHADOS / EMBALAGENS LACRADAS, voc\xEA NUNCA PODE criar cenas abrindo o pacote, tirando uma fralda de dentro, mostrando a fralda aberta, jogando \xE1gua na fralda ou tocando no algod\xE3o! A imagem do storyboard \xE9 100% sobre o que foi fotografado!
+- REGRA DE PRODUTO LACRADO / EMBALAGEM FECHADA / PACOTES (ex.: pacotes de fraldas fechados, caixas de cosm\xE9ticos, potes lacrados, combos):
+  * Se as fotos de refer\xEAncia mostram apenas a embalagem fechada ou o pacote lacrado e N\xC3O h\xE1 fotos do item avulso solto fora do pacote:
+  * TODAS as 9 cenas (ou 6 cenas) DEVEM retratar e manusear EXCLUSIVAMENTE a EMBALAGEM FECHADA / O PACOTE FECHADO!
+  * NENHUMA cena pode abrir a embalagem, rasgar o pl\xE1stico, tirar o produto de dentro, mostrar o produto solto/aberto ou fazer testes de absor\xE7\xE3o/l\xEDquidos.
+  * O que fazer nas cenas de demonstra\xE7\xE3o de produto em pacote/embalagem fechada:
+    - Cenas 1\u20132: Segurar os pacotes fechados de frente, mostrando o combo/estoque com clareza;
+    - Cenas 3\u20134: Empilhar os pacotes fechados sobre a bancada, c\xF4moda ou mesa de forma organizada;
+    - Cenas 5\u20136: Apontar com o dedo para os selos, marca, quantidade e benef\xEDcios impressos NA PR\xD3PRIA EMBALAGEM de refer\xEAncia;
+    - Cenas 7\u20138: Mostrar os pacotes fechados integrados ao ambiente de uso (ex.: quarto do beb\xEA com os pacotes organizados na prateleira);
+    - Cena 9: Abra\xE7ar/segurar os pacotes fechados com sorriso de satisfa\xE7\xE3o e recomenda\xE7\xE3o para o carrinho.
 - REGRA DE \xC2NGULOS E BOT\xD5ES N\xC3O VIS\xCDVEIS: \xC9 terminantemente proibido inventar outro lado, bot\xF5es, acess\xF3rios ou partes traseiras que n\xE3o estejam vis\xEDveis nas fotos de refer\xEAncia anexadas. Se apenas a frente do produto foi enviada, todas as tomadas devem retratar o produto de frente ou nos \xE2ngulos vis\xEDveis nas fotos de refer\xEAncia. NENHUM bot\xE3o, detalhe construtivo ou pe\xE7a diferente do fotografado pode aparecer.
 
 Sua tarefa \xE9 receber:
-1) As fotos reais do produto;
-2) As "Informa\xE7\xF5es do produto" e "Nome do produto";
+1) As fotos reais do produto (FONTE \xDANICA E ABSOLUTA PARA O STORYBOARD E CENAS VISUAIS);
+2) As "Informa\xE7\xF5es do produto" e "Nome do produto" (FONTE EXCLUSIVA PARA A COPY/FALA E NICHO, NUNCA PARA CRIAR CENAS VISUAIS);
 3) A "Copy-base selecionada do banco" (ou copy nova/adaptada do molde do nicho);
 4) As configura\xE7\xF5es (dura\xE7\xE3o 10s ou 8s, influencer, g\xEAnero do cliente, fala, enquadramento, cen\xE1rio, instru\xE7\xF5es adicionais, varia\xE7\xF5es anexadas).
 
@@ -3010,6 +3056,7 @@ app.post("/api/generate-scene-image", async (req, res) => {
     if (!prompt) {
       return res.status(400).json({ success: false, error: "Prompt n\xE3o fornecido" });
     }
+    const effectivePrompt = sanitizeStoryboardPromptForFidelity(prompt, productType);
     const activeProfile = req.body?.aiProfile || getRequestAIProfile(req);
     if (activeProfile === "openai") {
       if (!openAIProvider.isConfigured()) {
@@ -3020,7 +3067,7 @@ app.post("/api/generate-scene-image", async (req, res) => {
       }
       try {
         const result = await openAIProvider.generateSceneImage({
-          prompt,
+          prompt: effectivePrompt,
           productPhotoBase64,
           productPhotosBase64,
           modelReferenceBase64,
@@ -3160,7 +3207,7 @@ USER SPECIFIC DIRECTIVES: "${additionalInstructions.trim()}". You MUST strictly 
 A imagem gerada DEVE ser uma c\xF3pia 100% id\xEAntica da REFER\xCANCIA 1 (mesma pessoa/modelo, mesmo corpo, mesma pose, mesmo quarto simples residencial, mesmo piso, paredes e ilumina\xE7\xE3o). Altere EXCLUSIVAMENTE a cor e tecido da ${productType} para "${variationName}". Descarte e ignore qualquer outro fundo ou ambiente!` : "";
     const cleanPrompt = overrideBlock ? `${overrideBlock}
 
-${prompt}${finalDirective}` : `${prompt}${finalDirective}`;
+${effectivePrompt}${finalDirective}` : `${effectivePrompt}${finalDirective}`;
     parts.push({ text: cleanPrompt });
     let imageResultUrl = "";
     const modelsToTry = [
@@ -4361,11 +4408,14 @@ DURA\xC7\xC3O M\xC1XIMA DO V\xCDDEO: ${duration} segundos. Limite estrito: at\xE
   * Planeje EXATAMENTE 6 cenas numeradas de 1 a 6 (0.0s a 10.0s) representando o gancho visual imediato, a introdu\xE7\xE3o e o desenvolvimento inicial da demonstra\xE7\xE3o do produto.` : "";
     const systemInstruction = buildProdutos2PlanningSystemPrompt();
     const charLimitNote = duration === 8 ? "M\xC1XIMO 199 CARACTERES COM ESPA\xC7OS" : duration === 15 ? "AT\xC9 335 CARACTERES COM ESPA\xC7OS" : "AT\xC9 225 CARACTERES COM ESPA\xC7OS";
+    const isPackaged = isPackagedProductOnly(productName, productInfo);
+    const packagingPlanningWarning = isPackaged ? `
+- ALERTA M\xC1XIMO DE EMBALAGEM FECHADA / PACOTES LACRADOS: As fotos de refer\xEAncia anexadas s\xE3o de PACOTES FECHADOS / EMBALAGEM LACRADA. O texto de informa\xE7\xF5es do produto cita caracter\xEDsticas e estampas, MAS \xC9 TERMINANTEMENTE E SEVERAMENTE PROIBIDO usar o texto para criar cenas abrindo a embalagem, rasgando o pacote, mostrando produtos soltos fora da embalagem (como fralda solta) ou derramando \xE1gua! Todas as ${expectedSceneCount} cenas DEVEM mostrar EXCLUSIVAMENTE a embalagem/pacote fechado (manusear pacotes fechados de frente, empilhar pacotes na c\xF4moda, apontar para os dados impressos na pr\xF3pria embalagem de refer\xEAncia, organizar pacotes no ambiente de uso)!` : "";
     const userPrompt = `PLANEJAMENTO COPY-FIRST (MODO PRODUTOS 2.0):
 - Produto (nome curto): ${productName}
 - Sub-modo: ${subMode === "vestuario_masculino" ? `Vestu\xE1rio Masculino (${maleSubOption} - estilo ${maleClothStyle})` : "Produtos (Geral)"}
 - Nicho detectado: ${niche}
-- Informa\xE7\xF5es do produto: ${productInfo || productName}
+- Informa\xE7\xF5es do produto (USO EXCLUSIVO PARA FALA/COPY \u2014 PROIBIDO USAR PARA INVENTAR CENAS VISUAIS OU ABRIR EMBALAGENS): ${productInfo || productName}${packagingPlanningWarning}
 - Copy-base selecionada (${isCustomCopy ? "PERSONALIZADA PELO USU\xC1RIO - N\xC3O ALTERAR" : copyEngine === "aurora_copy" ? "GERADA POR AURORA COPY (IA CRIATIVA)" : "DO BANCO VALIDADO - ADAPTAR M\xCDNIMO POSS\xCDVEL"}): "${activeCopy}"
 - Dura\xE7\xE3o no Veo: ${duration} segundos (${charLimitNote})
 - Quantidade obrigat\xF3ria de quadros no Storyboard: EXATAMENTE ${expectedSceneCount} cenas numeradas de 1 a ${expectedSceneCount} (${expectedSceneCount === 6 ? "grade 2x3: 2 colunas x 3 linhas" : "grade 3x3: 3 colunas x 3 linhas"})
@@ -4443,6 +4493,7 @@ Retorne APENAS um objeto JSON v\xE1lido com as chaves:
                   ...existingLocks.filter((l) => !String(l).includes(parsed.manufacturerLogoDescription.trim()))
                 ];
               }
+              parsed.scenes = sanitizeAllScenesForFidelity(parsed.scenes, productName, productInfo);
               parsed.finalCopy = activeCopy;
               parsed.copySourceLabel = copySourceLabel;
               const promptTok = completion.usage?.prompt_tokens || 3400;
@@ -4503,6 +4554,7 @@ Retorne APENAS um objeto JSON v\xE1lido com as chaves:
                   ...existingLocks.filter((l) => !String(l).includes(parsed.manufacturerLogoDescription.trim()))
                 ];
               }
+              parsed.scenes = sanitizeAllScenesForFidelity(parsed.scenes, productName, productInfo);
               parsed.finalCopy = activeCopy;
               parsed.copySourceLabel = copySourceLabel;
               const promptTok = response.usageMetadata?.promptTokenCount || 3400;
@@ -4632,7 +4684,8 @@ REGRA SAGRADA DE FIDELIDADE AO PRODUTO ANEXADO \u2014 NUNCA INVENTAR PARTES N\xC
 2. REGRA DE EMBALAGEM / PACOTE FECHADO / CAIXA: Se as fotos de refer\xEAncia mostram o produto lacrado em sua embalagem original, pacote fechado ou caixa (exemplo: pacotes de fraldas fechados, pote fechado, caixa lacrada) e N\xC3O h\xE1 fotos do item avulso fora da embalagem, \xC9 EXPRESSAMENTE E TERMINANTEMENTE PROIBIDO inventar, abrir ou desenhar o produto solto fora da embalagem (exemplo: NUNCA desenhe uma fralda aberta se o usu\xE1rio enviou fotos dos pacotes de fraldas fechados). Em TODOS os quadros, o que deve ser mostrado e manuseado \xE9 o PACOTE/EMBALAGEM/CAIXA FECHADA exatamente como nas fotos reais!
 3. \xC2NGULOS E DETALHES N\xC3O VIS\xCDVEIS: \xC9 terminantemente proibido inventar outro lado, bot\xF5es, acess\xF3rios ou partes traseiras que n\xE3o estejam vis\xEDveis nas fotos de refer\xEAncia anexadas.
 ========================`;
-    const baseWithLogo = `${prompt}${logoEnforcementBlock}${packagingFidelityDirective}`;
+    const sanitizedPrompt = sanitizeStoryboardPromptForFidelity(promptStr, productName);
+    const baseWithLogo = `${sanitizedPrompt}${logoEnforcementBlock}${packagingFidelityDirective}`;
     const effectivePrompt = correctionPrompt && correctionPrompt.trim() ? `${baseWithLogo}
 
 ========================
@@ -4732,14 +4785,15 @@ ${correctionPrompt.trim()}
 - Os tr\xEAs quadros devem representar instantes sucessivos de uma a\xE7\xE3o cont\xEDnua da mesma personagem, mesmo produto e mesmo ambiente.
 - SEM N\xDAMEROS, SEM BAL\xD5ES E SEM TEXTOS: \xC9 terminantemente proibido colocar letras A/B/C sobre a imagem, n\xFAmeros, legendas, t\xEDtulos, bal\xF5es ou marcas d'\xE1gua.
 - Fotografia ultrarrealista com textura de pele natural, ilumina\xE7\xE3o de smartphone e cen\xE1rio brasileiro cotidiano.
-- Fidelidade absoluta \xE0s fotos reais do produto.` : isLeilaoMode ? `VOC\xCA \xC9 O GERADOR VISUAL DO MODO LEIL\xC3O.
+- Fidelidade absoluta \xE0s fotos reais do produto. Se as fotos mostram pacotes fechados, mantenha sempre a embalagem fechada sem abrir ou inventar itens soltos.` : isLeilaoMode ? `VOC\xCA \xC9 O GERADOR VISUAL DO MODO LEIL\xC3O.
 - Gere UMA \xDANICA IMAGEM VERTICAL 9:16 (1080x1920), fotorrealista.
 - SEM N\xDAMEROS DE QUADRO, sem faixas brancas e sem legendas sobrepostas.
 - Enquadramento vertical 9:16 cinematogr\xE1fico de alta qualidade comercial.
-- Fidelidade absoluta \xE0s fotos reais do produto em todos os detalhes.` : `VOC\xCA \xC9 O GERADOR DE STORYBOARD DO MODO PRODUTOS 2.0.
+- Fidelidade absoluta \xE0s fotos reais do produto em todos os detalhes. Se o produto estiver em embalagem fechada, mantenha sempre o pacote fechado sem abrir ou inventar itens soltos.` : `VOC\xCA \xC9 O GERADOR DE STORYBOARD DO MODO PRODUTOS 2.0.
 - Gere UMA \xDANICA IMAGEM VERTICAL 9:16 (1080x1920) contendo uma grade ${gridLabel} com EXATAMENTE ${frameCount} quadros fotogr\xE1ficos ultra-realistas numerados de 1 a ${frameCount} (selo circular branco pequeno no canto superior esquerdo de cada quadro com n\xFAmero preto).
 - Cantos arredondados nos quadros, separados por uma borda branca fina, sobre fundo branco.
 ${variationInstructionRule}
+- REGRA SAGRADA DE EMBALAGEM FECHADA / PACOTES LACRADOS (TIKTOK COMPLIANCE): Se as fotos de refer\xEAncia mostram pacotes fechados, caixas ou embalagens lacradas (ex.: pacotes de fraldas fechados), NUNCA desenhe pacotes abertos, produtos soltos fora da embalagem (como fraldas avulsas soltas) ou testes com l\xEDquidos/\xE1gua. Desenhe e mostre EXCLUSIVAMENTE os pacotes fechados id\xEAnticos \xE0s fotos em todos os quadros!
 - LOGOMARCA E MARCA DO FABRICANTE NO PRODUTO (OBRIGAT\xD3RIO): A marca, a logomarca, o emblema e os textos que j\xE1 est\xE3o impressos/estampados no pr\xF3prio produto nas fotos de refer\xEAncia DEVEM aparecer 100% id\xEAnticos, na mesma cor e no mesmo lugar da pe\xE7a, em todos os quadros em que aquela parte estiver vis\xEDvel. JAMAIS remova ou alise a logomarca do produto!
 - ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: N\xE3o adicione legendas flutuantes, textos publicit\xE1rios externos, pre\xE7os, setas, carrinho de compras, marca d'\xE1gua externa, @ ou logotipo do TikTok. Apenas os n\xFAmeros 1 a ${frameCount} nos selos circulares e a logomarca original do fabricante no pr\xF3prio produto.`;
         const geminiAspectRatio = isLandscapeStoryboard ? "16:9" : "9:16";

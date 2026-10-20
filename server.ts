@@ -32,7 +32,12 @@ import {
   extractUserSpeechFromInstructions,
   fixCommonSlips,
 } from './src/produtos2/produtos2UserSpeechExtractor';
-import { appendFidelityLockToVeoPrompt } from './src/produtos2/produtos2FidelityLock';
+import {
+  appendFidelityLockToVeoPrompt,
+  isPackagedProductOnly,
+  sanitizeAllScenesForFidelity,
+  sanitizeStoryboardPromptForFidelity,
+} from './src/produtos2/produtos2FidelityLock';
 
 dotenv.config();
 
@@ -1665,6 +1670,8 @@ app.post('/api/generate-scene-image', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Prompt não fornecido' });
     }
 
+    const effectivePrompt = sanitizeStoryboardPromptForFidelity(prompt, productType);
+
     // ─── ROTEAMENTO BASEADO NO PERFIL DE IA SELECIONADO ────────────────────
     const activeProfile = req.body?.aiProfile || getRequestAIProfile(req);
     if (activeProfile === 'openai') {
@@ -1676,7 +1683,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
       }
       try {
         const result = await openAIProvider.generateSceneImage({
-          prompt,
+          prompt: effectivePrompt,
           productPhotoBase64,
           productPhotosBase64,
           modelReferenceBase64,
@@ -1837,7 +1844,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
 A imagem gerada DEVE ser uma cópia 100% idêntica da REFERÊNCIA 1 (mesma pessoa/modelo, mesmo corpo, mesma pose, mesmo quarto simples residencial, mesmo piso, paredes e iluminação). Altere EXCLUSIVAMENTE a cor e tecido da ${productType} para "${variationName}". Descarte e ignore qualquer outro fundo ou ambiente!`
       : '';
 
-    const cleanPrompt = overrideBlock ? `${overrideBlock}\n\n${prompt}${finalDirective}` : `${prompt}${finalDirective}`;
+    const cleanPrompt = overrideBlock ? `${overrideBlock}\n\n${effectivePrompt}${finalDirective}` : `${effectivePrompt}${finalDirective}`;
     parts.push({ text: cleanPrompt });
 
     let imageResultUrl = '';
@@ -3298,11 +3305,16 @@ DURAÇÃO MÁXIMA DO VÍDEO: ${duration} segundos. Limite estrito: até ${maxLim
         : duration === 15
         ? 'ATÉ 335 CARACTERES COM ESPAÇOS'
         : 'ATÉ 225 CARACTERES COM ESPAÇOS';
+    const isPackaged = isPackagedProductOnly(productName, productInfo);
+    const packagingPlanningWarning = isPackaged
+      ? `\n- ALERTA MÁXIMO DE EMBALAGEM FECHADA / PACOTES LACRADOS: As fotos de referência anexadas são de PACOTES FECHADOS / EMBALAGEM LACRADA. O texto de informações do produto cita características e estampas, MAS É TERMINANTEMENTE E SEVERAMENTE PROIBIDO usar o texto para criar cenas abrindo a embalagem, rasgando o pacote, mostrando produtos soltos fora da embalagem (como fralda solta) ou derramando água! Todas as ${expectedSceneCount} cenas DEVEM mostrar EXCLUSIVAMENTE a embalagem/pacote fechado (manusear pacotes fechados de frente, empilhar pacotes na cômoda, apontar para os dados impressos na própria embalagem de referência, organizar pacotes no ambiente de uso)!`
+      : '';
+
     const userPrompt = `PLANEJAMENTO COPY-FIRST (MODO PRODUTOS 2.0):
 - Produto (nome curto): ${productName}
 - Sub-modo: ${subMode === 'vestuario_masculino' ? `Vestuário Masculino (${maleSubOption} - estilo ${maleClothStyle})` : 'Produtos (Geral)'}
 - Nicho detectado: ${niche}
-- Informações do produto: ${productInfo || productName}
+- Informações do produto (USO EXCLUSIVO PARA FALA/COPY — PROIBIDO USAR PARA INVENTAR CENAS VISUAIS OU ABRIR EMBALAGENS): ${productInfo || productName}${packagingPlanningWarning}
 - Copy-base selecionada (${isCustomCopy ? 'PERSONALIZADA PELO USUÁRIO - NÃO ALTERAR' : copyEngine === 'aurora_copy' ? 'GERADA POR AURORA COPY (IA CRIATIVA)' : 'DO BANCO VALIDADO - ADAPTAR MÍNIMO POSSÍVEL'}): "${activeCopy}"
 - Duração no Veo: ${duration} segundos (${charLimitNote})
 - Quantidade obrigatória de quadros no Storyboard: EXATAMENTE ${expectedSceneCount} cenas numeradas de 1 a ${expectedSceneCount} (${expectedSceneCount === 6 ? 'grade 2x3: 2 colunas x 3 linhas' : 'grade 3x3: 3 colunas x 3 linhas'})
@@ -3387,6 +3399,7 @@ Retorne APENAS um objeto JSON válido com as chaves:
                   ...existingLocks.filter((l: string) => !String(l).includes(parsed.manufacturerLogoDescription.trim())),
                 ];
               }
+              parsed.scenes = sanitizeAllScenesForFidelity(parsed.scenes, productName, productInfo);
               parsed.finalCopy = activeCopy;
               parsed.copySourceLabel = copySourceLabel;
               const promptTok = completion.usage?.prompt_tokens || 3400;
@@ -3452,6 +3465,7 @@ Retorne APENAS um objeto JSON válido com as chaves:
                   ...existingLocks.filter((l: string) => !String(l).includes(parsed.manufacturerLogoDescription.trim())),
                 ];
               }
+              parsed.scenes = sanitizeAllScenesForFidelity(parsed.scenes, productName, productInfo);
               parsed.finalCopy = activeCopy;
               parsed.copySourceLabel = copySourceLabel;
               const promptTok = response.usageMetadata?.promptTokenCount || 3400;
@@ -3621,7 +3635,8 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
 
     const packagingFidelityDirective = `\n\n========================\nREGRA SAGRADA DE FIDELIDADE AO PRODUTO ANEXADO — NUNCA INVENTAR PARTES NÃO FOTOGRAFADAS OU CONTEÚDO DE EMBALAGEM LACRADA (ANTI-REJEIÇÃO DO TIKTOK):\n1. O produto deve ser retratado RIGOROSA E EXCLUSIVAMENTE com base no que está visível nas fotos de referência anexadas pelo usuário!\n2. REGRA DE EMBALAGEM / PACOTE FECHADO / CAIXA: Se as fotos de referência mostram o produto lacrado em sua embalagem original, pacote fechado ou caixa (exemplo: pacotes de fraldas fechados, pote fechado, caixa lacrada) e NÃO há fotos do item avulso fora da embalagem, É EXPRESSAMENTE E TERMINANTEMENTE PROIBIDO inventar, abrir ou desenhar o produto solto fora da embalagem (exemplo: NUNCA desenhe uma fralda aberta se o usuário enviou fotos dos pacotes de fraldas fechados). Em TODOS os quadros, o que deve ser mostrado e manuseado é o PACOTE/EMBALAGEM/CAIXA FECHADA exatamente como nas fotos reais!\n3. ÂNGULOS E DETALHES NÃO VISÍVEIS: É terminantemente proibido inventar outro lado, botões, acessórios ou partes traseiras que não estejam visíveis nas fotos de referência anexadas.\n========================`;
 
-    const baseWithLogo = `${prompt}${logoEnforcementBlock}${packagingFidelityDirective}`;
+    const sanitizedPrompt = sanitizeStoryboardPromptForFidelity(promptStr, productName);
+    const baseWithLogo = `${sanitizedPrompt}${logoEnforcementBlock}${packagingFidelityDirective}`;
     const effectivePrompt = correctionPrompt && correctionPrompt.trim()
       ? `${baseWithLogo}\n\n========================\nCORREÇÃO OBRIGATÓRIA DE AUDITORIA DE FIDELIDADE DOS ${frameCount} QUADRANTES:\n${correctionPrompt.trim()}\n========================`
       : baseWithLogo;
@@ -3763,17 +3778,18 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
 - Os três quadros devem representar instantes sucessivos de uma ação contínua da mesma personagem, mesmo produto e mesmo ambiente.
 - SEM NÚMEROS, SEM BALÕES E SEM TEXTOS: É terminantemente proibido colocar letras A/B/C sobre a imagem, números, legendas, títulos, balões ou marcas d'água.
 - Fotografia ultrarrealista com textura de pele natural, iluminação de smartphone e cenário brasileiro cotidiano.
-- Fidelidade absoluta às fotos reais do produto.`
+- Fidelidade absoluta às fotos reais do produto. Se as fotos mostram pacotes fechados, mantenha sempre a embalagem fechada sem abrir ou inventar itens soltos.`
           : isLeilaoMode
           ? `VOCÊ É O GERADOR VISUAL DO MODO LEILÃO.
 - Gere UMA ÚNICA IMAGEM VERTICAL 9:16 (1080x1920), fotorrealista.
 - SEM NÚMEROS DE QUADRO, sem faixas brancas e sem legendas sobrepostas.
 - Enquadramento vertical 9:16 cinematográfico de alta qualidade comercial.
-- Fidelidade absoluta às fotos reais do produto em todos os detalhes.`
+- Fidelidade absoluta às fotos reais do produto em todos os detalhes. Se o produto estiver em embalagem fechada, mantenha sempre o pacote fechado sem abrir ou inventar itens soltos.`
           : `VOCÊ É O GERADOR DE STORYBOARD DO MODO PRODUTOS 2.0.
 - Gere UMA ÚNICA IMAGEM VERTICAL 9:16 (1080x1920) contendo uma grade ${gridLabel} com EXATAMENTE ${frameCount} quadros fotográficos ultra-realistas numerados de 1 a ${frameCount} (selo circular branco pequeno no canto superior esquerdo de cada quadro com número preto).
 - Cantos arredondados nos quadros, separados por uma borda branca fina, sobre fundo branco.
 ${variationInstructionRule}
+- REGRA SAGRADA DE EMBALAGEM FECHADA / PACOTES LACRADOS (TIKTOK COMPLIANCE): Se as fotos de referência mostram pacotes fechados, caixas ou embalagens lacradas (ex.: pacotes de fraldas fechados), NUNCA desenhe pacotes abertos, produtos soltos fora da embalagem (como fraldas avulsas soltas) ou testes com líquidos/água. Desenhe e mostre EXCLUSIVAMENTE os pacotes fechados idênticos às fotos em todos os quadros!
 - LOGOMARCA E MARCA DO FABRICANTE NO PRODUTO (OBRIGATÓRIO): A marca, a logomarca, o emblema e os textos que já estão impressos/estampados no próprio produto nas fotos de referência DEVEM aparecer 100% idênticos, na mesma cor e no mesmo lugar da peça, em todos os quadros em que aquela parte estiver visível. JAMAIS remova ou alise a logomarca do produto!
 - ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: Não adicione legendas flutuantes, textos publicitários externos, preços, setas, carrinho de compras, marca d'água externa, @ ou logotipo do TikTok. Apenas os números 1 a ${frameCount} nos selos circulares e a logomarca original do fabricante no próprio produto.`;
 

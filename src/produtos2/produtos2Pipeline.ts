@@ -19,6 +19,11 @@ import {
 } from './produtos2CopyBank';
 import { splitSpeechIntoTwoScenes } from './produtos2UserSpeechExtractor';
 import {
+  sanitizeAllScenesForFidelity,
+  sanitizeSceneFidelityAction,
+  sanitizeStoryboardPromptForFidelity,
+} from './produtos2FidelityLock';
+import {
   buildDefaultProdutos2Plan,
   buildProdutos2StoryboardImagePrompt,
   buildProdutos2VeoPrompt,
@@ -484,13 +489,15 @@ async function requestStoryboardImageGeneration(params: {
     model: aiProfile === 'gemini' ? 'gemini-3.1-flash-image' : 'gpt-image-2.5-sunburst',
   };
 
+  const cleanGenerationPrompt = sanitizeStoryboardPromptForFidelity(prompt, productName);
+
   // Tentativa 1: Rota dedicada /api/produtos2-generate-storyboard
   try {
     const imgRes = await fetch('/api/produtos2-generate-storyboard', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        prompt,
+        prompt: cleanGenerationPrompt,
         productName,
         productPhotosBase64: photosSubset,
         variations,
@@ -527,7 +534,7 @@ async function requestStoryboardImageGeneration(params: {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        prompt,
+        prompt: cleanGenerationPrompt,
         productType: productName,
         variationName: productName,
         targetAngle: 'front',
@@ -1570,7 +1577,7 @@ export async function runProdutos2Pipeline(params: {
               .replace(/\[(?:Produto na cor\/variação|Variação de Cor|COR\/VARIAÇÃO|Variação)[^\]]*\]/gi, '')
               .replace(/\s+/g, ' ')
               .trim();
-            const cleanAction =
+            const scenarioAction =
               form.scenario === 'padrao_uso'
                 ? sanitizeScenarioDescriptionForMode(
                     rawAction,
@@ -1579,6 +1586,7 @@ export async function runProdutos2Pipeline(params: {
                     form.additionalInstructions
                   )
                 : rawAction;
+            const cleanAction = sanitizeSceneFidelityAction(scenarioAction, finalProductName);
             const cleanMovement = stripTikTokOutsideSpeech(
               String(sc.cameraMovement || fallbackPlan.scenes[idx].cameraMovement).trim()
             );
@@ -1604,9 +1612,9 @@ export async function runProdutos2Pipeline(params: {
 
           if (isRepetitive) {
             console.warn('Detectada repetição indevida de cenas entre variações. Mantendo sequência progressiva do plano mestre.');
-            scenes = fallbackPlan.scenes;
+            scenes = sanitizeAllScenesForFidelity(fallbackPlan.scenes, finalProductName, form.productInfo);
           } else {
-            scenes = mappedScenes;
+            scenes = sanitizeAllScenesForFidelity(mappedScenes, finalProductName, form.productInfo);
           }
         }
       }
@@ -1824,7 +1832,7 @@ export async function runProdutos2Pipeline(params: {
                 .replace(/\[(?:Produto na cor\/variação|Variação de Cor|COR\/VARIAÇÃO|Variação)[^\]]*\]/gi, '')
                 .replace(/\s+/g, ' ')
                 .trim();
-              const cleanAction =
+              const scenarioAction =
                 form.scenario === 'padrao_uso'
                   ? sanitizeScenarioDescriptionForMode(
                       rawAction,
@@ -1833,6 +1841,7 @@ export async function runProdutos2Pipeline(params: {
                       form.additionalInstructions
                     )
                   : rawAction;
+              const cleanAction = sanitizeSceneFidelityAction(scenarioAction, finalProductName);
               const cleanMovement = stripTikTokOutsideSpeech(
                 String(sc.cameraMovement || fallbackPlan2.scenes[idx].cameraMovement).trim()
               );
@@ -1846,11 +1855,13 @@ export async function runProdutos2Pipeline(params: {
                 storyboardDescription: `${cleanFraming}. ${cleanAction}`,
               };
             });
+            scenes2 = sanitizeAllScenesForFidelity(scenes2, finalProductName, form.productInfo);
           }
         }
       }
     } catch (planErr2) {
       console.warn('Usando planejamento determinístico da Cena 2:', planErr2);
+      scenes2 = sanitizeAllScenesForFidelity(fallbackPlan2.scenes, finalProductName, form.productInfo);
     }
 
     if (scenes2.length === 6) {
@@ -2472,6 +2483,7 @@ export async function recreateSingleTwoScenesPartWithCopy(params: {
               storyboardDescription: `${cleanFraming}. ${cleanAction}`,
             };
           });
+          scenes = sanitizeAllScenesForFidelity(scenes, result.productName, form.productInfo);
         }
       }
     }
