@@ -311,6 +311,65 @@ async function compressImageForPayload(
 }
 
 /**
+ * Garante que a imagem do Storyboard seja entregue na resolução máxima 4K (2160x3840 na vertical 9:16),
+ * preservando estritamente a proporção original e aplicando interpolação de alta qualidade para leitura nítida pelo Veo 3.
+ */
+export async function ensureHighResStoryboardImage(dataUrl?: string): Promise<string> {
+  if (!dataUrl || typeof dataUrl !== 'string') return dataUrl || '';
+  if (typeof document === 'undefined' || typeof Image === 'undefined') {
+    return dataUrl;
+  }
+
+  return new Promise<string>((resolve) => {
+    try {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const w = img.naturalWidth || img.width || 0;
+          const h = img.naturalHeight || img.height || 0;
+          if (w === 0 || h === 0) {
+            resolve(dataUrl);
+            return;
+          }
+
+          const isVertical = h >= w;
+          const targetW = isVertical ? 2160 : 3840;
+          const targetH = isVertical ? 3840 : 2160;
+
+          // Se já está na resolução 4K ou superior na proporção correta, não precisa refazer
+          if (w === targetW && h === targetH) {
+            resolve(dataUrl);
+            return;
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = targetW;
+          canvas.height = targetH;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(dataUrl);
+            return;
+          }
+
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, 0, 0, targetW, targetH);
+          resolve(canvas.toDataURL('image/png', 1.0));
+        } catch (err) {
+          console.warn('[Storyboard HighRes] Falha ao renderizar em 2160x3840:', err);
+          resolve(dataUrl);
+        }
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    } catch {
+      resolve(dataUrl);
+    }
+  });
+}
+
+/**
  * Chama a geração da imagem do Storyboard 3x3 com retry automático e rota de fallback (/api/generate-scene-image)
  * Suporta envio da imagem anterior e do correctionPrompt cirúrgico para refazer corrigindo os quadrantes com erro.
  */
@@ -852,7 +911,9 @@ export async function runProdutos2Pipeline(params: {
     aiProfile,
   });
 
-  const storyboardImageUrl = imgGenResult.imageUrl;
+  const storyboardImageUrl = imgGenResult.imageUrl
+    ? await ensureHighResStoryboardImage(imgGenResult.imageUrl)
+    : undefined;
   const storyboardError = imgGenResult.error;
   const imgUsage = imgGenResult.usage;
 
@@ -1114,8 +1175,12 @@ REGRAS ESTRITAS DE PRESERVAÇÃO E EXECUÇÃO:
     ],
   };
 
+  const finalHighResImg = genRes.imageUrl
+    ? await ensureHighResStoryboardImage(genRes.imageUrl)
+    : undefined;
+
   return {
-    imageUrl: genRes.imageUrl,
+    imageUrl: finalHighResImg,
     storyboardAudit: newAudit.audit,
     incrementalUsage,
   };

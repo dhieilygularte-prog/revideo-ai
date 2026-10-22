@@ -28,7 +28,6 @@ import { AIProfile } from './src/config/aiProfiles';
 import { buildAniaPlanningSystemPrompt } from './src/ania/aniaPrompts';
 import { buildProdutos2PlanningSystemPrompt } from './src/produtos2/produtos2Prompts';
 import {
-  fitSpeechCloseToLimit,
   condenseSpeechMinimallyTo225,
   extractUserSpeechFromInstructions,
   fixCommonSlips,
@@ -3365,7 +3364,7 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
             : `- PRODUCT LOCK ABSOLUTO: O produto em todos os 9 quadros onde aparece deve ser 100% idêntico às fotos reais anexadas (mesmo formato, cor, textura, botões, funções, proporção e detalhes).`;
 
         const systemInstructionText = `VOCÊ É O GERADOR DE STORYBOARD 3x3 DO MODO PRODUTOS 2.0.
-- Gere UMA ÚNICA IMAGEM VERTICAL 9:16 (1080x1920) contendo uma grade 3x3 (3 colunas x 3 linhas) com EXATAMENTE 9 quadros fotográficos ultra-realistas numerados de 1 a 9 (selo circular branco pequeno no canto superior esquerdo de cada quadro com número preto).
+- Gere UMA ÚNICA IMAGEM VERTICAL 9:16 na mais alta resolução fotográfica 4K UHD (2160x3840 ou 1080x1920) contendo uma grade 3x3 (3 colunas x 3 linhas) com EXATAMENTE 9 quadros fotográficos ultra-realistas numerados de 1 a 9 (selo circular branco pequeno no canto superior esquerdo de cada quadro com número preto).
 - Cantos arredondados nos quadros, separados por uma borda branca fina, sobre fundo branco.
 ${variationInstructionRule}
 - LOGOMARCA E MARCA DO FABRICANTE NO PRODUTO (OBRIGATÓRIO): A marca, a logomarca, o emblema e os textos que já estão impressos/estampados no próprio produto nas fotos de referência DEVEM aparecer 100% idênticos, na mesma cor e no mesmo lugar da peça, em todos os quadros em que aquela parte estiver visível. JAMAIS remova ou alise a logomarca do produto!

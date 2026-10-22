@@ -3,14 +3,12 @@ import {
   X,
   History,
   Download,
-  RotateCcw,
   Trash2,
   Copy,
   Check,
   Eye,
   Sparkles,
   FileText,
-  AlertCircle,
 } from 'lucide-react';
 import {
   HistoryCreativeItem,
