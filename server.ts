@@ -31,9 +31,13 @@ import {
   condenseSpeechMinimallyTo225,
   extractUserSpeechFromInstructions,
   fixCommonSlips,
+  sanitizeForbiddenPromises,
 } from './src/produtos2/produtos2UserSpeechExtractor';
 import {
   appendFidelityLockToVeoPrompt,
+  detectProductQuantity,
+  isApparelProduct,
+  isOralCareProduct,
   isPackagedProductOnly,
   sanitizeAllScenesForFidelity,
   sanitizeProductLockForFidelity,
@@ -3411,7 +3415,26 @@ Retorne APENAS um objeto JSON válido com as chaves:
               if (Array.isArray(parsed.visualMap)) {
                 parsed.visualMap = sanitizeVisualMapForFidelity(parsed.visualMap, productName, productInfo);
               }
-              parsed.finalCopy = activeCopy;
+              const qtyInfo = detectProductQuantity(productName, productInfo, `${(parsed.productLock || []).join(' ')} ${additionalInstructions || ''} ${activeCopy}`);
+              const qtyEntry = qtyInfo.isKit
+                ? `QUANTIDADE EXATA: Kit de exatamente ${qtyInfo.quantity} unidades/pacotes (nunca mostrar quantidade diferente).`
+                : `QUANTIDADE EXATA: 1 unidade única do produto (nunca mostrar 2 ou mais unidades na mesma tela).`;
+              if (Array.isArray(parsed.productLock) && !parsed.productLock.some((l: string) => l.includes('QUANTIDADE EXATA'))) {
+                parsed.productLock.push(qtyEntry);
+              }
+              if (isOralCareProduct(productName, productInfo, `${(parsed.productLock || []).join(' ')} ${activeCopy}`)) {
+                const oralEntry = `PRODUTO DE USO ORAL: Sem antes e depois e sem clareamento de dentes (vídeo produzido sem mostrar dentes em close branqueados).`;
+                if (Array.isArray(parsed.productLock) && !parsed.productLock.some((l: string) => l.includes('PRODUTO DE USO ORAL'))) {
+                  parsed.productLock.push(oralEntry);
+                }
+              }
+              if (isApparelProduct(productName, productInfo, `${(parsed.productLock || []).join(' ')} ${activeCopy}`)) {
+                const apparelEntry = `PEÇA DE ROUPA / VESTUÁRIO: Fidelidade 100% a botões, costuras, cores, padrão visual e caimento conforme referências.`;
+                if (Array.isArray(parsed.productLock) && !parsed.productLock.some((l: string) => l.includes('PEÇA DE ROUPA'))) {
+                  parsed.productLock.push(apparelEntry);
+                }
+              }
+              parsed.finalCopy = sanitizeForbiddenPromises(activeCopy);
               parsed.copySourceLabel = copySourceLabel;
               const promptTok = completion.usage?.prompt_tokens || 3400;
               const compTok = completion.usage?.completion_tokens || 1100;
@@ -3481,7 +3504,26 @@ Retorne APENAS um objeto JSON válido com as chaves:
               if (Array.isArray(parsed.visualMap)) {
                 parsed.visualMap = sanitizeVisualMapForFidelity(parsed.visualMap, productName, productInfo);
               }
-              parsed.finalCopy = activeCopy;
+              const qtyInfo = detectProductQuantity(productName, productInfo, `${(parsed.productLock || []).join(' ')} ${additionalInstructions || ''} ${activeCopy}`);
+              const qtyEntry = qtyInfo.isKit
+                ? `QUANTIDADE EXATA: Kit de exatamente ${qtyInfo.quantity} unidades/pacotes (nunca mostrar quantidade diferente).`
+                : `QUANTIDADE EXATA: 1 unidade única do produto (nunca mostrar 2 ou mais unidades na mesma tela).`;
+              if (Array.isArray(parsed.productLock) && !parsed.productLock.some((l: string) => l.includes('QUANTIDADE EXATA'))) {
+                parsed.productLock.push(qtyEntry);
+              }
+              if (isOralCareProduct(productName, productInfo, `${(parsed.productLock || []).join(' ')} ${activeCopy}`)) {
+                const oralEntry = `PRODUTO DE USO ORAL: Sem antes e depois e sem clareamento de dentes (vídeo produzido sem mostrar dentes em close branqueados).`;
+                if (Array.isArray(parsed.productLock) && !parsed.productLock.some((l: string) => l.includes('PRODUTO DE USO ORAL'))) {
+                  parsed.productLock.push(oralEntry);
+                }
+              }
+              if (isApparelProduct(productName, productInfo, `${(parsed.productLock || []).join(' ')} ${activeCopy}`)) {
+                const apparelEntry = `PEÇA DE ROUPA / VESTUÁRIO: Fidelidade 100% a botões, costuras, cores, padrão visual e caimento conforme referências.`;
+                if (Array.isArray(parsed.productLock) && !parsed.productLock.some((l: string) => l.includes('PEÇA DE ROUPA'))) {
+                  parsed.productLock.push(apparelEntry);
+                }
+              }
+              parsed.finalCopy = sanitizeForbiddenPromises(activeCopy);
               parsed.copySourceLabel = copySourceLabel;
               const promptTok = response.usageMetadata?.promptTokenCount || 3400;
               const compTok = response.usageMetadata?.candidatesTokenCount || 1100;
@@ -4075,13 +4117,24 @@ PASSO 2 — REGRAS DE OURO DA FISCALIZAÇÃO POR QUADRANTE (CENA 1 A CENA ${quad
      * SE "logoPartVisible": true E A LOGOMARCA DO FABRICANTE FOI REMOVIDA, APAGADA, DEIXADA LISA OU ALTERADA naquele quadrante:
        -> Marque OBRIGATORIAMENTE "logoFaithful": false!
        -> Dê OBRIGATORIAMENTE uma nota BAIXA entre 45 e 58 (VERMELHO, abaixo de 60) para aquele quadrante! NUNCA dê nota alta se a parte da logo está visível e a logo sumiu!
-       -> No campo "issue" (SEMPRE EM PORTUGUÊS), escreva claramente: "Na Cena X, o produto está diferente: a logomarca original do fabricante ([descreva a logo e onde fica, ex: no encosto]) foi removida e não aparece como na foto de referência."
+        -> No campo "issue" (SEMPRE EM PORTUGUÊS), escreva claramente: "Na Cena X, o produto está diferente: a logomarca original do fabricante ([descreva a logo e onde fica, ex: no encosto]) foi removida e não aparece como na foto de referência."
    - CORES, FORMATO, ESTRUTURA E DETALHES: Verifique se a aparência, formato, estrutura e cor conferem com QUALQUER UMA das fotos/variações de referência anexadas pelo usuário.${variationsAuditRule}
+   - VERIFICAÇÃO DE QUANTIDADE (REGRA ANTI-PUNIÇÃO TIKTOK SHOP):
+     * Se o anúncio é de 1 produto único (ex.: 1 celular, 1 relógio, 1 perfume), NUNCA pode aparecer 2 ou mais unidades na mesma tela em nenhum quadrante. Se aparecerem 2 celulares ou 2 relógios na mesma cena, marque score < 60 e aponte no issue: "Na Cena X, a quantidade está incorreta: apareceram 2 unidades na mesma tela quando o anúncio é de apenas 1 unidade."
+     * Se o anúncio é kit de N unidades (ex.: kit de 4 pacotes), não podem aparecer 5 ou quantidade diferente na tela.
+   - PRODUTOS DE USO ORAL:
+     * Se for produto de uso oral (irrigador oral, escova, etc.), verifique se NÃO há close em dentes insinuando clareamento dental nem comparação de "antes e depois". Se houver close em dentes clareados, atribua score < 60 e aponte no issue.
+   - ROUPAS E VESTUÁRIO:
+     * Botões (quantidade, formato e cor), costuras, pespontos e padrão visual devem ser 100% idênticos às fotos de referência.
+   - TAMANHO REAL:
+     * O produto NÃO pode aparentar ser maior do que o produto mostrado nas fotos de referência reais.
+   - ÂNGULOS VISÍVEIS:
+     * O produto deve ser mostrado apenas nos ângulos visíveis nas referências. É proibido inventar traseira, laterais ou interior não fotografados.
 3. ESCALA INTEIRA DE NOTAS DE CADA QUADRANTE (0 a 100 — NUNCA use decimais de 0 a 1):
-   - 90 a 100 (VERDE): Produto 90%+ idêntico a qualquer uma das fotos/variações de referência anexadas (logomarca original presente e fiel quando a área aparece, ou close fiel de outra parte do produto).
+   - 90 a 100 (VERDE): Produto 90%+ idêntico a qualquer uma das fotos/variações de referência anexadas (logomarca original presente e fiel quando a área aparece, quantidade exata, proporção realista e sem invenções).
    - 71 a 89 (AMARELO): Produto com pequena variação leve de detalhe secundário.
    - 60 a 70 (LARANJA): Diferença moderada de formato/cor ou logomarca parcialmente distorcida/apagada.
-   - Abaixo de 60 (VERMELHO): Logomarca original do fabricante removida/ausente em quadrante onde aquela parte está visível, formato alterado ou cor/aparência diferente de TODAS as variações anexadas.
+   - Abaixo de 60 (VERMELHO): Logomarca original do fabricante removida/ausente em quadrante onde aquela parte está visível, quantidade incorreta na tela, clareamento dental não permitido em produtos orais, ou invenção de partes/ângulos não fotografados.
 
 CONTEXTO DO PRODUCT LOCK ESPERADO:
 ${lockContext}

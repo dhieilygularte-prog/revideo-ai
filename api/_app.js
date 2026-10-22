@@ -1262,31 +1262,38 @@ REGRAS CR\xCDTICAS:
 }
 
 // src/produtos2/produtos2FidelityLock.ts
-var PRODUCT_VISUAL_FIDELITY_LOCK_BLOCK = `PRODUCT VISUAL FIDELITY LOCK \u2014 STRICT REFERENCE CONSTRAINTS:
+var PRODUCT_VISUAL_FIDELITY_LOCK_BLOCK = `PRODUCT VISUAL FIDELITY LOCK \u2014 STRICT REFERENCE CONSTRAINTS (TIKTOK SHOP ZERO-TOLERANCE COMPLIANCE):
 
-Use the provided product reference images as the sole visual authority for the exact physical appearance of the product.
+Use the provided product reference images as the sole visual authority for the exact physical appearance, quantity, scale, and details of the product.
 
+1. STRICT QUANTITY LOCK (EXACT UNIT & KIT COUNT):
+Never show a different product quantity on screen than what the listing or reference specifies.
+- If the ad/reference is for 1 single product (e.g., 1 smartphone, 1 watch, 1 perfume, 1 shirt), NEVER show 2 or more units on screen in ANY frame.
+- If the ad/reference is for a kit of N units (e.g., a kit of 4 diaper packs, combo of 3 t-shirts, pack of 2 bottles), NEVER show N-1, N+1, or any quantity other than EXACTLY N units in any frame.
+- 100% strict numerical fidelity to the advertised unit/pack count across every single frame.
+
+2. EXACT BRAND, MANUFACTURER NAME, MODEL NAME & LOGO:
+The brand logo, manufacturer name, model designation, and typography printed, stamped, or embossed on the physical product MUST be 100% identical in spelling, font typography, color, size, and position to the reference images. Never distort, omit, blur, or invent generic names or alternate markings.
+
+3. ACCURATE PHYSICAL SIZE & REALISTIC SCALE (NO EXAGGERATION):
+The product must NEVER appear larger, disproportionate, or physically exaggerated compared to the reference photos and real life. Proportions relative to human hands, arms, body, countertops, and nearby items must be strictly realistic and proportionate. Do not artificially enlarge, stretch, or inflate the product's visual size.
+
+4. APPAREL & CLOTHING FIDELITY (BUTTONS, SEAMS & DETAILS):
+When the product is clothing or apparel, the garment must be 100% faithful to the reference photos in every aspect: exact buttons (shape, number, color), seams/stitching lines, fabric texture, weave pattern, prints, collar shape, pockets, hem, cut, and color tone. Never add, remove, or modify buttons, zippers, seams, or embroidery.
+
+5. ORAL CARE & NO TEETH WHITENING BEFORE/AFTER:
+For oral care products (toothbrush, oral irrigator, mouthwash, dental floss, etc.), it is STRICTLY FORBIDDEN to show before-and-after teeth whitening, close-up of teeth implying whitening/bleaching results, or any visual claims of dental whitening. Produce scenes WITHOUT showing teeth or implying cosmetic whitening (e.g., demonstrate the device in hands, water stream into a sink or glass, nozzles, power buttons, and friendly presentation with closed or natural smile without exposed whitening comparison).
+
+6. STRICT VISIBLE-ANGLE LOCK & NO UNPHOTOGRAPHED INVENTIONS:
 Never invent, infer, reconstruct, hallucinate, or reveal any product surface, side, rear view, bottom view, internal component, hidden detail, accessory, connector, texture, label, color variation, or physical feature that is not clearly supported by the provided reference images.
+- If the product is shown only from the front, keep it front-facing. Do not reveal its sides, rear, bottom, or internal construction unless those specific views are explicitly documented in the reference images.
+- If only a closed package is shown, do not open it, remove its contents, or reveal individual items inside unless those items and their appearance are explicitly documented in the reference images.
+- Do not rotate, turn, orbit around, flip, tilt, or move the camera around the product in a way that reveals any unreferenced surface or undocumented angle.
+- Do not generate a reverse angle, a new perspective, or a three-dimensional view that exposes previously unseen parts of the product.
 
-Do not rotate, turn, orbit around, flip, tilt, or move the camera around the product in a way that reveals any unreferenced surface or undocumented angle.
-
-Do not generate a reverse angle, a new perspective, or a three-dimensional view that exposes previously unseen parts of the product.
-
-Keep the product within the documented viewpoints and visible surfaces of the reference images throughout the entire video.
-
-Any camera movement must remain within the visual information established by the references. Prefer static framing, controlled push-ins, controlled pull-backs, or movements that do not reveal unknown surfaces.
-
-If the product is shown only from the front, keep it front-facing. Do not reveal its sides, rear, bottom, or internal construction unless those specific views are explicitly documented in the reference images.
-
-If only a closed package is shown, do not open it, remove its contents, or reveal individual items inside unless those items and their appearance are explicitly documented in the reference images.
-
-Preserve the exact product identity, proportions, shape, color, visible components, packaging, labels, and other documented details.
-
-When a requested action would require inventing an unknown product feature or revealing an undocumented surface, do not perform that action. Use an alternative camera framing or scene action that preserves the documented appearance.
-
-Reference fidelity takes absolute priority over cinematic creativity, camera movement, scene variety, and visual enhancement.
-
-Never fabricate visual information about the product.`;
+7. CAMERA MOVEMENTS & FIDELITY OVER CREATIVITY:
+Keep the product within the documented viewpoints and visible surfaces of the reference images throughout the entire video. Any camera movement must remain within the visual information established by the references. Prefer static framing, controlled push-ins, controlled pull-backs, or movements that do not reveal unknown surfaces.
+Reference fidelity takes absolute priority over cinematic creativity, camera movement, scene variety, and visual enhancement. Never fabricate visual information about the product.`;
 function appendFidelityLockToVeoPrompt(prompt) {
   if (!prompt || typeof prompt !== "string") return prompt || "";
   if (prompt.includes("PRODUCT VISUAL FIDELITY LOCK")) {
@@ -1299,6 +1306,33 @@ ${prompt.trim()}`;
 function isPackagedProductOnly(productName, productInfo, extraContext) {
   const combined = `${productName || ""} ${productInfo || ""} ${extraContext || ""}`.toLowerCase();
   return /\b(fralda|fraldas|babysec|pampers|huggies|cremer|mamy|len[çc]o|len[çc]os|toalha|toalhinhas?|absorvente|absorventes)\b/i.test(combined) || /\b(pacote|pacotes|combo de pacotes|fardo|fardos|embalagem fechada|embalagem lacrada|caixa fechada|pote lacrado)\b/i.test(combined) || /galinha\s*pintadinha/i.test(combined);
+}
+function detectProductQuantity(productName, productInfo, extraContext) {
+  const combined = `${productName || ""} ${productInfo || ""} ${extraContext || ""}`.toLowerCase();
+  const kitMatch = combined.match(/\b(?:kit|combo|fardo|jogo|conjunto)\s+(?:com|de)\s+(\d+)\b/i) || combined.match(/\b(\d+)\s*(?:pacotes?|unidades?|unid|un|pcs|peças|frascos?|garrafas?|pares|camisetas?|blusas?)\b/i);
+  if (kitMatch) {
+    const qty = parseInt(kitMatch[1], 10);
+    if (!isNaN(qty) && qty > 0) {
+      return {
+        quantity: qty,
+        isKit: qty > 1,
+        unitLabel: qty === 1 ? "1 unidade" : `kit de ${qty} unidades`
+      };
+    }
+  }
+  return {
+    quantity: 1,
+    isKit: false,
+    unitLabel: "1 unidade \xFAnica"
+  };
+}
+function isOralCareProduct(productName, productInfo, extraContext) {
+  const combined = `${productName || ""} ${productInfo || ""} ${extraContext || ""}`.toLowerCase();
+  return /\b(irrigador\s*oral|escova\s*(?:de\s*dentes?|dental|el[ée]trica)|enxaguante\s*bucal|fio\s*dental|creme\s*dental|pasta\s*de\s*dente|clareamento|clareador\s*dental|sa[uú]de\s*bucal)\b/i.test(combined);
+}
+function isApparelProduct(productName, productInfo, extraContext) {
+  const combined = `${productName || ""} ${productInfo || ""} ${extraContext || ""}`.toLowerCase();
+  return /\b(vestido|camisa|camiseta|bermuda|cal[çc]a|short|shorts|jaqueta|casaco|blusa|saia|cueca|calcinha|suti[aã]|lingerie|jogger|moletom|roupa|vestu[aá]rio)\b/i.test(combined);
 }
 function getCanonicalPackagedScene(index, productName, totalCount = 9, partIndex = 1) {
   const p = (productName || "Produto").trim();
@@ -1392,10 +1426,14 @@ function getCanonicalPackagedScene(index, productName, totalCount = 9, partIndex
   ];
   return canonical9[Math.min(index, canonical9.length - 1)];
 }
-function sanitizeSceneFidelityAction(action, productName, isPackaged) {
+function sanitizeSceneFidelityAction(action, productName, isPackaged, productInfo) {
   if (!action) return action;
-  const packaged = isPackaged ?? (productName ? isPackagedProductOnly(productName) : false);
+  const packaged = isPackaged ?? (productName ? isPackagedProductOnly(productName, productInfo) : false);
+  const isOralCare = productName ? isOralCareProduct(productName, productInfo, action) : false;
   let clean = action.replace(/\b(?:abrindo|rasgando|deslacrando)\s+[^,.;]*/gi, "segurando o pacote fechado de frente com clareza").replace(/\b(?:tirando|retirando|puxando|sacando)\s+(?:uma?|o|a|os|as|do|da|das|dos)?[^,.;]*(?:fralda|unidade|item|conte[uú]do|produto)[^,.;]*/gi, "posicionando e exibindo os pacotes fechados").replace(/\b(?:desdobrando|esticando|abrindo)\s+[^,.;]*/gi, "apresentando a embalagem fechada de frente").replace(/\b(?:el[aá]sticos?|abas?|fitas?|laterais|barreiras?|revestimento|forro|núcleo|camada|gel)[^,.;]*/gi, "especifica\xE7\xF5es e detalhes impressos na embalagem lacrada").replace(/\bfraldas?\s+(?:abertas?|soltas?|desdobradas?|fora do pacote|de dentro)[^,.;]*/gi, "pacote fechado de fraldas").replace(/\b(?:com\s+)?estampa\s+(?:d[aeo]|divertida|infantil|colorida)?\s*(?:galinha\s*pintadinha|desenho|personagem)?[^,.;]*/gi, "arte e logomarca oficiais impressas na pr\xF3pria embalagem de refer\xEAncia").replace(/\b(?:tocando|passando a m[aã]o|sentindo)\s+[^,.;]*/gi, "dedo apontando para as especifica\xE7\xF5es e selo de qualidade impressos na frente da embalagem fechada").replace(/\bdedo\s+pressionando\s+[^,.;]*/gi, "m\xE3o segurando com firmeza o pacote fechado").replace(/\b(?:jogando|[aá]gua|despejando|derramando|copo d'?\s*[aá]gua|teste de absor[çc][aã]o|l[ií]quido azul|absorvendo)[^,.;]*/gi, "apresentando os pacotes fechados organizados no cen\xE1rio, destacando a praticidade do combo").replace(/\b(?:indicador de umidade|linha indicadora|fralda molhada|fralda usada|efeito azul)[^,.;]*/gi, "pacotes fechados organizados em destaque na c\xF4moda ou bancada").replace(/\bmostrando a parte traseira\b/gi, "mostrando a frente documentada nas fotos").replace(/\bmostrando o verso\b/gi, "mostrando a frente do produto").replace(/\bvirando o produto de costas\b/gi, "mantendo o produto de frente").replace(/\s+/g, " ").trim();
+  if (isOralCare) {
+    clean = clean.replace(/\b(?:antes\s+e\s+depois|clareamento\s*dental|clareamento\s*de\s*dentes?|clareando|dentes?\s+mais\s+brancos?)\b/gi, "demonstra\xE7\xE3o de uso do aparelho").replace(/\b(?:close|foco|zoom)\s+(?:nos|dos|sobre\s+os)\s+dentes\b/gi, "plano m\xE9dio segurando o aparelho com sorriso acolhedor sem focar nos dentes").replace(/\bmostrando\s+(?:os\s+)?dentes(?:\s+brancos)?\b/gi, "apresentando o aparelho em m\xE3os com express\xE3o satisfeita").replace(/\baplicando\s+o\s+jato\s+direto\s+nos\s+dentes\b/gi, "demonstrando o jato potente e limpo de \xE1gua na pia").replace(/\s+/g, " ").trim();
+  }
   if (packaged) {
     clean = clean.replace(/\bfralda\b(?!\s+(?:babysec|pampers|huggies|fechada))/gi, "pacote de fraldas fechado").replace(/\bfraldas\b(?!\s+(?:babysec|pampers|huggies|fechadas))/gi, "pacotes de fraldas fechados");
   }
@@ -1463,6 +1501,25 @@ function buildProdutos2PlanningSystemPrompt() {
   return `Voc\xEA \xE9 o Diretor Criativo Copy-First do Modo Produtos 2.0.
 REGRA-M\xC3E: A COPY VENDE. O STORYBOARD PROVA VISUALMENTE A COPY. O V\xCDDEO ANIMA O STORYBOARD SEM NUNCA MOSTRAR A PR\xD3PRIA FOLHA DO STORYBOARD.
 
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+AS 7 REGRAS DE OURO MANDAT\xD3RIAS DE COMPLIANCE TIKTOK SHOP (ZERO-PUNI\xC7\xC3O):
+1. TRAVA ESTRITA DE QUANTIDADE DE PRODUTO:
+   - Se o an\xFAncio \xE9 de 1 unidade (ex.: 1 celular, 1 rel\xF3gio, 1 perfume, 1 camisa): em TODAS as 9 cenas e no productLock, o produto DEVE ser retratado estritamente como 1 \xFAnica unidade! NUNCA pode aparecer 2 celulares ou 2 rel\xF3gios na mesma tela em nenhum frame.
+   - Se o an\xFAncio \xE9 de um kit de N unidades (ex.: kit de 4 pacotes de fraldas, combo com 3 camisetas): TODAS as tomadas do kit DEVEM mostrar RIGOROSAMENTE e EXATAMENTE N unidades (ex.: exatamente 4 pacotes, NUNCA 3 e NUNCA 5). 100% fiel \xE0 quantidade do an\xFAncio.
+2. PROIBI\xC7\xC3O ABSOLUTA DE 'EU GARANTO' OU 'EU PROMETO' NA FALA:
+   - A locu\xE7\xE3o/fala NUNCA pode conter afirma\xE7\xF5es como "EU GARANTO", "eu prometo", "garantido", "resultado garantido" ou promessas milagrosas. Se a fala contiver tais termos, substitua imediatamente por recomenda\xE7\xE3o conversacional aut\xEAntica ("voc\xEA vai adorar", "faz toda a diferen\xE7a", "vale muito a pena").
+3. LOGOMARCA, NOME DO FABRICANTE E NOME DO PRODUTO 100% ID\xCANTICOS:
+   - A marca, a logomarca, o emblema e o nome do produto impressos ou gravados no produto f\xEDsico DEVEM ser 100% id\xEAnticos em tipografia, formato, desenho, cor, propor\xE7\xE3o e posi\xE7\xE3o exata \xE0s fotos de refer\xEAncia. NUNCA distorcer, inventar marca gen\xE9rica ou remover a marca original.
+4. PRODUTOS DE USO ORAL SEM ANTES E DEPOIS E SEM CLAREAMENTO DE DENTES:
+   - Para produtos de higiene ou uso oral (irrigador oral, escova de dentes, enxaguante bucal, etc.): \xC9 EXPRESSAMENTE PROIBIDO mostrar "antes e depois" de clareamento de dentes ou dar a entender que houve clareamento dental. Fazer o v\xEDdeo SEM mostrar dentes em close de branqueamento (demonstrar o manuseio do aparelho, o jato de \xE1gua na pia ou em um copo com \xE1gua, bicos e bot\xF5es, e a apresentadora sorrindo naturalmente com boca fechada ou acolhedora sem focar em dentes).
+5. ROUPAS E PE\xC7AS DE VESTU\xC1RIO 100% FI\xC9IS:
+   - Quando o produto for roupa, a pe\xE7a precisa ser 100% fiel \xE0s fotos de refer\xEAncia em bot\xF5es (formato, quantidade e cor), costuras, pespontos, cores, detalhes, caimento e padr\xE3o visual. NUNCA inventar bot\xF5es ou costuras que n\xE3o estejam nas refer\xEAncias.
+6. TAMANHO REAL \u2014 PROIBIDO APARENTAR SER MAIOR:
+   - O produto N\xC3O pode aparentar ser maior do que o tamanho mostrado nas fotos de refer\xEAncia reais. Manter propor\xE7\xF5es humanas e escala f\xEDsica 100% realistas em rela\xE7\xE3o \xE0s m\xE3os, corpo e bancada.
+7. LAYOUT, CORES E \xC2NGULOS VIS\xCDVEIS 100% ID\xCANTICOS (PROIBIDO INVENTAR \xC2NGULOS OCULTOS):
+   - Manter o produto com layout e cores 100% id\xEAnticos \xE0s fotos de refer\xEAncia. NUNCA criar tomadas mostrando \xE2ngulos que n\xE3o estejam nas fotos de refer\xEAncia (ou seja, N\xC3O inventar traseira, laterais ou interior). Se apenas a frente foi fotografada, manter o produto de frente.
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+
 REGRA DE OURO INVIOL\xC1VEL \u2014 LOGOMARCA DO FABRICANTE NO PRODUTO vs ELEMENTOS DE REDE SOCIAL:
 - DIFERENCIE TOTALMENTE:
   1) PROIBIDO: Logotipo do TikTok, marca d'\xE1gua de rede social, @usu\xE1rio, bot\xF5es ou \xEDcone de carrinho flutuantes na tela. A palavra "TikTok" NUNCA pode aparecer em "productLock", "avatarDescription", "scenarioDescription", "visualMap" nem em "scenes" (somente dentro de "adaptedCopy" se j\xE1 fizer parte da fala).
@@ -1503,8 +1560,12 @@ E retornar um JSON estrito com:
    - A "baseCopy" recebida j\xE1 \xE9 a copy do banco adaptada com o m\xEDnimo de mudan\xE7as e j\xE1 come\xE7a obrigatoriamente com "Nossa! ". MANTENHA A "baseCopy" EXATAMENTE COMO EST\xC1!
    - A fala no Veo deve ser pronunciada de forma R\xC1PIDA E EUF\xD3RICA (estilo contando uma novidade imperd\xEDvel e urgente).
    - NUNCA use a palavra "menina" como vocativo; quando o p\xFAblico for feminino, use "Amiga" ou "Gente". Para masculino, use "Meu amigo", "Cara", "Irm\xE3o" ou "Gente".
+   - NUNCA use afirma\xE7\xF5es proibidas como "EU GARANTO", "eu prometo", "garantido" ou "resultado garantido".
    - NUNCA mencione "frete gr\xE1tis" ou "frete gratuito" na fala, a menos que isso tenha sido informado expressamente nas Informa\xE7\xF5es do Produto.
 3. "productLock": array de 4 a 6 strings detalhando fisicamente o produto visto nas fotos (1\xBA item obrigatoriamente a descri\xE7\xE3o exata da logomarca/emblema/marca impressa no produto e sua posi\xE7\xE3o exata; seguido de formato, propor\xE7\xE3o, material, textura, bot\xF5es/costuras/sola/cabos/detalhes).
+   - INCLUA A QUANTIDADE EXATA DO PRODUTO (ex: "Quantidade: Kit de 4 pacotes fechados" ou "Quantidade: 1 celular \xFAnico").
+   - SE ROUPA: especifique bot\xF5es, costuras, caimento e detalhes 100% id\xEAnticos \xE0s fotos.
+   - SE PRODUTO ORAL: especifique que n\xE3o h\xE1 exibi\xE7\xE3o de clareamento ou dentes em close.
    - REGRA MANDAT\xD3RIA DE VARIA\xC7\xD5ES DE COR NO PRODUCT LOCK:
      * Quando houver mais de 1 varia\xE7\xE3o de cor/modelo, NUNCA fixe a cor ou estampa de apenas uma das fotos (ex.: NUNCA escreva "tecido azul-marinho com listras" ou "franjas azul-marinho" como se fosse o produto inteiro!).
      * No "productLock", descreva apenas os aspectos f\xEDsicos universais da pe\xE7a (tecido 100% algod\xE3o, formato curvo, franjas nas laterais, cordas refor\xE7adas nas pontas, acabamento).
@@ -1546,8 +1607,12 @@ E retornar um JSON estrito com:
 }
 
 // src/produtos2/produtos2UserSpeechExtractor.ts
+function sanitizeForbiddenPromises(text) {
+  if (!text) return text;
+  return text.replace(/\b(?:eu\s+)?te\s+garanto\s+que\b/gi, "com certeza").replace(/\b(?:eu\s+)?garanto\s+que\b/gi, "com certeza").replace(/\b(?:eu\s+)?garanto\s+pra\s+voc[êe]\b/gi, "voc\xEA vai adorar").replace(/\beu\s+garanto\b/gi, "vale muito a pena").replace(/\b(?:eu\s+)?te\s+prometo\s+que\b/gi, "voc\xEA vai ver que").replace(/\b(?:eu\s+)?prometo\s+que\b/gi, "voc\xEA vai ver que").replace(/\beu\s+prometo\b/gi, "vale a pena").replace(/\bresultado(?:s)?\s+(?:100%\s+)?garantido(?:s)?\b/gi, "resultado incr\xEDvel").replace(/\bgarantia\s+de\s+resultado\b/gi, "qualidade comprovada").replace(/\b100%\s+garantido\b/gi, "100% aprovado").replace(/\s+/g, " ").trim();
+}
 function fixCommonSlips(str) {
-  let s = str;
+  let s = sanitizeForbiddenPromises(str);
   s = s.replace(/\b([a-záàâãéêíóôõúç]{2,})(?:\s*,\s*|\s+)\1\b/gi, "$1");
   s = s.replace(/\bp[óo]\s*pouco\b/gi, "Poco");
   s = s.replace(/\bpopouco\b/gi, "Poco");
@@ -4626,7 +4691,24 @@ Retorne APENAS um objeto JSON v\xE1lido com as chaves:
               if (Array.isArray(parsed.visualMap)) {
                 parsed.visualMap = sanitizeVisualMapForFidelity(parsed.visualMap, productName, productInfo);
               }
-              parsed.finalCopy = activeCopy;
+              const qtyInfo = detectProductQuantity(productName, productInfo, `${(parsed.productLock || []).join(" ")} ${additionalInstructions || ""} ${activeCopy}`);
+              const qtyEntry = qtyInfo.isKit ? `QUANTIDADE EXATA: Kit de exatamente ${qtyInfo.quantity} unidades/pacotes (nunca mostrar quantidade diferente).` : `QUANTIDADE EXATA: 1 unidade \xFAnica do produto (nunca mostrar 2 ou mais unidades na mesma tela).`;
+              if (Array.isArray(parsed.productLock) && !parsed.productLock.some((l) => l.includes("QUANTIDADE EXATA"))) {
+                parsed.productLock.push(qtyEntry);
+              }
+              if (isOralCareProduct(productName, productInfo, `${(parsed.productLock || []).join(" ")} ${activeCopy}`)) {
+                const oralEntry = `PRODUTO DE USO ORAL: Sem antes e depois e sem clareamento de dentes (v\xEDdeo produzido sem mostrar dentes em close branqueados).`;
+                if (Array.isArray(parsed.productLock) && !parsed.productLock.some((l) => l.includes("PRODUTO DE USO ORAL"))) {
+                  parsed.productLock.push(oralEntry);
+                }
+              }
+              if (isApparelProduct(productName, productInfo, `${(parsed.productLock || []).join(" ")} ${activeCopy}`)) {
+                const apparelEntry = `PE\xC7A DE ROUPA / VESTU\xC1RIO: Fidelidade 100% a bot\xF5es, costuras, cores, padr\xE3o visual e caimento conforme refer\xEAncias.`;
+                if (Array.isArray(parsed.productLock) && !parsed.productLock.some((l) => l.includes("PE\xC7A DE ROUPA"))) {
+                  parsed.productLock.push(apparelEntry);
+                }
+              }
+              parsed.finalCopy = sanitizeForbiddenPromises(activeCopy);
               parsed.copySourceLabel = copySourceLabel;
               const promptTok = completion.usage?.prompt_tokens || 3400;
               const compTok = completion.usage?.completion_tokens || 1100;
@@ -4691,7 +4773,24 @@ Retorne APENAS um objeto JSON v\xE1lido com as chaves:
               if (Array.isArray(parsed.visualMap)) {
                 parsed.visualMap = sanitizeVisualMapForFidelity(parsed.visualMap, productName, productInfo);
               }
-              parsed.finalCopy = activeCopy;
+              const qtyInfo = detectProductQuantity(productName, productInfo, `${(parsed.productLock || []).join(" ")} ${additionalInstructions || ""} ${activeCopy}`);
+              const qtyEntry = qtyInfo.isKit ? `QUANTIDADE EXATA: Kit de exatamente ${qtyInfo.quantity} unidades/pacotes (nunca mostrar quantidade diferente).` : `QUANTIDADE EXATA: 1 unidade \xFAnica do produto (nunca mostrar 2 ou mais unidades na mesma tela).`;
+              if (Array.isArray(parsed.productLock) && !parsed.productLock.some((l) => l.includes("QUANTIDADE EXATA"))) {
+                parsed.productLock.push(qtyEntry);
+              }
+              if (isOralCareProduct(productName, productInfo, `${(parsed.productLock || []).join(" ")} ${activeCopy}`)) {
+                const oralEntry = `PRODUTO DE USO ORAL: Sem antes e depois e sem clareamento de dentes (v\xEDdeo produzido sem mostrar dentes em close branqueados).`;
+                if (Array.isArray(parsed.productLock) && !parsed.productLock.some((l) => l.includes("PRODUTO DE USO ORAL"))) {
+                  parsed.productLock.push(oralEntry);
+                }
+              }
+              if (isApparelProduct(productName, productInfo, `${(parsed.productLock || []).join(" ")} ${activeCopy}`)) {
+                const apparelEntry = `PE\xC7A DE ROUPA / VESTU\xC1RIO: Fidelidade 100% a bot\xF5es, costuras, cores, padr\xE3o visual e caimento conforme refer\xEAncias.`;
+                if (Array.isArray(parsed.productLock) && !parsed.productLock.some((l) => l.includes("PE\xC7A DE ROUPA"))) {
+                  parsed.productLock.push(apparelEntry);
+                }
+              }
+              parsed.finalCopy = sanitizeForbiddenPromises(activeCopy);
               parsed.copySourceLabel = copySourceLabel;
               const promptTok = response.usageMetadata?.promptTokenCount || 3400;
               const compTok = response.usageMetadata?.candidatesTokenCount || 1100;
@@ -5151,13 +5250,24 @@ PASSO 2 \u2014 REGRAS DE OURO DA FISCALIZA\xC7\xC3O POR QUADRANTE (CENA 1 A CENA
      * SE "logoPartVisible": true E A LOGOMARCA DO FABRICANTE FOI REMOVIDA, APAGADA, DEIXADA LISA OU ALTERADA naquele quadrante:
        -> Marque OBRIGATORIAMENTE "logoFaithful": false!
        -> D\xEA OBRIGATORIAMENTE uma nota BAIXA entre 45 e 58 (VERMELHO, abaixo de 60) para aquele quadrante! NUNCA d\xEA nota alta se a parte da logo est\xE1 vis\xEDvel e a logo sumiu!
-       -> No campo "issue" (SEMPRE EM PORTUGU\xCAS), escreva claramente: "Na Cena X, o produto est\xE1 diferente: a logomarca original do fabricante ([descreva a logo e onde fica, ex: no encosto]) foi removida e n\xE3o aparece como na foto de refer\xEAncia."
+        -> No campo "issue" (SEMPRE EM PORTUGU\xCAS), escreva claramente: "Na Cena X, o produto est\xE1 diferente: a logomarca original do fabricante ([descreva a logo e onde fica, ex: no encosto]) foi removida e n\xE3o aparece como na foto de refer\xEAncia."
    - CORES, FORMATO, ESTRUTURA E DETALHES: Verifique se a apar\xEAncia, formato, estrutura e cor conferem com QUALQUER UMA das fotos/varia\xE7\xF5es de refer\xEAncia anexadas pelo usu\xE1rio.${variationsAuditRule}
+   - VERIFICA\xC7\xC3O DE QUANTIDADE (REGRA ANTI-PUNI\xC7\xC3O TIKTOK SHOP):
+     * Se o an\xFAncio \xE9 de 1 produto \xFAnico (ex.: 1 celular, 1 rel\xF3gio, 1 perfume), NUNCA pode aparecer 2 ou mais unidades na mesma tela em nenhum quadrante. Se aparecerem 2 celulares ou 2 rel\xF3gios na mesma cena, marque score < 60 e aponte no issue: "Na Cena X, a quantidade est\xE1 incorreta: apareceram 2 unidades na mesma tela quando o an\xFAncio \xE9 de apenas 1 unidade."
+     * Se o an\xFAncio \xE9 kit de N unidades (ex.: kit de 4 pacotes), n\xE3o podem aparecer 5 ou quantidade diferente na tela.
+   - PRODUTOS DE USO ORAL:
+     * Se for produto de uso oral (irrigador oral, escova, etc.), verifique se N\xC3O h\xE1 close em dentes insinuando clareamento dental nem compara\xE7\xE3o de "antes e depois". Se houver close em dentes clareados, atribua score < 60 e aponte no issue.
+   - ROUPAS E VESTU\xC1RIO:
+     * Bot\xF5es (quantidade, formato e cor), costuras, pespontos e padr\xE3o visual devem ser 100% id\xEAnticos \xE0s fotos de refer\xEAncia.
+   - TAMANHO REAL:
+     * O produto N\xC3O pode aparentar ser maior do que o produto mostrado nas fotos de refer\xEAncia reais.
+   - \xC2NGULOS VIS\xCDVEIS:
+     * O produto deve ser mostrado apenas nos \xE2ngulos vis\xEDveis nas refer\xEAncias. \xC9 proibido inventar traseira, laterais ou interior n\xE3o fotografados.
 3. ESCALA INTEIRA DE NOTAS DE CADA QUADRANTE (0 a 100 \u2014 NUNCA use decimais de 0 a 1):
-   - 90 a 100 (VERDE): Produto 90%+ id\xEAntico a qualquer uma das fotos/varia\xE7\xF5es de refer\xEAncia anexadas (logomarca original presente e fiel quando a \xE1rea aparece, ou close fiel de outra parte do produto).
+   - 90 a 100 (VERDE): Produto 90%+ id\xEAntico a qualquer uma das fotos/varia\xE7\xF5es de refer\xEAncia anexadas (logomarca original presente e fiel quando a \xE1rea aparece, quantidade exata, propor\xE7\xE3o realista e sem inven\xE7\xF5es).
    - 71 a 89 (AMARELO): Produto com pequena varia\xE7\xE3o leve de detalhe secund\xE1rio.
    - 60 a 70 (LARANJA): Diferen\xE7a moderada de formato/cor ou logomarca parcialmente distorcida/apagada.
-   - Abaixo de 60 (VERMELHO): Logomarca original do fabricante removida/ausente em quadrante onde aquela parte est\xE1 vis\xEDvel, formato alterado ou cor/apar\xEAncia diferente de TODAS as varia\xE7\xF5es anexadas.
+   - Abaixo de 60 (VERMELHO): Logomarca original do fabricante removida/ausente em quadrante onde aquela parte est\xE1 vis\xEDvel, quantidade incorreta na tela, clareamento dental n\xE3o permitido em produtos orais, ou inven\xE7\xE3o de partes/\xE2ngulos n\xE3o fotografados.
 
 CONTEXTO DO PRODUCT LOCK ESPERADO:
 ${lockContext}

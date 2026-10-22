@@ -13,6 +13,9 @@ import {
 import { applySpeechIntro } from './produtos2CopyBank';
 import {
   appendFidelityLockToVeoPrompt,
+  detectProductQuantity,
+  isApparelProduct,
+  isOralCareProduct,
   isPackagedProductOnly,
   sanitizeAllScenesForFidelity,
   sanitizeProductLockForFidelity,
@@ -491,6 +494,24 @@ export function buildProdutos2StoryboardImagePrompt(params: {
     `${(productLock || []).join(' ')} ${additionalInstructions || ''} ${finalCopy}`
   );
 
+  const qtyInfo = detectProductQuantity(
+    productName,
+    productInfo,
+    `${(productLock || []).join(' ')} ${additionalInstructions || ''} ${finalCopy}`
+  );
+
+  const isOralCare = isOralCareProduct(
+    productName,
+    productInfo,
+    `${(productLock || []).join(' ')} ${additionalInstructions || ''} ${finalCopy}`
+  );
+
+  const isApparel = isApparelProduct(
+    productName,
+    productInfo,
+    `${(productLock || []).join(' ')} ${additionalInstructions || ''} ${finalCopy}`
+  );
+
   const sanitizedVisualMap = sanitizeVisualMapForFidelity(visualMap, productName, productInfo);
   const visualMapLines = sanitizedVisualMap
     .map((m) => `"${m.excerpt}" → ${m.intent} (${m.visualProof}) → cenas ${m.scenes}`)
@@ -546,6 +567,18 @@ PROIBIÇÃO ABSOLUTA: NUNCA gere todos os ${totalScenes} quadros na mesma cor! �
     ? `\n\n═══════════════════════════════════════════════════════════════════\n⚠️ REGRA INEGOCIÁVEL DE EMBALAGEM FECHADA / PACOTES LACRADOS (TIKTOK SHOP):\nO produto nas fotos de referência consiste em PACOTES FECHADOS / EMBALAGEM LACRADA.\nÉ TERMINANTEMENTE E SEVERAMENTE PROIBIDO desenhar o pacote aberto, rasgado, fraldas avulsas/soltas fora do pacote, partes internas soltas, estampas internas não fotografadas (como Galinha Pintadinha em fralda avulsa) ou qualquer teste derramando líquidos/água!\nEm TODOS OS ${totalScenes} QUADROS (1 A ${totalScenes}), o que deve ser desenhado e manipulado pela apresentadora é EXCLUSIVAMENTE o PACOTE FECHADO idêntico às fotos reais anexadas!\n═══════════════════════════════════════════════════════════════════\n`
     : '';
 
+  const oralCareNotice = isOralCare
+    ? `\n\n═══════════════════════════════════════════════════════════════════\n⚠️ REGRA MANDATÓRIA PARA PRODUTO DE USO/HIGIENE ORAL (ANTI-PUNIÇÃO TIKTOK):\nÉ TERMINANTEMENTE PROIBIDO mostrar "antes e depois" de clareamento de dentes ou closes na boca com dentes clareados/branqueados.\nO vídeo e todos os quadros DEVEM ser produzidos SEM dar a entender clareamento dental. Mostre o aparelho na mão, o jato d'água fluindo limpo em direção à pia ou a um copo de vidro, botões e bicos de encaixe, e a apresentadora sorrindo de forma acolhedora e espontânea com a boca fechada ou natural sem focar em dentes!\n═══════════════════════════════════════════════════════════════════\n`
+    : '';
+
+  const apparelNotice = isApparel
+    ? `\n\n═══════════════════════════════════════════════════════════════════\n⚠️ REGRA MANDATÓRIA DE VESTUÁRIO/ROUPAS (100% FIDELIDADE A BOTÕES E COSTURAS):\nA peça de vestuário deve ser 100% fiel às fotos de referência em botões (mesmo formato, quantidade e cor), costuras, pespontos, corte, caimento, trama do tecido e estampa visual. Proibido inventar botões ou costuras não fotografadas!\n═══════════════════════════════════════════════════════════════════\n`
+    : '';
+
+  const quantityNotice = qtyInfo.isKit
+    ? `\n\n═══════════════════════════════════════════════════════════════════\n⚠️ TRAVA ESTRITA DE QUANTIDADE DE PRODUTO (KIT DE ${qtyInfo.quantity} UNIDADES):\nO anúncio é de um kit de EXATAMENTE ${qtyInfo.quantity} unidades/pacotes. NUNCA mostre quantidade diferente de ${qtyInfo.quantity} na mesma tela em nenhum frame! Se o anúncio é kit de ${qtyInfo.quantity}, devem aparecer rigorosamente e exatamente ${qtyInfo.quantity} pacotes/itens.\n═══════════════════════════════════════════════════════════════════\n`
+    : `\n\n═══════════════════════════════════════════════════════════════════\n⚠️ TRAVA ESTRITA DE QUANTIDADE DE PRODUTO (1 UNIDADE INDIVIDUAL):\nO anúncio é de 1 produto único. NUNCA mostre 2 ou mais unidades na mesma tela em nenhum frame! 100% fiel à unidade única fotografada.\n═══════════════════════════════════════════════════════════════════\n`;
+
   const scenesLines = sanitizedScenes
     .slice(0, totalScenes)
     .map((sc, i) => {
@@ -577,15 +610,18 @@ PROIBIÇÃO ABSOLUTA: NUNCA gere todos os ${totalScenes} quadros na mesma cor! �
     ? `PERSONAGENS EM CENA E INTERAÇÃO (DIÁLOGO): Dois personagens principais em interação direta e expressiva (Mulher e Homem), mantendo rigorosa continuidade física, de roupas e de traços em todos os ${totalScenes} quadros. ${avatarDescription}. Enquadramento: ${framingLabel}.${dialogueScriptBlock}`
     : `PERSONAGEM: ${avatarDescription}, o mesmo em todos os quadros. Enquadramento: ${framingLabel}.`;
 
-  const rawPrompt = `Crie UMA ÚNICA IMAGEM VERTICAL na mais alta resolução fotográfica 4K UHD (2160x3840 ou 1080x1920, proporção 9:16) de storyboard fotográfico ultra-realista em ${gridDesc} em ordem de leitura (esquerda para direita, de cima para baixo). Quadros de tamanho igual, cantos arredondados, separados por uma borda branca fina, fundo branco.${variationsBlock}${scenePartNote}${packagedNotice}
+  const rawPrompt = `Crie UMA ÚNICA IMAGEM VERTICAL na mais alta resolução fotográfica 4K UHD (2160x3840 ou 1080x1920, proporção 9:16) de storyboard fotográfico ultra-realista em ${gridDesc} em ordem de leitura (esquerda para direita, de cima para baixo). Quadros de tamanho igual, cantos arredondados, separados por uma borda branca fina, fundo branco.${variationsBlock}${scenePartNote}${packagedNotice}${quantityNotice}${oralCareNotice}${apparelNotice}
 
 Use as fotos anexadas como referência absoluta do produto. Preserve fielmente (PRODUCT LOCK): ${sanitizedProductLock.join('; ')}.
 ${productIdentityRule}
-REGRA SAGRADA DE FIDELIDADE TOTAL AO PRODUTO ANEXADO — NUNCA INVENTAR PARTES NÃO FOTOGRAFADAS, ÂNGULOS NÃO VISÍVEIS OU CONTEÚDO DE EMBALAGENS LACRADAS (ANTI-INCONSISTÊNCIA DO TIKTOK):
-- O produto deve ser retratado RIGOROSA E EXCLUSIVAMENTE como aparece nas fotos de referência anexadas pelo usuário.
-- PRODUTO EM EMBALAGEM FECHADA / PACOTE LACRADO / CAIXA: Se as fotos de referência mostram o produto lacrado em sua embalagem, pacote fechado ou caixa (exemplo: pacotes de fraldas fechados, pote fechado, caixa de produto lacrada) e NÃO há fotos do item avulso fora da embalagem, É EXPRESSAMENTE E TERMINANTEMENTE PROIBIDO inventar, abrir ou desenhar o produto fora do pacote (ex: NUNCA desenhe uma fralda aberta ou o conteúdo interno solto se o usuário só enviou fotos dos pacotes de fraldas fechados). Em TODOS os quadros, o que deve ser mostrado e manuseado é o PACOTE/EMBALAGEM/CAIXA FECHADA exatamente como nas fotos reais!
-- ÂNGULOS, BOTÕES E DETALHES NÃO VISÍVEIS: É proibido inventar outro lado, botões, acessórios ou partes que não estejam visíveis nas fotos de referência anexadas. Se apenas a frente do produto foi enviada, todas as tomadas devem retratar o produto de frente ou nos ângulos visíveis nas fotos de referência. NENHUM botão, zíper, estampa, cor ou detalhe pode ser inventado diferente do fotografado.
-REGRA OBRIGATÓRIA DE LOGOMARCA DO FABRICANTE NO PRODUTO: A marca, a logomarca, o emblema/símbolo e os textos originais do fabricante que estão impressos, estampados ou gravados no próprio produto nas fotos de referência DEVEM aparecer 100% idênticos (mesmo desenho, formato, cor, proporção e posição exata na peça, como no encosto, painel ou corpo do produto) em TODOS os quadros onde essa parte do produto estiver visível. JAMAIS remova, apague ou deixe lisa a área onde fica a logomarca original do fabricante no produto!
+AS 7 REGRAS MANDATÓRIAS DE FIDELIDADE TOTAL AO PRODUTO ANEXADO (TIKTOK SHOP COMPLIANCE ZERO-PUNIÇÃO):
+1. TRAVA ESTRITA DE QUANTIDADE DE PRODUTO: Nunca colocar quantidade diferente do produto no vídeo! Se o anúncio é de 1 celular, relógio ou perfume, NUNCA pode aparecer 2 celulares/relógios/perfumes na tela em nenhum frame. Se o anúncio é kit de 4 pacotes de fraldas, NUNCA pode aparecer 3 ou 5 pacotes na tela em nenhum frame: devem aparecer SEMPRE e RIGOROSAMENTE a quantidade exata (ex.: exatamente 4 pacotes).
+2. LOGOMARCA, NOME DO FABRICANTE E NOME DO PRODUTO: A marca, a logomarca, o emblema/símbolo e o nome do produto que estão impressos, estampados ou gravados no próprio produto nas fotos de referência DEVEM aparecer 100% idênticos (mesmo desenho, formato, cor, proporção e posição exata na peça) em TODOS os quadros onde essa parte estiver visível. JAMAIS remova, apague ou deixe lisa a área onde fica a logomarca original do fabricante no produto!
+3. PRODUTOS DE USO ORAL SEM "ANTES E DEPOIS" E SEM CLAREAMENTO: Para produtos de higiene ou uso oral (escova de dentes, irrigador oral, enxaguante, etc.), fazer o vídeo SEM mostrar dentes em close e SEM dar a entender que houve clareamento dental.
+4. ROUPAS E PEÇAS DE VESTUÁRIO 100% FIÉIS: Quando o produto for roupas, a peça precisa ser 100% fiel no tocante a botões, costuras, pespontos, cores, detalhes, caimento e padrão visual às fotos de referência.
+5. PROPORÇÃO E TAMANHO REAL (PROIBIDO APARENTAR SER MAIOR): O produto NÃO pode aparentar ser maior do que o produto mostrado nas fotos de referência reais. Manter proporções humanas e escala 100% realistas em relação às mãos e corpo do apresentador.
+6. LAYOUT, CORES E ÂNGULOS VISÍVEIS 100% IDÊNTICOS (PROIBIDO INVENTAR ÂNGULOS OCULTOS): Manter o produto com layout e cores 100% idênticos às fotos de referência. NUNCA criar imagem do produto mostrando ângulos dele que não estejam nas imagens de referência (ou seja, NÃO inventar parte traseira, lateral ou interior do produto). Mostrar o produto SEMPRE nos ângulos visíveis nas fotos de referência.
+7. PRODUTO EM EMBALAGEM FECHADA / PACOTE LACRADO / CAIXA: Se as referências mostram o produto lacrado na embalagem/pacote fechado e NÃO há fotos do item avulso solto fora da embalagem, É EXPRESSAMENTE E TERMINANTEMENTE PROIBIDO inventar, abrir ou desenhar o produto solto fora do pacote. Em TODOS os quadros, o que deve ser mostrado e manuseado é o PACOTE/EMBALAGEM/CAIXA FECHADA exatamente como nas fotos reais!
 A copy selecionada para este criativo é:
 "${finalCopy}"
 As cenas do storyboard devem ser construídas A PARTIR DESSA COPY. Cada cena deve provar, ilustrar ou reforçar visualmente um trecho da fala.
@@ -1112,6 +1148,24 @@ export function buildProdutos2VeoPrompt4Scenes(params: {
     `${productLock.join(' ')} ${additionalInstructions || ''} ${safeSpeech}`
   );
 
+  const qtyInfo = detectProductQuantity(
+    productName,
+    '',
+    `${productLock.join(' ')} ${additionalInstructions || ''} ${safeSpeech}`
+  );
+
+  const isOralCare = isOralCareProduct(
+    productName,
+    '',
+    `${productLock.join(' ')} ${additionalInstructions || ''} ${safeSpeech}`
+  );
+
+  const isApparel = isApparelProduct(
+    productName,
+    '',
+    `${productLock.join(' ')} ${additionalInstructions || ''} ${safeSpeech}`
+  );
+
   const isPov = framing === 'pov';
   const isAdultMale = influencerResolved === 'Homem';
   const voiceGender = isAdultMale ? 'MASCULINA' : 'FEMININA';
@@ -1123,9 +1177,21 @@ export function buildProdutos2VeoPrompt4Scenes(params: {
     ? `em primeira pessoa (POV) mostrando apenas as mãos e antebraços ${isAdultMale ? 'masculinos' : 'femininos'}, apresentando uma oferta em ${scenarioDescription}`
     : `por ${presenterLabel} apresentando uma oferta em sua própria casa (${scenarioDescription})`;
 
+  const quantityWarning = qtyInfo.isKit
+    ? ` Manter rigorosamente a quantidade de ${qtyInfo.quantity} unidades/pacotes do kit em todas as tomadas onde o produto for exibido (nunca mostrar ${qtyInfo.quantity - 1} nem ${qtyInfo.quantity + 1}).`
+    : ` O anúncio é de 1 produto único. NUNCA mostrar 2 ou mais unidades na mesma tela em nenhum momento.`;
+
+  const oralCareWarning = isOralCare
+    ? ` É TERMINANTEMENTE PROIBIDO mostrar "antes e depois" de clareamento ou dentes em close branqueados. O vídeo deve ser produzido sem focar em dentes clareados (demonstrar aparelho e jato limpo d'água na pia ou em copo).`
+    : '';
+
+  const apparelWarning = isApparel
+    ? ` Fidelidade 100% a botões, costuras, cores, padrão visual e caimento da peça de roupa conforme referências.`
+    : '';
+
   const packagedGoalWarning = isPackaged
-    ? `O vídeo deve mostrar exclusivamente os pacotes fechados de ${productName}. Não abrir as embalagens. Não retirar produtos de dentro dos pacotes. Não mostrar fraldas ou itens soltos, abertos ou qualquer conteúdo interno fora do pacote.`
-    : `O produto deve ser retratado estritamente conforme as referências reais anexadas, sem adicionar peças, botões ou detalhes não visíveis.`;
+    ? `O vídeo deve mostrar exclusivamente os pacotes fechados de ${productName}. Não abrir as embalagens. Não retirar produtos de dentro dos pacotes. Não mostrar fraldas ou itens soltos, abertos ou qualquer conteúdo interno fora do pacote.${quantityWarning}`
+    : `O produto deve ser retratado estritamente conforme as referências reais anexadas, sem adicionar peças, botões ou detalhes não visíveis. O produto NÃO pode aparentar ser maior que nas fotos reais.${quantityWarning}${oralCareWarning}${apparelWarning}`;
 
   // 2. Correspondência dos Quadros
   const sList = scenes.slice(0, 4);
@@ -1905,6 +1971,25 @@ export function buildProdutos2PlanningSystemPrompt(): string {
   return `Você é o Diretor Criativo Copy-First do Modo Produtos 2.0.
 REGRA-MÃE: A COPY VENDE. O STORYBOARD PROVA VISUALMENTE A COPY. O VÍDEO ANIMA O STORYBOARD SEM NUNCA MOSTRAR A PRÓPRIA FOLHA DO STORYBOARD.
 
+═══════════════════════════════════════════════════════════════════
+AS 7 REGRAS DE OURO MANDATÓRIAS DE COMPLIANCE TIKTOK SHOP (ZERO-PUNIÇÃO):
+1. TRAVA ESTRITA DE QUANTIDADE DE PRODUTO:
+   - Se o anúncio é de 1 unidade (ex.: 1 celular, 1 relógio, 1 perfume, 1 camisa): em TODAS as 9 cenas e no productLock, o produto DEVE ser retratado estritamente como 1 única unidade! NUNCA pode aparecer 2 celulares ou 2 relógios na mesma tela em nenhum frame.
+   - Se o anúncio é de um kit de N unidades (ex.: kit de 4 pacotes de fraldas, combo com 3 camisetas): TODAS as tomadas do kit DEVEM mostrar RIGOROSAMENTE e EXATAMENTE N unidades (ex.: exatamente 4 pacotes, NUNCA 3 e NUNCA 5). 100% fiel à quantidade do anúncio.
+2. PROIBIÇÃO ABSOLUTA DE 'EU GARANTO' OU 'EU PROMETO' NA FALA:
+   - A locução/fala NUNCA pode conter afirmações como "EU GARANTO", "eu prometo", "garantido", "resultado garantido" ou promessas milagrosas. Se a fala contiver tais termos, substitua imediatamente por recomendação conversacional autêntica ("você vai adorar", "faz toda a diferença", "vale muito a pena").
+3. LOGOMARCA, NOME DO FABRICANTE E NOME DO PRODUTO 100% IDÊNTICOS:
+   - A marca, a logomarca, o emblema e o nome do produto impressos ou gravados no produto físico DEVEM ser 100% idênticos em tipografia, formato, desenho, cor, proporção e posição exata às fotos de referência. NUNCA distorcer, inventar marca genérica ou remover a marca original.
+4. PRODUTOS DE USO ORAL SEM ANTES E DEPOIS E SEM CLAREAMENTO DE DENTES:
+   - Para produtos de higiene ou uso oral (irrigador oral, escova de dentes, enxaguante bucal, etc.): É EXPRESSAMENTE PROIBIDO mostrar "antes e depois" de clareamento de dentes ou dar a entender que houve clareamento dental. Fazer o vídeo SEM mostrar dentes em close de branqueamento (demonstrar o manuseio do aparelho, o jato de água na pia ou em um copo com água, bicos e botões, e a apresentadora sorrindo naturalmente com boca fechada ou acolhedora sem focar em dentes).
+5. ROUPAS E PEÇAS DE VESTUÁRIO 100% FIÉIS:
+   - Quando o produto for roupa, a peça precisa ser 100% fiel às fotos de referência em botões (formato, quantidade e cor), costuras, pespontos, cores, detalhes, caimento e padrão visual. NUNCA inventar botões ou costuras que não estejam nas referências.
+6. TAMANHO REAL — PROIBIDO APARENTAR SER MAIOR:
+   - O produto NÃO pode aparentar ser maior do que o tamanho mostrado nas fotos de referência reais. Manter proporções humanas e escala física 100% realistas em relação às mãos, corpo e bancada.
+7. LAYOUT, CORES E ÂNGULOS VISÍVEIS 100% IDÊNTICOS (PROIBIDO INVENTAR ÂNGULOS OCULTOS):
+   - Manter o produto com layout e cores 100% idênticos às fotos de referência. NUNCA criar tomadas mostrando ângulos que não estejam nas fotos de referência (ou seja, NÃO inventar traseira, laterais ou interior). Se apenas a frente foi fotografada, manter o produto de frente.
+═══════════════════════════════════════════════════════════════════
+
 REGRA DE OURO INVIOLÁVEL — LOGOMARCA DO FABRICANTE NO PRODUTO vs ELEMENTOS DE REDE SOCIAL:
 - DIFERENCIE TOTALMENTE:
   1) PROIBIDO: Logotipo do TikTok, marca d'água de rede social, @usuário, botões ou ícone de carrinho flutuantes na tela. A palavra "TikTok" NUNCA pode aparecer em "productLock", "avatarDescription", "scenarioDescription", "visualMap" nem em "scenes" (somente dentro de "adaptedCopy" se já fizer parte da fala).
@@ -1945,8 +2030,12 @@ E retornar um JSON estrito com:
    - A "baseCopy" recebida já é a copy do banco adaptada com o mínimo de mudanças e já começa obrigatoriamente com "Nossa! ". MANTENHA A "baseCopy" EXATAMENTE COMO ESTÁ!
    - A fala no Veo deve ser pronunciada de forma RÁPIDA E EUFÓRICA (estilo contando uma novidade imperdível e urgente).
    - NUNCA use a palavra "menina" como vocativo; quando o público for feminino, use "Amiga" ou "Gente". Para masculino, use "Meu amigo", "Cara", "Irmão" ou "Gente".
+   - NUNCA use afirmações proibidas como "EU GARANTO", "eu prometo", "garantido" ou "resultado garantido".
    - NUNCA mencione "frete grátis" ou "frete gratuito" na fala, a menos que isso tenha sido informado expressamente nas Informações do Produto.
 3. "productLock": array de 4 a 6 strings detalhando fisicamente o produto visto nas fotos (1º item obrigatoriamente a descrição exata da logomarca/emblema/marca impressa no produto e sua posição exata; seguido de formato, proporção, material, textura, botões/costuras/sola/cabos/detalhes).
+   - INCLUA A QUANTIDADE EXATA DO PRODUTO (ex: "Quantidade: Kit de 4 pacotes fechados" ou "Quantidade: 1 celular único").
+   - SE ROUPA: especifique botões, costuras, caimento e detalhes 100% idênticos às fotos.
+   - SE PRODUTO ORAL: especifique que não há exibição de clareamento ou dentes em close.
    - REGRA MANDATÓRIA DE VARIAÇÕES DE COR NO PRODUCT LOCK:
      * Quando houver mais de 1 variação de cor/modelo, NUNCA fixe a cor ou estampa de apenas uma das fotos (ex.: NUNCA escreva "tecido azul-marinho com listras" ou "franjas azul-marinho" como se fosse o produto inteiro!).
      * No "productLock", descreva apenas os aspectos físicos universais da peça (tecido 100% algodão, formato curvo, franjas nas laterais, cordas reforçadas nas pontas, acabamento).

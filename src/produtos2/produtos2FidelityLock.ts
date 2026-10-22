@@ -4,31 +4,38 @@
  * angulos ocultos e conteudo de embalagens fechadas/lacradas (Diretrizes TikTok Shop).
  */
 
-export const PRODUCT_VISUAL_FIDELITY_LOCK_BLOCK = `PRODUCT VISUAL FIDELITY LOCK — STRICT REFERENCE CONSTRAINTS:
+export const PRODUCT_VISUAL_FIDELITY_LOCK_BLOCK = `PRODUCT VISUAL FIDELITY LOCK — STRICT REFERENCE CONSTRAINTS (TIKTOK SHOP ZERO-TOLERANCE COMPLIANCE):
 
-Use the provided product reference images as the sole visual authority for the exact physical appearance of the product.
+Use the provided product reference images as the sole visual authority for the exact physical appearance, quantity, scale, and details of the product.
 
+1. STRICT QUANTITY LOCK (EXACT UNIT & KIT COUNT):
+Never show a different product quantity on screen than what the listing or reference specifies.
+- If the ad/reference is for 1 single product (e.g., 1 smartphone, 1 watch, 1 perfume, 1 shirt), NEVER show 2 or more units on screen in ANY frame.
+- If the ad/reference is for a kit of N units (e.g., a kit of 4 diaper packs, combo of 3 t-shirts, pack of 2 bottles), NEVER show N-1, N+1, or any quantity other than EXACTLY N units in any frame.
+- 100% strict numerical fidelity to the advertised unit/pack count across every single frame.
+
+2. EXACT BRAND, MANUFACTURER NAME, MODEL NAME & LOGO:
+The brand logo, manufacturer name, model designation, and typography printed, stamped, or embossed on the physical product MUST be 100% identical in spelling, font typography, color, size, and position to the reference images. Never distort, omit, blur, or invent generic names or alternate markings.
+
+3. ACCURATE PHYSICAL SIZE & REALISTIC SCALE (NO EXAGGERATION):
+The product must NEVER appear larger, disproportionate, or physically exaggerated compared to the reference photos and real life. Proportions relative to human hands, arms, body, countertops, and nearby items must be strictly realistic and proportionate. Do not artificially enlarge, stretch, or inflate the product's visual size.
+
+4. APPAREL & CLOTHING FIDELITY (BUTTONS, SEAMS & DETAILS):
+When the product is clothing or apparel, the garment must be 100% faithful to the reference photos in every aspect: exact buttons (shape, number, color), seams/stitching lines, fabric texture, weave pattern, prints, collar shape, pockets, hem, cut, and color tone. Never add, remove, or modify buttons, zippers, seams, or embroidery.
+
+5. ORAL CARE & NO TEETH WHITENING BEFORE/AFTER:
+For oral care products (toothbrush, oral irrigator, mouthwash, dental floss, etc.), it is STRICTLY FORBIDDEN to show before-and-after teeth whitening, close-up of teeth implying whitening/bleaching results, or any visual claims of dental whitening. Produce scenes WITHOUT showing teeth or implying cosmetic whitening (e.g., demonstrate the device in hands, water stream into a sink or glass, nozzles, power buttons, and friendly presentation with closed or natural smile without exposed whitening comparison).
+
+6. STRICT VISIBLE-ANGLE LOCK & NO UNPHOTOGRAPHED INVENTIONS:
 Never invent, infer, reconstruct, hallucinate, or reveal any product surface, side, rear view, bottom view, internal component, hidden detail, accessory, connector, texture, label, color variation, or physical feature that is not clearly supported by the provided reference images.
+- If the product is shown only from the front, keep it front-facing. Do not reveal its sides, rear, bottom, or internal construction unless those specific views are explicitly documented in the reference images.
+- If only a closed package is shown, do not open it, remove its contents, or reveal individual items inside unless those items and their appearance are explicitly documented in the reference images.
+- Do not rotate, turn, orbit around, flip, tilt, or move the camera around the product in a way that reveals any unreferenced surface or undocumented angle.
+- Do not generate a reverse angle, a new perspective, or a three-dimensional view that exposes previously unseen parts of the product.
 
-Do not rotate, turn, orbit around, flip, tilt, or move the camera around the product in a way that reveals any unreferenced surface or undocumented angle.
-
-Do not generate a reverse angle, a new perspective, or a three-dimensional view that exposes previously unseen parts of the product.
-
-Keep the product within the documented viewpoints and visible surfaces of the reference images throughout the entire video.
-
-Any camera movement must remain within the visual information established by the references. Prefer static framing, controlled push-ins, controlled pull-backs, or movements that do not reveal unknown surfaces.
-
-If the product is shown only from the front, keep it front-facing. Do not reveal its sides, rear, bottom, or internal construction unless those specific views are explicitly documented in the reference images.
-
-If only a closed package is shown, do not open it, remove its contents, or reveal individual items inside unless those items and their appearance are explicitly documented in the reference images.
-
-Preserve the exact product identity, proportions, shape, color, visible components, packaging, labels, and other documented details.
-
-When a requested action would require inventing an unknown product feature or revealing an undocumented surface, do not perform that action. Use an alternative camera framing or scene action that preserves the documented appearance.
-
-Reference fidelity takes absolute priority over cinematic creativity, camera movement, scene variety, and visual enhancement.
-
-Never fabricate visual information about the product.`;
+7. CAMERA MOVEMENTS & FIDELITY OVER CREATIVITY:
+Keep the product within the documented viewpoints and visible surfaces of the reference images throughout the entire video. Any camera movement must remain within the visual information established by the references. Prefer static framing, controlled push-ins, controlled pull-backs, or movements that do not reveal unknown surfaces.
+Reference fidelity takes absolute priority over cinematic creativity, camera movement, scene variety, and visual enhancement. Never fabricate visual information about the product.`;
 
 /**
  * Anexa a trava global de fidelidade visual aos prompts de video do Veo 3 / Vell / OmniFlash
@@ -48,12 +55,14 @@ export function appendFidelityLockToVeoPrompt(prompt: string): string {
 export function buildProductFidelityDirectives(_productInfo?: string): string {
   return `
 ========================
-REGRA GLOBAL CRÍTICA DE FIDELIDADE VISUAL AO PRODUTO — PROIBIÇÃO ABSOLUTA DE INVENÇÃO (TIKTOK SHOP COMPLIANCE):
-1. Use as fotos reais de referência anexadas como a ÚNICA fonte autorizada para determinar a aparência física do produto.
-2. NÃO INVENTAR PARTES NÃO MOSTRADAS: Nunca invente, reconstrua ou deduza a parte traseira, laterais, parte inferior, botões, conexões, acabamentos, texturas, estampas ou características que não estejam claramente documentadas nas fotos de referência.
-3. RESTRIÇÃO PARA PRODUTOS EMBALADOS / PACOTES LACRADOS: Se o usuário anexou apenas imagens de uma embalagem fechada, pacote lacrado ou caixa (exemplo: pacotes de fraldas fechados, caixas de bombons, embalagens de cosméticos, caixas de eletrônicos ou kits fechados), é TERMINANTEMENTE PROIBIDO abrir a embalagem, rasgar o pacote ou desenhar o produto solto por dentro. Em TODOS os quadros, represente e mostre a EMBALAGEM FECHADA exatamente como nas fotos reais!
-4. RESTRIÇÃO DE ÂNGULO: Se o produto foi fotografado apenas de frente, mantenha-o rigorosamente de frente. Não gere perspectivas que exponham superfícies desconhecidas.
-5. A variedade criativa deve vir do cenário, iluminação, composição e ator/apresentador, e JAMAIS da alteração ou invenção física do produto!
+7 REGRAS MANDATÓRIAS DE FIDELIDADE VISUAL AO PRODUTO (TIKTOK SHOP ZERO-PUNIÇÃO):
+1. TRAVA ESTRITA DE QUANTIDADE DE PRODUTO: Nunca colocar quantidade diferente do produto no vídeo! Se o anúncio é de 1 celular, 1 perfume ou 1 relógio, NUNCA pode aparecer 2 celulares/perfumes/relógios na tela em nenhum frame. Se o anúncio é kit de 4 pacotes de fraldas, NUNCA pode aparecer 3 ou 5 pacotes na mesma tela em nenhum frame: devem aparecer SEMPRE e RIGOROSAMENTE a quantidade exata (ex.: exatamente 4 pacotes). 100% de fidelidade numérica à quantidade anunciada em todos os quadros!
+2. PROIBIÇÃO ABSOLUTA DE PROMESSAS / AFIRMAÇÕES DE GARANTIA NA FALA: A fala NUNCA pode conter afirmações como "EU GARANTO", "eu prometo", "garantido", "resultado garantido" ou promessas irreais. A fala deve transmitir entusiasmo conversacional seguro e autêntico ("você vai adorar", "faz toda a diferença", "vale muito a pena").
+3. LOGOMARCA, NOME DO FABRICANTE E DO PRODUTO 100% IDÊNTICOS: A logomarca, o nome do fabricante e o nome do produto impressos ou gravados no produto físico DEVEM ser sempre idênticos ao que está nas imagens de referência (mesma grafia, tipografia, cor, proporção e posição exata na peça). NUNCA distorcer, inventar ou remover.
+4. PRODUTOS DE USO ORAL SEM "ANTES E DEPOIS" E SEM CLAREAMENTO DE DENTES: Para produtos de uso oral (escova de dentes, irrigador oral, enxaguante bucal, etc.), é EXPRESSAMENTE PROIBIDO mostrar "antes e depois" de clareamento de dentes ou dar a entender que houve clareamento dental. Fazer o vídeo SEM mostrar dentes em close de branqueamento (demonstrar o aparelho na mão, o jato d'água na pia/copo, botões e bicos, com expressão facial espontânea e acolhedora sem focar em dentes clareados).
+5. ROUPAS E VESTUÁRIO 100% FIÉIS: Quando o produto for roupas ou vestuário, a peça precisa ser 100% fiel às fotos de referência no tocante a botões (quantidade, formato, cor), costuras, pespontos, cores, detalhes, caimento e padrão visual. NUNCA inventar botões ou costuras diferentes das fotos.
+6. TAMANHO REAL — PROIBIDO APARENTAR SER MAIOR: O produto NÃO pode aparentar ser maior do que o produto mostrado nas fotos de referência. Manter escala física 100% realista e proporcional às mãos, ao corpo do apresentador e ao cenário.
+7. LAYOUT, CORES E ÂNGULOS VISÍVEIS 100% IDÊNTICOS (PROIBIDO INVENTAR ÂNGULOS OCULTOS): Manter o produto com layout e cores 100% idênticos às fotos de referência. NUNCA criar imagem do produto mostrando ângulos dele que não estejam nas imagens de referência (ou seja, NÃO inventar parte traseira, lateral ou interior do produto). Nunca inventar nenhum detalhe ou parte: mostrar o produto SEMPRE nos ângulos visíveis nas fotos de referência.
 ========================`;
 }
 
@@ -67,6 +76,63 @@ export function isPackagedProductOnly(productName: string, productInfo?: string,
     /\b(pacote|pacotes|combo de pacotes|fardo|fardos|embalagem fechada|embalagem lacrada|caixa fechada|pote lacrado)\b/i.test(combined) ||
     /galinha\s*pintadinha/i.test(combined)
   );
+}
+
+export interface DetectedQuantityInfo {
+  quantity: number;
+  isKit: boolean;
+  unitLabel: string;
+}
+
+/**
+ * Detecta a quantidade e modalidade (unidade única vs kit/combo com X unidades) do produto.
+ * Garante que a fidelidade numérica seja rigorosa em 100% dos frames e prompts.
+ */
+export function detectProductQuantity(
+  productName: string,
+  productInfo?: string,
+  extraContext?: string
+): DetectedQuantityInfo {
+  const combined = `${productName || ''} ${productInfo || ''} ${extraContext || ''}`.toLowerCase();
+
+  const kitMatch =
+    combined.match(/\b(?:kit|combo|fardo|jogo|conjunto)\s+(?:com|de)\s+(\d+)\b/i) ||
+    combined.match(/\b(\d+)\s*(?:pacotes?|unidades?|unid|un|pcs|peças|frascos?|garrafas?|pares|camisetas?|blusas?)\b/i);
+
+  if (kitMatch) {
+    const qty = parseInt(kitMatch[1], 10);
+    if (!isNaN(qty) && qty > 0) {
+      return {
+        quantity: qty,
+        isKit: qty > 1,
+        unitLabel: qty === 1 ? '1 unidade' : `kit de ${qty} unidades`,
+      };
+    }
+  }
+
+  return {
+    quantity: 1,
+    isKit: false,
+    unitLabel: '1 unidade única',
+  };
+}
+
+/**
+ * Detecta se o produto é de uso/higiene oral (irrigador oral, escova de dentes, enxaguante bucal, etc.)
+ * Para aplicar a trava estrita do TikTok de não mostrar dentes em close, antes e depois ou sugerir clareamento dental.
+ */
+export function isOralCareProduct(productName: string, productInfo?: string, extraContext?: string): boolean {
+  const combined = `${productName || ''} ${productInfo || ''} ${extraContext || ''}`.toLowerCase();
+  return /\b(irrigador\s*oral|escova\s*(?:de\s*dentes?|dental|el[ée]trica)|enxaguante\s*bucal|fio\s*dental|creme\s*dental|pasta\s*de\s*dente|clareamento|clareador\s*dental|sa[uú]de\s*bucal)\b/i.test(combined);
+}
+
+/**
+ * Detecta se o produto é peça de vestuário/roupa (camisetas, vestidos, calças, jaquetas, etc.)
+ * Para exigir fidelidade 100% de botões, costuras, cores, padrão visual e caimento.
+ */
+export function isApparelProduct(productName: string, productInfo?: string, extraContext?: string): boolean {
+  const combined = `${productName || ''} ${productInfo || ''} ${extraContext || ''}`.toLowerCase();
+  return /\b(vestido|camisa|camiseta|bermuda|cal[çc]a|short|shorts|jaqueta|casaco|blusa|saia|cueca|calcinha|suti[aã]|lingerie|jogger|moletom|roupa|vestu[aá]rio)\b/i.test(combined);
 }
 
 /**
@@ -172,12 +238,19 @@ export function getCanonicalPackagedScene(index: number, productName: string, to
 
 /**
  * Sanitiza descricoes de cenas para impedir qualquer comando de abrir caixas,
- * rasgar embalagens ou inventar itens internos soltos quando nao documentados.
+ * rasgar embalagens ou inventar itens internos soltos quando nao documentados,
+ * alem de blindar produtos orais contra alegações/visuais de clareamento de dentes.
  */
-export function sanitizeSceneFidelityAction(action: string, productName?: string, isPackaged?: boolean): string {
+export function sanitizeSceneFidelityAction(
+  action: string,
+  productName?: string,
+  isPackaged?: boolean,
+  productInfo?: string
+): string {
   if (!action) return action;
 
-  const packaged = isPackaged ?? (productName ? isPackagedProductOnly(productName) : false);
+  const packaged = isPackaged ?? (productName ? isPackagedProductOnly(productName, productInfo) : false);
+  const isOralCare = productName ? isOralCareProduct(productName, productInfo, action) : false;
 
   let clean = action
     // Abertura de embalagens
@@ -202,6 +275,17 @@ export function sanitizeSceneFidelityAction(action: string, productName?: string
     .replace(/\bvirando o produto de costas\b/gi, 'mantendo o produto de frente')
     .replace(/\s+/g, ' ')
     .trim();
+
+  // Sanitização estrita para produtos de saúde/uso oral (Regra TikTok Shop sem clareamento / antes e depois)
+  if (isOralCare) {
+    clean = clean
+      .replace(/\b(?:antes\s+e\s+depois|clareamento\s*dental|clareamento\s*de\s*dentes?|clareando|dentes?\s+mais\s+brancos?)\b/gi, 'demonstração de uso do aparelho')
+      .replace(/\b(?:close|foco|zoom)\s+(?:nos|dos|sobre\s+os)\s+dentes\b/gi, 'plano médio segurando o aparelho com sorriso acolhedor sem focar nos dentes')
+      .replace(/\bmostrando\s+(?:os\s+)?dentes(?:\s+brancos)?\b/gi, 'apresentando o aparelho em mãos com expressão satisfeita')
+      .replace(/\baplicando\s+o\s+jato\s+direto\s+nos\s+dentes\b/gi, 'demonstrando o jato potente e limpo de água na pia')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
 
   if (packaged) {
     clean = clean
