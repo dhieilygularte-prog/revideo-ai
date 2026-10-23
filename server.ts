@@ -3333,6 +3333,7 @@ DURAÇÃO MÁXIMA DO VÍDEO: ${duration} segundos. Limite estrito: até ${maxLim
 - Gênero do cliente (vocativo): ${clientGender} (se feminino, usar "Amiga" ou "Gente", NUNCA usar "menina")
 - Modo de fala: ${speechMode} (locução RÁPIDA E EUFÓRICA, com tom animado como se estivesse contando uma novidade imperdível)
 - Regra de frete grátis: NUNCA mencione "frete grátis" ou "frete gratuito" na fala, a menos que isso tenha sido informado diretamente nas informações do produto.
+- Regra do primeiro quadro (Quadro 1 / Hook): O produto NÃO é obrigatório no primeiro frame/cena 1 (está 100% liberado para ser um hook chamativo de reação, expressão de impacto, problema ou curiosidade sem o produto, salvo se o usuário pedir explicitamente para mostrar o produto desde o início nas instruções adicionais). Já nos outros quadros (Cenas 2 em diante), a presença do produto é estritamente obrigatória e 100% fiel!
 - Enquadramento: ${framing}
 - Cenário: ${scenario === 'padrao_uso' ? 'Cenário padrão de uso real do produto' : 'Em casa (casa brasileira simples e aconchegante)'}
 - Instruções adicionais prioritárias: ${additionalInstructions || 'Nenhuma'}${variationsClause}${twoScenesContinuityClause}
@@ -4103,12 +4104,12 @@ Primeiro, olhe com atenção máxima para as FOTOS DE REFERÊNCIA REAIS do produ
 - Preencha "referenceLogoDescription": descrição exata da logomarca original vista na foto de referência e em qual parte do produto ela fica (ex: "Logomarca geométrica branca em formato de escudo no topo do encosto preto").
 
 PASSO 2 — REGRAS DE OURO DA FISCALIZAÇÃO POR QUADRANTE (CENA 1 A CENA ${quadrantCount}):
-1. Se em algum quadrante aparecer SOMENTE o modelo/pessoa ou SOMENTE o cenário, SEM o produto aparecer:
+1. Se em algum quadrante aparecer SOMENTE o modelo/pessoa ou SOMENTE o cenário, SEM o produto aparecer (especialmente no Quadrante 1 / Cena 1, que é o Hook de atenção inicial liberado para não mostrar o produto):
    - "productVisible": false
    - "logoPartVisible": false
    - "logoFaithful": true
    - "score": 100
-   - "issue": "Cena X: Apenas modelo/cenário (sem produto visível — OK)"
+   - "issue": "Cena X: Apenas modelo/cenário (sem produto visível — Hook/Abertura — OK)"
 2. Em TODOS os quadrantes onde o produto aparece ("productVisible": true), avalie com rigor máximo em escala INTEIRA de 0 a 100:
    - VERIFICAÇÃO CRÍTICA DE LOGOMARCA DO FABRICANTE ("logoPartVisible" e "logoFaithful"):
      * Se a parte específica do produto onde fica a logomarca nas fotos de referência (ex: a face frontal superior do encosto do banco) está visível e desobstruída naquele quadrante, marque "logoPartVisible": true.

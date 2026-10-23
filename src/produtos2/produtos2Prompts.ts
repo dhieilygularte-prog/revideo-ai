@@ -44,8 +44,8 @@ export function getUnifiedSceneDescription(sc: Produtos2SceneItem): string {
  * Formata a descrição curta da Cena 1 para completar a frase do primeiro frame:
  * com letra minúscula, sem ponto no meio e concordância natural ("da apresentadora...", "de duas mãos...") — Item 7.1
  */
-export function formatFirstFrameClause(scene1: Produtos2SceneItem | undefined, productName: string): string {
-  const raw = (scene1?.action || `apresentação inicial em close de ${productName}`).trim();
+export function formatFirstFrameClause(scene1: Produtos2SceneItem | undefined, _productName?: string): string {
+  const raw = (scene1?.action || `gancho inicial de abertura com expressão chamativa`).trim();
   // Remove reticências e substitui pontos no meio por vírgulas, limpando pontuação final
   let cleaned = raw
     .replace(/…|\.\.\./g, ',')
@@ -55,7 +55,7 @@ export function formatFirstFrameClause(scene1: Produtos2SceneItem | undefined, p
     .trim();
 
   if (!cleaned) {
-    return `de apresentação inicial em close de ${productName}`;
+    return `do gancho inicial de abertura com expressão chamativa`;
   }
 
   // Primeira letra minúscula
@@ -556,7 +556,7 @@ ${
 • Quadros 4, 5 e 6 (Linha 2 do Storyboard): O produto DEVE ser retratado OBRIGATORIAMENTE na COR/VARIAÇÃO 2: ${activeVars[1].name || '2ª Cor'}.
 • Quadros 7, 8 e 9 (Linha 3 do Storyboard): O produto DEVE ser retratado OBRIGATORIAMENTE na COR/VARIAÇÃO 3: ${activeVars[2].name || '3ª Cor'}.`
 }
-NARRATIVA CONTÍNUA E PROGRESSIVA: As ${totalScenes} cenas contam uma única história contínua de demonstração do produto (NUNCA repita as mesmas ações ou cenas para cada cor). A demonstração progride normalmente da Cena 1 à Cena ${totalScenes}; apenas retrate o produto na cor indicada para cada grupo de quadros!
+NARRATIVA CONTÍNUA E PROGRESSIVA: As ${totalScenes} cenas contam uma única história contínua de demonstração do produto (NUNCA repita as mesmas ações ou cenas para cada cor). A demonstração progride normalmente da Cena 1 à Cena ${totalScenes}; apenas retrate o produto na cor indicada para cada grupo de quadros! (Caso o Quadro 1 seja um hook focado na expressão/reação da apresentadora sem o produto físico, a cor da Variação 1 é aplicada nos quadros seguintes em que o produto aparecer).
 PROIBIÇÃO ABSOLUTA: NUNCA gere todos os ${totalScenes} quadros na mesma cor! É expressamente PROIBIDO usar uma única cor para todo o storyboard quando há variações informadas. A divisão de cores acima é RIGOROSA e OBRIGATÓRIA!
 ═══════════════════════════════════════════════════════════════════`;
   }
@@ -564,7 +564,7 @@ PROIBIÇÃO ABSOLUTA: NUNCA gere todos os ${totalScenes} quadros na mesma cor! �
   const sanitizedScenes = sanitizeAllScenesForFidelity(scenes, productName, productInfo, scenePartIndex);
 
   const packagedNotice = isPackaged
-    ? `\n\n═══════════════════════════════════════════════════════════════════\n⚠️ REGRA INEGOCIÁVEL DE EMBALAGEM FECHADA / PACOTES LACRADOS (TIKTOK SHOP):\nO produto nas fotos de referência consiste em PACOTES FECHADOS / EMBALAGEM LACRADA.\nÉ TERMINANTEMENTE E SEVERAMENTE PROIBIDO desenhar o pacote aberto, rasgado, fraldas avulsas/soltas fora do pacote, partes internas soltas, estampas internas não fotografadas (como Galinha Pintadinha em fralda avulsa) ou qualquer teste derramando líquidos/água!\nEm TODOS OS ${totalScenes} QUADROS (1 A ${totalScenes}), o que deve ser desenhado e manipulado pela apresentadora é EXCLUSIVAMENTE o PACOTE FECHADO idêntico às fotos reais anexadas!\n═══════════════════════════════════════════════════════════════════\n`
+    ? `\n\n═══════════════════════════════════════════════════════════════════\n⚠️ REGRA INEGOCIÁVEL DE EMBALAGEM FECHADA / PACOTES LACRADOS (TIKTOK SHOP):\nO produto nas fotos de referência consiste em PACOTES FECHADOS / EMBALAGEM LACRADA.\nÉ TERMINANTEMENTE E SEVERAMENTE PROIBIDO desenhar o pacote aberto, rasgado, fraldas avulsas/soltas fora do pacote, partes internas soltas, estampas internas não fotografadas (como Galinha Pintadinha em fralda avulsa) ou qualquer teste derramando líquidos/água!\nEm todos os quadros em que o produto for retratado (obrigatório nas Cenas 2 a ${totalScenes}; Cena 1 liberada para hook sem produto), o que deve ser desenhado e manipulado pela apresentadora é EXCLUSIVAMENTE o PACOTE FECHADO idêntico às fotos reais anexadas!\n═══════════════════════════════════════════════════════════════════\n`
     : '';
 
   const oralCareNotice = isOralCare
@@ -576,8 +576,8 @@ PROIBIÇÃO ABSOLUTA: NUNCA gere todos os ${totalScenes} quadros na mesma cor! �
     : '';
 
   const quantityNotice = qtyInfo.isKit
-    ? `\n\n═══════════════════════════════════════════════════════════════════\n⚠️ TRAVA ESTRITA DE QUANTIDADE DE PRODUTO (KIT DE ${qtyInfo.quantity} UNIDADES):\nO anúncio é de um kit de EXATAMENTE ${qtyInfo.quantity} unidades/pacotes. NUNCA mostre quantidade diferente de ${qtyInfo.quantity} na mesma tela em nenhum frame! Se o anúncio é kit de ${qtyInfo.quantity}, devem aparecer rigorosamente e exatamente ${qtyInfo.quantity} pacotes/itens.\n═══════════════════════════════════════════════════════════════════\n`
-    : `\n\n═══════════════════════════════════════════════════════════════════\n⚠️ TRAVA ESTRITA DE QUANTIDADE DE PRODUTO (1 UNIDADE INDIVIDUAL):\nO anúncio é de 1 produto único. NUNCA mostre 2 ou mais unidades na mesma tela em nenhum frame! 100% fiel à unidade única fotografada.\n═══════════════════════════════════════════════════════════════════\n`;
+    ? `\n\n═══════════════════════════════════════════════════════════════════\n⚠️ TRAVA ESTRITA DE QUANTIDADE DE PRODUTO (KIT DE ${qtyInfo.quantity} UNIDADES):\nNos quadros em que o produto for exibido (presença obrigatória nas Cenas 2 a ${totalScenes}; Cena 1 liberada para hook chamativo): O anúncio é de um kit de EXATAMENTE ${qtyInfo.quantity} unidades/pacotes. NUNCA mostre quantidade diferente de ${qtyInfo.quantity} na mesma tela em nenhum frame! Se o anúncio é kit de ${qtyInfo.quantity}, devem aparecer rigorosamente e exatamente ${qtyInfo.quantity} pacotes/itens.\n═══════════════════════════════════════════════════════════════════\n`
+    : `\n\n═══════════════════════════════════════════════════════════════════\n⚠️ TRAVA ESTRITA DE QUANTIDADE DE PRODUTO (1 UNIDADE INDIVIDUAL):\nNos quadros em que o produto for exibido (presença obrigatória nas Cenas 2 a ${totalScenes}; Cena 1 liberada para hook chamativo): O anúncio é de 1 produto único. NUNCA mostre 2 ou mais unidades na mesma tela em nenhum frame! 100% fiel à unidade única fotografada.\n═══════════════════════════════════════════════════════════════════\n`;
 
   const scenesLines = sanitizedScenes
     .slice(0, totalScenes)
@@ -614,14 +614,19 @@ PROIBIÇÃO ABSOLUTA: NUNCA gere todos os ${totalScenes} quadros na mesma cor! �
 
 Use as fotos anexadas como referência absoluta do produto. Preserve fielmente (PRODUCT LOCK): ${sanitizedProductLock.join('; ')}.
 ${productIdentityRule}
+REGRA DO PRIMEIRO QUADRO (QUADRO 1 / HOOK DE ATENÇÃO):
+- No Quadro 1 (Cena 1 / Primeiro Frame), o produto NÃO é obrigado a aparecer! O Quadro 1 está 100% liberado para ser uma imagem chamativa, reação expressiva/curiosa do apresentador ou situação de impacto focada no hook sem o produto físico em tela.
+- Se o usuário pedir expressamente nas Instruções Adicionais para mostrar o produto desde o primeiro frame, inclua-o. Caso contrário, o primeiro frame é livre: pode ter ou não ter o produto de acordo com o que criar o melhor hook.
+- Nos demais quadros (Quadros 2 a ${totalScenes}), a presença do produto é OBRIGATÓRIA e deve ser 100% fiel às fotos de referência!
+
 AS 7 REGRAS MANDATÓRIAS DE FIDELIDADE TOTAL AO PRODUTO ANEXADO (TIKTOK SHOP COMPLIANCE ZERO-PUNIÇÃO):
-1. TRAVA ESTRITA DE QUANTIDADE DE PRODUTO: Nunca colocar quantidade diferente do produto no vídeo! Se o anúncio é de 1 celular, relógio ou perfume, NUNCA pode aparecer 2 celulares/relógios/perfumes na tela em nenhum frame. Se o anúncio é kit de 4 pacotes de fraldas, NUNCA pode aparecer 3 ou 5 pacotes na tela em nenhum frame: devem aparecer SEMPRE e RIGOROSAMENTE a quantidade exata (ex.: exatamente 4 pacotes).
+1. TRAVA ESTRITA DE QUANTIDADE DE PRODUTO: Em todos os quadros onde o produto for exibido, nunca colocar quantidade diferente do anúncio! Se o anúncio é de 1 celular, relógio ou perfume, NUNCA pode aparecer 2 celulares/relógios/perfumes na tela em nenhum frame. Se o anúncio é kit de 4 pacotes de fraldas, NUNCA pode aparecer 3 ou 5 pacotes na tela em nenhum frame: devem aparecer SEMPRE e RIGOROSAMENTE a quantidade exata (ex.: exatamente 4 pacotes).
 2. LOGOMARCA, NOME DO FABRICANTE E NOME DO PRODUTO: A marca, a logomarca, o emblema/símbolo e o nome do produto que estão impressos, estampados ou gravados no próprio produto nas fotos de referência DEVEM aparecer 100% idênticos (mesmo desenho, formato, cor, proporção e posição exata na peça) em TODOS os quadros onde essa parte estiver visível. JAMAIS remova, apague ou deixe lisa a área onde fica a logomarca original do fabricante no produto!
 3. PRODUTOS DE USO ORAL SEM "ANTES E DEPOIS" E SEM CLAREAMENTO: Para produtos de higiene ou uso oral (escova de dentes, irrigador oral, enxaguante, etc.), fazer o vídeo SEM mostrar dentes em close e SEM dar a entender que houve clareamento dental.
 4. ROUPAS E PEÇAS DE VESTUÁRIO 100% FIÉIS: Quando o produto for roupas, a peça precisa ser 100% fiel no tocante a botões, costuras, pespontos, cores, detalhes, caimento e padrão visual às fotos de referência.
 5. PROPORÇÃO E TAMANHO REAL (PROIBIDO APARENTAR SER MAIOR): O produto NÃO pode aparentar ser maior do que o produto mostrado nas fotos de referência reais. Manter proporções humanas e escala 100% realistas em relação às mãos e corpo do apresentador.
 6. LAYOUT, CORES E ÂNGULOS VISÍVEIS 100% IDÊNTICOS (PROIBIDO INVENTAR ÂNGULOS OCULTOS): Manter o produto com layout e cores 100% idênticos às fotos de referência. NUNCA criar imagem do produto mostrando ângulos dele que não estejam nas imagens de referência (ou seja, NÃO inventar parte traseira, lateral ou interior do produto). Mostrar o produto SEMPRE nos ângulos visíveis nas fotos de referência.
-7. PRODUTO EM EMBALAGEM FECHADA / PACOTE LACRADO / CAIXA: Se as referências mostram o produto lacrado na embalagem/pacote fechado e NÃO há fotos do item avulso solto fora da embalagem, É EXPRESSAMENTE E TERMINANTEMENTE PROIBIDO inventar, abrir ou desenhar o produto solto fora do pacote. Em TODOS os quadros, o que deve ser mostrado e manuseado é o PACOTE/EMBALAGEM/CAIXA FECHADA exatamente como nas fotos reais!
+7. PRODUTO EM EMBALAGEM FECHADA / PACOTE LACRADO / CAIXA: Se as referências mostram o produto lacrado na embalagem/pacote fechado e NÃO há fotos do item avulso solto fora da embalagem, É EXPRESSAMENTE E TERMINANTEMENTE PROIBIDO inventar, abrir ou desenhar o produto solto fora do pacote. Em TODOS os quadros em que a embalagem for exibida, o que deve ser mostrado e manuseado é o PACOTE/EMBALAGEM/CAIXA FECHADA exatamente como nas fotos reais!
 A copy selecionada para este criativo é:
 "${finalCopy}"
 As cenas do storyboard devem ser construídas A PARTIR DESSA COPY. Cada cena deve provar, ilustrar ou reforçar visualmente um trecho da fala.
@@ -1233,7 +1238,7 @@ Manter a mesma pessoa, as mesmas roupas, o mesmo ambiente e a mesma iluminação
 
   // 5. Quatro Cenas
   const sceneTimings = [
-    { start: '0,0', end: '2,5', title: 'GANCHO E APRESENTAÇÃO DO PRODUTO' },
+    { start: '0,0', end: '2,5', title: 'GANCHO VISUAL DE ATENÇÃO (HOOK)' },
     { start: '2,5', end: '5,0', title: 'MOSTRANDO A QUANTIDADE E CONTEXTO' },
     { start: '5,0', end: '7,5', title: 'DETALHE DO PRODUTO E ESPECIFICAÇÃO' },
     { start: '7,5', end: '10,0', title: 'APROVAÇÃO, RECOMENDAÇÃO E CHAMADA FINAL' },
@@ -1348,7 +1353,7 @@ ${regrasContinuidadeBody}
 
 ### 10. PRIORIDADES FINAIS
 1. Fidelidade visual máxima às fotografias originais de ${productName}.
-2. Exatamente o produto conforme referências em todas as cenas.
+2. Exatamente o produto conforme referências nos quadros em que ele aparecer (presença obrigatória nas Cenas 2, 3 e 4; a Cena 1/Quadro 1 é liberada para focar no hook chamativo mesmo sem o produto).
 3. ${isPackaged ? 'Nenhum produto solto e nenhuma embalagem aberta ou rasgada.' : 'Nenhuma peça ou botão inventado.'}
 4. ${isPov ? 'Somente mãos e antebraços com anatomia natural; nenhum rosto.' : 'Mesmo personagem, roupas e cenário consistentes.'}
 5. Quatro cenas na ordem exata do storyboard (Quadro 1 ao 4).
@@ -1972,9 +1977,16 @@ export function buildProdutos2PlanningSystemPrompt(): string {
 REGRA-MÃE: A COPY VENDE. O STORYBOARD PROVA VISUALMENTE A COPY. O VÍDEO ANIMA O STORYBOARD SEM NUNCA MOSTRAR A PRÓPRIA FOLHA DO STORYBOARD.
 
 ═══════════════════════════════════════════════════════════════════
+REGRA DE LIBERDADE DO PRIMEIRO FRAME / CENA 1 (HOOK DE ATENÇÃO):
+- NO QUADRO 1 / CENA 1 (PRIMEIRO FRAME DO STORYBOARD E DO VÍDEO), O PRODUTO NÃO É OBRIGADO A APARECER!
+- O primeiro frame serve como HOOK chamativo para prender a atenção do espectador: está 100% liberado para focar na reação de surpresa/curiosidade do apresentador, em uma situação de impacto, problema do cotidiano ou teaser SEM a necessidade de mostrar o produto físico.
+- Se o usuário pedir expressamente nas Instruções Adicionais para mostrar o produto desde o primeiro frame, inclua o produto na Cena 1. Caso contrário (padrão), o primeiro frame é LIVRE: o produto pode aparecer ou não aparecer, de acordo com o que criar o hook mais envolvente.
+- NOS OUTROS TRÊS QUADROS (Cenas 2, 3 e 4 no modo de 4 cenas; ou Cenas 2 a 9 no modo de 9 cenas): A presença do produto é ESTRITAMENTE OBRIGATÓRIA e deve ser 100% fiel às fotos de referência!
+
 AS 7 REGRAS DE OURO MANDATÓRIAS DE COMPLIANCE TIKTOK SHOP (ZERO-PUNIÇÃO):
 1. TRAVA ESTRITA DE QUANTIDADE DE PRODUTO:
-   - Se o anúncio é de 1 unidade (ex.: 1 celular, 1 relógio, 1 perfume, 1 camisa): em TODAS as 9 cenas e no productLock, o produto DEVE ser retratado estritamente como 1 única unidade! NUNCA pode aparecer 2 celulares ou 2 relógios na mesma tela em nenhum frame.
+   - Em todas as cenas em que o produto for exibido (Quadros 2, 3 e 4, e no Quadro 1 caso apareça):
+   - Se o anúncio é de 1 unidade (ex.: 1 celular, 1 relógio, 1 perfume, 1 camisa): o produto DEVE ser retratado estritamente como 1 única unidade! NUNCA pode aparecer 2 celulares ou 2 relógios na mesma tela em nenhum frame.
    - Se o anúncio é de um kit de N unidades (ex.: kit de 4 pacotes de fraldas, combo com 3 camisetas): TODAS as tomadas do kit DEVEM mostrar RIGOROSAMENTE e EXATAMENTE N unidades (ex.: exatamente 4 pacotes, NUNCA 3 e NUNCA 5). 100% fiel à quantidade do anúncio.
 2. PROIBIÇÃO ABSOLUTA DE 'EU GARANTO' OU 'EU PROMETO' NA FALA:
    - A locução/fala NUNCA pode conter afirmações como "EU GARANTO", "eu prometo", "garantido", "resultado garantido" ou promessas milagrosas. Se a fala contiver tais termos, substitua imediatamente por recomendação conversacional autêntica ("você vai adorar", "faz toda a diferença", "vale muito a pena").
@@ -2064,7 +2076,7 @@ E retornar um JSON estrito com:
    - Variar enquadramentos (nunca duas cenas seguidas iguais): close, macro, POV de mãos, plano médio, plano aberto, uso real.
    - "storyboardDescription" DEVE ser idêntico a "{framing}. {action}" (mesma pessoa, mesma ação, mesmo enquadramento e mesmos objetos, sem inventar objetos extras ou mudar quem aparece entre um campo e outro).
    - Sempre que a parte do produto onde fica a logomarca do fabricante estiver visível na cena, inclua na descrição da cena que a logomarca original está visível e idêntica à foto.
-   - Na Cena 1, escreva "action" de forma direta e objetiva (sem reticências e sem ponto no meio da frase).
+   - Na Cena 1 (Quadro 1 / Hook de abertura): Escreva "action" de forma direta e objetiva (sem reticências e sem ponto no meio da frase). Lembre-se que na Cena 1 o produto NÃO é obrigatório: pode focar 100% no hook de reação/impacto sem o produto, exceto se solicitado nas instruções adicionais. Já nas Cenas 2, 3 e 4 o produto é estritamente obrigatório.
    - Respeitar estritamente o Enquadramento:
      * "com_rosto": rosto aparece em algumas cenas (especialmente gancho e cena 9).
      * "sem_rosto": nunca mostrar o rosto; sempre do pescoço para baixo.

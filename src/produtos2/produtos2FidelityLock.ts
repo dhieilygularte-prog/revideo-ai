@@ -315,9 +315,15 @@ export function sanitizeAllScenesForFidelity<T extends { action: string; storybo
     let cleanFraming = (sc.framing || '').trim();
 
     if (isPackaged) {
-      const canonical = getCanonicalPackagedScene(idx, productName, totalCount, scenePartIndex);
-      cleanAction = canonical.action;
-      cleanFraming = canonical.framing;
+      // Se for a Cena 1 (Quadro 1 / Hook) e a ação for um hook expressivo sem tentar abrir a embalagem:
+      const isHookWithoutPackage = idx === 0 && !/abrindo|rasgando|tirando|deslacrando|fralda\s+aberta/i.test(cleanAction);
+      if (isHookWithoutPackage && cleanAction.length > 10) {
+        cleanAction = sanitizeSceneFidelityAction(cleanAction, productName, false);
+      } else {
+        const canonical = getCanonicalPackagedScene(idx, productName, totalCount, scenePartIndex);
+        cleanAction = canonical.action;
+        cleanFraming = canonical.framing;
+      }
     } else {
       cleanAction = sanitizeSceneFidelityAction(sc.action, productName, false);
     }

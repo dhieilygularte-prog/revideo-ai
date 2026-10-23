@@ -1447,9 +1447,14 @@ function sanitizeAllScenesForFidelity(scenes, productName, productInfo, scenePar
     let cleanAction = sc.action;
     let cleanFraming = (sc.framing || "").trim();
     if (isPackaged) {
-      const canonical = getCanonicalPackagedScene(idx, productName, totalCount, scenePartIndex);
-      cleanAction = canonical.action;
-      cleanFraming = canonical.framing;
+      const isHookWithoutPackage = idx === 0 && !/abrindo|rasgando|tirando|deslacrando|fralda\s+aberta/i.test(cleanAction);
+      if (isHookWithoutPackage && cleanAction.length > 10) {
+        cleanAction = sanitizeSceneFidelityAction(cleanAction, productName, false);
+      } else {
+        const canonical = getCanonicalPackagedScene(idx, productName, totalCount, scenePartIndex);
+        cleanAction = canonical.action;
+        cleanFraming = canonical.framing;
+      }
     } else {
       cleanAction = sanitizeSceneFidelityAction(sc.action, productName, false);
     }
@@ -1502,9 +1507,16 @@ function buildProdutos2PlanningSystemPrompt() {
 REGRA-M\xC3E: A COPY VENDE. O STORYBOARD PROVA VISUALMENTE A COPY. O V\xCDDEO ANIMA O STORYBOARD SEM NUNCA MOSTRAR A PR\xD3PRIA FOLHA DO STORYBOARD.
 
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+REGRA DE LIBERDADE DO PRIMEIRO FRAME / CENA 1 (HOOK DE ATEN\xC7\xC3O):
+- NO QUADRO 1 / CENA 1 (PRIMEIRO FRAME DO STORYBOARD E DO V\xCDDEO), O PRODUTO N\xC3O \xC9 OBRIGADO A APARECER!
+- O primeiro frame serve como HOOK chamativo para prender a aten\xE7\xE3o do espectador: est\xE1 100% liberado para focar na rea\xE7\xE3o de surpresa/curiosidade do apresentador, em uma situa\xE7\xE3o de impacto, problema do cotidiano ou teaser SEM a necessidade de mostrar o produto f\xEDsico.
+- Se o usu\xE1rio pedir expressamente nas Instru\xE7\xF5es Adicionais para mostrar o produto desde o primeiro frame, inclua o produto na Cena 1. Caso contr\xE1rio (padr\xE3o), o primeiro frame \xE9 LIVRE: o produto pode aparecer ou n\xE3o aparecer, de acordo com o que criar o hook mais envolvente.
+- NOS OUTROS TR\xCAS QUADROS (Cenas 2, 3 e 4 no modo de 4 cenas; ou Cenas 2 a 9 no modo de 9 cenas): A presen\xE7a do produto \xE9 ESTRITAMENTE OBRIGAT\xD3RIA e deve ser 100% fiel \xE0s fotos de refer\xEAncia!
+
 AS 7 REGRAS DE OURO MANDAT\xD3RIAS DE COMPLIANCE TIKTOK SHOP (ZERO-PUNI\xC7\xC3O):
 1. TRAVA ESTRITA DE QUANTIDADE DE PRODUTO:
-   - Se o an\xFAncio \xE9 de 1 unidade (ex.: 1 celular, 1 rel\xF3gio, 1 perfume, 1 camisa): em TODAS as 9 cenas e no productLock, o produto DEVE ser retratado estritamente como 1 \xFAnica unidade! NUNCA pode aparecer 2 celulares ou 2 rel\xF3gios na mesma tela em nenhum frame.
+   - Em todas as cenas em que o produto for exibido (Quadros 2, 3 e 4, e no Quadro 1 caso apare\xE7a):
+   - Se o an\xFAncio \xE9 de 1 unidade (ex.: 1 celular, 1 rel\xF3gio, 1 perfume, 1 camisa): o produto DEVE ser retratado estritamente como 1 \xFAnica unidade! NUNCA pode aparecer 2 celulares ou 2 rel\xF3gios na mesma tela em nenhum frame.
    - Se o an\xFAncio \xE9 de um kit de N unidades (ex.: kit de 4 pacotes de fraldas, combo com 3 camisetas): TODAS as tomadas do kit DEVEM mostrar RIGOROSAMENTE e EXATAMENTE N unidades (ex.: exatamente 4 pacotes, NUNCA 3 e NUNCA 5). 100% fiel \xE0 quantidade do an\xFAncio.
 2. PROIBI\xC7\xC3O ABSOLUTA DE 'EU GARANTO' OU 'EU PROMETO' NA FALA:
    - A locu\xE7\xE3o/fala NUNCA pode conter afirma\xE7\xF5es como "EU GARANTO", "eu prometo", "garantido", "resultado garantido" ou promessas milagrosas. Se a fala contiver tais termos, substitua imediatamente por recomenda\xE7\xE3o conversacional aut\xEAntica ("voc\xEA vai adorar", "faz toda a diferen\xE7a", "vale muito a pena").
@@ -1594,7 +1606,7 @@ E retornar um JSON estrito com:
    - Variar enquadramentos (nunca duas cenas seguidas iguais): close, macro, POV de m\xE3os, plano m\xE9dio, plano aberto, uso real.
    - "storyboardDescription" DEVE ser id\xEAntico a "{framing}. {action}" (mesma pessoa, mesma a\xE7\xE3o, mesmo enquadramento e mesmos objetos, sem inventar objetos extras ou mudar quem aparece entre um campo e outro).
    - Sempre que a parte do produto onde fica a logomarca do fabricante estiver vis\xEDvel na cena, inclua na descri\xE7\xE3o da cena que a logomarca original est\xE1 vis\xEDvel e id\xEAntica \xE0 foto.
-   - Na Cena 1, escreva "action" de forma direta e objetiva (sem retic\xEAncias e sem ponto no meio da frase).
+   - Na Cena 1 (Quadro 1 / Hook de abertura): Escreva "action" de forma direta e objetiva (sem retic\xEAncias e sem ponto no meio da frase). Lembre-se que na Cena 1 o produto N\xC3O \xE9 obrigat\xF3rio: pode focar 100% no hook de rea\xE7\xE3o/impacto sem o produto, exceto se solicitado nas instru\xE7\xF5es adicionais. J\xE1 nas Cenas 2, 3 e 4 o produto \xE9 estritamente obrigat\xF3rio.
    - Respeitar estritamente o Enquadramento:
      * "com_rosto": rosto aparece em algumas cenas (especialmente gancho e cena 9).
      * "sem_rosto": nunca mostrar o rosto; sempre do pesco\xE7o para baixo.
@@ -4616,6 +4628,7 @@ DURA\xC7\xC3O M\xC1XIMA DO V\xCDDEO: ${duration} segundos. Limite estrito: at\xE
 - G\xEAnero do cliente (vocativo): ${clientGender} (se feminino, usar "Amiga" ou "Gente", NUNCA usar "menina")
 - Modo de fala: ${speechMode} (locu\xE7\xE3o R\xC1PIDA E EUF\xD3RICA, com tom animado como se estivesse contando uma novidade imperd\xEDvel)
 - Regra de frete gr\xE1tis: NUNCA mencione "frete gr\xE1tis" ou "frete gratuito" na fala, a menos que isso tenha sido informado diretamente nas informa\xE7\xF5es do produto.
+- Regra do primeiro quadro (Quadro 1 / Hook): O produto N\xC3O \xE9 obrigat\xF3rio no primeiro frame/cena 1 (est\xE1 100% liberado para ser um hook chamativo de rea\xE7\xE3o, express\xE3o de impacto, problema ou curiosidade sem o produto, salvo se o usu\xE1rio pedir explicitamente para mostrar o produto desde o in\xEDcio nas instru\xE7\xF5es adicionais). J\xE1 nos outros quadros (Cenas 2 em diante), a presen\xE7a do produto \xE9 estritamente obrigat\xF3ria e 100% fiel!
 - Enquadramento: ${framing}
 - Cen\xE1rio: ${scenario === "padrao_uso" ? "Cen\xE1rio padr\xE3o de uso real do produto" : "Em casa (casa brasileira simples e aconchegante)"}
 - Instru\xE7\xF5es adicionais priorit\xE1rias: ${additionalInstructions || "Nenhuma"}${variationsClause}${twoScenesContinuityClause}
@@ -5236,12 +5249,12 @@ Primeiro, olhe com aten\xE7\xE3o m\xE1xima para as FOTOS DE REFER\xCANCIA REAIS 
 - Preencha "referenceLogoDescription": descri\xE7\xE3o exata da logomarca original vista na foto de refer\xEAncia e em qual parte do produto ela fica (ex: "Logomarca geom\xE9trica branca em formato de escudo no topo do encosto preto").
 
 PASSO 2 \u2014 REGRAS DE OURO DA FISCALIZA\xC7\xC3O POR QUADRANTE (CENA 1 A CENA ${quadrantCount}):
-1. Se em algum quadrante aparecer SOMENTE o modelo/pessoa ou SOMENTE o cen\xE1rio, SEM o produto aparecer:
+1. Se em algum quadrante aparecer SOMENTE o modelo/pessoa ou SOMENTE o cen\xE1rio, SEM o produto aparecer (especialmente no Quadrante 1 / Cena 1, que \xE9 o Hook de aten\xE7\xE3o inicial liberado para n\xE3o mostrar o produto):
    - "productVisible": false
    - "logoPartVisible": false
    - "logoFaithful": true
    - "score": 100
-   - "issue": "Cena X: Apenas modelo/cen\xE1rio (sem produto vis\xEDvel \u2014 OK)"
+   - "issue": "Cena X: Apenas modelo/cen\xE1rio (sem produto vis\xEDvel \u2014 Hook/Abertura \u2014 OK)"
 2. Em TODOS os quadrantes onde o produto aparece ("productVisible": true), avalie com rigor m\xE1ximo em escala INTEIRA de 0 a 100:
    - VERIFICA\xC7\xC3O CR\xCDTICA DE LOGOMARCA DO FABRICANTE ("logoPartVisible" e "logoFaithful"):
      * Se a parte espec\xEDfica do produto onde fica a logomarca nas fotos de refer\xEAncia (ex: a face frontal superior do encosto do banco) est\xE1 vis\xEDvel e desobstru\xEDda naquele quadrante, marque "logoPartVisible": true.
