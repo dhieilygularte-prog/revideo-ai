@@ -31,7 +31,6 @@ import {
   condenseSpeechMinimallyTo225,
   extractUserSpeechFromInstructions,
   fixCommonSlips,
-  sanitizeForbiddenPromises,
 } from './src/produtos2/produtos2UserSpeechExtractor';
 import {
   appendFidelityLockToVeoPrompt,
@@ -3435,7 +3434,7 @@ Retorne APENAS um objeto JSON válido com as chaves:
                   parsed.productLock.push(apparelEntry);
                 }
               }
-              parsed.finalCopy = sanitizeForbiddenPromises(activeCopy);
+              parsed.finalCopy = activeCopy;
               parsed.copySourceLabel = copySourceLabel;
               const promptTok = completion.usage?.prompt_tokens || 3400;
               const compTok = completion.usage?.completion_tokens || 1100;
@@ -3524,7 +3523,7 @@ Retorne APENAS um objeto JSON válido com as chaves:
                   parsed.productLock.push(apparelEntry);
                 }
               }
-              parsed.finalCopy = sanitizeForbiddenPromises(activeCopy);
+              parsed.finalCopy = activeCopy;
               parsed.copySourceLabel = copySourceLabel;
               const promptTok = response.usageMetadata?.promptTokenCount || 3400;
               const compTok = response.usageMetadata?.candidatesTokenCount || 1100;

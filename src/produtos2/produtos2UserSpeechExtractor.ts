@@ -6,29 +6,15 @@
  */
 
 /**
- * Sanitiza afirmações de promessas e garantias absolutas proibidas pelas diretrizes do TikTok Shop
- * (ex.: "EU GARANTO", "garanto que", "eu prometo", "prometo que", "resultado garantido").
- * Preserva chamadas de ação legítimas de compra (como "garante o seu", "garanta a sua", "pra garantir no carrinho").
+ * Retorna o texto original sem alteração de garantias ou promessas,
+ * preservando integralmente falas validadas do banco de memória e a fala do usuário.
  */
 export function sanitizeForbiddenPromises(text: string): string {
-  if (!text) return text;
-  return text
-    .replace(/\b(?:eu\s+)?te\s+garanto\s+que\b/gi, 'com certeza')
-    .replace(/\b(?:eu\s+)?garanto\s+que\b/gi, 'com certeza')
-    .replace(/\b(?:eu\s+)?garanto\s+pra\s+voc[êe]\b/gi, 'você vai adorar')
-    .replace(/\beu\s+garanto\b/gi, 'vale muito a pena')
-    .replace(/\b(?:eu\s+)?te\s+prometo\s+que\b/gi, 'você vai ver que')
-    .replace(/\b(?:eu\s+)?prometo\s+que\b/gi, 'você vai ver que')
-    .replace(/\beu\s+prometo\b/gi, 'vale a pena')
-    .replace(/\bresultado(?:s)?\s+(?:100%\s+)?garantido(?:s)?\b/gi, 'resultado incrível')
-    .replace(/\bgarantia\s+de\s+resultado\b/gi, 'qualidade comprovada')
-    .replace(/\b100%\s+garantido\b/gi, '100% aprovado')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return text;
 }
 
 export function fixCommonSlips(str: string): string {
-  let s = sanitizeForbiddenPromises(str);
+  let s = str;
   // Remove palavras duplicadas consecutivas por gagueira/ditado (ex: "trabalhar, trabalhar" -> "trabalhar")
   s = s.replace(/\b([a-záàâãéêíóôõúç]{2,})(?:\s*,\s*|\s+)\1\b/gi, '$1');
   // Corrige falhas comuns de fala para texto no nome do produto

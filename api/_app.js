@@ -1513,22 +1513,20 @@ REGRA DE LIBERDADE DO PRIMEIRO FRAME / CENA 1 (HOOK DE ATEN\xC7\xC3O):
 - Se o usu\xE1rio pedir expressamente nas Instru\xE7\xF5es Adicionais para mostrar o produto desde o primeiro frame, inclua o produto na Cena 1. Caso contr\xE1rio (padr\xE3o), o primeiro frame \xE9 LIVRE: o produto pode aparecer ou n\xE3o aparecer, de acordo com o que criar o hook mais envolvente.
 - NOS OUTROS TR\xCAS QUADROS (Cenas 2, 3 e 4 no modo de 4 cenas; ou Cenas 2 a 9 no modo de 9 cenas): A presen\xE7a do produto \xE9 ESTRITAMENTE OBRIGAT\xD3RIA e deve ser 100% fiel \xE0s fotos de refer\xEAncia!
 
-AS 7 REGRAS DE OURO MANDAT\xD3RIAS DE COMPLIANCE TIKTOK SHOP (ZERO-PUNI\xC7\xC3O):
+AS 6 REGRAS DE OURO MANDAT\xD3RIAS DE COMPLIANCE TIKTOK SHOP (ZERO-PUNI\xC7\xC3O):
 1. TRAVA ESTRITA DE QUANTIDADE DE PRODUTO:
    - Em todas as cenas em que o produto for exibido (Quadros 2, 3 e 4, e no Quadro 1 caso apare\xE7a):
    - Se o an\xFAncio \xE9 de 1 unidade (ex.: 1 celular, 1 rel\xF3gio, 1 perfume, 1 camisa): o produto DEVE ser retratado estritamente como 1 \xFAnica unidade! NUNCA pode aparecer 2 celulares ou 2 rel\xF3gios na mesma tela em nenhum frame.
    - Se o an\xFAncio \xE9 de um kit de N unidades (ex.: kit de 4 pacotes de fraldas, combo com 3 camisetas): TODAS as tomadas do kit DEVEM mostrar RIGOROSAMENTE e EXATAMENTE N unidades (ex.: exatamente 4 pacotes, NUNCA 3 e NUNCA 5). 100% fiel \xE0 quantidade do an\xFAncio.
-2. PROIBI\xC7\xC3O ABSOLUTA DE 'EU GARANTO' OU 'EU PROMETO' NA FALA:
-   - A locu\xE7\xE3o/fala NUNCA pode conter afirma\xE7\xF5es como "EU GARANTO", "eu prometo", "garantido", "resultado garantido" ou promessas milagrosas. Se a fala contiver tais termos, substitua imediatamente por recomenda\xE7\xE3o conversacional aut\xEAntica ("voc\xEA vai adorar", "faz toda a diferen\xE7a", "vale muito a pena").
-3. LOGOMARCA, NOME DO FABRICANTE E NOME DO PRODUTO 100% ID\xCANTICOS:
+2. LOGOMARCA, NOME DO FABRICANTE E NOME DO PRODUTO 100% ID\xCANTICOS:
    - A marca, a logomarca, o emblema e o nome do produto impressos ou gravados no produto f\xEDsico DEVEM ser 100% id\xEAnticos em tipografia, formato, desenho, cor, propor\xE7\xE3o e posi\xE7\xE3o exata \xE0s fotos de refer\xEAncia. NUNCA distorcer, inventar marca gen\xE9rica ou remover a marca original.
-4. PRODUTOS DE USO ORAL SEM ANTES E DEPOIS E SEM CLAREAMENTO DE DENTES:
+3. PRODUTOS DE USO ORAL SEM ANTES E DEPOIS E SEM CLAREAMENTO DE DENTES:
    - Para produtos de higiene ou uso oral (irrigador oral, escova de dentes, enxaguante bucal, etc.): \xC9 EXPRESSAMENTE PROIBIDO mostrar "antes e depois" de clareamento de dentes ou dar a entender que houve clareamento dental. Fazer o v\xEDdeo SEM mostrar dentes em close de branqueamento (demonstrar o manuseio do aparelho, o jato de \xE1gua na pia ou em um copo com \xE1gua, bicos e bot\xF5es, e a apresentadora sorrindo naturalmente com boca fechada ou acolhedora sem focar em dentes).
-5. ROUPAS E PE\xC7AS DE VESTU\xC1RIO 100% FI\xC9IS:
+4. ROUPAS E PE\xC7AS DE VESTU\xC1RIO 100% FI\xC9IS:
    - Quando o produto for roupa, a pe\xE7a precisa ser 100% fiel \xE0s fotos de refer\xEAncia em bot\xF5es (formato, quantidade e cor), costuras, pespontos, cores, detalhes, caimento e padr\xE3o visual. NUNCA inventar bot\xF5es ou costuras que n\xE3o estejam nas refer\xEAncias.
-6. TAMANHO REAL \u2014 PROIBIDO APARENTAR SER MAIOR:
+5. TAMANHO REAL \u2014 PROIBIDO APARENTAR SER MAIOR:
    - O produto N\xC3O pode aparentar ser maior do que o tamanho mostrado nas fotos de refer\xEAncia reais. Manter propor\xE7\xF5es humanas e escala f\xEDsica 100% realistas em rela\xE7\xE3o \xE0s m\xE3os, corpo e bancada.
-7. LAYOUT, CORES E \xC2NGULOS VIS\xCDVEIS 100% ID\xCANTICOS (PROIBIDO INVENTAR \xC2NGULOS OCULTOS):
+6. LAYOUT, CORES E \xC2NGULOS VIS\xCDVEIS 100% ID\xCANTICOS (PROIBIDO INVENTAR \xC2NGULOS OCULTOS):
    - Manter o produto com layout e cores 100% id\xEAnticos \xE0s fotos de refer\xEAncia. NUNCA criar tomadas mostrando \xE2ngulos que n\xE3o estejam nas fotos de refer\xEAncia (ou seja, N\xC3O inventar traseira, laterais ou interior). Se apenas a frente foi fotografada, manter o produto de frente.
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
 
@@ -1572,7 +1570,6 @@ E retornar um JSON estrito com:
    - A "baseCopy" recebida j\xE1 \xE9 a copy do banco adaptada com o m\xEDnimo de mudan\xE7as e j\xE1 come\xE7a obrigatoriamente com "Nossa! ". MANTENHA A "baseCopy" EXATAMENTE COMO EST\xC1!
    - A fala no Veo deve ser pronunciada de forma R\xC1PIDA E EUF\xD3RICA (estilo contando uma novidade imperd\xEDvel e urgente).
    - NUNCA use a palavra "menina" como vocativo; quando o p\xFAblico for feminino, use "Amiga" ou "Gente". Para masculino, use "Meu amigo", "Cara", "Irm\xE3o" ou "Gente".
-   - NUNCA use afirma\xE7\xF5es proibidas como "EU GARANTO", "eu prometo", "garantido" ou "resultado garantido".
    - NUNCA mencione "frete gr\xE1tis" ou "frete gratuito" na fala, a menos que isso tenha sido informado expressamente nas Informa\xE7\xF5es do Produto.
 3. "productLock": array de 4 a 6 strings detalhando fisicamente o produto visto nas fotos (1\xBA item obrigatoriamente a descri\xE7\xE3o exata da logomarca/emblema/marca impressa no produto e sua posi\xE7\xE3o exata; seguido de formato, propor\xE7\xE3o, material, textura, bot\xF5es/costuras/sola/cabos/detalhes).
    - INCLUA A QUANTIDADE EXATA DO PRODUTO (ex: "Quantidade: Kit de 4 pacotes fechados" ou "Quantidade: 1 celular \xFAnico").
@@ -1619,12 +1616,8 @@ E retornar um JSON estrito com:
 }
 
 // src/produtos2/produtos2UserSpeechExtractor.ts
-function sanitizeForbiddenPromises(text) {
-  if (!text) return text;
-  return text.replace(/\b(?:eu\s+)?te\s+garanto\s+que\b/gi, "com certeza").replace(/\b(?:eu\s+)?garanto\s+que\b/gi, "com certeza").replace(/\b(?:eu\s+)?garanto\s+pra\s+voc[êe]\b/gi, "voc\xEA vai adorar").replace(/\beu\s+garanto\b/gi, "vale muito a pena").replace(/\b(?:eu\s+)?te\s+prometo\s+que\b/gi, "voc\xEA vai ver que").replace(/\b(?:eu\s+)?prometo\s+que\b/gi, "voc\xEA vai ver que").replace(/\beu\s+prometo\b/gi, "vale a pena").replace(/\bresultado(?:s)?\s+(?:100%\s+)?garantido(?:s)?\b/gi, "resultado incr\xEDvel").replace(/\bgarantia\s+de\s+resultado\b/gi, "qualidade comprovada").replace(/\b100%\s+garantido\b/gi, "100% aprovado").replace(/\s+/g, " ").trim();
-}
 function fixCommonSlips(str) {
-  let s = sanitizeForbiddenPromises(str);
+  let s = str;
   s = s.replace(/\b([a-záàâãéêíóôõúç]{2,})(?:\s*,\s*|\s+)\1\b/gi, "$1");
   s = s.replace(/\bp[óo]\s*pouco\b/gi, "Poco");
   s = s.replace(/\bpopouco\b/gi, "Poco");
@@ -4721,7 +4714,7 @@ Retorne APENAS um objeto JSON v\xE1lido com as chaves:
                   parsed.productLock.push(apparelEntry);
                 }
               }
-              parsed.finalCopy = sanitizeForbiddenPromises(activeCopy);
+              parsed.finalCopy = activeCopy;
               parsed.copySourceLabel = copySourceLabel;
               const promptTok = completion.usage?.prompt_tokens || 3400;
               const compTok = completion.usage?.completion_tokens || 1100;
@@ -4803,7 +4796,7 @@ Retorne APENAS um objeto JSON v\xE1lido com as chaves:
                   parsed.productLock.push(apparelEntry);
                 }
               }
-              parsed.finalCopy = sanitizeForbiddenPromises(activeCopy);
+              parsed.finalCopy = activeCopy;
               parsed.copySourceLabel = copySourceLabel;
               const promptTok = response.usageMetadata?.promptTokenCount || 3400;
               const compTok = response.usageMetadata?.candidatesTokenCount || 1100;

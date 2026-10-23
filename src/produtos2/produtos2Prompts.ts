@@ -1983,22 +1983,20 @@ REGRA DE LIBERDADE DO PRIMEIRO FRAME / CENA 1 (HOOK DE ATENÇÃO):
 - Se o usuário pedir expressamente nas Instruções Adicionais para mostrar o produto desde o primeiro frame, inclua o produto na Cena 1. Caso contrário (padrão), o primeiro frame é LIVRE: o produto pode aparecer ou não aparecer, de acordo com o que criar o hook mais envolvente.
 - NOS OUTROS TRÊS QUADROS (Cenas 2, 3 e 4 no modo de 4 cenas; ou Cenas 2 a 9 no modo de 9 cenas): A presença do produto é ESTRITAMENTE OBRIGATÓRIA e deve ser 100% fiel às fotos de referência!
 
-AS 7 REGRAS DE OURO MANDATÓRIAS DE COMPLIANCE TIKTOK SHOP (ZERO-PUNIÇÃO):
+AS 6 REGRAS DE OURO MANDATÓRIAS DE COMPLIANCE TIKTOK SHOP (ZERO-PUNIÇÃO):
 1. TRAVA ESTRITA DE QUANTIDADE DE PRODUTO:
    - Em todas as cenas em que o produto for exibido (Quadros 2, 3 e 4, e no Quadro 1 caso apareça):
    - Se o anúncio é de 1 unidade (ex.: 1 celular, 1 relógio, 1 perfume, 1 camisa): o produto DEVE ser retratado estritamente como 1 única unidade! NUNCA pode aparecer 2 celulares ou 2 relógios na mesma tela em nenhum frame.
    - Se o anúncio é de um kit de N unidades (ex.: kit de 4 pacotes de fraldas, combo com 3 camisetas): TODAS as tomadas do kit DEVEM mostrar RIGOROSAMENTE e EXATAMENTE N unidades (ex.: exatamente 4 pacotes, NUNCA 3 e NUNCA 5). 100% fiel à quantidade do anúncio.
-2. PROIBIÇÃO ABSOLUTA DE 'EU GARANTO' OU 'EU PROMETO' NA FALA:
-   - A locução/fala NUNCA pode conter afirmações como "EU GARANTO", "eu prometo", "garantido", "resultado garantido" ou promessas milagrosas. Se a fala contiver tais termos, substitua imediatamente por recomendação conversacional autêntica ("você vai adorar", "faz toda a diferença", "vale muito a pena").
-3. LOGOMARCA, NOME DO FABRICANTE E NOME DO PRODUTO 100% IDÊNTICOS:
+2. LOGOMARCA, NOME DO FABRICANTE E NOME DO PRODUTO 100% IDÊNTICOS:
    - A marca, a logomarca, o emblema e o nome do produto impressos ou gravados no produto físico DEVEM ser 100% idênticos em tipografia, formato, desenho, cor, proporção e posição exata às fotos de referência. NUNCA distorcer, inventar marca genérica ou remover a marca original.
-4. PRODUTOS DE USO ORAL SEM ANTES E DEPOIS E SEM CLAREAMENTO DE DENTES:
+3. PRODUTOS DE USO ORAL SEM ANTES E DEPOIS E SEM CLAREAMENTO DE DENTES:
    - Para produtos de higiene ou uso oral (irrigador oral, escova de dentes, enxaguante bucal, etc.): É EXPRESSAMENTE PROIBIDO mostrar "antes e depois" de clareamento de dentes ou dar a entender que houve clareamento dental. Fazer o vídeo SEM mostrar dentes em close de branqueamento (demonstrar o manuseio do aparelho, o jato de água na pia ou em um copo com água, bicos e botões, e a apresentadora sorrindo naturalmente com boca fechada ou acolhedora sem focar em dentes).
-5. ROUPAS E PEÇAS DE VESTUÁRIO 100% FIÉIS:
+4. ROUPAS E PEÇAS DE VESTUÁRIO 100% FIÉIS:
    - Quando o produto for roupa, a peça precisa ser 100% fiel às fotos de referência em botões (formato, quantidade e cor), costuras, pespontos, cores, detalhes, caimento e padrão visual. NUNCA inventar botões ou costuras que não estejam nas referências.
-6. TAMANHO REAL — PROIBIDO APARENTAR SER MAIOR:
+5. TAMANHO REAL — PROIBIDO APARENTAR SER MAIOR:
    - O produto NÃO pode aparentar ser maior do que o tamanho mostrado nas fotos de referência reais. Manter proporções humanas e escala física 100% realistas em relação às mãos, corpo e bancada.
-7. LAYOUT, CORES E ÂNGULOS VISÍVEIS 100% IDÊNTICOS (PROIBIDO INVENTAR ÂNGULOS OCULTOS):
+6. LAYOUT, CORES E ÂNGULOS VISÍVEIS 100% IDÊNTICOS (PROIBIDO INVENTAR ÂNGULOS OCULTOS):
    - Manter o produto com layout e cores 100% idênticos às fotos de referência. NUNCA criar tomadas mostrando ângulos que não estejam nas fotos de referência (ou seja, NÃO inventar traseira, laterais ou interior). Se apenas a frente foi fotografada, manter o produto de frente.
 ═══════════════════════════════════════════════════════════════════
 
@@ -2042,7 +2040,6 @@ E retornar um JSON estrito com:
    - A "baseCopy" recebida já é a copy do banco adaptada com o mínimo de mudanças e já começa obrigatoriamente com "Nossa! ". MANTENHA A "baseCopy" EXATAMENTE COMO ESTÁ!
    - A fala no Veo deve ser pronunciada de forma RÁPIDA E EUFÓRICA (estilo contando uma novidade imperdível e urgente).
    - NUNCA use a palavra "menina" como vocativo; quando o público for feminino, use "Amiga" ou "Gente". Para masculino, use "Meu amigo", "Cara", "Irmão" ou "Gente".
-   - NUNCA use afirmações proibidas como "EU GARANTO", "eu prometo", "garantido" ou "resultado garantido".
    - NUNCA mencione "frete grátis" ou "frete gratuito" na fala, a menos que isso tenha sido informado expressamente nas Informações do Produto.
 3. "productLock": array de 4 a 6 strings detalhando fisicamente o produto visto nas fotos (1º item obrigatoriamente a descrição exata da logomarca/emblema/marca impressa no produto e sua posição exata; seguido de formato, proporção, material, textura, botões/costuras/sola/cabos/detalhes).
    - INCLUA A QUANTIDADE EXATA DO PRODUTO (ex: "Quantidade: Kit de 4 pacotes fechados" ou "Quantidade: 1 celular único").
