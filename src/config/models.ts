@@ -76,4 +76,4 @@ export function getMaxSpeechChars(mode: 'veo3_basic_8s' | 'veo3_omniflash_10s' =
 
 
 /** Bloco inegociável de fidelidade universal para QUALQUER produto comercial */
-export const FIDELITY_BLOCK_TEXT = `O produto tem que ser 100% FIEL às fotos de referência que eu enviei. Não pode mudar nem 1%: formato, embalagem, rótulo, materiais, texturas, costuras, tipografia, logotipos, ilustrações, detalhes gráficos e cores. É estritamente proibido inventar, alterar, trocar detalhes ou substituir o produto por itens genéricos. Se algum detalhe não estiver visível na foto, manter simples em vez de alucinar.`;
+export const FIDELITY_BLOCK_TEXT = `O produto tem que ser 100% FIEL às fotos de referência que eu enviei. Não pode mudar nem 1%: formato, embalagem, rótulo, materiais, texturas, costuras, tipografia, logotipos, ilustrações, detalhes gráficos e cores. É estritamente proibido inventar, alterar, trocar detalhes ou substituir o produto por itens genéricos. Se algum detalhe não estiver visível na foto, manter simples em vez de alucinar. É TERMINANTEMENTE PROIBIDO colocar qualquer site/URL ou código de barras/QR code em qualquer caixa, pacote ou embalagem.`;

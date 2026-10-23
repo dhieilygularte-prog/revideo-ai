@@ -29,7 +29,7 @@ function calculateSceneCount(durationSeconds, mode = "veo3_basic_8s") {
   if (d <= 35) return 4;
   return 5;
 }
-var FIDELITY_BLOCK_TEXT = `O produto tem que ser 100% FIEL \xE0s fotos de refer\xEAncia que eu enviei. N\xE3o pode mudar nem 1%: formato, embalagem, r\xF3tulo, materiais, texturas, costuras, tipografia, logotipos, ilustra\xE7\xF5es, detalhes gr\xE1ficos e cores. \xC9 estritamente proibido inventar, alterar, trocar detalhes ou substituir o produto por itens gen\xE9ricos. Se algum detalhe n\xE3o estiver vis\xEDvel na foto, manter simples em vez de alucinar.`;
+var FIDELITY_BLOCK_TEXT = `O produto tem que ser 100% FIEL \xE0s fotos de refer\xEAncia que eu enviei. N\xE3o pode mudar nem 1%: formato, embalagem, r\xF3tulo, materiais, texturas, costuras, tipografia, logotipos, ilustra\xE7\xF5es, detalhes gr\xE1ficos e cores. \xC9 estritamente proibido inventar, alterar, trocar detalhes ou substituir o produto por itens gen\xE9ricos. Se algum detalhe n\xE3o estiver vis\xEDvel na foto, manter simples em vez de alucinar. \xC9 TERMINANTEMENTE PROIBIDO colocar qualquer site/URL ou c\xF3digo de barras/QR code em qualquer caixa, pacote ou embalagem.`;
 
 // src/utils/veoPromptBuilder.ts
 function buildVeoSingleParagraphPrompt(opts) {
@@ -1256,7 +1256,7 @@ E retornar um JSON estrito com:
      * "avatarDescription": Descreva com riqueza os dois personagens (Mulher e Homem), suas idades aproximadas, etnia (se informada) e continuidade de roupas.
      * "scenarioDescription": D\xEA prioridade ao ambiente de encontro/intera\xE7\xE3o informado (ex: cafeteria, restaurante intimista ao p\xF4r do sol).
      * "scenes": As Cenas 1 e 2 devem ilustrar a mulher reagindo/admirando o produto e perguntando ao homem; a partir da Cena 3 o homem responde, apresenta o produto, demonstra as fun\xE7\xF5es e na Cena 9 conclui com o CTA.
-   - Proibido texto flutuante externo, legenda, pre\xE7o, n\xFAmero escrito, carrinho, marca d'\xE1gua de rede social, @ ou interface de aplicativo dentro das cenas (mas OBRIGAT\xD3RIO manter a logomarca original do fabricante impressa no pr\xF3prio produto).`;
+   - Proibido texto flutuante externo, legenda, pre\xE7o, n\xFAmero escrito, carrinho, marca d'\xE1gua de rede social, @ ou interface de aplicativo dentro das cenas (mas OBRIGAT\xD3RIO manter a logomarca original do fabricante impressa no pr\xF3prio produto), e \xC9 EXPRESSAMENTE PROIBIDO desenhar ou prever site, link de internet, URL ou c\xF3digo de barras/QR code em qualquer caixa, pacote ou embalagem do produto.`;
 }
 
 // src/produtos2/produtos2UserSpeechExtractor.ts
@@ -4243,7 +4243,13 @@ REGRA INEGOCI\xC1VEL: Em TODOS os quadrantes do storyboard 3x3 onde essa parte d
 ========================`;
       }
     }
-    const baseWithLogo = `${prompt}${logoEnforcementBlock}`;
+    const noBarcodeUrlDirective = `
+
+========================
+PROIBI\xC7\xC3O ABSOLUTA DE SITE E C\xD3DIGO DE BARRAS EM EMBALAGENS:
+\xC9 TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, dom\xEDnio, URL (ex.: www..., .com, .com.br, https) ou c\xF3digo de barras/QR code em qualquer caixa, pacote ou embalagem do produto. As caixas, pacotes e embalagens devem ser 100% limpas de sites e c\xF3digos de barras!
+========================`;
+    const baseWithLogo = `${prompt}${logoEnforcementBlock}${noBarcodeUrlDirective}`;
     const effectivePrompt = correctionPrompt && correctionPrompt.trim() ? `${baseWithLogo}
 
 ========================
@@ -4335,6 +4341,7 @@ ${correctionPrompt.trim()}
 - Cantos arredondados nos quadros, separados por uma borda branca fina, sobre fundo branco.
 ${variationInstructionRule}
 - LOGOMARCA E MARCA DO FABRICANTE NO PRODUTO (OBRIGAT\xD3RIO): A marca, a logomarca, o emblema e os textos que j\xE1 est\xE3o impressos/estampados no pr\xF3prio produto nas fotos de refer\xEAncia DEVEM aparecer 100% id\xEAnticos, na mesma cor e no mesmo lugar da pe\xE7a, em todos os quadros em que aquela parte estiver vis\xEDvel. JAMAIS remova ou alise a logomarca do produto!
+- PROIBI\xC7\xC3O ABSOLUTA DE SITE E C\xD3DIGO DE BARRAS: \xC9 TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, URL (ex.: www..., .com) ou c\xF3digo de barras/QR code em qualquer caixa, pacote ou embalagem de produto. Todas as caixas e embalagens devem ser totalmente limpas de sites e c\xF3digos de barras.
 - ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: N\xE3o adicione legendas flutuantes, textos publicit\xE1rios externos, pre\xE7os, setas, carrinho de compras, marca d'\xE1gua externa, @ ou logotipo do TikTok. Apenas os n\xFAmeros 1 a 9 nos selos circulares e a logomarca original do fabricante no pr\xF3prio produto.`;
         const modelsToTry = [
           GEMINI_IMAGE_MODEL || "gemini-3.1-flash-image",
@@ -4461,6 +4468,8 @@ PASSO 2 \u2014 REGRAS DE OURO DA FISCALIZA\xC7\xC3O POR QUADRANTE (CENA 1 A CENA
        -> D\xEA OBRIGATORIAMENTE uma nota BAIXA entre 45 e 58 (VERMELHO, abaixo de 60) para aquele quadrante! NUNCA d\xEA nota alta se a parte da logo est\xE1 vis\xEDvel e a logo sumiu!
        -> No campo "issue" (SEMPRE EM PORTUGU\xCAS), escreva claramente: "Na Cena X, o produto est\xE1 diferente: a logomarca original do fabricante ([descreva a logo e onde fica, ex: no encosto]) foi removida e n\xE3o aparece como na foto de refer\xEAncia."
    - CORES, FORMATO, ESTRUTURA E DETALHES: Verifique se a apar\xEAncia, formato, estrutura e cor conferem com QUALQUER UMA das fotos/varia\xE7\xF5es de refer\xEAncia anexadas pelo usu\xE1rio.${variationsAuditRule}
+   - SITES E C\xD3DIGO DE BARRAS EM EMBALAGENS:
+     * \xC9 TERMINANTEMENTE PROIBIDO aparecer site, URL (ex.: www..., .com) ou c\xF3digo de barras/QR code em caixas, pacotes ou embalagens. Se aparecer site ou c\xF3digo de barras na embalagem em qualquer quadrante, marque score < 60 e aponte no issue: "Na Cena X, a embalagem cont\xE9m site ou c\xF3digo de barras desenhado, o que \xE9 proibido."
 3. ESCALA INTEIRA DE NOTAS DE CADA QUADRANTE (0 a 100 \u2014 NUNCA use decimais de 0 a 1):
    - 90 a 100 (VERDE): Produto 90%+ id\xEAntico a qualquer uma das fotos/varia\xE7\xF5es de refer\xEAncia anexadas (logomarca original presente e fiel quando a \xE1rea aparece, ou close fiel de outra parte do produto).
    - 71 a 89 (AMARELO): Produto com pequena varia\xE7\xE3o leve de detalhe secund\xE1rio.
