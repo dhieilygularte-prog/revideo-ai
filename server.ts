@@ -3704,8 +3704,10 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
       ? `\n\n========================\nREGRA SAGRADA DE EMBALAGEM FECHADA / PACOTES LACRADOS (TIKTOK SHOP COMPLIANCE):\n1. O produto consiste EXCLUSIVAMENTE em PACOTES FECHADOS / EMBALAGEM LACRADA de ${productName}.\n2. É TERMINANTEMENTE E SEVERAMENTE PROIBIDO: NUNCA desenhe pacotes abertos ou rasgados; NUNCA desenhe fraldas ou itens soltos/desdobrados fora da embalagem; NUNCA desenhe estampas de personagens em peças avulsas, elásticos, fitas ou forro interno; NUNCA desenhe testes derramando água ou líquidos!\n3. EM TODOS OS ${frameCount} QUADROS, o que deve ser mostrado, manuseado e exibido pela apresentadora é 100% EXCLUSIVAMENTE o PACOTE FECHADO LACRADO idêntico às fotos reais anexadas!\n========================`
       : `\n\n========================\nREGRA SAGRADA DE FIDELIDADE AO PRODUTO ANEXADO — NUNCA INVENTAR PARTES NÃO FOTOGRAFADAS OU CONTEÚDO DE EMBALAGEM LACRADA (ANTI-REJEIÇÃO DO TIKTOK):\n1. O produto deve ser retratado RIGOROSA E EXCLUSIVAMENTE com base no que está visível nas fotos de referência anexadas pelo usuário!\n2. REGRA DE EMBALAGEM / PACOTE FECHADO / CAIXA: Se as fotos de referência mostram o produto lacrado em sua embalagem original, pacote fechado ou caixa (exemplo: pacotes de fraldas fechados, pote fechado, caixa lacrada) e NÃO há fotos do item avulso fora da embalagem, É EXPRESSAMENTE E TERMINANTEMENTE PROIBIDO inventar, abrir ou desenhar o produto solto fora da embalagem (exemplo: NUNCA desenhe uma fralda aberta se o usuário enviou fotos dos pacotes de fraldas fechados). Em TODOS os quadros, o que deve ser mostrado e manuseado é o PACOTE/EMBALAGEM/CAIXA FECHADA exatamente como nas fotos reais!\n3. ÂNGULOS E DETALHES NÃO VISÍVEIS: É terminantemente proibido inventar outro lado, botões, acessórios ou partes traseiras que não estejam visíveis nas fotos de referência anexadas.\n========================`;
 
+    const noBarcodeUrlDirective = `\n\n========================\nPROIBIÇÃO ABSOLUTA DE SITE E CÓDIGO DE BARRAS EM EMBALAGENS:\nÉ TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, domínio, URL (ex.: www..., .com, .com.br, https) ou código de barras/QR code em qualquer caixa, pacote ou embalagem do produto. As caixas, pacotes e embalagens devem ser 100% limpas de sites e códigos de barras!\n========================`;
+
     const sanitizedPrompt = sanitizeStoryboardPromptForFidelity(promptStr, productName, productInfo);
-    const baseWithLogo = `${sanitizedPrompt}${logoEnforcementBlock}${packagingFidelityDirective}`;
+    const baseWithLogo = `${sanitizedPrompt}${logoEnforcementBlock}${packagingFidelityDirective}${noBarcodeUrlDirective}`;
     const effectivePrompt = correctionPrompt && correctionPrompt.trim()
       ? `${baseWithLogo}\n\n========================\nCORREÇÃO OBRIGATÓRIA DE AUDITORIA DE FIDELIDADE DOS ${frameCount} QUADRANTES:\n${correctionPrompt.trim()}\n========================`
       : baseWithLogo;
@@ -3860,6 +3862,7 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
 ${variationInstructionRule}
 - REGRA SAGRADA DE EMBALAGEM FECHADA / PACOTES LACRADOS (TIKTOK COMPLIANCE): Se as fotos de referência mostram pacotes fechados, caixas ou embalagens lacradas (ex.: pacotes de fraldas fechados), NUNCA desenhe pacotes abertos, produtos soltos fora da embalagem (como fraldas avulsas soltas) ou testes com líquidos/água. Desenhe e mostre EXCLUSIVAMENTE os pacotes fechados idênticos às fotos em todos os quadros!
 - LOGOMARCA E MARCA DO FABRICANTE NO PRODUTO (OBRIGATÓRIO): A marca, a logomarca, o emblema e os textos que já estão impressos/estampados no próprio produto nas fotos de referência DEVEM aparecer 100% idênticos, na mesma cor e no mesmo lugar da peça, em todos os quadros em que aquela parte estiver visível. JAMAIS remova ou alise a logomarca do produto!
+- PROIBIÇÃO ABSOLUTA DE SITE E CÓDIGO DE BARRAS: É TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, URL (ex.: www..., .com) ou código de barras/QR code em qualquer caixa, pacote ou embalagem de produto. Todas as caixas e embalagens devem ser totalmente limpas de sites e códigos de barras.
 - ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: Não adicione legendas flutuantes, textos publicitários externos, preços, setas, carrinho de compras, marca d'água externa, @ ou logotipo do TikTok. Apenas os números 1 a ${frameCount} nos selos circulares e a logomarca original do fabricante no próprio produto.`;
 
         const geminiAspectRatio = isLandscapeStoryboard ? '16:9' : '9:16';
@@ -4130,6 +4133,8 @@ PASSO 2 — REGRAS DE OURO DA FISCALIZAÇÃO POR QUADRANTE (CENA 1 A CENA ${quad
      * O produto NÃO pode aparentar ser maior do que o produto mostrado nas fotos de referência reais.
    - ÂNGULOS VISÍVEIS:
      * O produto deve ser mostrado apenas nos ângulos visíveis nas referências. É proibido inventar traseira, laterais ou interior não fotografados.
+   - SITES E CÓDIGO DE BARRAS EM EMBALAGENS:
+     * É TERMINANTEMENTE PROIBIDO aparecer site, URL (ex.: www..., .com) ou código de barras/QR code em caixas, pacotes ou embalagens. Se aparecer site ou código de barras na embalagem em qualquer quadrante, marque score < 60 e aponte no issue: "Na Cena X, a embalagem contém site ou código de barras desenhado, o que é proibido."
 3. ESCALA INTEIRA DE NOTAS DE CADA QUADRANTE (0 a 100 — NUNCA use decimais de 0 a 1):
    - 90 a 100 (VERDE): Produto 90%+ idêntico a qualquer uma das fotos/variações de referência anexadas (logomarca original presente e fiel quando a área aparece, quantidade exata, proporção realista e sem invenções).
    - 71 a 89 (AMARELO): Produto com pequena variação leve de detalhe secundário.

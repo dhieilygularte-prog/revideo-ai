@@ -35,7 +35,10 @@ Never invent, infer, reconstruct, hallucinate, or reveal any product surface, si
 
 7. CAMERA MOVEMENTS & FIDELITY OVER CREATIVITY:
 Keep the product within the documented viewpoints and visible surfaces of the reference images throughout the entire video. Any camera movement must remain within the visual information established by the references. Prefer static framing, controlled push-ins, controlled pull-backs, or movements that do not reveal unknown surfaces.
-Reference fidelity takes absolute priority over cinematic creativity, camera movement, scene variety, and visual enhancement. Never fabricate visual information about the product.`;
+Reference fidelity takes absolute priority over cinematic creativity, camera movement, scene variety, and visual enhancement. Never fabricate visual information about the product.
+
+8. STRICT NO WEBSITES / URLS & NO BARCODES ON PACKAGING:
+It is STRICTLY FORBIDDEN to show, invent, print, or generate any website URL, domain name (e.g., www, .com, .br, http, web links), barcode lines, or QR codes on any box, carton, pack, wrap, or product packaging. All packages, boxes, and containers must remain completely clean and free of any website addresses and barcodes.`;
 
 /**
  * Anexa a trava global de fidelidade visual aos prompts de video do Veo 3 / Vell / OmniFlash
@@ -55,13 +58,14 @@ export function appendFidelityLockToVeoPrompt(prompt: string): string {
 export function buildProductFidelityDirectives(_productInfo?: string): string {
   return `
 ========================
-6 REGRAS MANDATÓRIAS DE FIDELIDADE VISUAL AO PRODUTO (TIKTOK SHOP ZERO-PUNIÇÃO):
+7 REGRAS MANDATÓRIAS DE FIDELIDADE VISUAL AO PRODUTO (TIKTOK SHOP ZERO-PUNIÇÃO):
 1. TRAVA ESTRITA DE QUANTIDADE DE PRODUTO: Nunca colocar quantidade diferente do produto no vídeo! Se o anúncio é de 1 celular, 1 perfume ou 1 relógio, NUNCA pode aparecer 2 celulares/perfumes/relógios na tela em nenhum frame. Se o anúncio é kit de 4 pacotes de fraldas, NUNCA pode aparecer 3 ou 5 pacotes na mesma tela em nenhum frame: devem aparecer SEMPRE e RIGOROSAMENTE a quantidade exata (ex.: exatamente 4 pacotes). 100% de fidelidade numérica à quantidade anunciada em todos os quadros!
 2. LOGOMARCA, NOME DO FABRICANTE E DO PRODUTO 100% IDÊNTICOS: A logomarca, o nome do fabricante e o nome do produto impressos ou gravados no produto físico DEVEM ser sempre idênticos ao que está nas imagens de referência (mesma grafia, tipografia, cor, proporção e posição exata na peça). NUNCA distorcer, inventar ou remover.
 3. PRODUTOS DE USO ORAL SEM "ANTES E DEPOIS" E SEM CLAREAMENTO DE DENTES: Para produtos de uso oral (escova de dentes, irrigador oral, enxaguante bucal, etc.), é EXPRESSAMENTE PROIBIDO mostrar "antes e depois" de clareamento de dentes ou dar a entender que houve clareamento dental. Fazer o vídeo SEM mostrar dentes em close de branqueamento (demonstrar o aparelho na mão, o jato d'água na pia/copo, botões e bicos, com expressão facial espontânea e acolhedora sem focar em dentes clareados).
 4. ROUPAS E VESTUÁRIO 100% FIÉIS: Quando o produto for roupas ou vestuário, a peça precisa ser 100% fiel às fotos de referência no tocante a botões (quantidade, formato, cor), costuras, pespontos, cores, detalhes, caimento e padrão visual. NUNCA inventar botões ou costuras diferentes das fotos.
 5. TAMANHO REAL — PROIBIDO APARENTAR SER MAIOR: O produto NÃO pode aparentar ser maior do que o produto mostrado nas fotos de referência. Manter escala física 100% realista e proporcional às mãos, ao corpo do apresentador e ao cenário.
 6. LAYOUT, CORES E ÂNGULOS VISÍVEIS 100% IDÊNTICOS (PROIBIDO INVENTAR ÂNGULOS OCULTOS): Manter o produto com layout e cores 100% idênticos às fotos de referência. NUNCA criar imagem do produto mostrando ângulos dele que não estejam nas imagens de referência (ou seja, NÃO inventar parte traseira, lateral ou interior do produto). Nunca inventar nenhum detalhe ou parte: mostrar o produto SEMPRE nos ângulos visíveis nas fotos de referência.
+7. PROIBIÇÃO ABSOLUTA DE SITE E CÓDIGO DE BARRAS EM EMBALAGENS/CAIXAS: É TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, domínio, URL (ex.: www..., .com, .com.br, https) ou código de barras/QR code em qualquer caixa, pacote ou embalagem do produto. As caixas, pacotes e embalagens devem ser 100% limpas de sites e códigos de barras!
 ========================`;
 }
 

@@ -619,7 +619,7 @@ REGRA DO PRIMEIRO QUADRO (QUADRO 1 / HOOK DE ATENÇÃO):
 - Se o usuário pedir expressamente nas Instruções Adicionais para mostrar o produto desde o primeiro frame, inclua-o. Caso contrário, o primeiro frame é livre: pode ter ou não ter o produto de acordo com o que criar o melhor hook.
 - Nos demais quadros (Quadros 2 a ${totalScenes}), a presença do produto é OBRIGATÓRIA e deve ser 100% fiel às fotos de referência!
 
-AS 7 REGRAS MANDATÓRIAS DE FIDELIDADE TOTAL AO PRODUTO ANEXADO (TIKTOK SHOP COMPLIANCE ZERO-PUNIÇÃO):
+AS 8 REGRAS MANDATÓRIAS DE FIDELIDADE TOTAL AO PRODUTO ANEXADO (TIKTOK SHOP COMPLIANCE ZERO-PUNIÇÃO):
 1. TRAVA ESTRITA DE QUANTIDADE DE PRODUTO: Em todos os quadros onde o produto for exibido, nunca colocar quantidade diferente do anúncio! Se o anúncio é de 1 celular, relógio ou perfume, NUNCA pode aparecer 2 celulares/relógios/perfumes na tela em nenhum frame. Se o anúncio é kit de 4 pacotes de fraldas, NUNCA pode aparecer 3 ou 5 pacotes na tela em nenhum frame: devem aparecer SEMPRE e RIGOROSAMENTE a quantidade exata (ex.: exatamente 4 pacotes).
 2. LOGOMARCA, NOME DO FABRICANTE E NOME DO PRODUTO: A marca, a logomarca, o emblema/símbolo e o nome do produto que estão impressos, estampados ou gravados no próprio produto nas fotos de referência DEVEM aparecer 100% idênticos (mesmo desenho, formato, cor, proporção e posição exata na peça) em TODOS os quadros onde essa parte estiver visível. JAMAIS remova, apague ou deixe lisa a área onde fica a logomarca original do fabricante no produto!
 3. PRODUTOS DE USO ORAL SEM "ANTES E DEPOIS" E SEM CLAREAMENTO: Para produtos de higiene ou uso oral (escova de dentes, irrigador oral, enxaguante, etc.), fazer o vídeo SEM mostrar dentes em close e SEM dar a entender que houve clareamento dental.
@@ -627,6 +627,7 @@ AS 7 REGRAS MANDATÓRIAS DE FIDELIDADE TOTAL AO PRODUTO ANEXADO (TIKTOK SHOP COM
 5. PROPORÇÃO E TAMANHO REAL (PROIBIDO APARENTAR SER MAIOR): O produto NÃO pode aparentar ser maior do que o produto mostrado nas fotos de referência reais. Manter proporções humanas e escala 100% realistas em relação às mãos e corpo do apresentador.
 6. LAYOUT, CORES E ÂNGULOS VISÍVEIS 100% IDÊNTICOS (PROIBIDO INVENTAR ÂNGULOS OCULTOS): Manter o produto com layout e cores 100% idênticos às fotos de referência. NUNCA criar imagem do produto mostrando ângulos dele que não estejam nas imagens de referência (ou seja, NÃO inventar parte traseira, lateral ou interior do produto). Mostrar o produto SEMPRE nos ângulos visíveis nas fotos de referência.
 7. PRODUTO EM EMBALAGEM FECHADA / PACOTE LACRADO / CAIXA: Se as referências mostram o produto lacrado na embalagem/pacote fechado e NÃO há fotos do item avulso solto fora da embalagem, É EXPRESSAMENTE E TERMINANTEMENTE PROIBIDO inventar, abrir ou desenhar o produto solto fora do pacote. Em TODOS os quadros em que a embalagem for exibida, o que deve ser mostrado e manuseado é o PACOTE/EMBALAGEM/CAIXA FECHADA exatamente como nas fotos reais!
+8. PROIBIÇÃO ABSOLUTA DE SITE E CÓDIGO DE BARRAS EM EMBALAGENS/CAIXAS: É TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, domínio, URL (ex.: www..., .com, .com.br, https) ou código de barras/QR code em qualquer caixa, pacote ou embalagem do produto. As caixas, pacotes e embalagens devem ser 100% limpas de sites e códigos de barras!
 A copy selecionada para este criativo é:
 "${finalCopy}"
 As cenas do storyboard devem ser construídas A PARTIR DESSA COPY. Cada cena deve provar, ilustrar ou reforçar visualmente um trecho da fala.
@@ -641,7 +642,7 @@ ${scenesLines}
 
 Mantenha continuidade de produto, logomarca original do fabricante no produto, personagem, ambiente e iluminação entre as cenas relacionadas. Cada quadro deve parecer uma fotografia real e utilizável como referência de futura animação.
 Adicionar SOMENTE os números 1 a ${totalScenes} em pequenos selos circulares brancos com número preto, no canto superior esquerdo de cada quadro.
-PROIBIÇÃO EXCLUSIVA DE INTERFACE EXTERNA: NÃO adicionar frases flutuantes na tela, legendas, textos publicitários externos, ícone de carrinho de compras, botões, setas, preços, interface de aplicativo, logotipo do TikTok ou de rede social, nome de usuário/@ ou marca d'água externa (mantendo obrigatoriamente a logomarca original do fabricante impressa no próprio produto).`;
+PROIBIÇÃO EXCLUSIVA DE INTERFACE EXTERNA: NÃO adicionar frases flutuantes na tela, legendas, textos publicitários externos, ícone de carrinho de compras, botões, setas, preços, interface de aplicativo, logotipo do TikTok ou de rede social, nome de usuário/@, marca d'água externa, E NUNCA incluir nenhum site (URL) ou código de barras em nenhuma caixa, pacote ou embalagem de produto (mantendo obrigatoriamente a logomarca original do fabricante impressa no próprio produto).`;
 
   return sanitizeStoryboardPromptForFidelity(rawPrompt, productName, productInfo);
 }
@@ -1026,6 +1027,8 @@ NÃO adicionar logotipo flutuante.
 NÃO adicionar nome de usuário, @ ou perfil.
 NÃO adicionar logotipo de nenhuma rede social ou aplicativo.
 NÃO adicionar textos, legendas, números, ícones, botões ou stickers.
+NÃO adicionar site, endereço de site, link, URL ou domínio em caixas, pacotes ou embalagens do produto.
+NÃO adicionar código de barras, barras ou QR code em nenhuma embalagem, pacote ou caixa de produto.
 EXCEÇÃO: a marca, o logo e os textos que já estão impressos no próprio produto (iguais às fotos de referência e ao storyboard) DEVEM aparecer, idênticos, sempre que aquela parte do produto estiver visível.
 
 IMPORTANTE SOBRE A IMAGEM ANEXADA (STORYBOARD DE REFERÊNCIA — ${totalScenes} QUADROS NUMERADOS):
@@ -1100,6 +1103,8 @@ NÃO adicionar interface de aplicativo.
 NÃO adicionar carrinho, ícone de carrinho ou desenho de carrinho.
 NÃO adicionar botão de compra.
 NÃO adicionar stickers.
+NÃO adicionar site, endereço de site, link ou URL em nenhuma embalagem, caixa ou pacote.
+NÃO adicionar código de barras ou QR code em nenhuma caixa, pacote ou embalagem do produto.
 
 ${prioritySection}`;
 
@@ -1345,6 +1350,8 @@ Proibido:
 - Interface de aplicativo.
 - Ícones ou botões de compra.
 - Carrinho de compras desenhado ou sobreposto.
+- Sites, links de internet, URLs ou domínios em caixas, pacotes ou embalagens do produto.
+- Códigos de barras ou QR codes em caixas, pacotes ou embalagens.
 ${speechWordsAudioOnlyLines.join('\n')}
 Exceção: os logotipos, marcas e dados que já estão impressos no próprio produto conforme as referências.
 
@@ -1361,6 +1368,7 @@ ${regrasContinuidadeBody}
 7. Locução ${voiceGender.toLowerCase()} brasileira, contínua e empolgada.
 8. Nenhum texto ou elemento gráfico acrescentado à tela.
 9. Não mostrar a imagem do storyboard no vídeo final.
+10. Nenhuma embalagem, caixa ou pacote deve conter endereços de site (URL) ou códigos de barras/QR code inventados.
 O resultado deve parecer uma gravação autêntica e real, com ${productName} claramente visível e fiel ao produto original.`;
 
   return appendFidelityLockToVeoPrompt(fullPrompt);
@@ -1998,6 +2006,8 @@ AS 6 REGRAS DE OURO MANDATÓRIAS DE COMPLIANCE TIKTOK SHOP (ZERO-PUNIÇÃO):
    - O produto NÃO pode aparentar ser maior do que o tamanho mostrado nas fotos de referência reais. Manter proporções humanas e escala física 100% realistas em relação às mãos, corpo e bancada.
 6. LAYOUT, CORES E ÂNGULOS VISÍVEIS 100% IDÊNTICOS (PROIBIDO INVENTAR ÂNGULOS OCULTOS):
    - Manter o produto com layout e cores 100% idênticos às fotos de referência. NUNCA criar tomadas mostrando ângulos que não estejam nas fotos de referência (ou seja, NÃO inventar traseira, laterais ou interior). Se apenas a frente foi fotografada, manter o produto de frente.
+7. PROIBIÇÃO ABSOLUTA DE SITE E CÓDIGO DE BARRAS EM EMBALAGENS/CAIXAS:
+   - É TERMINANTEMENTE PROIBIDO prever ou gerar qualquer site, link de internet, domínio, URL (ex.: www..., .com, .com.br) ou código de barras/QR code em qualquer caixa, pacote ou embalagem do produto. As caixas, pacotes e embalagens devem ser 100% limpas desses elementos.
 ═══════════════════════════════════════════════════════════════════
 
 REGRA DE OURO INVIOLÁVEL — LOGOMARCA DO FABRICANTE NO PRODUTO vs ELEMENTOS DE REDE SOCIAL:

@@ -29,7 +29,7 @@ function calculateSceneCount(durationSeconds, mode = "veo3_basic_8s") {
   if (d <= 35) return 4;
   return 5;
 }
-var FIDELITY_BLOCK_TEXT = `O produto tem que ser 100% FIEL \xE0s fotos de refer\xEAncia que eu enviei. N\xE3o pode mudar nem 1%: formato, embalagem, r\xF3tulo, materiais, texturas, costuras, tipografia, logotipos, ilustra\xE7\xF5es, detalhes gr\xE1ficos e cores. \xC9 estritamente proibido inventar, alterar, trocar detalhes ou substituir o produto por itens gen\xE9ricos. Se algum detalhe n\xE3o estiver vis\xEDvel na foto, manter simples em vez de alucinar.`;
+var FIDELITY_BLOCK_TEXT = `O produto tem que ser 100% FIEL \xE0s fotos de refer\xEAncia que eu enviei. N\xE3o pode mudar nem 1%: formato, embalagem, r\xF3tulo, materiais, texturas, costuras, tipografia, logotipos, ilustra\xE7\xF5es, detalhes gr\xE1ficos e cores. \xC9 estritamente proibido inventar, alterar, trocar detalhes ou substituir o produto por itens gen\xE9ricos. Se algum detalhe n\xE3o estiver vis\xEDvel na foto, manter simples em vez de alucinar. \xC9 TERMINANTEMENTE PROIBIDO colocar qualquer site/URL ou c\xF3digo de barras/QR code em qualquer caixa, pacote ou embalagem.`;
 
 // src/utils/veoPromptBuilder.ts
 function buildVeoSingleParagraphPrompt(opts) {
@@ -1293,7 +1293,10 @@ Never invent, infer, reconstruct, hallucinate, or reveal any product surface, si
 
 7. CAMERA MOVEMENTS & FIDELITY OVER CREATIVITY:
 Keep the product within the documented viewpoints and visible surfaces of the reference images throughout the entire video. Any camera movement must remain within the visual information established by the references. Prefer static framing, controlled push-ins, controlled pull-backs, or movements that do not reveal unknown surfaces.
-Reference fidelity takes absolute priority over cinematic creativity, camera movement, scene variety, and visual enhancement. Never fabricate visual information about the product.`;
+Reference fidelity takes absolute priority over cinematic creativity, camera movement, scene variety, and visual enhancement. Never fabricate visual information about the product.
+
+8. STRICT NO WEBSITES / URLS & NO BARCODES ON PACKAGING:
+It is STRICTLY FORBIDDEN to show, invent, print, or generate any website URL, domain name (e.g., www, .com, .br, http, web links), barcode lines, or QR codes on any box, carton, pack, wrap, or product packaging. All packages, boxes, and containers must remain completely clean and free of any website addresses and barcodes.`;
 function appendFidelityLockToVeoPrompt(prompt) {
   if (!prompt || typeof prompt !== "string") return prompt || "";
   if (prompt.includes("PRODUCT VISUAL FIDELITY LOCK")) {
@@ -1528,6 +1531,8 @@ AS 6 REGRAS DE OURO MANDAT\xD3RIAS DE COMPLIANCE TIKTOK SHOP (ZERO-PUNI\xC7\xC3O
    - O produto N\xC3O pode aparentar ser maior do que o tamanho mostrado nas fotos de refer\xEAncia reais. Manter propor\xE7\xF5es humanas e escala f\xEDsica 100% realistas em rela\xE7\xE3o \xE0s m\xE3os, corpo e bancada.
 6. LAYOUT, CORES E \xC2NGULOS VIS\xCDVEIS 100% ID\xCANTICOS (PROIBIDO INVENTAR \xC2NGULOS OCULTOS):
    - Manter o produto com layout e cores 100% id\xEAnticos \xE0s fotos de refer\xEAncia. NUNCA criar tomadas mostrando \xE2ngulos que n\xE3o estejam nas fotos de refer\xEAncia (ou seja, N\xC3O inventar traseira, laterais ou interior). Se apenas a frente foi fotografada, manter o produto de frente.
+7. PROIBI\xC7\xC3O ABSOLUTA DE SITE E C\xD3DIGO DE BARRAS EM EMBALAGENS/CAIXAS:
+   - \xC9 TERMINANTEMENTE PROIBIDO prever ou gerar qualquer site, link de internet, dom\xEDnio, URL (ex.: www..., .com, .com.br) ou c\xF3digo de barras/QR code em qualquer caixa, pacote ou embalagem do produto. As caixas, pacotes e embalagens devem ser 100% limpas desses elementos.
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
 
 REGRA DE OURO INVIOL\xC1VEL \u2014 LOGOMARCA DO FABRICANTE NO PRODUTO vs ELEMENTOS DE REDE SOCIAL:
@@ -4935,8 +4940,14 @@ REGRA SAGRADA DE FIDELIDADE AO PRODUTO ANEXADO \u2014 NUNCA INVENTAR PARTES N\xC
 2. REGRA DE EMBALAGEM / PACOTE FECHADO / CAIXA: Se as fotos de refer\xEAncia mostram o produto lacrado em sua embalagem original, pacote fechado ou caixa (exemplo: pacotes de fraldas fechados, pote fechado, caixa lacrada) e N\xC3O h\xE1 fotos do item avulso fora da embalagem, \xC9 EXPRESSAMENTE E TERMINANTEMENTE PROIBIDO inventar, abrir ou desenhar o produto solto fora da embalagem (exemplo: NUNCA desenhe uma fralda aberta se o usu\xE1rio enviou fotos dos pacotes de fraldas fechados). Em TODOS os quadros, o que deve ser mostrado e manuseado \xE9 o PACOTE/EMBALAGEM/CAIXA FECHADA exatamente como nas fotos reais!
 3. \xC2NGULOS E DETALHES N\xC3O VIS\xCDVEIS: \xC9 terminantemente proibido inventar outro lado, bot\xF5es, acess\xF3rios ou partes traseiras que n\xE3o estejam vis\xEDveis nas fotos de refer\xEAncia anexadas.
 ========================`;
+    const noBarcodeUrlDirective = `
+
+========================
+PROIBI\xC7\xC3O ABSOLUTA DE SITE E C\xD3DIGO DE BARRAS EM EMBALAGENS:
+\xC9 TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, dom\xEDnio, URL (ex.: www..., .com, .com.br, https) ou c\xF3digo de barras/QR code em qualquer caixa, pacote ou embalagem do produto. As caixas, pacotes e embalagens devem ser 100% limpas de sites e c\xF3digos de barras!
+========================`;
     const sanitizedPrompt = sanitizeStoryboardPromptForFidelity(promptStr, productName, productInfo);
-    const baseWithLogo = `${sanitizedPrompt}${logoEnforcementBlock}${packagingFidelityDirective}`;
+    const baseWithLogo = `${sanitizedPrompt}${logoEnforcementBlock}${packagingFidelityDirective}${noBarcodeUrlDirective}`;
     const effectivePrompt = correctionPrompt && correctionPrompt.trim() ? `${baseWithLogo}
 
 ========================
@@ -5046,6 +5057,7 @@ ${correctionPrompt.trim()}
 ${variationInstructionRule}
 - REGRA SAGRADA DE EMBALAGEM FECHADA / PACOTES LACRADOS (TIKTOK COMPLIANCE): Se as fotos de refer\xEAncia mostram pacotes fechados, caixas ou embalagens lacradas (ex.: pacotes de fraldas fechados), NUNCA desenhe pacotes abertos, produtos soltos fora da embalagem (como fraldas avulsas soltas) ou testes com l\xEDquidos/\xE1gua. Desenhe e mostre EXCLUSIVAMENTE os pacotes fechados id\xEAnticos \xE0s fotos em todos os quadros!
 - LOGOMARCA E MARCA DO FABRICANTE NO PRODUTO (OBRIGAT\xD3RIO): A marca, a logomarca, o emblema e os textos que j\xE1 est\xE3o impressos/estampados no pr\xF3prio produto nas fotos de refer\xEAncia DEVEM aparecer 100% id\xEAnticos, na mesma cor e no mesmo lugar da pe\xE7a, em todos os quadros em que aquela parte estiver vis\xEDvel. JAMAIS remova ou alise a logomarca do produto!
+- PROIBI\xC7\xC3O ABSOLUTA DE SITE E C\xD3DIGO DE BARRAS: \xC9 TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, URL (ex.: www..., .com) ou c\xF3digo de barras/QR code em qualquer caixa, pacote ou embalagem de produto. Todas as caixas e embalagens devem ser totalmente limpas de sites e c\xF3digos de barras.
 - ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: N\xE3o adicione legendas flutuantes, textos publicit\xE1rios externos, pre\xE7os, setas, carrinho de compras, marca d'\xE1gua externa, @ ou logotipo do TikTok. Apenas os n\xFAmeros 1 a ${frameCount} nos selos circulares e a logomarca original do fabricante no pr\xF3prio produto.`;
         const geminiAspectRatio = isLandscapeStoryboard ? "16:9" : "9:16";
         const modelsToTry = [
@@ -5269,6 +5281,8 @@ PASSO 2 \u2014 REGRAS DE OURO DA FISCALIZA\xC7\xC3O POR QUADRANTE (CENA 1 A CENA
      * O produto N\xC3O pode aparentar ser maior do que o produto mostrado nas fotos de refer\xEAncia reais.
    - \xC2NGULOS VIS\xCDVEIS:
      * O produto deve ser mostrado apenas nos \xE2ngulos vis\xEDveis nas refer\xEAncias. \xC9 proibido inventar traseira, laterais ou interior n\xE3o fotografados.
+   - SITES E C\xD3DIGO DE BARRAS EM EMBALAGENS:
+     * \xC9 TERMINANTEMENTE PROIBIDO aparecer site, URL (ex.: www..., .com) ou c\xF3digo de barras/QR code em caixas, pacotes ou embalagens. Se aparecer site ou c\xF3digo de barras na embalagem em qualquer quadrante, marque score < 60 e aponte no issue: "Na Cena X, a embalagem cont\xE9m site ou c\xF3digo de barras desenhado, o que \xE9 proibido."
 3. ESCALA INTEIRA DE NOTAS DE CADA QUADRANTE (0 a 100 \u2014 NUNCA use decimais de 0 a 1):
    - 90 a 100 (VERDE): Produto 90%+ id\xEAntico a qualquer uma das fotos/varia\xE7\xF5es de refer\xEAncia anexadas (logomarca original presente e fiel quando a \xE1rea aparece, quantidade exata, propor\xE7\xE3o realista e sem inven\xE7\xF5es).
    - 71 a 89 (AMARELO): Produto com pequena varia\xE7\xE3o leve de detalhe secund\xE1rio.
