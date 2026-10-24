@@ -538,16 +538,15 @@ Retorne estritamente um JSON estruturado:
       ? `CRITICAL ANTI-VIOLATION DIRECTIVE: Do NOT copy or clone the face of the actor from the reference video. Generate an original commercial model with a DIFFERENT FACE and distinct facial features (similar demographic style like a cousin, but strictly a different person) to prevent TikTok copyright/impersonation strikes.`
       : '';
 
-    const colorClarityDirective = `CRITICAL COLOR BALANCE & CLARITY CALIBRATION (ANTI-YELLOWING & ZERO OPACITY):
-- Clean 5500K neutral daylight white balance with crisp, pure whites.
-- STRICTLY ZERO warm yellow cast, ZERO amber tint, ZERO sepia tone, and ZERO dim yellow incandescent lighting.
-- High-end flagship smartphone camera quality: punchy commercial contrast, deep clean blacks, vibrant realistic colors matching reference photos, and crystal-clear definition.
-- STRICTLY ZERO milky, hazy, faded, washed-out, or flat matte opacity.`;
+    const opticalClarityDirective = `CRITICAL OPTICAL CLARITY & HIGH-DEFINITION SENSOR CALIBRATION:
+- Modern high-end smartphone camera clarity: crystal-clear optical glass lens, razor-sharp focus and rich texture definition.
+- SCENARIO-ACCURATE LIGHTING & ATMOSPHERE: The lighting, atmosphere and color temperature must authentically adapt to the specific scene in the prompt (e.g., candlelight, romantic evening, cozy home, or bright daylight).
+- STRICTLY PROHIBITED: Pale, washed-out, milky, hazy, or muddy look; NO plastic film/veil overlay effect across the lens; NO muddy yellowish plastic cast over the frame. Deliver vivid, rich colors, crisp authentic contrast, and clean sensor optics.`;
 
     // Prioriza correções de auditoria e instruções adicionais sobre o prompt universal já formatado
     const overrides = [
       modelAntiViolationDirective,
-      colorClarityDirective,
+      opticalClarityDirective,
       correctionPrompt && `CRITICAL QUALITY OVERRIDE: ${correctionPrompt.trim()}`,
       additionalInstructions && `USER DIRECTIVE: ${additionalInstructions.trim()}`,
     ].filter(Boolean).join('\n');

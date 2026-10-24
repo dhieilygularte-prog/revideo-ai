@@ -1825,10 +1825,10 @@ DIRETIVA MESTRE 2 (AÇÃO EXCLUSIVA): A ÚNICA modificação permitida em toda a
 DIRETIVA MESTRE 3: ZERO TATUAGENS. Pele 100% limpa, sem qualquer tatuagem em homem ou mulher.`
       : `VOCÊ É O MOTOR DE GERAÇÃO VISUAL DO REVÍDEO AI (PADRÃO TIKTOK SHOP BRASIL).
 - Máxima fidelidade 1:1 física ao produto real das fotos de referência.
-- Fotografia ultra-realista de smartphone moderno topo de linha com iluminação clara de luz do dia neutra 5500K, cores vibrantes e alto contraste.
-- ZERO TOM AMARELADO OU OPACIDADE: balanço de branco neutro limpo, sem filtros amarelos, sépia ou névoa opaca/leitosa.
+- Fotografia ultra-realista de smartphone moderno topo de linha com iluminação autêntica e adaptada ao cenário do prompt.
+- ZERO PELÍCULA PLÁSTICA/OPACIDADE: foco nítido, cores ricas e fiéis, contraste autêntico, sem película plástica opaca por cima, sem névoa leitosa e sem palidez desbotada.
 - Retratar pessoas brasileiras autênticas do dia a dia (sem supermodelos inalcançáveis).
-- Cenários autênticos, claros e bem iluminados conforme especificado pelo storyboard do vídeo.
+- Cenários autênticos conforme especificado pelo storyboard do vídeo.
 - Consistência de modelo humano sem repetir a mesma pose ou cenário se o roteiro mudar de lugar.
 - Zero tatuagens na pele. Enquadramento do pescoço para baixo quando solicitado.`;
 
@@ -2983,7 +2983,7 @@ DURAÇÃO MÁXIMA DO VÍDEO: ${duration} segundos. Limite estrito: até ${maxLim
 - Modo de fala: ${speechMode} (locução RÁPIDA E EUFÓRICA, com tom animado como se estivesse contando uma novidade imperdível)
 - Regra de frete grátis: NUNCA mencione "frete grátis" ou "frete gratuito" na fala, a menos que isso tenha sido informado diretamente nas informações do produto.
 - Enquadramento: ${framing}
-- Cenário: ${scenario === 'padrao_uso' ? 'Cenário padrão de uso real do produto' : 'Em casa (ambiente brasileiro bem iluminado com luz do dia limpa)'}
+- Cenário: ${scenario === 'padrao_uso' ? 'Cenário padrão de uso real do produto' : 'Em casa (casa brasileira simples e aconchegante)'}
 - Instruções adicionais prioritárias: ${additionalInstructions || 'Nenhuma'}${variationsClause}
 
 Retorne APENAS um objeto JSON válido com as chaves:
@@ -3250,9 +3250,9 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
 
     const noBarcodeUrlDirective = `\n\n========================\nPROIBIÇÃO ABSOLUTA DE SITE E CÓDIGO DE BARRAS EM EMBALAGENS:\nÉ TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, domínio, URL (ex.: www..., .com, .com.br, https) ou código de barras/QR code em qualquer caixa, pacote ou embalagem do produto. As caixas, pacotes e embalagens devem ser 100% limpas de sites e códigos de barras!\n========================`;
 
-    const colorClarityDirective = `\n\n========================\nDIRETRIZ CRÍTICA DE COR, ILUMINAÇÃO E NITIDEZ (ANTI-AMARELADO E ZERO OPACIDADE):\n1. BALANÇO DE BRANCO 5500K NEUTRO E LIMPO: Iluminação de luz do dia clara, arejada e translúcida. O fundo branco deve ser branco puro (#FFFFFF). Paredes, embalagens e bordas com branco verdadeiro.\n2. ZERO TOM AMARELADO/ÂMBAR/SÉPIA: É terminantemente proibido qualquer tom amarelado, iluminação incandescente amarela fraca ou filtro quente envelhecido.\n3. ZERO OPACIDADE, NÉVOA OU ASPECTO LEITOSO: Contraste nítido e comercial, pretos profundos e limpos, cores vivas e vibrantes idênticas às fotos de referência.\n4. QUALIDADE DE CÂMERA DE SMARTPHONE TOPO DE LINHA: Sensor moderno de alta definição com riqueza de detalhes, sem aspecto embaçado ou de celular de baixa qualidade.\n========================`;
+    const opticalClarityDirective = `\n\n========================\nDIRETRIZ CRÍTICA DE NITIDEZ ÓPTICA E ZERO PELÍCULA PLÁSTICA/OPACIDADE:\n1. NITIDEZ DE CÂMERA DE SMARTPHONE MODERNO TOPO DE LINHA: Imagem nítida, sensor de alta definição e foco cristalino, retratando a cena com máxima naturalidade e realismo.\n2. ZERO PELÍCULA PLÁSTICA, ZERO OPACIDADE E ZERO PALIDEZ: É terminantemente proibido imagem com aspecto de plástico/filme fosco ou amarelado por cima, névoa leitosa, véu esbranquiçado ou cores pálidas/desbotadas. A imagem deve ter riqueza ótica, contraste autêntico e cores vivas e fiéis.\n3. ILUMINAÇÃO DINÂMICA FIEL AO PROMPT: A iluminação, temperatura de cor e atmosfera devem se adaptar com perfeição à cena e ao cenário especificados no prompt (luz do dia, luz de velas, noite, ambiente interno simples e acolhedor, etc.).\n========================`;
 
-    const baseWithLogo = `${prompt}${logoEnforcementBlock}${noBarcodeUrlDirective}${colorClarityDirective}`;
+    const baseWithLogo = `${prompt}${logoEnforcementBlock}${noBarcodeUrlDirective}${opticalClarityDirective}`;
     const effectivePrompt = correctionPrompt && correctionPrompt.trim()
       ? `${baseWithLogo}\n\n========================\nCORREÇÃO OBRIGATÓRIA DE AUDITORIA DE FIDELIDADE DOS 9 QUADRANTES:\n${correctionPrompt.trim()}\n========================`
       : baseWithLogo;
@@ -3375,7 +3375,7 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
 ${variationInstructionRule}
 - LOGOMARCA E MARCA DO FABRICANTE NO PRODUTO (OBRIGATÓRIO): A marca, a logomarca, o emblema e os textos que já estão impressos/estampados no próprio produto nas fotos de referência DEVEM aparecer 100% idênticos, na mesma cor e no mesmo lugar da peça, em todos os quadros em que aquela parte estiver visível. JAMAIS remova ou alise a logomarca do produto!
 - PROIBIÇÃO ABSOLUTA DE SITE E CÓDIGO DE BARRAS: É TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, URL (ex.: www..., .com) ou código de barras/QR code em qualquer caixa, pacote ou embalagem de produto. Todas as caixas e embalagens devem ser totalmente limpas de sites e códigos de barras.
-- BALANÇO DE BRANCO 5500K NEUTRO E ALTA NITIDEZ (ZERO AMARELADO E ZERO OPACIDADE): Fundo branco puro (#FFFFFF), iluminação de luz do dia clara e arejada, balanço de branco neutro 5500K. É terminantemente PROIBIDO qualquer tom amarelado, âmbar ou sépia, e terminantemente PROIBIDO aspecto opaco, leitoso ou desbotado. Cores vivas e fiéis, pretos limpos e contraste nítido de smartphone topo de linha.
+- NITIDEZ ÓPTICA E ZERO PELÍCULA PLÁSTICA/OPACIDADE: Fundo branco puro (#FFFFFF) nas bordas divisórias do storyboard. Sensor moderno de smartphone topo de linha com lente limpa e alta definição. É terminantemente PROIBIDO qualquer aspecto de película plástica opaca por cima da imagem, névoa leitosa ou palidez desbotada. A iluminação e a atmosfera devem se adaptar fielmente ao cenário e à cena descrita no prompt.
 - ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: Não adicione legendas flutuantes, textos publicitários externos, preços, setas, carrinho de compras, marca d'água externa, @ ou logotipo do TikTok. Apenas os números 1 a 9 nos selos circulares e a logomarca original do fabricante no próprio produto.`;
 
         const modelsToTry = [
