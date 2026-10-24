@@ -887,8 +887,14 @@ Retorne estritamente um JSON estruturado:
       if (p && !allPhotos.includes(p)) allPhotos.push(p);
     });
     const modelAntiViolationDirective = !hasUserProvidedModel && !modelReferenceBase64 ? `CRITICAL ANTI-VIOLATION DIRECTIVE: Do NOT copy or clone the face of the actor from the reference video. Generate an original commercial model with a DIFFERENT FACE and distinct facial features (similar demographic style like a cousin, but strictly a different person) to prevent TikTok copyright/impersonation strikes.` : "";
+    const colorClarityDirective = `CRITICAL COLOR BALANCE & CLARITY CALIBRATION (ANTI-YELLOWING & ZERO OPACITY):
+- Clean 5500K neutral daylight white balance with crisp, pure whites.
+- STRICTLY ZERO warm yellow cast, ZERO amber tint, ZERO sepia tone, and ZERO dim yellow incandescent lighting.
+- High-end flagship smartphone camera quality: punchy commercial contrast, deep clean blacks, vibrant realistic colors matching reference photos, and crystal-clear definition.
+- STRICTLY ZERO milky, hazy, faded, washed-out, or flat matte opacity.`;
     const overrides = [
       modelAntiViolationDirective,
+      colorClarityDirective,
       correctionPrompt && `CRITICAL QUALITY OVERRIDE: ${correctionPrompt.trim()}`,
       additionalInstructions && `USER DIRECTIVE: ${additionalInstructions.trim()}`
     ].filter(Boolean).join("\n");
@@ -1586,7 +1592,7 @@ E retornar um JSON estrito com:
      * Para a cor, cite explicitamente: "Varia\xE7\xF5es oficiais de cor: o produto possui as varia\xE7\xF5es informadas ([listar todas]), todas corretas e representadas fielmente nos seus respectivos quadros do storyboard".
 4. "avatarDescription": descri\xE7\xE3o de 1 frase do consumidor brasileiro adulto que apresenta o produto (respeitando o g\xEAnero do Influencer e as Instru\xE7\xF5es Adicionais; se produto infantil, quem apresenta na cena 1 e 9 \xE9 sempre um adulto pai/m\xE3e).
 5. "scenarioDescription":
-   - Se o usu\xE1rio escolheu "em_casa" ("Em casa"): "casa brasileira simples e aconchegante, [c\xF4modo adequado ao produto]".
+   - Se o usu\xE1rio escolheu "em_casa" ("Em casa"): "casa brasileira aconchegante e bem iluminada com luz natural limpa, [c\xF4modo adequado ao produto]".
    - Se o usu\xE1rio escolheu "padrao_uso" ("Cen\xE1rio padr\xE3o de uso"): descreva o LUGAR REAL onde o produto \xE9 usado, SEM mencionar "casa", "caseiro" ou "casa brasileira" (ex.: academia ou espa\xE7o de treino para banco de exerc\xEDcios; jardim gramado ao ar livre para cortador de grama; margem de represa para vara de pesca; interior de um carro para som automotivo; rua/parque em corrida ao ar livre para t\xEAnis).
    - Se o usu\xE1rio escreveu um local nas Instru\xE7\xF5es adicionais (ex.: "na praia"), essa instru\xE7\xE3o tem prioridade.
 6. "visualMap": array de 4 objetos { "excerpt", "intent", "visualProof", "scenes" } mapeando os trechos da copy para provas visuais nas cenas 1 a 9.
@@ -4628,7 +4634,7 @@ DURA\xC7\xC3O M\xC1XIMA DO V\xCDDEO: ${duration} segundos. Limite estrito: at\xE
 - Regra de frete gr\xE1tis: NUNCA mencione "frete gr\xE1tis" ou "frete gratuito" na fala, a menos que isso tenha sido informado diretamente nas informa\xE7\xF5es do produto.
 - Regra do primeiro quadro (Quadro 1 / Hook): O produto N\xC3O \xE9 obrigat\xF3rio no primeiro frame/cena 1 (est\xE1 100% liberado para ser um hook chamativo de rea\xE7\xE3o, express\xE3o de impacto, problema ou curiosidade sem o produto, salvo se o usu\xE1rio pedir explicitamente para mostrar o produto desde o in\xEDcio nas instru\xE7\xF5es adicionais). J\xE1 nos outros quadros (Cenas 2 em diante), a presen\xE7a do produto \xE9 estritamente obrigat\xF3ria e 100% fiel!
 - Enquadramento: ${framing}
-- Cen\xE1rio: ${scenario === "padrao_uso" ? "Cen\xE1rio padr\xE3o de uso real do produto" : "Em casa (casa brasileira simples e aconchegante)"}
+- Cen\xE1rio: ${scenario === "padrao_uso" ? "Cen\xE1rio padr\xE3o de uso real do produto" : "Em casa (ambiente brasileiro bem iluminado com luz do dia limpa)"}
 - Instru\xE7\xF5es adicionais priorit\xE1rias: ${additionalInstructions || "Nenhuma"}${variationsClause}${twoScenesContinuityClause}
 
 Retorne APENAS um objeto JSON v\xE1lido com as chaves:
@@ -4946,8 +4952,17 @@ REGRA SAGRADA DE FIDELIDADE AO PRODUTO ANEXADO \u2014 NUNCA INVENTAR PARTES N\xC
 PROIBI\xC7\xC3O ABSOLUTA DE SITE E C\xD3DIGO DE BARRAS EM EMBALAGENS:
 \xC9 TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, dom\xEDnio, URL (ex.: www..., .com, .com.br, https) ou c\xF3digo de barras/QR code em qualquer caixa, pacote ou embalagem do produto. As caixas, pacotes e embalagens devem ser 100% limpas de sites e c\xF3digos de barras!
 ========================`;
+    const colorClarityDirective = `
+
+========================
+DIRETRIZ CR\xCDTICA DE COR, ILUMINA\xC7\xC3O E NITIDEZ (ANTI-AMARELADO E ZERO OPACIDADE):
+1. BALAN\xC7O DE BRANCO 5500K NEUTRO E LIMPO: Ilumina\xE7\xE3o de luz do dia clara, arejada e transl\xFAcida. O fundo branco deve ser branco puro (#FFFFFF). Paredes, embalagens e bordas com branco verdadeiro.
+2. ZERO TOM AMARELADO/\xC2MBAR/S\xC9PIA: \xC9 terminantemente proibido qualquer tom amarelado, ilumina\xE7\xE3o incandescente amarela fraca ou filtro quente envelhecido.
+3. ZERO OPACIDADE, N\xC9VOA OU ASPECTO LEITOSO: Contraste n\xEDtido e comercial, pretos profundos e limpos, cores vivas e vibrantes id\xEAnticas \xE0s fotos de refer\xEAncia.
+4. QUALIDADE DE C\xC2MERA DE SMARTPHONE TOPO DE LINHA: Sensor moderno de alta defini\xE7\xE3o com riqueza de detalhes, sem aspecto emba\xE7ado ou de celular de baixa qualidade.
+========================`;
     const sanitizedPrompt = sanitizeStoryboardPromptForFidelity(promptStr, productName, productInfo);
-    const baseWithLogo = `${sanitizedPrompt}${logoEnforcementBlock}${packagingFidelityDirective}${noBarcodeUrlDirective}`;
+    const baseWithLogo = `${sanitizedPrompt}${logoEnforcementBlock}${packagingFidelityDirective}${noBarcodeUrlDirective}${colorClarityDirective}`;
     const effectivePrompt = correctionPrompt && correctionPrompt.trim() ? `${baseWithLogo}
 
 ========================
@@ -5046,18 +5061,20 @@ ${correctionPrompt.trim()}
 - Gere UMA IMAGEM FOTOGR\xC1FICA HORIZONTAL 16:9 (1920x1080) composta por exatamente 3 quadros verticais de propor\xE7\xE3o aproximada 9:16, organizados lado a lado da esquerda para a direita (Quadro A \xE0 esquerda, Quadro B no centro, Quadro C \xE0 direita).
 - Os tr\xEAs quadros devem representar instantes sucessivos de uma a\xE7\xE3o cont\xEDnua da mesma personagem, mesmo produto e mesmo ambiente.
 - SEM N\xDAMEROS, SEM BAL\xD5ES E SEM TEXTOS: \xC9 terminantemente proibido colocar letras A/B/C sobre a imagem, n\xFAmeros, legendas, t\xEDtulos, bal\xF5es ou marcas d'\xE1gua.
-- Fotografia ultrarrealista com textura de pele natural, ilumina\xE7\xE3o de smartphone e cen\xE1rio brasileiro cotidiano.
+- Fotografia ultrarrealista com textura de pele natural, c\xE2mera de smartphone topo de linha com ilumina\xE7\xE3o clara de luz do dia neutra 5500K e cen\xE1rio brasileiro cotidiano bem iluminado.
+- ZERO TOM AMARELADO/OPACIDADE: balan\xE7o de branco neutro, cores vivas e fi\xE9is, alto contraste n\xEDtido, sem filtros amarelos ou n\xE9voa leitosa.
 - Fidelidade absoluta \xE0s fotos reais do produto. Se as fotos mostram pacotes fechados, mantenha sempre a embalagem fechada sem abrir ou inventar itens soltos.` : isLeilaoMode ? `VOC\xCA \xC9 O GERADOR VISUAL DO MODO LEIL\xC3O.
 - Gere UMA \xDANICA IMAGEM VERTICAL 9:16 (1080x1920), fotorrealista.
 - SEM N\xDAMEROS DE QUADRO, sem faixas brancas e sem legendas sobrepostas.
 - Enquadramento vertical 9:16 cinematogr\xE1fico de alta qualidade comercial.
 - Fidelidade absoluta \xE0s fotos reais do produto em todos os detalhes. Se o produto estiver em embalagem fechada, mantenha sempre o pacote fechado sem abrir ou inventar itens soltos.` : `VOC\xCA \xC9 O GERADOR DE STORYBOARD DO MODO PRODUTOS 2.0.
 - Gere UMA \xDANICA IMAGEM VERTICAL 9:16 (1080x1920) contendo uma grade ${gridLabel} com EXATAMENTE ${frameCount} quadros fotogr\xE1ficos ultra-realistas numerados de 1 a ${frameCount} (selo circular branco pequeno no canto superior esquerdo de cada quadro com n\xFAmero preto).
-- Cantos arredondados nos quadros, separados por uma borda branca fina, sobre fundo branco.
+- Cantos arredondados nos quadros, separados por uma borda branca fina, sobre fundo branco puro (#FFFFFF).
 ${variationInstructionRule}
 - REGRA SAGRADA DE EMBALAGEM FECHADA / PACOTES LACRADOS (TIKTOK COMPLIANCE): Se as fotos de refer\xEAncia mostram pacotes fechados, caixas ou embalagens lacradas (ex.: pacotes de fraldas fechados), NUNCA desenhe pacotes abertos, produtos soltos fora da embalagem (como fraldas avulsas soltas) ou testes com l\xEDquidos/\xE1gua. Desenhe e mostre EXCLUSIVAMENTE os pacotes fechados id\xEAnticos \xE0s fotos em todos os quadros!
 - LOGOMARCA E MARCA DO FABRICANTE NO PRODUTO (OBRIGAT\xD3RIO): A marca, a logomarca, o emblema e os textos que j\xE1 est\xE3o impressos/estampados no pr\xF3prio produto nas fotos de refer\xEAncia DEVEM aparecer 100% id\xEAnticos, na mesma cor e no mesmo lugar da pe\xE7a, em todos os quadros em que aquela parte estiver vis\xEDvel. JAMAIS remova ou alise a logomarca do produto!
 - PROIBI\xC7\xC3O ABSOLUTA DE SITE E C\xD3DIGO DE BARRAS: \xC9 TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, URL (ex.: www..., .com) ou c\xF3digo de barras/QR code em qualquer caixa, pacote ou embalagem de produto. Todas as caixas e embalagens devem ser totalmente limpas de sites e c\xF3digos de barras.
+- BALAN\xC7O DE BRANCO 5500K NEUTRO E ALTA NITIDEZ (ZERO AMARELADO E ZERO OPACIDADE): Fundo branco puro (#FFFFFF), ilumina\xE7\xE3o de luz do dia clara e arejada, balan\xE7o de branco neutro 5500K. \xC9 terminantemente PROIBIDO qualquer tom amarelado, \xE2mbar ou s\xE9pia, e terminantemente PROIBIDO aspecto opaco, leitoso ou desbotado. Cores vivas e fi\xE9is, pretos limpos e contraste n\xEDtido de smartphone topo de linha.
 - ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: N\xE3o adicione legendas flutuantes, textos publicit\xE1rios externos, pre\xE7os, setas, carrinho de compras, marca d'\xE1gua externa, @ ou logotipo do TikTok. Apenas os n\xFAmeros 1 a ${frameCount} nos selos circulares e a logomarca original do fabricante no pr\xF3prio produto.`;
         const geminiAspectRatio = isLandscapeStoryboard ? "16:9" : "9:16";
         const modelsToTry = [

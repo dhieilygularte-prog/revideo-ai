@@ -3334,7 +3334,7 @@ DURAÇÃO MÁXIMA DO VÍDEO: ${duration} segundos. Limite estrito: até ${maxLim
 - Regra de frete grátis: NUNCA mencione "frete grátis" ou "frete gratuito" na fala, a menos que isso tenha sido informado diretamente nas informações do produto.
 - Regra do primeiro quadro (Quadro 1 / Hook): O produto NÃO é obrigatório no primeiro frame/cena 1 (está 100% liberado para ser um hook chamativo de reação, expressão de impacto, problema ou curiosidade sem o produto, salvo se o usuário pedir explicitamente para mostrar o produto desde o início nas instruções adicionais). Já nos outros quadros (Cenas 2 em diante), a presença do produto é estritamente obrigatória e 100% fiel!
 - Enquadramento: ${framing}
-- Cenário: ${scenario === 'padrao_uso' ? 'Cenário padrão de uso real do produto' : 'Em casa (casa brasileira simples e aconchegante)'}
+- Cenário: ${scenario === 'padrao_uso' ? 'Cenário padrão de uso real do produto' : 'Em casa (ambiente brasileiro bem iluminado com luz do dia limpa)'}
 - Instruções adicionais prioritárias: ${additionalInstructions || 'Nenhuma'}${variationsClause}${twoScenesContinuityClause}
 
 Retorne APENAS um objeto JSON válido com as chaves:
@@ -3706,8 +3706,10 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
 
     const noBarcodeUrlDirective = `\n\n========================\nPROIBIÇÃO ABSOLUTA DE SITE E CÓDIGO DE BARRAS EM EMBALAGENS:\nÉ TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, domínio, URL (ex.: www..., .com, .com.br, https) ou código de barras/QR code em qualquer caixa, pacote ou embalagem do produto. As caixas, pacotes e embalagens devem ser 100% limpas de sites e códigos de barras!\n========================`;
 
+    const colorClarityDirective = `\n\n========================\nDIRETRIZ CRÍTICA DE COR, ILUMINAÇÃO E NITIDEZ (ANTI-AMARELADO E ZERO OPACIDADE):\n1. BALANÇO DE BRANCO 5500K NEUTRO E LIMPO: Iluminação de luz do dia clara, arejada e translúcida. O fundo branco deve ser branco puro (#FFFFFF). Paredes, embalagens e bordas com branco verdadeiro.\n2. ZERO TOM AMARELADO/ÂMBAR/SÉPIA: É terminantemente proibido qualquer tom amarelado, iluminação incandescente amarela fraca ou filtro quente envelhecido.\n3. ZERO OPACIDADE, NÉVOA OU ASPECTO LEITOSO: Contraste nítido e comercial, pretos profundos e limpos, cores vivas e vibrantes idênticas às fotos de referência.\n4. QUALIDADE DE CÂMERA DE SMARTPHONE TOPO DE LINHA: Sensor moderno de alta definição com riqueza de detalhes, sem aspecto embaçado ou de celular de baixa qualidade.\n========================`;
+
     const sanitizedPrompt = sanitizeStoryboardPromptForFidelity(promptStr, productName, productInfo);
-    const baseWithLogo = `${sanitizedPrompt}${logoEnforcementBlock}${packagingFidelityDirective}${noBarcodeUrlDirective}`;
+    const baseWithLogo = `${sanitizedPrompt}${logoEnforcementBlock}${packagingFidelityDirective}${noBarcodeUrlDirective}${colorClarityDirective}`;
     const effectivePrompt = correctionPrompt && correctionPrompt.trim()
       ? `${baseWithLogo}\n\n========================\nCORREÇÃO OBRIGATÓRIA DE AUDITORIA DE FIDELIDADE DOS ${frameCount} QUADRANTES:\n${correctionPrompt.trim()}\n========================`
       : baseWithLogo;
@@ -3848,7 +3850,8 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
 - Gere UMA IMAGEM FOTOGRÁFICA HORIZONTAL 16:9 (1920x1080) composta por exatamente 3 quadros verticais de proporção aproximada 9:16, organizados lado a lado da esquerda para a direita (Quadro A à esquerda, Quadro B no centro, Quadro C à direita).
 - Os três quadros devem representar instantes sucessivos de uma ação contínua da mesma personagem, mesmo produto e mesmo ambiente.
 - SEM NÚMEROS, SEM BALÕES E SEM TEXTOS: É terminantemente proibido colocar letras A/B/C sobre a imagem, números, legendas, títulos, balões ou marcas d'água.
-- Fotografia ultrarrealista com textura de pele natural, iluminação de smartphone e cenário brasileiro cotidiano.
+- Fotografia ultrarrealista com textura de pele natural, câmera de smartphone topo de linha com iluminação clara de luz do dia neutra 5500K e cenário brasileiro cotidiano bem iluminado.
+- ZERO TOM AMARELADO/OPACIDADE: balanço de branco neutro, cores vivas e fiéis, alto contraste nítido, sem filtros amarelos ou névoa leitosa.
 - Fidelidade absoluta às fotos reais do produto. Se as fotos mostram pacotes fechados, mantenha sempre a embalagem fechada sem abrir ou inventar itens soltos.`
           : isLeilaoMode
           ? `VOCÊ É O GERADOR VISUAL DO MODO LEILÃO.
@@ -3858,11 +3861,12 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
 - Fidelidade absoluta às fotos reais do produto em todos os detalhes. Se o produto estiver em embalagem fechada, mantenha sempre o pacote fechado sem abrir ou inventar itens soltos.`
           : `VOCÊ É O GERADOR DE STORYBOARD DO MODO PRODUTOS 2.0.
 - Gere UMA ÚNICA IMAGEM VERTICAL 9:16 (1080x1920) contendo uma grade ${gridLabel} com EXATAMENTE ${frameCount} quadros fotográficos ultra-realistas numerados de 1 a ${frameCount} (selo circular branco pequeno no canto superior esquerdo de cada quadro com número preto).
-- Cantos arredondados nos quadros, separados por uma borda branca fina, sobre fundo branco.
+- Cantos arredondados nos quadros, separados por uma borda branca fina, sobre fundo branco puro (#FFFFFF).
 ${variationInstructionRule}
 - REGRA SAGRADA DE EMBALAGEM FECHADA / PACOTES LACRADOS (TIKTOK COMPLIANCE): Se as fotos de referência mostram pacotes fechados, caixas ou embalagens lacradas (ex.: pacotes de fraldas fechados), NUNCA desenhe pacotes abertos, produtos soltos fora da embalagem (como fraldas avulsas soltas) ou testes com líquidos/água. Desenhe e mostre EXCLUSIVAMENTE os pacotes fechados idênticos às fotos em todos os quadros!
 - LOGOMARCA E MARCA DO FABRICANTE NO PRODUTO (OBRIGATÓRIO): A marca, a logomarca, o emblema e os textos que já estão impressos/estampados no próprio produto nas fotos de referência DEVEM aparecer 100% idênticos, na mesma cor e no mesmo lugar da peça, em todos os quadros em que aquela parte estiver visível. JAMAIS remova ou alise a logomarca do produto!
 - PROIBIÇÃO ABSOLUTA DE SITE E CÓDIGO DE BARRAS: É TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, URL (ex.: www..., .com) ou código de barras/QR code em qualquer caixa, pacote ou embalagem de produto. Todas as caixas e embalagens devem ser totalmente limpas de sites e códigos de barras.
+- BALANÇO DE BRANCO 5500K NEUTRO E ALTA NITIDEZ (ZERO AMARELADO E ZERO OPACIDADE): Fundo branco puro (#FFFFFF), iluminação de luz do dia clara e arejada, balanço de branco neutro 5500K. É terminantemente PROIBIDO qualquer tom amarelado, âmbar ou sépia, e terminantemente PROIBIDO aspecto opaco, leitoso ou desbotado. Cores vivas e fiéis, pretos limpos e contraste nítido de smartphone topo de linha.
 - ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: Não adicione legendas flutuantes, textos publicitários externos, preços, setas, carrinho de compras, marca d'água externa, @ ou logotipo do TikTok. Apenas os números 1 a ${frameCount} nos selos circulares e a logomarca original do fabricante no próprio produto.`;
 
         const geminiAspectRatio = isLandscapeStoryboard ? '16:9' : '9:16';
