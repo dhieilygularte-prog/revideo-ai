@@ -610,7 +610,7 @@ PROIBIÇÃO ABSOLUTA: NUNCA gere todos os ${totalScenes} quadros na mesma cor! �
     ? `PERSONAGENS EM CENA E INTERAÇÃO (DIÁLOGO): Dois personagens principais em interação direta e expressiva (Mulher e Homem), mantendo rigorosa continuidade física, de roupas e de traços em todos os ${totalScenes} quadros. ${avatarDescription}. Enquadramento: ${framingLabel}.${dialogueScriptBlock}`
     : `PERSONAGEM: ${avatarDescription}, o mesmo em todos os quadros. Enquadramento: ${framingLabel}.`;
 
-  const rawPrompt = `Crie UMA ÚNICA IMAGEM VERTICAL na mais alta resolução fotográfica 4K UHD (2160x3840 ou 1080x1920, proporção 9:16) de storyboard fotográfico ultra-realista em ${gridDesc} em ordem de leitura (esquerda para direita, de cima para baixo). Quadros de tamanho igual, cantos arredondados, separados por uma borda branca fina, fundo branco puro (#FFFFFF). Iluminação de alta claridade com balanço de branco neutro 5500K limpo (luz do dia clara e arejada), cores vivas e fiéis às fotos, contraste nítido e pretos profundos, com ZERO tom amarelado/âmbar e ZERO aspecto opaco, leitoso ou desbotado.${variationsBlock}${scenePartNote}${packagedNotice}${quantityNotice}${oralCareNotice}${apparelNotice}
+  const rawPrompt = `Crie UMA ÚNICA IMAGEM VERTICAL na mais alta resolução fotográfica 4K UHD (2160x3840 ou 1080x1920, proporção 9:16) de storyboard fotográfico ultra-realista em ${gridDesc} em ordem de leitura (esquerda para direita, de cima para baixo). Quadros de tamanho igual, cantos arredondados, separados por uma borda branca fina, sobre fundo branco puro (#FFFFFF). Gravação com nitidez cristalina de câmera de smartphone moderno topo de linha, sem película plástica, névoa leitosa ou imagem pálida/desbotada.${variationsBlock}${scenePartNote}${packagedNotice}${quantityNotice}${oralCareNotice}${apparelNotice}
 
 Use as fotos anexadas como referência absoluta do produto. Preserve fielmente (PRODUCT LOCK): ${sanitizedProductLock.join('; ')}.
 ${productIdentityRule}
@@ -636,17 +636,18 @@ Mapa visual da copy:
 ${visualMapLines}
 
 ${charactersSection}
-Estilo: fotografia ultra-realista de smartphone moderno topo de linha, estética UGC premium de anúncio de alta conversão, balanço de branco neutro 5500K limpo e translúcido, iluminação clara do dia, cores vibrantes e ricas, alto contraste nítido, textura de pele natural e sem véu amarelado ou opaco, ${scenarioDescription}. Variar enquadramentos: close, macro, POV, plano médio, plano aberto.${extraInstructions}
+Estilo: fotografia ultra-realista com qualidade ótica de smartphone moderno topo de linha, estética UGC autêntica de anúncio de alta conversão, textura de pele natural, cores ricas e fiéis ao produto, ${scenarioDescription}. A iluminação, temperatura de cor e atmosfera devem acompanhar fielmente o contexto da cena especificada no prompt (seja dia claro, fim de tarde, luz de velas, noite ou ambiente residencial). Variar enquadramentos: close, macro, POV, plano médio, plano aberto.${extraInstructions}
 
-DIRETRIZ CRÍTICA DE COR E NITIDEZ (ANTI-AMARELADO E ZERO OPACIDADE):
-- BALANÇO DE BRANCO 5500K NEUTRO E LÍMPIDO: Toda a iluminação deve ser branca, limpa e clara como luz natural do dia. Brancos puros nas paredes, bordas, embalagens e textos. NUNCA aplicar filtro amarelado, tom âmbar, sépia ou iluminação amarela incandescente.
-- CONTRASTE PUNCHY E CORES VIVAS (SEM ASPECTO OPACO/LAVADO): Pretos profundos, excelente alcance dinâmico e saturação natural viva. É TERMINANTEMENTE PROIBIDO gerar imagem opaca, leitosa, fosca, com neblina acinzentada ou lavada.
+DIRETRIZ CRÍTICA DE NITIDEZ ÓPTICA E ZERO PELÍCULA PLÁSTICA/OPACIDADE:
+- LENTE CRISTALINA E ALTA DEFINIÇÃO DE SMARTPHONE MODERNO: Imagem nítida, sensor com foco apurado, contraste equilibrado e realismo autêntico.
+- ZERO PELÍCULA PLÁSTICA, ZERO NÉVOA E ZERO IMAGEM PÁLIDA: É TERMINANTEMENTE PROIBIDO gerar imagem com aspecto de plástico/filme fosco ou amarelado por cima, névoa opaca/leitosa, desbotamento, palidez ou falta de definição. Cores com riqueza ótica e pretos limpos.
+- ILUMINAÇÃO DINÂMICA INTEGRADA AO CENÁRIO: A iluminação deve sempre combinar de forma realista com a cena pedida no prompt (dia, noite, jantar, quarto, sala, etc.).
 
 ${scenesLines}
 
 Mantenha continuidade de produto, logomarca original do fabricante no produto, personagem, ambiente e iluminação entre as cenas relacionadas. Cada quadro deve parecer uma fotografia real e utilizável como referência de futura animação.
 Adicionar SOMENTE os números 1 a ${totalScenes} em pequenos selos circulares brancos com número preto, no canto superior esquerdo de cada quadro.
-PROIBIÇÃO EXCLUSIVA DE INTERFACE EXTERNA E TONS INDESEJADOS: NÃO adicionar frases flutuantes na tela, legendas, textos publicitários externos, ícone de carrinho de compras, botões, setas, preços, interface de aplicativo, logotipo do TikTok ou de rede social, nome de usuário/@, marca d'água externa, NUNCA incluir nenhum site (URL) ou código de barras em nenhuma caixa, pacote ou embalagem, E NUNCA gerar imagem amarelada, com tom âmbar quente, sépia ou com névoa opaca/leitosa (mantendo obrigatoriamente a logomarca original do fabricante impressa no próprio produto com cores vivas e brancos limpos).`;
+PROIBIÇÃO EXCLUSIVA DE INTERFACE EXTERNA E PELÍCULA PLÁSTICA: NÃO adicionar frases flutuantes na tela, legendas, textos publicitários externos, ícone de carrinho de compras, botões, setas, preços, interface de aplicativo, logotipo do TikTok ou de rede social, nome de usuário/@, marca d'água externa, NUNCA incluir nenhum site (URL) ou código de barras em nenhuma caixa, pacote ou embalagem, E NUNCA gerar imagem com aspecto de película plástica opaca por cima, névoa leitosa ou palidez desbotada (mantendo obrigatoriamente a logomarca original do fabricante impressa no próprio produto com nitidez e cores fiéis).`;
 
   return sanitizeStoryboardPromptForFidelity(rawPrompt, productName, productInfo);
 }
@@ -1496,7 +1497,7 @@ export function resolveProdutos2ScenarioDescription(params: {
     } else if (/banco|esteira|halter|treino|exercicio|academia|fitness/i.test(combined)) {
       room = 'sala espaçosa com área de treino e luz natural';
     }
-    const baseHome = `casa brasileira aconchegante e bem iluminada com luz natural limpa, ${room}`;
+    const baseHome = `casa brasileira simples e aconchegante, ${room}`;
     if (cleanExtraScenario) {
       return `${baseHome} (${cleanExtraScenario})`;
     }
@@ -2066,7 +2067,7 @@ E retornar um JSON estrito com:
      * Para a cor, cite explicitamente: "Variações oficiais de cor: o produto possui as variações informadas ([listar todas]), todas corretas e representadas fielmente nos seus respectivos quadros do storyboard".
 4. "avatarDescription": descrição de 1 frase do consumidor brasileiro adulto que apresenta o produto (respeitando o gênero do Influencer e as Instruções Adicionais; se produto infantil, quem apresenta na cena 1 e 9 é sempre um adulto pai/mãe).
 5. "scenarioDescription":
-   - Se o usuário escolheu "em_casa" ("Em casa"): "casa brasileira aconchegante e bem iluminada com luz natural limpa, [cômodo adequado ao produto]".
+   - Se o usuário escolheu "em_casa" ("Em casa"): "casa brasileira simples e aconchegante, [cômodo adequado ao produto]".
    - Se o usuário escolheu "padrao_uso" ("Cenário padrão de uso"): descreva o LUGAR REAL onde o produto é usado, SEM mencionar "casa", "caseiro" ou "casa brasileira" (ex.: academia ou espaço de treino para banco de exercícios; jardim gramado ao ar livre para cortador de grama; margem de represa para vara de pesca; interior de um carro para som automotivo; rua/parque em corrida ao ar livre para tênis).
    - Se o usuário escreveu um local nas Instruções adicionais (ex.: "na praia"), essa instrução tem prioridade.
 6. "visualMap": array de 4 objetos { "excerpt", "intent", "visualProof", "scenes" } mapeando os trechos da copy para provas visuais nas cenas 1 a 9.
