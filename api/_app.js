@@ -885,8 +885,14 @@ Retorne estritamente um JSON estruturado:
       if (p && !allPhotos.includes(p)) allPhotos.push(p);
     });
     const modelAntiViolationDirective = !hasUserProvidedModel && !modelReferenceBase64 ? `CRITICAL ANTI-VIOLATION DIRECTIVE: Do NOT copy or clone the face of the actor from the reference video. Generate an original commercial model with a DIFFERENT FACE and distinct facial features (similar demographic style like a cousin, but strictly a different person) to prevent TikTok copyright/impersonation strikes.` : "";
+    const colorClarityDirective = `CRITICAL COLOR BALANCE & CLARITY CALIBRATION (ANTI-YELLOWING & ZERO OPACITY):
+- Clean 5500K neutral daylight white balance with crisp, pure whites.
+- STRICTLY ZERO warm yellow cast, ZERO amber tint, ZERO sepia tone, and ZERO dim yellow incandescent lighting.
+- High-end flagship smartphone camera quality: punchy commercial contrast, deep clean blacks, vibrant realistic colors matching reference photos, and crystal-clear definition.
+- STRICTLY ZERO milky, hazy, faded, washed-out, or flat matte opacity.`;
     const overrides = [
       modelAntiViolationDirective,
+      colorClarityDirective,
       correctionPrompt && `CRITICAL QUALITY OVERRIDE: ${correctionPrompt.trim()}`,
       additionalInstructions && `USER DIRECTIVE: ${additionalInstructions.trim()}`
     ].filter(Boolean).join("\n");
@@ -1225,7 +1231,7 @@ E retornar um JSON estrito com:
      * Para a cor, cite explicitamente: "Varia\xE7\xF5es oficiais de cor: o produto possui as varia\xE7\xF5es informadas ([listar todas]), todas corretas e representadas fielmente nos seus respectivos quadros do storyboard".
 4. "avatarDescription": descri\xE7\xE3o de 1 frase do consumidor brasileiro adulto que apresenta o produto (respeitando o g\xEAnero do Influencer e as Instru\xE7\xF5es Adicionais; se produto infantil, quem apresenta na cena 1 e 9 \xE9 sempre um adulto pai/m\xE3e).
 5. "scenarioDescription":
-   - Se o usu\xE1rio escolheu "em_casa" ("Em casa"): "casa brasileira simples e aconchegante, [c\xF4modo adequado ao produto]".
+   - Se o usu\xE1rio escolheu "em_casa" ("Em casa"): "casa brasileira aconchegante e bem iluminada com luz natural limpa, [c\xF4modo adequado ao produto]".
    - Se o usu\xE1rio escolheu "padrao_uso" ("Cen\xE1rio padr\xE3o de uso"): descreva o LUGAR REAL onde o produto \xE9 usado, SEM mencionar "casa", "caseiro" ou "casa brasileira" (ex.: academia ou espa\xE7o de treino para banco de exerc\xEDcios; jardim gramado ao ar livre para cortador de grama; margem de represa para vara de pesca; interior de um carro para som automotivo; rua/parque em corrida ao ar livre para t\xEAnis).
    - Se o usu\xE1rio escreveu um local nas Instru\xE7\xF5es adicionais (ex.: "na praia"), essa instru\xE7\xE3o tem prioridade.
 6. "visualMap": array de 4 objetos { "excerpt", "intent", "visualProof", "scenes" } mapeando os trechos da copy para provas visuais nas cenas 1 a 9.
@@ -3035,8 +3041,10 @@ DIRETIVA MESTRE 1 (CANVAS LOCK TOTAL): A REFER\xCANCIA 1 \xC9 O CANVAS MESTRE IN
 DIRETIVA MESTRE 2 (A\xC7\xC3O EXCLUSIVA): A \xDANICA modifica\xE7\xE3o permitida em toda a imagem \xE9 pintar/trocar a cor e o tecido da ${productType} usada pela pessoa na REFER\xCANCIA 1 para a nova cor "${variationName}".
 DIRETIVA MESTRE 3: ZERO TATUAGENS. Pele 100% limpa, sem qualquer tatuagem em homem ou mulher.` : `VOC\xCA \xC9 O MOTOR DE GERA\xC7\xC3O VISUAL DO REV\xCDDEO AI (PADR\xC3O TIKTOK SHOP BRASIL).
 - M\xE1xima fidelidade 1:1 f\xEDsica ao produto real das fotos de refer\xEAncia.
-- Retratar pessoas brasileiras simples e comuns do dia a dia (sem supermodelos inalcan\xE7\xE1veis).
-- Cen\xE1rios aut\xEAnticos e din\xE2micos conforme especificado pelo storyboard do v\xEDdeo (cada cena em seu ambiente e a\xE7\xE3o designados).
+- Fotografia ultra-realista de smartphone moderno topo de linha com ilumina\xE7\xE3o clara de luz do dia neutra 5500K, cores vibrantes e alto contraste.
+- ZERO TOM AMARELADO OU OPACIDADE: balan\xE7o de branco neutro limpo, sem filtros amarelos, s\xE9pia ou n\xE9voa opaca/leitosa.
+- Retratar pessoas brasileiras aut\xEAnticas do dia a dia (sem supermodelos inalcan\xE7\xE1veis).
+- Cen\xE1rios aut\xEAnticos, claros e bem iluminados conforme especificado pelo storyboard do v\xEDdeo.
 - Consist\xEAncia de modelo humano sem repetir a mesma pose ou cen\xE1rio se o roteiro mudar de lugar.
 - Zero tatuagens na pele. Enquadramento do pesco\xE7o para baixo quando solicitado.`;
     for (const modelCandidate of modelsToTry) {
@@ -4011,7 +4019,7 @@ DURA\xC7\xC3O M\xC1XIMA DO V\xCDDEO: ${duration} segundos. Limite estrito: at\xE
 - Modo de fala: ${speechMode} (locu\xE7\xE3o R\xC1PIDA E EUF\xD3RICA, com tom animado como se estivesse contando uma novidade imperd\xEDvel)
 - Regra de frete gr\xE1tis: NUNCA mencione "frete gr\xE1tis" ou "frete gratuito" na fala, a menos que isso tenha sido informado diretamente nas informa\xE7\xF5es do produto.
 - Enquadramento: ${framing}
-- Cen\xE1rio: ${scenario === "padrao_uso" ? "Cen\xE1rio padr\xE3o de uso real do produto" : "Em casa (casa brasileira simples e aconchegante)"}
+- Cen\xE1rio: ${scenario === "padrao_uso" ? "Cen\xE1rio padr\xE3o de uso real do produto" : "Em casa (ambiente brasileiro bem iluminado com luz do dia limpa)"}
 - Instru\xE7\xF5es adicionais priorit\xE1rias: ${additionalInstructions || "Nenhuma"}${variationsClause}
 
 Retorne APENAS um objeto JSON v\xE1lido com as chaves:
@@ -4249,7 +4257,16 @@ REGRA INEGOCI\xC1VEL: Em TODOS os quadrantes do storyboard 3x3 onde essa parte d
 PROIBI\xC7\xC3O ABSOLUTA DE SITE E C\xD3DIGO DE BARRAS EM EMBALAGENS:
 \xC9 TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, dom\xEDnio, URL (ex.: www..., .com, .com.br, https) ou c\xF3digo de barras/QR code em qualquer caixa, pacote ou embalagem do produto. As caixas, pacotes e embalagens devem ser 100% limpas de sites e c\xF3digos de barras!
 ========================`;
-    const baseWithLogo = `${prompt}${logoEnforcementBlock}${noBarcodeUrlDirective}`;
+    const colorClarityDirective = `
+
+========================
+DIRETRIZ CR\xCDTICA DE COR, ILUMINA\xC7\xC3O E NITIDEZ (ANTI-AMARELADO E ZERO OPACIDADE):
+1. BALAN\xC7O DE BRANCO 5500K NEUTRO E LIMPO: Ilumina\xE7\xE3o de luz do dia clara, arejada e transl\xFAcida. O fundo branco deve ser branco puro (#FFFFFF). Paredes, embalagens e bordas com branco verdadeiro.
+2. ZERO TOM AMARELADO/\xC2MBAR/S\xC9PIA: \xC9 terminantemente proibido qualquer tom amarelado, ilumina\xE7\xE3o incandescente amarela fraca ou filtro quente envelhecido.
+3. ZERO OPACIDADE, N\xC9VOA OU ASPECTO LEITOSO: Contraste n\xEDtido e comercial, pretos profundos e limpos, cores vivas e vibrantes id\xEAnticas \xE0s fotos de refer\xEAncia.
+4. QUALIDADE DE C\xC2MERA DE SMARTPHONE TOPO DE LINHA: Sensor moderno de alta defini\xE7\xE3o com riqueza de detalhes, sem aspecto emba\xE7ado ou de celular de baixa qualidade.
+========================`;
+    const baseWithLogo = `${prompt}${logoEnforcementBlock}${noBarcodeUrlDirective}${colorClarityDirective}`;
     const effectivePrompt = correctionPrompt && correctionPrompt.trim() ? `${baseWithLogo}
 
 ========================
@@ -4338,10 +4355,11 @@ ${correctionPrompt.trim()}
         const variationInstructionRule = activeVariations.length >= 2 ? `- REGRA MANDAT\xD3RIA DE ALTERN\xC2NCIA DE CORES ENTRE OS QUADROS (GRADE 3x3): O produto possui ${activeVariations.length} varia\xE7\xF5es de cores/modelos. Voc\xEA DEVE OBRIGATORIAMENTE alternar as cores conforme a divis\xE3o especificada: ${activeVariations.length === 2 ? "Quadros 1 a 4 na Varia\xE7\xE3o 1 (" + (activeVariations[0]?.name || "1\xAA cor") + "); Quadros 5 a 9 na Varia\xE7\xE3o 2 (" + (activeVariations[1]?.name || "2\xAA cor") + ")" : "Quadros 1 a 3 na Varia\xE7\xE3o 1 (" + (activeVariations[0]?.name || "1\xAA cor") + "); Quadros 4 a 6 na Varia\xE7\xE3o 2 (" + (activeVariations[1]?.name || "2\xAA cor") + "); Quadros 7 a 9 na Varia\xE7\xE3o 3 (" + (activeVariations[2]?.name || "3\xAA cor") + ")"}. NUNCA gere todos os 9 quadros na mesma cor! \xC9 expressamente PROIBIDO usar uma \xFAnica cor para todo o storyboard quando h\xE1 varia\xE7\xF5es informadas. Apenas o modelo, formato e pe\xE7as permanecem id\xEAnticos, a cor DEVE alternar entre os blocos de quadros!` : `- PRODUCT LOCK ABSOLUTO: O produto em todos os 9 quadros onde aparece deve ser 100% id\xEAntico \xE0s fotos reais anexadas (mesmo formato, cor, textura, bot\xF5es, fun\xE7\xF5es, propor\xE7\xE3o e detalhes).`;
         const systemInstructionText = `VOC\xCA \xC9 O GERADOR DE STORYBOARD 3x3 DO MODO PRODUTOS 2.0.
 - Gere UMA \xDANICA IMAGEM VERTICAL 9:16 na mais alta resolu\xE7\xE3o fotogr\xE1fica 4K UHD (2160x3840 ou 1080x1920) contendo uma grade 3x3 (3 colunas x 3 linhas) com EXATAMENTE 9 quadros fotogr\xE1ficos ultra-realistas numerados de 1 a 9 (selo circular branco pequeno no canto superior esquerdo de cada quadro com n\xFAmero preto).
-- Cantos arredondados nos quadros, separados por uma borda branca fina, sobre fundo branco.
+- Cantos arredondados nos quadros, separados por uma borda branca fina, sobre fundo branco puro (#FFFFFF).
 ${variationInstructionRule}
 - LOGOMARCA E MARCA DO FABRICANTE NO PRODUTO (OBRIGAT\xD3RIO): A marca, a logomarca, o emblema e os textos que j\xE1 est\xE3o impressos/estampados no pr\xF3prio produto nas fotos de refer\xEAncia DEVEM aparecer 100% id\xEAnticos, na mesma cor e no mesmo lugar da pe\xE7a, em todos os quadros em que aquela parte estiver vis\xEDvel. JAMAIS remova ou alise a logomarca do produto!
 - PROIBI\xC7\xC3O ABSOLUTA DE SITE E C\xD3DIGO DE BARRAS: \xC9 TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, URL (ex.: www..., .com) ou c\xF3digo de barras/QR code em qualquer caixa, pacote ou embalagem de produto. Todas as caixas e embalagens devem ser totalmente limpas de sites e c\xF3digos de barras.
+- BALAN\xC7O DE BRANCO 5500K NEUTRO E ALTA NITIDEZ (ZERO AMARELADO E ZERO OPACIDADE): Fundo branco puro (#FFFFFF), ilumina\xE7\xE3o de luz do dia clara e arejada, balan\xE7o de branco neutro 5500K. \xC9 terminantemente PROIBIDO qualquer tom amarelado, \xE2mbar ou s\xE9pia, e terminantemente PROIBIDO aspecto opaco, leitoso ou desbotado. Cores vivas e fi\xE9is, pretos limpos e contraste n\xEDtido de smartphone topo de linha.
 - ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: N\xE3o adicione legendas flutuantes, textos publicit\xE1rios externos, pre\xE7os, setas, carrinho de compras, marca d'\xE1gua externa, @ ou logotipo do TikTok. Apenas os n\xFAmeros 1 a 9 nos selos circulares e a logomarca original do fabricante no pr\xF3prio produto.`;
         const modelsToTry = [
           GEMINI_IMAGE_MODEL || "gemini-3.1-flash-image",

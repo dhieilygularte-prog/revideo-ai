@@ -1825,8 +1825,10 @@ DIRETIVA MESTRE 2 (AÇÃO EXCLUSIVA): A ÚNICA modificação permitida em toda a
 DIRETIVA MESTRE 3: ZERO TATUAGENS. Pele 100% limpa, sem qualquer tatuagem em homem ou mulher.`
       : `VOCÊ É O MOTOR DE GERAÇÃO VISUAL DO REVÍDEO AI (PADRÃO TIKTOK SHOP BRASIL).
 - Máxima fidelidade 1:1 física ao produto real das fotos de referência.
-- Retratar pessoas brasileiras simples e comuns do dia a dia (sem supermodelos inalcançáveis).
-- Cenários autênticos e dinâmicos conforme especificado pelo storyboard do vídeo (cada cena em seu ambiente e ação designados).
+- Fotografia ultra-realista de smartphone moderno topo de linha com iluminação clara de luz do dia neutra 5500K, cores vibrantes e alto contraste.
+- ZERO TOM AMARELADO OU OPACIDADE: balanço de branco neutro limpo, sem filtros amarelos, sépia ou névoa opaca/leitosa.
+- Retratar pessoas brasileiras autênticas do dia a dia (sem supermodelos inalcançáveis).
+- Cenários autênticos, claros e bem iluminados conforme especificado pelo storyboard do vídeo.
 - Consistência de modelo humano sem repetir a mesma pose ou cenário se o roteiro mudar de lugar.
 - Zero tatuagens na pele. Enquadramento do pescoço para baixo quando solicitado.`;
 
@@ -2981,7 +2983,7 @@ DURAÇÃO MÁXIMA DO VÍDEO: ${duration} segundos. Limite estrito: até ${maxLim
 - Modo de fala: ${speechMode} (locução RÁPIDA E EUFÓRICA, com tom animado como se estivesse contando uma novidade imperdível)
 - Regra de frete grátis: NUNCA mencione "frete grátis" ou "frete gratuito" na fala, a menos que isso tenha sido informado diretamente nas informações do produto.
 - Enquadramento: ${framing}
-- Cenário: ${scenario === 'padrao_uso' ? 'Cenário padrão de uso real do produto' : 'Em casa (casa brasileira simples e aconchegante)'}
+- Cenário: ${scenario === 'padrao_uso' ? 'Cenário padrão de uso real do produto' : 'Em casa (ambiente brasileiro bem iluminado com luz do dia limpa)'}
 - Instruções adicionais prioritárias: ${additionalInstructions || 'Nenhuma'}${variationsClause}
 
 Retorne APENAS um objeto JSON válido com as chaves:
@@ -3248,7 +3250,9 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
 
     const noBarcodeUrlDirective = `\n\n========================\nPROIBIÇÃO ABSOLUTA DE SITE E CÓDIGO DE BARRAS EM EMBALAGENS:\nÉ TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, domínio, URL (ex.: www..., .com, .com.br, https) ou código de barras/QR code em qualquer caixa, pacote ou embalagem do produto. As caixas, pacotes e embalagens devem ser 100% limpas de sites e códigos de barras!\n========================`;
 
-    const baseWithLogo = `${prompt}${logoEnforcementBlock}${noBarcodeUrlDirective}`;
+    const colorClarityDirective = `\n\n========================\nDIRETRIZ CRÍTICA DE COR, ILUMINAÇÃO E NITIDEZ (ANTI-AMARELADO E ZERO OPACIDADE):\n1. BALANÇO DE BRANCO 5500K NEUTRO E LIMPO: Iluminação de luz do dia clara, arejada e translúcida. O fundo branco deve ser branco puro (#FFFFFF). Paredes, embalagens e bordas com branco verdadeiro.\n2. ZERO TOM AMARELADO/ÂMBAR/SÉPIA: É terminantemente proibido qualquer tom amarelado, iluminação incandescente amarela fraca ou filtro quente envelhecido.\n3. ZERO OPACIDADE, NÉVOA OU ASPECTO LEITOSO: Contraste nítido e comercial, pretos profundos e limpos, cores vivas e vibrantes idênticas às fotos de referência.\n4. QUALIDADE DE CÂMERA DE SMARTPHONE TOPO DE LINHA: Sensor moderno de alta definição com riqueza de detalhes, sem aspecto embaçado ou de celular de baixa qualidade.\n========================`;
+
+    const baseWithLogo = `${prompt}${logoEnforcementBlock}${noBarcodeUrlDirective}${colorClarityDirective}`;
     const effectivePrompt = correctionPrompt && correctionPrompt.trim()
       ? `${baseWithLogo}\n\n========================\nCORREÇÃO OBRIGATÓRIA DE AUDITORIA DE FIDELIDADE DOS 9 QUADRANTES:\n${correctionPrompt.trim()}\n========================`
       : baseWithLogo;
@@ -3367,10 +3371,11 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
 
         const systemInstructionText = `VOCÊ É O GERADOR DE STORYBOARD 3x3 DO MODO PRODUTOS 2.0.
 - Gere UMA ÚNICA IMAGEM VERTICAL 9:16 na mais alta resolução fotográfica 4K UHD (2160x3840 ou 1080x1920) contendo uma grade 3x3 (3 colunas x 3 linhas) com EXATAMENTE 9 quadros fotográficos ultra-realistas numerados de 1 a 9 (selo circular branco pequeno no canto superior esquerdo de cada quadro com número preto).
-- Cantos arredondados nos quadros, separados por uma borda branca fina, sobre fundo branco.
+- Cantos arredondados nos quadros, separados por uma borda branca fina, sobre fundo branco puro (#FFFFFF).
 ${variationInstructionRule}
 - LOGOMARCA E MARCA DO FABRICANTE NO PRODUTO (OBRIGATÓRIO): A marca, a logomarca, o emblema e os textos que já estão impressos/estampados no próprio produto nas fotos de referência DEVEM aparecer 100% idênticos, na mesma cor e no mesmo lugar da peça, em todos os quadros em que aquela parte estiver visível. JAMAIS remova ou alise a logomarca do produto!
 - PROIBIÇÃO ABSOLUTA DE SITE E CÓDIGO DE BARRAS: É TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, URL (ex.: www..., .com) ou código de barras/QR code em qualquer caixa, pacote ou embalagem de produto. Todas as caixas e embalagens devem ser totalmente limpas de sites e códigos de barras.
+- BALANÇO DE BRANCO 5500K NEUTRO E ALTA NITIDEZ (ZERO AMARELADO E ZERO OPACIDADE): Fundo branco puro (#FFFFFF), iluminação de luz do dia clara e arejada, balanço de branco neutro 5500K. É terminantemente PROIBIDO qualquer tom amarelado, âmbar ou sépia, e terminantemente PROIBIDO aspecto opaco, leitoso ou desbotado. Cores vivas e fiéis, pretos limpos e contraste nítido de smartphone topo de linha.
 - ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: Não adicione legendas flutuantes, textos publicitários externos, preços, setas, carrinho de compras, marca d'água externa, @ ou logotipo do TikTok. Apenas os números 1 a 9 nos selos circulares e a logomarca original do fabricante no próprio produto.`;
 
         const modelsToTry = [

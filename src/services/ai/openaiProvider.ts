@@ -538,9 +538,16 @@ Retorne estritamente um JSON estruturado:
       ? `CRITICAL ANTI-VIOLATION DIRECTIVE: Do NOT copy or clone the face of the actor from the reference video. Generate an original commercial model with a DIFFERENT FACE and distinct facial features (similar demographic style like a cousin, but strictly a different person) to prevent TikTok copyright/impersonation strikes.`
       : '';
 
+    const colorClarityDirective = `CRITICAL COLOR BALANCE & CLARITY CALIBRATION (ANTI-YELLOWING & ZERO OPACITY):
+- Clean 5500K neutral daylight white balance with crisp, pure whites.
+- STRICTLY ZERO warm yellow cast, ZERO amber tint, ZERO sepia tone, and ZERO dim yellow incandescent lighting.
+- High-end flagship smartphone camera quality: punchy commercial contrast, deep clean blacks, vibrant realistic colors matching reference photos, and crystal-clear definition.
+- STRICTLY ZERO milky, hazy, faded, washed-out, or flat matte opacity.`;
+
     // Prioriza correções de auditoria e instruções adicionais sobre o prompt universal já formatado
     const overrides = [
       modelAntiViolationDirective,
+      colorClarityDirective,
       correctionPrompt && `CRITICAL QUALITY OVERRIDE: ${correctionPrompt.trim()}`,
       additionalInstructions && `USER DIRECTIVE: ${additionalInstructions.trim()}`,
     ].filter(Boolean).join('\n');

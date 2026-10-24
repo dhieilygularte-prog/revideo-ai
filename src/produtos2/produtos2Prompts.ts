@@ -487,7 +487,7 @@ PROIBIÇÃO ABSOLUTA: NUNCA gere todos os 9 quadros na mesma cor! É expressamen
     ? `PERSONAGENS EM CENA E INTERAÇÃO (DIÁLOGO): Dois personagens principais em interação direta e expressiva (Mulher e Homem), mantendo rigorosa continuidade física, de roupas e de traços em todos os 9 quadros. ${avatarDescription}. Enquadramento: ${framingLabel}.${dialogueScriptBlock}`
     : `PERSONAGEM: ${avatarDescription}, o mesmo em todos os quadros. Enquadramento: ${framingLabel}.`;
 
-  return `Crie UMA ÚNICA IMAGEM VERTICAL na mais alta resolução fotográfica 4K UHD (2160x3840 ou 1080x1920, proporção 9:16) de storyboard fotográfico ultra-realista em grade 3x3 (3 colunas x 3 linhas), com EXATAMENTE 9 cenas numeradas de 1 a 9 em ordem de leitura (esquerda para direita, de cima para baixo). Quadros de tamanho igual, cantos arredondados, separados por uma borda branca fina, fundo branco.${variationsBlock}
+  return `Crie UMA ÚNICA IMAGEM VERTICAL na mais alta resolução fotográfica 4K UHD (2160x3840 ou 1080x1920, proporção 9:16) de storyboard fotográfico ultra-realista em grade 3x3 (3 colunas x 3 linhas), com EXATAMENTE 9 cenas numeradas de 1 a 9 em ordem de leitura (esquerda para direita, de cima para baixo). Quadros de tamanho igual, cantos arredondados, separados por uma borda branca fina, fundo branco puro (#FFFFFF). Iluminação de alta claridade com balanço de branco neutro 5500K limpo (luz do dia clara e arejada), cores vivas e fiéis às fotos, contraste nítido e pretos profundos, com ZERO tom amarelado/âmbar e ZERO aspecto opaco, leitoso ou desbotado.${variationsBlock}
 
 Use as fotos anexadas como referência absoluta do produto. Preserve fielmente (PRODUCT LOCK): ${sanitizedProductLock.join('; ')}.
 ${productIdentityRule}
@@ -501,7 +501,12 @@ Mapa visual da copy:
 ${visualMapLines}
 
 ${charactersSection}
-Estilo: fotografia ultra-realista de smartphone, UGC premium de anúncio, luz natural, ${scenarioDescription}. Variar enquadramentos: close, macro, POV, plano médio, plano aberto.${extraInstructions}
+Estilo: fotografia ultra-realista de smartphone moderno topo de linha, estética UGC premium de anúncio de alta conversão, balanço de branco neutro 5500K limpo e translúcido, iluminação clara do dia, cores vibrantes e ricas, alto contraste nítido, textura de pele natural e sem véu amarelado ou opaco, ${scenarioDescription}. Variar enquadramentos: close, macro, POV, plano médio, plano aberto.${extraInstructions}
+
+DIRETRIZ CRÍTICA DE COR E NITIDEZ (ANTI-AMARELADO E ZERO OPACIDADE):
+- Balanço de branco 5500K neutro e limpo em todos os quadros e fundo branco puro (#FFFFFF).
+- É TERMINANTEMENTE PROIBIDO qualquer tom amarelado, iluminação incandescente amarela fraca, filtro sépia, ou aspecto desbotado, fosco, leitoso ou opaco.
+- As cores do produto e embalagens devem ser 100% fiéis às fotos de referência, com alto alcance dinâmico, saturação comercial viva, definição nítida e visual de câmera de celular topo de linha moderno.
 
 ${scenesLines}
 
@@ -940,8 +945,8 @@ Criar aproximadamente 9 micro-cenas dentro dos ${duration} segundos.
 - movimentos de mãos
 - demonstração real e física de uso de ${productName}
 - pequenos push-ins e zooms da câmera
-- aparência real de gravação com smartphone
-- iluminação natural
+- aparência real de gravação com smartphone moderno topo de linha
+- iluminação clara e límpida de luz do dia (sem tons amarelados ou opacidade)
 - ${scenarioDescription}
 - UGC premium
 - alta retenção visual
@@ -1055,7 +1060,7 @@ export function resolveProdutos2ScenarioDescription(params: {
     } else if (/banco|esteira|halter|treino|exercicio|academia|fitness/i.test(combined)) {
       room = 'sala espaçosa com área de treino e luz natural';
     }
-    const baseHome = `casa brasileira simples e aconchegante, ${room}`;
+    const baseHome = `casa brasileira aconchegante e bem iluminada com luz natural limpa, ${room}`;
     if (cleanExtraScenario) {
       return `${baseHome} (${cleanExtraScenario})`;
     }
@@ -1135,6 +1140,7 @@ export function sanitizeScenarioDescriptionForMode(
 
   if (scenario === 'padrao_uso') {
     const cleaned = clean
+      .replace(/\bcasa brasileira aconchegante e bem iluminada(?: com luz natural limpa)?\b/gi, fallbackScenarioDesc)
       .replace(/\bcasa brasileira simples e aconchegante\b/gi, fallbackScenarioDesc)
       .replace(/\bcasa brasileira simples\b/gi, fallbackScenarioDesc)
       .replace(/\bcasa brasileira\b/gi, 'ambiente real')
@@ -1508,7 +1514,7 @@ E retornar um JSON estrito com:
      * Para a cor, cite explicitamente: "Variações oficiais de cor: o produto possui as variações informadas ([listar todas]), todas corretas e representadas fielmente nos seus respectivos quadros do storyboard".
 4. "avatarDescription": descrição de 1 frase do consumidor brasileiro adulto que apresenta o produto (respeitando o gênero do Influencer e as Instruções Adicionais; se produto infantil, quem apresenta na cena 1 e 9 é sempre um adulto pai/mãe).
 5. "scenarioDescription":
-   - Se o usuário escolheu "em_casa" ("Em casa"): "casa brasileira simples e aconchegante, [cômodo adequado ao produto]".
+   - Se o usuário escolheu "em_casa" ("Em casa"): "casa brasileira aconchegante e bem iluminada com luz natural limpa, [cômodo adequado ao produto]".
    - Se o usuário escolheu "padrao_uso" ("Cenário padrão de uso"): descreva o LUGAR REAL onde o produto é usado, SEM mencionar "casa", "caseiro" ou "casa brasileira" (ex.: academia ou espaço de treino para banco de exercícios; jardim gramado ao ar livre para cortador de grama; margem de represa para vara de pesca; interior de um carro para som automotivo; rua/parque em corrida ao ar livre para tênis).
    - Se o usuário escreveu um local nas Instruções adicionais (ex.: "na praia"), essa instrução tem prioridade.
 6. "visualMap": array de 4 objetos { "excerpt", "intent", "visualProof", "scenes" } mapeando os trechos da copy para provas visuais nas cenas 1 a 9.
