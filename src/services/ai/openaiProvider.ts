@@ -543,7 +543,7 @@ Retorne estritamente um JSON estruturado:
     const opticalClarityDirective = `CRITICAL OPTICAL CLARITY & HIGH-DEFINITION SENSOR CALIBRATION:
 - Modern high-end smartphone camera clarity: crystal-clear optical glass lens, razor-sharp focus and rich texture definition.
 - SCENARIO-ACCURATE LIGHTING & ATMOSPHERE: The lighting, atmosphere and color temperature must authentically adapt to the specific scene in the prompt (e.g., candlelight, romantic evening, cozy home, or bright daylight).
-- STRICTLY PROHIBITED: Pale, washed-out, milky, hazy, or muddy look; NO plastic film/veil overlay effect across the lens; NO muddy yellowish plastic cast over the frame. Deliver vivid, rich colors, crisp authentic contrast, and clean sensor optics.`;
+- STRICTLY PROHIBITED: Pale, washed-out, milky, hazy, or muddy look; NO plastic film/veil overlay effect across the lens; NO muddy yellowish plastic cast over the frame. Deliver vivid, rich colors, crisp authentic contrast, and clean sensor optics.\r\n- 90%+ FIDELITY AUDITOR CALIBRATION (5 INSPECTION GROUPS + ANTI-MORPHING): Preserve 100% of the exact product model, silhouette, all physical components (body, nozzles, caps, cables, handles, buttons, seams, and all kit pieces), realistic human scale, exact surface finish (matte, glossy, metallic), and 1:1 manufacturer logo. Hands must have 5 natural fingers gripping neutral sides cleanly without fusing into the product or covering the logo/buttons.`;
 
     // Prioriza correções de auditoria e instruções adicionais sobre o prompt universal já formatado
     const overrides = [

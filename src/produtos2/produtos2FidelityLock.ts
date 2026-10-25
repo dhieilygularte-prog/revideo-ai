@@ -38,7 +38,21 @@ Keep the product within the documented viewpoints and visible surfaces of the re
 Reference fidelity takes absolute priority over cinematic creativity, camera movement, scene variety, and visual enhancement. Never fabricate visual information about the product.
 
 8. STRICT NO WEBSITES / URLS & NO BARCODES ON PACKAGING:
-It is STRICTLY FORBIDDEN to show, invent, print, or generate any website URL, domain name (e.g., www, .com, .br, http, web links), barcode lines, or QR codes on any box, carton, pack, wrap, or product packaging. All packages, boxes, and containers must remain completely clean and free of any website addresses and barcodes.`;
+It is STRICTLY FORBIDDEN to show, invent, print, or generate any website URL, domain name (e.g., www, .com, .br, http, web links), barcode lines, or QR codes on any box, carton, pack, wrap, or product packaging. All packages, boxes, and containers must remain completely clean and free of any website addresses and barcodes.
+
+9. 5-GROUP COMPONENT INTEGRITY LOCK (90%+ AUDITOR SCORE GUARANTEE):
+Every single frame must preserve 100% of the consolidated reference sheet across all 5 forensic inspection groups:
+- Group 1 (Identity & Exact Model): Strictly the exact same product model, silhouette, curves, and design. Zero generic substitutions.
+- Group 2 (Physical Structure & All Components): Preserve 100% of the main body, base, connections, cables/wires, handles, caps, nozzles, clasps, buttons, joints, and accessories. For kits or multi-piece products, every individual piece must remain identical in shape, handle, tip, and count.
+- Group 3 (Design & Proportions): Exact thickness, curvature, length, and part-to-part ratios. Never stretch, compress, or warp proportions.
+- Group 4 (Colors, Materials, Textures & Brand Markings): Exact surface finish (matte, glossy, metallic, fabric weave), true color tone, and 1:1 manufacturer logo/emblem/markings.
+- Group 5 (Real Functionality & Anatomy): All demonstrated uses must strictly respect the real physical structure and mechanics documented in the reference photos.
+
+10. TEMPORAL CONTINUITY & ANTI-MORPHING LOCK (ZERO AI DEFORMATION ACROSS FRAMES):
+- Zero Hand-Object Fusion: Human hands and fingers must grip the product cleanly by neutral sides or handles with crisp anatomical separation (5 natural fingers). Fingers must NEVER melt, fuse, blend, or morph into the product surface, and must NEVER cover or occlude the manufacturer logo, display, or primary buttons.
+- Zero Disappearing or Mutating Parts: Nozzles, tips, caps, cables, buttons, seams, or accessories must NEVER vanish, pop in, detach unexpectedly, or morph into different shapes between frames.
+- Rigid Structural Stability: Rigid bodies, shafts, nozzles, and cables must remain 100% solid and dimensionally stable throughout motion without rubbery bending, stretching, shrinking, or thickness fluctuation.
+- Color & Finish Continuity: Maintain consistent product color and surface finish across all consecutive frames without sudden color shifts.`;
 
 /**
  * Anexa a trava global de fidelidade visual aos prompts de video do Veo 3 / Vell / OmniFlash
@@ -66,6 +80,9 @@ export function buildProductFidelityDirectives(_productInfo?: string): string {
 5. TAMANHO REAL — PROIBIDO APARENTAR SER MAIOR: O produto NÃO pode aparentar ser maior do que o produto mostrado nas fotos de referência. Manter escala física 100% realista e proporcional às mãos, ao corpo do apresentador e ao cenário.
 6. LAYOUT, CORES E ÂNGULOS VISÍVEIS 100% IDÊNTICOS (PROIBIDO INVENTAR ÂNGULOS OCULTOS): Manter o produto com layout e cores 100% idênticos às fotos de referência. NUNCA criar imagem do produto mostrando ângulos dele que não estejam nas imagens de referência (ou seja, NÃO inventar parte traseira, lateral ou interior do produto). Nunca inventar nenhum detalhe ou parte: mostrar o produto SEMPRE nos ângulos visíveis nas fotos de referência.
 7. PROIBIÇÃO ABSOLUTA DE SITE E CÓDIGO DE BARRAS EM EMBALAGENS/CAIXAS: É TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, domínio, URL (ex.: www..., .com, .com.br, https) ou código de barras/QR code em qualquer caixa, pacote ou embalagem do produto. As caixas, pacotes e embalagens devem ser 100% limpas de sites e códigos de barras!
+8. INTEGRIDADE ESTRUTURAL DOS 5 GRUPOS PERICIAIS DO DETECTOR (GARANTIA DE APROVAÇÃO >=90%): Preservar 100% de cada componente físico visível nas fotos de referência consolidadas (corpo principal, base, conexões, cabos/fios, alças, tampas, bicos, fechos, botões, articulações e todas as peças individuais de kits). Nenhuma peça pode sumir, mudar de espessura, mudar de curvatura ou ser simplificada.
+9. SEPARAÇÃO ANATÔMICA LIMPA MÃO-PRODUTO (PREVENÇÃO ANTI-MORPHING): As mãos e os dedos devem segurar o produto pelas laterais ou empunhaduras neutras com contorno limpo e 5 dedos perfeitos, NUNCA fundindo os dedos ao produto e NUNCA cobrindo a logomarca original do fabricante, o visor ou os botões principais.
+10. ACABAMENTO E TEXTURA REAL 1:1 (FOSCO, BRILHANTE, METÁLICO OU TRAMA): Reproduzir exatamente o mesmo material aparente, textura e reflexo de superfície das fotos de referência em todos os quadros.
 ========================`;
 }
 
@@ -272,10 +289,12 @@ export function sanitizeSceneFidelityAction(
     .replace(/\b(?:jogando|[aá]gua|despejando|derramando|copo d'?\s*[aá]gua|teste de absor[çc][aã]o|l[ií]quido azul|absorvendo)[^,.;]*/gi, 'apresentando os pacotes fechados organizados no cenário, destacando a praticidade do combo')
     // Indicador de umidade e estados usados
     .replace(/\b(?:indicador de umidade|linha indicadora|fralda molhada|fralda usada|efeito azul)[^,.;]*/gi, 'pacotes fechados organizados em destaque na cômoda ou bancada')
-    // Angulos traseiros e versos
+    // Angulos traseiros, versos e giros arriscados que causam morphing no Veo
     .replace(/\bmostrando a parte traseira\b/gi, 'mostrando a frente documentada nas fotos')
     .replace(/\bmostrando o verso\b/gi, 'mostrando a frente do produto')
     .replace(/\bvirando o produto de costas\b/gi, 'mantendo o produto de frente')
+    .replace(/\bgirando\s+(?:o\s+produto\s+)?(?:em\s+)?360\s*(?:graus|°)?\b/gi, 'exibindo o produto com estabilidade nos ângulos documentados nas referências')
+    .replace(/\brodando\s+rapidamente\b/gi, 'movimentando suavemente com firmeza e nitidez')
     .replace(/\s+/g, ' ')
     .trim();
 

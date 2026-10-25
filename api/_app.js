@@ -890,7 +890,8 @@ Retorne estritamente um JSON estruturado:
     const opticalClarityDirective = `CRITICAL OPTICAL CLARITY & HIGH-DEFINITION SENSOR CALIBRATION:
 - Modern high-end smartphone camera clarity: crystal-clear optical glass lens, razor-sharp focus and rich texture definition.
 - SCENARIO-ACCURATE LIGHTING & ATMOSPHERE: The lighting, atmosphere and color temperature must authentically adapt to the specific scene in the prompt (e.g., candlelight, romantic evening, cozy home, or bright daylight).
-- STRICTLY PROHIBITED: Pale, washed-out, milky, hazy, or muddy look; NO plastic film/veil overlay effect across the lens; NO muddy yellowish plastic cast over the frame. Deliver vivid, rich colors, crisp authentic contrast, and clean sensor optics.`;
+- STRICTLY PROHIBITED: Pale, washed-out, milky, hazy, or muddy look; NO plastic film/veil overlay effect across the lens; NO muddy yellowish plastic cast over the frame. Deliver vivid, rich colors, crisp authentic contrast, and clean sensor optics.\r
+- 90%+ FIDELITY AUDITOR CALIBRATION (5 INSPECTION GROUPS + ANTI-MORPHING): Preserve 100% of the exact product model, silhouette, all physical components (body, nozzles, caps, cables, handles, buttons, seams, and all kit pieces), realistic human scale, exact surface finish (matte, glossy, metallic), and 1:1 manufacturer logo. Hands must have 5 natural fingers gripping neutral sides cleanly without fusing into the product or covering the logo/buttons.`;
     const overrides = [
       modelAntiViolationDirective,
       opticalClarityDirective,
@@ -1301,7 +1302,21 @@ Keep the product within the documented viewpoints and visible surfaces of the re
 Reference fidelity takes absolute priority over cinematic creativity, camera movement, scene variety, and visual enhancement. Never fabricate visual information about the product.
 
 8. STRICT NO WEBSITES / URLS & NO BARCODES ON PACKAGING:
-It is STRICTLY FORBIDDEN to show, invent, print, or generate any website URL, domain name (e.g., www, .com, .br, http, web links), barcode lines, or QR codes on any box, carton, pack, wrap, or product packaging. All packages, boxes, and containers must remain completely clean and free of any website addresses and barcodes.`;
+It is STRICTLY FORBIDDEN to show, invent, print, or generate any website URL, domain name (e.g., www, .com, .br, http, web links), barcode lines, or QR codes on any box, carton, pack, wrap, or product packaging. All packages, boxes, and containers must remain completely clean and free of any website addresses and barcodes.
+
+9. 5-GROUP COMPONENT INTEGRITY LOCK (90%+ AUDITOR SCORE GUARANTEE):
+Every single frame must preserve 100% of the consolidated reference sheet across all 5 forensic inspection groups:
+- Group 1 (Identity & Exact Model): Strictly the exact same product model, silhouette, curves, and design. Zero generic substitutions.
+- Group 2 (Physical Structure & All Components): Preserve 100% of the main body, base, connections, cables/wires, handles, caps, nozzles, clasps, buttons, joints, and accessories. For kits or multi-piece products, every individual piece must remain identical in shape, handle, tip, and count.
+- Group 3 (Design & Proportions): Exact thickness, curvature, length, and part-to-part ratios. Never stretch, compress, or warp proportions.
+- Group 4 (Colors, Materials, Textures & Brand Markings): Exact surface finish (matte, glossy, metallic, fabric weave), true color tone, and 1:1 manufacturer logo/emblem/markings.
+- Group 5 (Real Functionality & Anatomy): All demonstrated uses must strictly respect the real physical structure and mechanics documented in the reference photos.
+
+10. TEMPORAL CONTINUITY & ANTI-MORPHING LOCK (ZERO AI DEFORMATION ACROSS FRAMES):
+- Zero Hand-Object Fusion: Human hands and fingers must grip the product cleanly by neutral sides or handles with crisp anatomical separation (5 natural fingers). Fingers must NEVER melt, fuse, blend, or morph into the product surface, and must NEVER cover or occlude the manufacturer logo, display, or primary buttons.
+- Zero Disappearing or Mutating Parts: Nozzles, tips, caps, cables, buttons, seams, or accessories must NEVER vanish, pop in, detach unexpectedly, or morph into different shapes between frames.
+- Rigid Structural Stability: Rigid bodies, shafts, nozzles, and cables must remain 100% solid and dimensionally stable throughout motion without rubbery bending, stretching, shrinking, or thickness fluctuation.
+- Color & Finish Continuity: Maintain consistent product color and surface finish across all consecutive frames without sudden color shifts.`;
 function appendFidelityLockToVeoPrompt(prompt) {
   if (!prompt || typeof prompt !== "string") return prompt || "";
   if (prompt.includes("PRODUCT VISUAL FIDELITY LOCK")) {
@@ -1438,7 +1453,7 @@ function sanitizeSceneFidelityAction(action, productName, isPackaged, productInf
   if (!action) return action;
   const packaged = isPackaged ?? (productName ? isPackagedProductOnly(productName, productInfo) : false);
   const isOralCare = productName ? isOralCareProduct(productName, productInfo, action) : false;
-  let clean = action.replace(/\b(?:abrindo|rasgando|deslacrando)\s+[^,.;]*/gi, "segurando o pacote fechado de frente com clareza").replace(/\b(?:tirando|retirando|puxando|sacando)\s+(?:uma?|o|a|os|as|do|da|das|dos)?[^,.;]*(?:fralda|unidade|item|conte[uú]do|produto)[^,.;]*/gi, "posicionando e exibindo os pacotes fechados").replace(/\b(?:desdobrando|esticando|abrindo)\s+[^,.;]*/gi, "apresentando a embalagem fechada de frente").replace(/\b(?:el[aá]sticos?|abas?|fitas?|laterais|barreiras?|revestimento|forro|núcleo|camada|gel)[^,.;]*/gi, "especifica\xE7\xF5es e detalhes impressos na embalagem lacrada").replace(/\bfraldas?\s+(?:abertas?|soltas?|desdobradas?|fora do pacote|de dentro)[^,.;]*/gi, "pacote fechado de fraldas").replace(/\b(?:com\s+)?estampa\s+(?:d[aeo]|divertida|infantil|colorida)?\s*(?:galinha\s*pintadinha|desenho|personagem)?[^,.;]*/gi, "arte e logomarca oficiais impressas na pr\xF3pria embalagem de refer\xEAncia").replace(/\b(?:tocando|passando a m[aã]o|sentindo)\s+[^,.;]*/gi, "dedo apontando para as especifica\xE7\xF5es e selo de qualidade impressos na frente da embalagem fechada").replace(/\bdedo\s+pressionando\s+[^,.;]*/gi, "m\xE3o segurando com firmeza o pacote fechado").replace(/\b(?:jogando|[aá]gua|despejando|derramando|copo d'?\s*[aá]gua|teste de absor[çc][aã]o|l[ií]quido azul|absorvendo)[^,.;]*/gi, "apresentando os pacotes fechados organizados no cen\xE1rio, destacando a praticidade do combo").replace(/\b(?:indicador de umidade|linha indicadora|fralda molhada|fralda usada|efeito azul)[^,.;]*/gi, "pacotes fechados organizados em destaque na c\xF4moda ou bancada").replace(/\bmostrando a parte traseira\b/gi, "mostrando a frente documentada nas fotos").replace(/\bmostrando o verso\b/gi, "mostrando a frente do produto").replace(/\bvirando o produto de costas\b/gi, "mantendo o produto de frente").replace(/\s+/g, " ").trim();
+  let clean = action.replace(/\b(?:abrindo|rasgando|deslacrando)\s+[^,.;]*/gi, "segurando o pacote fechado de frente com clareza").replace(/\b(?:tirando|retirando|puxando|sacando)\s+(?:uma?|o|a|os|as|do|da|das|dos)?[^,.;]*(?:fralda|unidade|item|conte[uú]do|produto)[^,.;]*/gi, "posicionando e exibindo os pacotes fechados").replace(/\b(?:desdobrando|esticando|abrindo)\s+[^,.;]*/gi, "apresentando a embalagem fechada de frente").replace(/\b(?:el[aá]sticos?|abas?|fitas?|laterais|barreiras?|revestimento|forro|núcleo|camada|gel)[^,.;]*/gi, "especifica\xE7\xF5es e detalhes impressos na embalagem lacrada").replace(/\bfraldas?\s+(?:abertas?|soltas?|desdobradas?|fora do pacote|de dentro)[^,.;]*/gi, "pacote fechado de fraldas").replace(/\b(?:com\s+)?estampa\s+(?:d[aeo]|divertida|infantil|colorida)?\s*(?:galinha\s*pintadinha|desenho|personagem)?[^,.;]*/gi, "arte e logomarca oficiais impressas na pr\xF3pria embalagem de refer\xEAncia").replace(/\b(?:tocando|passando a m[aã]o|sentindo)\s+[^,.;]*/gi, "dedo apontando para as especifica\xE7\xF5es e selo de qualidade impressos na frente da embalagem fechada").replace(/\bdedo\s+pressionando\s+[^,.;]*/gi, "m\xE3o segurando com firmeza o pacote fechado").replace(/\b(?:jogando|[aá]gua|despejando|derramando|copo d'?\s*[aá]gua|teste de absor[çc][aã]o|l[ií]quido azul|absorvendo)[^,.;]*/gi, "apresentando os pacotes fechados organizados no cen\xE1rio, destacando a praticidade do combo").replace(/\b(?:indicador de umidade|linha indicadora|fralda molhada|fralda usada|efeito azul)[^,.;]*/gi, "pacotes fechados organizados em destaque na c\xF4moda ou bancada").replace(/\bmostrando a parte traseira\b/gi, "mostrando a frente documentada nas fotos").replace(/\bmostrando o verso\b/gi, "mostrando a frente do produto").replace(/\bvirando o produto de costas\b/gi, "mantendo o produto de frente").replace(/\bgirando\s+(?:o\s+produto\s+)?(?:em\s+)?360\s*(?:graus|°)?\b/gi, "exibindo o produto com estabilidade nos \xE2ngulos documentados nas refer\xEAncias").replace(/\brodando\s+rapidamente\b/gi, "movimentando suavemente com firmeza e nitidez").replace(/\s+/g, " ").trim();
   if (isOralCare) {
     clean = clean.replace(/\b(?:antes\s+e\s+depois|clareamento\s*dental|clareamento\s*de\s*dentes?|clareando|dentes?\s+mais\s+brancos?)\b/gi, "demonstra\xE7\xE3o de uso do aparelho").replace(/\b(?:close|foco|zoom)\s+(?:nos|dos|sobre\s+os)\s+dentes\b/gi, "plano m\xE9dio segurando o aparelho com sorriso acolhedor sem focar nos dentes").replace(/\bmostrando\s+(?:os\s+)?dentes(?:\s+brancos)?\b/gi, "apresentando o aparelho em m\xE3os com express\xE3o satisfeita").replace(/\baplicando\s+o\s+jato\s+direto\s+nos\s+dentes\b/gi, "demonstrando o jato potente e limpo de \xE1gua na pia").replace(/\s+/g, " ").trim();
   }
@@ -1538,6 +1553,15 @@ AS 6 REGRAS DE OURO MANDAT\xD3RIAS DE COMPLIANCE TIKTOK SHOP (ZERO-PUNI\xC7\xC3O
    - Manter o produto com layout e cores 100% id\xEAnticos \xE0s fotos de refer\xEAncia. NUNCA criar tomadas mostrando \xE2ngulos que n\xE3o estejam nas fotos de refer\xEAncia (ou seja, N\xC3O inventar traseira, laterais ou interior). Se apenas a frente foi fotografada, manter o produto de frente.
 7. PROIBI\xC7\xC3O ABSOLUTA DE SITE E C\xD3DIGO DE BARRAS EM EMBALAGENS/CAIXAS:
    - \xC9 TERMINANTEMENTE PROIBIDO prever ou gerar qualquer site, link de internet, dom\xEDnio, URL (ex.: www..., .com, .com.br) ou c\xF3digo de barras/QR code em qualquer caixa, pacote ou embalagem do produto. As caixas, pacotes e embalagens devem ser 100% limpas desses elementos.
+8. ENGENHARIA REVERSA PREVENTIVA PARA APROVA\xC7\xC3O >=90% NOS AUDITORES DE STORYBOARD E DE V\xCDDEO (5 GRUPOS DO DETECTOR + ANTI-MORPHING):
+   - Tanto o Storyboard quanto o V\xEDdeo gerado no Veo 3 passam por uma Auditoria Pericial Rigorosa que exige nota >=90% (Verde \u2014 Aprovado) nos 5 Grupos de Inspe\xE7\xE3o e na Passagem de Continuidade Temporal. Portanto, PLANEJE CADA CENA E O PRODUCT LOCK DESDE O IN\xCDCIO PARA GARANTIR >90% DE FIDELIDADE:
+     * Grupo 1 (Identidade e Modelo): Descreva e trave o modelo exato, formato geral, silhueta e design caracter\xEDstico.
+     * Grupo 2 (Estrutura F\xEDsica e Todos os Componentes): Inventarie no "productLock" o corpo principal, base, conex\xF5es, cabos/fios, al\xE7as, tampas, bicos, fechos, bot\xF5es, articula\xE7\xF5es e TODAS as pe\xE7as de kits. Nas cenas, nenhuma pe\xE7a pode sumir ou mudar de lugar.
+     * Grupo 3 (Design e Propor\xE7\xF5es): Preserve espessuras, curvaturas e comprimentos reais em escala humana 1:1.
+     * Grupo 4 (Cores, Materiais, Texturas e Acabamento): Especifique o acabamento real (fosco, brilhante, met\xE1lico, tecido) e a logomarca original 1:1.
+     * Grupo 5 e Continuidade Temporal Anti-Morphing (CR\xCDTICO PARA O VEO 3):
+       - Planeje intera\xE7\xF5es de m\xE3os CALMAS, EST\xC1VEIS E ANATOMICAMENTE SEPARADAS: oriente que as m\xE3os segurem o produto pelas laterais ou empunhadura neutra, SEM cobrir a logomarca do fabricante, o visor ou bot\xF5es/bicos principais, e SEM entrela\xE7ar dedos sobre partes finas (evitando fus\xE3o m\xE3o-objeto / morphing no Veo 3).
+       - Planeje movimentos de c\xE2mera CONTROLADOS E SEGUROS ("push-in suave", "estabiliza\xE7\xE3o firme de smartphone", "pan curto controlado"): NUNCA pe\xE7a giros de 360 graus, rota\xE7\xF5es r\xE1pidas, malabarismos ou movimentos bruscos que fa\xE7am o Veo 3 deformar cabos, bicos ou estrutura!
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
 
 REGRA DE OURO INVIOL\xC1VEL \u2014 LOGOMARCA DO FABRICANTE NO PRODUTO vs ELEMENTOS DE REDE SOCIAL:
@@ -4959,8 +4983,19 @@ DIRETRIZ CR\xCDTICA DE NITIDEZ \xD3PTICA E ZERO PEL\xCDCULA PL\xC1STICA/OPACIDAD
 2. ZERO PEL\xCDCULA PL\xC1STICA, ZERO OPACIDADE E ZERO PALIDEZ: \xC9 terminantemente proibido imagem com aspecto de pl\xE1stico/filme fosco ou amarelado por cima, n\xE9voa leitosa, v\xE9u esbranqui\xE7ado ou cores p\xE1lidas/desbotadas. A imagem deve ter riqueza \xF3tica, contraste aut\xEAntico e cores vivas e fi\xE9is.
 3. ILUMINA\xC7\xC3O DIN\xC2MICA FIEL AO PROMPT: A ilumina\xE7\xE3o, temperatura de cor e atmosfera devem se adaptar com perfei\xE7\xE3o \xE0 cena e ao cen\xE1rio especificados no prompt (luz do dia, luz de velas, noite, ambiente interno simples e acolhedor, etc.).
 ========================`;
+    const auditor90PlusCalibrationDirective = `
+
+========================
+CALIBRAGEM PERICIAL PREVENTIVA DOS 5 GRUPOS DO DETECTOR (META OBRIGAT\xD3RIA: APROVA\xC7\xC3O >=90% VERDE NA PRIMEIRA TENTATIVA):
+Esta imagem ser\xE1 auditada pelo Fiscal Rigoroso de Storyboard e servir\xE1 de refer\xEAncia para o Auditor de V\xEDdeo do Veo 3. Para garantir nota >=90% em todos os quadrantes:
+1. GRUPO 1 (IDENTIDADE E MODELO 1:1): Reproduza exatamente o mesmo modelo, silhueta, curvaturas e design exclusivo das fotos de refer\xEAncia anexadas.
+2. GRUPO 2 (ESTRUTURA F\xCDSICA COMPLETA E KITS): Preserve 100% do corpo principal, base, conex\xF5es, cabos/fios, al\xE7as, tampas, bicos, fechos, bot\xF5es, articula\xE7\xF5es e todas as pe\xE7as individuais de kits. Nenhuma pe\xE7a pode ser omitida, simplificada ou adicionada.
+3. GRUPO 3 (PROPOR\xC7\xD5ES E ESCALA REAL): Mantenha espessuras, comprimentos e escala f\xEDsica 100% realistas em rela\xE7\xE3o \xE0s m\xE3os humanas (proibido aumentar o tamanho do produto).
+4. GRUPO 4 (CORES, TEXTURA E LOGOMARCA 1:1): Preserve o acabamento real (fosco, brilhante, met\xE1lico ou tecido), as cores exatas de cada varia\xE7\xE3o e a logomarca original do fabricante com nitidez cir\xFArgica.
+5. GRUPO 5 E SEPARA\xC7\xC3O M\xC3O-PRODUTO (ANTI-MORPHING PARA O VEO 3): As m\xE3os (sempre com 5 dedos anat\xF4micos perfeitos) devem segurar o produto pelas laterais neutras com contorno limpo e separado, NUNCA fundindo dedos ao produto e NUNCA cobrindo a logomarca, bot\xF5es principais ou bicos!
+========================`;
     const sanitizedPrompt = sanitizeStoryboardPromptForFidelity(promptStr, productName, productInfo);
-    const baseWithLogo = `${sanitizedPrompt}${logoEnforcementBlock}${packagingFidelityDirective}${noBarcodeUrlDirective}${opticalClarityDirective}`;
+    const baseWithLogo = `${sanitizedPrompt}${logoEnforcementBlock}${packagingFidelityDirective}${noBarcodeUrlDirective}${opticalClarityDirective}${auditor90PlusCalibrationDirective}`;
     const effectivePrompt = correctionPrompt && correctionPrompt.trim() ? `${baseWithLogo}
 
 ========================
@@ -5073,6 +5108,7 @@ ${variationInstructionRule}
 - LOGOMARCA E MARCA DO FABRICANTE NO PRODUTO (OBRIGAT\xD3RIO): A marca, a logomarca, o emblema e os textos que j\xE1 est\xE3o impressos/estampados no pr\xF3prio produto nas fotos de refer\xEAncia DEVEM aparecer 100% id\xEAnticos, na mesma cor e no mesmo lugar da pe\xE7a, em todos os quadros em que aquela parte estiver vis\xEDvel. JAMAIS remova ou alise a logomarca do produto!
 - PROIBI\xC7\xC3O ABSOLUTA DE SITE E C\xD3DIGO DE BARRAS: \xC9 TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, URL (ex.: www..., .com) ou c\xF3digo de barras/QR code em qualquer caixa, pacote ou embalagem de produto. Todas as caixas e embalagens devem ser totalmente limpas de sites e c\xF3digos de barras.
 - NITIDEZ \xD3PTICA E ZERO PEL\xCDCULA PL\xC1STICA/OPACIDADE: Fundo branco puro (#FFFFFF) nas bordas divis\xF3rias do storyboard. Sensor moderno de smartphone topo de linha com lente limpa e alta defini\xE7\xE3o. \xC9 terminantemente PROIBIDO qualquer aspecto de pel\xEDcula pl\xE1stica opaca por cima da imagem, n\xE9voa leitosa ou palidez desbotada. A ilumina\xE7\xE3o e a atmosfera devem se adaptar fielmente ao cen\xE1rio e \xE0 cena descrita no prompt.
+- CALIBRAGEM PERICIAL DOS 5 GRUPOS DO DETECTOR (>=90% DE FIDELIDADE): Preserve 100% da identidade do modelo, todos os componentes f\xEDsicos (corpo, bicos, cabos, tampas, al\xE7as, fechos, bot\xF5es e pe\xE7as de kits), propor\xE7\xF5es reais, textura superficial (fosca/brilhante/met\xE1lica) e separa\xE7\xE3o anat\xF4mica limpa entre os 5 dedos da m\xE3o e as bordas do produto (sem fundir dedos ao produto e sem tampar a logomarca original).
 - ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: N\xE3o adicione legendas flutuantes, textos publicit\xE1rios externos, pre\xE7os, setas, carrinho de compras, marca d'\xE1gua externa, @ ou logotipo do TikTok. Apenas os n\xFAmeros 1 a ${frameCount} nos selos circulares e a logomarca original do fabricante no pr\xF3prio produto.`;
         const geminiAspectRatio = isLandscapeStoryboard ? "16:9" : "9:16";
         const modelsToTry = [
@@ -5251,15 +5287,6 @@ app.post("/api/produtos2-audit-storyboard", async (req, res) => {
     ) : [];
     const scenesContext = Array.isArray(scenes) ? scenes.slice(0, quadrantCount).map((s, idx) => `Cena ${idx + 1}: ${s.framing || ""}. ${s.action || ""}`).join("\n") : "";
     const lockContext = Array.isArray(productLock) ? productLock.join("; ") : "";
-    const targetedContextInstruction2 = isTargetedPass ? `
-
-[MODO ATIVO: ETAPA 2 \u2014 INSPE\xC7\xC3O DIRECIONADA EM ALTA DENSIDADE (1 FRAME POR SEGUNDO NA REGI\xC3O SUSPEITA)]:
-Na varredura inicial (1 frame a cada 2s), houve sinal suspeito nos segundos: ${Array.isArray(suspiciousSeconds) && suspiciousSeconds.length > 0 ? suspiciousSeconds.map((s) => `${s}s`).join(", ") : "indicados"}.
-Agora voc\xEA est\xE1 recebendo frames em alta frequ\xEAncia (1 frame por segundo, incluindo contexto antes, durante e depois do evento suspeito).
-REGRAS ESPEC\xCDFICAS DESTA INSPE\xC7\xC3O DIRECIONADA:
-1) Compare os frames de 1 em 1 segundo entre si e com as fotos originais para verificar se a mudan\xE7a suspeita \xE9 PERSISTENTE ou se foi apenas movimento r\xE1pido, oclus\xE3o passageira pelos dedos/m\xE3o, corte de cena, sombra, reflexo ou perspectiva.
-2) Se os frames adjacentes (antes e depois) comprovarem que o produto manteve sua estrutura real e que a suspeita anterior era apenas oclus\xE3o da m\xE3o, movimento ou \xE2ngulo, REABILITE e APROVE o frame com nota >= 90% (Verde), explicando no "issue" que a inspe\xE7\xE3o de 1 frame/s confirmou a integridade f\xEDsica do produto.
-3) Se os frames de 1 frame/s confirmarem que a altera\xE7\xE3o ou deforma\xE7\xE3o persiste de fato no intervalo, confirme a nota rigorosa e detalhe a evid\xEAncia.` : "";
     const variationsAuditRule = activeVariations.length >= 2 ? `
 PASSO 3 \u2014 REGRA DE OURO PARA M\xDALTIPLAS VARIA\xC7\xD5ES / CORES ANEXADAS (${activeVariations.length} VARIA\xC7\xD5ES V\xC1LIDAS):
 O usu\xE1rio anexou fotos de refer\xEAncia do produto em ${activeVariations.length} varia\xE7\xF5es/cores oficiais (${activeVariations.map((v, idx) => `Varia\xE7\xE3o ${idx + 1}: "${v.name || "Varia\xE7\xE3o " + (idx + 1)}"`).join(" | ")}).
@@ -5293,7 +5320,12 @@ PASSO 2 \u2014 REGRAS DE OURO DA FISCALIZA\xC7\xC3O POR QUADRANTE (CENA 1 A CENA
        -> Marque OBRIGATORIAMENTE "logoFaithful": false!
        -> D\xEA OBRIGATORIAMENTE uma nota BAIXA entre 45 e 58 (VERMELHO, abaixo de 60) para aquele quadrante! NUNCA d\xEA nota alta se a parte da logo est\xE1 vis\xEDvel e a logo sumiu!
         -> No campo "issue" (SEMPRE EM PORTUGU\xCAS), escreva claramente: "Na Cena X, o produto est\xE1 diferente: a logomarca original do fabricante ([descreva a logo e onde fica, ex: no encosto]) foi removida e n\xE3o aparece como na foto de refer\xEAncia."
-   - CORES, FORMATO, ESTRUTURA E DETALHES: Verifique se a apar\xEAncia, formato, estrutura e cor conferem com QUALQUER UMA das fotos/varia\xE7\xF5es de refer\xEAncia anexadas pelo usu\xE1rio.${variationsAuditRule}
+   - COMPARA\xC7\xC3O NOS 5 GRUPOS PERICIAIS DO DETECTOR (ALINHAMENTO TOTAL COM O AUDITOR DE V\xCDDEO):
+     * Grupo 1 (Identidade e Modelo): Verifique se \xE9 rigorosamente o mesmo modelo e silhueta das fotos de refer\xEAncia anexadas.
+     * Grupo 2 (Estrutura F\xEDsica, Componentes e Kits): Verifique corpo principal, base, conex\xF5es, cabos/fios, al\xE7as, tampas, bicos, fechos, bot\xF5es, articula\xE7\xF5es e todas as pe\xE7as individuais de kits. REGRA DE PRECIS\xC3O: N\xC3O confunda oclus\xE3o natural e parcial pelos dedos/m\xE3o segurando a lateral com pe\xE7a ausente, desde que a estrutura vis\xEDvel esteja \xEDntegra e a m\xE3o n\xE3o esteja fundida ao objeto.
+     * Grupo 3 (Design e Propor\xE7\xF5es): Verifique espessuras, curvaturas e comprimentos reais (sem confundir perspectiva natural ou dist\xE2ncia da c\xE2mera com deforma\xE7\xE3o).
+     * Grupo 4 (Cores, Materiais, Texturas e Acabamento): Verifique se a cor, textura e acabamento (fosco, brilhante, met\xE1lico) conferem com QUALQUER UMA das fotos/varia\xE7\xF5es de refer\xEAncia anexadas pelo usu\xE1rio (sem confundir ilumina\xE7\xE3o quente/fria da cena ou sombras naturais com troca de cor).${variationsAuditRule}
+     * Grupo 5 (Funcionalidade e Separa\xE7\xE3o M\xE3o-Produto): Verifique se os dedos seguram o produto com contorno anat\xF4mico limpo, sem fus\xE3o/morphing com a pe\xE7a.
    - VERIFICA\xC7\xC3O DE QUANTIDADE (REGRA ANTI-PUNI\xC7\xC3O TIKTOK SHOP):
      * Se o an\xFAncio \xE9 de 1 produto \xFAnico (ex.: 1 celular, 1 rel\xF3gio, 1 perfume), NUNCA pode aparecer 2 ou mais unidades na mesma tela em nenhum quadrante. Se aparecerem 2 celulares ou 2 rel\xF3gios na mesma cena, marque score < 60 e aponte no issue: "Na Cena X, a quantidade est\xE1 incorreta: apareceram 2 unidades na mesma tela quando o an\xFAncio \xE9 de apenas 1 unidade."
      * Se o an\xFAncio \xE9 kit de N unidades (ex.: kit de 4 pacotes), n\xE3o podem aparecer 5 ou quantidade diferente na tela.
@@ -5594,13 +5626,13 @@ Analise cada um dos ${quadrantCount} quadrantes (Cena 1 a Cena ${quadrantCount})
         approvedNums ? `MANTENHA A QUALIDADE E FIDELIDADE DAS CENAS J\xC1 APROVADAS (Cenas ${approvedNums}).` : "",
         `CORRIJA PRIORITARIAMENTE AS CENAS ONDE O PRODUTO FICOU DIFERENTE:`,
         fixesList,
-        `OBJETIVO OBRIGAT\xD3RIO: Atingir mais de 90% de similaridade em TODOS os ${quadrantCount} quadrantes, preservando logomarca do fabricante, textos impressos no produto, cores das varia\xE7\xF5es anexadas, formato e bot\xF5es 100% id\xEAnticos \xE0s fotos de refer\xEAncia.`
+        `OBJETIVO OBRIGAT\xD3RIO: Atingir mais de 90% de similaridade (Verde) em TODOS os ${quadrantCount} quadrantes nos 5 Grupos do Detector, preservando identidade do modelo, estrutura f\xEDsica completa (bicos, cabos, tampas, al\xE7as, bot\xF5es e pe\xE7as de kits), logomarca original do fabricante, cores das varia\xE7\xF5es anexadas, textura real e separa\xE7\xE3o anat\xF4mica limpa entre m\xE3os e produto.`
       ].filter(Boolean).join("\n");
     } else {
       correctionPrompt = [
         logoMandatoryNote,
         variationMandatoryNote,
-        `Mantenha mais de 90% de similaridade em todos os ${quadrantCount} quadrantes, preservando logomarca do fabricante, textos impressos no produto, cores das varia\xE7\xF5es anexadas, bot\xF5es e formato 100% id\xEAnticos \xE0s fotos de refer\xEAncia.`
+        `Mantenha mais de 90% de similaridade em todos os ${quadrantCount} quadrantes nos 5 Grupos do Detector, preservando logomarca do fabricante, estrutura completa (bicos, cabos, tampas, bot\xF5es e pe\xE7as de kits), cores das varia\xE7\xF5es anexadas e separa\xE7\xE3o limpa entre m\xE3os e produto 100% id\xEAnticos \xE0s fotos de refer\xEAncia.`
       ].filter(Boolean).join(" ");
     }
     return res.json({
@@ -5639,8 +5671,8 @@ async function handleProdutos2AuditVideo(req, res) {
       // Array<string>
       productName = "Produto",
       productLock = [],
-      isTargetedPass: isTargetedPass2 = false,
-      suspiciousSeconds: suspiciousSeconds2 = []
+      isTargetedPass = false,
+      suspiciousSeconds = []
     } = req.body;
     if (!Array.isArray(videoFrames) || videoFrames.length === 0) {
       return res.status(400).json({ success: false, error: "Nenhum frame do v\xEDdeo fornecido para an\xE1lise." });
@@ -5650,6 +5682,15 @@ async function handleProdutos2AuditVideo(req, res) {
       return res.status(400).json({ success: false, error: "Nenhuma foto de refer\xEAncia do produto fornecida." });
     }
     const lockContext = Array.isArray(productLock) ? productLock.join("; ") : "";
+    const targetedContextInstruction = isTargetedPass ? `
+
+[MODO ATIVO: ETAPA 2 \u2014 INSPE\xC7\xC3O DIRECIONADA EM ALTA DENSIDADE (1 FRAME POR SEGUNDO NA REGI\xC3O SUSPEITA)]:
+Na varredura inicial (1 frame a cada 2s), houve sinal suspeito nos segundos: ${Array.isArray(suspiciousSeconds) && suspiciousSeconds.length > 0 ? suspiciousSeconds.map((s) => `${s}s`).join(", ") : "indicados"}.
+Agora voc\xEA est\xE1 recebendo frames em alta frequ\xEAncia (1 frame por segundo, incluindo contexto antes, durante e depois do evento suspeito).
+REGRAS ESPEC\xCDFICAS DESTA INSPE\xC7\xC3O DIRECIONADA:
+1) Compare os frames de 1 em 1 segundo entre si e com as fotos originais para verificar se a mudan\xE7a suspeita \xE9 PERSISTENTE ou se foi apenas movimento r\xE1pido, oclus\xE3o passageira pelos dedos/m\xE3o, corte de cena, sombra, reflexo ou perspectiva.
+2) Se os frames adjacentes (antes e depois) comprovarem que o produto manteve sua estrutura real e que a suspeita anterior era apenas oclus\xE3o da m\xE3o, movimento ou \xE2ngulo, REABILITE e APROVE o frame com nota >= 90% (Verde), explicando no "issue" que a inspe\xE7\xE3o de 1 frame/s confirmou a integridade f\xEDsica do produto.
+3) Se os frames de 1 frame/s confirmarem que a altera\xE7\xE3o ou deforma\xE7\xE3o persiste de fato no intervalo, confirme a nota rigorosa e detalhe a evid\xEAncia.` : "";
     const systemInstruction = `Voc\xEA \xE9 o Auditor Pericial de Fidelidade Visual de Produtos para V\xEDdeos Comerciais (Veo 3 / TikTok Shop), operando com metodologia de Detec\xE7\xE3o Preventiva de Inconsist\xEAncias (Manual Completo com Complementos de Inspe\xE7\xE3o).
 Sua miss\xE3o \xE9 auditar ${videoFrames.length} FRAMES extra\xEDdos do v\xEDdeo (1 captura a cada 2 segundos ao longo do v\xEDdeo) e comparar o produto retratado em cada um deles com as FOTOS REAIS DE REFER\xCANCIA do produto "${productName}".
 

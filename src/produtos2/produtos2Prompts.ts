@@ -619,7 +619,7 @@ REGRA DO PRIMEIRO QUADRO (QUADRO 1 / HOOK DE ATENÇÃO):
 - Se o usuário pedir expressamente nas Instruções Adicionais para mostrar o produto desde o primeiro frame, inclua-o. Caso contrário, o primeiro frame é livre: pode ter ou não ter o produto de acordo com o que criar o melhor hook.
 - Nos demais quadros (Quadros 2 a ${totalScenes}), a presença do produto é OBRIGATÓRIA e deve ser 100% fiel às fotos de referência!
 
-AS 8 REGRAS MANDATÓRIAS DE FIDELIDADE TOTAL AO PRODUTO ANEXADO (TIKTOK SHOP COMPLIANCE ZERO-PUNIÇÃO):
+AS 10 REGRAS MANDATÓRIAS DE FIDELIDADE TOTAL AO PRODUTO ANEXADO E CALIBRAGEM PARA APROVAÇÃO >=90% NOS AUDITORES DE STORYBOARD E VÍDEO:
 1. TRAVA ESTRITA DE QUANTIDADE DE PRODUTO: Em todos os quadros onde o produto for exibido, nunca colocar quantidade diferente do anúncio! Se o anúncio é de 1 celular, relógio ou perfume, NUNCA pode aparecer 2 celulares/relógios/perfumes na tela em nenhum frame. Se o anúncio é kit de 4 pacotes de fraldas, NUNCA pode aparecer 3 ou 5 pacotes na tela em nenhum frame: devem aparecer SEMPRE e RIGOROSAMENTE a quantidade exata (ex.: exatamente 4 pacotes).
 2. LOGOMARCA, NOME DO FABRICANTE E NOME DO PRODUTO: A marca, a logomarca, o emblema/símbolo e o nome do produto que estão impressos, estampados ou gravados no próprio produto nas fotos de referência DEVEM aparecer 100% idênticos (mesmo desenho, formato, cor, proporção e posição exata na peça) em TODOS os quadros onde essa parte estiver visível. JAMAIS remova, apague ou deixe lisa a área onde fica a logomarca original do fabricante no produto!
 3. PRODUTOS DE USO ORAL SEM "ANTES E DEPOIS" E SEM CLAREAMENTO: Para produtos de higiene ou uso oral (escova de dentes, irrigador oral, enxaguante, etc.), fazer o vídeo SEM mostrar dentes em close e SEM dar a entender que houve clareamento dental.
@@ -628,6 +628,13 @@ AS 8 REGRAS MANDATÓRIAS DE FIDELIDADE TOTAL AO PRODUTO ANEXADO (TIKTOK SHOP COM
 6. LAYOUT, CORES E ÂNGULOS VISÍVEIS 100% IDÊNTICOS (PROIBIDO INVENTAR ÂNGULOS OCULTOS): Manter o produto com layout e cores 100% idênticos às fotos de referência. NUNCA criar imagem do produto mostrando ângulos dele que não estejam nas imagens de referência (ou seja, NÃO inventar parte traseira, lateral ou interior do produto). Mostrar o produto SEMPRE nos ângulos visíveis nas fotos de referência.
 7. PRODUTO EM EMBALAGEM FECHADA / PACOTE LACRADO / CAIXA: Se as referências mostram o produto lacrado na embalagem/pacote fechado e NÃO há fotos do item avulso solto fora da embalagem, É EXPRESSAMENTE E TERMINANTEMENTE PROIBIDO inventar, abrir ou desenhar o produto solto fora do pacote. Em TODOS os quadros em que a embalagem for exibida, o que deve ser mostrado e manuseado é o PACOTE/EMBALAGEM/CAIXA FECHADA exatamente como nas fotos reais!
 8. PROIBIÇÃO ABSOLUTA DE SITE E CÓDIGO DE BARRAS EM EMBALAGENS/CAIXAS: É TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, domínio, URL (ex.: www..., .com, .com.br, https) ou código de barras/QR code em qualquer caixa, pacote ou embalagem do produto. As caixas, pacotes e embalagens devem ser 100% limpas de sites e códigos de barras!
+9. CHECKLIST PERICIAL DOS 5 GRUPOS DO DETECTOR (GARANTIA DE NOTA >=90% VERDE):
+   - Grupo 1 (Identidade e Modelo): Exatamente o mesmo modelo, silhueta, curvaturas e design característico das fotos reais.
+   - Grupo 2 (Estrutura Física e Componentes): Preservar 100% do corpo principal, base, conexões, cabos/fios, alças, tampas, bicos, fechos, botões, articulações e TODAS as peças individuais de kits. Nenhuma peça pode sumir, ser omitida ou alterada.
+   - Grupo 3 (Design e Proporções): Manter espessuras, comprimentos e relações exatas entre as partes do produto.
+   - Grupo 4 (Cores, Materiais, Texturas e Acabamento): Reproduzir exatamente o acabamento (fosco, brilhante, metálico ou trama), textura e tom de cor real das fotos de referência.
+   - Grupo 5 (Funcionalidade e Anatomia): Demonstrações práticas 100% fiéis à mecânica real do produto.
+10. SEPARAÇÃO ANATÔMICA LIMPA MÃO-PRODUTO (PREVENÇÃO ANTI-MORPHING PARA O VEO 3): As mãos e os dedos do apresentador devem segurar o produto pelas laterais ou empunhaduras neutras com contorno nítido (5 dedos anatômicos perfeitos), NUNCA fundindo os dedos ao produto e NUNCA cobrindo a logomarca original do fabricante, o visor ou os botões/bicos principais, garantindo quadros limpos que o Veo 3 animará sem deformações!
 A copy selecionada para este criativo é:
 "${finalCopy}"
 As cenas do storyboard devem ser construídas A PARTIR DESSA COPY. Cada cena deve provar, ilustrar ou reforçar visualmente um trecho da fala.
@@ -1057,11 +1064,17 @@ Cada cena do vídeo DEVE reproduzir a cor, estampa e acabamento do produto EXATA
 Quando o storyboard alternar a cor do produto entre os quadros, o vídeo DEVE acompanhar fielmente essa mudança em cada cena, usando a cor do produto ilustrada naquele quadro específico! A imagem do storyboard é a referência visual soberana e absoluta da cor do produto para cada cena.
 
 ========================
-FIDELIDADE DO PRODUTO (PRODUCT LOCK)
+FIDELIDADE DO PRODUTO (PRODUCT LOCK & BLINDAGEM PERICIAL >=90%)
 ========================
 Manter ${productName} exatamente como aparece no storyboard e nas fotos:
 ${productLockBullets}
 ${productLockColorClause} A marca, a logomarca/emblema e os textos do fabricante impressos no próprio produto DEVEM aparecer 100% idênticos às fotos de referência em todas as cenas em que aquela parte do produto estiver visível. Proibido apenas adicionar textos ou logos externos de redes sociais (como TikTok/@/carrinho) na tela.
+
+BLINDAGEM ANTI-MORPHING E CONTINUIDADE TEMPORAL NOS 5 GRUPOS DO DETECTOR DE VÍDEO (OBRIGATÓRIO):
+1. INTEGRIDADE DOS 5 GRUPOS DE COMPONENTES: Preservar 100% da identidade do modelo, corpo principal, base, conexões, cabos/fios, alças, tampas, bicos, fechos, botões, articulações e todas as unidades de kits do segundo 0.0s ao final. Nenhuma peça, bico, tampa ou botão pode desaparecer, surgir do nada ou mudar de formato durante o movimento.
+2. ZERO FUSÃO MÃO-PRODUTO (ANTI-MORPHING): As mãos e os dedos (sempre 5 dedos anatômicos naturais por mão) devem segurar o produto com firmeza pelas laterais ou empunhaduras neutras, mantendo contorno e separação física cristalina entre os dedos e o produto. Os dedos NUNCA podem derreter, atravessar ou se fundir ao corpo do produto e NUNCA devem cobrir a logomarca original do fabricante.
+3. GEOMETRIA RÍGIDA E ESTABILIDADE DIMENSIONAL: Partes rígidas, hastes, bicos, cabos e embalagens devem permanecer 100% sólidos e indeformáveis durante toda a movimentação, sem efeito elástico/borrachudo, sem esticar, sem encolher e sem mudar de espessura entre um frame e outro.
+4. ESTABILIDADE DE COR, TEXTURA E ACABAMENTO: Manter exatamente o mesmo acabamento superficial (fosco, brilhante, metálico ou tecido) e a cor real de cada quadro correspondente do storyboard, sem alterações cromáticas bruscas dentro da mesma tomada.
 
 ${charactersSection}
 
@@ -1296,12 +1309,15 @@ ${!isPov ? 'Os movimentos dos lábios devem acompanhar com sincronia labial natu
     );
   }
 
-  // 9. Continuidade
+  // 9. Continuidade e Blindagem Anti-Morphing (Garantia >=90% no Detector de Vídeo)
   const regrasContinuidadeBody = `Manter o mesmo produto, a mesma bancada/mesa, o mesmo ambiente, ${isPov ? 'as mesmas mãos' : 'a mesma pessoa e roupas'} e a mesma iluminação durante todo o vídeo.
-${isPov ? 'As mãos devem ter anatomia natural: cinco dedos por mão, proporções anatômicas exatas e movimentos fluidos sem atravessar o produto.' : 'Movimentos humanos espontâneos e naturais.'}
-Não alterar as dimensões, marca ou detalhes do produto entre os cortes.
+${isPov ? 'As mãos devem ter anatomia natural: cinco dedos por mão, proporções anatômicas exatas e movimentos fluidos sem atravessar o produto.' : 'Movimentos humanos espontâneos e naturais, com 5 dedos anatômicos perfeitos por mão.'}
+BLINDAGEM PERICIAL ANTI-MORPHING E INTEGRIDADE DOS 5 GRUPOS DO DETECTOR (META >=90% DE FIDELIDADE):
+- Zero Fusão Mão-Produto: Os dedos devem segurar o produto pelas laterais ou áreas neutras com separação visual limpa, sem jamais derreter, atravessar ou se fundir ao produto e sem tampar a logomarca original do fabricante ou botões principais.
+- Permanência 100% dos Componentes: Corpo principal, base, bicos, tampas, cabos, alças, fechos, botões, costuras e todas as peças de kits devem permanecer 100% íntegros do segundo 0,0 ao 10,0. Nenhuma peça pode sumir, surgir repentinamente ou se transformar em outro formato entre frames.
+- Geometria Rígida Indeformável: Não alterar as dimensões, espessura, curvatura, marca, textura (fosca, brilhante ou metálica) ou detalhes do produto entre os cortes. Cabos, bicos e corpo rígido nunca esticam, encolhem ou entortam durante o movimento.
 ${isPackaged ? 'Não abrir, rasgar ou deslacrar nenhuma embalagem. Não mostrar itens soltos.' : ''}
-A câmera deve trabalhar com movimentos suaves de aproximação (push-in) e estabilização de smartphone de alta qualidade.`;
+A câmera deve trabalhar com movimentos suaves e controlados de aproximação (push-in) e estabilização firme de smartphone de alta qualidade, mantendo sempre os ângulos documentados nas referências.`;
 
   const fullPrompt = `# PROMPT VEO / OMNI 3 — ${productName.toUpperCase()}
 ## VÍDEO UGC REALISTA — 10 SEGUNDOS — STORYBOARD DE 4 CENAS
@@ -1658,9 +1674,10 @@ export function buildDefaultProdutos2Plan(params: {
 
   const productLock: string[] = [
     `LOGOMARCA E IDENTIDADE DO FABRICANTE: Preservar 100% idênticos a logomarca, o emblema/símbolo e o nome da marca originais do fabricante impressos/estampados no próprio produto nas fotos de referência (mesmo desenho, cor, tamanho e posição exata na peça, jamais apagar ou alisar a logo do produto)`,
-    `Formato, silhueta, proporção e dimensões exatas de ${productName} conforme fotos anexadas`,
+    `Formato, silhueta, proporção, espessuras e dimensões exatas de ${productName} conforme fotos anexadas (Grupo 1 e Grupo 3 do Detector)`,
     colorsNote,
-    `Textura, material, costuras, encaixes, botões e funções originais preservados 1:1 sem redesenho`,
+    `Estrutura física completa preservada 1:1 (Grupo 2 e Grupo 4 do Detector): corpo principal, bicos, tampas, cabos, alças, botões, costuras, textura e acabamento superficial (fosco/brilhante/metálico) sem redesenho e sem omissão de peças`,
+    `Pegada limpa Anti-Morphing (Grupo 5 e Continuidade Temporal): mãos segurando pelas laterais neutras sem fundir os dedos ao produto e sem cobrir a logomarca ou componentes principais`,
     ...(infoHighlights.length > 0 ? infoHighlights : [`Acabamento físico autêntico idêntico em todas as ${sceneCount} cenas`]),
   ];
 
@@ -2014,6 +2031,15 @@ AS 6 REGRAS DE OURO MANDATÓRIAS DE COMPLIANCE TIKTOK SHOP (ZERO-PUNIÇÃO):
    - Manter o produto com layout e cores 100% idênticos às fotos de referência. NUNCA criar tomadas mostrando ângulos que não estejam nas fotos de referência (ou seja, NÃO inventar traseira, laterais ou interior). Se apenas a frente foi fotografada, manter o produto de frente.
 7. PROIBIÇÃO ABSOLUTA DE SITE E CÓDIGO DE BARRAS EM EMBALAGENS/CAIXAS:
    - É TERMINANTEMENTE PROIBIDO prever ou gerar qualquer site, link de internet, domínio, URL (ex.: www..., .com, .com.br) ou código de barras/QR code em qualquer caixa, pacote ou embalagem do produto. As caixas, pacotes e embalagens devem ser 100% limpas desses elementos.
+8. ENGENHARIA REVERSA PREVENTIVA PARA APROVAÇÃO >=90% NOS AUDITORES DE STORYBOARD E DE VÍDEO (5 GRUPOS DO DETECTOR + ANTI-MORPHING):
+   - Tanto o Storyboard quanto o Vídeo gerado no Veo 3 passam por uma Auditoria Pericial Rigorosa que exige nota >=90% (Verde — Aprovado) nos 5 Grupos de Inspeção e na Passagem de Continuidade Temporal. Portanto, PLANEJE CADA CENA E O PRODUCT LOCK DESDE O INÍCIO PARA GARANTIR >90% DE FIDELIDADE:
+     * Grupo 1 (Identidade e Modelo): Descreva e trave o modelo exato, formato geral, silhueta e design característico.
+     * Grupo 2 (Estrutura Física e Todos os Componentes): Inventarie no "productLock" o corpo principal, base, conexões, cabos/fios, alças, tampas, bicos, fechos, botões, articulações e TODAS as peças de kits. Nas cenas, nenhuma peça pode sumir ou mudar de lugar.
+     * Grupo 3 (Design e Proporções): Preserve espessuras, curvaturas e comprimentos reais em escala humana 1:1.
+     * Grupo 4 (Cores, Materiais, Texturas e Acabamento): Especifique o acabamento real (fosco, brilhante, metálico, tecido) e a logomarca original 1:1.
+     * Grupo 5 e Continuidade Temporal Anti-Morphing (CRÍTICO PARA O VEO 3):
+       - Planeje interações de mãos CALMAS, ESTÁVEIS E ANATOMICAMENTE SEPARADAS: oriente que as mãos segurem o produto pelas laterais ou empunhadura neutra, SEM cobrir a logomarca do fabricante, o visor ou botões/bicos principais, e SEM entrelaçar dedos sobre partes finas (evitando fusão mão-objeto / morphing no Veo 3).
+       - Planeje movimentos de câmera CONTROLADOS E SEGUROS ("push-in suave", "estabilização firme de smartphone", "pan curto controlado"): NUNCA peça giros de 360 graus, rotações rápidas, malabarismos ou movimentos bruscos que façam o Veo 3 deformar cabos, bicos ou estrutura!
 ═══════════════════════════════════════════════════════════════════
 
 REGRA DE OURO INVIOLÁVEL — LOGOMARCA DO FABRICANTE NO PRODUTO vs ELEMENTOS DE REDE SOCIAL:

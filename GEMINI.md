@@ -152,6 +152,13 @@ Este documento contém as regras invioláveis de inteligência artificial e enge
 - **Etapa 1 — Varredura Inicial (1 frame a cada 2s):** extrai capturas a cada 2 segundos ao longo do vídeo. Se todos os frames forem aprovados (≥90% Verde), encerra imediatamente na Etapa 1 sem custo extra.
 - **Etapa 2 — Inspeção Direcionada (1 frame por segundo na região suspeita):** caso algum frame apresente sinal suspeito (<90%), o aplicativo extrai automaticamente os segundos adjacentes (1s antes e 1s depois, passando a 1 frame/s naquela janela) e faz uma segunda verificação focada exclusivamente no trecho suspeito para distinguir oclusão rápida de mão/movimento de uma deformação real persistente.
 
+### 10.6 ENGENHARIA REVERSA PREVENTIVA PARA APROVAÇÃO ≥90% DESDE A CRIAÇÃO (STORYBOARD + PROMPT VEO 3)
+- Todas as regras e os 5 Grupos de Inspeção Pericial tanto do **Auditor de Storyboard** quanto do **Detector de Fidelidade de Vídeo** são aplicados preventivamente desde o **Planejamento**, a **Geração da Imagem do Storyboard** e a **Geração do Prompt do Veo 3**:
+  1. **Planejamento Veo-Safe e Audit-Safe:** o planejador inventaria os 5 grupos no `productLock` (identidade/modelo, estrutura física completa com bicos/cabos/tampas/botões/peças de kits, proporções reais, cores/acabamento superficial e logomarca 1:1) e projeta interações de mãos calmas e anatomicamente separadas (segurando pelas laterais sem cobrir a logo ou botões e sem giros de 360° ou movimentos bruscos que geram morphing no Veo 3).
+  2. **Storyboard Calibrado para ≥90% (Verde):** os motores de imagem (OpenAI e Gemini) recebem o Checklist Pericial dos 5 Grupos e a trava de separação limpa entre os 5 dedos da mão e as bordas do produto, garantindo que cada quadrante já nasça com fidelidade acima de 90% e sirva como keyframe perfeito para o Veo 3.
+  3. **Prompt do Veo 3 com Blindagem Anti-Morphing e Continuidade Temporal:** inclui a trava dos 5 Grupos (`5-GROUP COMPONENT INTEGRITY LOCK`) e a trava de Continuidade Temporal (`TEMPORAL CONTINUITY & ANTI-MORPHING LOCK`), exigindo geometria rígida indeformável, zero fusão mão-produto e permanência de 100% dos componentes do segundo 0.0s até o final.
+
+
 
 
 

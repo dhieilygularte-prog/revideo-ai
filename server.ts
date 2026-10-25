@@ -3708,8 +3708,10 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
 
     const opticalClarityDirective = `\n\n========================\nDIRETRIZ CRÍTICA DE NITIDEZ ÓPTICA E ZERO PELÍCULA PLÁSTICA/OPACIDADE:\n1. NITIDEZ DE CÂMERA DE SMARTPHONE MODERNO TOPO DE LINHA: Imagem nítida, sensor de alta definição e foco cristalino, retratando a cena com máxima naturalidade e realismo.\n2. ZERO PELÍCULA PLÁSTICA, ZERO OPACIDADE E ZERO PALIDEZ: É terminantemente proibido imagem com aspecto de plástico/filme fosco ou amarelado por cima, névoa leitosa, véu esbranquiçado ou cores pálidas/desbotadas. A imagem deve ter riqueza ótica, contraste autêntico e cores vivas e fiéis.\n3. ILUMINAÇÃO DINÂMICA FIEL AO PROMPT: A iluminação, temperatura de cor e atmosfera devem se adaptar com perfeição à cena e ao cenário especificados no prompt (luz do dia, luz de velas, noite, ambiente interno simples e acolhedor, etc.).\n========================`;
 
+    const auditor90PlusCalibrationDirective = `\n\n========================\nCALIBRAGEM PERICIAL PREVENTIVA DOS 5 GRUPOS DO DETECTOR (META OBRIGATÓRIA: APROVAÇÃO >=90% VERDE NA PRIMEIRA TENTATIVA):\nEsta imagem será auditada pelo Fiscal Rigoroso de Storyboard e servirá de referência para o Auditor de Vídeo do Veo 3. Para garantir nota >=90% em todos os quadrantes:\n1. GRUPO 1 (IDENTIDADE E MODELO 1:1): Reproduza exatamente o mesmo modelo, silhueta, curvaturas e design exclusivo das fotos de referência anexadas.\n2. GRUPO 2 (ESTRUTURA FÍSICA COMPLETA E KITS): Preserve 100% do corpo principal, base, conexões, cabos/fios, alças, tampas, bicos, fechos, botões, articulações e todas as peças individuais de kits. Nenhuma peça pode ser omitida, simplificada ou adicionada.\n3. GRUPO 3 (PROPORÇÕES E ESCALA REAL): Mantenha espessuras, comprimentos e escala física 100% realistas em relação às mãos humanas (proibido aumentar o tamanho do produto).\n4. GRUPO 4 (CORES, TEXTURA E LOGOMARCA 1:1): Preserve o acabamento real (fosco, brilhante, metálico ou tecido), as cores exatas de cada variação e a logomarca original do fabricante com nitidez cirúrgica.\n5. GRUPO 5 E SEPARAÇÃO MÃO-PRODUTO (ANTI-MORPHING PARA O VEO 3): As mãos (sempre com 5 dedos anatômicos perfeitos) devem segurar o produto pelas laterais neutras com contorno limpo e separado, NUNCA fundindo dedos ao produto e NUNCA cobrindo a logomarca, botões principais ou bicos!\n========================`;
+
     const sanitizedPrompt = sanitizeStoryboardPromptForFidelity(promptStr, productName, productInfo);
-    const baseWithLogo = `${sanitizedPrompt}${logoEnforcementBlock}${packagingFidelityDirective}${noBarcodeUrlDirective}${opticalClarityDirective}`;
+    const baseWithLogo = `${sanitizedPrompt}${logoEnforcementBlock}${packagingFidelityDirective}${noBarcodeUrlDirective}${opticalClarityDirective}${auditor90PlusCalibrationDirective}`;
     const effectivePrompt = correctionPrompt && correctionPrompt.trim()
       ? `${baseWithLogo}\n\n========================\nCORREÇÃO OBRIGATÓRIA DE AUDITORIA DE FIDELIDADE DOS ${frameCount} QUADRANTES:\n${correctionPrompt.trim()}\n========================`
       : baseWithLogo;
@@ -3867,6 +3869,7 @@ ${variationInstructionRule}
 - LOGOMARCA E MARCA DO FABRICANTE NO PRODUTO (OBRIGATÓRIO): A marca, a logomarca, o emblema e os textos que já estão impressos/estampados no próprio produto nas fotos de referência DEVEM aparecer 100% idênticos, na mesma cor e no mesmo lugar da peça, em todos os quadros em que aquela parte estiver visível. JAMAIS remova ou alise a logomarca do produto!
 - PROIBIÇÃO ABSOLUTA DE SITE E CÓDIGO DE BARRAS: É TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, URL (ex.: www..., .com) ou código de barras/QR code em qualquer caixa, pacote ou embalagem de produto. Todas as caixas e embalagens devem ser totalmente limpas de sites e códigos de barras.
 - NITIDEZ ÓPTICA E ZERO PELÍCULA PLÁSTICA/OPACIDADE: Fundo branco puro (#FFFFFF) nas bordas divisórias do storyboard. Sensor moderno de smartphone topo de linha com lente limpa e alta definição. É terminantemente PROIBIDO qualquer aspecto de película plástica opaca por cima da imagem, névoa leitosa ou palidez desbotada. A iluminação e a atmosfera devem se adaptar fielmente ao cenário e à cena descrita no prompt.
+- CALIBRAGEM PERICIAL DOS 5 GRUPOS DO DETECTOR (>=90% DE FIDELIDADE): Preserve 100% da identidade do modelo, todos os componentes físicos (corpo, bicos, cabos, tampas, alças, fechos, botões e peças de kits), proporções reais, textura superficial (fosca/brilhante/metálica) e separação anatômica limpa entre os 5 dedos da mão e as bordas do produto (sem fundir dedos ao produto e sem tampar a logomarca original).
 - ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: Não adicione legendas flutuantes, textos publicitários externos, preços, setas, carrinho de compras, marca d'água externa, @ ou logotipo do TikTok. Apenas os números 1 a ${frameCount} nos selos circulares e a logomarca original do fabricante no próprio produto.`;
 
         const geminiAspectRatio = isLandscapeStoryboard ? '16:9' : '9:16';
@@ -4086,15 +4089,6 @@ app.post('/api/produtos2-audit-storyboard', async (req, res) => {
       : '';
 
     const lockContext = Array.isArray(productLock) ? productLock.join('; ') : '';
-    const targetedContextInstruction = isTargetedPass
-      ? `\n\n[MODO ATIVO: ETAPA 2 — INSPEÇÃO DIRECIONADA EM ALTA DENSIDADE (1 FRAME POR SEGUNDO NA REGIÃO SUSPEITA)]:
-Na varredura inicial (1 frame a cada 2s), houve sinal suspeito nos segundos: ${Array.isArray(suspiciousSeconds) && suspiciousSeconds.length > 0 ? suspiciousSeconds.map((s: any) => `${s}s`).join(', ') : 'indicados'}.
-Agora você está recebendo frames em alta frequência (1 frame por segundo, incluindo contexto antes, durante e depois do evento suspeito).
-REGRAS ESPECÍFICAS DESTA INSPEÇÃO DIRECIONADA:
-1) Compare os frames de 1 em 1 segundo entre si e com as fotos originais para verificar se a mudança suspeita é PERSISTENTE ou se foi apenas movimento rápido, oclusão passageira pelos dedos/mão, corte de cena, sombra, reflexo ou perspectiva.
-2) Se os frames adjacentes (antes e depois) comprovarem que o produto manteve sua estrutura real e que a suspeita anterior era apenas oclusão da mão, movimento ou ângulo, REABILITE e APROVE o frame com nota >= 90% (Verde), explicando no "issue" que a inspeção de 1 frame/s confirmou a integridade física do produto.
-3) Se os frames de 1 frame/s confirmarem que a alteração ou deformação persiste de fato no intervalo, confirme a nota rigorosa e detalhe a evidência.`
-      : '';
 
     const variationsAuditRule =
       activeVariations.length >= 2
@@ -4134,7 +4128,12 @@ PASSO 2 — REGRAS DE OURO DA FISCALIZAÇÃO POR QUADRANTE (CENA 1 A CENA ${quad
        -> Marque OBRIGATORIAMENTE "logoFaithful": false!
        -> Dê OBRIGATORIAMENTE uma nota BAIXA entre 45 e 58 (VERMELHO, abaixo de 60) para aquele quadrante! NUNCA dê nota alta se a parte da logo está visível e a logo sumiu!
         -> No campo "issue" (SEMPRE EM PORTUGUÊS), escreva claramente: "Na Cena X, o produto está diferente: a logomarca original do fabricante ([descreva a logo e onde fica, ex: no encosto]) foi removida e não aparece como na foto de referência."
-   - CORES, FORMATO, ESTRUTURA E DETALHES: Verifique se a aparência, formato, estrutura e cor conferem com QUALQUER UMA das fotos/variações de referência anexadas pelo usuário.${variationsAuditRule}
+   - COMPARAÇÃO NOS 5 GRUPOS PERICIAIS DO DETECTOR (ALINHAMENTO TOTAL COM O AUDITOR DE VÍDEO):
+     * Grupo 1 (Identidade e Modelo): Verifique se é rigorosamente o mesmo modelo e silhueta das fotos de referência anexadas.
+     * Grupo 2 (Estrutura Física, Componentes e Kits): Verifique corpo principal, base, conexões, cabos/fios, alças, tampas, bicos, fechos, botões, articulações e todas as peças individuais de kits. REGRA DE PRECISÃO: NÃO confunda oclusão natural e parcial pelos dedos/mão segurando a lateral com peça ausente, desde que a estrutura visível esteja íntegra e a mão não esteja fundida ao objeto.
+     * Grupo 3 (Design e Proporções): Verifique espessuras, curvaturas e comprimentos reais (sem confundir perspectiva natural ou distância da câmera com deformação).
+     * Grupo 4 (Cores, Materiais, Texturas e Acabamento): Verifique se a cor, textura e acabamento (fosco, brilhante, metálico) conferem com QUALQUER UMA das fotos/variações de referência anexadas pelo usuário (sem confundir iluminação quente/fria da cena ou sombras naturais com troca de cor).${variationsAuditRule}
+     * Grupo 5 (Funcionalidade e Separação Mão-Produto): Verifique se os dedos seguram o produto com contorno anatômico limpo, sem fusão/morphing com a peça.
    - VERIFICAÇÃO DE QUANTIDADE (REGRA ANTI-PUNIÇÃO TIKTOK SHOP):
      * Se o anúncio é de 1 produto único (ex.: 1 celular, 1 relógio, 1 perfume), NUNCA pode aparecer 2 ou mais unidades na mesma tela em nenhum quadrante. Se aparecerem 2 celulares ou 2 relógios na mesma cena, marque score < 60 e aponte no issue: "Na Cena X, a quantidade está incorreta: apareceram 2 unidades na mesma tela quando o anúncio é de apenas 1 unidade."
      * Se o anúncio é kit de N unidades (ex.: kit de 4 pacotes), não podem aparecer 5 ou quantidade diferente na tela.
@@ -4520,7 +4519,7 @@ O array "quadrants" DEVE conter exatamente ${quadrantCount} itens (sceneNumber 1
           : '',
         `CORRIJA PRIORITARIAMENTE AS CENAS ONDE O PRODUTO FICOU DIFERENTE:`,
         fixesList,
-        `OBJETIVO OBRIGATÓRIO: Atingir mais de 90% de similaridade em TODOS os ${quadrantCount} quadrantes, preservando logomarca do fabricante, textos impressos no produto, cores das variações anexadas, formato e botões 100% idênticos às fotos de referência.`,
+        `OBJETIVO OBRIGATÓRIO: Atingir mais de 90% de similaridade (Verde) em TODOS os ${quadrantCount} quadrantes nos 5 Grupos do Detector, preservando identidade do modelo, estrutura física completa (bicos, cabos, tampas, alças, botões e peças de kits), logomarca original do fabricante, cores das variações anexadas, textura real e separação anatômica limpa entre mãos e produto.`,
       ]
         .filter(Boolean)
         .join('\n');
@@ -4528,7 +4527,7 @@ O array "quadrants" DEVE conter exatamente ${quadrantCount} itens (sceneNumber 1
       correctionPrompt = [
         logoMandatoryNote,
         variationMandatoryNote,
-        `Mantenha mais de 90% de similaridade em todos os ${quadrantCount} quadrantes, preservando logomarca do fabricante, textos impressos no produto, cores das variações anexadas, botões e formato 100% idênticos às fotos de referência.`,
+        `Mantenha mais de 90% de similaridade em todos os ${quadrantCount} quadrantes nos 5 Grupos do Detector, preservando logomarca do fabricante, estrutura completa (bicos, cabos, tampas, botões e peças de kits), cores das variações anexadas e separação limpa entre mãos e produto 100% idênticos às fotos de referência.`,
       ]
         .filter(Boolean)
         .join(' ');
@@ -4587,6 +4586,15 @@ async function handleProdutos2AuditVideo(req: any, res: any) {
     }
 
     const lockContext = Array.isArray(productLock) ? productLock.join('; ') : '';
+    const targetedContextInstruction = isTargetedPass
+      ? `\n\n[MODO ATIVO: ETAPA 2 — INSPEÇÃO DIRECIONADA EM ALTA DENSIDADE (1 FRAME POR SEGUNDO NA REGIÃO SUSPEITA)]:
+Na varredura inicial (1 frame a cada 2s), houve sinal suspeito nos segundos: ${Array.isArray(suspiciousSeconds) && suspiciousSeconds.length > 0 ? suspiciousSeconds.map((s: any) => `${s}s`).join(', ') : 'indicados'}.
+Agora você está recebendo frames em alta frequência (1 frame por segundo, incluindo contexto antes, durante e depois do evento suspeito).
+REGRAS ESPECÍFICAS DESTA INSPEÇÃO DIRECIONADA:
+1) Compare os frames de 1 em 1 segundo entre si e com as fotos originais para verificar se a mudança suspeita é PERSISTENTE ou se foi apenas movimento rápido, oclusão passageira pelos dedos/mão, corte de cena, sombra, reflexo ou perspectiva.
+2) Se os frames adjacentes (antes e depois) comprovarem que o produto manteve sua estrutura real e que a suspeita anterior era apenas oclusão da mão, movimento ou ângulo, REABILITE e APROVE o frame com nota >= 90% (Verde), explicando no "issue" que a inspeção de 1 frame/s confirmou a integridade física do produto.
+3) Se os frames de 1 frame/s confirmarem que a alteração ou deformação persiste de fato no intervalo, confirme a nota rigorosa e detalhe a evidência.`
+      : '';
 
     const systemInstruction = `Você é o Auditor Pericial de Fidelidade Visual de Produtos para Vídeos Comerciais (Veo 3 / TikTok Shop), operando com metodologia de Detecção Preventiva de Inconsistências (Manual Completo com Complementos de Inspeção).
 Sua missão é auditar ${videoFrames.length} FRAMES extraídos do vídeo (1 captura a cada 2 segundos ao longo do vídeo) e comparar o produto retratado em cada um deles com as FOTOS REAIS DE REFERÊNCIA do produto "${productName}".
