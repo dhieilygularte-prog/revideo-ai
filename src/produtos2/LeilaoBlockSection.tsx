@@ -91,9 +91,17 @@ export const LeilaoBlockSection: React.FC<LeilaoBlockSectionProps> = ({
   const [isPromptMicRecording, setIsPromptMicRecording] = useState(false);
   const promptRecStopper = useRef<(() => void) | null>(null);
 
-  // 4. Estado de cópia do prompt
+  // 4. Estado de cópia do prompt e download das imagens
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [hasCopiedPromptOnce, setHasCopiedPromptOnce] = useState(false);
+  const [downloadedImages, setDownloadedImages] = useState<Record<number, boolean>>({});
+
+  useEffect(() => {
+    setDownloadedImages({});
+  }, [images, storyboardImageUrl]);
+
+  const copiedBlueSectionClass =
+    'bg-gradient-to-br from-sky-900/85 via-blue-900/80 to-slate-900/95 border-2 border-sky-400 shadow-xl shadow-sky-950/60 ring-2 ring-sky-400/40';
 
   // Helper de gravação de voz contínua
   const startRecording = (
@@ -347,10 +355,13 @@ export const LeilaoBlockSection: React.FC<LeilaoBlockSectionProps> = ({
         <button
           type="button"
           onClick={() => {
+            const nextDownloaded: Record<number, boolean> = {};
             activeImageList.forEach((imgUrl, idx) => {
+              nextDownloaded[idx] = true;
               const fileName = blockMeta.files[idx] || `${downloadFileName}_imagem${idx + 1}`;
               downloadProdutos2StoryboardImage(imgUrl, fileName);
             });
+            setDownloadedImages((prev) => ({ ...prev, ...nextDownloaded }));
           }}
           disabled={activeImageList.length === 0}
           className="px-3.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-emerald-600 disabled:opacity-50 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-zinc-700 shadow-sm"
@@ -376,14 +387,38 @@ export const LeilaoBlockSection: React.FC<LeilaoBlockSectionProps> = ({
           {activeImageList.map((imgUrl, idx) => {
             const label = blockMeta.labels[idx] || `Imagem ${idx + 1}`;
             const fileName = blockMeta.files[idx] || `${downloadFileName}_${idx + 1}`;
+            const isImgDownloaded = Boolean(downloadedImages[idx]);
+            const globalImgNumber = blockNumber === 1 ? idx + 1 : blockNumber === 2 ? idx + 3 : 6;
             return (
-              <div key={idx} className="space-y-1.5 flex flex-col items-center w-full">
-                <div className="w-full flex items-center justify-between px-1">
-                  <span className="text-[11px] font-bold text-amber-300/90 truncate" title={label}>
+              <div
+                key={idx}
+                className={`space-y-2 flex flex-col items-center w-full p-2.5 rounded-2xl transition-all duration-300 ${
+                  isImgDownloaded
+                    ? copiedBlueSectionClass
+                    : 'bg-zinc-950/60 border border-zinc-800/80'
+                }`}
+              >
+                <div className="w-full flex items-center justify-between gap-1.5 px-1">
+                  <span
+                    className={`text-[11px] font-bold truncate ${
+                      isImgDownloaded ? 'text-sky-100' : 'text-amber-300/90'
+                    }`}
+                    title={label}
+                  >
                     {label}
                   </span>
+                  {isImgDownloaded && (
+                    <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1 shrink-0">
+                      <CheckCircle2 className="w-3 h-3 text-sky-300" />
+                      <span>BAIXADO ✓</span>
+                    </span>
+                  )}
                 </div>
-                <div className="relative aspect-[9/16] w-full rounded-2xl overflow-hidden bg-black/60 border border-zinc-800 group shadow-lg">
+                <div
+                  className={`relative aspect-[9/16] w-full rounded-2xl overflow-hidden bg-black/60 border group shadow-lg ${
+                    isImgDownloaded ? 'border-sky-400/80' : 'border-zinc-800'
+                  }`}
+                >
                   <img
                     src={imgUrl}
                     alt={label}
@@ -399,16 +434,24 @@ export const LeilaoBlockSection: React.FC<LeilaoBlockSectionProps> = ({
                   >
                     <Eye className="w-4 h-4" />
                   </button>
-                  {/* Botão Baixar individual */}
+                  {/* Botão Baixar individual com número da imagem */}
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
+                      setDownloadedImages((prev) => ({ ...prev, [idx]: true }));
                       downloadProdutos2StoryboardImage(imgUrl, fileName);
                     }}
-                    className="absolute bottom-2.5 right-2.5 p-2 rounded-xl bg-black/80 hover:bg-emerald-600 text-white border border-white/25 shadow-lg transition-all cursor-pointer flex items-center justify-center"
+                    className={`absolute bottom-2.5 right-2.5 px-2.5 py-1.5 rounded-xl font-black text-xs border shadow-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                      isImgDownloaded
+                        ? 'bg-sky-500 hover:bg-sky-400 text-white border-sky-300 ring-2 ring-sky-300/60'
+                        : 'bg-black/85 hover:bg-emerald-600 text-white border-white/25'
+                    }`}
                     title={`Baixar ${fileName}.png`}
                   >
+                    <span className="w-5 h-5 rounded-full bg-white text-slate-950 font-black text-[11px] flex items-center justify-center shadow">
+                      {globalImgNumber}
+                    </span>
                     <Download className="w-4 h-4" />
                   </button>
                 </div>
@@ -603,7 +646,13 @@ export const LeilaoBlockSection: React.FC<LeilaoBlockSectionProps> = ({
       </div>
 
       {/* 5. PROMPT DO VEO 3 COM REFINAMENTO POR VOZ/TEXTO */}
-      <div className="p-4 rounded-xl bg-black/60 border border-sky-500/30 space-y-3">
+      <div
+        className={`p-4 rounded-xl transition-all duration-300 space-y-3 ${
+          hasCopiedPromptOnce
+            ? copiedBlueSectionClass
+            : 'bg-black/60 border border-sky-500/30'
+        }`}
+      >
         <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-white/10">
           <div className="flex items-center gap-2">
             <FileText className="w-4 h-4 text-sky-400" />
@@ -613,7 +662,7 @@ export const LeilaoBlockSection: React.FC<LeilaoBlockSectionProps> = ({
             {hasCopiedPromptOnce && (
               <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
                 <CheckCircle2 className="w-3 h-3 text-sky-300" />
-                <span>COPIADO</span>
+                <span>COPIADO ✓</span>
               </span>
             )}
           </div>
@@ -624,6 +673,8 @@ export const LeilaoBlockSection: React.FC<LeilaoBlockSectionProps> = ({
             className={`px-3.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
               copiedPrompt
                 ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-950/40'
+                : hasCopiedPromptOnce
+                ? 'bg-sky-500 hover:bg-sky-400 text-white shadow-md shadow-sky-950/40'
                 : 'bg-sky-500 hover:bg-sky-400 text-white shadow-md shadow-sky-950/40'
             }`}
           >
@@ -650,7 +701,11 @@ export const LeilaoBlockSection: React.FC<LeilaoBlockSectionProps> = ({
             onUpdateVeoPrompt(e.target.value);
           }}
           rows={6}
-          className="w-full p-3 bg-zinc-950 border border-zinc-700/80 focus:border-sky-400 rounded-xl text-xs text-zinc-200 font-mono leading-relaxed resize-y"
+          className={`w-full p-3 rounded-xl text-xs font-mono leading-relaxed resize-y ${
+            hasCopiedPromptOnce
+              ? 'bg-slate-950/90 border border-sky-400/60 text-sky-50 focus:border-sky-300'
+              : 'bg-zinc-950 border border-zinc-700/80 focus:border-sky-400 text-zinc-200'
+          }`}
         />
 
         {/* REFINAR PROMPT COM IA (VOZ OU TEXTO) */}
@@ -730,18 +785,20 @@ export const LeilaoBlockSection: React.FC<LeilaoBlockSectionProps> = ({
         </div>
       </div>
 
-      {/* 6. AUDITORIA DE VÍDEO (VIDEO FIDELITY AUDITOR) */}
-      <div className="pt-2">
-        <VideoFidelityAuditor
-          productName={`${productName} (Bloco ${blockNumber})`}
-          productLock={productLock}
-          referencePhotos={referencePhotos}
-          initialAudit={videoAudit}
-          onAuditChange={onAuditChange}
-          onAuditComplete={onAuditComplete}
-          onOpenPreview={onOpenPreview}
-        />
-      </div>
+      {/* 6. AUDITORIA DE VÍDEO ÚNICA NO FINAL (Exibida ao final do Bloco 3 do Modo Leilão) */}
+      {blockNumber === 3 && (
+        <div className="pt-2">
+          <VideoFidelityAuditor
+            productName={productName}
+            productLock={productLock}
+            referencePhotos={referencePhotos}
+            initialAudit={videoAudit}
+            onAuditChange={onAuditChange}
+            onAuditComplete={onAuditComplete}
+            onOpenPreview={onOpenPreview}
+          />
+        </div>
+      )}
     </div>
   );
 };

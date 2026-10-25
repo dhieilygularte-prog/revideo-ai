@@ -670,26 +670,33 @@ export async function auditProdutos2Storyboard(params: {
       productPhotosBase64.slice(0, 4).map((p) => compressImageForPayload(p, 1400, 0.88))
     );
 
-    // Comprime até 2 fotos de referência de cada variação para auditoria precisa de todas as cores/ângulos anexados
-    const compressedVariations = await Promise.all(
-      (variations || []).map(async (v) => {
-        const varPhotos = (v.photos || []).filter(Boolean).slice(0, 2);
-        const compList = await Promise.all(
-          varPhotos.map((p) => compressImageForPayload(p, 1200, 0.86))
-        );
-        return {
-          name: v.name,
-          photos: compList.filter(Boolean),
-        };
-      })
+    const activeVariations = (variations || []).filter(
+      (v) => (v.name && v.name.trim().length > 0) || (v.photos && v.photos.length > 0)
     );
 
+    // Só envia variações separadas se houver 2 ou mais variações reais (evita duplicar fotos da variação única no payload)
+    const compressedVariations =
+      activeVariations.length >= 2
+        ? await Promise.all(
+            activeVariations.map(async (v) => {
+              const varPhotos = (v.photos || []).filter(Boolean).slice(0, 2);
+              const compList = await Promise.all(
+                varPhotos.map((p) => compressImageForPayload(p, 1200, 0.86))
+              );
+              return {
+                name: v.name,
+                photos: compList.filter(Boolean),
+              };
+            })
+          )
+        : [];
+
     const sanitizedLock =
-      (variations || []).length >= 2
+      activeVariations.length >= 2
         ? sanitizeProductLockForVariations(productLock, variations, productName)
         : productLock;
 
-    const targetQCount = scenes.length === 6 ? 6 : 9;
+    const targetQCount = scenes.length === 4 ? 4 : scenes.length === 6 ? 6 : 9;
     const res = await fetch('/api/produtos2-audit-storyboard', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -700,6 +707,7 @@ export async function auditProdutos2Storyboard(params: {
         productLock: sanitizedLock,
         scenes,
         sceneCount: targetQCount,
+        quadrantCount: targetQCount,
         variations: compressedVariations,
         aiProfile,
       }),
@@ -716,7 +724,7 @@ export async function auditProdutos2Storyboard(params: {
     console.warn('Aviso ao auditar quadrantes do storyboard:', err);
   }
 
-  const fallbackCount = scenes.length === 6 ? 6 : 9;
+  const fallbackCount = scenes.length === 4 ? 4 : scenes.length === 6 ? 6 : 9;
   // Fallback determinístico caso a rota de auditoria esteja indisponível
   return {
     audit: {
@@ -826,110 +834,106 @@ export async function runProdutos2LeilaoPipeline(params: {
     ...(form.variations || []).flatMap((v) => v.photos || []),
   ].filter(Boolean);
 
-  // GERAÇÃO BLOCO 1 (Salão de Leilão: 2 imagens verticais 9:16 independentes em 1080x1920)
-  onProgress?.(22, '3/5 Gerando Imagem 1 do Bloco 1 (Salão de Leilão - Plano Aberto)...');
-  const imgRes1_1 = await requestStoryboardImageGeneration({
-    prompt: blockPrompts.bloco1Image1Prompt,
-    productName: form.productName,
-    allPhotos,
-    variations: form.variations,
-    additionalInstructions: form.additionalInstructions,
-    aiProfile,
-    sceneCount: 1,
-    aspectRatio: '9:16',
-    isLeilaoBlock: 1,
-  });
+  // GERAÇÃO PARALELA EM 2 LOTES DE 3 IMAGENS (Reduz o tempo total em ~65% sem estourar rate limit)
+  onProgress?.(28, '3/5 Gerando Lote 1 do Leilão em paralelo (Imagens 1, 2 e 3 em 1080x1920)...');
+  const [imgRes1_1, imgRes1_2, imgRes2_1] = await Promise.all([
+    requestStoryboardImageGeneration({
+      prompt: blockPrompts.bloco1Image1Prompt,
+      productName: form.productName,
+      allPhotos,
+      variations: form.variations,
+      additionalInstructions: form.additionalInstructions,
+      aiProfile,
+      sceneCount: 1,
+      aspectRatio: '9:16',
+      isLeilaoBlock: 1,
+    }),
+    requestStoryboardImageGeneration({
+      prompt: blockPrompts.bloco1Image2Prompt,
+      productName: form.productName,
+      allPhotos,
+      variations: form.variations,
+      additionalInstructions: form.additionalInstructions,
+      aiProfile,
+      sceneCount: 1,
+      aspectRatio: '9:16',
+      isLeilaoBlock: 1,
+    }),
+    requestStoryboardImageGeneration({
+      prompt: blockPrompts.bloco2Image3Prompt,
+      productName: form.productName,
+      allPhotos,
+      variations: form.variations,
+      additionalInstructions: form.additionalInstructions,
+      aiProfile,
+      sceneCount: 1,
+      aspectRatio: '9:16',
+      isLeilaoBlock: 2,
+    }),
+  ]);
+
   if (imgRes1_1.error && !imgRes1_1.imageUrl) {
     throw new Error(`Falha ao gerar a Imagem 1 do Bloco 1 do Leilão: ${imgRes1_1.error}`);
   }
-
-  onProgress?.(35, '3/5 Gerando Imagem 2 do Bloco 1 (Leiloeiro Chocado com Smartphone)...');
-  const imgRes1_2 = await requestStoryboardImageGeneration({
-    prompt: blockPrompts.bloco1Image2Prompt,
-    productName: form.productName,
-    allPhotos,
-    variations: form.variations,
-    additionalInstructions: form.additionalInstructions,
-    aiProfile,
-    sceneCount: 1,
-    aspectRatio: '9:16',
-    isLeilaoBlock: 1,
-  });
   if (imgRes1_2.error && !imgRes1_2.imageUrl) {
     throw new Error(`Falha ao gerar a Imagem 2 do Bloco 1 do Leilão: ${imgRes1_2.error}`);
+  }
+  if (imgRes2_1.error && !imgRes2_1.imageUrl) {
+    throw new Error(`Falha ao gerar a Imagem 3 do Bloco 2 do Leilão: ${imgRes2_1.error}`);
   }
 
   const bloco1Images = [imgRes1_1.imageUrl, imgRes1_2.imageUrl].filter(Boolean) as string[];
   const bloco1Img = bloco1Images[0] || '';
 
-  // GERAÇÃO BLOCO 2 (Revelação & Closes: 3 imagens verticais 9:16 independentes em 1080x1920)
-  onProgress?.(48, '4/5 Gerando Imagem 3 do Bloco 2 (Apresentação do Produto no Púlpito)...');
-  const imgRes2_1 = await requestStoryboardImageGeneration({
-    prompt: blockPrompts.bloco2Image3Prompt,
-    productName: form.productName,
-    allPhotos,
-    variations: form.variations,
-    additionalInstructions: form.additionalInstructions,
-    aiProfile,
-    sceneCount: 1,
-    aspectRatio: '9:16',
-    isLeilaoBlock: 2,
-  });
-  if (imgRes2_1.error && !imgRes2_1.imageUrl) {
-    throw new Error(`Falha ao gerar a Imagem 3 do Bloco 2 do Leilão: ${imgRes2_1.error}`);
-  }
+  onProgress?.(64, '4/5 Gerando Lote 2 do Leilão em paralelo (Imagens 4, 5 e 6 em 1080x1920)...');
+  const [imgRes2_2, imgRes2_3, imgRes3] = await Promise.all([
+    requestStoryboardImageGeneration({
+      prompt: blockPrompts.bloco2Image4Prompt,
+      productName: form.productName,
+      allPhotos,
+      variations: form.variations,
+      additionalInstructions: form.additionalInstructions,
+      aiProfile,
+      sceneCount: 1,
+      aspectRatio: '9:16',
+      isLeilaoBlock: 2,
+    }),
+    requestStoryboardImageGeneration({
+      prompt: blockPrompts.bloco2Image5Prompt,
+      productName: form.productName,
+      allPhotos,
+      variations: form.variations,
+      additionalInstructions: form.additionalInstructions,
+      aiProfile,
+      sceneCount: 1,
+      aspectRatio: '9:16',
+      isLeilaoBlock: 2,
+    }),
+    requestStoryboardImageGeneration({
+      prompt: blockPrompts.bloco3Image6Prompt,
+      productName: form.productName,
+      allPhotos,
+      variations: form.variations,
+      additionalInstructions: form.additionalInstructions,
+      aiProfile,
+      sceneCount: 1,
+      aspectRatio: '9:16',
+      isLeilaoBlock: 3,
+    }),
+  ]);
 
-  onProgress?.(60, '4/5 Gerando Imagem 4 do Bloco 2 (Close Benefício 1 em Fundo Preto)...');
-  const imgRes2_2 = await requestStoryboardImageGeneration({
-    prompt: blockPrompts.bloco2Image4Prompt,
-    productName: form.productName,
-    allPhotos,
-    variations: form.variations,
-    additionalInstructions: form.additionalInstructions,
-    aiProfile,
-    sceneCount: 1,
-    aspectRatio: '9:16',
-    isLeilaoBlock: 2,
-  });
   if (imgRes2_2.error && !imgRes2_2.imageUrl) {
     throw new Error(`Falha ao gerar a Imagem 4 do Bloco 2 do Leilão: ${imgRes2_2.error}`);
   }
-
-  onProgress?.(72, '4/5 Gerando Imagem 5 do Bloco 2 (Close Benefício 2 em Fundo Preto)...');
-  const imgRes2_3 = await requestStoryboardImageGeneration({
-    prompt: blockPrompts.bloco2Image5Prompt,
-    productName: form.productName,
-    allPhotos,
-    variations: form.variations,
-    additionalInstructions: form.additionalInstructions,
-    aiProfile,
-    sceneCount: 1,
-    aspectRatio: '9:16',
-    isLeilaoBlock: 2,
-  });
   if (imgRes2_3.error && !imgRes2_3.imageUrl) {
     throw new Error(`Falha ao gerar a Imagem 5 do Bloco 2 do Leilão: ${imgRes2_3.error}`);
+  }
+  if (imgRes3.error && !imgRes3.imageUrl) {
+    throw new Error(`Falha ao gerar o Bloco 3 do Leilão: ${imgRes3.error}`);
   }
 
   const bloco2Images = [imgRes2_1.imageUrl, imgRes2_2.imageUrl, imgRes2_3.imageUrl].filter(Boolean) as string[];
   const bloco2Img = bloco2Images[0] || '';
-
-  // GERAÇÃO BLOCO 3 (Leiloeiro Apontando no Telão: 1 imagem vertical 9:16 independente em 1080x1920)
-  onProgress?.(84, '5/5 Gerando Imagem 6 do Bloco 3 (Leiloeiro Apontando para o Carrinho Laranja)...');
-  const imgRes3 = await requestStoryboardImageGeneration({
-    prompt: blockPrompts.bloco3Image6Prompt,
-    productName: form.productName,
-    allPhotos,
-    variations: form.variations,
-    additionalInstructions: form.additionalInstructions,
-    aiProfile,
-    sceneCount: 1,
-    aspectRatio: '9:16',
-    isLeilaoBlock: 3,
-  });
-  if (imgRes3.error && !imgRes3.imageUrl) {
-    throw new Error(`Falha ao gerar o Bloco 3 do Leilão: ${imgRes3.error}`);
-  }
   const bloco3Images = [imgRes3.imageUrl].filter(Boolean) as string[];
   const bloco3Img = bloco3Images[0] || '';
 
@@ -1183,58 +1187,56 @@ export async function runProdutos2AchadinhosPipeline(params: {
     ...(form.variations || []).flatMap((v) => v.photos || []),
   ].filter(Boolean);
 
-  // 3. GERAÇÃO STORYBOARD 1 (Hook & Apresentação - 3 quadros verticais em 16:9 horizontal)
-  onProgress?.(25, '2/5 Gerando Storyboard 1 (Hook & Descoberta — Quadros A, B e C em 16:9)...');
-  const imgRes1 = await requestStoryboardImageGeneration({
-    prompt: blockPrompts.bloco1ImagePrompt,
-    productName: form.productName,
-    allPhotos,
-    variations: form.variations,
-    additionalInstructions: form.additionalInstructions,
-    aiProfile,
-    sceneCount: 3,
-    aspectRatio: '16:9',
-    isAchadinhosBlock: 1,
-  });
+  // 3, 4 & 5. GERAÇÃO PARALELA DOS 3 STORYBOARDS DE ACHADINHOS (Corta o tempo de geração em ~65%)
+  onProgress?.(40, '3/5 Gerando os 3 Storyboards de Achadinhos (Cenas 1, 2 e 3 em 16:9) em paralelo...');
+  const [imgRes1, imgRes2, imgRes3] = await Promise.all([
+    requestStoryboardImageGeneration({
+      prompt: blockPrompts.bloco1ImagePrompt,
+      productName: form.productName,
+      allPhotos,
+      variations: form.variations,
+      additionalInstructions: form.additionalInstructions,
+      aiProfile,
+      sceneCount: 3,
+      aspectRatio: '16:9',
+      isAchadinhosBlock: 1,
+    }),
+    requestStoryboardImageGeneration({
+      prompt: blockPrompts.bloco2ImagePrompt,
+      productName: form.productName,
+      allPhotos,
+      variations: form.variations,
+      additionalInstructions: form.additionalInstructions,
+      aiProfile,
+      sceneCount: 3,
+      aspectRatio: '16:9',
+      isAchadinhosBlock: 2,
+    }),
+    requestStoryboardImageGeneration({
+      prompt: blockPrompts.bloco3ImagePrompt,
+      productName: form.productName,
+      allPhotos,
+      variations: form.variations,
+      additionalInstructions: form.additionalInstructions,
+      aiProfile,
+      sceneCount: 3,
+      aspectRatio: '16:9',
+      isAchadinhosBlock: 3,
+    }),
+  ]);
+
   if (imgRes1.error && !imgRes1.imageUrl) {
     throw new Error(`Falha ao gerar o Storyboard 1 de Achadinhos: ${imgRes1.error}`);
   }
-  const bloco1Img = imgRes1.imageUrl || '';
-
-  // 4. GERAÇÃO STORYBOARD 2 (Demonstração & Benefício - 3 quadros verticais em 16:9 horizontal)
-  onProgress?.(50, '3/5 Gerando Storyboard 2 (Demonstração & Utilidade — Quadros A, B e C em 16:9)...');
-  const imgRes2 = await requestStoryboardImageGeneration({
-    prompt: blockPrompts.bloco2ImagePrompt,
-    productName: form.productName,
-    allPhotos,
-    variations: form.variations,
-    additionalInstructions: form.additionalInstructions,
-    aiProfile,
-    sceneCount: 3,
-    aspectRatio: '16:9',
-    isAchadinhosBlock: 2,
-  });
   if (imgRes2.error && !imgRes2.imageUrl) {
     throw new Error(`Falha ao gerar o Storyboard 2 de Achadinhos: ${imgRes2.error}`);
   }
-  const bloco2Img = imgRes2.imageUrl || '';
-
-  // 5. GERAÇÃO STORYBOARD 3 (Fechamento & CTA no Carrinho - 3 quadros verticais em 16:9 horizontal)
-  onProgress?.(75, '4/5 Gerando Storyboard 3 (Fechamento & CTA no Carrinho — Quadros A, B e C em 16:9)...');
-  const imgRes3 = await requestStoryboardImageGeneration({
-    prompt: blockPrompts.bloco3ImagePrompt,
-    productName: form.productName,
-    allPhotos,
-    variations: form.variations,
-    additionalInstructions: form.additionalInstructions,
-    aiProfile,
-    sceneCount: 3,
-    aspectRatio: '16:9',
-    isAchadinhosBlock: 3,
-  });
   if (imgRes3.error && !imgRes3.imageUrl) {
     throw new Error(`Falha ao gerar o Storyboard 3 de Achadinhos: ${imgRes3.error}`);
   }
+
+  const bloco1Img = imgRes1.imageUrl || '';
+  const bloco2Img = imgRes2.imageUrl || '';
   const bloco3Img = imgRes3.imageUrl || '';
 
   // 6. GERAÇÃO DE HASHTAGS E DESCRIÇÃO
@@ -1755,16 +1757,14 @@ export async function runProdutos2Pipeline(params: {
     aspectRatio: '9:16',
   });
 
-  const storyboardImageUrl = imgGenResult.imageUrl
-    ? await ensureHighResStoryboardImage(imgGenResult.imageUrl)
-    : undefined;
   const storyboardError = imgGenResult.error;
   const imgUsage = imgGenResult.usage;
 
-  // 9. FISCALIZAÇÃO DOS QUADRANTES (Verifica cada cena se o produto está idêntico às fotos reais)
+  // 9. FISCALIZAÇÃO DOS QUADRANTES EM PARALELO COM O UPSCALE 4K (usa a imagem 1024x1792 nativa para auditar muito mais rápido)
+  let storyboardImageUrl: string | undefined = undefined;
   let storyboardAudit: Produtos2StoryboardAudit | undefined = undefined;
   let auditUsage: any = null;
-  if (storyboardImageUrl) {
+  if (imgGenResult.imageUrl) {
     onProgress?.(
       isTwoScenes ? 56 : 78,
       isTwoScenes
@@ -1773,15 +1773,19 @@ export async function runProdutos2Pipeline(params: {
         ? '5/6 Fiscalizando fidelidade do produto nos 4 quadrantes do Storyboard 2x2...'
         : '5/6 Fiscalizando fidelidade do produto em cada um dos 9 quadrantes do Storyboard...'
     );
-    const auditRes = await auditProdutos2Storyboard({
-      storyboardImageUrl,
-      productPhotosBase64: allPhotos,
-      productName: finalProductName,
-      productLock,
-      scenes,
-      variations: form.variations,
-      aiProfile,
-    });
+    const [highResUrl, auditRes] = await Promise.all([
+      ensureHighResStoryboardImage(imgGenResult.imageUrl),
+      auditProdutos2Storyboard({
+        storyboardImageUrl: imgGenResult.imageUrl,
+        productPhotosBase64: allPhotos,
+        productName: finalProductName,
+        productLock,
+        scenes,
+        variations: form.variations,
+        aiProfile,
+      }),
+    ]);
+    storyboardImageUrl = highResUrl;
     storyboardAudit = auditRes.audit;
     auditUsage = auditRes.usage;
   }
@@ -1978,17 +1982,22 @@ export async function runProdutos2Pipeline(params: {
     });
 
     let storyboardAudit2: Produtos2StoryboardAudit | undefined = undefined;
+    let storyboardImageUrl2: string | undefined = undefined;
     if (imgGenResult2.imageUrl) {
       onProgress?.(90, 'Fiscalizando fidelidade do produto nos 6 quadrantes da Cena 2...');
-      const auditRes2 = await auditProdutos2Storyboard({
-        storyboardImageUrl: imgGenResult2.imageUrl,
-        productPhotosBase64: allPhotos,
-        productName: finalProductName,
-        productLock,
-        scenes: scenes2,
-        variations: form.variations,
-        aiProfile,
-      });
+      const [highRes2, auditRes2] = await Promise.all([
+        ensureHighResStoryboardImage(imgGenResult2.imageUrl),
+        auditProdutos2Storyboard({
+          storyboardImageUrl: imgGenResult2.imageUrl,
+          productPhotosBase64: allPhotos,
+          productName: finalProductName,
+          productLock,
+          scenes: scenes2,
+          variations: form.variations,
+          aiProfile,
+        }),
+      ]);
+      storyboardImageUrl2 = highRes2;
       storyboardAudit2 = auditRes2.audit;
     }
 
@@ -2019,9 +2028,7 @@ export async function runProdutos2Pipeline(params: {
       visualMap: visualMap2,
       scenes: scenes2,
       storyboardPrompt: storyboardPrompt2,
-      storyboardImageUrl: imgGenResult2.imageUrl
-        ? await ensureHighResStoryboardImage(imgGenResult2.imageUrl)
-        : undefined,
+      storyboardImageUrl: storyboardImageUrl2,
       storyboardError: imgGenResult2.error,
       storyboardAudit: storyboardAudit2,
       veoPrompt: veoPrompt2,
@@ -2343,16 +2350,19 @@ REGRAS ESTRITAS DE PRESERVAÇÃO E EXECUÇÃO:
     return { error: genRes.error };
   }
 
-  // Auditar imediatamente a nova imagem gerada
-  const newAudit = await auditProdutos2Storyboard({
-    storyboardImageUrl: genRes.imageUrl,
-    productPhotosBase64: allPhotos,
-    productName: result.productName,
-    productLock: result.productLock,
-    scenes: targetScenes,
-    variations: effectiveVariations,
-    aiProfile,
-  });
+  // Auditar imediatamente a nova imagem gerada em paralelo com o upscale 4K
+  const [finalHighResImg, newAudit] = await Promise.all([
+    ensureHighResStoryboardImage(genRes.imageUrl),
+    auditProdutos2Storyboard({
+      storyboardImageUrl: genRes.imageUrl,
+      productPhotosBase64: allPhotos,
+      productName: result.productName,
+      productLock: result.productLock,
+      scenes: targetScenes,
+      variations: effectiveVariations,
+      aiProfile,
+    }),
+  ]);
 
   const isGemini = aiProfile === 'gemini';
   const imgPrompt = genRes.usage?.promptTokens || (isGemini ? 1800 : 2100);
@@ -2409,10 +2419,6 @@ REGRAS ESTRITAS DE PRESERVAÇÃO E EXECUÇÃO:
       },
     ],
   };
-
-  const finalHighResImg = genRes.imageUrl
-    ? await ensureHighResStoryboardImage(genRes.imageUrl)
-    : undefined;
 
   return {
     imageUrl: finalHighResImg,

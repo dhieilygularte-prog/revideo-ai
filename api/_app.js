@@ -887,10 +887,10 @@ Retorne estritamente um JSON estruturado:
       if (p && !allPhotos.includes(p)) allPhotos.push(p);
     });
     const modelAntiViolationDirective = !hasUserProvidedModel && !modelReferenceBase64 ? `CRITICAL ANTI-VIOLATION DIRECTIVE: Do NOT copy or clone the face of the actor from the reference video. Generate an original commercial model with a DIFFERENT FACE and distinct facial features (similar demographic style like a cousin, but strictly a different person) to prevent TikTok copyright/impersonation strikes.` : "";
-    const opticalClarityDirective = `CRITICAL OPTICAL CLARITY & HIGH-DEFINITION SENSOR CALIBRATION:
-- Modern high-end smartphone camera clarity: crystal-clear optical glass lens, razor-sharp focus and rich texture definition.
-- SCENARIO-ACCURATE LIGHTING & ATMOSPHERE: The lighting, atmosphere and color temperature must authentically adapt to the specific scene in the prompt (e.g., candlelight, romantic evening, cozy home, or bright daylight).
-- STRICTLY PROHIBITED: Pale, washed-out, milky, hazy, or muddy look; NO plastic film/veil overlay effect across the lens; NO muddy yellowish plastic cast over the frame. Deliver vivid, rich colors, crisp authentic contrast, and clean sensor optics.\r
+    const opticalClarityDirective = `CRITICAL OPTICAL CLARITY, VIVID COLOR & ANTI-YELLOWISH CALIBRATION:
+- Modern flagship smartphone camera clarity (iPhone 16 Pro / Galaxy S24 Ultra): crystal-clear optical glass lens, razor-sharp focus, vibrant true-to-life colors, and rich texture definition.
+- VIVID, VIBRANT COLORS & CLEAN WHITE BALANCE: Colors must be lively, vivid, saturated with natural commercial pop, and harmonized with the environment. Maintain clean neutral white balance (pure whites, deep clean blacks, natural healthy skin tones).
+- STRICTLY PROHIBITED (ZERO YELLOWISH / ZERO OPAQUE): NO yellowish tint, NO warm tungsten/amber/sepia cast, NO dull/opaque/lifeless look, NO pale/washed-out/milky/hazy veil, and NO plastic film overlay across the lens.
 - 90%+ FIDELITY AUDITOR CALIBRATION (5 INSPECTION GROUPS + ANTI-MORPHING): Preserve 100% of the exact product model, silhouette, all physical components (body, nozzles, caps, cables, handles, buttons, seams, and all kit pieces), realistic human scale, exact surface finish (matte, glossy, metallic), and 1:1 manufacturer logo. Hands must have 5 natural fingers gripping neutral sides cleanly without fusing into the product or covering the logo/buttons.`;
     const overrides = [
       modelAntiViolationDirective,
@@ -920,7 +920,7 @@ ${prompt}` : prompt;
       });
       let baseImageFile = null;
       let effectivePrompt = cleanPrompt;
-      const isStoryboardGrid = prompt.includes("grade 3x3") || prompt.includes("9 cenas numeradas") || prompt.includes("STORYBOARD");
+      const isStoryboardGrid = /grade\s+(?:3x3|2x3|2x2)|(?:\b4|\b6|\b9)\s+(?:cenas|quadros)|storyboard/i.test(prompt);
       if (modelReferenceBase64 && !isCloneMode && !isStoryboardGrid) {
         baseImageFile = toImageFile(modelReferenceBase64, "imagem_1_base");
         const swatchStr = productPhotoBase64 || productPhotosBase64[0];
@@ -1615,7 +1615,7 @@ E retornar um JSON estrito com:
      * Para a cor, cite explicitamente: "Varia\xE7\xF5es oficiais de cor: o produto possui as varia\xE7\xF5es informadas ([listar todas]), todas corretas e representadas fielmente nos seus respectivos quadros do storyboard".
 4. "avatarDescription": descri\xE7\xE3o de 1 frase do consumidor brasileiro adulto que apresenta o produto (respeitando o g\xEAnero do Influencer e as Instru\xE7\xF5es Adicionais; se produto infantil, quem apresenta na cena 1 e 9 \xE9 sempre um adulto pai/m\xE3e).
 5. "scenarioDescription":
-   - Se o usu\xE1rio escolheu "em_casa" ("Em casa"): "casa brasileira simples e aconchegante, [c\xF4modo adequado ao produto]".
+   - Se o usu\xE1rio escolheu "em_casa" ("Em casa"): "casa brasileira bem iluminada e aconchegante com luz natural limpa e cores vivas, [c\xF4modo adequado ao produto]".
    - Se o usu\xE1rio escolheu "padrao_uso" ("Cen\xE1rio padr\xE3o de uso"): descreva o LUGAR REAL onde o produto \xE9 usado, SEM mencionar "casa", "caseiro" ou "casa brasileira" (ex.: academia ou espa\xE7o de treino para banco de exerc\xEDcios; jardim gramado ao ar livre para cortador de grama; margem de represa para vara de pesca; interior de um carro para som automotivo; rua/parque em corrida ao ar livre para t\xEAnis).
    - Se o usu\xE1rio escreveu um local nas Instru\xE7\xF5es adicionais (ex.: "na praia"), essa instru\xE7\xE3o tem prioridade.
 6. "visualMap": array de 4 objetos { "excerpt", "intent", "visualProof", "scenes" } mapeando os trechos da copy para provas visuais nas cenas 1 a 9.
@@ -4700,7 +4700,7 @@ Retorne APENAS um objeto JSON v\xE1lido com as chaves:
           }
         });
         contentBlocks.push({ type: "text", text: userPrompt });
-        const modelsToTry = [OPENAI_BRAIN_MODEL, "gpt-4o", "gpt-4o-mini", OPENAI_AUDIT_MODEL];
+        const modelsToTry = ["gpt-4o", "gpt-4o-mini", OPENAI_BRAIN_MODEL, OPENAI_AUDIT_MODEL];
         for (const modelCandidate of modelsToTry) {
           try {
             const params = {
@@ -4783,8 +4783,8 @@ Retorne APENAS um objeto JSON v\xE1lido com as chaves:
         });
         parts.push({ text: userPrompt });
         const geminiModels = [
-          GEMINI_VISION_MODEL || "gemini-3.8-flash",
           "gemini-2.5-flash",
+          GEMINI_VISION_MODEL || "gemini-3.8-flash",
           GEMINI_VISION_FAST_MODEL || "gemini-3.1-flash-lite"
         ];
         for (const gemModel of geminiModels) {
@@ -4859,8 +4859,14 @@ Retorne APENAS um objeto JSON v\xE1lido com as chaves:
     return res.json({ success: false, error: err?.message || "Erro no planejamento Produtos 2.0" });
   }
 });
+var logoSpecCache = /* @__PURE__ */ new Map();
 async function extractManufacturerLogoSpecFromPhotos(photosList, productName) {
   if (!photosList || photosList.length === 0) return "";
+  const p0 = photosList[0] || "";
+  const cacheKey = `${(productName || "").trim().toLowerCase()}::${p0.length}::${p0.slice(-80)}`;
+  if (logoSpecCache.has(cacheKey)) {
+    return logoSpecCache.get(cacheKey) || "";
+  }
   const promptLogo = `Inspecione as fotos de refer\xEAncia do produto "${productName}".
 O produto possui alguma logomarca, emblema, escudo, s\xEDmbolo gr\xE1fico ou texto de marca do fabricante impresso/estampado/bordado nele mesmo (por exemplo: no encosto, na estrutura, na lateral, no painel ou no r\xF3tulo)?
 IMPORTANTE: Ignore qualquer marca d'\xE1gua de rede social fora do produto. Olhe SOMENTE para a marca/logomarca que faz parte do pr\xF3prio produto f\xEDsico.
@@ -4873,17 +4879,17 @@ Retorne ESTRITAMENTE um JSON:
     try {
       const client = openAIProvider.getClient();
       const contentBlocks = [];
-      photosList.slice(0, 2).forEach((photo) => {
+      photosList.slice(0, 2).forEach((photo, idx) => {
         contentBlocks.push({
           type: "image_url",
           image_url: {
             url: photo.startsWith("data:") ? photo : `data:image/jpeg;base64,${photo}`,
-            detail: "high"
+            detail: idx === 0 ? "high" : "low"
           }
         });
       });
       contentBlocks.push({ type: "text", text: promptLogo });
-      for (const m of [OPENAI_AUDIT_MODEL || "gpt-5.6-luna", "gpt-4o-mini", OPENAI_BRAIN_MODEL]) {
+      for (const m of ["gpt-4o-mini", "gpt-4o", OPENAI_AUDIT_MODEL || "gpt-5.6-luna", OPENAI_BRAIN_MODEL]) {
         try {
           const r = await client.chat.completions.create({
             model: m,
@@ -4891,10 +4897,10 @@ Retorne ESTRITAMENTE um JSON:
             response_format: { type: "json_object" }
           });
           const parsed = JSON.parse(r.choices[0]?.message?.content || "{}");
-          if (parsed?.hasManufacturerLogo && parsed?.logoSpec) {
-            return String(parsed.logoSpec).trim();
-          }
-          return "";
+          const spec = parsed?.hasManufacturerLogo && parsed?.logoSpec ? String(parsed.logoSpec).trim() : "";
+          if (logoSpecCache.size > 200) logoSpecCache.clear();
+          logoSpecCache.set(cacheKey, spec);
+          return spec;
         } catch {
         }
       }
@@ -4978,10 +4984,10 @@ PROIBI\xC7\xC3O ABSOLUTA DE SITE E C\xD3DIGO DE BARRAS EM EMBALAGENS:
     const opticalClarityDirective = `
 
 ========================
-DIRETRIZ CR\xCDTICA DE NITIDEZ \xD3PTICA E ZERO PEL\xCDCULA PL\xC1STICA/OPACIDADE:
-1. NITIDEZ DE C\xC2MERA DE SMARTPHONE MODERNO TOPO DE LINHA: Imagem n\xEDtida, sensor de alta defini\xE7\xE3o e foco cristalino, retratando a cena com m\xE1xima naturalidade e realismo.
-2. ZERO PEL\xCDCULA PL\xC1STICA, ZERO OPACIDADE E ZERO PALIDEZ: \xC9 terminantemente proibido imagem com aspecto de pl\xE1stico/filme fosco ou amarelado por cima, n\xE9voa leitosa, v\xE9u esbranqui\xE7ado ou cores p\xE1lidas/desbotadas. A imagem deve ter riqueza \xF3tica, contraste aut\xEAntico e cores vivas e fi\xE9is.
-3. ILUMINA\xC7\xC3O DIN\xC2MICA FIEL AO PROMPT: A ilumina\xE7\xE3o, temperatura de cor e atmosfera devem se adaptar com perfei\xE7\xE3o \xE0 cena e ao cen\xE1rio especificados no prompt (luz do dia, luz de velas, noite, ambiente interno simples e acolhedor, etc.).
+DIRETRIZ CR\xCDTICA DE CORES VIVAS, NITIDEZ \xD3PTICA E ZERO AMARELAMENTO / ZERO OPACIDADE:
+1. NITIDEZ DE C\xC2MERA DE SMARTPHONE MODERNO TOPO DE LINHA: Imagem n\xEDtida, sensor de alta defini\xE7\xE3o e foco cristalino, retratando a cena com m\xE1xima naturalidade, vida e realismo.
+2. CORES VIVAS, VIBRANTES E ZERO AMARELAMENTO/OPACIDADE: \xC9 terminantemente proibido imagem amarelada, s\xE9pia, \xE2mbar, opaca, sem vida, com aspecto de pl\xE1stico/filme fosco por cima, n\xE9voa leitosa, v\xE9u esbranqui\xE7ado ou cores p\xE1lidas/desbotadas. A imagem deve ter cores vivas, vibrantes, ricas e fi\xE9is, com balan\xE7o de branco limpo e contraste comercial aut\xEAntico.
+3. ILUMINA\xC7\xC3O INTEGRADA AO CEN\xC1RIO COM CORES REAL\xC7ADAS: A ilumina\xE7\xE3o e atmosfera devem se adaptar com perfei\xE7\xE3o \xE0 cena e ao cen\xE1rio especificados no prompt, mantendo sempre cores vivas e cheias de vida.
 ========================`;
     const auditor90PlusCalibrationDirective = `
 
@@ -5093,11 +5099,11 @@ ${correctionPrompt.trim()}
         const systemInstructionText = isAchadinhosBlock ? `VOC\xCA \xC9 O MOTOR VISUAL DO MODO AURORA ACHADINHOS (3 CENAS DE 10S).
 - Gere UMA IMAGEM FOTOGR\xC1FICA HORIZONTAL 16:9 (1920x1080) composta por exatamente 3 quadros verticais de propor\xE7\xE3o aproximada 9:16, organizados lado a lado da esquerda para a direita (Quadro A \xE0 esquerda, Quadro B no centro, Quadro C \xE0 direita).
 - Os tr\xEAs quadros devem representar instantes sucessivos de uma a\xE7\xE3o cont\xEDnua da mesma personagem, mesmo produto e mesmo ambiente.
-- SEM N\xDAMEROS, SEM BAL\xD5ES E SEM TEXTOS: \xC9 terminantemente proibido colocar letras A/B/C sobre a imagem, n\xFAmeros, legendas, t\xEDtulos, bal\xF5es ou marcas d'\xE1gua.
-- Fotografia ultrarrealista com textura de pele natural, sensor de smartphone topo de linha com ilumina\xE7\xE3o aut\xEAntica e adaptada ao cen\xE1rio do prompt.
-- ZERO PEL\xCDCULA PL\xC1STICA/OPACIDADE: foco n\xEDtido, cores ricas e fi\xE9is, contraste aut\xEAntico, sem pel\xEDcula pl\xE1stica opaca por cima, sem n\xE9voa leitosa e sem palidez desbotada.
-- Fidelidade absoluta \xE0s fotos reais do produto. Se as fotos mostram pacotes fechados, mantenha sempre a embalagem fechada sem abrir ou inventar itens soltos.` : isLeilaoMode ? `VOC\xCA \xC9 O GERADOR VISUAL DO MODO LEIL\xC3O.
-- Gere UMA \xDANICA IMAGEM VERTICAL 9:16 (1080x1920), fotorrealista.
+- SEM TEXTOS OU BAL\xD5ES: \xC9 terminantemente proibido colocar letras A/B/C sobre a imagem, legendas, t\xEDtulos, bal\xF5es ou marcas d'\xE1gua.
+- Fotografia ultrarrealista com textura de pele natural, sensor de smartphone topo de linha com ilumina\xE7\xE3o limpa e cores vivas, vibrantes e cheias de vida.
+- CORES VIVAS E ZERO AMARELAMENTO/OPACIDADE: foco n\xEDtido, cores vivas, vibrantes e fi\xE9is, contraste comercial aut\xEAntico, ZERO filtro amarelado/s\xE9pia, sem pel\xEDcula pl\xE1stica opaca por cima, sem n\xE9voa leitosa e sem palidez desbotada.
+- Fidelidade absoluta \xE0s fotos reais do produto nos quadros em que ele aparece (respeitando caso o Quadro A seja um hook visual sem o produto na tela). Se as fotos mostram pacotes fechados, mantenha sempre a embalagem fechada sem abrir ou inventar itens soltos.` : isLeilaoMode ? `VOC\xCA \xC9 O GERADOR VISUAL DO MODO LEIL\xC3O.
+- Gere UMA \xDANICA IMAGEM VERTICAL 9:16 (1080x1920), fotorrealista, com cores vivas e vibrantes.
 - SEM N\xDAMEROS DE QUADRO, sem faixas brancas e sem legendas sobrepostas.
 - Enquadramento vertical 9:16 cinematogr\xE1fico de alta qualidade comercial.
 - Fidelidade absoluta \xE0s fotos reais do produto em todos os detalhes. Se o produto estiver em embalagem fechada, mantenha sempre o pacote fechado sem abrir ou inventar itens soltos.` : `VOC\xCA \xC9 O GERADOR DE STORYBOARD DO MODO PRODUTOS 2.0.
@@ -5107,7 +5113,7 @@ ${variationInstructionRule}
 - REGRA SAGRADA DE EMBALAGEM FECHADA / PACOTES LACRADOS (TIKTOK COMPLIANCE): Se as fotos de refer\xEAncia mostram pacotes fechados, caixas ou embalagens lacradas (ex.: pacotes de fraldas fechados), NUNCA desenhe pacotes abertos, produtos soltos fora da embalagem (como fraldas avulsas soltas) ou testes com l\xEDquidos/\xE1gua. Desenhe e mostre EXCLUSIVAMENTE os pacotes fechados id\xEAnticos \xE0s fotos em todos os quadros!
 - LOGOMARCA E MARCA DO FABRICANTE NO PRODUTO (OBRIGAT\xD3RIO): A marca, a logomarca, o emblema e os textos que j\xE1 est\xE3o impressos/estampados no pr\xF3prio produto nas fotos de refer\xEAncia DEVEM aparecer 100% id\xEAnticos, na mesma cor e no mesmo lugar da pe\xE7a, em todos os quadros em que aquela parte estiver vis\xEDvel. JAMAIS remova ou alise a logomarca do produto!
 - PROIBI\xC7\xC3O ABSOLUTA DE SITE E C\xD3DIGO DE BARRAS: \xC9 TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, URL (ex.: www..., .com) ou c\xF3digo de barras/QR code em qualquer caixa, pacote ou embalagem de produto. Todas as caixas e embalagens devem ser totalmente limpas de sites e c\xF3digos de barras.
-- NITIDEZ \xD3PTICA E ZERO PEL\xCDCULA PL\xC1STICA/OPACIDADE: Fundo branco puro (#FFFFFF) nas bordas divis\xF3rias do storyboard. Sensor moderno de smartphone topo de linha com lente limpa e alta defini\xE7\xE3o. \xC9 terminantemente PROIBIDO qualquer aspecto de pel\xEDcula pl\xE1stica opaca por cima da imagem, n\xE9voa leitosa ou palidez desbotada. A ilumina\xE7\xE3o e a atmosfera devem se adaptar fielmente ao cen\xE1rio e \xE0 cena descrita no prompt.
+- CORES VIVAS, NITIDEZ \xD3PTICA E ZERO AMARELAMENTO / ZERO OPACIDADE: Fundo branco puro (#FFFFFF) nas bordas divis\xF3rias do storyboard. Sensor moderno de smartphone topo de linha com lente limpa, alta defini\xE7\xE3o e cores vivas, vibrantes e cheias de vida. \xC9 terminantemente PROIBIDO gerar imagem amarelada, s\xE9pia, \xE2mbar, opaca, sem vida, com aspecto de pel\xEDcula pl\xE1stica opaca por cima da imagem, n\xE9voa leitosa ou palidez desbotada.
 - CALIBRAGEM PERICIAL DOS 5 GRUPOS DO DETECTOR (>=90% DE FIDELIDADE): Preserve 100% da identidade do modelo, todos os componentes f\xEDsicos (corpo, bicos, cabos, tampas, al\xE7as, fechos, bot\xF5es e pe\xE7as de kits), propor\xE7\xF5es reais, textura superficial (fosca/brilhante/met\xE1lica) e separa\xE7\xE3o anat\xF4mica limpa entre os 5 dedos da m\xE3o e as bordas do produto (sem fundir dedos ao produto e sem tampar a logomarca original).
 - ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: N\xE3o adicione legendas flutuantes, textos publicit\xE1rios externos, pre\xE7os, setas, carrinho de compras, marca d'\xE1gua externa, @ ou logotipo do TikTok. Apenas os n\xFAmeros 1 a ${frameCount} nos selos circulares e a logomarca original do fabricante no pr\xF3prio produto.`;
         const geminiAspectRatio = isLandscapeStoryboard ? "16:9" : "9:16";
@@ -5391,7 +5397,7 @@ O array "quadrants" DEVE conter exatamente ${quadrantCount} itens (sceneNumber 1
                   type: "image_url",
                   image_url: {
                     url: photo.startsWith("data:") ? photo : `data:image/jpeg;base64,${photo}`,
-                    detail: "high"
+                    detail: pIdx === 0 ? "high" : "low"
                   }
                 });
               });
@@ -5406,7 +5412,7 @@ O array "quadrants" DEVE conter exatamente ${quadrantCount} itens (sceneNumber 1
                 type: "image_url",
                 image_url: {
                   url: photo.startsWith("data:") ? photo : `data:image/jpeg;base64,${photo}`,
-                  detail: "high"
+                  detail: idx === 0 ? "high" : "low"
                 }
               });
             });
@@ -5426,7 +5432,7 @@ O array "quadrants" DEVE conter exatamente ${quadrantCount} itens (sceneNumber 1
             type: "text",
             text: `Inspecione cada um dos ${quadrantCount} quadrantes (Cena 1 a Cena ${quadrantCount}) comparando com as fotos reais de refer\xEAncia. Lembre-se: se houver m\xFAltiplas varia\xE7\xF5es anexadas, o produto \xE9 considerado 100% correto em qualquer quadrante desde que seja id\xEAntico a QUALQUER UMA das varia\xE7\xF5es anexadas! S\xF3 reprove se o produto tiver apar\xEAncia, formato, logomarca ou cor diferente de TODAS as varia\xE7\xF5es anexadas. Retorne o JSON em portugu\xEAs.`
           });
-          const modelsToTry = [OPENAI_AUDIT_MODEL || "gpt-5.6-luna", "gpt-4o", "gpt-4o-mini", OPENAI_BRAIN_MODEL];
+          const modelsToTry = ["gpt-4o-mini", "gpt-4o", OPENAI_AUDIT_MODEL || "gpt-5.6-luna", OPENAI_BRAIN_MODEL];
           for (const modelCandidate of modelsToTry) {
             try {
               const params = {
@@ -5502,8 +5508,8 @@ O array "quadrants" DEVE conter exatamente ${quadrantCount} itens (sceneNumber 1
 Analise cada um dos ${quadrantCount} quadrantes (Cena 1 a Cena ${quadrantCount}) e retorne o JSON em portugu\xEAs.`
           });
           const geminiModels = [
-            GEMINI_VISION_MODEL || "gemini-3.8-flash",
             "gemini-2.5-flash",
+            GEMINI_VISION_MODEL || "gemini-3.8-flash",
             GEMINI_VISION_FAST_MODEL || "gemini-3.1-flash-lite"
           ];
           for (const gemModel of geminiModels) {

@@ -395,45 +395,57 @@ export function buildAchadinhosBlockPrompts(params: {
     : 'Criadora brasileira adulta com visual espontâneo e carismático de smartphone.';
 
   const scenarioDesc = params.scenario === 'em_casa'
-    ? 'Ambiente de uma casa brasileira comum e acolhedora (sala de estar ou cozinha com luz natural).'
-    : 'Ambiente realista de uso funcional e prático do produto no contexto brasileiro.';
+    ? 'Ambiente de uma casa brasileira bem iluminada e acolhedora (sala de estar ou cozinha com luz natural limpa do dia, cores vivas, vibrantes e nítidas, sem filtro amarelado).'
+    : 'Ambiente realista bem iluminado de uso funcional e prático do produto no contexto brasileiro, com cores vivas, nítidas e vibrantes.';
+
+  const userInstructionsClean = (params.additionalInstructions || '').trim();
+  const userInstructionsBlock = userInstructionsClean
+    ? `\nINSTRUÇÕES ADICIONAIS DO USUÁRIO (PRIORIDADE SOBERANA — OBEDEÇA RIGOROSAMENTE):\n"${userInstructionsClean}"\n(Se as instruções adicionais pedirem que a primeira imagem/cena comece sem o produto na tela como hook visual ou descreverem uma ação específica, cumpra 100% o que foi pedido!)\n`
+    : '';
+
+  const vividColorCalibrationBlock = `
+CALIBRAGEM DE CORES VIVAS E NITIDEZ ÓPTICA (ANTI-AMARELAMENTO E ANTI-OPACIDADE):
+- Cores vivas, vibrantes, ricas e cheias de vida, combinando harmoniosamente com o ambiente.
+- ZERO filtro amarelado/sépia/âmbar, ZERO aspecto pálido/desbotado/lavado, ZERO película plástica ou névoa leitosa sobre a lente.
+- Balanço de branco limpo e fiel, contraste comercial nítido de câmera de smartphone topo de linha (iPhone 16 Pro / Galaxy S24 Ultra).`;
 
   // --------------------------------------------------------------------------
   // PROMPTS DE STORYBOARD (16:9 com 3 Quadros Verticais A, B, C)
   // --------------------------------------------------------------------------
   const bloco1ImagePrompt = `Gere um storyboard fotográfico horizontal em proporção 16:9 (1920x1080), composto por exatamente três quadros verticais de proporção aproximada 9:16, organizados lado a lado da esquerda para a direita (Quadro A à esquerda, Quadro B ao centro, Quadro C à direita).
 
-OBJETIVO: Representar visualmente a primeira cena (0 a 10s) de um vídeo brasileiro de achadinhos para TikTok Shop. A personagem apresenta o produto ${pName} e inicia a ação de descoberta e hook da copy.
-
+OBJETIVO: Representar visualmente a primeira cena (0 a 10s) de um vídeo brasileiro de achadinhos para TikTok Shop. A cena começa com o hook visual/descoberta e apresenta o produto ${pName} ao longo da progressão dos quadros.
+${userInstructionsBlock}
 REFERÊNCIA DO PRODUTO:
-Utilize as fotografias anexadas como fonte visual prioritária. Preserve fielmente cor, formato, proporções, textura, material, logotipo original do fabricante, botões, detalhes e acabamento. Não invente detalhes. Produto: ${pName}. Detalhes: ${info.slice(0, 300)}
+Utilize as fotografias anexadas como fonte visual prioritária nos quadros em que o produto aparece. Preserve fielmente cor, formato, proporções, textura, material, logotipo original do fabricante, botões, detalhes e acabamento. Não invente detalhes. Produto: ${pName}. Detalhes: ${info.slice(0, 300)}
 
 PERSONAGEM:
-${genderStr}. ${framingNotice} Aparência natural de pessoa real, pele realista com textura natural, cabelo comum, sem filtros exagerados ou estética 3D.
+${genderStr}. ${framingNotice} Aparência natural de pessoa real, pele realista com textura natural e saudável, cabelo comum, sem filtros exagerados ou estética 3D.
 
 CENÁRIO:
 ${scenarioDesc}
 
 ROUPA E CONTINUIDADE:
-Roupa casual confortável do dia a dia brasileiro, compatível com a personagem e o ambiente.
+Roupa casual confortável do dia a dia brasileiro, com cores vivas e compatível com a personagem e o ambiente.
 
-QUADRO A — INÍCIO (À ESQUERDA):
-A personagem em plano médio, no cenário definido, segurando o produto ${pName} claramente visível. Postura e expressão facial transmitindo descoberta espontânea, conectada com o hook da fala: "${params.speeches.cena1}".
+QUADRO A — INÍCIO / HOOK VISUAL (À ESQUERDA):
+A personagem em plano médio, no cenário definido, iniciando a cena com expressão espontânea conectada ao hook da fala: "${params.speeches.cena1}". REGRA DE LIBERDADE DO HOOK VISUAL: NÃO é obrigatório mostrar o produto já neste primeiro quadro (Quadro A). Se as instruções adicionais do usuário descreverem uma primeira cena sem o produto na tela (ou uma situação/reação inicial servindo como hook visual antes de mostrar o produto), deixe o Quadro A 100% livre do produto exatamente como solicitado! Caso contrário, introduza a cena de forma natural.
 
-QUADRO B — TRANSIÇÃO (AO CENTRO):
-Instante intermediário onde a personagem começa a movimentar ou apresentar o produto ${pName}. Mudança sutil de postura e gesto das mãos, revelando o design ou a forma do produto.
+QUADRO B — TRANSIÇÃO E REVELAÇÃO (AO CENTRO):
+Instante intermediário onde a personagem traz ou movimenta o produto ${pName} em cena. Mudança sutil de postura e gesto das mãos, revelando o design e a forma real do produto.
 
 QUADRO C — APRESENTAÇÃO CONCLUÍDA (À DIREITA):
-A personagem destaca o produto ${pName} de maneira mais clara, aproximando-o discretamente da câmera para evidenciar sua qualidade e acabamento, preparando para a demonstração da próxima cena.
+A personagem destaca o produto ${pName} de maneira clara e nítida, aproximando-o discretamente da câmera para evidenciar sua qualidade e acabamento, preparando para a demonstração da próxima cena.
 
 COMPOSIÇÃO:
-Três painéis verticais independentes alinhados horizontalmente em uma única imagem 16:9, com separação visual limpa. Ultrarrealismo, aparência de foto espontânea tirada com smartphone moderno, iluminação natural, sem logos inventados, sem textos gráficos ou legendas na imagem.
+Três painéis verticais independentes alinhados horizontalmente em uma única imagem 16:9, com separação visual limpa. Ultrarrealismo, aparência de foto espontânea tirada com smartphone moderno, iluminação limpa com cores vivas e vibrantes, sem logos inventados, sem textos gráficos ou legendas na imagem.
+${vividColorCalibrationBlock}
 ${buildProductFidelityDirectives(info)}`;
 
   const bloco2ImagePrompt = `Gere um storyboard fotográfico horizontal em proporção 16:9 (1920x1080), composto por exatamente três quadros verticais de proporção aproximada 9:16, organizados lado a lado da esquerda para a direita (Quadro A à esquerda, Quadro B ao centro, Quadro C à direita).
 
 OBJETIVO: Representar visualmente a segunda cena (10 a 20s) de um vídeo brasileiro de achadinhos para TikTok Shop. Demonstração prática do produto ${pName} em funcionamento real, evidenciando seu principal benefício.
-
+${userInstructionsBlock}
 REFERÊNCIA DO PRODUTO:
 Fidelidade total às fotografias anexadas do produto ${pName}. Manter rigorosamente mesmas cores, texturas, proporções e detalhes.
 
@@ -453,13 +465,14 @@ QUADRO C — RESULTADO (À DIREITA):
 A ação concluída comprovando visualmente o benefício e a utilidade do ${pName}. Expressão de satisfação sincera e facilidade.
 
 COMPOSIÇÃO:
-Três quadros verticais independentes lado a lado em imagem horizontal 16:9. Fotografia de smartphone, luz natural brasileira, sem textos, sem marcas d'água, sem distorções anatômicas.
+Três quadros verticais independentes lado a lado em imagem horizontal 16:9. Fotografia de smartphone com cores vivas, nítidas e vibrantes, luz natural brasileira limpa, sem textos, sem marcas d'água, sem distorções anatômicas.
+${vividColorCalibrationBlock}
 ${buildProductFidelityDirectives(info)}`;
 
   const bloco3ImagePrompt = `Gere um storyboard fotográfico horizontal em proporção 16:9 (1920x1080), composto por exatamente três quadros verticais de proporção aproximada 9:16, organizados lado a lado da esquerda para a direita (Quadro A à esquerda, Quadro B ao centro, Quadro C à direita).
 
 OBJETIVO: Representar visualmente a terceira cena (20 a 30s) de um vídeo brasileiro de achadinhos para TikTok Shop. Fechamento, recomendação espontânea e convite (CTA) para conferir o ${pName} no carrinho.
-
+${userInstructionsBlock}
 REFERÊNCIA DO PRODUTO:
 Fidelidade estrita às fotografias anexadas do produto ${pName}.
 
@@ -479,7 +492,8 @@ QUADRO C — CONCLUSÃO (À DIREITA):
 Composição final espontânea e acolhedora, com a personagem apresentando o produto e fazendo um gesto sutil e natural de indicação para conferir o carrinho de compras.
 
 COMPOSIÇÃO:
-Três painéis verticais em única imagem horizontal 16:9. Sem botões falsos, sem elementos de interface gráfica, estética real de smartphone em ambiente brasileiro.
+Três painéis verticais em única imagem horizontal 16:9. Cores vivas, vibrantes e alto contraste natural, sem botões falsos, sem elementos de interface gráfica, estética real de smartphone em ambiente brasileiro.
+${vividColorCalibrationBlock}
 ${buildProductFidelityDirectives(info)}`;
 
   // --------------------------------------------------------------------------
@@ -487,15 +501,15 @@ ${buildProductFidelityDirectives(info)}`;
   // --------------------------------------------------------------------------
   const veoPrompt1 = `Generate a 10-second ultra-realistic vertical social-media video using the corresponding scene 1 storyboard and product reference images.
 SCENE PURPOSE:
-Introduce the product immediately, deliver the approved hook, and create a natural transition into the product demonstration.
-CHARACTER:
+Deliver the visual hook (which may begin without the product on screen if shown in Frame A or requested in user instructions), capture viewer attention naturally, and transition smoothly into presenting the product ${pName}.
+${userInstructionsClean ? `USER CUSTOM INSTRUCTIONS (HIGHEST PRIORITY): ${userInstructionsClean}\n` : ''}CHARACTER:
 ${genderStr}. ${framingNotice} Natural Brazilian content creator. Preserve facial identity, hair, skin tone, outfit, and spontaneous personality.
 ENVIRONMENT:
-${scenarioDesc} Natural lighting, consistent Brazilian ambient setting.
+${scenarioDesc} Natural clean lighting, vibrant vivid colors, consistent Brazilian ambient setting.
 PRODUCT:
-${pName}. Match the supplied product photographs exactly. Do not redesign, recolor, reshape or replace any product details.
+${pName}. Match the supplied product photographs exactly whenever visible. Do not redesign, recolor, reshape or replace any product details.
 ACTION:
-Begin immediately with a natural discovery gesture. The character shows the product ${pName} to the camera. Movement is physically plausible following the storyboard progression from A to B to C.
+Follow the exact visual progression from storyboard frame A to B to C. Frame A starts with the visual hook (with or without the product on screen according to Frame A and user instructions), then Frame B and Frame C naturally reveal and highlight the product ${pName} to the camera with physically plausible movement.
 CAMERA:
 Realistic handheld smartphone framing. Natural medium shot with a subtle approach to highlight the product. Avoid excessive cinematic camera moves.
 PERFORMANCE:
@@ -508,7 +522,7 @@ The final action naturally prepares the demonstration in scene 2. Maintain the s
 RESTRICTIONS:
 No extra fingers, malformed hands, duplicated products, floating objects, random text, invented logos or additional voices.
 STYLE:
-Ultra-realistic Brazilian social-media content recorded with a high-quality modern smartphone. Natural, spontaneous, non-cinematic.`;
+Ultra-realistic Brazilian social-media content recorded with a high-quality modern smartphone. Vivid, vibrant true-to-life colors, zero yellowish/pale cast. Natural, spontaneous, non-cinematic.`;
 
   const veoPrompt2 = `Generate a 10-second ultra-realistic vertical social-media video using the scene 2 storyboard and the original product photographs.
 SCENE PURPOSE:

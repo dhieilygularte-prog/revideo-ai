@@ -643,12 +643,12 @@ Mapa visual da copy:
 ${visualMapLines}
 
 ${charactersSection}
-Estilo: fotografia ultra-realista com qualidade ótica de smartphone moderno topo de linha, estética UGC autêntica de anúncio de alta conversão, textura de pele natural, cores ricas e fiéis ao produto, ${scenarioDescription}. A iluminação, temperatura de cor e atmosfera devem acompanhar fielmente o contexto da cena especificada no prompt (seja dia claro, fim de tarde, luz de velas, noite ou ambiente residencial). Variar enquadramentos: close, macro, POV, plano médio, plano aberto.${extraInstructions}
+Estilo: fotografia ultra-realista com qualidade ótica de smartphone moderno topo de linha, estética UGC autêntica de anúncio de alta conversão, textura de pele natural, cores vivas, vibrantes, ricas e fiéis ao produto, ${scenarioDescription}. A iluminação e atmosfera devem acompanhar fielmente o contexto da cena especificada no prompt, mantendo sempre cores vivas e cheias de vida, com balanço de branco limpo e zero dominante amarelada. Variar enquadramentos: close, macro, POV, plano médio, plano aberto.${extraInstructions}
 
-DIRETRIZ CRÍTICA DE NITIDEZ ÓPTICA E ZERO PELÍCULA PLÁSTICA/OPACIDADE:
-- LENTE CRISTALINA E ALTA DEFINIÇÃO DE SMARTPHONE MODERNO: Imagem nítida, sensor com foco apurado, contraste equilibrado e realismo autêntico.
-- ZERO PELÍCULA PLÁSTICA, ZERO NÉVOA E ZERO IMAGEM PÁLIDA: É TERMINANTEMENTE PROIBIDO gerar imagem com aspecto de plástico/filme fosco ou amarelado por cima, névoa opaca/leitosa, desbotamento, palidez ou falta de definição. Cores com riqueza ótica e pretos limpos.
-- ILUMINAÇÃO DINÂMICA INTEGRADA AO CENÁRIO: A iluminação deve sempre combinar de forma realista com a cena pedida no prompt (dia, noite, jantar, quarto, sala, etc.).
+DIRETRIZ CRÍTICA DE CORES VIVAS, NITIDEZ ÓPTICA E ZERO AMARELAMENTO / ZERO OPACIDADE:
+- CORES VIVAS, VIBRANTES E COM VIDA: Gere cores ricas, vivas, nítidas e vibrantes tanto no produto quanto na pele, roupas e cenário, com contraste comercial limpo de câmera de smartphone topo de linha (iPhone 16 Pro / Galaxy S24 Ultra).
+- ZERO TOM AMARELADO, ZERO OPACIDADE E ZERO PELÍCULA PLÁSTICA: É TERMINANTEMENTE PROIBIDO gerar imagem amarelada, alaranjada/âmbar, sépia, opaca, sem vida, fosca, névoa leitosa, véu esbranquiçado ou cores pálidas/desbotadas. Pretos profundos, brancos puros (#FFFFFF nas bordas) e nitidez cristalina.
+- ILUMINAÇÃO INTEGRADA AO CENÁRIO COM CORES REALÇADAS: Mesmo em ambientes internos residenciais, a luz deve ser clara, limpa e bem calibrada, valorizando as cores reais sem nunca amarelar ou deixar a imagem opaca.
 
 ${scenesLines}
 
@@ -1513,7 +1513,7 @@ export function resolveProdutos2ScenarioDescription(params: {
     } else if (/banco|esteira|halter|treino|exercicio|academia|fitness/i.test(combined)) {
       room = 'sala espaçosa com área de treino e luz natural';
     }
-    const baseHome = `casa brasileira simples e aconchegante, ${room}`;
+    const baseHome = `casa brasileira bem iluminada e aconchegante com luz natural limpa e cores vivas, ${room}`;
     if (cleanExtraScenario) {
       return `${baseHome} (${cleanExtraScenario})`;
     }
@@ -2093,7 +2093,7 @@ E retornar um JSON estrito com:
      * Para a cor, cite explicitamente: "Variações oficiais de cor: o produto possui as variações informadas ([listar todas]), todas corretas e representadas fielmente nos seus respectivos quadros do storyboard".
 4. "avatarDescription": descrição de 1 frase do consumidor brasileiro adulto que apresenta o produto (respeitando o gênero do Influencer e as Instruções Adicionais; se produto infantil, quem apresenta na cena 1 e 9 é sempre um adulto pai/mãe).
 5. "scenarioDescription":
-   - Se o usuário escolheu "em_casa" ("Em casa"): "casa brasileira simples e aconchegante, [cômodo adequado ao produto]".
+   - Se o usuário escolheu "em_casa" ("Em casa"): "casa brasileira bem iluminada e aconchegante com luz natural limpa e cores vivas, [cômodo adequado ao produto]".
    - Se o usuário escolheu "padrao_uso" ("Cenário padrão de uso"): descreva o LUGAR REAL onde o produto é usado, SEM mencionar "casa", "caseiro" ou "casa brasileira" (ex.: academia ou espaço de treino para banco de exercícios; jardim gramado ao ar livre para cortador de grama; margem de represa para vara de pesca; interior de um carro para som automotivo; rua/parque em corrida ao ar livre para tênis).
    - Se o usuário escreveu um local nas Instruções adicionais (ex.: "na praia"), essa instrução tem prioridade.
 6. "visualMap": array de 4 objetos { "excerpt", "intent", "visualProof", "scenes" } mapeando os trechos da copy para provas visuais nas cenas 1 a 9.

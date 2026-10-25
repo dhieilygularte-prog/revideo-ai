@@ -86,9 +86,17 @@ export const AchadinhosBlockSection: React.FC<AchadinhosBlockSectionProps> = ({
   const [isPromptMicRecording, setIsPromptMicRecording] = useState(false);
   const promptRecStopper = useRef<(() => void) | null>(null);
 
-  // 4. Estado de cópia do prompt
+  // 4. Estado de cópia do prompt e download do storyboard
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [hasCopiedPromptOnce, setHasCopiedPromptOnce] = useState(false);
+  const [hasDownloadedStoryboard, setHasDownloadedStoryboard] = useState(false);
+
+  useEffect(() => {
+    setHasDownloadedStoryboard(false);
+  }, [storyboardImageUrl]);
+
+  const copiedBlueSectionClass =
+    'bg-gradient-to-br from-sky-900/85 via-blue-900/80 to-slate-900/95 border-2 border-sky-400 shadow-xl shadow-sky-950/60 ring-2 ring-sky-400/40';
 
   // Helper de gravação de voz contínua
   const startRecording = (
@@ -304,12 +312,17 @@ export const AchadinhosBlockSection: React.FC<AchadinhosBlockSectionProps> = ({
               </button>
               <button
                 type="button"
-                onClick={() => downloadProdutos2StoryboardImage(storyboardImageUrl, productName, downloadFileName)}
+                onClick={() => {
+                  if (storyboardImageUrl) {
+                    setHasDownloadedStoryboard(true);
+                    downloadProdutos2StoryboardImage(storyboardImageUrl, productName, downloadFileName);
+                  }
+                }}
                 className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-emerald-950/40 transition-all cursor-pointer"
                 title="Baixar imagem individual em alta resolução"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>Baixar Storyboard</span>
+                <span>{hasDownloadedStoryboard ? 'Baixado ✓' : 'Baixar Storyboard'}</span>
               </button>
             </>
           )}
@@ -319,15 +332,70 @@ export const AchadinhosBlockSection: React.FC<AchadinhosBlockSectionProps> = ({
       {/* ÁREA VISUAL DO STORYBOARD */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* IMAGEM DO STORYBOARD (16:9 PAISAGEM) */}
-        <div className="lg:col-span-6 space-y-3">
-          <div className="relative aspect-video w-full rounded-2xl overflow-hidden bg-black/80 border-2 border-emerald-900/50 flex items-center justify-center group shadow-xl">
+        <div
+          className={`lg:col-span-6 space-y-3 p-3 rounded-2xl transition-all duration-300 ${
+            hasDownloadedStoryboard
+              ? copiedBlueSectionClass
+              : 'bg-zinc-900/40 border border-emerald-950/60'
+          }`}
+        >
+          {hasDownloadedStoryboard && (
+            <div className="flex items-center justify-between px-1">
+              <span className="text-[11px] font-black text-sky-200 uppercase tracking-wider">
+                Storyboard — Cena {blockNumber}
+              </span>
+              <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3 text-sky-300" />
+                <span>BAIXADO ✓</span>
+              </span>
+            </div>
+          )}
+          <div
+            className={`relative aspect-video w-full rounded-2xl overflow-hidden bg-black/80 border-2 flex items-center justify-center group shadow-xl ${
+              hasDownloadedStoryboard ? 'border-sky-400/80' : 'border-emerald-900/50'
+            }`}
+          >
             {storyboardImageUrl ? (
-              <img
-                src={storyboardImageUrl}
-                alt={title}
-                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02] cursor-pointer"
-                onClick={() => onOpenPreview(storyboardImageUrl, `${title} - Storyboard 16:9`)}
-              />
+              <>
+                <img
+                  src={storyboardImageUrl}
+                  alt={title}
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.02] cursor-pointer"
+                  onClick={() => onOpenPreview(storyboardImageUrl, `${title} - Storyboard 16:9`)}
+                />
+                {/* Botão Visualizar em tela cheia no canto superior direito */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOpenPreview(storyboardImageUrl, `${title} - Storyboard 16:9`);
+                  }}
+                  className="absolute top-2.5 right-2.5 p-2 rounded-lg bg-black/75 hover:bg-black/90 text-white border border-white/20 opacity-0 group-hover:opacity-100 transition-all cursor-pointer shadow-lg z-10"
+                  title="Visualizar em tamanho grande"
+                >
+                  <Eye className="w-4 h-4" />
+                </button>
+                {/* Número da cena + Botão de download individual no canto inferior direito sobre a imagem */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setHasDownloadedStoryboard(true);
+                    downloadProdutos2StoryboardImage(storyboardImageUrl, productName, downloadFileName);
+                  }}
+                  className={`absolute bottom-2.5 right-2.5 px-2.5 py-1.5 rounded-xl font-black text-xs border shadow-lg transition-all cursor-pointer flex items-center gap-1.5 z-10 ${
+                    hasDownloadedStoryboard
+                      ? 'bg-sky-500 hover:bg-sky-400 text-white border-sky-300 ring-2 ring-sky-300/60'
+                      : 'bg-black/85 hover:bg-emerald-600 text-white border-white/30'
+                  }`}
+                  title={`Clique para baixar apenas o Storyboard da Cena ${blockNumber} (${downloadFileName}.png)`}
+                >
+                  <span className="w-5 h-5 rounded-full bg-white text-slate-950 font-black text-[11px] flex items-center justify-center shadow">
+                    {blockNumber}
+                  </span>
+                  <Download className="w-3.5 h-3.5" />
+                </button>
+              </>
             ) : (
               <div className="flex flex-col items-center justify-center p-6 text-center text-zinc-500 space-y-2">
                 <FileText className="w-10 h-10 stroke-1 text-emerald-800 animate-pulse" />
@@ -468,7 +536,13 @@ export const AchadinhosBlockSection: React.FC<AchadinhosBlockSectionProps> = ({
           </div>
 
           {/* PROMPT DO OMNIFLASH / VEO 3 */}
-          <div className="p-3.5 rounded-2xl bg-zinc-900/90 border border-emerald-950/80 space-y-2">
+          <div
+            className={`p-3.5 rounded-2xl transition-all duration-300 space-y-2 ${
+              hasCopiedPromptOnce
+                ? copiedBlueSectionClass
+                : 'bg-zinc-900/90 border border-emerald-950/80'
+            }`}
+          >
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <FileText className="w-3.5 h-3.5 text-emerald-400" />
@@ -478,7 +552,7 @@ export const AchadinhosBlockSection: React.FC<AchadinhosBlockSectionProps> = ({
                 {hasCopiedPromptOnce && (
                   <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3 text-sky-300" />
-                    <span>COPIADO</span>
+                    <span>COPIADO ✓</span>
                   </span>
                 )}
               </div>
@@ -488,6 +562,8 @@ export const AchadinhosBlockSection: React.FC<AchadinhosBlockSectionProps> = ({
                 className={`px-3 py-1 rounded-lg font-black text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
                   copiedPrompt
                     ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-950/40'
+                    : hasCopiedPromptOnce
+                    ? 'bg-sky-500 hover:bg-sky-400 text-white shadow-md shadow-sky-950/40'
                     : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-950/40'
                 }`}
               >
@@ -498,9 +574,17 @@ export const AchadinhosBlockSection: React.FC<AchadinhosBlockSectionProps> = ({
 
             <textarea
               value={veoPrompt}
-              onChange={(e) => onUpdateVeoPrompt(e.target.value)}
+              onChange={(e) => {
+                setHasCopiedPromptOnce(false);
+                setCopiedPrompt(false);
+                onUpdateVeoPrompt(e.target.value);
+              }}
               rows={4}
-              className="w-full p-2.5 bg-black/60 border border-zinc-800 focus:border-emerald-400 rounded-xl text-[11px] text-zinc-300 font-mono leading-relaxed resize-y"
+              className={`w-full p-2.5 rounded-xl text-[11px] font-mono leading-relaxed resize-y ${
+                hasCopiedPromptOnce
+                  ? 'bg-slate-950/90 border border-sky-400/60 text-sky-50 focus:border-sky-300'
+                  : 'bg-black/60 border border-zinc-800 focus:border-emerald-400 text-zinc-300'
+              }`}
             />
 
             {/* REFINAR PROMPT COM IA */}
@@ -549,19 +633,21 @@ export const AchadinhosBlockSection: React.FC<AchadinhosBlockSectionProps> = ({
         </div>
       </div>
 
-      {/* AUDITORIA DE VÍDEO DO BLOCO (Vídeo Real gerado pelo usuário no Veo 3 / OmniFlash) */}
-      <div className="pt-2 border-t border-emerald-950/80">
-        <VideoFidelityAuditor
-          productName={productName}
-          productLock={productLock}
-          referencePhotos={referencePhotos}
-          onAuditComplete={(vAudit, usage) => {
-            onAuditChange(vAudit);
-            onAuditComplete?.(vAudit, usage);
-          }}
-          initialAudit={videoAudit}
-        />
-      </div>
+      {/* AUDITORIA DE VÍDEO ÚNICA NO FINAL (Exibida ao final da 3ª Cena do Modo Achadinhos) */}
+      {blockNumber === 3 && (
+        <div className="pt-2 border-t border-emerald-950/80">
+          <VideoFidelityAuditor
+            productName={productName}
+            productLock={productLock}
+            referencePhotos={referencePhotos}
+            onAuditComplete={(vAudit, usage) => {
+              onAuditChange(vAudit);
+              onAuditComplete?.(vAudit, usage);
+            }}
+            initialAudit={videoAudit}
+          />
+        </div>
+      )}
     </div>
   );
 };

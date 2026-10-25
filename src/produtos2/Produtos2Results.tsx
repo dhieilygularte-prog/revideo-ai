@@ -129,6 +129,8 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
 
   const [promptCopied, setPromptCopied] = useState(false);
   const [hasCopiedPromptOnce, setHasCopiedPromptOnce] = useState(false);
+  const [hasDownloadedStoryboard1, setHasDownloadedStoryboard1] = useState(false);
+  const [hasDownloadedStoryboard2, setHasDownloadedStoryboard2] = useState(false);
   const [copyCopied, setCopyCopied] = useState(false);
   const [descriptionCopied, setDescriptionCopied] = useState(false);
   const [hasCopiedDescriptionOnce, setHasCopiedDescriptionOnce] = useState(false);
@@ -175,6 +177,14 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
   useEffect(() => {
     setSpeechInput2(result.scene2?.finalCopy || '');
   }, [result.scene2?.finalCopy]);
+
+  useEffect(() => {
+    setHasDownloadedStoryboard1(false);
+  }, [result.storyboardImageUrl]);
+
+  useEffect(() => {
+    setHasDownloadedStoryboard2(false);
+  }, [result.scene2?.storyboardImageUrl]);
 
   // Sempre que houver edição/atualização no prompt do Veo 3, remove o destaque azul de "Copiado"
   useEffect(() => {
@@ -2015,15 +2025,26 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
         className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start scroll-mt-6"
       >
         {/* COLUNA ESQUERDA: IMAGEM DO STORYBOARD (1080x1920) + FISCALIZAÇÃO */}
-        <div className="lg:col-span-5 p-4 rounded-2xl bg-zinc-900/90 border border-zinc-800 shadow-xl space-y-3.5">
+        <div
+          className={`lg:col-span-5 p-4 rounded-2xl transition-all duration-300 space-y-3.5 ${
+            hasDownloadedStoryboard1 ? copiedBlueSectionClass : defaultSectionClass
+          }`}
+        >
           <div className="flex items-center justify-between gap-2">
             <div>
-              <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-wide">
-                {isTwoScenes
-                  ? 'Storyboard da Cena 1 (Grade 2×3 · 6 Quadros · 1080×1920)'
-                  : is4Scenes
-                  ? 'Storyboard 2×2 (4 Cenas · 1080×1920)'
-                  : 'Storyboard 3×3 (9 Cenas · 1080×1920)'}
+              <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-wide flex items-center gap-2">
+                <span>
+                  {isTwoScenes
+                    ? 'Storyboard da Cena 1 (Grade 2×3 · 6 Quadros · 1080×1920)'
+                    : is4Scenes
+                    ? 'Storyboard 2×2 (4 Cenas · 1080×1920)'
+                    : 'Storyboard 3×3 (9 Cenas · 1080×1920)'}
+                </span>
+                {hasDownloadedStoryboard1 && (
+                  <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-sky-300" /> BAIXADO ✓
+                  </span>
+                )}
               </h3>
               <p className="text-[11px] text-zinc-400">
                 Arquivo:{' '}
@@ -2099,20 +2120,28 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
                 >
                   <Eye className="w-4 h-4" />
                 </button>
-                {/* Ícone de download individual no canto inferior direito sobre a própria imagem */}
+                {/* Número da cena + Ícone de download individual no canto inferior direito sobre a própria imagem */}
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
+                    setHasDownloadedStoryboard1(true);
                     downloadProdutos2StoryboardImage(
                       result.storyboardImageUrl!,
                       result.productName,
                       isTwoScenes ? 'Storyboard - Cena 1' : undefined
                     );
                   }}
-                  className="absolute bottom-2.5 right-2.5 p-2 rounded-xl bg-black/80 hover:bg-emerald-600 text-white border border-white/25 shadow-lg transition-all cursor-pointer flex items-center justify-center"
+                  className={`absolute bottom-2.5 right-2.5 px-2.5 py-1.5 rounded-xl font-black text-xs border shadow-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                    hasDownloadedStoryboard1
+                      ? 'bg-sky-500 hover:bg-sky-400 text-white border-sky-300 ring-2 ring-sky-300/60'
+                      : 'bg-black/85 hover:bg-emerald-600 text-white border-white/25'
+                  }`}
                   title={`Baixar ${isTwoScenes ? `${safeFileName} - Storyboard - Cena 1.png` : `${safeFileName}.png`}`}
                 >
+                  <span className="w-5 h-5 rounded-full bg-white text-slate-950 font-black text-[11px] flex items-center justify-center shadow">
+                    1
+                  </span>
                   <Download className="w-4 h-4" />
                 </button>
               </>
@@ -2566,18 +2595,20 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
             </div>
           )}
 
-          {/* VERIFICAÇÃO DE FIDELIDADE DO VÍDEO DO VEO (1 CAPTURA A CADA 2S) */}
-          <VideoFidelityAuditor
-            productName={isTwoScenes ? `${result.productName} (Cena 1)` : result.productName}
-            productLock={result.productLock}
-            referencePhotos={allReferencePhotos}
-            initialAudit={result.videoAudit}
-            onAuditChange={(vAudit) => {
-              onUpdateResult((prev) => (prev ? { ...prev, videoAudit: vAudit } : null));
-            }}
-            onAuditComplete={(vAudit, usage) => handleVideoAuditComplete(vAudit, usage, 1)}
-            onOpenPreview={onOpenPreview}
-          />
+          {/* VERIFICAÇÃO DE FIDELIDADE DO VÍDEO DO VEO (Exibida aqui nos modos de 1 cena; no modo 2 cenas fica apenas uma única no final após a Cena 2) */}
+          {!isTwoScenes && (
+            <VideoFidelityAuditor
+              productName={result.productName}
+              productLock={result.productLock}
+              referencePhotos={allReferencePhotos}
+              initialAudit={result.videoAudit}
+              onAuditChange={(vAudit) => {
+                onUpdateResult((prev) => (prev ? { ...prev, videoAudit: vAudit } : null));
+              }}
+              onAuditComplete={(vAudit, usage) => handleVideoAuditComplete(vAudit, usage, 1)}
+              onOpenPreview={onOpenPreview}
+            />
+          )}
         </div>
       </div>
 
@@ -2828,11 +2859,20 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
           {/* Lado a Lado da Cena 2: Storyboard Cena 2 (6 Quadros) + Prompt Veo 3 Cena 2 */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* COLUNA ESQUERDA: STORYBOARD DA CENA 2 */}
-            <div className="lg:col-span-5 p-4 rounded-2xl bg-zinc-900/90 border border-zinc-800 shadow-xl space-y-3.5">
+            <div
+              className={`lg:col-span-5 p-4 rounded-2xl transition-all duration-300 space-y-3.5 ${
+                hasDownloadedStoryboard2 ? copiedBlueSectionClass : defaultSectionClass
+              }`}
+            >
               <div className="flex items-center justify-between gap-2">
                 <div>
-                  <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-wide">
-                    Storyboard da Cena 2 (Grade 2×3 · 6 Quadros · 1080×1920)
+                  <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-wide flex items-center gap-2">
+                    <span>Storyboard da Cena 2 (Grade 2×3 · 6 Quadros · 1080×1920)</span>
+                    {hasDownloadedStoryboard2 && (
+                      <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-sky-300" /> BAIXADO ✓
+                      </span>
+                    )}
                   </h3>
                   <p className="text-[11px] text-zinc-400">
                     Arquivo:{' '}
@@ -2905,15 +2945,23 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
+                        setHasDownloadedStoryboard2(true);
                         downloadProdutos2StoryboardImage(
                           scene2.storyboardImageUrl!,
                           result.productName,
                           'Storyboard - Cena 2'
                         );
                       }}
-                      className="absolute bottom-2.5 right-2.5 p-2 rounded-xl bg-black/80 hover:bg-emerald-600 text-white border border-white/25 shadow-lg transition-all cursor-pointer flex items-center justify-center"
+                      className={`absolute bottom-2.5 right-2.5 px-2.5 py-1.5 rounded-xl font-black text-xs border shadow-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                        hasDownloadedStoryboard2
+                          ? 'bg-sky-500 hover:bg-sky-400 text-white border-sky-300 ring-2 ring-sky-300/60'
+                          : 'bg-black/85 hover:bg-emerald-600 text-white border-white/25'
+                      }`}
                       title={`Baixar ${safeFileName} - Storyboard - Cena 2.png`}
                     >
+                      <span className="w-5 h-5 rounded-full bg-white text-slate-950 font-black text-[11px] flex items-center justify-center shadow">
+                        2
+                      </span>
                       <Download className="w-4 h-4" />
                     </button>
                   </>
