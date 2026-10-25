@@ -166,6 +166,96 @@ async function extractVideoFramesEvery2s(videoFile: File): Promise<{ second: num
 }
 
 /**
+ * Extrai frames adicionais em segundos específicos (Etapa 2: Amostragem Adaptativa 1 frame/s nas regiões suspeitas)
+ */
+async function extractTargetedVideoFrames(
+  videoFile: File,
+  targetTimestamps: number[]
+): Promise<{ second: number; frameBase64: string }[]> {
+  if (!targetTimestamps || targetTimestamps.length === 0) return [];
+  return new Promise((resolve) => {
+    const video = document.createElement('video');
+    video.preload = 'auto';
+    video.muted = true;
+    video.playsInline = true;
+    video.crossOrigin = 'anonymous';
+
+    const fileUrl = URL.createObjectURL(videoFile);
+    video.src = fileUrl;
+
+    video.onloadedmetadata = async () => {
+      const duration = video.duration || 10;
+      const validTimes = targetTimestamps
+        .map((t) => Math.round(t * 10) / 10)
+        .filter((t) => t >= 0.2 && t <= Math.max(0.5, duration - 0.1));
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx || validTimes.length === 0) {
+        URL.revokeObjectURL(fileUrl);
+        resolve([]);
+        return;
+      }
+
+      let w = video.videoWidth || 720;
+      let h = video.videoHeight || 1280;
+      const maxSide = 512;
+      if (w > maxSide || h > maxSide) {
+        if (w > h) {
+          h = Math.round((h * maxSide) / w);
+          w = maxSide;
+        } else {
+          w = Math.round((w * maxSide) / h);
+          h = maxSide;
+        }
+      }
+      canvas.width = w;
+      canvas.height = h;
+
+      const extracted: { second: number; frameBase64: string }[] = [];
+
+      for (const time of validTimes) {
+        await new Promise<void>((res) => {
+          let isDone = false;
+          const onSeeked = () => {
+            if (isDone) return;
+            isDone = true;
+            video.removeEventListener('seeked', onSeeked);
+            try {
+              ctx.drawImage(video, 0, 0, w, h);
+              const b64 = canvas.toDataURL('image/jpeg', 0.85);
+              extracted.push({ second: time, frameBase64: b64 });
+            } catch (drawErr) {
+              console.warn('Erro ao desenhar frame extra:', drawErr);
+            }
+            res();
+          };
+
+          video.addEventListener('seeked', onSeeked);
+          video.currentTime = time;
+
+          setTimeout(() => {
+            if (!isDone) {
+              isDone = true;
+              video.removeEventListener('seeked', onSeeked);
+              res();
+            }
+          }, 2000);
+        });
+      }
+
+      URL.revokeObjectURL(fileUrl);
+      resolve(extracted);
+    };
+
+    video.onerror = () => {
+      URL.revokeObjectURL(fileUrl);
+      resolve([]);
+    };
+  });
+}
+
+/**
  * Redimensiona fotos de referência para max 600px JPEG 0.80 antes do envio,
  * evitando estourar o limite de 4.5MB da Vercel e acelerando a resposta.
  */
@@ -344,9 +434,149 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
         throw new Error(lastErrorMsg || 'Falha ao auditar vídeo.');
       }
 
-      setAudit(parsedData.audit);
-      onAuditChange?.(parsedData.audit);
-      onAuditComplete?.(parsedData.audit, parsedData.usage);
+      let finalAudit: VideoFidelityAudit = parsedData.audit;
+      let finalUsage: any = parsedData.usage;
+
+      // ETAPA 2 (AMOSTRAGEM ADAPTATIVA): Se houver frames suspeitos (<90%), extrai 1 frame/s na região suspeita
+      const stage1Frames = Array.isArray(finalAudit.frames) ? finalAudit.frames : [];
+      const suspiciousFrames = stage1Frames.filter((f) => Number(f.score) < 90);
+
+      if (suspiciousFrames.length > 0) {
+        const existingSeconds = stage1Frames.map((f) => Number(f.second));
+        const candidateTimesSet = new Set<number>();
+
+        suspiciousFrames.forEach((sf) => {
+          const s = Number(sf.second);
+          // Adiciona 1s antes e 1s depois (passando a frequência de 2s para 1 frame/s no trecho suspeito)
+          [s - 1, s + 1].forEach((cand) => {
+            const rounded = Math.round(cand * 10) / 10;
+            if (
+              rounded >= 0.4 &&
+              !existingSeconds.some((ex) => Math.abs(ex - rounded) < 0.4)
+            ) {
+              candidateTimesSet.add(rounded);
+            }
+          });
+        });
+
+        const extraTimes = Array.from(candidateTimesSet).sort((a, b) => a - b).slice(0, 6);
+
+        if (extraTimes.length > 0) {
+          const suspLabel = suspiciousFrames.map((f) => `${f.second}s`).join(', ');
+          setStatusMessage(
+            `Sinal suspeito em ${suspLabel} — inspecionando 1 frame/s no trecho para confirmação...`
+          );
+
+          const extraExtracted = await extractTargetedVideoFrames(fileToAudit, extraTimes);
+
+          if (extraExtracted.length > 0) {
+            // Monta janela direcionada: frames originais próximos aos pontos suspeitos + novos frames de 1f/s
+            const contextOriginals = frames.filter((orig) =>
+              suspiciousFrames.some((sf) => Math.abs(orig.second - Number(sf.second)) <= 2.2)
+            );
+
+            const targetedFramesInput = [...contextOriginals, ...extraExtracted].sort(
+              (a, b) => a.second - b.second
+            );
+
+            const stage2Payload = JSON.stringify({
+              videoFrames: targetedFramesInput,
+              productPhotosBase64: compressedRefs,
+              productName,
+              productLock,
+              isTargetedPass: true,
+              suspiciousSeconds: suspiciousFrames.map((f) => f.second),
+            });
+
+            for (const endpoint of endpoints) {
+              try {
+                const res2 = await fetch(endpoint, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: stage2Payload,
+                });
+                const raw2 = await res2.text();
+                if (!raw2 || raw2.trim().startsWith('<')) continue;
+                const json2 = JSON.parse(raw2);
+                if (res2.ok && json2?.success && json2?.audit?.frames) {
+                  // Mescla os frames da Etapa 1 com os frames refinados/adicionais da Etapa 2
+                  const refinedMap = new Map<number, any>();
+                  stage1Frames.forEach((f) => refinedMap.set(Math.round(Number(f.second) * 10), f));
+                  json2.audit.frames.forEach((f2: any) => {
+                    refinedMap.set(Math.round(Number(f2.second) * 10), f2);
+                  });
+
+                  const mergedFrames = Array.from(refinedMap.values())
+                    .sort((a, b) => Number(a.second) - Number(b.second))
+                    .map((item, idx) => ({
+                      ...item,
+                      frameNumber: idx + 1,
+                    }));
+
+                  const scores = mergedFrames.map((f) => Number(f.score));
+                  const minScore = Math.min(...scores);
+                  const avgScore = Math.round(
+                    scores.reduce((a, b) => a + b, 0) / scores.length
+                  );
+
+                  let overallScore = avgScore;
+                  let overallStatus: Produtos2AuditColorStatus = 'green';
+                  let overallLabel = 'Aprovado: Vídeo Liberado';
+
+                  if (minScore < 60) {
+                    overallStatus = 'red';
+                    overallScore = Math.min(59, minScore);
+                    overallLabel = 'Risco de Restrição: Reprovado';
+                  } else if (minScore <= 70) {
+                    overallStatus = 'orange';
+                    overallScore = Math.min(70, minScore);
+                    overallLabel = 'Cuidado: Variação Moderada';
+                  } else if (minScore < 90) {
+                    overallStatus = 'yellow';
+                    overallScore = Math.min(89, minScore);
+                    overallLabel = 'Pode Passar: Razoável';
+                  } else {
+                    overallStatus = 'green';
+                    overallScore = avgScore;
+                    overallLabel = 'Aprovado: Vídeo Liberado';
+                  }
+
+                  finalAudit = {
+                    overallScore,
+                    overallStatus,
+                    overallLabel,
+                    summary: json2.audit.summary || finalAudit.summary,
+                    frames: mergedFrames,
+                  };
+
+                  if (finalUsage && json2.usage) {
+                    finalUsage = {
+                      ...finalUsage,
+                      promptTokens: (finalUsage.promptTokens || 0) + (json2.usage.promptTokens || 0),
+                      completionTokens:
+                        (finalUsage.completionTokens || 0) + (json2.usage.completionTokens || 0),
+                      totalTokens: (finalUsage.totalTokens || 0) + (json2.usage.totalTokens || 0),
+                      costUSD:
+                        Math.round(((finalUsage.costUSD || 0) + (json2.usage.costUSD || 0)) * 10000) /
+                        10000,
+                      costBRL:
+                        Math.round(((finalUsage.costBRL || 0) + (json2.usage.costBRL || 0)) * 100) /
+                        100,
+                    };
+                  }
+                  break;
+                }
+              } catch (stage2Err) {
+                console.warn('Aviso na Etapa 2 adaptativa (mantendo Etapa 1):', stage2Err);
+              }
+            }
+          }
+        }
+      }
+
+      setAudit(finalAudit);
+      onAuditChange?.(finalAudit);
+      onAuditComplete?.(finalAudit, finalUsage);
     } catch (err: any) {
       console.error('Erro na auditoria de vídeo:', err);
       setErrorMessage(err?.message || 'Erro durante a auditoria do vídeo.');
@@ -420,7 +650,7 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
               )}
             </h3>
             <p className="text-[11px] text-zinc-400">
-              Audita o vídeo frame a frame (1 captura a cada 2s — ex: 10s = 5 frames, 20s = 10 frames, 30s = 15 frames) comparando com as fotos reais do produto.
+              Varredura adaptativa (1 frame a cada 2s; se detectar trecho suspeito, aprofunda para 1 frame/s na região) comparando com as fotos reais.
             </p>
           </div>
         </div>

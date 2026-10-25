@@ -4086,6 +4086,15 @@ app.post('/api/produtos2-audit-storyboard', async (req, res) => {
       : '';
 
     const lockContext = Array.isArray(productLock) ? productLock.join('; ') : '';
+    const targetedContextInstruction = isTargetedPass
+      ? `\n\n[MODO ATIVO: ETAPA 2 — INSPEÇÃO DIRECIONADA EM ALTA DENSIDADE (1 FRAME POR SEGUNDO NA REGIÃO SUSPEITA)]:
+Na varredura inicial (1 frame a cada 2s), houve sinal suspeito nos segundos: ${Array.isArray(suspiciousSeconds) && suspiciousSeconds.length > 0 ? suspiciousSeconds.map((s: any) => `${s}s`).join(', ') : 'indicados'}.
+Agora você está recebendo frames em alta frequência (1 frame por segundo, incluindo contexto antes, durante e depois do evento suspeito).
+REGRAS ESPECÍFICAS DESTA INSPEÇÃO DIRECIONADA:
+1) Compare os frames de 1 em 1 segundo entre si e com as fotos originais para verificar se a mudança suspeita é PERSISTENTE ou se foi apenas movimento rápido, oclusão passageira pelos dedos/mão, corte de cena, sombra, reflexo ou perspectiva.
+2) Se os frames adjacentes (antes e depois) comprovarem que o produto manteve sua estrutura real e que a suspeita anterior era apenas oclusão da mão, movimento ou ângulo, REABILITE e APROVE o frame com nota >= 90% (Verde), explicando no "issue" que a inspeção de 1 frame/s confirmou a integridade física do produto.
+3) Se os frames de 1 frame/s confirmarem que a alteração ou deformação persiste de fato no intervalo, confirme a nota rigorosa e detalhe a evidência.`
+      : '';
 
     const variationsAuditRule =
       activeVariations.length >= 2
@@ -4561,6 +4570,8 @@ async function handleProdutos2AuditVideo(req: any, res: any) {
       productPhotosBase64 = [], // Array<string>
       productName = 'Produto',
       productLock = [],
+      isTargetedPass = false,
+      suspiciousSeconds = [],
     } = req.body;
 
     if (!Array.isArray(videoFrames) || videoFrames.length === 0) {
@@ -4691,6 +4702,7 @@ Retorne ESTRITAMENTE um objeto JSON no formato:
 
         const promptText = `Audite minuciosamente os ${videoFrames.length} frames do vídeo acima comparando com as fotos de referência reais do produto "${productName}".
 Aplique a metodologia de 4 etapas do detector (Ficha visual de referência, inspeção cronológica, comparação componente a componente nos 5 grupos e segunda passagem de continuidade/morphing temporal). Se o produto em cada frame for idêntico a qualquer uma das fotos de referência anexadas, aprove com nota >= 90%. Diferencie perspectiva e iluminação natural de alteração real do produto.${lockContext ? ` Trava do produto: ${lockContext}` : ''}
+${targetedContextInstruction}
 Retorne o JSON estritamente conforme solicitado.`;
         contentBlocks.push({ type: 'text', text: promptText });
 
@@ -4815,7 +4827,7 @@ Retorne o JSON estritamente conforme solicitado.`;
           }
         });
         parts.push({
-          text: `${systemInstruction}\n\nAudite os frames acima e retorne o JSON estritamente no schema solicitado.`
+          text: `${systemInstruction}${targetedContextInstruction}\n\nAudite os frames acima e retorne o JSON estritamente no schema solicitado.`
         });
 
         const auditRes = await getGenAI().models.generateContent({

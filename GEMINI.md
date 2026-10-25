@@ -148,5 +148,10 @@ Este documento contém as regras invioláveis de inteligência artificial e enge
 - **Variantes e Embalagens:** se houver múltiplas embalagens, cores ou kits legítimos nas referências, qualquer uma que coincida é aprovada.
 - **Separação Estrita de Falha Técnica e Resultado Visual:** limitações de câmera ou foco não devem ser convertidas em inconsistências de fabricação do produto.
 
+### 10.5 AMOSTRAGEM ADAPTATIVA DE FRAMES EM 2 ETAPAS (2s → 1s NAS PARTES SUSPEITAS)
+- **Etapa 1 — Varredura Inicial (1 frame a cada 2s):** extrai capturas a cada 2 segundos ao longo do vídeo. Se todos os frames forem aprovados (≥90% Verde), encerra imediatamente na Etapa 1 sem custo extra.
+- **Etapa 2 — Inspeção Direcionada (1 frame por segundo na região suspeita):** caso algum frame apresente sinal suspeito (<90%), o aplicativo extrai automaticamente os segundos adjacentes (1s antes e 1s depois, passando a 1 frame/s naquela janela) e faz uma segunda verificação focada exclusivamente no trecho suspeito para distinguir oclusão rápida de mão/movimento de uma deformação real persistente.
+
+
 
 
