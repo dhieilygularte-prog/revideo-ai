@@ -202,11 +202,40 @@ export interface VideoAuditFrameItem {
   frameThumbnail?: string;
 }
 
+export interface VideoAuditReferenceNote {
+  refIndex: number;
+  label: string;
+  description: string;
+}
+
+export interface VideoAuditFinding {
+  number: number;
+  title: string;
+  severity: 'evident' | 'possible' | 'observation';
+  referenceNotes?: VideoAuditReferenceNote[];
+  whatAppearsInVideo: string;
+  whereItAppears: string;
+  howToFix: string;
+  bestFrameSecond?: number;
+  bestRefIndex?: number;
+  refCropBox?: [number, number, number, number];
+  videoCropBox?: [number, number, number, number];
+  comparisonImageUrl?: string;
+}
+
 export interface VideoFidelityAudit {
   overallScore: number;
   overallStatus: Produtos2AuditColorStatus;
   overallLabel: string;
   summary: string;
+  overviewText?: string;
+  finalRecommendation?: string;
+  coverageNote?: string;
+  contactSheetUrl?: string;
+  videoDurationSeconds?: number;
+  videoFileName?: string;
+  findings?: VideoAuditFinding[];
   frames: VideoAuditFrameItem[];
 }
+
 

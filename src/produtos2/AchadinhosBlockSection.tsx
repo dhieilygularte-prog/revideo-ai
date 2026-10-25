@@ -640,11 +640,13 @@ export const AchadinhosBlockSection: React.FC<AchadinhosBlockSectionProps> = ({
             productName={productName}
             productLock={productLock}
             referencePhotos={referencePhotos}
+            onAuditChange={onAuditChange}
             onAuditComplete={(vAudit, usage) => {
               onAuditChange(vAudit);
               onAuditComplete?.(vAudit, usage);
             }}
             initialAudit={videoAudit}
+            onOpenPreview={onOpenPreview}
           />
         </div>
       )}

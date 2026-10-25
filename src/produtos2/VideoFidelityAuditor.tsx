@@ -12,8 +12,14 @@ import {
   RotateCcw,
   ImagePlus,
   X,
+  Download,
+  Search,
 } from 'lucide-react';
-import { VideoFidelityAudit, Produtos2AuditColorStatus } from './types';
+import {
+  VideoFidelityAudit,
+  VideoAuditFinding,
+  Produtos2AuditColorStatus,
+} from './types';
 
 interface VideoFidelityAuditorProps {
   productName: string;
@@ -63,11 +69,27 @@ function getAuditBoxClasses(status: Produtos2AuditColorStatus) {
   }
 }
 
+function loadImageElement(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = (err) => reject(err);
+    img.src = src;
+  });
+}
+
 /**
- * Extrai 1 frame a cada 2 segundos ao longo de todo o vídeo (ex: 10s = 5 frames, 15s = 8 frames, 20s = 10 frames, 30s = 15 frames)
- * de forma ultra-otimizada (max 512px) para manter custo mínimo de API e auditoria completa do vídeo.
+ * Extrai frames de 1 em 1 segundo (0s, 1s, 2s, 3s, 4s, 5s, 6s, 7s, 8s, 9s...)
+ * em ALTA DEFINIÇÃO (até 960px no lado maior, qualidade JPEG 0.90) para que nenhum detalhe
+ * (como número de lentes de câmera, flash, botões ou textos) fique borrado ou pequeno.
  */
-async function extractVideoFramesEvery2s(videoFile: File): Promise<{ second: number; frameBase64: string }[]> {
+async function extractHighResVideoFrames1fps(
+  videoFile: File
+): Promise<{
+  frames: { second: number; frameBase64: string }[];
+  durationSeconds: number;
+}> {
   return new Promise((resolve, reject) => {
     const video = document.createElement('video');
     video.preload = 'auto';
@@ -79,22 +101,20 @@ async function extractVideoFramesEvery2s(videoFile: File): Promise<{ second: num
     video.src = fileUrl;
 
     video.onloadedmetadata = async () => {
-      const duration = video.duration || 10;
+      const rawDuration = video.duration || 10;
+      const durationSeconds = Math.round(rawDuration * 10) / 10;
       const targetTimes: number[] = [];
 
-      // Gera capturas a cada 2 segundos a partir do segundo 1 até o final do vídeo
-      for (let sec = 1; sec < duration; sec += 2) {
+      // Para vídeos até 15s (99% dos vídeos do Veo: 8s, 10s, 12s, 15s), extrai de 1 em 1 segundo (0s, 1s, 2s...)
+      const step = durationSeconds <= 15.5 ? 1 : 2;
+      const maxSecond = Math.max(0, Math.floor(durationSeconds - 0.15));
+
+      for (let sec = 0; sec <= maxSecond; sec += step) {
         targetTimes.push(sec);
       }
-      // Se a sobra entre o último frame e o final do vídeo for >= 1.5s, captura também perto do fim
-      if (duration >= 2 && targetTimes.length > 0) {
-        const lastTarget = targetTimes[targetTimes.length - 1];
-        if (duration - lastTarget >= 1.5) {
-          targetTimes.push(Math.round((duration - 0.4) * 10) / 10);
-        }
-      }
+
       if (targetTimes.length === 0) {
-        targetTimes.push(Math.max(0.5, Math.round((duration / 2) * 10) / 10));
+        targetTimes.push(0);
       }
 
       const canvas = document.createElement('canvas');
@@ -105,10 +125,10 @@ async function extractVideoFramesEvery2s(videoFile: File): Promise<{ second: num
         return;
       }
 
-      // Escala para max 512px no lado maior para consumo super baixo de tokens e envio instantâneo
+      // Alta resolução por frame (até 960px no lado maior, ex: 540x960px) para nitidez pericial das lentes/componentes
       let w = video.videoWidth || 720;
       let h = video.videoHeight || 1280;
-      const maxSide = 512;
+      const maxSide = 960;
       if (w > maxSide || h > maxSide) {
         if (w > h) {
           h = Math.round((h * maxSide) / w);
@@ -124,6 +144,7 @@ async function extractVideoFramesEvery2s(videoFile: File): Promise<{ second: num
       const extracted: { second: number; frameBase64: string }[] = [];
 
       for (const time of targetTimes) {
+        const seekTarget = time === 0 ? 0.08 : time;
         await new Promise<void>((res) => {
           let isDone = false;
           const onSeeked = () => {
@@ -132,7 +153,7 @@ async function extractVideoFramesEvery2s(videoFile: File): Promise<{ second: num
             video.removeEventListener('seeked', onSeeked);
             try {
               ctx.drawImage(video, 0, 0, w, h);
-              const b64 = canvas.toDataURL('image/jpeg', 0.85);
+              const b64 = canvas.toDataURL('image/jpeg', 0.9);
               extracted.push({ second: time, frameBase64: b64 });
             } catch (drawErr) {
               console.warn('Erro ao desenhar frame:', drawErr);
@@ -141,9 +162,8 @@ async function extractVideoFramesEvery2s(videoFile: File): Promise<{ second: num
           };
 
           video.addEventListener('seeked', onSeeked);
-          video.currentTime = time;
+          video.currentTime = seekTarget;
 
-          // Timeout de segurança caso o navegador trave o seeked
           setTimeout(() => {
             if (!isDone) {
               isDone = true;
@@ -155,122 +175,244 @@ async function extractVideoFramesEvery2s(videoFile: File): Promise<{ second: num
       }
 
       URL.revokeObjectURL(fileUrl);
-      resolve(extracted);
+      resolve({ frames: extracted, durationSeconds });
     };
 
     video.onerror = () => {
       URL.revokeObjectURL(fileUrl);
-      reject(new Error('Não foi possível ler o arquivo de vídeo. Certifique-se de que é um formato válido (.mp4, .webm ou .mov).'));
+      reject(
+        new Error(
+          'Não foi possível ler o arquivo de vídeo. Certifique-se de que é um formato válido (.mp4, .webm ou .mov).'
+        )
+      );
     };
   });
 }
 
 /**
- * Extrai frames adicionais em segundos específicos (Etapa 2: Amostragem Adaptativa 1 frame/s nas regiões suspeitas)
+ * Constrói uma única imagem em formato Storyboard Contact Sheet de alta definição (1200x660 / 1500x825)
+ * contendo todos os frames de 1 em 1 segundo (0s, 1s, 2s, 3s, 4s...) organizados em grade sobre fundo branco,
+ * exatamente como o storyboard pericial de referência.
  */
-async function extractTargetedVideoFrames(
-  videoFile: File,
-  targetTimestamps: number[]
-): Promise<{ second: number; frameBase64: string }[]> {
-  if (!targetTimestamps || targetTimestamps.length === 0) return [];
-  return new Promise((resolve) => {
-    const video = document.createElement('video');
-    video.preload = 'auto';
-    video.muted = true;
-    video.playsInline = true;
-    video.crossOrigin = 'anonymous';
+async function buildVideoContactSheetStoryboard(
+  frames: { second: number; frameBase64: string }[]
+): Promise<string> {
+  if (!frames || frames.length === 0) return '';
+  try {
+    const loadedImages = await Promise.all(
+      frames.map(async (f) => ({
+        second: f.second,
+        img: await loadImageElement(f.frameBase64),
+      }))
+    );
 
-    const fileUrl = URL.createObjectURL(videoFile);
-    video.src = fileUrl;
+    const cols = Math.min(5, loadedImages.length);
+    const rows = Math.ceil(loadedImages.length / cols);
 
-    video.onloadedmetadata = async () => {
-      const duration = video.duration || 10;
-      const validTimes = targetTimestamps
-        .map((t) => Math.round(t * 10) / 10)
-        .filter((t) => t >= 0.2 && t <= Math.max(0.5, duration - 0.1));
+    // Dimensões base de alta definição (proporcional a 1200x660 para 5x2, ou mais nítida em 1400x770)
+    const canvasWidth = 1400;
+    const padX = 24;
+    const padY = 18;
+    const labelHeight = 26;
+    const colGap = 28;
+    const rowGap = 20;
 
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (!ctx || validTimes.length === 0) {
-        URL.revokeObjectURL(fileUrl);
-        resolve([]);
-        return;
-      }
+    const cellWidth = Math.floor((canvasWidth - padX * 2 - colGap * (cols - 1)) / cols);
+    const firstImg = loadedImages[0].img;
+    const imgAspect = (firstImg.height || 1280) / (firstImg.width || 720);
+    const cellImgHeight = Math.round(cellWidth * Math.min(1.85, Math.max(0.75, imgAspect)));
+    const rowHeight = labelHeight + cellImgHeight;
+    const canvasHeight = padY * 2 + rows * rowHeight + (rows - 1) * rowGap;
 
-      let w = video.videoWidth || 720;
-      let h = video.videoHeight || 1280;
-      const maxSide = 512;
-      if (w > maxSide || h > maxSide) {
-        if (w > h) {
-          h = Math.round((h * maxSide) / w);
-          w = maxSide;
-        } else {
-          w = Math.round((w * maxSide) / h);
-          h = maxSide;
-        }
-      }
-      canvas.width = w;
-      canvas.height = h;
+    const canvas = document.createElement('canvas');
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return '';
 
-      const extracted: { second: number; frameBase64: string }[] = [];
+    // Fundo branco limpo para alto contraste pericial
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
 
-      for (const time of validTimes) {
-        await new Promise<void>((res) => {
-          let isDone = false;
-          const onSeeked = () => {
-            if (isDone) return;
-            isDone = true;
-            video.removeEventListener('seeked', onSeeked);
-            try {
-              ctx.drawImage(video, 0, 0, w, h);
-              const b64 = canvas.toDataURL('image/jpeg', 0.85);
-              extracted.push({ second: time, frameBase64: b64 });
-            } catch (drawErr) {
-              console.warn('Erro ao desenhar frame extra:', drawErr);
-            }
-            res();
-          };
+    loadedImages.forEach((item, idx) => {
+      const col = idx % cols;
+      const row = Math.floor(idx / cols);
+      const x = padX + col * (cellWidth + colGap);
+      const y = padY + row * (rowHeight + rowGap);
 
-          video.addEventListener('seeked', onSeeked);
-          video.currentTime = time;
+      // Rótulo do segundo ("0s", "1s", "2s"...)
+      ctx.fillStyle = '#18181b';
+      ctx.font = 'bold 16px Inter, system-ui, -apple-system, sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText(`${item.second}s`, x, y + 2);
 
-          setTimeout(() => {
-            if (!isDone) {
-              isDone = true;
-              video.removeEventListener('seeked', onSeeked);
-              res();
-            }
-          }, 2000);
-        });
-      }
+      // Desenha o frame preservando a proporção exata sem esticar
+      const imgY = y + labelHeight;
+      const iw = item.img.width || 720;
+      const ih = item.img.height || 1280;
+      const scale = Math.min(cellWidth / iw, cellImgHeight / ih);
+      const drawW = Math.round(iw * scale);
+      const drawH = Math.round(ih * scale);
+      const drawX = x;
+      const drawY = imgY + Math.round((cellImgHeight - drawH) / 2);
 
-      URL.revokeObjectURL(fileUrl);
-      resolve(extracted);
-    };
+      ctx.drawImage(item.img, drawX, drawY, drawW, drawH);
+    });
 
-    video.onerror = () => {
-      URL.revokeObjectURL(fileUrl);
-      resolve([]);
-    };
-  });
+    return canvas.toDataURL('image/jpeg', 0.92);
+  } catch (err) {
+    console.warn('Aviso ao montar storyboard de capturas do vídeo:', err);
+    return '';
+  }
 }
 
 /**
- * Redimensiona fotos de referência para max 600px JPEG 0.80 antes do envio,
- * evitando estourar o limite de 4.5MB da Vercel e acelerando a resposta.
+ * Gera a imagem PNG "COMPARAÇÃO VISUAL — [COMPONENTE]" lado a lado:
+ * Lado esquerdo: REFERÊNCIA ORIGINAL (recorte focado no componente sem distorcer proporção)
+ * Lado direito: CAPTURA REAL DO VÍDEO — 00:XX (recorte focado no mesmo componente no frame do vídeo)
+ */
+async function buildVisualComparisonBanner(params: {
+  finding: VideoAuditFinding;
+  referencePhotoUrl: string;
+  videoFrameUrl: string;
+  second: number;
+}): Promise<string> {
+  const { finding, referencePhotoUrl, videoFrameUrl, second } = params;
+  if (!referencePhotoUrl || !videoFrameUrl) return '';
+
+  try {
+    const [refImg, vidImg] = await Promise.all([
+      loadImageElement(referencePhotoUrl),
+      loadImageElement(videoFrameUrl),
+    ]);
+
+    const W = 1040;
+    const H = 560;
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return '';
+
+    // Fundo branco
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, W, H);
+
+    // Cabeçalho superior
+    ctx.fillStyle = '#09090b';
+    ctx.font = 'bold 21px Inter, system-ui, -apple-system, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    const titleUpper = (finding.title || 'COMPONENTE ANALISADO').toUpperCase();
+    ctx.fillText(`COMPARAÇÃO VISUAL — ${titleUpper}`, 32, 24);
+
+    ctx.fillStyle = '#52525b';
+    ctx.font = '14px Inter, system-ui, -apple-system, sans-serif';
+    ctx.fillText(
+      'Recortes de imagens reais fornecidas; recortes mantêm o conteúdo original.',
+      32,
+      54
+    );
+
+    // Rótulos das duas colunas
+    const colY = 92;
+    const leftX = 32;
+    const rightX = 536;
+    const boxW = 472;
+    const boxH = 415;
+    const imgTopY = 122;
+
+    ctx.fillStyle = '#09090b';
+    ctx.font = 'bold 18px Inter, system-ui, -apple-system, sans-serif';
+    ctx.fillText('REFERÊNCIA ORIGINAL', leftX, colY);
+
+    const formattedSec = `00:${String(Math.max(0, Math.round(second))).padStart(2, '0')}`;
+    ctx.fillText(`CAPTURA REAL DO VÍDEO — ${formattedSec}`, rightX, colY);
+
+    // Função auxiliar para recortar com margem de segurança mantendo a proporção original sem esticar
+    const drawCroppedPreservingAspect = (
+      img: HTMLImageElement,
+      cropBox: [number, number, number, number] | undefined,
+      destX: number,
+      destY: number,
+      maxW: number,
+      maxH: number
+    ) => {
+      const iw = img.width || 600;
+      const ih = img.height || 600;
+
+      let sx = 0;
+      let sy = 0;
+      let sw = iw;
+      let sh = ih;
+
+      if (cropBox && cropBox.length === 4) {
+        let [ymin, xmin, ymax, xmax] = cropBox;
+        // Se vier em escala 0..100 em vez de 0..1000, normaliza para 0..1000
+        if (ymax <= 100 && xmax <= 100 && (ymax > 1 || xmax > 1)) {
+          ymin *= 10;
+          xmin *= 10;
+          ymax *= 10;
+          xmax *= 10;
+        }
+        // Adiciona 12% de respiro para manter contexto visual claro ao redor do componente
+        const padH = (ymax - ymin) * 0.15;
+        const padW = (xmax - xmin) * 0.15;
+        const y1 = Math.max(0, Math.min(950, ymin - padH));
+        const x1 = Math.max(0, Math.min(950, xmin - padW));
+        const y2 = Math.min(1000, Math.max(y1 + 120, ymax + padH));
+        const x2 = Math.min(1000, Math.max(x1 + 120, xmax + padW));
+
+        sx = Math.round((x1 / 1000) * iw);
+        sy = Math.round((y1 / 1000) * ih);
+        sw = Math.max(60, Math.min(iw - sx, Math.round(((x2 - x1) / 1000) * iw)));
+        sh = Math.max(60, Math.min(ih - sy, Math.round(((y2 - y1) / 1000) * ih)));
+      }
+
+      const scale = Math.min(maxW / sw, maxH / sh);
+      const drawW = Math.round(sw * scale);
+      const drawH = Math.round(sh * scale);
+      const offsetX = destX + Math.round((maxW - drawW) / 2);
+      const offsetY = destY + Math.round((maxH - drawH) / 2);
+
+      // Fundo suave cinza muito claro na área da imagem
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(offsetX, offsetY, drawW, drawH);
+
+      ctx.drawImage(img, sx, sy, sw, sh, offsetX, offsetY, drawW, drawH);
+
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(offsetX, offsetY, drawW, drawH);
+    };
+
+    drawCroppedPreservingAspect(refImg, finding.refCropBox, leftX, imgTopY, boxW, boxH);
+    drawCroppedPreservingAspect(vidImg, finding.videoCropBox, rightX, imgTopY, boxW, boxH);
+
+    return canvas.toDataURL('image/png');
+  } catch (err) {
+    console.warn('Erro ao gerar imagem de comparação visual:', err);
+    return '';
+  }
+}
+
+/**
+ * Mantém as fotos de referência em ALTA DEFINIÇÃO (até 1024px JPEG 0.90)
+ * para preservar cada detalhe das lentes, botões, texturas e logotipos.
  */
 async function compressPhotoForVideoAudit(
   dataUrl: string,
-  maxSide = 600,
-  quality = 0.80
+  maxSide = 1024,
+  quality = 0.9
 ): Promise<string> {
   if (!dataUrl || !dataUrl.startsWith('data:image')) return dataUrl;
   return new Promise((resolve) => {
     const img = new Image();
     img.onload = () => {
       try {
-        let w = img.width || 600;
-        let h = img.height || 600;
+        let w = img.width || 800;
+        let h = img.height || 800;
         if (w > maxSide || h > maxSide) {
           if (w > h) {
             h = Math.round((h * maxSide) / w);
@@ -299,6 +441,15 @@ async function compressPhotoForVideoAudit(
   });
 }
 
+function downloadDataUrlFile(dataUrl: string, fileName: string) {
+  const link = document.createElement('a');
+  link.href = dataUrl;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
 export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
   productName,
   productLock,
@@ -310,7 +461,9 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
 }) => {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
-  const [videoDuration, setVideoDuration] = useState<number | null>(null);
+  const [videoDuration, setVideoDuration] = useState<number | null>(
+    initialAudit?.videoDurationSeconds || null
+  );
   const [customReferencePhotos, setCustomReferencePhotos] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
@@ -372,32 +525,42 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
 
     setIsProcessing(true);
     setErrorMessage(null);
-    setStatusMessage('Extraindo frames a cada 2 segundos do vídeo...');
+    setStatusMessage('Extraindo capturas de 1 em 1 segundo em alta resolução...');
 
     try {
-      // 1. Extração no cliente de 1 frame a cada 2s + compressão das fotos de referência (priorizando as anexadas aqui, ou da etapa anterior)
-      const [frames, compressedRefs] = await Promise.all([
-        extractVideoFramesEvery2s(fileToAudit),
+      // 1. Extração de 1 em 1 segundo em alta resolução (960px) + fotos de referência em alta definição (1024px)
+      const [extractionResult, compressedRefs] = await Promise.all([
+        extractHighResVideoFrames1fps(fileToAudit),
         Promise.all(
-          effectiveReferencePhotos.slice(0, 6).map((p) => compressPhotoForVideoAudit(p, 600, 0.80))
+          effectiveReferencePhotos.slice(0, 6).map((p) => compressPhotoForVideoAudit(p, 1024, 0.9))
         ),
       ]);
+
+      const { frames, durationSeconds } = extractionResult;
+      setVideoDuration(durationSeconds);
 
       if (frames.length === 0) {
         throw new Error('Falha ao extrair frames do vídeo.');
       }
 
-      setStatusMessage(`Fiscalizando ${frames.length} frames com OpenAI (gpt-4o-mini)...`);
+      setStatusMessage('Gerando Storyboard de Capturas (1 em 1s) e inspecionando detalhes...');
+      const contactSheetDataUrl = await buildVideoContactSheetStoryboard(frames);
+
+      setStatusMessage(
+        `Analisando ${frames.length} capturas em alta definição contra ${compressedRefs.length} imagem(ns) de referência...`
+      );
 
       const payloadBody = JSON.stringify({
         videoFrames: frames,
+        contactSheetBase64: contactSheetDataUrl,
         productPhotosBase64: compressedRefs,
         productName,
         productLock,
+        videoFileName: fileToAudit.name,
+        videoDurationSeconds: durationSeconds,
       });
 
-      // 2. Envio para a rota de auditoria (tenta /api/produtos2-audit-storyboard e fallback /api/produtos2-audit-video)
-      const endpoints = ['/api/produtos2-audit-storyboard', '/api/produtos2-audit-video'];
+      const endpoints = ['/api/produtos2-audit-video', '/api/produtos2-audit-storyboard'];
       let parsedData: any = null;
       let lastErrorMsg = 'Falha ao conectar com o servidor de auditoria de vídeo.';
 
@@ -410,7 +573,11 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
           });
 
           const rawText = await res.text();
-          if (!rawText || rawText.trim().startsWith('<!DOCTYPE') || rawText.trim().startsWith('<html')) {
+          if (
+            !rawText ||
+            rawText.trim().startsWith('<!DOCTYPE') ||
+            rawText.trim().startsWith('<html')
+          ) {
             lastErrorMsg = `Rota indisponível (${res.status})`;
             continue;
           }
@@ -421,9 +588,6 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
             break;
           } else if (json && json.error) {
             lastErrorMsg = json.error;
-            if (!String(json.error).toLowerCase().includes('storyboard')) {
-              break;
-            }
           }
         } catch (fetchErr: any) {
           lastErrorMsg = fetchErr?.message || lastErrorMsg;
@@ -434,149 +598,57 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
         throw new Error(lastErrorMsg || 'Falha ao auditar vídeo.');
       }
 
-      let finalAudit: VideoFidelityAudit = parsedData.audit;
-      let finalUsage: any = parsedData.usage;
+      let finalAudit: VideoFidelityAudit = {
+        ...parsedData.audit,
+        contactSheetUrl: contactSheetDataUrl || parsedData.audit.contactSheetUrl,
+        videoFileName: fileToAudit.name,
+        videoDurationSeconds: durationSeconds,
+      };
 
-      // ETAPA 2 (AMOSTRAGEM ADAPTATIVA): Se houver frames suspeitos (<90%), extrai 1 frame/s na região suspeita
-      const stage1Frames = Array.isArray(finalAudit.frames) ? finalAudit.frames : [];
-      const suspiciousFrames = stage1Frames.filter((f) => Number(f.score) < 90);
-
-      if (suspiciousFrames.length > 0) {
-        const existingSeconds = stage1Frames.map((f) => Number(f.second));
-        const candidateTimesSet = new Set<number>();
-
-        suspiciousFrames.forEach((sf) => {
-          const s = Number(sf.second);
-          // Adiciona 1s antes e 1s depois (passando a frequência de 2s para 1 frame/s no trecho suspeito)
-          [s - 1, s + 1].forEach((cand) => {
-            const rounded = Math.round(cand * 10) / 10;
-            if (
-              rounded >= 0.4 &&
-              !existingSeconds.some((ex) => Math.abs(ex - rounded) < 0.4)
-            ) {
-              candidateTimesSet.add(rounded);
-            }
-          });
-        });
-
-        const extraTimes = Array.from(candidateTimesSet).sort((a, b) => a - b).slice(0, 6);
-
-        if (extraTimes.length > 0) {
-          const suspLabel = suspiciousFrames.map((f) => `${f.second}s`).join(', ');
-          setStatusMessage(
-            `Sinal suspeito em ${suspLabel} — inspecionando 1 frame/s no trecho para confirmação...`
-          );
-
-          const extraExtracted = await extractTargetedVideoFrames(fileToAudit, extraTimes);
-
-          if (extraExtracted.length > 0) {
-            // Monta janela direcionada: frames originais próximos aos pontos suspeitos + novos frames de 1f/s
-            const contextOriginals = frames.filter((orig) =>
-              suspiciousFrames.some((sf) => Math.abs(orig.second - Number(sf.second)) <= 2.2)
+      // Gerar os cartões PNG de "COMPARAÇÃO VISUAL REAL" (Referência Original vs Captura Real do Vídeo) para cada achado
+      if (Array.isArray(finalAudit.findings) && finalAudit.findings.length > 0) {
+        setStatusMessage('Gerando recortes de comparação visual real lado a lado...');
+        const enrichedFindings = await Promise.all(
+          finalAudit.findings.map(async (finding) => {
+            const refIdx = Math.max(
+              0,
+              Math.min(compressedRefs.length - 1, (Number(finding.bestRefIndex) || 1) - 1)
             );
+            const refUrl = compressedRefs[refIdx] || compressedRefs[0];
 
-            const targetedFramesInput = [...contextOriginals, ...extraExtracted].sort(
-              (a, b) => a.second - b.second
-            );
+            // Localiza o frame mais próximo do segundo indicado no achado
+            const targetSec =
+              finding.bestFrameSecond !== undefined ? Number(finding.bestFrameSecond) : 1;
+            const matchedFrame =
+              frames.reduce((best, curr) =>
+                Math.abs(curr.second - targetSec) < Math.abs(best.second - targetSec) ? curr : best
+              , frames[0]) || frames[0];
 
-            const stage2Payload = JSON.stringify({
-              videoFrames: targetedFramesInput,
-              productPhotosBase64: compressedRefs,
-              productName,
-              productLock,
-              isTargetedPass: true,
-              suspiciousSeconds: suspiciousFrames.map((f) => f.second),
-            });
-
-            for (const endpoint of endpoints) {
-              try {
-                const res2 = await fetch(endpoint, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: stage2Payload,
-                });
-                const raw2 = await res2.text();
-                if (!raw2 || raw2.trim().startsWith('<')) continue;
-                const json2 = JSON.parse(raw2);
-                if (res2.ok && json2?.success && json2?.audit?.frames) {
-                  // Mescla os frames da Etapa 1 com os frames refinados/adicionais da Etapa 2
-                  const refinedMap = new Map<number, any>();
-                  stage1Frames.forEach((f) => refinedMap.set(Math.round(Number(f.second) * 10), f));
-                  json2.audit.frames.forEach((f2: any) => {
-                    refinedMap.set(Math.round(Number(f2.second) * 10), f2);
-                  });
-
-                  const mergedFrames = Array.from(refinedMap.values())
-                    .sort((a, b) => Number(a.second) - Number(b.second))
-                    .map((item, idx) => ({
-                      ...item,
-                      frameNumber: idx + 1,
-                    }));
-
-                  const scores = mergedFrames.map((f) => Number(f.score));
-                  const minScore = Math.min(...scores);
-                  const avgScore = Math.round(
-                    scores.reduce((a, b) => a + b, 0) / scores.length
-                  );
-
-                  let overallScore = avgScore;
-                  let overallStatus: Produtos2AuditColorStatus = 'green';
-                  let overallLabel = 'Aprovado: Vídeo Liberado';
-
-                  if (minScore < 60) {
-                    overallStatus = 'red';
-                    overallScore = Math.min(59, minScore);
-                    overallLabel = 'Risco de Restrição: Reprovado';
-                  } else if (minScore <= 70) {
-                    overallStatus = 'orange';
-                    overallScore = Math.min(70, minScore);
-                    overallLabel = 'Cuidado: Variação Moderada';
-                  } else if (minScore < 90) {
-                    overallStatus = 'yellow';
-                    overallScore = Math.min(89, minScore);
-                    overallLabel = 'Pode Passar: Razoável';
-                  } else {
-                    overallStatus = 'green';
-                    overallScore = avgScore;
-                    overallLabel = 'Aprovado: Vídeo Liberado';
-                  }
-
-                  finalAudit = {
-                    overallScore,
-                    overallStatus,
-                    overallLabel,
-                    summary: json2.audit.summary || finalAudit.summary,
-                    frames: mergedFrames,
-                  };
-
-                  if (finalUsage && json2.usage) {
-                    finalUsage = {
-                      ...finalUsage,
-                      promptTokens: (finalUsage.promptTokens || 0) + (json2.usage.promptTokens || 0),
-                      completionTokens:
-                        (finalUsage.completionTokens || 0) + (json2.usage.completionTokens || 0),
-                      totalTokens: (finalUsage.totalTokens || 0) + (json2.usage.totalTokens || 0),
-                      costUSD:
-                        Math.round(((finalUsage.costUSD || 0) + (json2.usage.costUSD || 0)) * 10000) /
-                        10000,
-                      costBRL:
-                        Math.round(((finalUsage.costBRL || 0) + (json2.usage.costBRL || 0)) * 100) /
-                        100,
-                    };
-                  }
-                  break;
-                }
-              } catch (stage2Err) {
-                console.warn('Aviso na Etapa 2 adaptativa (mantendo Etapa 1):', stage2Err);
-              }
+            if (refUrl && matchedFrame?.frameBase64) {
+              const compUrl = await buildVisualComparisonBanner({
+                finding,
+                referencePhotoUrl: refUrl,
+                videoFrameUrl: matchedFrame.frameBase64,
+                second: matchedFrame.second,
+              });
+              return {
+                ...finding,
+                bestFrameSecond: matchedFrame.second,
+                comparisonImageUrl: compUrl || undefined,
+              };
             }
-          }
-        }
+            return finding;
+          })
+        );
+        finalAudit = {
+          ...finalAudit,
+          findings: enrichedFindings,
+        };
       }
 
       setAudit(finalAudit);
       onAuditChange?.(finalAudit);
-      onAuditComplete?.(finalAudit, finalUsage);
+      onAuditComplete?.(finalAudit, parsedData.usage);
     } catch (err: any) {
       console.error('Erro na auditoria de vídeo:', err);
       setErrorMessage(err?.message || 'Erro durante a auditoria do vídeo.');
@@ -625,6 +697,8 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
   };
 
   const boxStyles = audit ? getAuditBoxClasses(audit.overallStatus) : null;
+  const activeVideoName = videoFile?.name || audit?.videoFileName || 'vídeo enviado';
+  const activeDuration = videoDuration || audit?.videoDurationSeconds || 10;
 
   return (
     <div
@@ -640,7 +714,7 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
           </div>
           <div>
             <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-              <span>Verificação de Fidelidade do Vídeo (Veo 3)</span>
+              <span>Detector de Inconsistências do Vídeo (Veo 3)</span>
               {audit && (
                 <span
                   className={`text-[10px] font-mono px-2 py-0.5 rounded-md border font-black ${boxStyles?.badge}`}
@@ -650,7 +724,7 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
               )}
             </h3>
             <p className="text-[11px] text-zinc-400">
-              Varredura adaptativa (1 frame a cada 2s; se detectar trecho suspeito, aprofunda para 1 frame/s na região) comparando com as fotos reais.
+              Inspeção pericial em alta definição (Storyboard de 1 em 1 segundo + Comparação Visual Real lado a lado com as fotos de referência).
             </p>
           </div>
         </div>
@@ -701,7 +775,7 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
                   Anexe aqui o vídeo para verificação
                 </p>
                 <p className="text-[10px] text-zinc-400 mt-0.5">
-                  Ao selecionar o vídeo (.mp4 ou .mov), a análise inicia automaticamente
+                  Ao selecionar o vídeo (.mp4 ou .mov), a análise pericial de 1 em 1 segundo inicia automaticamente
                 </p>
               </div>
             </div>
@@ -856,15 +930,14 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
         </div>
       )}
 
-      {/* QUANDO O VÍDEO ESTÁ ANEXADO E JÁ TEM AUDITORIA */}
-      {videoFile && (
-        <div className="space-y-3.5">
-          {/* PAINEL DE RESULTADO DA AUDITORIA */}
-          {audit && (
-            <div className="space-y-3 pt-1">
-              {/* Box de Veredito Geral */}
-              <div className={`p-3 rounded-xl border flex items-center justify-between gap-3 ${boxStyles?.cell}`}>
-                <div className="flex items-center gap-2.5">
+      {/* PAINEL DE RESULTADO COMPLETO DO DETECTOR DE INCONSISTÊNCIAS */}
+      {audit && (
+        <div className="space-y-4 pt-1">
+          {/* 1. CABEÇALHO DO DIAGNÓSTICO E SUMÁRIO EXECUTIVO */}
+          <div className={`p-4 rounded-2xl border space-y-2.5 ${boxStyles?.cell}`}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2 flex-wrap">
                   {audit.overallStatus === 'green' ? (
                     <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0" />
                   ) : audit.overallStatus === 'yellow' ? (
@@ -876,120 +949,370 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
                       }`}
                     />
                   )}
-                  <div>
-                    <h4 className="text-xs font-black uppercase tracking-wide leading-tight">
-                      {audit.overallLabel}
-                    </h4>
-                    <p className="text-[11px] opacity-90 leading-snug mt-0.5">
-                      {audit.summary}
-                    </p>
-                  </div>
+                  <h4 className="text-xs sm:text-sm font-black uppercase tracking-wide leading-tight text-white">
+                    {audit.overallLabel}
+                  </h4>
                 </div>
 
-                <div className="text-right shrink-0">
-                  <span className="font-mono text-base font-black block">
-                    {audit.overallScore}%
-                  </span>
-                  <span className="text-[9px] uppercase tracking-wider font-extrabold opacity-80 block">
-                    Fidelidade
-                  </span>
+                <div className="text-xs sm:text-sm font-extrabold text-white flex items-center gap-1.5 pt-0.5">
+                  <Search className="w-4 h-4 text-sky-400 shrink-0" />
+                  <span>🔎 Detector de Inconsistências</span>
+                </div>
+
+                <p className="text-xs text-zinc-200 leading-relaxed">
+                  Analisei o vídeo <span className="font-bold text-white">"{activeVideoName}"</span>, com duração de{' '}
+                  <span className="font-bold text-white">{activeDuration} segundos</span>, comparando capturas reais (de 1 em 1 segundo) com as{' '}
+                  <span className="font-bold text-white">{effectiveReferencePhotos.length}</span> imagem(ns) de referência fornecida(s).
+                </p>
+
+                {audit.overviewText ? (
+                  <p className="text-xs sm:text-[13px] font-semibold text-white leading-relaxed pt-1">
+                    {audit.overviewText}
+                  </p>
+                ) : (
+                  <p className="text-xs opacity-95 leading-relaxed pt-1">{audit.summary}</p>
+                )}
+              </div>
+
+              <div className="text-right shrink-0 bg-black/35 px-3 py-2 rounded-xl border border-white/10">
+                <span className="font-mono text-lg font-black block leading-none">
+                  {audit.overallScore}%
+                </span>
+                <span className="text-[9px] uppercase tracking-wider font-extrabold opacity-80 block mt-1">
+                  Fidelidade
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. STORYBOARD DE CAPTURAS DO VÍDEO (1 EM 1 SEGUNDO — 1400x770 HD) */}
+          {audit.contactSheetUrl && (
+            <div className="p-3.5 rounded-2xl bg-zinc-950/90 border border-zinc-800 space-y-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <h5 className="text-xs font-black text-white uppercase tracking-wide">
+                    Storyboard de Análise do Vídeo (Capturas Reais de 1 em 1 Segundo)
+                  </h5>
+                  <p className="text-[11px] text-zinc-400">
+                    Grade pericial em alta resolução ({audit.frames.length} capturas: 0s a{' '}
+                    {audit.frames[audit.frames.length - 1]?.second ?? 9}s) — clique na imagem para ampliar
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {onOpenPreview && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onOpenPreview(
+                          audit.contactSheetUrl!,
+                          `Storyboard de Análise do Vídeo (1 em 1s) • ${productName}`
+                        )
+                      }
+                      className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-[11px] font-bold text-zinc-200 flex items-center gap-1.5 transition-all cursor-pointer"
+                    >
+                      <Eye className="w-3.5 h-3.5 text-sky-400" />
+                      <span>Ampliar</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      downloadDataUrlFile(
+                        audit.contactSheetUrl!,
+                        `storyboard-analise-${productName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.jpg`
+                      )
+                    }
+                    className="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-[11px] font-black flex items-center gap-1.5 transition-all cursor-pointer shadow"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Baixar Storyboard de Análise</span>
+                  </button>
                 </div>
               </div>
 
-              {/* Grade com os Frames Analisados a cada 2s */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between text-[11px] font-bold text-zinc-300 px-0.5">
-                  <span>{audit.frames.length} Frames Analisados (1 a cada 2 segundos):</span>
-                  <span className="text-[10px] text-zinc-400 font-normal">
-                    Meta rigorosa TikTok Shop &ge; 90%
-                  </span>
-                </div>
+              <div
+                onClick={() =>
+                  onOpenPreview?.(
+                    audit.contactSheetUrl!,
+                    `Storyboard de Análise do Vídeo (1 em 1s) • ${productName}`
+                  )
+                }
+                className="rounded-xl overflow-hidden border border-white/15 bg-white cursor-pointer group relative"
+              >
+                <img
+                  src={audit.contactSheetUrl}
+                  alt="Storyboard de Análise 1 em 1 segundo"
+                  className="w-full h-auto object-contain max-h-[420px] mx-auto"
+                />
+              </div>
+            </div>
+          )}
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5">
-                  {audit.frames.map((frame) => {
-                    const fStyles = getAuditBoxClasses(frame.status);
-                    return (
-                      <div
-                        key={frame.frameNumber}
-                        className={`p-2 rounded-xl border flex flex-col justify-between gap-2 transition-all ${fStyles.cell}`}
-                      >
-                        {/* Thumbnail do Frame com botão de preview */}
-                        <div className="relative aspect-[9/16] rounded-lg overflow-hidden bg-black/60 border border-white/10 group">
-                          {frame.frameThumbnail ? (
-                            <img
-                              src={frame.frameThumbnail}
-                              alt={`Frame ${frame.frameNumber}`}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-[10px] text-zinc-500">
-                              Frame {frame.frameNumber}
+          {/* 3. RELATÓRIO DETALHADO DE ACHADOS COM COMPARAÇÃO VISUAL REAL (ESTILO PERICIAL COMPLETO) */}
+          {Array.isArray(audit.findings) && audit.findings.length > 0 && (
+            <div className="space-y-4">
+              {audit.findings.map((finding) => {
+                const refNotesToRender =
+                  Array.isArray(finding.referenceNotes) && finding.referenceNotes.length > 0
+                    ? finding.referenceNotes
+                    : effectiveReferencePhotos.slice(0, 2).map((_, idx) => ({
+                        refIndex: idx + 1,
+                        label: `Referência ${idx + 1}: imagem fornecida`,
+                        description:
+                          'Imagem original utilizada como base de comparação para verificar a estrutura e os detalhes deste componente.',
+                      }));
+
+                return (
+                  <div
+                    key={finding.number}
+                    className="p-4 sm:p-5 rounded-2xl bg-black/85 border border-zinc-800 space-y-4 text-zinc-100 shadow-xl"
+                  >
+                    {/* Título Numerado do Achado */}
+                    <h4 className="text-sm sm:text-base font-black text-white">
+                      {finding.number}. {finding.title}
+                    </h4>
+
+                    {/* Cartões das Imagens de Referência analisadas neste item */}
+                    {finding.severity !== 'observation' && refNotesToRender.length > 0 && (
+                      <div className="space-y-3">
+                        {refNotesToRender.map((rn, rIdx) => {
+                          const photoUrl =
+                            effectiveReferencePhotos[
+                              Math.max(0, Math.min(effectiveReferencePhotos.length - 1, (rn.refIndex || rIdx + 1) - 1))
+                            ] || effectiveReferencePhotos[0];
+
+                          return (
+                            <div
+                              key={rIdx}
+                              className="flex flex-col sm:flex-row items-start sm:items-center gap-3.5 pb-3 border-b border-zinc-800/80 last:border-b-0 last:pb-0"
+                            >
+                              {photoUrl && (
+                                <div
+                                  onClick={() =>
+                                    onOpenPreview?.(photoUrl, `${rn.label} • ${productName}`)
+                                  }
+                                  className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-white p-1.5 border border-zinc-700 shrink-0 overflow-hidden flex items-center justify-center cursor-pointer hover:opacity-90 transition-opacity"
+                                >
+                                  <img
+                                    src={photoUrl}
+                                    alt={rn.label}
+                                    className="w-full h-full object-contain"
+                                  />
+                                </div>
+                              )}
+                              <div className="space-y-1">
+                                <p className="text-xs sm:text-sm font-black text-white">
+                                  {rn.label}
+                                </p>
+                                <p className="text-xs sm:text-[13px] text-zinc-300 leading-relaxed">
+                                  {rn.description}
+                                </p>
+                              </div>
                             </div>
-                          )}
+                          );
+                        })}
+                      </div>
+                    )}
 
-                          {frame.frameThumbnail && onOpenPreview && (
+                    {/* O que aparece no vídeo */}
+                    {finding.whatAppearsInVideo && (
+                      <p className="text-xs sm:text-[13px] text-zinc-200 leading-relaxed">
+                        <span className="font-black text-white">O que aparece no vídeo: </span>
+                        {finding.whatAppearsInVideo.replace(/^o que aparece no vídeo:\s*/i, '')}
+                      </p>
+                    )}
+
+                    {/* Onde aparece */}
+                    {finding.whereItAppears && (
+                      <p className="text-xs sm:text-[13px] text-zinc-200 leading-relaxed">
+                        <span className="font-black text-white">📍 Onde aparece: </span>
+                        {finding.whereItAppears.replace(/^onde aparece:\s*/i, '')}
+                      </p>
+                    )}
+
+                    {/* Comparação Visual Real (Lado a Lado: Referência Original vs Captura Real do Vídeo) */}
+                    {finding.comparisonImageUrl && finding.severity !== 'observation' && (
+                      <div className="space-y-2 pt-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs sm:text-[13px] font-black text-white flex items-center gap-1.5">
+                            <span>📸 Comparação visual real</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              downloadDataUrlFile(
+                                finding.comparisonImageUrl!,
+                                `comparacao_0${finding.number}_${productName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.png`
+                              )
+                            }
+                            className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-[11px] font-bold text-zinc-200 flex items-center gap-1 cursor-pointer"
+                          >
+                            <Download className="w-3 h-3 text-sky-400" />
+                            <span>Baixar Comparação</span>
+                          </button>
+                        </div>
+
+                        <div
+                          onClick={() =>
+                            onOpenPreview?.(
+                              finding.comparisonImageUrl!,
+                              `Comparação Visual — ${finding.title}`
+                            )
+                          }
+                          className="rounded-xl overflow-hidden border border-zinc-700 bg-white cursor-pointer hover:opacity-95 transition-opacity"
+                        >
+                          <img
+                            src={finding.comparisonImageUrl}
+                            alt={`Comparação visual - ${finding.title}`}
+                            className="w-full h-auto object-contain max-h-[380px] mx-auto"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Como corrigir */}
+                    {finding.howToFix && (
+                      <div className="p-3 rounded-xl bg-zinc-900/90 border border-zinc-800 text-xs sm:text-[13px] text-zinc-200 leading-relaxed">
+                        <span className="font-black text-amber-300">💡 Como corrigir: </span>
+                        {finding.howToFix.replace(/^como corrigir:\s*/i, '')}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* 4. RESULTADO FINAL RECOMENDADO */}
+          <div className="p-4 rounded-2xl bg-black/80 border border-zinc-800 space-y-1.5">
+            <h5 className="text-xs sm:text-sm font-black text-white uppercase tracking-wide">
+              Resultado final
+            </h5>
+            <p className="text-xs sm:text-[13px] font-semibold text-zinc-100 leading-relaxed">
+              {audit.finalRecommendation || audit.summary}
+            </p>
+            {audit.coverageNote && (
+              <p className="text-[11px] text-zinc-400 pt-1">
+                {audit.coverageNote} • Aviso: Esta análise preventiva ajuda a identificar incoerências visuais antes da publicação, mas não substitui a revisão oficial da plataforma.
+              </p>
+            )}
+          </div>
+
+          {/* 5. GRADE INDIVIDUAL COM OS FRAMES EXTRAÍDOS EM ALTA DEFINIÇÃO (540x960px) */}
+          <div className="space-y-2 pt-1">
+            <div className="flex items-center justify-between text-[11px] font-bold text-zinc-300 px-0.5">
+              <span>
+                {audit.frames.length} Capturas Individuais em Alta Definição (de 1 em 1 segundo):
+              </span>
+              <span className="text-[10px] text-zinc-400 font-normal">
+                Meta rigorosa TikTok Shop &ge; 90%
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
+              {audit.frames.map((frame) => {
+                const fStyles = getAuditBoxClasses(frame.status);
+                return (
+                  <div
+                    key={frame.frameNumber}
+                    className={`p-2 rounded-xl border flex flex-col justify-between gap-2 transition-all ${fStyles.cell}`}
+                  >
+                    {/* Thumbnail do Frame com botões de Ampliar e Baixar */}
+                    <div className="relative aspect-[9/16] rounded-lg overflow-hidden bg-black/60 border border-white/10 group">
+                      {frame.frameThumbnail ? (
+                        <img
+                          src={frame.frameThumbnail}
+                          alt={`Frame ${frame.frameNumber}`}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-[10px] text-zinc-500">
+                          Frame {frame.frameNumber}
+                        </div>
+                      )}
+
+                      {frame.frameThumbnail && (
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2 text-white transition-opacity">
+                          {onOpenPreview && (
                             <button
                               type="button"
                               onClick={() =>
                                 onOpenPreview(
                                   frame.frameThumbnail!,
-                                  `Frame ${frame.frameNumber} (${frame.second}s) • ${productName}`
+                                  `Captura ${frame.second}s (Frame ${frame.frameNumber}) • ${productName}`
                                 )
                               }
-                              className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity cursor-pointer"
-                              title="Ampliar Frame"
+                              className="p-2 rounded-lg bg-black/80 hover:bg-sky-600 text-white cursor-pointer transition-colors"
+                              title="Ampliar Captura em Alta Resolução"
                             >
                               <Eye className="w-4 h-4" />
                             </button>
                           )}
-
-                          <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-black/80 text-[9px] font-mono font-bold text-white border border-white/20">
-                            {frame.second}s
-                          </div>
-
-                          <div
-                            className={`absolute top-1 right-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-black border ${fStyles.badge}`}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              downloadDataUrlFile(
+                                frame.frameThumbnail!,
+                                `frame_${frame.second}s_${productName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.jpg`
+                              )
+                            }
+                            className="p-2 rounded-lg bg-black/80 hover:bg-emerald-600 text-white cursor-pointer transition-colors"
+                            title="Baixar Captura em Alta Resolução"
                           >
-                            {frame.score}%
-                          </div>
+                            <Download className="w-4 h-4" />
+                          </button>
                         </div>
+                      )}
 
-                        {/* Detalhes do Frame */}
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between text-[10px] font-extrabold">
-                            <span className="flex items-center gap-1">
-                              <span className={`w-1.5 h-1.5 rounded-full ${fStyles.dot}`} />
-                              Frame {frame.frameNumber}
-                            </span>
-                            <span className="font-mono">{frame.score}%</span>
-                          </div>
-                          <p className="text-[10px] leading-tight opacity-90 line-clamp-3" title={frame.issue}>
-                            {frame.issue}
-                          </p>
-                        </div>
+                      <div className="absolute top-1 left-1 px-1.5 py-0.5 rounded bg-black/80 text-[9px] font-mono font-bold text-white border border-white/20">
+                        {frame.second}s
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
 
-              {/* Legenda de Cores */}
-              <div className="flex flex-wrap items-center justify-between gap-1 pt-1.5 border-t border-white/10 text-[9px] text-zinc-400">
-                <span className="text-emerald-300 font-bold flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3 text-emerald-400" /> &ge;90% Aprovado (Vídeo Liberado)
-                </span>
-                <span className="text-amber-300 font-bold flex items-center gap-1">
-                  ● 71–89% Pode Passar (Razoável)
-                </span>
-                <span className="text-orange-300 font-bold flex items-center gap-1">
-                  ● 60–70% Cuidado (Variação Moderada)
-                </span>
-                <span className="text-rose-300 font-bold flex items-center gap-1">
-                  ● &lt;60% Risco de Restrição (Reprovado)
-                </span>
-              </div>
+                      <div
+                        className={`absolute top-1 right-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-black border ${fStyles.badge}`}
+                      >
+                        {frame.score}%
+                      </div>
+                    </div>
+
+                    {/* Detalhes do Frame */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[10px] font-extrabold">
+                        <span className="flex items-center gap-1">
+                          <span className={`w-1.5 h-1.5 rounded-full ${fStyles.dot}`} />
+                          Frame {frame.frameNumber} ({frame.second}s)
+                        </span>
+                        <span className="font-mono">{frame.score}%</span>
+                      </div>
+                      <p
+                        className="text-[10px] leading-tight opacity-90 line-clamp-3"
+                        title={frame.issue}
+                      >
+                        {frame.issue}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          )}
+          </div>
+
+          {/* Legenda de Cores */}
+          <div className="flex flex-wrap items-center justify-between gap-1 pt-1.5 border-t border-white/10 text-[9px] text-zinc-400">
+            <span className="text-emerald-300 font-bold flex items-center gap-1">
+              <CheckCircle2 className="w-3 h-3 text-emerald-400" /> &ge;90% Aprovado (Vídeo Liberado)
+            </span>
+            <span className="text-amber-300 font-bold flex items-center gap-1">
+              ● 71–89% Pode Passar (Razoável)
+            </span>
+            <span className="text-orange-300 font-bold flex items-center gap-1">
+              ● 60–70% Cuidado (Variação Moderada)
+            </span>
+            <span className="text-rose-300 font-bold flex items-center gap-1">
+              ● &lt;60% Risco de Restrição (Reprovado)
+            </span>
+          </div>
         </div>
       )}
     </div>
