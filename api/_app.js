@@ -4489,6 +4489,15 @@ app.post("/api/produtos2-audit-storyboard", async (req, res) => {
     ) : [];
     const scenesContext = Array.isArray(scenes) ? scenes.slice(0, 9).map((s, idx) => `Cena ${idx + 1}: ${s.framing || ""}. ${s.action || ""}`).join("\n") : "";
     const lockContext = Array.isArray(productLock) ? productLock.join("; ") : "";
+    const targetedContextInstruction2 = isTargetedPass ? `
+
+[MODO ATIVO: ETAPA 2 \u2014 INSPE\xC7\xC3O DIRECIONADA EM ALTA DENSIDADE (1 FRAME POR SEGUNDO NA REGI\xC3O SUSPEITA)]:
+Na varredura inicial (1 frame a cada 2s), houve sinal suspeito nos segundos: ${Array.isArray(suspiciousSeconds) && suspiciousSeconds.length > 0 ? suspiciousSeconds.map((s) => `${s}s`).join(", ") : "indicados"}.
+Agora voc\xEA est\xE1 recebendo frames em alta frequ\xEAncia (1 frame por segundo, incluindo contexto antes, durante e depois do evento suspeito).
+REGRAS ESPEC\xCDFICAS DESTA INSPE\xC7\xC3O DIRECIONADA:
+1) Compare os frames de 1 em 1 segundo entre si e com as fotos originais para verificar se a mudan\xE7a suspeita \xE9 PERSISTENTE ou se foi apenas movimento r\xE1pido, oclus\xE3o passageira pelos dedos/m\xE3o, corte de cena, sombra, reflexo ou perspectiva.
+2) Se os frames adjacentes (antes e depois) comprovarem que o produto manteve sua estrutura real e que a suspeita anterior era apenas oclus\xE3o da m\xE3o, movimento ou \xE2ngulo, REABILITE e APROVE o frame com nota >= 90% (Verde), explicando no "issue" que a inspe\xE7\xE3o de 1 frame/s confirmou a integridade f\xEDsica do produto.
+3) Se os frames de 1 frame/s confirmarem que a altera\xE7\xE3o ou deforma\xE7\xE3o persiste de fato no intervalo, confirme a nota rigorosa e detalhe a evid\xEAncia.` : "";
     const variationsAuditRule = activeVariations.length >= 2 ? `
 PASSO 3 \u2014 REGRA DE OURO PARA M\xDALTIPLAS VARIA\xC7\xD5ES / CORES ANEXADAS (${activeVariations.length} VARIA\xC7\xD5ES V\xC1LIDAS):
 O usu\xE1rio anexou fotos de refer\xEAncia do produto em ${activeVariations.length} varia\xE7\xF5es/cores oficiais (${activeVariations.map((v, idx) => `Varia\xE7\xE3o ${idx + 1}: "${v.name || "Varia\xE7\xE3o " + (idx + 1)}"`).join(" | ")}).
@@ -4861,7 +4870,9 @@ async function handleProdutos2AuditVideo(req, res) {
       productPhotosBase64 = [],
       // Array<string>
       productName = "Produto",
-      productLock = []
+      productLock = [],
+      isTargetedPass: isTargetedPass2 = false,
+      suspiciousSeconds: suspiciousSeconds2 = []
     } = req.body;
     if (!Array.isArray(videoFrames) || videoFrames.length === 0) {
       return res.status(400).json({ success: false, error: "Nenhum frame do v\xEDdeo fornecido para an\xE1lise." });
@@ -4978,6 +4989,7 @@ Retorne ESTRITAMENTE um objeto JSON no formato:
         });
         const promptText = `Audite minuciosamente os ${videoFrames.length} frames do v\xEDdeo acima comparando com as fotos de refer\xEAncia reais do produto "${productName}".
 Aplique a metodologia de 4 etapas do detector (Ficha visual de refer\xEAncia, inspe\xE7\xE3o cronol\xF3gica, compara\xE7\xE3o componente a componente nos 5 grupos e segunda passagem de continuidade/morphing temporal). Se o produto em cada frame for id\xEAntico a qualquer uma das fotos de refer\xEAncia anexadas, aprove com nota >= 90%. Diferencie perspectiva e ilumina\xE7\xE3o natural de altera\xE7\xE3o real do produto.${lockContext ? ` Trava do produto: ${lockContext}` : ""}
+${targetedContextInstruction}
 Retorne o JSON estritamente conforme solicitado.`;
         contentBlocks.push({ type: "text", text: promptText });
         const completion = await client.chat.completions.create({
@@ -5084,7 +5096,7 @@ Retorne o JSON estritamente conforme solicitado.`;
           }
         });
         parts.push({
-          text: `${systemInstruction}
+          text: `${systemInstruction}${targetedContextInstruction}
 
 Audite os frames acima e retorne o JSON estritamente no schema solicitado.`
         });
