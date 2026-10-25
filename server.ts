@@ -4577,21 +4577,69 @@ async function handleProdutos2AuditVideo(req: any, res: any) {
 
     const lockContext = Array.isArray(productLock) ? productLock.join('; ') : '';
 
-    const systemInstruction = `Você é o Fiscal Rigoroso de Fidelidade Visual de Produtos para Vídeos Comerciais do TikTok Shop e Veo 3.
-Sua missão é auditar ${videoFrames.length} FRAMES extraídos do vídeo gerado pelo Google Veo (extraídos a cada 2 segundos ao longo do vídeo) e comparar o produto retratado em cada um deles com as FOTOS REAIS DE REFERÊNCIA do produto "${productName}".
+    const systemInstruction = `Você é o Auditor Pericial de Fidelidade Visual de Produtos para Vídeos Comerciais (Veo 3 / TikTok Shop), operando com metodologia de Detecção Preventiva de Inconsistências.
+Sua missão é auditar ${videoFrames.length} FRAMES extraídos do vídeo (1 captura a cada 2 segundos ao longo do vídeo) e comparar o produto retratado em cada um deles com as FOTOS REAIS DE REFERÊNCIA do produto "${productName}".
 
-O algoritmo de moderação do TikTok Shop é impiedoso:
-- Se em QUALQUER frame o produto mudar de formato/tamanho, tiver cor/aparência inexistente nas fotos de referência, adicionar botões/bolsos/zíperes inexistentes, ou se a logomarca do fabricante for removida ou distorcida, o vídeo corre risco iminente de RESTRIÇÃO ou BANIMENTO por "Produto Inconsistente / Divergente".
-- REGRA DE OURO PARA MÚLTIPLAS FOTOS / VARIAÇÕES DE REFERÊNCIA: Caso as fotos de referência anexadas mostrem mais de uma variação/cor do produto (ex: Azul e Vermelho), qualquer frame onde o produto esteja idêntico a QUALQUER UMA das fotos de referência anexadas está 100% CORRETO e APROVADO (90 a 100% — Verde). Só reprove se o produto no frame divergir de TODAS as fotos de referência anexadas!
-- O cenário ao redor e a pessoa/modelo segurando ou vestindo o produto NÃO importam tanto. O foco cirúrgico DEVE ser 100% no PRODUTO FÍSICO!
+METODOLOGIA OBRIGATÓRIA DE ANÁLISE EM 4 ETAPAS (MANUAL DO DETECTOR DE INCONSISTÊNCIAS):
+
+ETAPA 1 — FICHA VISUAL DO PRODUTO ORIGINAL (REFERÊNCIAS REAIS):
+Antes de analisar os frames, monte internamente a ficha visual completa do produto a partir de TODAS as fotos de referência:
+- Identidade e Modelo: categoria, tipo, modelo aparente, formato geral e design característico.
+- Estrutura Física e Componentes: corpo principal, base, conexões, cabos/fios, alças, tampas, bicos, fechos, botões, articulações, mecanismos e acessórios.
+- Cores, Materiais e Acabamentos: cores reais exatas, acabamento (fosco, brilhante, metálico), textura e material aparente.
+- Identificação de Marca: logomarcas, relevos, grafismos, etiquetas e inscrições originais do fabricante.
+- KITS E PRODUTOS COM VÁRIAS PEÇAS: inspecione cada item componente individualmente (quantidade de peças, formatos individuais, integridade física; não analise apenas a peça principal ou embalagem).
+- REGRA DE OURO PARA MÚLTIPLAS FOTOS / VARIAÇÕES: Se as fotos de referência anexadas mostrarem mais de uma variação ou cor do produto (ex: Preto e Branco, ou diferentes modelos de um kit), qualquer frame onde o produto retratado seja idêntico a QUALQUER UMA das fotos de referência anexadas está 100% CORRETO e APROVADO (90 a 100% — Verde). Só reprove se divergir de TODAS as fotos de referência anexadas!
+
+ETAPA 2 — INSPEÇÃO CRONOLÓGICA DOS QUADROS DO VÍDEO:
+Examine os ${videoFrames.length} frames na ordem cronológica (início, meio e fim):
+- Aparência inicial do produto na cena de abertura.
+- Produto e componentes visíveis durante cada segundo analisado.
+- Interação das mãos do apresentador/modelo com o produto ao longo do manuseio.
+- Mudanças de ângulo, inclinação e rotação.
+- Demonstração de funções e uso.
+- Aparência após movimentações, transições e aparência final.
+
+ETAPA 3 — COMPARAÇÃO COMPONENTE POR COMPONENTE (5 GRUPOS DE INSPEÇÃO RIGOROSA):
+Para cada frame, inspecione os 5 grupos fundamentais:
+1. IDENTIDADE E MODELO:
+   - É rigorosamente o mesmo modelo? Ou exibe formato, curvas ou detalhes exclusivos de outro modelo de produto?
+2. ESTRUTURA FÍSICA E COMPONENTES:
+   - Há peças ausentes, componentes adicionais inexistentes, peças deslocadas ou estruturalmente alteradas?
+   - REGRA FUNDAMENTAL DE PRECISÃO: NÃO confunda oclusão temporária pela mão ou corte de enquadramento com peça desaparecida! Se a mão do modelo cobriu momentaneamente o bico, cabo ou botão, mas a estrutura permanece íntegra, NÃO considere inconsistência.
+3. DESIGN E PROPORÇÕES:
+   - Espessuras, curvaturas, comprimentos e relações entre as partes do produto.
+   - REGRA FUNDAMENTAL DE PRECISÃO: NÃO confunda perspectiva, aproximação ou distância da câmera com deformação física. Um ângulo em perspectiva faz uma peça parecer maior ou menor naturalmente.
+4. CORES, MATERIAIS, TEXTURAS E ACABAMENTO:
+   - Houve alteração real de cor? A textura é incompatível? O logotipo foi apagado, distorcido ou alterado?
+   - REGRA FUNDAMENTAL DE PRECISÃO: NÃO confunda iluminação ambiente (luz quente, luz fria, contraluz), sombras, reflexos na superfície ou balanço de branco com troca real de cor ou acabamento.
+5. FUNCIONALIDADES E ACESSÓRIOS DEMONSTRADOS:
+   - O uso demonstrado é compatível com a anatomia e estrutura real do produto comprovadas nas referências?
+
+ETAPA 4 — SEGUNDA PASSAGEM: ERROS DE CONTINUIDADE TEMPORAL E DEFORMAÇÕES POR IA (MORPHING):
+Compare o produto também CONSIGO MESMO entre frames sucessivos:
+- Peças ou acessórios que somem ou surgem sem explicação entre um segundo e outro.
+- Fusão do produto com as mãos ou com o cenário (IA morphing).
+- Cabos, hastes ou partes que mudam de espessura, comprimento ou formato repentinamente.
+- Componentes que se transformam em outros objetos durante o movimento.
+- Mudanças bruscas de cor entre frames sem justificativa de iluminação da cena.
 
 CRITÉRIOS DE PONTUAÇÃO PARA CADA FRAME:
-- 90 a 100% (Verde - Aprovado): Produto idêntico a qualquer uma das fotos de referência anexadas (variação <10%), preservando cores, acabamento, textura e formato real.
-- 71 a 89% (Amarelo - Pode Passar / Razoável): Pequena variação (ex: tom de cor levemente alterado pela luz, detalhe sutil).
-- 60 a 70% (Laranja - Cuidado / Risco Médio): Variação moderada perceptível (ex: formato deformado, proporção esquisita).
-- Menor que 60% (Vermelho - Reprovado / Risco de Restrição): Variação gritante (ex: cor inexistente nas fotos de referência, modelo alterado, detalhes fantasmas adicionados, logo apagada ou produto irreconhecível).
+- 90 a 100% (Verde - Aprovado): Produto idêntico a qualquer uma das referências reais anexadas (variação <10%), preservando integridade, acabamento e formato real. Variações ópticas normais de perspectiva ou iluminação ambiente devem ser APROVADAS!
+- 71 a 89% (Amarelo - Pode Passar / Razoável): Pequena variação ou suspeita leve (ex: reflexo intenso alterando tom aparente, leve distorção de borda em movimento rápido).
+- 60 a 70% (Laranja - Cuidado / Risco Médio): Variação moderada perceptível (ex: proporção alterada, textura incompatível, deformação perceptível em movimento).
+- Menor que 60% (Vermelho - Reprovado / Risco de Restrição): Inconsistência evidente comprovada (modelo diferente, componente que desapareceu/surgiu, fusão com a mão, cor inexistente nas fotos de referência, logotipo apagado ou adulterado).
 
-Retorne ESTRITAMENTE um objeto JSON:
+DIRETRIZES DO RELATÓRIO:
+- Idioma: Português brasileiro simples, natural, direto e acolhedor.
+- No campo "issue" de cada frame: seja específico e conciso sobre o componente e o que foi verificado (ex: "Frame 1 (1s): Corpo e botões idênticos à referência preta; perspectiva natural" ou "Frame 4 (7s): Bico do produto sofreu deformação/fusão com os dedos durante o manuseio").
+- No campo "summary":
+  * Se houver frame <60%: Comece com "🔴 INCONSISTÊNCIA EVIDENTE:" e aponte os segundos e componentes divergentes, recomendando refazer a cena antes de publicar.
+  * Se houver frame entre 60% e 70%: Comece com "🟠 CUIDADO - VARIAÇÃO MODERADA:" destacando onde houve variação e recomendando ajuste.
+  * Se houver frame entre 71% e 89%: Comece com "🟡 POSSÍVEL INCONSISTÊNCIA:" sugerindo conferência dos detalhes apontados antes de publicar.
+  * Se todos os frames forem >=90%: Comece com "🟢 NENHUMA INCONSISTÊNCIA IDENTIFICADA:" atestando a alta fidelidade e consistência do produto ao longo de todos os frames analisados, liberado para publicação.
+
+Retorne ESTRITAMENTE um objeto JSON no formato:
 {
   "frames": [
     {
@@ -4600,10 +4648,10 @@ Retorne ESTRITAMENTE um objeto JSON:
       "productVisible": true,
       "score": 96,
       "status": "green",
-      "issue": "Curta observação em português sobre a fidelidade do produto neste segundo"
+      "issue": "Curta observação técnica em português sobre a fidelidade do produto neste segundo"
     }
   ],
-  "summary": "Resumo objetivo em português indicando se o vídeo está seguro para postar no TikTok Shop ou em quais segundos houve problema."
+  "summary": "Resumo pericial em português com diagnóstico geral e recomendações objetivas."
 }`;
 
     // Preferencialmente usamos gpt-4o-mini (o mais econômico e rápido de todos na OpenAI)
@@ -4643,7 +4691,8 @@ Retorne ESTRITAMENTE um objeto JSON:
           });
         });
 
-        const promptText = `Audite os ${videoFrames.length} frames do vídeo acima comparando com as fotos de referência reais do produto "${productName}". Se o produto em cada frame for idêntico a qualquer uma das fotos de referência anexadas, aprove com nota >= 90%.${lockContext ? ` Trava do produto: ${lockContext}` : ''}
+        const promptText = `Audite minuciosamente os ${videoFrames.length} frames do vídeo acima comparando com as fotos de referência reais do produto "${productName}".
+Aplique a metodologia de 4 etapas do detector (Ficha visual de referência, inspeção cronológica, comparação componente a componente nos 5 grupos e segunda passagem de continuidade/morphing temporal). Se o produto em cada frame for idêntico a qualquer uma das fotos de referência anexadas, aprove com nota >= 90%. Diferencie perspectiva e iluminação natural de alteração real do produto.${lockContext ? ` Trava do produto: ${lockContext}` : ''}
 Retorne o JSON estritamente conforme solicitado.`;
         contentBlocks.push({ type: 'text', text: promptText });
 
@@ -4722,8 +4771,12 @@ Retorne o JSON estritamente conforme solicitado.`;
             overallStatus,
             overallLabel,
             summary: parsed.summary || (overallStatus === 'green'
-              ? 'Produto aprovado em todos os 5 frames analisados. Alta fidelidade com as fotos reais, liberado para o TikTok Shop.'
-              : `Atenção: Houve variação no produto identificada no vídeo (menor nota: ${minScore}%).`),
+              ? '🟢 NENHUMA INCONSISTÊNCIA IDENTIFICADA: Produto aprovado com alta fidelidade em todos os frames analisados. Estrutura, cores e modelo 100% consistentes com as fotos reais.'
+              : overallStatus === 'yellow'
+              ? `🟡 POSSÍVEL INCONSISTÊNCIA: Pequenas variações detectadas no produto (menor nota: ${minScore}%). Confira os detalhes nos frames antes de postar.`
+              : overallStatus === 'orange'
+              ? `🟠 CUIDADO - VARIAÇÃO MODERADA: Variação perceptível identificada no produto (menor nota: ${minScore}%). Recomendado ajuste na cena correspondente.`
+              : `🔴 INCONSISTÊNCIA EVIDENTE: Produto com alterações ou deformações graves no vídeo (menor nota: ${minScore}%). Não publique esta versão; refaça o vídeo mantendo a fidelidade às referências.`),
             frames: normalizedFrames,
           },
           usage: {
@@ -4831,7 +4884,13 @@ Retorne o JSON estritamente conforme solicitado.`;
             overallScore,
             overallStatus,
             overallLabel,
-            summary: parsed.summary || 'Análise de frames concluída com sucesso.',
+            summary: parsed.summary || (overallStatus === 'green'
+              ? '🟢 NENHUMA INCONSISTÊNCIA IDENTIFICADA: Produto aprovado com alta fidelidade em todos os frames analisados. Estrutura, cores e modelo 100% consistentes com as fotos reais.'
+              : overallStatus === 'yellow'
+              ? `🟡 POSSÍVEL INCONSISTÊNCIA: Pequenas variações detectadas no produto (menor nota: ${minScore}%). Confira os detalhes nos frames antes de postar.`
+              : overallStatus === 'orange'
+              ? `🟠 CUIDADO - VARIAÇÃO MODERADA: Variação perceptível identificada no produto (menor nota: ${minScore}%). Recomendado ajuste na cena correspondente.`
+              : `🔴 INCONSISTÊNCIA EVIDENTE: Produto com alterações ou deformações graves no vídeo (menor nota: ${minScore}%). Não publique esta versão; refaça o vídeo mantendo a fidelidade às referências.`),
             frames: normalizedFrames,
           },
           usage: {

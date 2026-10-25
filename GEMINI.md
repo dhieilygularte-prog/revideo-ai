@@ -86,3 +86,59 @@ Este documento contém as regras invioláveis de inteligência artificial e enge
   - É **ESTRITAMENTE PROIBIDO** gerar imagens repetindo a mesma cor se foram fornecidas 3 cores diferentes.
   - Apenas se o produto tiver apenas 1 ou 2 cores anexadas é permitido repetir a cor para preencher as 3 imagens.
 
+
+
+---
+
+## 9. REGRAS INVIOLÁVEIS DE FIDELIDADE (SITES/QR CODE, PRODUTO/ÂNGULOS E EMBALAGEM/CORES)
+
+### 9.1 ZERO SITES E ZERO QR CODES (MESMO QUE CONSTANTES NA IMAGEM DE REFERÊNCIA)
+- Não pode aparecer nenhum tipo de site, URL (ex: www..., .com, https) ou QR Code/código de barras em nenhuma das imagens geradas no storyboard nem no vídeo final.
+- **Mesmo que estejam na imagem de referência:** a IA deve OBRIGATORIAMENTE omitir, remover e deixar a área limpa, sem desenhar sites nem QR codes.
+- No prompt do Veo 3, consta expressamente a proibição de gerar sites e QR codes, garantindo filmagem 100% limpa.
+
+### 9.2 PROIBIÇÃO DE INVENTAR PRODUTO INTERNO E PROIBIÇÃO DE INVENTAR ÂNGULOS NÃO FORNECIDOS
+- **Conteúdo Interno de Embalagens:** Se o produto for uma caixa de bombons, pacote de fraldas, caixa fechada, fardo ou embalagem lacrada e o usuário só anexou a foto do exterior fechado:
+  * É expressamente PROIBIDO inventar e mostrar os itens internos (ex: nunca mostrar bombons soltos fora da caixa, nunca mostrar fraldas soltas fora do pacote de fralda, nunca abrir a caixa ou pacote).
+  * O aplicativo retrata 100% exclusivamente a embalagem fechada real das fotos.
+- **Ângulos Não Fornecidos (Lock de Ângulos Reais):**
+  * Se o produto foi mostrado nas fotos de referência apenas de frente (ou em ângulo específico) e não foi fornecida foto do verso/costas/traseira:
+  * É expressamente PROIBIDO gerar imagens mostrando o verso ou costas do produto, pois isso configuraria invenção visual.
+  * O produto deve ser mostrado estritamente nos ângulos fotografados nas referências anexadas.
+
+### 9.3 FIDELIDADE DE EMBALAGEM, NOME DO FABRICANTE, LOGOMARCA E CORES EXATAS (1:1)
+- **Aparência da Embalagem:** Manter rigorosamente o mesmo formato, grafismos e arte visual da embalagem das fotos de referência.
+- **Nome do Fabricante e Logomarca:** O nome do fabricante deve ser grafado de forma 100% idêntica às fotos (sem inventar letras, distorções ou outras marcas). A logomarca e o símbolo original devem estar no local exato.
+- **Cores Exatas (1:1):** As cores do produto E as cores da embalagem do produto DEVEM ser rigorosamente idênticas às fotos de referência. Nunca alterar, desbotar ou trocar cores nem do produto, nem da embalagem.
+
+---
+
+## 10. DETECTOR DE INCONSISTÊNCIAS E AUDITORIA PREVENTIVA DE VÍDEO (MANUAL DE ANÁLISE)
+
+### 10.1 FINALIDADE E LIMITES
+- Inspeção técnica preventiva comparando fotos reais de referência do produto anunciado com capturas reais do vídeo (extraídas a cada 2 segundos).
+- Foco cirúrgico na fidelidade física e integridade do produto (não penalizar cenários ou modelos humanos, salvo se impedirem a visualização do produto).
+
+### 10.2 METODOLOGIA EM 4 ETAPAS
+1. **Etapa 1 — Ficha Visual do Produto Original (Referência):**
+   - Mapear tipo/modelo, formato, proporções, estrutura física (corpo, base, cabos, alças, tampas, botões, bicos, articulações), cores reais, textura/acabamento, relevos e logomarca.
+   - Em kits/conjuntos: inspecionar cada item componente individualmente.
+   - Regra de múltiplas variações: se houver mais de uma cor/modelo nas fotos, qualquer frame que coincida com qualquer uma das referências está 100% correto e aprovado.
+2. **Etapa 2 — Inspeção Cronológica dos Quadros:**
+   - Inspecionar a evolução visual do produto do início ao fim (abertura, manuseio pelas mãos, rotações, demonstrações e cena final).
+3. **Etapa 3 — Comparação Componente por Componente (5 Grupos de Inspeção):**
+   - **Identidade e Modelo:** conferir se o modelo é o mesmo ou se mudou para versão divergente.
+   - **Estrutura Física e Componentes:** verificar peças faltantes, extras ou deformadas. *Regra de precisão:* NÃO confundir oclusão temporária pela mão ou corte de enquadramento com peça sumida.
+   - **Design e Proporções:** espessuras, curvaturas e comprimentos relativos. *Regra de precisão:* NÃO confundir perspectiva ou distância da câmera com deformação.
+   - **Cores, Materiais e Acabamentos:** alterações reais vs iluminação ambiente, reflexos, sombras e balanço de branco.
+   - **Funcionalidades e Acessórios:** anatomia física compatível com a demonstração.
+4. **Etapa 4 — Segunda Passagem: Erros de Continuidade Temporal e Deformações por IA (Morphing):**
+   - Comparar o produto consigo mesmo ao longo dos segundos: peças que surgem/somem repentinamente, fusão com a mão/cenário, cabos que esticam/encolhem e variações bruscas de cor entre frames.
+
+### 10.3 CLASSIFICAÇÃO E RESUMO PREVENTIVO
+- **🟢 NENHUMA INCONSISTÊNCIA IDENTIFICADA (≥90%):** Alta fidelidade com as fotos reais; liberado para postagem.
+- **🟡 POSSÍVEL INCONSISTÊNCIA (71% a 89%):** Pequenas variações ou detalhes sutis; conferir antes de postar.
+- **🟠 CUIDADO - VARIAÇÃO MODERADA (60% a 70%):** Variação perceptível no produto; recomendado ajuste preventivo na cena.
+- **🔴 INCONSISTÊNCIA EVIDENTE (<60%):** Diferença clara ou deformação estrutural; recomendação obrigatória de não publicar a versão atual e refazer mantendo as características originais.
+
+
