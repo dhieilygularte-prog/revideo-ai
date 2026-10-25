@@ -2648,40 +2648,36 @@ FORMATO DE RESPOSTA (JSON estrito):
       }
     }
 
-    // Ação 1B: Adaptação Cirúrgica Inteligente das Falas 1 e 2 do Banco de Memória (~64 copies validadas) para o Produto Atual
+    // Ação 1B: Adaptação Cirúrgica e Fiel das Falas do Banco de Memória (~63 copies validadas) para o Produto Atual
     if (action === 'adapt_bank_copies') {
       try {
-        const { copy1, copy2, clientGender, enforceRange200To225 } = req.body;
+        const { copy1, copy2, clientGender } = req.body;
         if (!copy1 && !copy2) {
           return res.json({ success: true });
         }
 
-        const reqSceneMode = req.body.sceneMode || '1_cena_10s';
-        const targetMin = Number(req.body.targetMinChars) || (reqSceneMode === '1_cena_15s' ? 310 : 200);
-        const targetMax = Number(req.body.targetMaxChars) || (reqSceneMode === '1_cena_15s' ? 335 : 225);
-        const enforceStrictRange = Boolean(enforceRange200To225 || targetMax === 335);
+        const targetMax = 225;
 
-        const charRuleText = enforceStrictRange
-          ? `- REGRA OBRIGATÓRIA DE TAMANHO: A fala adaptada DEVE ter OBRIGATORIAMENTE ENTRE ${targetMin} E ${targetMax} CARACTERES (incluindo espaços e pontuação). NUNCA entregue menos de ${targetMin} caracteres e NUNCA ultrapasse ${targetMax} caracteres!`
-          : `- Cada fala adaptada deve ter entre 160 e ${targetMax} caracteres (NUNCA ultrapasse ${targetMax} caracteres).`;
+        const adaptSystem = `Você é um Especialista Sênior em Adaptação Cirúrgica de Copies para TikTok Shop Brasil.
+Existe na memória do aplicativo um banco de 63 copies reais validadas.
+Você receberá uma ou duas copies sorteadas diretamente desse banco ("Texto original no banco") e a "Sugestão base local".
+Sua única missão é ADAPTAR o texto original da copy sorteada para o PRODUTO ATUAL do usuário, mantendo o texto O MAIS ORIGINAL E FIEL POSSÍVEL à copy do banco.
 
-        const adaptSystem = `Você é um Especialista Sênior em Direct Response para TikTok Shop Brasil.
-Existe na memória do aplicativo um banco de 64 falas validadas de anúncios reais que já estão vendendo muito.
-Sua missão é ADAPTAR as falas sorteadas do banco para o PRODUTO ATUAL do usuário, seguindo estritamente estas regras:
-
-REGRA DE OURO DA ADAPTAÇÃO (MUDAR O MÍNIMO POSSÍVEL DA ESTRUTURA, MAS 100% FIEL AO PRODUTO ATUAL):
-1. SE FOR O MESMO PRODUTO (isSameProduct = true):
-   - Mantenha a estrutura original da fala! Altere APENAS especificações divergentes (ex: marca, modelo, potência em Watts, capacidade em ml/litros, polegadas, quantidade do kit) e concordância de gênero.
-2. SE FOR OUTRO PRODUTO DO MESMO NICHO OU OUTRA COPY DO BANCO (isSameProduct = false):
-   - As falas do banco já possuem ganchos, cadência e chamadas para ação (CTA) altamente validados. Por isso, MUDE O MÍNIMO POSSÍVEL da estrutura persuasiva (mantenha o estilo do gancho, o ritmo das frases, a urgência e o CTA final).
-   - PORÉM, substitua 100% de qualquer menção à categoria ou nome do produto antigo e 100% das características exclusivas do produto antigo pelas características REAIS do produto atual (extraídas de INFORMAÇÕES DO PRODUTO).
-   - PROIBIÇÃO ABSOLUTA DE ABSURDOS:
-     * Se a copy original era de um brinquedo/triciclo/jipe (ex: "Olha o brinquedo que tá deixando a criançada apaixonada... faz drift 360, tem luzes de LED, 3 velocidades" ou "ele gira em 360 graus") e o produto atual é um Kit de Fraldas (ou qualquer item que não seja brinquedo de manobra): JAMAIS chame fralda de "brinquedo" ou "presente", e JAMAIS diga que fralda "faz drift 360", "tem luzes de LED", "3 velocidades" ou "gira em 360 graus"! Troque "brinquedo" por algo coerente (ex: "achado", "kit", "oferta") e troque "faz drift 360, tem luzes de LED, 3 velocidades" pelos benefícios reais do produto (ex: "tem até 12 horas de absorção, camada macia, elásticos confortáveis e estampa da Galinha Pintadinha").
-     * Nunca deixe características do produto antigo (como "tela curva", "suporta 100 quilos", "silenciosa com painel LED", "vara de carbono", "amplificador") em um produto que não tem isso.
-     * Ignore avisos legais/segurança das informações do produto (como "perigo de sufocamento", "mantenha sacos plásticos longe", "consulte um médico", "data de validade"). Use apenas os benefícios reais de venda!
-3. LIMITE DE CARACTERES E FORMATAÇÃO PARA VOZ DE IA:
-   ${charRuleText}
-   - Escreva medidas por extenso para leitura perfeita da voz de IA ("12 horas", "200 fraldas", "50 unidades").
+REGRAS INVIOLÁVEIS DE FIDELIDADE AO BANCO DE COPIES:
+1. PROIBIDO INVENTAR COPY NOVA OU REESCREVER A ESTRUTURA:
+   - NUNCA crie uma copy do zero.
+   - NUNCA mude a frase de abertura (gancho inicial) da copy original do banco, exceto para trocar o nome/categoria do produto antigo pelo nome do produto atual.
+   - NUNCA mude o CTA final (chamada para ação final) da copy original do banco.
+   - NUNCA adicione frases extras de enchimento no final (como "Entrega muita praticidade...", "Confere todos os detalhes aqui embaixo", etc.) que não existiam na copy original!
+2. COMO ADAPTAR FIELMENTE AO PRODUTO ATUAL:
+   - SE FOR O MESMO PRODUTO (isSameProduct = true): Mantenha 99% do "Texto original no banco" intacto! Altere APENAS especificações divergentes (ex: marca/modelo, potência em Watts, capacidade em ml/litros, polegadas, quantidade do kit) e concordância de gênero.
+   - SE FOR OUTRO PRODUTO (isSameProduct = false): Mantenha a exata estrutura de frases, vocativos, ritmo e CTA do "Texto original no banco" (ou da "Sugestão base local"), substituindo APENAS o nome/tipo do produto antigo pelo nome do produto atual e trocando SOMENTE o trecho que descrevia características exclusivas do produto antigo (ex: "tela curva", "drift 360", "suporta 100 quilos", "silenciosa com painel LED", "vara de carbono", "400 watts") por 1 ou 2 características reais e curtas do produto atual extraídas de INFORMAÇÕES DO PRODUTO.
+   - Se a copy original falava "Olha o brinquedo que tá deixando a criançada apaixonada" e o produto atual NÃO for um brinquedo (ex: fralda, ferramenta, cosmético), troque apenas a palavra "brinquedo" pelo nome do produto atual (ex: "Olha essa fralda...").
+   - Ignore avisos legais/segurança das informações do produto (como "perigo de sufocamento", "consulte um médico").
+3. LIMITE MÁXIMO ESTRITO DE 225 CARACTERES:
+   - A copy adaptada deve ter NO MÁXIMO 225 CARACTERES (incluindo espaços e pontuação). NUNCA ultrapasse 225 caracteres!
+   - Se a copy original do banco já for mais curta (ex: 120 a 195 caracteres), MANTENHA O TAMANHO CURTO NATURAL DELA. Jamais invente frases para tentar chegar a 200 caracteres!
+   - Escreva medidas e números de forma natural para leitura de voz.
 
 Retorne SOMENTE um JSON estrito no formato:
 {
@@ -2695,7 +2691,7 @@ Retorne SOMENTE um JSON estrito no formato:
 ${productInfo || productName || ''}
 - Gênero do Público: ${clientGender || 'unissex'}
 - Apresentador(a): ${influencer || 'Mulher'}
-${enforceStrictRange ? `- TAMANHO OBRIGATÓRIO: Estritamente entre ${targetMin} e ${targetMax} caracteres com espaços!` : ''}
+- LIMITE MÁXIMO: No máximo ${targetMax} caracteres com espaços (mantenha o texto o mais original possível em relação ao Texto original no banco!).
 
 FALA 1 DO BANCO DE MEMÓRIA (${copy1?.id || 'Copy 1'} - Produto original da copy: "${copy1?.originalProductType || ''}" - Mesmo produto? ${copy1?.isSameProduct ? 'SIM' : 'NÃO'}):
 Texto original da Fala 1 no banco: "${copy1?.originalText || ''}"
@@ -2708,7 +2704,7 @@ Sugestão base local da Fala 2: "${copy2?.localAdaptedText || ''}"` : ''}`;
         const aiOut = await executeFastAIText({
           systemPrompt: adaptSystem,
           userPrompt: adaptUser,
-          temperature: 0.25,
+          temperature: 0.15,
           jsonMode: true,
         });
 
@@ -2725,16 +2721,11 @@ Sugestão base local da Fala 2: "${copy2?.localAdaptedText || ''}"` : ''}`;
         let adapted1 = fixCommonSlips(normalizeVoiceText((parsed.adaptedCopy1 || copy1?.localAdaptedText || '').trim()));
         let adapted2 = fixCommonSlips(normalizeVoiceText((parsed.adaptedCopy2 || copy2?.localAdaptedText || '').trim()));
 
-        if (enforceStrictRange) {
-          if (adapted1) adapted1 = calibrateSpeechToRange(adapted1, targetMin, targetMax);
-          if (adapted2) adapted2 = calibrateSpeechToRange(adapted2, targetMin, targetMax);
-        } else {
-          if (adapted1.length > targetMax) {
-            adapted1 = condenseSpeechMinimallyTo225(adapted1, targetMax, targetMin);
-          }
-          if (adapted2.length > targetMax) {
-            adapted2 = condenseSpeechMinimallyTo225(adapted2, targetMax, targetMin);
-          }
+        if (adapted1.length > targetMax) {
+          adapted1 = condenseSpeechMinimallyTo225(adapted1, targetMax, 130);
+        }
+        if (adapted2.length > targetMax) {
+          adapted2 = condenseSpeechMinimallyTo225(adapted2, targetMax, 130);
         }
 
         return res.json({
@@ -2745,15 +2736,12 @@ Sugestão base local da Fala 2: "${copy2?.localAdaptedText || ''}"` : ''}`;
         });
       } catch (err: any) {
         console.warn('Erro ao adaptar copies do banco via IA, mantendo adaptação local:', err?.message || err);
-        const fallback1 = req.body?.copy1?.localAdaptedText || '';
-        const fallback2 = req.body?.copy2?.localAdaptedText || '';
-        const reqSceneMode = req.body?.sceneMode || '1_cena_10s';
-        const targetMin = Number(req.body?.targetMinChars) || (reqSceneMode === '1_cena_15s' ? 310 : 200);
-        const targetMax = Number(req.body?.targetMaxChars) || (reqSceneMode === '1_cena_15s' ? 335 : 225);
+        const fallback1 = (req.body?.copy1?.localAdaptedText || '').trim();
+        const fallback2 = (req.body?.copy2?.localAdaptedText || '').trim();
         return res.json({
           success: true,
-          adaptedCopy1: req.body?.enforceRange200To225 && fallback1 ? calibrateSpeechToRange(fallback1, targetMin, targetMax) : fallback1,
-          adaptedCopy2: req.body?.enforceRange200To225 && fallback2 ? calibrateSpeechToRange(fallback2, targetMin, targetMax) : fallback2,
+          adaptedCopy1: fallback1.length > 225 ? condenseSpeechMinimallyTo225(fallback1, 225, 130) : fallback1,
+          adaptedCopy2: fallback2.length > 225 ? condenseSpeechMinimallyTo225(fallback2, 225, 130) : fallback2,
         });
       }
     }
@@ -3567,8 +3555,8 @@ async function extractManufacturerLogoSpecFromPhotos(
 ): Promise<string> {
   if (!photosList || photosList.length === 0) return '';
 
-  const firstPhotoSample = String(photosList[0] || '');
-  const cacheKey = `${productName.trim().toLowerCase()}::${firstPhotoSample.length}::${firstPhotoSample.slice(0, 80)}::${firstPhotoSample.slice(-80)}`;
+  const p0 = photosList[0] || '';
+  const cacheKey = `${(productName || '').trim().toLowerCase()}::${p0.length}::${p0.slice(-80)}`;
   if (logoSpecCache.has(cacheKey)) {
     return logoSpecCache.get(cacheKey) || '';
   }
@@ -3586,12 +3574,12 @@ Retorne ESTRITAMENTE um JSON:
     try {
       const client = (openAIProvider as any).getClient();
       const contentBlocks: any[] = [];
-      photosList.slice(0, 2).forEach((photo) => {
+      photosList.slice(0, 2).forEach((photo, idx) => {
         contentBlocks.push({
           type: 'image_url',
           image_url: {
             url: photo.startsWith('data:') ? photo : `data:image/jpeg;base64,${photo}`,
-            detail: 'high',
+            detail: idx === 0 ? 'high' : 'low',
           },
         });
       });
@@ -3605,15 +3593,10 @@ Retorne ESTRITAMENTE um JSON:
             response_format: { type: 'json_object' },
           });
           const parsed = JSON.parse(r.choices[0]?.message?.content || '{}');
-          const specResult = parsed?.hasManufacturerLogo && parsed?.logoSpec
-            ? String(parsed.logoSpec).trim()
-            : '';
-          if (logoSpecCache.size > 150) {
-            const oldestKey = logoSpecCache.keys().next().value;
-            if (oldestKey) logoSpecCache.delete(oldestKey);
-          }
-          logoSpecCache.set(cacheKey, specResult);
-          return specResult;
+          const spec = parsed?.hasManufacturerLogo && parsed?.logoSpec ? String(parsed.logoSpec).trim() : '';
+          if (logoSpecCache.size > 200) logoSpecCache.clear();
+          logoSpecCache.set(cacheKey, spec);
+          return spec;
         } catch {
           // try next model
         }
@@ -3719,7 +3702,7 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
 
     const noBarcodeUrlDirective = `\n\n========================\nPROIBIÇÃO ABSOLUTA DE SITE E CÓDIGO DE BARRAS EM EMBALAGENS:\nÉ TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, domínio, URL (ex.: www..., .com, .com.br, https) ou código de barras/QR code em qualquer caixa, pacote ou embalagem do produto. As caixas, pacotes e embalagens devem ser 100% limpas de sites e códigos de barras!\n========================`;
 
-    const opticalClarityDirective = `\n\n========================\nDIRETRIZ CRÍTICA DE CORES VIVAS, NITIDEZ ÓPTICA E ZERO ASPECTO AMARELADO/OPACO/PÁLIDO:\n1. NITIDEZ DE CÂMERA DE SMARTPHONE MODERNO TOPO DE LINHA: Imagem nítida, sensor de alta definição e foco cristalino, retratando a cena com máxima naturalidade, CORES VIVAS, VIBRANTES E CHEIAS DE VIDA.\n2. PROIBIÇÃO ABSOLUTA DE CORES AMARELADAS, PÁLIDAS OU OPACAS: É TERMINANTEMENTE PROIBIDO gerar imagem amarelada (zero filtro âmbar/sépia/envelhecido), pálida, desbotada, opaca, fosca, sem vida ou com aspecto de película plástica/névoa leitosa por cima da lente. Balanço de branco limpo, brancos puros, pretos nítidos e cores intensas e reais.\n3. ILUMINAÇÃO DINÂMICA FIEL AO PROMPT: A iluminação, temperatura de cor e atmosfera devem se adaptar com perfeição à cena e ao cenário especificados no prompt (luz do dia, luz de velas, noite, ambiente interno acolhedor, etc.), mantendo sempre cores vivas e cheias de vida.\n========================`;
+    const opticalClarityDirective = `\n\n========================\nDIRETRIZ CRÍTICA DE CORES VIVAS, NITIDEZ ÓPTICA E ZERO AMARELAMENTO / ZERO OPACIDADE:\n1. NITIDEZ DE CÂMERA DE SMARTPHONE MODERNO TOPO DE LINHA: Imagem nítida, sensor de alta definição e foco cristalino, retratando a cena com máxima naturalidade, vida e realismo.\n2. CORES VIVAS, VIBRANTES E ZERO AMARELAMENTO/OPACIDADE: É terminantemente proibido imagem amarelada, sépia, âmbar, opaca, sem vida, com aspecto de plástico/filme fosco por cima, névoa leitosa, véu esbranquiçado ou cores pálidas/desbotadas. A imagem deve ter cores vivas, vibrantes, ricas e fiéis, com balanço de branco limpo e contraste comercial autêntico.\n3. ILUMINAÇÃO INTEGRADA AO CENÁRIO COM CORES REALÇADAS: A iluminação e atmosfera devem se adaptar com perfeição à cena e ao cenário especificados no prompt, mantendo sempre cores vivas e cheias de vida.\n========================`;
 
     const auditor90PlusCalibrationDirective = `\n\n========================\nCALIBRAGEM PERICIAL PREVENTIVA DOS 5 GRUPOS DO DETECTOR (META OBRIGATÓRIA: APROVAÇÃO >=90% VERDE NA PRIMEIRA TENTATIVA):\nEsta imagem será auditada pelo Fiscal Rigoroso de Storyboard e servirá de referência para o Auditor de Vídeo do Veo 3. Para garantir nota >=90% em todos os quadrantes:\n1. GRUPO 1 (IDENTIDADE E MODELO 1:1): Reproduza exatamente o mesmo modelo, silhueta, curvaturas e design exclusivo das fotos de referência anexadas.\n2. GRUPO 2 (ESTRUTURA FÍSICA COMPLETA E KITS): Preserve 100% do corpo principal, base, conexões, cabos/fios, alças, tampas, bicos, fechos, botões, articulações e todas as peças individuais de kits. Nenhuma peça pode ser omitida, simplificada ou adicionada.\n3. GRUPO 3 (PROPORÇÕES E ESCALA REAL): Mantenha espessuras, comprimentos e escala física 100% realistas em relação às mãos humanas (proibido aumentar o tamanho do produto).\n4. GRUPO 4 (CORES, TEXTURA E LOGOMARCA 1:1): Preserve o acabamento real (fosco, brilhante, metálico ou tecido), as cores exatas de cada variação e a logomarca original do fabricante com nitidez cirúrgica.\n5. GRUPO 5 E SEPARAÇÃO MÃO-PRODUTO (ANTI-MORPHING PARA O VEO 3): As mãos (sempre com 5 dedos anatômicos perfeitos) devem segurar o produto pelas laterais neutras com contorno limpo e separado, NUNCA fundindo dedos ao produto e NUNCA cobrindo a logomarca, botões principais ou bicos!\n========================`;
 
@@ -3864,13 +3847,13 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
           ? `VOCÊ É O MOTOR VISUAL DO MODO AURORA ACHADINHOS (3 CENAS DE 10S).
 - Gere UMA IMAGEM FOTOGRÁFICA HORIZONTAL 16:9 (1920x1080) composta por exatamente 3 quadros verticais de proporção aproximada 9:16, organizados lado a lado da esquerda para a direita (Quadro A à esquerda, Quadro B no centro, Quadro C à direita).
 - Os três quadros devem representar instantes sucessivos de uma ação contínua da mesma personagem, mesmo produto e mesmo ambiente.
-- SEM NÚMEROS, SEM BALÕES E SEM TEXTOS: É terminantemente proibido colocar letras A/B/C sobre a imagem, números, legendas, títulos, balões ou marcas d'água.
-- Fotografia ultrarrealista com textura de pele natural, sensor de smartphone topo de linha com iluminação autêntica e adaptada ao cenário do prompt.
-- ZERO PELÍCULA PLÁSTICA/OPACIDADE: foco nítido, cores ricas e fiéis, contraste autêntico, sem película plástica opaca por cima, sem névoa leitosa e sem palidez desbotada.
-- Fidelidade absoluta às fotos reais do produto. Se as fotos mostram pacotes fechados, mantenha sempre a embalagem fechada sem abrir ou inventar itens soltos.`
+- SEM TEXTOS OU BALÕES: É terminantemente proibido colocar letras A/B/C sobre a imagem, legendas, títulos, balões ou marcas d'água.
+- Fotografia ultrarrealista com textura de pele natural, sensor de smartphone topo de linha com iluminação limpa e cores vivas, vibrantes e cheias de vida.
+- CORES VIVAS E ZERO AMARELAMENTO/OPACIDADE: foco nítido, cores vivas, vibrantes e fiéis, contraste comercial autêntico, ZERO filtro amarelado/sépia, sem película plástica opaca por cima, sem névoa leitosa e sem palidez desbotada.
+- Fidelidade absoluta às fotos reais do produto nos quadros em que ele aparece (respeitando caso o Quadro A seja um hook visual sem o produto na tela). Se as fotos mostram pacotes fechados, mantenha sempre a embalagem fechada sem abrir ou inventar itens soltos.`
           : isLeilaoMode
           ? `VOCÊ É O GERADOR VISUAL DO MODO LEILÃO.
-- Gere UMA ÚNICA IMAGEM VERTICAL 9:16 (1080x1920), fotorrealista.
+- Gere UMA ÚNICA IMAGEM VERTICAL 9:16 (1080x1920), fotorrealista, com cores vivas e vibrantes.
 - SEM NÚMEROS DE QUADRO, sem faixas brancas e sem legendas sobrepostas.
 - Enquadramento vertical 9:16 cinematográfico de alta qualidade comercial.
 - Fidelidade absoluta às fotos reais do produto em todos os detalhes. Se o produto estiver em embalagem fechada, mantenha sempre o pacote fechado sem abrir ou inventar itens soltos.`
@@ -3881,7 +3864,7 @@ ${variationInstructionRule}
 - REGRA SAGRADA DE EMBALAGEM FECHADA / PACOTES LACRADOS (TIKTOK COMPLIANCE): Se as fotos de referência mostram pacotes fechados, caixas ou embalagens lacradas (ex.: pacotes de fraldas fechados), NUNCA desenhe pacotes abertos, produtos soltos fora da embalagem (como fraldas avulsas soltas) ou testes com líquidos/água. Desenhe e mostre EXCLUSIVAMENTE os pacotes fechados idênticos às fotos em todos os quadros!
 - LOGOMARCA E MARCA DO FABRICANTE NO PRODUTO (OBRIGATÓRIO): A marca, a logomarca, o emblema e os textos que já estão impressos/estampados no próprio produto nas fotos de referência DEVEM aparecer 100% idênticos, na mesma cor e no mesmo lugar da peça, em todos os quadros em que aquela parte estiver visível. JAMAIS remova ou alise a logomarca do produto!
 - PROIBIÇÃO ABSOLUTA DE SITE E CÓDIGO DE BARRAS: É TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, URL (ex.: www..., .com) ou código de barras/QR code em qualquer caixa, pacote ou embalagem de produto. Todas as caixas e embalagens devem ser totalmente limpas de sites e códigos de barras.
-- NITIDEZ ÓPTICA E ZERO PELÍCULA PLÁSTICA/OPACIDADE: Fundo branco puro (#FFFFFF) nas bordas divisórias do storyboard. Sensor moderno de smartphone topo de linha com lente limpa e alta definição. É terminantemente PROIBIDO qualquer aspecto de película plástica opaca por cima da imagem, névoa leitosa ou palidez desbotada. A iluminação e a atmosfera devem se adaptar fielmente ao cenário e à cena descrita no prompt.
+- CORES VIVAS, NITIDEZ ÓPTICA E ZERO AMARELAMENTO / ZERO OPACIDADE: Fundo branco puro (#FFFFFF) nas bordas divisórias do storyboard. Sensor moderno de smartphone topo de linha com lente limpa, alta definição e cores vivas, vibrantes e cheias de vida. É terminantemente PROIBIDO gerar imagem amarelada, sépia, âmbar, opaca, sem vida, com aspecto de película plástica opaca por cima da imagem, névoa leitosa ou palidez desbotada.
 - CALIBRAGEM PERICIAL DOS 5 GRUPOS DO DETECTOR (>=90% DE FIDELIDADE): Preserve 100% da identidade do modelo, todos os componentes físicos (corpo, bicos, cabos, tampas, alças, fechos, botões e peças de kits), proporções reais, textura superficial (fosca/brilhante/metálica) e separação anatômica limpa entre os 5 dedos da mão e as bordas do produto (sem fundir dedos ao produto e sem tampar a logomarca original).
 - ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: Não adicione legendas flutuantes, textos publicitários externos, preços, setas, carrinho de compras, marca d'água externa, @ ou logotipo do TikTok. Apenas os números 1 a ${frameCount} nos selos circulares e a logomarca original do fabricante no próprio produto.`;
 
@@ -4240,7 +4223,7 @@ O array "quadrants" DEVE conter exatamente ${quadrantCount} itens (sceneNumber 1
                 type: 'image_url',
                 image_url: {
                   url: photo.startsWith('data:') ? photo : `data:image/jpeg;base64,${photo}`,
-                  detail: idx < 2 ? 'high' : 'low',
+                  detail: idx === 0 ? 'high' : 'low',
                 },
               });
             });
@@ -4265,7 +4248,7 @@ O array "quadrants" DEVE conter exatamente ${quadrantCount} itens (sceneNumber 1
             text: `Inspecione cada um dos ${quadrantCount} quadrantes (Cena 1 a Cena ${quadrantCount}) comparando com as fotos reais de referência. Lembre-se: se houver múltiplas variações anexadas, o produto é considerado 100% correto em qualquer quadrante desde que seja idêntico a QUALQUER UMA das variações anexadas! Só reprove se o produto tiver aparência, formato, logomarca ou cor diferente de TODAS as variações anexadas. Retorne o JSON em português.`,
           });
 
-          const modelsToTry = ['gpt-4o', 'gpt-4o-mini', OPENAI_AUDIT_MODEL || 'gpt-5.6-luna', OPENAI_BRAIN_MODEL];
+          const modelsToTry = ['gpt-4o-mini', 'gpt-4o', OPENAI_AUDIT_MODEL || 'gpt-5.6-luna', OPENAI_BRAIN_MODEL];
           for (const modelCandidate of modelsToTry) {
             try {
               const params: any = {
@@ -4348,8 +4331,8 @@ O array "quadrants" DEVE conter exatamente ${quadrantCount} itens (sceneNumber 1
           });
 
           const geminiModels = [
-            GEMINI_VISION_MODEL || 'gemini-3.8-flash',
             'gemini-2.5-flash',
+            GEMINI_VISION_MODEL || 'gemini-3.8-flash',
             GEMINI_VISION_FAST_MODEL || 'gemini-3.1-flash-lite',
           ];
           for (const gemModel of geminiModels) {

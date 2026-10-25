@@ -119,6 +119,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
   const [isReviewingCard, setIsReviewingCard] = useState<string | null>(null);
   const [speechesError, setSpeechesError] = useState<string | null>(null);
   const [copiedSpeechKey, setCopiedSpeechKey] = useState<string | null>(null);
+  const [usedFormBankCopyIds, setUsedFormBankCopyIds] = useState<string[]>([]);
   const recognitionRef = useRef<any>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
@@ -276,6 +277,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
         duration: 10,
         clientGender: form.clientGender,
         influencer: form.influencer,
+        excludeCopyIds: usedFormBankCopyIds,
       });
       let banco1Result = copy1.finalCopy;
 
@@ -288,8 +290,14 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
         clientGender: form.clientGender,
         influencer: form.influencer,
         excludeCopyId: copy1.copyId,
+        excludeCopyIds: [...usedFormBankCopyIds, copy1.copyId],
       });
       let banco2Result = copy2.finalCopy;
+
+      setUsedFormBankCopyIds((prev) => {
+        const next = Array.from(new Set([...prev, copy1.copyId, copy2.copyId]));
+        return next.length >= 52 ? [copy1.copyId, copy2.copyId] : next;
+      });
 
       // 3. Aurora Copy imediata (0ms) como base
       let auroraResult = `Gente, olha esse lançamento imperdível! O ${finalProductName} foi desenvolvido com material resistente e tecnologia pensada para o seu conforto diário, super fácil de usar. Confere todos os detalhes aqui embaixo!`;
@@ -316,8 +324,8 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
 
         const apiPromises: Promise<any>[] = [];
 
-        // Adaptação cirúrgica por IA das Falas 1 e 2 do banco de memória (~64 copies validadas) para o produto atual
-        if (!copy1.isSameProductBankCopy || !copy2.isSameProductBankCopy) {
+        // Adaptação cirúrgica por IA das Falas 1 e 2 do banco de memória (~63 copies validadas) mantendo o texto original e <= 225 caracteres
+        if (true) {
           apiPromises.push(
             fetch('/api/produtos2-planning', {
               method: 'POST',
@@ -328,6 +336,9 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                 productInfo: form.productInfo || finalProductName,
                 clientGender: form.clientGender,
                 influencer: form.influencer || copy1.resolvedInfluencer,
+                enforceRange200To225: false,
+                targetMinChars: 110,
+                targetMaxChars: 225,
                 copy1: {
                   id: copy1.copyId,
                   originalText: copy1.baseEntry?.text || copy1.finalCopy,
@@ -348,10 +359,10 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
               .then((r) => r.json())
               .then((data) => {
                 if (data?.success) {
-                  if (data.adaptedCopy1 && !copy1.isSameProductBankCopy) {
+                  if (data.adaptedCopy1) {
                     banco1Result = data.adaptedCopy1;
                   }
-                  if (data.adaptedCopy2 && !copy2.isSameProductBankCopy) {
+                  if (data.adaptedCopy2) {
                     banco2Result = data.adaptedCopy2;
                   }
                   if (data.usage) {

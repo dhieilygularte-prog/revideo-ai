@@ -4110,32 +4110,31 @@ INFORMA\xC7\xD5ES DO PRODUTO: ${productInfo || ""}`,
     }
     if (action === "adapt_bank_copies") {
       try {
-        const { copy1, copy2, clientGender: clientGender2, enforceRange200To225 } = req.body;
+        const { copy1, copy2, clientGender: clientGender2 } = req.body;
         if (!copy1 && !copy2) {
           return res.json({ success: true });
         }
-        const reqSceneMode = req.body.sceneMode || "1_cena_10s";
-        const targetMin = Number(req.body.targetMinChars) || (reqSceneMode === "1_cena_15s" ? 310 : 200);
-        const targetMax = Number(req.body.targetMaxChars) || (reqSceneMode === "1_cena_15s" ? 335 : 225);
-        const enforceStrictRange = Boolean(enforceRange200To225 || targetMax === 335);
-        const charRuleText = enforceStrictRange ? `- REGRA OBRIGAT\xD3RIA DE TAMANHO: A fala adaptada DEVE ter OBRIGATORIAMENTE ENTRE ${targetMin} E ${targetMax} CARACTERES (incluindo espa\xE7os e pontua\xE7\xE3o). NUNCA entregue menos de ${targetMin} caracteres e NUNCA ultrapasse ${targetMax} caracteres!` : `- Cada fala adaptada deve ter entre 160 e ${targetMax} caracteres (NUNCA ultrapasse ${targetMax} caracteres).`;
-        const adaptSystem = `Voc\xEA \xE9 um Especialista S\xEAnior em Direct Response para TikTok Shop Brasil.
-Existe na mem\xF3ria do aplicativo um banco de 64 falas validadas de an\xFAncios reais que j\xE1 est\xE3o vendendo muito.
-Sua miss\xE3o \xE9 ADAPTAR as falas sorteadas do banco para o PRODUTO ATUAL do usu\xE1rio, seguindo estritamente estas regras:
+        const targetMax = 225;
+        const adaptSystem = `Voc\xEA \xE9 um Especialista S\xEAnior em Adapta\xE7\xE3o Cir\xFArgica de Copies para TikTok Shop Brasil.
+Existe na mem\xF3ria do aplicativo um banco de 63 copies reais validadas.
+Voc\xEA receber\xE1 uma ou duas copies sorteadas diretamente desse banco ("Texto original no banco") e a "Sugest\xE3o base local".
+Sua \xFAnica miss\xE3o \xE9 ADAPTAR o texto original da copy sorteada para o PRODUTO ATUAL do usu\xE1rio, mantendo o texto O MAIS ORIGINAL E FIEL POSS\xCDVEL \xE0 copy do banco.
 
-REGRA DE OURO DA ADAPTA\xC7\xC3O (MUDAR O M\xCDNIMO POSS\xCDVEL DA ESTRUTURA, MAS 100% FIEL AO PRODUTO ATUAL):
-1. SE FOR O MESMO PRODUTO (isSameProduct = true):
-   - Mantenha a estrutura original da fala! Altere APENAS especifica\xE7\xF5es divergentes (ex: marca, modelo, pot\xEAncia em Watts, capacidade em ml/litros, polegadas, quantidade do kit) e concord\xE2ncia de g\xEAnero.
-2. SE FOR OUTRO PRODUTO DO MESMO NICHO OU OUTRA COPY DO BANCO (isSameProduct = false):
-   - As falas do banco j\xE1 possuem ganchos, cad\xEAncia e chamadas para a\xE7\xE3o (CTA) altamente validados. Por isso, MUDE O M\xCDNIMO POSS\xCDVEL da estrutura persuasiva (mantenha o estilo do gancho, o ritmo das frases, a urg\xEAncia e o CTA final).
-   - POR\xC9M, substitua 100% de qualquer men\xE7\xE3o \xE0 categoria ou nome do produto antigo e 100% das caracter\xEDsticas exclusivas do produto antigo pelas caracter\xEDsticas REAIS do produto atual (extra\xEDdas de INFORMA\xC7\xD5ES DO PRODUTO).
-   - PROIBI\xC7\xC3O ABSOLUTA DE ABSURDOS:
-     * Se a copy original era de um brinquedo/triciclo/jipe (ex: "Olha o brinquedo que t\xE1 deixando a crian\xE7ada apaixonada... faz drift 360, tem luzes de LED, 3 velocidades" ou "ele gira em 360 graus") e o produto atual \xE9 um Kit de Fraldas (ou qualquer item que n\xE3o seja brinquedo de manobra): JAMAIS chame fralda de "brinquedo" ou "presente", e JAMAIS diga que fralda "faz drift 360", "tem luzes de LED", "3 velocidades" ou "gira em 360 graus"! Troque "brinquedo" por algo coerente (ex: "achado", "kit", "oferta") e troque "faz drift 360, tem luzes de LED, 3 velocidades" pelos benef\xEDcios reais do produto (ex: "tem at\xE9 12 horas de absor\xE7\xE3o, camada macia, el\xE1sticos confort\xE1veis e estampa da Galinha Pintadinha").
-     * Nunca deixe caracter\xEDsticas do produto antigo (como "tela curva", "suporta 100 quilos", "silenciosa com painel LED", "vara de carbono", "amplificador") em um produto que n\xE3o tem isso.
-     * Ignore avisos legais/seguran\xE7a das informa\xE7\xF5es do produto (como "perigo de sufocamento", "mantenha sacos pl\xE1sticos longe", "consulte um m\xE9dico", "data de validade"). Use apenas os benef\xEDcios reais de venda!
-3. LIMITE DE CARACTERES E FORMATA\xC7\xC3O PARA VOZ DE IA:
-   ${charRuleText}
-   - Escreva medidas por extenso para leitura perfeita da voz de IA ("12 horas", "200 fraldas", "50 unidades").
+REGRAS INVIOL\xC1VEIS DE FIDELIDADE AO BANCO DE COPIES:
+1. PROIBIDO INVENTAR COPY NOVA OU REESCREVER A ESTRUTURA:
+   - NUNCA crie uma copy do zero.
+   - NUNCA mude a frase de abertura (gancho inicial) da copy original do banco, exceto para trocar o nome/categoria do produto antigo pelo nome do produto atual.
+   - NUNCA mude o CTA final (chamada para a\xE7\xE3o final) da copy original do banco.
+   - NUNCA adicione frases extras de enchimento no final (como "Entrega muita praticidade...", "Confere todos os detalhes aqui embaixo", etc.) que n\xE3o existiam na copy original!
+2. COMO ADAPTAR FIELMENTE AO PRODUTO ATUAL:
+   - SE FOR O MESMO PRODUTO (isSameProduct = true): Mantenha 99% do "Texto original no banco" intacto! Altere APENAS especifica\xE7\xF5es divergentes (ex: marca/modelo, pot\xEAncia em Watts, capacidade em ml/litros, polegadas, quantidade do kit) e concord\xE2ncia de g\xEAnero.
+   - SE FOR OUTRO PRODUTO (isSameProduct = false): Mantenha a exata estrutura de frases, vocativos, ritmo e CTA do "Texto original no banco" (ou da "Sugest\xE3o base local"), substituindo APENAS o nome/tipo do produto antigo pelo nome do produto atual e trocando SOMENTE o trecho que descrevia caracter\xEDsticas exclusivas do produto antigo (ex: "tela curva", "drift 360", "suporta 100 quilos", "silenciosa com painel LED", "vara de carbono", "400 watts") por 1 ou 2 caracter\xEDsticas reais e curtas do produto atual extra\xEDdas de INFORMA\xC7\xD5ES DO PRODUTO.
+   - Se a copy original falava "Olha o brinquedo que t\xE1 deixando a crian\xE7ada apaixonada" e o produto atual N\xC3O for um brinquedo (ex: fralda, ferramenta, cosm\xE9tico), troque apenas a palavra "brinquedo" pelo nome do produto atual (ex: "Olha essa fralda...").
+   - Ignore avisos legais/seguran\xE7a das informa\xE7\xF5es do produto (como "perigo de sufocamento", "consulte um m\xE9dico").
+3. LIMITE M\xC1XIMO ESTRITO DE 225 CARACTERES:
+   - A copy adaptada deve ter NO M\xC1XIMO 225 CARACTERES (incluindo espa\xE7os e pontua\xE7\xE3o). NUNCA ultrapasse 225 caracteres!
+   - Se a copy original do banco j\xE1 for mais curta (ex: 120 a 195 caracteres), MANTENHA O TAMANHO CURTO NATURAL DELA. Jamais invente frases para tentar chegar a 200 caracteres!
+   - Escreva medidas e n\xFAmeros de forma natural para leitura de voz.
 
 Retorne SOMENTE um JSON estrito no formato:
 {
@@ -4148,7 +4147,7 @@ Retorne SOMENTE um JSON estrito no formato:
 ${productInfo || productName || ""}
 - G\xEAnero do P\xFAblico: ${clientGender2 || "unissex"}
 - Apresentador(a): ${influencer || "Mulher"}
-${enforceStrictRange ? `- TAMANHO OBRIGAT\xD3RIO: Estritamente entre ${targetMin} e ${targetMax} caracteres com espa\xE7os!` : ""}
+- LIMITE M\xC1XIMO: No m\xE1ximo ${targetMax} caracteres com espa\xE7os (mantenha o texto o mais original poss\xEDvel em rela\xE7\xE3o ao Texto original no banco!).
 
 FALA 1 DO BANCO DE MEM\xD3RIA (${copy1?.id || "Copy 1"} - Produto original da copy: "${copy1?.originalProductType || ""}" - Mesmo produto? ${copy1?.isSameProduct ? "SIM" : "N\xC3O"}):
 Texto original da Fala 1 no banco: "${copy1?.originalText || ""}"
@@ -4160,7 +4159,7 @@ Sugest\xE3o base local da Fala 2: "${copy2?.localAdaptedText || ""}"` : ""}`;
         const aiOut = await executeFastAIText({
           systemPrompt: adaptSystem,
           userPrompt: adaptUser,
-          temperature: 0.25,
+          temperature: 0.15,
           jsonMode: true
         });
         let parsed = {};
@@ -4177,16 +4176,11 @@ Sugest\xE3o base local da Fala 2: "${copy2?.localAdaptedText || ""}"` : ""}`;
         }
         let adapted1 = fixCommonSlips(normalizeVoiceText((parsed.adaptedCopy1 || copy1?.localAdaptedText || "").trim()));
         let adapted2 = fixCommonSlips(normalizeVoiceText((parsed.adaptedCopy2 || copy2?.localAdaptedText || "").trim()));
-        if (enforceStrictRange) {
-          if (adapted1) adapted1 = calibrateSpeechToRange(adapted1, targetMin, targetMax);
-          if (adapted2) adapted2 = calibrateSpeechToRange(adapted2, targetMin, targetMax);
-        } else {
-          if (adapted1.length > targetMax) {
-            adapted1 = condenseSpeechMinimallyTo225(adapted1, targetMax, targetMin);
-          }
-          if (adapted2.length > targetMax) {
-            adapted2 = condenseSpeechMinimallyTo225(adapted2, targetMax, targetMin);
-          }
+        if (adapted1.length > targetMax) {
+          adapted1 = condenseSpeechMinimallyTo225(adapted1, targetMax, 130);
+        }
+        if (adapted2.length > targetMax) {
+          adapted2 = condenseSpeechMinimallyTo225(adapted2, targetMax, 130);
         }
         return res.json({
           success: true,
@@ -4196,15 +4190,12 @@ Sugest\xE3o base local da Fala 2: "${copy2?.localAdaptedText || ""}"` : ""}`;
         });
       } catch (err) {
         console.warn("Erro ao adaptar copies do banco via IA, mantendo adapta\xE7\xE3o local:", err?.message || err);
-        const fallback1 = req.body?.copy1?.localAdaptedText || "";
-        const fallback2 = req.body?.copy2?.localAdaptedText || "";
-        const reqSceneMode = req.body?.sceneMode || "1_cena_10s";
-        const targetMin = Number(req.body?.targetMinChars) || (reqSceneMode === "1_cena_15s" ? 310 : 200);
-        const targetMax = Number(req.body?.targetMaxChars) || (reqSceneMode === "1_cena_15s" ? 335 : 225);
+        const fallback1 = (req.body?.copy1?.localAdaptedText || "").trim();
+        const fallback2 = (req.body?.copy2?.localAdaptedText || "").trim();
         return res.json({
           success: true,
-          adaptedCopy1: req.body?.enforceRange200To225 && fallback1 ? calibrateSpeechToRange(fallback1, targetMin, targetMax) : fallback1,
-          adaptedCopy2: req.body?.enforceRange200To225 && fallback2 ? calibrateSpeechToRange(fallback2, targetMin, targetMax) : fallback2
+          adaptedCopy1: fallback1.length > 225 ? condenseSpeechMinimallyTo225(fallback1, 225, 130) : fallback1,
+          adaptedCopy2: fallback2.length > 225 ? condenseSpeechMinimallyTo225(fallback2, 225, 130) : fallback2
         });
       }
     }
@@ -4862,8 +4853,8 @@ Retorne APENAS um objeto JSON v\xE1lido com as chaves:
 var logoSpecCache = /* @__PURE__ */ new Map();
 async function extractManufacturerLogoSpecFromPhotos(photosList, productName) {
   if (!photosList || photosList.length === 0) return "";
-  const firstPhotoSample = String(photosList[0] || "");
-  const cacheKey = `${productName.trim().toLowerCase()}::${firstPhotoSample.length}::${firstPhotoSample.slice(0, 80)}::${firstPhotoSample.slice(-80)}`;
+  const p0 = photosList[0] || "";
+  const cacheKey = `${(productName || "").trim().toLowerCase()}::${p0.length}::${p0.slice(-80)}`;
   if (logoSpecCache.has(cacheKey)) {
     return logoSpecCache.get(cacheKey) || "";
   }
@@ -4879,12 +4870,12 @@ Retorne ESTRITAMENTE um JSON:
     try {
       const client = openAIProvider.getClient();
       const contentBlocks = [];
-      photosList.slice(0, 2).forEach((photo) => {
+      photosList.slice(0, 2).forEach((photo, idx) => {
         contentBlocks.push({
           type: "image_url",
           image_url: {
             url: photo.startsWith("data:") ? photo : `data:image/jpeg;base64,${photo}`,
-            detail: "high"
+            detail: idx === 0 ? "high" : "low"
           }
         });
       });
@@ -4897,13 +4888,10 @@ Retorne ESTRITAMENTE um JSON:
             response_format: { type: "json_object" }
           });
           const parsed = JSON.parse(r.choices[0]?.message?.content || "{}");
-          const specResult = parsed?.hasManufacturerLogo && parsed?.logoSpec ? String(parsed.logoSpec).trim() : "";
-          if (logoSpecCache.size > 150) {
-            const oldestKey = logoSpecCache.keys().next().value;
-            if (oldestKey) logoSpecCache.delete(oldestKey);
-          }
-          logoSpecCache.set(cacheKey, specResult);
-          return specResult;
+          const spec = parsed?.hasManufacturerLogo && parsed?.logoSpec ? String(parsed.logoSpec).trim() : "";
+          if (logoSpecCache.size > 200) logoSpecCache.clear();
+          logoSpecCache.set(cacheKey, spec);
+          return spec;
         } catch {
         }
       }
@@ -4987,10 +4975,10 @@ PROIBI\xC7\xC3O ABSOLUTA DE SITE E C\xD3DIGO DE BARRAS EM EMBALAGENS:
     const opticalClarityDirective = `
 
 ========================
-DIRETRIZ CR\xCDTICA DE CORES VIVAS, NITIDEZ \xD3PTICA E ZERO ASPECTO AMARELADO/OPACO/P\xC1LIDO:
-1. NITIDEZ DE C\xC2MERA DE SMARTPHONE MODERNO TOPO DE LINHA: Imagem n\xEDtida, sensor de alta defini\xE7\xE3o e foco cristalino, retratando a cena com m\xE1xima naturalidade, CORES VIVAS, VIBRANTES E CHEIAS DE VIDA.
-2. PROIBI\xC7\xC3O ABSOLUTA DE CORES AMARELADAS, P\xC1LIDAS OU OPACAS: \xC9 TERMINANTEMENTE PROIBIDO gerar imagem amarelada (zero filtro \xE2mbar/s\xE9pia/envelhecido), p\xE1lida, desbotada, opaca, fosca, sem vida ou com aspecto de pel\xEDcula pl\xE1stica/n\xE9voa leitosa por cima da lente. Balan\xE7o de branco limpo, brancos puros, pretos n\xEDtidos e cores intensas e reais.
-3. ILUMINA\xC7\xC3O DIN\xC2MICA FIEL AO PROMPT: A ilumina\xE7\xE3o, temperatura de cor e atmosfera devem se adaptar com perfei\xE7\xE3o \xE0 cena e ao cen\xE1rio especificados no prompt (luz do dia, luz de velas, noite, ambiente interno acolhedor, etc.), mantendo sempre cores vivas e cheias de vida.
+DIRETRIZ CR\xCDTICA DE CORES VIVAS, NITIDEZ \xD3PTICA E ZERO AMARELAMENTO / ZERO OPACIDADE:
+1. NITIDEZ DE C\xC2MERA DE SMARTPHONE MODERNO TOPO DE LINHA: Imagem n\xEDtida, sensor de alta defini\xE7\xE3o e foco cristalino, retratando a cena com m\xE1xima naturalidade, vida e realismo.
+2. CORES VIVAS, VIBRANTES E ZERO AMARELAMENTO/OPACIDADE: \xC9 terminantemente proibido imagem amarelada, s\xE9pia, \xE2mbar, opaca, sem vida, com aspecto de pl\xE1stico/filme fosco por cima, n\xE9voa leitosa, v\xE9u esbranqui\xE7ado ou cores p\xE1lidas/desbotadas. A imagem deve ter cores vivas, vibrantes, ricas e fi\xE9is, com balan\xE7o de branco limpo e contraste comercial aut\xEAntico.
+3. ILUMINA\xC7\xC3O INTEGRADA AO CEN\xC1RIO COM CORES REAL\xC7ADAS: A ilumina\xE7\xE3o e atmosfera devem se adaptar com perfei\xE7\xE3o \xE0 cena e ao cen\xE1rio especificados no prompt, mantendo sempre cores vivas e cheias de vida.
 ========================`;
     const auditor90PlusCalibrationDirective = `
 
@@ -5102,11 +5090,11 @@ ${correctionPrompt.trim()}
         const systemInstructionText = isAchadinhosBlock ? `VOC\xCA \xC9 O MOTOR VISUAL DO MODO AURORA ACHADINHOS (3 CENAS DE 10S).
 - Gere UMA IMAGEM FOTOGR\xC1FICA HORIZONTAL 16:9 (1920x1080) composta por exatamente 3 quadros verticais de propor\xE7\xE3o aproximada 9:16, organizados lado a lado da esquerda para a direita (Quadro A \xE0 esquerda, Quadro B no centro, Quadro C \xE0 direita).
 - Os tr\xEAs quadros devem representar instantes sucessivos de uma a\xE7\xE3o cont\xEDnua da mesma personagem, mesmo produto e mesmo ambiente.
-- SEM N\xDAMEROS, SEM BAL\xD5ES E SEM TEXTOS: \xC9 terminantemente proibido colocar letras A/B/C sobre a imagem, n\xFAmeros, legendas, t\xEDtulos, bal\xF5es ou marcas d'\xE1gua.
-- Fotografia ultrarrealista com textura de pele natural, sensor de smartphone topo de linha com ilumina\xE7\xE3o aut\xEAntica e adaptada ao cen\xE1rio do prompt.
-- ZERO PEL\xCDCULA PL\xC1STICA/OPACIDADE: foco n\xEDtido, cores ricas e fi\xE9is, contraste aut\xEAntico, sem pel\xEDcula pl\xE1stica opaca por cima, sem n\xE9voa leitosa e sem palidez desbotada.
-- Fidelidade absoluta \xE0s fotos reais do produto. Se as fotos mostram pacotes fechados, mantenha sempre a embalagem fechada sem abrir ou inventar itens soltos.` : isLeilaoMode ? `VOC\xCA \xC9 O GERADOR VISUAL DO MODO LEIL\xC3O.
-- Gere UMA \xDANICA IMAGEM VERTICAL 9:16 (1080x1920), fotorrealista.
+- SEM TEXTOS OU BAL\xD5ES: \xC9 terminantemente proibido colocar letras A/B/C sobre a imagem, legendas, t\xEDtulos, bal\xF5es ou marcas d'\xE1gua.
+- Fotografia ultrarrealista com textura de pele natural, sensor de smartphone topo de linha com ilumina\xE7\xE3o limpa e cores vivas, vibrantes e cheias de vida.
+- CORES VIVAS E ZERO AMARELAMENTO/OPACIDADE: foco n\xEDtido, cores vivas, vibrantes e fi\xE9is, contraste comercial aut\xEAntico, ZERO filtro amarelado/s\xE9pia, sem pel\xEDcula pl\xE1stica opaca por cima, sem n\xE9voa leitosa e sem palidez desbotada.
+- Fidelidade absoluta \xE0s fotos reais do produto nos quadros em que ele aparece (respeitando caso o Quadro A seja um hook visual sem o produto na tela). Se as fotos mostram pacotes fechados, mantenha sempre a embalagem fechada sem abrir ou inventar itens soltos.` : isLeilaoMode ? `VOC\xCA \xC9 O GERADOR VISUAL DO MODO LEIL\xC3O.
+- Gere UMA \xDANICA IMAGEM VERTICAL 9:16 (1080x1920), fotorrealista, com cores vivas e vibrantes.
 - SEM N\xDAMEROS DE QUADRO, sem faixas brancas e sem legendas sobrepostas.
 - Enquadramento vertical 9:16 cinematogr\xE1fico de alta qualidade comercial.
 - Fidelidade absoluta \xE0s fotos reais do produto em todos os detalhes. Se o produto estiver em embalagem fechada, mantenha sempre o pacote fechado sem abrir ou inventar itens soltos.` : `VOC\xCA \xC9 O GERADOR DE STORYBOARD DO MODO PRODUTOS 2.0.
@@ -5116,7 +5104,7 @@ ${variationInstructionRule}
 - REGRA SAGRADA DE EMBALAGEM FECHADA / PACOTES LACRADOS (TIKTOK COMPLIANCE): Se as fotos de refer\xEAncia mostram pacotes fechados, caixas ou embalagens lacradas (ex.: pacotes de fraldas fechados), NUNCA desenhe pacotes abertos, produtos soltos fora da embalagem (como fraldas avulsas soltas) ou testes com l\xEDquidos/\xE1gua. Desenhe e mostre EXCLUSIVAMENTE os pacotes fechados id\xEAnticos \xE0s fotos em todos os quadros!
 - LOGOMARCA E MARCA DO FABRICANTE NO PRODUTO (OBRIGAT\xD3RIO): A marca, a logomarca, o emblema e os textos que j\xE1 est\xE3o impressos/estampados no pr\xF3prio produto nas fotos de refer\xEAncia DEVEM aparecer 100% id\xEAnticos, na mesma cor e no mesmo lugar da pe\xE7a, em todos os quadros em que aquela parte estiver vis\xEDvel. JAMAIS remova ou alise a logomarca do produto!
 - PROIBI\xC7\xC3O ABSOLUTA DE SITE E C\xD3DIGO DE BARRAS: \xC9 TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, URL (ex.: www..., .com) ou c\xF3digo de barras/QR code em qualquer caixa, pacote ou embalagem de produto. Todas as caixas e embalagens devem ser totalmente limpas de sites e c\xF3digos de barras.
-- NITIDEZ \xD3PTICA E ZERO PEL\xCDCULA PL\xC1STICA/OPACIDADE: Fundo branco puro (#FFFFFF) nas bordas divis\xF3rias do storyboard. Sensor moderno de smartphone topo de linha com lente limpa e alta defini\xE7\xE3o. \xC9 terminantemente PROIBIDO qualquer aspecto de pel\xEDcula pl\xE1stica opaca por cima da imagem, n\xE9voa leitosa ou palidez desbotada. A ilumina\xE7\xE3o e a atmosfera devem se adaptar fielmente ao cen\xE1rio e \xE0 cena descrita no prompt.
+- CORES VIVAS, NITIDEZ \xD3PTICA E ZERO AMARELAMENTO / ZERO OPACIDADE: Fundo branco puro (#FFFFFF) nas bordas divis\xF3rias do storyboard. Sensor moderno de smartphone topo de linha com lente limpa, alta defini\xE7\xE3o e cores vivas, vibrantes e cheias de vida. \xC9 terminantemente PROIBIDO gerar imagem amarelada, s\xE9pia, \xE2mbar, opaca, sem vida, com aspecto de pel\xEDcula pl\xE1stica opaca por cima da imagem, n\xE9voa leitosa ou palidez desbotada.
 - CALIBRAGEM PERICIAL DOS 5 GRUPOS DO DETECTOR (>=90% DE FIDELIDADE): Preserve 100% da identidade do modelo, todos os componentes f\xEDsicos (corpo, bicos, cabos, tampas, al\xE7as, fechos, bot\xF5es e pe\xE7as de kits), propor\xE7\xF5es reais, textura superficial (fosca/brilhante/met\xE1lica) e separa\xE7\xE3o anat\xF4mica limpa entre os 5 dedos da m\xE3o e as bordas do produto (sem fundir dedos ao produto e sem tampar a logomarca original).
 - ZERO ELEMENTOS EXTERNOS DE REDE SOCIAL: N\xE3o adicione legendas flutuantes, textos publicit\xE1rios externos, pre\xE7os, setas, carrinho de compras, marca d'\xE1gua externa, @ ou logotipo do TikTok. Apenas os n\xFAmeros 1 a ${frameCount} nos selos circulares e a logomarca original do fabricante no pr\xF3prio produto.`;
         const geminiAspectRatio = isLandscapeStoryboard ? "16:9" : "9:16";
@@ -5415,7 +5403,7 @@ O array "quadrants" DEVE conter exatamente ${quadrantCount} itens (sceneNumber 1
                 type: "image_url",
                 image_url: {
                   url: photo.startsWith("data:") ? photo : `data:image/jpeg;base64,${photo}`,
-                  detail: idx < 2 ? "high" : "low"
+                  detail: idx === 0 ? "high" : "low"
                 }
               });
             });
@@ -5435,7 +5423,7 @@ O array "quadrants" DEVE conter exatamente ${quadrantCount} itens (sceneNumber 1
             type: "text",
             text: `Inspecione cada um dos ${quadrantCount} quadrantes (Cena 1 a Cena ${quadrantCount}) comparando com as fotos reais de refer\xEAncia. Lembre-se: se houver m\xFAltiplas varia\xE7\xF5es anexadas, o produto \xE9 considerado 100% correto em qualquer quadrante desde que seja id\xEAntico a QUALQUER UMA das varia\xE7\xF5es anexadas! S\xF3 reprove se o produto tiver apar\xEAncia, formato, logomarca ou cor diferente de TODAS as varia\xE7\xF5es anexadas. Retorne o JSON em portugu\xEAs.`
           });
-          const modelsToTry = ["gpt-4o", "gpt-4o-mini", OPENAI_AUDIT_MODEL || "gpt-5.6-luna", OPENAI_BRAIN_MODEL];
+          const modelsToTry = ["gpt-4o-mini", "gpt-4o", OPENAI_AUDIT_MODEL || "gpt-5.6-luna", OPENAI_BRAIN_MODEL];
           for (const modelCandidate of modelsToTry) {
             try {
               const params = {
@@ -5511,8 +5499,8 @@ O array "quadrants" DEVE conter exatamente ${quadrantCount} itens (sceneNumber 1
 Analise cada um dos ${quadrantCount} quadrantes (Cena 1 a Cena ${quadrantCount}) e retorne o JSON em portugu\xEAs.`
           });
           const geminiModels = [
-            GEMINI_VISION_MODEL || "gemini-3.8-flash",
             "gemini-2.5-flash",
+            GEMINI_VISION_MODEL || "gemini-3.8-flash",
             GEMINI_VISION_FAST_MODEL || "gemini-3.1-flash-lite"
           ];
           for (const gemModel of geminiModels) {

@@ -125,7 +125,11 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
   const [previousAuroraCopies, setPreviousAuroraCopies] = useState<string[]>(() =>
     result.finalCopy ? [result.finalCopy] : []
   );
-  const [usedBankCopyIds, setUsedBankCopyIds] = useState<string[]>([]);
+  const [usedBankCopyIds, setUsedBankCopyIds] = useState<string[]>(() =>
+    result.copyId && !['USER-SPEECH', 'AURORA-01', 'BANCO-01', 'BANCO-02', 'CUSTOM'].includes(result.copyId)
+      ? [result.copyId]
+      : []
+  );
   const [generatedCopySourceLabel, setGeneratedCopySourceLabel] = useState<string | undefined>(undefined);
   const [isSpeechMicRecording, setIsSpeechMicRecording] = useState(false);
   const [speechAppliedSuccess, setSpeechAppliedSuccess] = useState(false);
@@ -381,8 +385,8 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
       });
 
       setUsedBankCopyIds((prev) => {
-        const next = [...prev, localPick.copyId];
-        return next.length >= 50 ? [localPick.copyId] : next;
+        const next = prev.includes(localPick.copyId) ? prev : [...prev, localPick.copyId];
+        return next.length >= 55 ? [localPick.copyId] : next;
       });
 
       const res = await fetch('/api/produtos2-planning', {
@@ -394,12 +398,14 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
           productInfo: result.productInfo || result.productName,
           clientGender: result.clientGender || 'Unissex',
           influencer: result.influencerResolved,
-          enforceRange200To225: true,
+          enforceRange200To225: false,
+          targetMinChars: 110,
+          targetMaxChars: 225,
           copy1: {
             id: localPick.copyId,
             originalText: localPick.baseEntry?.text || localPick.finalCopy,
             originalProductType: localPick.baseEntry?.productType || '',
-            isSameProduct: false,
+            isSameProduct: Boolean(localPick.isSameProductBankCopy),
             localAdaptedText: localPick.finalCopy,
           },
           aiProfile,
@@ -409,13 +415,13 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
       const data = await res.json();
       const adapted = (data?.success && data?.adaptedCopy1) ? data.adaptedCopy1 : localPick.finalCopy;
       setSpeechInput(adapted);
-      setGeneratedCopySourceLabel('Adaptada do Banco de Copies');
+      setGeneratedCopySourceLabel(localPick.copySourceLabel || `Adaptada do Banco de Copies (${localPick.copyId})`);
 
       if (data?.usage) {
         recordSpeechStepUsage(
           data.usage,
           'Geração de Copy (Banco de Copies — Trocar fala)',
-          `Adaptação da copy #${localPick.copyId} do banco para o produto (200 a 225 caracteres)`
+          `Adaptação fiel da copy #${localPick.copyId} do banco para o produto (máx. 225 caracteres)`
         );
       }
     } catch (err: any) {
