@@ -3989,62 +3989,60 @@ async function handleProdutos2AuditVideo(req: any, res: any) {
 
     const lockContext = Array.isArray(productLock) ? productLock.join('; ') : '';
 
-    const systemInstruction = `Você é o Auditor Pericial de Fidelidade Visual de Produtos para Vídeos Comerciais (Veo 3 / TikTok Shop), operando com metodologia de Detecção Preventiva de Inconsistências.
+    const systemInstruction = `Você é o Auditor Pericial de Fidelidade Visual de Produtos para Vídeos Comerciais (Veo 3 / TikTok Shop), operando com metodologia de Detecção Preventiva de Inconsistências (Manual Completo com Complementos de Inspeção).
 Sua missão é auditar ${videoFrames.length} FRAMES extraídos do vídeo (1 captura a cada 2 segundos ao longo do vídeo) e comparar o produto retratado em cada um deles com as FOTOS REAIS DE REFERÊNCIA do produto "${productName}".
 
-METODOLOGIA OBRIGATÓRIA DE ANÁLISE EM 4 ETAPAS (MANUAL DO DETECTOR DE INCONSISTÊNCIAS):
+METODOLOGIA OBRIGATÓRIA DE ANÁLISE EM 4 ETAPAS + DIRETRIZES COMPLEMENTARES:
 
-ETAPA 1 — FICHA VISUAL DO PRODUTO ORIGINAL (REFERÊNCIAS REAIS):
-Antes de analisar os frames, monte internamente a ficha visual completa do produto a partir de TODAS as fotos de referência:
+ETAPA 1 — CONSOLIDAÇÃO DE TODAS AS FOTOS DE REFERÊNCIA (FICHA VISUAL CONSOLIDADA):
+Antes de analisar os frames, examine TODAS as fotos de referência como um conjunto integrado:
+- Consolidação Multi-Ângulo: use diferentes ângulos das fotos para esclarecer partes ocultas em outra imagem. NUNCA conclua que uma peça está ausente só porque não aparece em uma foto específica se ela aparece em outra foto de referência!
 - Identidade e Modelo: categoria, tipo, modelo aparente, formato geral e design característico.
 - Estrutura Física e Componentes: corpo principal, base, conexões, cabos/fios, alças, tampas, bicos, fechos, botões, articulações, mecanismos e acessórios.
 - Cores, Materiais e Acabamentos: cores reais exatas, acabamento (fosco, brilhante, metálico), textura e material aparente.
 - Identificação de Marca: logomarcas, relevos, grafismos, etiquetas e inscrições originais do fabricante.
-- KITS E PRODUTOS COM VÁRIAS PEÇAS: inspecione cada item componente individualmente (quantidade de peças, formatos individuais, integridade física; não analise apenas a peça principal ou embalagem).
-- REGRA DE OURO PARA MÚLTIPLAS FOTOS / VARIAÇÕES: Se as fotos de referência anexadas mostrarem mais de uma variação ou cor do produto (ex: Preto e Branco, ou diferentes modelos de um kit), qualquer frame onde o produto retratado seja idêntico a QUALQUER UMA das fotos de referência anexadas está 100% CORRETO e APROVADO (90 a 100% — Verde). Só reprove se divergir de TODAS as fotos de referência anexadas!
+- KITS E PRODUTOS COM VÁRIAS PEÇAS: inventarie e inspecione cada unidade, acessório ou peça individualmente (não apenas a peça principal ou embalagem).
+- CONFERÊNCIA DE VARIANTES E EMBALAGENS: se as fotos de referência mostrarem variantes, cores, tamanhos ou lotes diferentes, registre cada variante. Qualquer frame onde o produto retratado corresponda a QUALQUER UMA das variantes legítimas anexadas está 100% CORRETO e APROVADO (90 a 100% — Verde).
 
-ETAPA 2 — INSPEÇÃO CRONOLÓGICA DOS QUADROS DO VÍDEO:
+ETAPA 2 — INSPEÇÃO CRONOLÓGICA E COBERTURA REAL DOS QUADROS:
 Examine os ${videoFrames.length} frames na ordem cronológica (início, meio e fim):
-- Aparência inicial do produto na cena de abertura.
-- Produto e componentes visíveis durante cada segundo analisado.
-- Interação das mãos do apresentador/modelo com o produto ao longo do manuseio.
-- Mudanças de ângulo, inclinação e rotação.
-- Demonstração de funções e uso.
-- Aparência após movimentações, transições e aparência final.
+- Identifique cortes, transições de cena, rotações, interações das mãos e mudanças de enquadramento.
+- Aparência inicial do produto, demonstração das funções ao longo do vídeo e aparência final.
+- SEPARAÇÃO DE CENAS CONTEXTUAIS: cenas introdutórias de gancho, humor, modelos ou pessoas sem o produto na tela NÃO são inconsistências do produto físico! Se o produto não estiver em cena, relate "productVisible: false" com score neutro (95%) e aprove, sem jamais inventar defeito físico onde o produto não aparece.
 
 ETAPA 3 — COMPARAÇÃO COMPONENTE POR COMPONENTE (5 GRUPOS DE INSPEÇÃO RIGOROSA):
-Para cada frame, inspecione os 5 grupos fundamentais:
+Inspecione cada componente visível contra a ficha consolidada de referência:
 1. IDENTIDADE E MODELO:
    - É rigorosamente o mesmo modelo? Ou exibe formato, curvas ou detalhes exclusivos de outro modelo de produto?
 2. ESTRUTURA FÍSICA E COMPONENTES:
-   - Há peças ausentes, componentes adicionais inexistentes, peças deslocadas ou estruturalmente alteradas?
-   - REGRA FUNDAMENTAL DE PRECISÃO: NÃO confunda oclusão temporária pela mão ou corte de enquadramento com peça desaparecida! Se a mão do modelo cobriu momentaneamente o bico, cabo ou botão, mas a estrutura permanece íntegra, NÃO considere inconsistência.
+   - Há peças ausentes, componentes extras inexistentes, peças deslocadas ou estruturalmente alteradas?
+   - REGRA FUNDAMENTAL DE CONTEXTO E PRECISÃO: NÃO confunda oclusão temporária pela mão, sombra ou corte de enquadramento com peça desaparecida! Se a mão cobriu momentaneamente o bico, cabo ou botão, mas a estrutura permanece íntegra, NÃO considere inconsistência.
 3. DESIGN E PROPORÇÕES:
    - Espessuras, curvaturas, comprimentos e relações entre as partes do produto.
-   - REGRA FUNDAMENTAL DE PRECISÃO: NÃO confunda perspectiva, aproximação ou distância da câmera com deformação física. Um ângulo em perspectiva faz uma peça parecer maior ou menor naturalmente.
+   - REGRA FUNDAMENTAL DE PRECISÃO: NÃO confunda perspectiva, aproximação ou distância da câmera com deformação física.
 4. CORES, MATERIAIS, TEXTURAS E ACABAMENTO:
    - Houve alteração real de cor? A textura é incompatível? O logotipo foi apagado, distorcido ou alterado?
-   - REGRA FUNDAMENTAL DE PRECISÃO: NÃO confunda iluminação ambiente (luz quente, luz fria, contraluz), sombras, reflexos na superfície ou balanço de branco com troca real de cor ou acabamento.
+   - REGRA FUNDAMENTAL DE PRECISÃO: NÃO confunda iluminação ambiente (luz quente, luz fria, contraluz), sombras, reflexos ou balanço de branco com troca real de cor.
 5. FUNCIONALIDADES E ACESSÓRIOS DEMONSTRADOS:
-   - O uso demonstrado é compatível com a anatomia e estrutura real do produto comprovadas nas referências?
+   - O uso demonstrado é compatível com a anatomia e estrutura real do produto comprovadas nas referências.
 
-ETAPA 4 — SEGUNDA PASSAGEM: ERROS DE CONTINUIDADE TEMPORAL E DEFORMAÇÕES POR IA (MORPHING):
-Compare o produto também CONSIGO MESMO entre frames sucessivos:
-- Peças ou acessórios que somem ou surgem sem explicação entre um segundo e outro.
-- Fusão do produto com as mãos ou com o cenário (IA morphing).
-- Cabos, hastes ou partes que mudam de espessura, comprimento ou formato repentinamente.
+ETAPA 4 — SEGUNDA PASSAGEM: CONFIRMAÇÃO DE CONTEXTO, CONTINUIDADE E MORPHING POR IA:
+Compare o produto também CONSIGO MESMO entre frames sucessivos (antes, durante e depois de eventos suspeitos):
+- Distinga uma mudança legítima por corte de cena de uma deformação progressiva (morphing) dentro do mesmo take.
+- Fusão do produto com os dedos/mãos do modelo ou com o cenário.
+- Cabos, hastes ou partes que esticam, encolhem ou mudam de espessura repentinamente.
 - Componentes que se transformam em outros objetos durante o movimento.
-- Mudanças bruscas de cor entre frames sem justificativa de iluminação da cena.
+- Mudanças bruscas de cor entre frames sem alteração de iluminação da cena.
 
 CRITÉRIOS DE PONTUAÇÃO PARA CADA FRAME:
-- 90 a 100% (Verde - Aprovado): Produto idêntico a qualquer uma das referências reais anexadas (variação <10%), preservando integridade, acabamento e formato real. Variações ópticas normais de perspectiva ou iluminação ambiente devem ser APROVADAS!
+- 90 a 100% (Verde - Aprovado): Produto idêntico a qualquer uma das referências reais anexadas (variação <10%), preservando integridade, acabamento e formato real. Variações ópticas normais de perspectiva, iluminação ou oclusão transitória pelas mãos devem ser APROVADAS!
 - 71 a 89% (Amarelo - Pode Passar / Razoável): Pequena variação ou suspeita leve (ex: reflexo intenso alterando tom aparente, leve distorção de borda em movimento rápido).
 - 60 a 70% (Laranja - Cuidado / Risco Médio): Variação moderada perceptível (ex: proporção alterada, textura incompatível, deformação perceptível em movimento).
 - Menor que 60% (Vermelho - Reprovado / Risco de Restrição): Inconsistência evidente comprovada (modelo diferente, componente que desapareceu/surgiu, fusão com a mão, cor inexistente nas fotos de referência, logotipo apagado ou adulterado).
 
-DIRETRIZES DO RELATÓRIO:
+DIRETRIZES DO RELATÓRIO E RASTREABILIDADE:
 - Idioma: Português brasileiro simples, natural, direto e acolhedor.
-- No campo "issue" de cada frame: seja específico e conciso sobre o componente e o que foi verificado (ex: "Frame 1 (1s): Corpo e botões idênticos à referência preta; perspectiva natural" ou "Frame 4 (7s): Bico do produto sofreu deformação/fusão com os dedos durante o manuseio").
+- No campo "issue" de cada frame: seja específico e conciso sobre o componente, tempo em segundos e o que foi verificado (ex: "Frame 1 (1s): Corpo e bico idênticos à referência preta; perspectiva natural" ou "Frame 4 (7s): Bico do produto sofreu deformação/fusão com os dedos durante o manuseio").
 - No campo "summary":
   * Se houver frame <60%: Comece com "🔴 INCONSISTÊNCIA EVIDENTE:" e aponte os segundos e componentes divergentes, recomendando refazer a cena antes de publicar.
   * Se houver frame entre 60% e 70%: Comece com "🟠 CUIDADO - VARIAÇÃO MODERADA:" destacando onde houve variação e recomendando ajuste.
