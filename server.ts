@@ -3381,7 +3381,7 @@ Retorne APENAS um objeto JSON válido com as chaves:
         });
         contentBlocks.push({ type: 'text', text: userPrompt });
 
-        const modelsToTry = [OPENAI_BRAIN_MODEL, 'gpt-4o', 'gpt-4o-mini', OPENAI_AUDIT_MODEL];
+        const modelsToTry = ['gpt-4o', 'gpt-4o-mini', OPENAI_BRAIN_MODEL, OPENAI_AUDIT_MODEL];
         for (const modelCandidate of modelsToTry) {
           try {
             const params: any = {
@@ -3471,8 +3471,8 @@ Retorne APENAS um objeto JSON válido com as chaves:
         parts.push({ text: userPrompt });
 
         const geminiModels = [
-          GEMINI_VISION_MODEL || 'gemini-3.8-flash',
           'gemini-2.5-flash',
+          GEMINI_VISION_MODEL || 'gemini-3.8-flash',
           GEMINI_VISION_FAST_MODEL || 'gemini-3.1-flash-lite',
         ];
         for (const gemModel of geminiModels) {
@@ -3559,11 +3559,19 @@ Retorne APENAS um objeto JSON válido com as chaves:
  * de qualquer logomarca, emblema ou nome da marca impresso no produto, garantindo que o
  * gerador de imagem do Storyboard nunca apague a logo do fabricante.
  */
+const logoSpecCache = new Map<string, string>();
+
 async function extractManufacturerLogoSpecFromPhotos(
   photosList: string[],
   productName: string
 ): Promise<string> {
   if (!photosList || photosList.length === 0) return '';
+
+  const firstPhotoSample = String(photosList[0] || '');
+  const cacheKey = `${productName.trim().toLowerCase()}::${firstPhotoSample.length}::${firstPhotoSample.slice(0, 80)}::${firstPhotoSample.slice(-80)}`;
+  if (logoSpecCache.has(cacheKey)) {
+    return logoSpecCache.get(cacheKey) || '';
+  }
 
   const promptLogo = `Inspecione as fotos de referência do produto "${productName}".
 O produto possui alguma logomarca, emblema, escudo, símbolo gráfico ou texto de marca do fabricante impresso/estampado/bordado nele mesmo (por exemplo: no encosto, na estrutura, na lateral, no painel ou no rótulo)?
@@ -3589,7 +3597,7 @@ Retorne ESTRITAMENTE um JSON:
       });
       contentBlocks.push({ type: 'text', text: promptLogo });
 
-      for (const m of [OPENAI_AUDIT_MODEL || 'gpt-5.6-luna', 'gpt-4o-mini', OPENAI_BRAIN_MODEL]) {
+      for (const m of ['gpt-4o-mini', 'gpt-4o', OPENAI_AUDIT_MODEL || 'gpt-5.6-luna', OPENAI_BRAIN_MODEL]) {
         try {
           const r = await client.chat.completions.create({
             model: m,
@@ -3597,10 +3605,15 @@ Retorne ESTRITAMENTE um JSON:
             response_format: { type: 'json_object' },
           });
           const parsed = JSON.parse(r.choices[0]?.message?.content || '{}');
-          if (parsed?.hasManufacturerLogo && parsed?.logoSpec) {
-            return String(parsed.logoSpec).trim();
+          const specResult = parsed?.hasManufacturerLogo && parsed?.logoSpec
+            ? String(parsed.logoSpec).trim()
+            : '';
+          if (logoSpecCache.size > 150) {
+            const oldestKey = logoSpecCache.keys().next().value;
+            if (oldestKey) logoSpecCache.delete(oldestKey);
           }
-          return '';
+          logoSpecCache.set(cacheKey, specResult);
+          return specResult;
         } catch {
           // try next model
         }
@@ -3706,7 +3719,7 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
 
     const noBarcodeUrlDirective = `\n\n========================\nPROIBIÇÃO ABSOLUTA DE SITE E CÓDIGO DE BARRAS EM EMBALAGENS:\nÉ TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, domínio, URL (ex.: www..., .com, .com.br, https) ou código de barras/QR code em qualquer caixa, pacote ou embalagem do produto. As caixas, pacotes e embalagens devem ser 100% limpas de sites e códigos de barras!\n========================`;
 
-    const opticalClarityDirective = `\n\n========================\nDIRETRIZ CRÍTICA DE NITIDEZ ÓPTICA E ZERO PELÍCULA PLÁSTICA/OPACIDADE:\n1. NITIDEZ DE CÂMERA DE SMARTPHONE MODERNO TOPO DE LINHA: Imagem nítida, sensor de alta definição e foco cristalino, retratando a cena com máxima naturalidade e realismo.\n2. ZERO PELÍCULA PLÁSTICA, ZERO OPACIDADE E ZERO PALIDEZ: É terminantemente proibido imagem com aspecto de plástico/filme fosco ou amarelado por cima, névoa leitosa, véu esbranquiçado ou cores pálidas/desbotadas. A imagem deve ter riqueza ótica, contraste autêntico e cores vivas e fiéis.\n3. ILUMINAÇÃO DINÂMICA FIEL AO PROMPT: A iluminação, temperatura de cor e atmosfera devem se adaptar com perfeição à cena e ao cenário especificados no prompt (luz do dia, luz de velas, noite, ambiente interno simples e acolhedor, etc.).\n========================`;
+    const opticalClarityDirective = `\n\n========================\nDIRETRIZ CRÍTICA DE CORES VIVAS, NITIDEZ ÓPTICA E ZERO ASPECTO AMARELADO/OPACO/PÁLIDO:\n1. NITIDEZ DE CÂMERA DE SMARTPHONE MODERNO TOPO DE LINHA: Imagem nítida, sensor de alta definição e foco cristalino, retratando a cena com máxima naturalidade, CORES VIVAS, VIBRANTES E CHEIAS DE VIDA.\n2. PROIBIÇÃO ABSOLUTA DE CORES AMARELADAS, PÁLIDAS OU OPACAS: É TERMINANTEMENTE PROIBIDO gerar imagem amarelada (zero filtro âmbar/sépia/envelhecido), pálida, desbotada, opaca, fosca, sem vida ou com aspecto de película plástica/névoa leitosa por cima da lente. Balanço de branco limpo, brancos puros, pretos nítidos e cores intensas e reais.\n3. ILUMINAÇÃO DINÂMICA FIEL AO PROMPT: A iluminação, temperatura de cor e atmosfera devem se adaptar com perfeição à cena e ao cenário especificados no prompt (luz do dia, luz de velas, noite, ambiente interno acolhedor, etc.), mantendo sempre cores vivas e cheias de vida.\n========================`;
 
     const auditor90PlusCalibrationDirective = `\n\n========================\nCALIBRAGEM PERICIAL PREVENTIVA DOS 5 GRUPOS DO DETECTOR (META OBRIGATÓRIA: APROVAÇÃO >=90% VERDE NA PRIMEIRA TENTATIVA):\nEsta imagem será auditada pelo Fiscal Rigoroso de Storyboard e servirá de referência para o Auditor de Vídeo do Veo 3. Para garantir nota >=90% em todos os quadrantes:\n1. GRUPO 1 (IDENTIDADE E MODELO 1:1): Reproduza exatamente o mesmo modelo, silhueta, curvaturas e design exclusivo das fotos de referência anexadas.\n2. GRUPO 2 (ESTRUTURA FÍSICA COMPLETA E KITS): Preserve 100% do corpo principal, base, conexões, cabos/fios, alças, tampas, bicos, fechos, botões, articulações e todas as peças individuais de kits. Nenhuma peça pode ser omitida, simplificada ou adicionada.\n3. GRUPO 3 (PROPORÇÕES E ESCALA REAL): Mantenha espessuras, comprimentos e escala física 100% realistas em relação às mãos humanas (proibido aumentar o tamanho do produto).\n4. GRUPO 4 (CORES, TEXTURA E LOGOMARCA 1:1): Preserve o acabamento real (fosco, brilhante, metálico ou tecido), as cores exatas de cada variação e a logomarca original do fabricante com nitidez cirúrgica.\n5. GRUPO 5 E SEPARAÇÃO MÃO-PRODUTO (ANTI-MORPHING PARA O VEO 3): As mãos (sempre com 5 dedos anatômicos perfeitos) devem segurar o produto pelas laterais neutras com contorno limpo e separado, NUNCA fundindo dedos ao produto e NUNCA cobrindo a logomarca, botões principais ou bicos!\n========================`;
 
@@ -4212,7 +4225,7 @@ O array "quadrants" DEVE conter exatamente ${quadrantCount} itens (sceneNumber 1
                   type: 'image_url',
                   image_url: {
                     url: photo.startsWith('data:') ? photo : `data:image/jpeg;base64,${photo}`,
-                    detail: 'high',
+                    detail: pIdx === 0 ? 'high' : 'low',
                   },
                 });
               });
@@ -4227,7 +4240,7 @@ O array "quadrants" DEVE conter exatamente ${quadrantCount} itens (sceneNumber 1
                 type: 'image_url',
                 image_url: {
                   url: photo.startsWith('data:') ? photo : `data:image/jpeg;base64,${photo}`,
-                  detail: 'high',
+                  detail: idx < 2 ? 'high' : 'low',
                 },
               });
             });
@@ -4252,7 +4265,7 @@ O array "quadrants" DEVE conter exatamente ${quadrantCount} itens (sceneNumber 1
             text: `Inspecione cada um dos ${quadrantCount} quadrantes (Cena 1 a Cena ${quadrantCount}) comparando com as fotos reais de referência. Lembre-se: se houver múltiplas variações anexadas, o produto é considerado 100% correto em qualquer quadrante desde que seja idêntico a QUALQUER UMA das variações anexadas! Só reprove se o produto tiver aparência, formato, logomarca ou cor diferente de TODAS as variações anexadas. Retorne o JSON em português.`,
           });
 
-          const modelsToTry = [OPENAI_AUDIT_MODEL || 'gpt-5.6-luna', 'gpt-4o', 'gpt-4o-mini', OPENAI_BRAIN_MODEL];
+          const modelsToTry = ['gpt-4o', 'gpt-4o-mini', OPENAI_AUDIT_MODEL || 'gpt-5.6-luna', OPENAI_BRAIN_MODEL];
           for (const modelCandidate of modelsToTry) {
             try {
               const params: any = {

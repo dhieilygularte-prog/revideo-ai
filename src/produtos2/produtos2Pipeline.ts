@@ -22,6 +22,11 @@ import {
   sanitizeProductLockForVariations,
   sanitizeScenarioDescriptionForMode,
 } from './produtos2Prompts';
+import {
+  sanitizeAllScenesForFidelity,
+  sanitizeSceneFidelityAction,
+  sanitizeStoryboardPromptForFidelity,
+} from './produtos2FidelityLock';
 
 export interface IncrementalTokenUsage {
   promptTokens: number;
@@ -534,22 +539,28 @@ export async function auditProdutos2Storyboard(params: {
       productPhotosBase64.slice(0, 4).map((p) => compressImageForPayload(p, 1400, 0.88))
     );
 
-    // Comprime até 2 fotos de referência de cada variação para auditoria precisa de todas as cores/ângulos anexados
-    const compressedVariations = await Promise.all(
-      (variations || []).map(async (v) => {
-        const varPhotos = (v.photos || []).filter(Boolean).slice(0, 2);
-        const compList = await Promise.all(
-          varPhotos.map((p) => compressImageForPayload(p, 1200, 0.86))
-        );
-        return {
-          name: v.name,
-          photos: compList.filter(Boolean),
-        };
-      })
+    // Comprime até 2 fotos de referência de cada variação SOMENTE quando houver >= 2 variações ativas (evita duplicar fotos da Variação 1 no payload)
+    const activeVariations = (variations || []).filter(
+      (v) => (v.name && v.name.trim().length > 0) || (v.photos && v.photos.length > 0)
     );
+    const compressedVariations =
+      activeVariations.length >= 2
+        ? await Promise.all(
+            activeVariations.map(async (v) => {
+              const varPhotos = (v.photos || []).filter(Boolean).slice(0, 2);
+              const compList = await Promise.all(
+                varPhotos.map((p) => compressImageForPayload(p, 1200, 0.86))
+              );
+              return {
+                name: v.name,
+                photos: compList.filter(Boolean),
+              };
+            })
+          )
+        : [];
 
     const sanitizedLock =
-      (variations || []).length >= 2
+      activeVariations.length >= 2
         ? sanitizeProductLockForVariations(productLock, variations, productName)
         : productLock;
 
@@ -822,26 +833,11 @@ export async function runProdutos2Pipeline(params: {
                   )
                 : rawAction;
 
-            // Proteção mandatória contra invenção de produtos internos em embalagens/pacotes fechados (ex: caixa de bombons, pacote de fraldas)
-            const isPackaged = /\b(fralda|fraldas|bombom|bombons|chocolate|pacote|embalagem|fardo|pack|caixa|pote)\b/i.test(`${finalProductName} ${form.productInfo}`);
-            let cleanAction = baseAction;
-            if (isPackaged) {
-              cleanAction = cleanAction
-                .replace(/\b(?:abrindo|rasgando|destrinchando)\s+(?:o\s+)?(?:pacote|embalagem|caixa)\s*(?:de\s+)?(?:fralda[s]?|bombons?|produto)?\b/gi, 'segurando a embalagem fechada')
-                .replace(/\b(?:tirando|retirando|pegando|puxando)\s+(?:uma\s+)?(?:fralda[s]?|bombons?|itens?)\s*(?:de\s+dentro|do\s+pacote|da\s+caixa|da\s+embalagem)?\b/gi, 'destacando a embalagem fechada')
-                .replace(/\b(?:mostrando|exibindo|revelando)\s+(?:o\s+interior|o\s+conteúdo|as\s+fraldas|os\s+bombons|a\s+fralda\s+por\s+dentro)\b/gi, 'destacando as informações da embalagem fechada')
-                .replace(/\b(?:fralda[s]?|bombons?)\s+(?:avulsa[s]?|aberta[s]?|fora\s+do\s+pacote|fora\s+da\s+caixa)\b/gi, 'embalagem fechada')
-                .replace(/\b(?:vestindo|colocando)\s+(?:a\s+)?fralda\s+(?:no\s+bebê|na\s+criança)\b/gi, 'apresentando o pacote fechado de fralda');
-            }
-
-            // Proteção mandatória contra invenção de verso/costas não fotografados
-            cleanAction = cleanAction
-              .replace(/\b(?:virando|mostrando|exibindo)\s+(?:o\s+)?(?:verso|costas|parte\s+traseira)\b/gi, 'destacando a parte frontal e acabamento')
-              .replace(/\b(?:visão|ângulo)\s+(?:posterior|traseiro|das\s+costas)\b/gi, 'visão frontal com acabamento detalhado');
-
-            // Proteção mandatória contra menções a QR code ou site
-            cleanAction = cleanAction
-              .replace(/\b(?:qr\s*code|código\s+qr|site|url|link|www\.[^\s]+)\b/gi, '');
+            const cleanAction = sanitizeSceneFidelityAction(
+              baseAction,
+              finalProductName,
+              form.productInfo
+            );
 
             const cleanMovement = stripTikTokOutsideSpeech(
               String(sc.cameraMovement || fallbackPlan.scenes[idx].cameraMovement).trim()
@@ -858,21 +854,27 @@ export async function runProdutos2Pipeline(params: {
             };
           });
 
+          const sanitizedMapped = sanitizeAllScenesForFidelity(
+            mappedScenes,
+            finalProductName,
+            form.productInfo
+          );
+
           // Proteção contra repetição indevida de ações entre variações (Cena 4 repetindo Cena 1 ou Cena 5 repetindo Cena 2)
           const isRepetitive =
-            mappedScenes.length === 9 &&
+            sanitizedMapped.length === 9 &&
             (
-              (mappedScenes[3].action.length > 15 && mappedScenes[0].action.length > 15 &&
-               mappedScenes[3].action.toLowerCase().includes(mappedScenes[0].action.toLowerCase().slice(0, 25))) ||
-              (mappedScenes[4].action.length > 15 && mappedScenes[1].action.length > 15 &&
-               mappedScenes[4].action.toLowerCase().includes(mappedScenes[1].action.toLowerCase().slice(0, 25)))
+              (sanitizedMapped[3].action.length > 15 && sanitizedMapped[0].action.length > 15 &&
+               sanitizedMapped[3].action.toLowerCase().includes(sanitizedMapped[0].action.toLowerCase().slice(0, 25))) ||
+              (sanitizedMapped[4].action.length > 15 && sanitizedMapped[1].action.length > 15 &&
+               sanitizedMapped[4].action.toLowerCase().includes(sanitizedMapped[1].action.toLowerCase().slice(0, 25)))
             );
 
           if (isRepetitive) {
             console.warn('Detectada repetição indevida de cenas entre variações. Mantendo sequência progressiva do plano mestre.');
             scenes = fallbackPlan.scenes;
           } else {
-            scenes = mappedScenes;
+            scenes = sanitizedMapped;
           }
         }
       }
@@ -905,22 +907,26 @@ export async function runProdutos2Pipeline(params: {
   }
 
   // 8. PRIMEIRO: Construir e GERAR A IMAGEM DO STORYBOARD 1080x1920 (Seção 7.6)
-  const storyboardPrompt = buildProdutos2StoryboardImagePrompt({
-    productName: finalProductName,
-    productLock,
-    finalCopy,
-    visualMap,
-    avatarDescription,
-    framing: form.framing,
-    scenarioDescription,
-    scenes,
-    additionalInstructions: form.additionalInstructions,
-    variations: form.variations,
-    isDialogue: form.isDialogue,
-    dialogueDescription: form.dialogueDescription,
-    dialogueScript: form.dialogueScript,
-    speakers: form.speakers,
-  });
+  const storyboardPrompt = sanitizeStoryboardPromptForFidelity(
+    buildProdutos2StoryboardImagePrompt({
+      productName: finalProductName,
+      productLock,
+      finalCopy,
+      visualMap,
+      avatarDescription,
+      framing: form.framing,
+      scenarioDescription,
+      scenes,
+      additionalInstructions: form.additionalInstructions,
+      variations: form.variations,
+      isDialogue: form.isDialogue,
+      dialogueDescription: form.dialogueDescription,
+      dialogueScript: form.dialogueScript,
+      speakers: form.speakers,
+    }),
+    finalProductName,
+    form.productInfo
+  );
 
   onProgress?.(52, '4/6 Gerando PRIMEIRO a imagem do Storyboard 3x3 (9 cenas numeradas 1080x1920)...');
 
@@ -933,26 +939,28 @@ export async function runProdutos2Pipeline(params: {
     aiProfile,
   });
 
-  const storyboardImageUrl = imgGenResult.imageUrl
-    ? await ensureHighResStoryboardImage(imgGenResult.imageUrl)
-    : undefined;
   const storyboardError = imgGenResult.error;
   const imgUsage = imgGenResult.usage;
 
-  // 9. FISCALIZAÇÃO DOS 9 QUADRANTES (Verifica cada uma das 9 cenas se o produto está idêntico às fotos reais)
+  // 9. FISCALIZAÇÃO DOS 9 QUADRANTES EM PARALELO COM O UPSCALE 4K
+  let storyboardImageUrl: string | undefined = undefined;
   let storyboardAudit: Produtos2StoryboardAudit | undefined = undefined;
   let auditUsage: any = null;
-  if (storyboardImageUrl) {
+  if (imgGenResult.imageUrl) {
     onProgress?.(78, '5/6 Fiscalizando fidelidade do produto em cada um dos 9 quadrantes do Storyboard...');
-    const auditRes = await auditProdutos2Storyboard({
-      storyboardImageUrl,
-      productPhotosBase64: allPhotos,
-      productName: finalProductName,
-      productLock,
-      scenes,
-      variations: form.variations,
-      aiProfile,
-    });
+    const [highResUrl, auditRes] = await Promise.all([
+      ensureHighResStoryboardImage(imgGenResult.imageUrl),
+      auditProdutos2Storyboard({
+        storyboardImageUrl: imgGenResult.imageUrl,
+        productPhotosBase64: allPhotos,
+        productName: finalProductName,
+        productLock,
+        scenes,
+        variations: form.variations,
+        aiProfile,
+      }),
+    ]);
+    storyboardImageUrl = highResUrl;
     storyboardAudit = auditRes.audit;
     auditUsage = auditRes.usage;
   }
@@ -1132,16 +1140,19 @@ REGRAS ESTRITAS DE PRESERVAÇÃO E EXECUÇÃO:
     return { error: genRes.error };
   }
 
-  // Auditar imediatamente a nova imagem gerada nos 9 quadrantes
-  const newAudit = await auditProdutos2Storyboard({
-    storyboardImageUrl: genRes.imageUrl,
-    productPhotosBase64: allPhotos,
-    productName: result.productName,
-    productLock: result.productLock,
-    scenes: result.scenes,
-    variations: form.variations,
-    aiProfile,
-  });
+  // Auditar imediatamente a nova imagem gerada em paralelo com o upscale 4K
+  const [finalHighResImg, newAudit] = await Promise.all([
+    ensureHighResStoryboardImage(genRes.imageUrl),
+    auditProdutos2Storyboard({
+      storyboardImageUrl: genRes.imageUrl,
+      productPhotosBase64: allPhotos,
+      productName: result.productName,
+      productLock: result.productLock,
+      scenes: result.scenes,
+      variations: form.variations,
+      aiProfile,
+    }),
+  ]);
 
   const isGemini = aiProfile === 'gemini';
   const imgPrompt = genRes.usage?.promptTokens || (isGemini ? 1800 : 2100);
@@ -1196,10 +1207,6 @@ REGRAS ESTRITAS DE PRESERVAÇÃO E EXECUÇÃO:
       },
     ],
   };
-
-  const finalHighResImg = genRes.imageUrl
-    ? await ensureHighResStoryboardImage(genRes.imageUrl)
-    : undefined;
 
   return {
     imageUrl: finalHighResImg,

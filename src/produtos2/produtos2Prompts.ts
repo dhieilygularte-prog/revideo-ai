@@ -610,7 +610,7 @@ PROIBIÇÃO ABSOLUTA: NUNCA gere todos os ${totalScenes} quadros na mesma cor! �
     ? `PERSONAGENS EM CENA E INTERAÇÃO (DIÁLOGO): Dois personagens principais em interação direta e expressiva (Mulher e Homem), mantendo rigorosa continuidade física, de roupas e de traços em todos os ${totalScenes} quadros. ${avatarDescription}. Enquadramento: ${framingLabel}.${dialogueScriptBlock}`
     : `PERSONAGEM: ${avatarDescription}, o mesmo em todos os quadros. Enquadramento: ${framingLabel}.`;
 
-  const rawPrompt = `Crie UMA ÚNICA IMAGEM VERTICAL na mais alta resolução fotográfica 4K UHD (2160x3840 ou 1080x1920, proporção 9:16) de storyboard fotográfico ultra-realista em ${gridDesc} em ordem de leitura (esquerda para direita, de cima para baixo). Quadros de tamanho igual, cantos arredondados, separados por uma borda branca fina, sobre fundo branco puro (#FFFFFF). Gravação com nitidez cristalina de câmera de smartphone moderno topo de linha, sem película plástica, névoa leitosa ou imagem pálida/desbotada.${variationsBlock}${scenePartNote}${packagedNotice}${quantityNotice}${oralCareNotice}${apparelNotice}
+  const rawPrompt = `Crie UMA ÚNICA IMAGEM VERTICAL na mais alta resolução fotográfica 4K UHD (2160x3840 ou 1080x1920, proporção 9:16) de storyboard fotográfico ultra-realista em ${gridDesc} em ordem de leitura (esquerda para direita, de cima para baixo). Quadros de tamanho igual, cantos arredondados, separados por uma borda branca fina, sobre fundo branco puro (#FFFFFF). Gravação com nitidez cristalina de câmera de smartphone moderno topo de linha, com CORES VIVAS, VIBRANTES E CHEIAS DE VIDA, sem película plástica, sem filtro amarelado/sépia, sem névoa leitosa e sem imagem pálida/opaca/desbotada.${variationsBlock}${scenePartNote}${packagedNotice}${quantityNotice}${oralCareNotice}${apparelNotice}
 
 Use as fotos anexadas como referência absoluta do produto. Preserve fielmente (PRODUCT LOCK): ${sanitizedProductLock.join('; ')}.
 ${productIdentityRule}
@@ -643,12 +643,12 @@ Mapa visual da copy:
 ${visualMapLines}
 
 ${charactersSection}
-Estilo: fotografia ultra-realista com qualidade ótica de smartphone moderno topo de linha, estética UGC autêntica de anúncio de alta conversão, textura de pele natural, cores ricas e fiéis ao produto, ${scenarioDescription}. A iluminação, temperatura de cor e atmosfera devem acompanhar fielmente o contexto da cena especificada no prompt (seja dia claro, fim de tarde, luz de velas, noite ou ambiente residencial). Variar enquadramentos: close, macro, POV, plano médio, plano aberto.${extraInstructions}
+Estilo: fotografia ultra-realista com qualidade ótica de smartphone moderno topo de linha, estética UGC autêntica de anúncio de alta conversão, textura de pele natural e saudável, CORES VIVAS, VIBRANTES E CHEIAS DE VIDA (100% fiéis ao produto real e harmonizadas com o ambiente), ${scenarioDescription}. A iluminação, temperatura de cor e atmosfera devem acompanhar fielmente o contexto da cena especificada no prompt (seja dia claro, fim de tarde, luz de velas, noite ou ambiente residencial), mantendo sempre cores vivas e limpas sem véu amarelado ou opaco. Variar enquadramentos: close, macro, POV, plano médio, plano aberto.${extraInstructions}
 
-DIRETRIZ CRÍTICA DE NITIDEZ ÓPTICA E ZERO PELÍCULA PLÁSTICA/OPACIDADE:
-- LENTE CRISTALINA E ALTA DEFINIÇÃO DE SMARTPHONE MODERNO: Imagem nítida, sensor com foco apurado, contraste equilibrado e realismo autêntico.
-- ZERO PELÍCULA PLÁSTICA, ZERO NÉVOA E ZERO IMAGEM PÁLIDA: É TERMINANTEMENTE PROIBIDO gerar imagem com aspecto de plástico/filme fosco ou amarelado por cima, névoa opaca/leitosa, desbotamento, palidez ou falta de definição. Cores com riqueza ótica e pretos limpos.
-- ILUMINAÇÃO DINÂMICA INTEGRADA AO CENÁRIO: A iluminação deve sempre combinar de forma realista com a cena pedida no prompt (dia, noite, jantar, quarto, sala, etc.).
+DIRETRIZ CRÍTICA DE CORES VIVAS, NITIDEZ ÓPTICA E ZERO ASPECTO AMARELADO/OPACO/PÁLIDO:
+- CORES VIVAS E CHEIAS DE VIDA: As cores do produto, da pele e do cenário devem ser vivas, ricas, vibrantes e cheias de vida, com balanço de branco limpo e contraste autêntico de câmera de smartphone topo de linha.
+- PROIBIÇÃO ABSOLUTA DE CORES AMARELADAS, PÁLIDAS OU OPACAS: É TERMINANTEMENTE PROIBIDO gerar imagem amarelada (sem filtro âmbar/sépia/envelhecido), pálida, opaca, fosca, acinzentada, sem vida ou com aspecto de película plástica/névoa leitosa por cima da lente. Brancos puros e limpos, pretos definidos e cores intensas e reais.
+- ILUMINAÇÃO DINÂMICA INTEGRADA AO CENÁRIO: A iluminação deve sempre combinar de forma realista com a cena pedida no prompt (dia, noite, jantar, quarto, sala, etc.), com riqueza cromática e nitidez cristalina.
 
 ${scenesLines}
 

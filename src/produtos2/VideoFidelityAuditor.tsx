@@ -654,17 +654,6 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
             </p>
           </div>
         </div>
-
-        {videoFile && !isProcessing && (
-          <button
-            type="button"
-            onClick={handleClearVideo}
-            className="text-[11px] text-zinc-400 hover:text-rose-400 font-bold transition-colors cursor-pointer flex items-center gap-1"
-          >
-            <RotateCcw className="w-3 h-3" />
-            <span>Trocar Vídeo</span>
-          </button>
-        )}
       </div>
 
       {/* Inputs de Arquivo Ocultos */}
@@ -744,21 +733,20 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
 
               <button
                 type="button"
-                onClick={() => handleAuditVideo()}
+                onClick={() => {
+                  if (fileInputRef.current) {
+                    fileInputRef.current.value = '';
+                    fileInputRef.current.click();
+                  }
+                }}
                 disabled={isProcessing}
-                className={`px-4 py-2.5 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer shadow-lg disabled:opacity-50 ${
-                  audit
-                    ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700'
-                    : 'bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white shadow-sky-500/20'
-                }`}
+                className="px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 border-2 border-amber-300 text-xs font-black flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-amber-500/20 disabled:opacity-50"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${isProcessing ? 'animate-spin' : ''}`} />
+                <RotateCcw className={`w-4 h-4 text-slate-950 ${isProcessing ? 'animate-spin' : ''}`} />
                 <span>
                   {isProcessing
                     ? statusMessage || 'Analisando...'
-                    : audit
-                    ? 'Reanalisar Vídeo'
-                    : 'Analisar Vídeo'}
+                    : 'Trocar Vídeo'}
                 </span>
               </button>
             </div>

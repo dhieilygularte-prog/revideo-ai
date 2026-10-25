@@ -111,6 +111,7 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
 
   const [promptCopied, setPromptCopied] = useState(false);
   const [hasCopiedPromptOnce, setHasCopiedPromptOnce] = useState(false);
+  const [hasDownloadedStoryboard, setHasDownloadedStoryboard] = useState(false);
   const [copyCopied, setCopyCopied] = useState(false);
   const [descriptionCopied, setDescriptionCopied] = useState(false);
   const [hasCopiedDescriptionOnce, setHasCopiedDescriptionOnce] = useState(false);
@@ -1117,12 +1118,23 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
         className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start scroll-mt-6"
       >
         {/* COLUNA ESQUERDA: IMAGEM DO STORYBOARD 9 CENAS (1080x1920) + FISCALIZAÇÃO */}
-        <div className="lg:col-span-5 p-4 rounded-2xl bg-zinc-900/90 border border-zinc-800 shadow-xl space-y-3.5">
+        <div
+          className={`lg:col-span-5 p-4 rounded-2xl transition-all duration-300 space-y-3.5 ${
+            hasDownloadedStoryboard ? copiedBlueSectionClass : defaultSectionClass
+          }`}
+        >
           <div className="flex items-center justify-between gap-2">
             <div>
-              <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-wide">
-                Storyboard 3×3 (9 Cenas · 1080×1920)
-              </h3>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-wide">
+                  Storyboard 3×3 (9 Cenas · 1080×1920)
+                </h3>
+                {hasDownloadedStoryboard && (
+                  <span className="px-2 py-0.5 rounded-full bg-sky-400/25 border border-sky-300 text-[10px] font-extrabold text-sky-100 uppercase tracking-wider">
+                    BAIXADO ✓
+                  </span>
+                )}
+              </div>
               <p className="text-[11px] text-zinc-400">
                 Arquivo: <span className="text-zinc-200 font-mono">{safeFileName}.png</span>
               </p>
@@ -1186,20 +1198,22 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
                 >
                   <Eye className="w-4 h-4" />
                 </button>
-                {/* Ícone de download individual no canto inferior direito sobre a própria imagem (Seção 2) */}
+                {/* Número da cena + download individual no canto inferior direito sobre a própria imagem */}
                 <button
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
+                    setHasDownloadedStoryboard(true);
                     downloadProdutos2StoryboardImage(
                       result.storyboardImageUrl!,
                       result.productName
                     );
                   }}
-                  className="absolute bottom-2.5 right-2.5 p-2 rounded-xl bg-black/80 hover:bg-emerald-600 text-white border border-white/25 shadow-lg transition-all cursor-pointer flex items-center justify-center"
+                  className="absolute bottom-2.5 right-2.5 px-2.5 py-1.5 rounded-xl bg-black/85 hover:bg-emerald-600 text-white border border-white/30 shadow-lg transition-all cursor-pointer flex items-center gap-1.5"
                   title={`Baixar ${safeFileName}.png`}
                 >
-                  <Download className="w-4 h-4" />
+                  <span className="text-xs font-black font-mono leading-none">1</span>
+                  <Download className="w-3.5 h-3.5" />
                 </button>
               </>
             ) : (

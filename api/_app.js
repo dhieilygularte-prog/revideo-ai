@@ -887,10 +887,10 @@ Retorne estritamente um JSON estruturado:
       if (p && !allPhotos.includes(p)) allPhotos.push(p);
     });
     const modelAntiViolationDirective = !hasUserProvidedModel && !modelReferenceBase64 ? `CRITICAL ANTI-VIOLATION DIRECTIVE: Do NOT copy or clone the face of the actor from the reference video. Generate an original commercial model with a DIFFERENT FACE and distinct facial features (similar demographic style like a cousin, but strictly a different person) to prevent TikTok copyright/impersonation strikes.` : "";
-    const opticalClarityDirective = `CRITICAL OPTICAL CLARITY & HIGH-DEFINITION SENSOR CALIBRATION:
-- Modern high-end smartphone camera clarity: crystal-clear optical glass lens, razor-sharp focus and rich texture definition.
-- SCENARIO-ACCURATE LIGHTING & ATMOSPHERE: The lighting, atmosphere and color temperature must authentically adapt to the specific scene in the prompt (e.g., candlelight, romantic evening, cozy home, or bright daylight).
-- STRICTLY PROHIBITED: Pale, washed-out, milky, hazy, or muddy look; NO plastic film/veil overlay effect across the lens; NO muddy yellowish plastic cast over the frame. Deliver vivid, rich colors, crisp authentic contrast, and clean sensor optics.\r
+    const opticalClarityDirective = `CRITICAL VIVID COLOR & HIGH-DEFINITION OPTICAL CLARITY CALIBRATION:
+- Modern high-end smartphone camera clarity: crystal-clear optical glass lens, razor-sharp focus, vibrant life-like colors, and rich texture definition.
+- VIVID, VIBRANT & TRUE-TO-LIFE COLORS: Colors must be vivid, vibrant, full of life, and 100% faithful to the reference product, harmonizing naturally with the environment. Pure clean whites, deep crisp blacks, and natural healthy skin tones.
+- STRICTLY PROHIBITED (ZERO YELLOWISH / OPAQUE / PALE CAST): Strictly NO yellowish, sepia, amber, or aged tint over the image; NO pale, washed-out, dull, lifeless, milky, hazy, or opaque look; NO plastic film/veil overlay effect across the lens. Deliver crisp authentic contrast and clean sensor optics.
 - 90%+ FIDELITY AUDITOR CALIBRATION (5 INSPECTION GROUPS + ANTI-MORPHING): Preserve 100% of the exact product model, silhouette, all physical components (body, nozzles, caps, cables, handles, buttons, seams, and all kit pieces), realistic human scale, exact surface finish (matte, glossy, metallic), and 1:1 manufacturer logo. Hands must have 5 natural fingers gripping neutral sides cleanly without fusing into the product or covering the logo/buttons.`;
     const overrides = [
       modelAntiViolationDirective,
@@ -920,7 +920,7 @@ ${prompt}` : prompt;
       });
       let baseImageFile = null;
       let effectivePrompt = cleanPrompt;
-      const isStoryboardGrid = prompt.includes("grade 3x3") || prompt.includes("9 cenas numeradas") || prompt.includes("STORYBOARD");
+      const isStoryboardGrid = /grade\s*(?:3x3|2x3|2x2)|(?:9|6|4)\s*(?:cenas|quadros)|storyboard/i.test(prompt);
       if (modelReferenceBase64 && !isCloneMode && !isStoryboardGrid) {
         baseImageFile = toImageFile(modelReferenceBase64, "imagem_1_base");
         const swatchStr = productPhotoBase64 || productPhotosBase64[0];
@@ -4700,7 +4700,7 @@ Retorne APENAS um objeto JSON v\xE1lido com as chaves:
           }
         });
         contentBlocks.push({ type: "text", text: userPrompt });
-        const modelsToTry = [OPENAI_BRAIN_MODEL, "gpt-4o", "gpt-4o-mini", OPENAI_AUDIT_MODEL];
+        const modelsToTry = ["gpt-4o", "gpt-4o-mini", OPENAI_BRAIN_MODEL, OPENAI_AUDIT_MODEL];
         for (const modelCandidate of modelsToTry) {
           try {
             const params = {
@@ -4783,8 +4783,8 @@ Retorne APENAS um objeto JSON v\xE1lido com as chaves:
         });
         parts.push({ text: userPrompt });
         const geminiModels = [
-          GEMINI_VISION_MODEL || "gemini-3.8-flash",
           "gemini-2.5-flash",
+          GEMINI_VISION_MODEL || "gemini-3.8-flash",
           GEMINI_VISION_FAST_MODEL || "gemini-3.1-flash-lite"
         ];
         for (const gemModel of geminiModels) {
@@ -4859,8 +4859,14 @@ Retorne APENAS um objeto JSON v\xE1lido com as chaves:
     return res.json({ success: false, error: err?.message || "Erro no planejamento Produtos 2.0" });
   }
 });
+var logoSpecCache = /* @__PURE__ */ new Map();
 async function extractManufacturerLogoSpecFromPhotos(photosList, productName) {
   if (!photosList || photosList.length === 0) return "";
+  const firstPhotoSample = String(photosList[0] || "");
+  const cacheKey = `${productName.trim().toLowerCase()}::${firstPhotoSample.length}::${firstPhotoSample.slice(0, 80)}::${firstPhotoSample.slice(-80)}`;
+  if (logoSpecCache.has(cacheKey)) {
+    return logoSpecCache.get(cacheKey) || "";
+  }
   const promptLogo = `Inspecione as fotos de refer\xEAncia do produto "${productName}".
 O produto possui alguma logomarca, emblema, escudo, s\xEDmbolo gr\xE1fico ou texto de marca do fabricante impresso/estampado/bordado nele mesmo (por exemplo: no encosto, na estrutura, na lateral, no painel ou no r\xF3tulo)?
 IMPORTANTE: Ignore qualquer marca d'\xE1gua de rede social fora do produto. Olhe SOMENTE para a marca/logomarca que faz parte do pr\xF3prio produto f\xEDsico.
@@ -4883,7 +4889,7 @@ Retorne ESTRITAMENTE um JSON:
         });
       });
       contentBlocks.push({ type: "text", text: promptLogo });
-      for (const m of [OPENAI_AUDIT_MODEL || "gpt-5.6-luna", "gpt-4o-mini", OPENAI_BRAIN_MODEL]) {
+      for (const m of ["gpt-4o-mini", "gpt-4o", OPENAI_AUDIT_MODEL || "gpt-5.6-luna", OPENAI_BRAIN_MODEL]) {
         try {
           const r = await client.chat.completions.create({
             model: m,
@@ -4891,10 +4897,13 @@ Retorne ESTRITAMENTE um JSON:
             response_format: { type: "json_object" }
           });
           const parsed = JSON.parse(r.choices[0]?.message?.content || "{}");
-          if (parsed?.hasManufacturerLogo && parsed?.logoSpec) {
-            return String(parsed.logoSpec).trim();
+          const specResult = parsed?.hasManufacturerLogo && parsed?.logoSpec ? String(parsed.logoSpec).trim() : "";
+          if (logoSpecCache.size > 150) {
+            const oldestKey = logoSpecCache.keys().next().value;
+            if (oldestKey) logoSpecCache.delete(oldestKey);
           }
-          return "";
+          logoSpecCache.set(cacheKey, specResult);
+          return specResult;
         } catch {
         }
       }
@@ -4978,10 +4987,10 @@ PROIBI\xC7\xC3O ABSOLUTA DE SITE E C\xD3DIGO DE BARRAS EM EMBALAGENS:
     const opticalClarityDirective = `
 
 ========================
-DIRETRIZ CR\xCDTICA DE NITIDEZ \xD3PTICA E ZERO PEL\xCDCULA PL\xC1STICA/OPACIDADE:
-1. NITIDEZ DE C\xC2MERA DE SMARTPHONE MODERNO TOPO DE LINHA: Imagem n\xEDtida, sensor de alta defini\xE7\xE3o e foco cristalino, retratando a cena com m\xE1xima naturalidade e realismo.
-2. ZERO PEL\xCDCULA PL\xC1STICA, ZERO OPACIDADE E ZERO PALIDEZ: \xC9 terminantemente proibido imagem com aspecto de pl\xE1stico/filme fosco ou amarelado por cima, n\xE9voa leitosa, v\xE9u esbranqui\xE7ado ou cores p\xE1lidas/desbotadas. A imagem deve ter riqueza \xF3tica, contraste aut\xEAntico e cores vivas e fi\xE9is.
-3. ILUMINA\xC7\xC3O DIN\xC2MICA FIEL AO PROMPT: A ilumina\xE7\xE3o, temperatura de cor e atmosfera devem se adaptar com perfei\xE7\xE3o \xE0 cena e ao cen\xE1rio especificados no prompt (luz do dia, luz de velas, noite, ambiente interno simples e acolhedor, etc.).
+DIRETRIZ CR\xCDTICA DE CORES VIVAS, NITIDEZ \xD3PTICA E ZERO ASPECTO AMARELADO/OPACO/P\xC1LIDO:
+1. NITIDEZ DE C\xC2MERA DE SMARTPHONE MODERNO TOPO DE LINHA: Imagem n\xEDtida, sensor de alta defini\xE7\xE3o e foco cristalino, retratando a cena com m\xE1xima naturalidade, CORES VIVAS, VIBRANTES E CHEIAS DE VIDA.
+2. PROIBI\xC7\xC3O ABSOLUTA DE CORES AMARELADAS, P\xC1LIDAS OU OPACAS: \xC9 TERMINANTEMENTE PROIBIDO gerar imagem amarelada (zero filtro \xE2mbar/s\xE9pia/envelhecido), p\xE1lida, desbotada, opaca, fosca, sem vida ou com aspecto de pel\xEDcula pl\xE1stica/n\xE9voa leitosa por cima da lente. Balan\xE7o de branco limpo, brancos puros, pretos n\xEDtidos e cores intensas e reais.
+3. ILUMINA\xC7\xC3O DIN\xC2MICA FIEL AO PROMPT: A ilumina\xE7\xE3o, temperatura de cor e atmosfera devem se adaptar com perfei\xE7\xE3o \xE0 cena e ao cen\xE1rio especificados no prompt (luz do dia, luz de velas, noite, ambiente interno acolhedor, etc.), mantendo sempre cores vivas e cheias de vida.
 ========================`;
     const auditor90PlusCalibrationDirective = `
 
@@ -5391,7 +5400,7 @@ O array "quadrants" DEVE conter exatamente ${quadrantCount} itens (sceneNumber 1
                   type: "image_url",
                   image_url: {
                     url: photo.startsWith("data:") ? photo : `data:image/jpeg;base64,${photo}`,
-                    detail: "high"
+                    detail: pIdx === 0 ? "high" : "low"
                   }
                 });
               });
@@ -5406,7 +5415,7 @@ O array "quadrants" DEVE conter exatamente ${quadrantCount} itens (sceneNumber 1
                 type: "image_url",
                 image_url: {
                   url: photo.startsWith("data:") ? photo : `data:image/jpeg;base64,${photo}`,
-                  detail: "high"
+                  detail: idx < 2 ? "high" : "low"
                 }
               });
             });
@@ -5426,7 +5435,7 @@ O array "quadrants" DEVE conter exatamente ${quadrantCount} itens (sceneNumber 1
             type: "text",
             text: `Inspecione cada um dos ${quadrantCount} quadrantes (Cena 1 a Cena ${quadrantCount}) comparando com as fotos reais de refer\xEAncia. Lembre-se: se houver m\xFAltiplas varia\xE7\xF5es anexadas, o produto \xE9 considerado 100% correto em qualquer quadrante desde que seja id\xEAntico a QUALQUER UMA das varia\xE7\xF5es anexadas! S\xF3 reprove se o produto tiver apar\xEAncia, formato, logomarca ou cor diferente de TODAS as varia\xE7\xF5es anexadas. Retorne o JSON em portugu\xEAs.`
           });
-          const modelsToTry = [OPENAI_AUDIT_MODEL || "gpt-5.6-luna", "gpt-4o", "gpt-4o-mini", OPENAI_BRAIN_MODEL];
+          const modelsToTry = ["gpt-4o", "gpt-4o-mini", OPENAI_AUDIT_MODEL || "gpt-5.6-luna", OPENAI_BRAIN_MODEL];
           for (const modelCandidate of modelsToTry) {
             try {
               const params = {
