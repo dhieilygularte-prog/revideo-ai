@@ -11,6 +11,18 @@ import {
   Produtos2VisualMapItem,
 } from './types';
 import { applySpeechIntro } from './produtos2CopyBank';
+import {
+  appendFidelityLockToVeoPrompt,
+  detectProductQuantity,
+  isApparelProduct,
+  isOralCareProduct,
+  isPackagedProductOnly,
+  sanitizeAllScenesForFidelity,
+  sanitizeProductLockForFidelity,
+  sanitizeSceneFidelityAction,
+  sanitizeStoryboardPromptForFidelity,
+  sanitizeVisualMapForFidelity,
+} from './produtos2FidelityLock';
 
 /**
  * Retorna a descrição canônica unificada de uma cena (mesma pessoa, mesma ação e mesmo enquadramento
@@ -32,8 +44,8 @@ export function getUnifiedSceneDescription(sc: Produtos2SceneItem): string {
  * Formata a descrição curta da Cena 1 para completar a frase do primeiro frame:
  * com letra minúscula, sem ponto no meio e concordância natural ("da apresentadora...", "de duas mãos...") — Item 7.1
  */
-export function formatFirstFrameClause(scene1: Produtos2SceneItem | undefined, productName: string): string {
-  const raw = (scene1?.action || `apresentação inicial em close de ${productName}`).trim();
+export function formatFirstFrameClause(scene1: Produtos2SceneItem | undefined, _productName?: string): string {
+  const raw = (scene1?.action || `gancho inicial de abertura com expressão chamativa`).trim();
   // Remove reticências e substitui pontos no meio por vírgulas, limpando pontuação final
   let cleaned = raw
     .replace(/…|\.\.\./g, ',')
@@ -43,7 +55,7 @@ export function formatFirstFrameClause(scene1: Produtos2SceneItem | undefined, p
     .trim();
 
   if (!cleaned) {
-    return `de apresentação inicial em close de ${productName}`;
+    return `do gancho inicial de abertura com expressão chamativa`;
   }
 
   // Primeira letra minúscula
@@ -81,12 +93,47 @@ export interface SceneVariationInfo {
  */
 export function getSceneVariationInfo(
   sceneNumber: number,
-  variations: { name?: string; photos?: string[] }[] = []
+  variations: { name?: string; photos?: string[] }[] = [],
+  totalScenes: 4 | 6 | 9 = 9
 ): SceneVariationInfo | null {
   const active = (variations || []).filter(
     (v) => (v.name && v.name.trim().length > 0) || (v.photos && v.photos.length > 0)
   );
   if (active.length <= 1) return null;
+
+  if (totalScenes === 4) {
+    if (active.length === 2) {
+      const idx = sceneNumber <= 2 ? 0 : 1;
+      return {
+        variationIndex: idx,
+        variationName: active[idx].name?.trim() || `Variação ${idx + 1}`,
+        totalVariations: 2,
+      };
+    }
+    const idx = sceneNumber === 1 ? 0 : sceneNumber === 2 ? 1 : 2;
+    return {
+      variationIndex: idx,
+      variationName: active[idx].name?.trim() || `Variação ${idx + 1}`,
+      totalVariations: Math.min(3, active.length),
+    };
+  }
+
+  if (totalScenes === 6) {
+    if (active.length === 2) {
+      const idx = sceneNumber <= 3 ? 0 : 1;
+      return {
+        variationIndex: idx,
+        variationName: active[idx].name?.trim() || `Variação ${idx + 1}`,
+        totalVariations: 2,
+      };
+    }
+    const idx = sceneNumber <= 2 ? 0 : sceneNumber <= 4 ? 1 : 2;
+    return {
+      variationIndex: idx,
+      variationName: active[idx].name?.trim() || `Variação ${idx + 1}`,
+      totalVariations: Math.min(3, active.length),
+    };
+  }
 
   if (active.length === 2) {
     const idx = sceneNumber <= 4 ? 0 : 1;
@@ -387,12 +434,15 @@ export function buildProdutos2StoryboardImagePrompt(params: {
   framing: Produtos2Framing;
   scenarioDescription: string;
   scenes: Produtos2SceneItem[];
+  productInfo?: string;
   additionalInstructions?: string;
   variations?: { name: string; photos: string[] }[];
   isDialogue?: boolean;
   dialogueDescription?: string;
   dialogueScript?: string;
   speakers?: Array<{ speaker: string; gender?: string; speech: string }>;
+  sceneCount?: 4 | 6 | 9;
+  scenePartIndex?: 1 | 2;
 }): string {
   const {
     productName,
@@ -403,13 +453,24 @@ export function buildProdutos2StoryboardImagePrompt(params: {
     framing,
     scenarioDescription,
     scenes,
+    productInfo,
     additionalInstructions,
     variations = [],
     isDialogue,
     dialogueDescription,
     dialogueScript,
     speakers,
+    sceneCount: explicitSceneCount,
+    scenePartIndex = 1,
   } = params;
+
+  const totalScenes: 4 | 6 | 9 = explicitSceneCount || (scenes.length === 4 ? 4 : scenes.length === 6 ? 6 : 9);
+  const gridDesc =
+    totalScenes === 4
+      ? 'grade 2x2 (2 colunas x 2 linhas), com EXATAMENTE 4 cenas em quadrantes grandes de alta resolução (Quadro 1 topo esquerdo, Quadro 2 topo direito, Quadro 3 inferior esquerdo, Quadro 4 inferior direito)'
+      : totalScenes === 6
+      ? 'grade 2x3 (2 colunas x 3 linhas), com EXATAMENTE 6 cenas numeradas de 1 a 6'
+      : 'grade 3x3 (3 colunas x 3 linhas), com EXATAMENTE 9 cenas numeradas de 1 a 9';
 
   const dialogueInfo = detectDialogueInfo({
     isDialogue,
@@ -427,7 +488,32 @@ export function buildProdutos2StoryboardImagePrompt(params: {
       ? 'sem rosto (enquadrar sempre do pescoço para baixo, o rosto nunca aparece em nenhum quadro)'
       : 'POV em primeira pessoa (mostrar somente as mãos do usuário interagindo com o produto, nunca mostrar rosto ou corpo)';
 
-  const visualMapLines = visualMap
+  const isPackaged = isPackagedProductOnly(
+    productName,
+    productInfo,
+    `${(productLock || []).join(' ')} ${additionalInstructions || ''} ${finalCopy}`
+  );
+
+  const qtyInfo = detectProductQuantity(
+    productName,
+    productInfo,
+    `${(productLock || []).join(' ')} ${additionalInstructions || ''} ${finalCopy}`
+  );
+
+  const isOralCare = isOralCareProduct(
+    productName,
+    productInfo,
+    `${(productLock || []).join(' ')} ${additionalInstructions || ''} ${finalCopy}`
+  );
+
+  const isApparel = isApparelProduct(
+    productName,
+    productInfo,
+    `${(productLock || []).join(' ')} ${additionalInstructions || ''} ${finalCopy}`
+  );
+
+  const sanitizedVisualMap = sanitizeVisualMapForFidelity(visualMap, productName, productInfo);
+  const visualMapLines = sanitizedVisualMap
     .map((m) => `"${m.excerpt}" → ${m.intent} (${m.visualProof}) → cenas ${m.scenes}`)
     .join('\n');
 
@@ -435,36 +521,68 @@ export function buildProdutos2StoryboardImagePrompt(params: {
     (v) => (v.name && v.name.trim().length > 0) || (v.photos && v.photos.length > 0)
   );
 
+  const fidelityLocked = sanitizeProductLockForFidelity(productLock, productName, productInfo);
   const sanitizedProductLock =
     activeVars.length >= 2
-      ? sanitizeProductLockForVariations(productLock, activeVars, productName)
-      : productLock;
+      ? sanitizeProductLockForVariations(fidelityLocked, activeVars, productName)
+      : fidelityLocked;
 
   let variationsBlock = '';
   if (activeVars.length >= 2) {
     variationsBlock = `
 
 ═══════════════════════════════════════════════════════════════════
-REGRA MANDATÓRIA E INEGOCIÁVEL — DIVISÃO DE CORES DO PRODUTO (GRADE 3x3):
+REGRA MANDATÓRIA E INEGOCIÁVEL — DIVISÃO DE CORES DO PRODUTO (${totalScenes === 4 ? 'GRADE 2x2' : totalScenes === 6 ? 'GRADE 2x3' : 'GRADE 3x3'}):
 O produto possui ${activeVars.length} variações de cor/modelo anexadas nas fotos de referência:
 ${
-  activeVars.length === 2
+  totalScenes === 4
+    ? activeVars.length === 2
+      ? `• Quadros 1 e 2 (Linha 1 do Storyboard): O produto DEVE ser retratado OBRIGATORIAMENTE na COR/VARIAÇÃO 1: ${activeVars[0].name || '1ª Cor'}.
+• Quadros 3 e 4 (Linha 2 do Storyboard): O produto DEVE ser retratado OBRIGATORIAMENTE na COR/VARIAÇÃO 2: ${activeVars[1].name || '2ª Cor'}.`
+      : `• Quadro 1 (Topo esquerdo): O produto DEVE ser retratado na COR/VARIAÇÃO 1: ${activeVars[0].name || '1ª Cor'}.
+• Quadro 2 (Topo direito): O produto DEVE ser retratado na COR/VARIAÇÃO 2: ${activeVars[1].name || '2ª Cor'}.
+• Quadros 3 e 4 (Linha inferior): O produto DEVE ser retratado na COR/VARIAÇÃO 3: ${activeVars[2].name || '3ª Cor'}.`
+    : totalScenes === 6
+    ? activeVars.length === 2
+      ? `• Quadros 1, 2 e 3 (metade inicial): O produto DEVE ser retratado OBRIGATORIAMENTE na COR/VARIAÇÃO 1: ${activeVars[0].name || '1ª Cor'}.
+• Quadros 4, 5 e 6 (segunda metade): O produto DEVE ser retratado OBRIGATORIAMENTE na COR/VARIAÇÃO 2: ${activeVars[1].name || '2ª Cor'}.`
+      : `• Quadros 1 e 2 (Linha 1 do Storyboard): O produto DEVE ser retratado OBRIGATORIAMENTE na COR/VARIAÇÃO 1: ${activeVars[0].name || '1ª Cor'}.
+• Quadros 3 e 4 (Linha 2 do Storyboard): O produto DEVE ser retratado OBRIGATORIAMENTE na COR/VARIAÇÃO 2: ${activeVars[1].name || '2ª Cor'}.
+• Quadros 5 e 6 (Linha 3 do Storyboard): O produto DEVE ser retratado OBRIGATORIAMENTE na COR/VARIAÇÃO 3: ${activeVars[2].name || '3ª Cor'}.`
+    : activeVars.length === 2
     ? `• Quadros 1, 2, 3 e 4 (metade inicial): O produto DEVE ser retratado OBRIGATORIAMENTE na COR/VARIAÇÃO 1: ${activeVars[0].name || '1ª Cor'}.
 • Quadros 5, 6, 7, 8 e 9 (segunda metade): O produto DEVE ser retratado OBRIGATORIAMENTE na COR/VARIAÇÃO 2: ${activeVars[1].name || '2ª Cor'}.`
     : `• Quadros 1, 2 e 3 (Linha 1 do Storyboard): O produto DEVE ser retratado OBRIGATORIAMENTE na COR/VARIAÇÃO 1: ${activeVars[0].name || '1ª Cor'}.
 • Quadros 4, 5 e 6 (Linha 2 do Storyboard): O produto DEVE ser retratado OBRIGATORIAMENTE na COR/VARIAÇÃO 2: ${activeVars[1].name || '2ª Cor'}.
 • Quadros 7, 8 e 9 (Linha 3 do Storyboard): O produto DEVE ser retratado OBRIGATORIAMENTE na COR/VARIAÇÃO 3: ${activeVars[2].name || '3ª Cor'}.`
 }
-NARRATIVA CONTÍNUA E PROGRESSIVA: As 9 cenas contam uma única história contínua de demonstração do produto (NUNCA repita as mesmas ações ou cenas para cada cor). A demonstração progride normalmente da Cena 1 à Cena 9; apenas retrate o produto na cor indicada para cada grupo de quadros!
-PROIBIÇÃO ABSOLUTA: NUNCA gere todos os 9 quadros na mesma cor! É expressamente PROIBIDO usar uma única cor para todo o storyboard quando há variações informadas. A divisão de cores acima é RIGOROSA e OBRIGATÓRIA!
+NARRATIVA CONTÍNUA E PROGRESSIVA: As ${totalScenes} cenas contam uma única história contínua de demonstração do produto (NUNCA repita as mesmas ações ou cenas para cada cor). A demonstração progride normalmente da Cena 1 à Cena ${totalScenes}; apenas retrate o produto na cor indicada para cada grupo de quadros! (Caso o Quadro 1 seja um hook focado na expressão/reação da apresentadora sem o produto físico, a cor da Variação 1 é aplicada nos quadros seguintes em que o produto aparecer).
+PROIBIÇÃO ABSOLUTA: NUNCA gere todos os ${totalScenes} quadros na mesma cor! É expressamente PROIBIDO usar uma única cor para todo o storyboard quando há variações informadas. A divisão de cores acima é RIGOROSA e OBRIGATÓRIA!
 ═══════════════════════════════════════════════════════════════════`;
   }
 
-  // Item 7.3: Usar exatamente as mesmas 9 descrições canônicas no storyboard e no Veo, injetando a variação correspondente
-  const scenesLines = scenes
-    .slice(0, 9)
+  const sanitizedScenes = sanitizeAllScenesForFidelity(scenes, productName, productInfo, scenePartIndex);
+
+  const packagedNotice = isPackaged
+    ? `\n\n═══════════════════════════════════════════════════════════════════\n⚠️ REGRA INEGOCIÁVEL DE EMBALAGEM FECHADA / PACOTES LACRADOS (TIKTOK SHOP):\nO produto nas fotos de referência consiste em PACOTES FECHADOS / EMBALAGEM LACRADA.\nÉ TERMINANTEMENTE E SEVERAMENTE PROIBIDO desenhar o pacote aberto, rasgado, fraldas avulsas/soltas fora do pacote, partes internas soltas, estampas internas não fotografadas (como Galinha Pintadinha em fralda avulsa) ou qualquer teste derramando líquidos/água!\nEm todos os quadros em que o produto for retratado (obrigatório nas Cenas 2 a ${totalScenes}; Cena 1 liberada para hook sem produto), o que deve ser desenhado e manipulado pela apresentadora é EXCLUSIVAMENTE o PACOTE FECHADO idêntico às fotos reais anexadas!\n═══════════════════════════════════════════════════════════════════\n`
+    : '';
+
+  const oralCareNotice = isOralCare
+    ? `\n\n═══════════════════════════════════════════════════════════════════\n⚠️ REGRA MANDATÓRIA PARA PRODUTO DE USO/HIGIENE ORAL (ANTI-PUNIÇÃO TIKTOK):\nÉ TERMINANTEMENTE PROIBIDO mostrar "antes e depois" de clareamento de dentes ou closes na boca com dentes clareados/branqueados.\nO vídeo e todos os quadros DEVEM ser produzidos SEM dar a entender clareamento dental. Mostre o aparelho na mão, o jato d'água fluindo limpo em direção à pia ou a um copo de vidro, botões e bicos de encaixe, e a apresentadora sorrindo de forma acolhedora e espontânea com a boca fechada ou natural sem focar em dentes!\n═══════════════════════════════════════════════════════════════════\n`
+    : '';
+
+  const apparelNotice = isApparel
+    ? `\n\n═══════════════════════════════════════════════════════════════════\n⚠️ REGRA MANDATÓRIA DE VESTUÁRIO/ROUPAS (100% FIDELIDADE A BOTÕES E COSTURAS):\nA peça de vestuário deve ser 100% fiel às fotos de referência em botões (mesmo formato, quantidade e cor), costuras, pespontos, corte, caimento, trama do tecido e estampa visual. Proibido inventar botões ou costuras não fotografadas!\n═══════════════════════════════════════════════════════════════════\n`
+    : '';
+
+  const quantityNotice = qtyInfo.isKit
+    ? `\n\n═══════════════════════════════════════════════════════════════════\n⚠️ TRAVA ESTRITA DE QUANTIDADE DE PRODUTO (KIT DE ${qtyInfo.quantity} UNIDADES):\nNos quadros em que o produto for exibido (presença obrigatória nas Cenas 2 a ${totalScenes}; Cena 1 liberada para hook chamativo): O anúncio é de um kit de EXATAMENTE ${qtyInfo.quantity} unidades/pacotes. NUNCA mostre quantidade diferente de ${qtyInfo.quantity} na mesma tela em nenhum frame! Se o anúncio é kit de ${qtyInfo.quantity}, devem aparecer rigorosamente e exatamente ${qtyInfo.quantity} pacotes/itens.\n═══════════════════════════════════════════════════════════════════\n`
+    : `\n\n═══════════════════════════════════════════════════════════════════\n⚠️ TRAVA ESTRITA DE QUANTIDADE DE PRODUTO (1 UNIDADE INDIVIDUAL):\nNos quadros em que o produto for exibido (presença obrigatória nas Cenas 2 a ${totalScenes}; Cena 1 liberada para hook chamativo): O anúncio é de 1 produto único. NUNCA mostre 2 ou mais unidades na mesma tela em nenhum frame! 100% fiel à unidade única fotografada.\n═══════════════════════════════════════════════════════════════════\n`;
+
+  const scenesLines = sanitizedScenes
+    .slice(0, totalScenes)
     .map((sc, i) => {
-      const varInfo = getSceneVariationInfo(i + 1, activeVars);
+      const varInfo = getSceneVariationInfo(i + 1, activeVars, totalScenes);
       const varTag = varInfo ? ` [COR/VARIAÇÃO OBRIGATÓRIA DESTE QUADRO: ${varInfo.variationName.toUpperCase()}]` : '';
       return `CENA ${i + 1} (QUADRO ${i + 1})${varTag}: ${getUnifiedSceneDescription(sc)}`;
     })
@@ -473,6 +591,11 @@ PROIBIÇÃO ABSOLUTA: NUNCA gere todos os 9 quadros na mesma cor! É expressamen
   const extraInstructions = additionalInstructions?.trim()
     ? `\nINSTRUÇÕES ADICIONAIS PRIORITÁRIAS DO USUÁRIO: ${additionalInstructions.trim()}`
     : '';
+
+  const scenePartNote =
+    totalScenes === 6 && scenePartIndex === 2
+      ? `\nCONTINUIDADE DE SEGUNDA CENA (CENA 2): Este storyboard de 6 quadros representa a Segunda Parte do vídeo, dando continuidade direta à Cena 1 sem repetir cenas anteriores e sem reiniciar a história, mantendo o mesmo personagem, roupas, cenário, iluminação e identidade visual do produto.`
+      : '';
 
   const productIdentityRule =
     activeVars.length >= 2
@@ -484,24 +607,34 @@ PROIBIÇÃO ABSOLUTA: NUNCA gere todos os 9 quadros na mesma cor! É expressamen
     : '';
 
   const charactersSection = dialogueInfo.isDialogue
-    ? `PERSONAGENS EM CENA E INTERAÇÃO (DIÁLOGO): Dois personagens principais em interação direta e expressiva (Mulher e Homem), mantendo rigorosa continuidade física, de roupas e de traços em todos os 9 quadros. ${avatarDescription}. Enquadramento: ${framingLabel}.${dialogueScriptBlock}`
+    ? `PERSONAGENS EM CENA E INTERAÇÃO (DIÁLOGO): Dois personagens principais em interação direta e expressiva (Mulher e Homem), mantendo rigorosa continuidade física, de roupas e de traços em todos os ${totalScenes} quadros. ${avatarDescription}. Enquadramento: ${framingLabel}.${dialogueScriptBlock}`
     : `PERSONAGEM: ${avatarDescription}, o mesmo em todos os quadros. Enquadramento: ${framingLabel}.`;
 
-  return `Crie UMA ÚNICA IMAGEM VERTICAL na mais alta resolução fotográfica 4K UHD (2160x3840 ou 1080x1920, proporção 9:16) de storyboard fotográfico ultra-realista em grade 3x3 (3 colunas x 3 linhas), com EXATAMENTE 9 cenas numeradas de 1 a 9 em ordem de leitura (esquerda para direita, de cima para baixo). Quadros de tamanho igual, cantos arredondados, separados por uma borda branca fina, sobre fundo branco puro (#FFFFFF). Gravação com nitidez cristalina de câmera de smartphone moderno topo de linha, sem película plástica, névoa leitosa ou imagem pálida/desbotada.${variationsBlock}
+  const rawPrompt = `Crie UMA ÚNICA IMAGEM VERTICAL na mais alta resolução fotográfica 4K UHD (2160x3840 ou 1080x1920, proporção 9:16) de storyboard fotográfico ultra-realista em ${gridDesc} em ordem de leitura (esquerda para direita, de cima para baixo). Quadros de tamanho igual, cantos arredondados, separados por uma borda branca fina, sobre fundo branco puro (#FFFFFF). Gravação com nitidez cristalina de câmera de smartphone moderno topo de linha, sem película plástica, névoa leitosa ou imagem pálida/desbotada.${variationsBlock}${scenePartNote}${packagedNotice}${quantityNotice}${oralCareNotice}${apparelNotice}
 
 Use as fotos anexadas como referência absoluta do produto. Preserve fielmente (PRODUCT LOCK): ${sanitizedProductLock.join('; ')}.
 ${productIdentityRule}
-REGRA 1 — ZERO SITES E ZERO QR CODES / CÓDIGOS DE BARRAS (MESMO SE CONSTAREM NA IMAGEM DE REFERÊNCIA):
-É TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, domínio, URL (ex.: www..., .com, .com.br, https) ou código de barras/QR code em qualquer imagem, produto, embalagem ou caixa do storyboard. MESMO QUE A IMAGEM DE REFERÊNCIA ANEXADA CONTENHA UM SITE OU QR CODE IMPRESSO NA EMBALAGEM OU NO PRODUTO, VOCÊ DEVE OBRIGATORIAMENTE OMITIR, REMOVER E DEIXAR A ÁREA LIMPA! Nenhuma imagem pode conter site ou QR code!
+REGRA DO PRIMEIRO QUADRO (QUADRO 1 / HOOK DE ATENÇÃO):
+- No Quadro 1 (Cena 1 / Primeiro Frame), o produto NÃO é obrigado a aparecer! O Quadro 1 está 100% liberado para ser uma imagem chamativa, reação expressiva/curiosa do apresentador ou situação de impacto focada no hook sem o produto físico em tela.
+- Se o usuário pedir expressamente nas Instruções Adicionais para mostrar o produto desde o primeiro frame, inclua-o. Caso contrário, o primeiro frame é livre: pode ter ou não ter o produto de acordo com o que criar o melhor hook.
+- Nos demais quadros (Quadros 2 a ${totalScenes}), a presença do produto é OBRIGATÓRIA e deve ser 100% fiel às fotos de referência!
 
-REGRA 2 — PROIBIÇÃO DE INVENTAR PRODUTO INTERNO E PROIBIÇÃO DE INVENTAR ÂNGULOS NÃO FORNECIDOS:
-1) O aplicativo NUNCA inventa produto interno: Se o produto anunciado for uma caixa de bombons, pacote de fraldas, caixa fechada, fardo, pote ou embalagem lacrada e NÃO contêm fotos do item solto de dentro, É TERMINANTEMENTE PROIBIDO criar ou mostrar o produto de dentro da embalagem (exemplo: NUNCA mostrar bombons soltos fora da caixa de bombons, NUNCA mostrar fraldas soltas fora do pacote de fralda, fraldas abertas ou interior do pacote aberto)! Em TODOS os 9 quadros deve aparecer RIGOROSAMENTE A EMBALAGEM/PACOTE FECHADO idêntico à referência!
-2) O aplicativo NUNCA inventa ângulos não fotografados: Se o produto foi mostrado nas fotos de referência apenas de frente (ou em determinado ângulo) e não foi mostrado o verso/costas/traseira, É TERMINANTEMENTE PROIBIDO gerar imagens mostrando o verso, traseira ou costas do produto, pois isso seria inventar o que não foi fotografado! O produto deve ser retratado estritamente nos ângulos fornecidos nas referências anexadas.
-
-REGRA 3 — MÁXIMA FIDELIDADE DE EMBALAGEM, NOME DO FABRICANTE, LOGOMARCA E CORES EXATAS (1:1):
-1) Embalagens: Manter rigorosamente a mesma aparência visual da embalagem das fotos de referência (mesmo formato, proporção, arte gráfica e disposição).
-2) Nome do fabricante e logomarca: O nome do fabricante deve ser escrito de forma 100% correta e idêntica à foto de referência (jamais grafar diferente, distorcer letras ou inventar nomes). A logomarca e o símbolo original do fabricante devem ser preservados 100% fiéis no mesmo local da peça/embalagem. JAMAIS remova, apague ou deixe lisa a área onde fica a logomarca original do fabricante!
-3) Cores exatas 1:1: As cores do produto E as cores da embalagem do produto DEVEM ser rigorosamente idênticas às fotos de referência. NUNCA alterar tons, saturação ou trocar cores nem do produto, nem da embalagem!
+AS 10 REGRAS MANDATÓRIAS DE FIDELIDADE TOTAL AO PRODUTO ANEXADO E CALIBRAGEM PARA APROVAÇÃO >=90% NOS AUDITORES DE STORYBOARD E VÍDEO:
+1. TRAVA ESTRITA DE QUANTIDADE DE PRODUTO: Em todos os quadros onde o produto for exibido, nunca colocar quantidade diferente do anúncio! Se o anúncio é de 1 celular, relógio ou perfume, NUNCA pode aparecer 2 celulares/relógios/perfumes na tela em nenhum frame. Se o anúncio é kit de 4 pacotes de fraldas, NUNCA pode aparecer 3 ou 5 pacotes na tela em nenhum frame: devem aparecer SEMPRE e RIGOROSAMENTE a quantidade exata (ex.: exatamente 4 pacotes).
+2. LOGOMARCA, NOME DO FABRICANTE E NOME DO PRODUTO: A marca, a logomarca, o emblema/símbolo e o nome do produto que estão impressos, estampados ou gravados no próprio produto nas fotos de referência DEVEM aparecer 100% idênticos (mesmo desenho, formato, cor, proporção e posição exata na peça) em TODOS os quadros onde essa parte estiver visível. JAMAIS remova, apague ou deixe lisa a área onde fica a logomarca original do fabricante no produto!
+3. PRODUTOS DE USO ORAL SEM "ANTES E DEPOIS" E SEM CLAREAMENTO: Para produtos de higiene ou uso oral (escova de dentes, irrigador oral, enxaguante, etc.), fazer o vídeo SEM mostrar dentes em close e SEM dar a entender que houve clareamento dental.
+4. ROUPAS E PEÇAS DE VESTUÁRIO 100% FIÉIS: Quando o produto for roupas, a peça precisa ser 100% fiel no tocante a botões, costuras, pespontos, cores, detalhes, caimento e padrão visual às fotos de referência.
+5. PROPORÇÃO E TAMANHO REAL (PROIBIDO APARENTAR SER MAIOR): O produto NÃO pode aparentar ser maior do que o produto mostrado nas fotos de referência reais. Manter proporções humanas e escala 100% realistas em relação às mãos e corpo do apresentador.
+6. LAYOUT, CORES E ÂNGULOS VISÍVEIS 100% IDÊNTICOS (PROIBIDO INVENTAR ÂNGULOS OCULTOS): Manter o produto com layout e cores 100% idênticos às fotos de referência. NUNCA criar imagem do produto mostrando ângulos dele que não estejam nas imagens de referência (ou seja, NÃO inventar parte traseira, lateral ou interior do produto). Mostrar o produto SEMPRE nos ângulos visíveis nas fotos de referência.
+7. PRODUTO EM EMBALAGEM FECHADA / PACOTE LACRADO / CAIXA: Se as referências mostram o produto lacrado na embalagem/pacote fechado e NÃO há fotos do item avulso solto fora da embalagem, É EXPRESSAMENTE E TERMINANTEMENTE PROIBIDO inventar, abrir ou desenhar o produto solto fora do pacote. Em TODOS os quadros em que a embalagem for exibida, o que deve ser mostrado e manuseado é o PACOTE/EMBALAGEM/CAIXA FECHADA exatamente como nas fotos reais!
+8. PROIBIÇÃO ABSOLUTA DE SITE E CÓDIGO DE BARRAS EM EMBALAGENS/CAIXAS: É TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, domínio, URL (ex.: www..., .com, .com.br, https) ou código de barras/QR code em qualquer caixa, pacote ou embalagem do produto. As caixas, pacotes e embalagens devem ser 100% limpas de sites e códigos de barras!
+9. CHECKLIST PERICIAL DOS 5 GRUPOS DO DETECTOR (GARANTIA DE NOTA >=90% VERDE):
+   - Grupo 1 (Identidade e Modelo): Exatamente o mesmo modelo, silhueta, curvaturas e design característico das fotos reais.
+   - Grupo 2 (Estrutura Física e Componentes): Preservar 100% do corpo principal, base, conexões, cabos/fios, alças, tampas, bicos, fechos, botões, articulações e TODAS as peças individuais de kits. Nenhuma peça pode sumir, ser omitida ou alterada.
+   - Grupo 3 (Design e Proporções): Manter espessuras, comprimentos e relações exatas entre as partes do produto.
+   - Grupo 4 (Cores, Materiais, Texturas e Acabamento): Reproduzir exatamente o acabamento (fosco, brilhante, metálico ou trama), textura e tom de cor real das fotos de referência.
+   - Grupo 5 (Funcionalidade e Anatomia): Demonstrações práticas 100% fiéis à mecânica real do produto.
+10. SEPARAÇÃO ANATÔMICA LIMPA MÃO-PRODUTO (PREVENÇÃO ANTI-MORPHING PARA O VEO 3): As mãos e os dedos do apresentador devem segurar o produto pelas laterais ou empunhaduras neutras com contorno nítido (5 dedos anatômicos perfeitos), NUNCA fundindo os dedos ao produto e NUNCA cobrindo a logomarca original do fabricante, o visor ou os botões/bicos principais, garantindo quadros limpos que o Veo 3 animará sem deformações!
 A copy selecionada para este criativo é:
 "${finalCopy}"
 As cenas do storyboard devem ser construídas A PARTIR DESSA COPY. Cada cena deve provar, ilustrar ou reforçar visualmente um trecho da fala.
@@ -520,13 +653,15 @@ DIRETRIZ CRÍTICA DE NITIDEZ ÓPTICA E ZERO PELÍCULA PLÁSTICA/OPACIDADE:
 ${scenesLines}
 
 Mantenha continuidade de produto, logomarca original do fabricante no produto, personagem, ambiente e iluminação entre as cenas relacionadas. Cada quadro deve parecer uma fotografia real e utilizável como referência de futura animação.
-Adicionar SOMENTE os números 1 a 9 em pequenos selos circulares brancos com número preto, no canto superior esquerdo de cada quadro.
-PROIBIÇÃO EXCLUSIVA DE INTERFACE EXTERNA, SITES/QR CODES E PELÍCULA PLÁSTICA: NÃO adicionar frases flutuantes na tela, legendas, textos publicitários externos, ícone de carrinho de compras, botões, setas, preços, interface de aplicativo, logotipo do TikTok ou de rede social, nome de usuário/@, marca d'água externa. NUNCA incluir nenhum site (URL) ou QR code/código de barras em nenhuma caixa, pacote ou embalagem (MESMO QUE APAREÇAM NA FOTO DE REFERÊNCIA, DEVEM SER OMITIDOS). NUNCA inventar produto interno solto ou abrir embalagens/pacotes fechados (ex: nunca desenhar bombons soltos fora da caixa de bombons ou fraldas soltas fora do pacote de fralda quando apenas a embalagem fechada foi fornecida). NUNCA inventar ângulos ou verso/costas que não foram fornecidos nas fotos de referência. E NUNCA gerar imagem com aspecto de película plástica opaca por cima, névoa leitosa ou palidez desbotada (mantendo obrigatoriamente a embalagem real, as cores exatas 1:1 tanto do produto quanto da embalagem, e a logomarca e nome do fabricante impressos com fidelidade absoluta).`;
+Adicionar SOMENTE os números 1 a ${totalScenes} em pequenos selos circulares brancos com número preto, no canto superior esquerdo de cada quadro.
+PROIBIÇÃO EXCLUSIVA DE INTERFACE EXTERNA E PELÍCULA PLÁSTICA: NÃO adicionar frases flutuantes na tela, legendas, textos publicitários externos, ícone de carrinho de compras, botões, setas, preços, interface de aplicativo, logotipo do TikTok ou de rede social, nome de usuário/@, marca d'água externa, NUNCA incluir nenhum site (URL) ou código de barras em nenhuma caixa, pacote ou embalagem, E NUNCA gerar imagem com aspecto de película plástica opaca por cima, névoa leitosa ou palidez desbotada (mantendo obrigatoriamente a logomarca original do fabricante impressa no próprio produto com nitidez e cores fiéis).`;
+
+  return sanitizeStoryboardPromptForFidelity(rawPrompt, productName, productInfo);
 }
 
 /**
  * SEÇÃO 8.1 e 8.2 — Constrói o Prompt completo do Veo 3 (Omni Flash · 1 geração)
- * Suporta COM FALA e SEM FALA seguindo exatamente a estrutura validada.
+ * Suporta COM FALA e SEM FALA seguindo exatamente a estrutura validada (6 ou 9 cenas, 8s, 10s ou 15s).
  */
 export function buildProdutos2VeoPrompt(params: {
   productName: string;
@@ -546,6 +681,8 @@ export function buildProdutos2VeoPrompt(params: {
   dialogueDescription?: string;
   dialogueScript?: string;
   speakers?: Array<{ speaker: string; gender?: string; speech: string }>;
+  sceneCount?: 4 | 6 | 9;
+  scenePartIndex?: 1 | 2;
 }): string {
   const {
     productName,
@@ -565,7 +702,17 @@ export function buildProdutos2VeoPrompt(params: {
     dialogueDescription,
     dialogueScript,
     speakers,
+    sceneCount: explicitSceneCount,
+    scenePartIndex = 1,
   } = params;
+
+  const totalScenes: 4 | 6 | 9 = explicitSceneCount || (scenes.length === 4 ? 4 : scenes.length === 6 ? 6 : 9);
+
+  if (totalScenes === 4) {
+    return buildProdutos2VeoPrompt4Scenes(params);
+  }
+
+  const gridLabel = totalScenes === 6 ? (scenePartIndex === 2 ? '2x3 (Cena 2)' : '2x3 (Cena 1)') : '3x3';
 
   const dialogueInfo = detectDialogueInfo({
     isDialogue,
@@ -617,8 +764,8 @@ export function buildProdutos2VeoPrompt(params: {
       ? speechMode === 'com_fala'
         ? isDialogueActive
           ? `Com rosto: os dois personagens aparecem de forma natural com expressões faciais vivas e espontâneas; nas cenas em que cada um fala (mulher no gancho/pergunta e homem na apresentação e indicação de compra), os lábios acompanham perfeitamente a sua respectiva fala com sincronia labial natural.`
-          : `Com rosto: o rosto aparece de forma natural nas cenas de apresentação e na cena 9; nas cenas em que ${influencerResolved === 'Homem' ? 'ele' : 'ela'} fala olhando para a câmera, os lábios acompanham a fala com sincronia natural.`
-        : `Com rosto: o rosto aparece de forma natural nas cenas de apresentação e na cena 9, sorrindo e demonstrando satisfação (sem mexer a boca como se estivesse falando).`
+          : `Com rosto: o rosto aparece de forma natural nas cenas de apresentação e na cena ${totalScenes}; nas cenas em que ${influencerResolved === 'Homem' ? 'ele' : 'ela'} fala olhando para a câmera, os lábios acompanham a fala com sincronia natural.`
+        : `Com rosto: o rosto aparece de forma natural nas cenas de apresentação e na cena ${totalScenes}, sorrindo e demonstrando satisfação (sem mexer a boca como se estivesse falando).`
       : framing === 'sem_rosto'
       ? `Sem rosto: nunca mostrar o rosto em nenhuma cena; enquadrar sempre do pescoço para baixo.`
       : `POV: mostrar somente as mãos em primeira pessoa interagindo com ${productName}; nunca mostrar rosto ou corpo.`;
@@ -651,7 +798,6 @@ export function buildProdutos2VeoPrompt(params: {
   if (!womanSpeech) womanSpeech = 'Que celular bonito! Que celular é esse?';
   if (!manSpeech) manSpeech = safeSpeech;
 
-  // Quebra a fala da mulher e do homem para harmonizar as 9 micro-cenas
   const womanSentences = womanSpeech.match(/[^.!?]+[.!?]*/g)?.map((s) => s.trim()).filter(Boolean) || [womanSpeech];
   const womanP1 = womanSentences[0] || womanSpeech;
   const womanP2 = womanSentences.length > 1 ? womanSentences.slice(1).join(' ') : womanP1;
@@ -662,31 +808,28 @@ export function buildProdutos2VeoPrompt(params: {
   const manTikTokSentence = manSentences.find((s) => /tiktok|comprei/i.test(s)) || (manSentences.length >= 3 ? manSentences[manSentences.length - 2] : '');
   const manCtaSentence = manSentences.find((s) => /carrinho|adquir|garant|toque|toca/i.test(s)) || manSentences[manSentences.length - 1] || '';
 
-  // Item 7.3: Gerar o prompt a partir das MESMAS 9 descrições usadas para criar a imagem, sem reescrever as cenas
-  // e orientando o Veo rigorosamente pelo número dos quadros (1 a 9) do storyboard anexado
-  const scenesBlock = scenes
-    .slice(0, 9)
+  const sanitizedInputScenes = sanitizeAllScenesForFidelity(scenes, productName);
+  const scenesBlock = sanitizedInputScenes
+    .slice(0, totalScenes)
     .map((sc, idx) => {
       const num = idx + 1;
-      const isLast = num === 9;
+      const isLast = num === totalScenes;
       const unifiedDesc = getUnifiedSceneDescription(sc);
       let actionText = `${unifiedDesc} ${sc.cameraMovement || ''}`.trim();
+      actionText = sanitizeSceneFidelityAction(actionText, productName);
       if (speechMode === 'sem_fala' && isLast) {
         actionText = actionText.replace(/falando para a câmera/gi, 'sorrindo e mostrando o produto para a câmera');
       }
 
-      // Remove tags internas de variação do texto da ação (ex: [Variação de Cor: ...], [Produto na cor/variação: ...])
       actionText = actionText
         .replace(/\[(?:Produto na cor\/variação|Variação de Cor|COR\/VARIAÇÃO|Variação)[^\]]*\]/gi, '')
         .replace(/\s+/g, ' ')
         .trim();
 
-      // Se houver múltiplas variações, higieniza adjetivos fixos de cor no texto para não criar conflito com os outros quadros do storyboard
       if (activeVars.length >= 2) {
         actionText = sanitizeSceneColorAdjectivesForVeo(actionText, num, activeVars, productName);
       }
 
-      // Se for diálogo ativo, harmoniza a atuação dos personagens e distribuição da fala em micro-cenas conforme padrão ouro
       if (isDialogueActive) {
         const cam = sc.cameraMovement ? `\n${sc.cameraMovement.trim()}` : '';
         const hasCustomDialogue = (/mulher|moça/i.test(actionText) || /homem|rapaz/i.test(actionText)) && /["'«“]/.test(actionText);
@@ -700,13 +843,13 @@ export function buildProdutos2VeoPrompt(params: {
             actionText = `Close do produto. O homem gira o ${productName} para a mulher, exibindo os detalhes da peça, e inicia sua resposta: “${manP1}”${cam || '\nÓrbita curta e suave ao redor do produto.'}`;
           } else if (num === 4) {
             actionText = `Plano sobre o ombro. A mulher pega o ${productName} e inclina para admirar os detalhes.${manP2 ? `\nO homem continua falando: “${manP2}”` : '\nO homem continua a fala com segurança.'}${cam || '\nAproximação suave por trás do ombro dela.'}`;
-          } else if (num === 5) {
+          } else if (num === 5 && !isLast) {
             actionText = `POV de mãos. As mãos do homem seguram o ${productName} demonstrando o produto na prática.\nO homem continua a explicação com entusiasmo.${cam || '\nLeve estabilização de primeira pessoa com avanço sutil.'}`;
-          } else if (num === 6) {
+          } else if (num === 6 && !isLast) {
             actionText = `Macro. Detalhes construtivos, textura e acabamento de ${productName}.\nDeslizamento macro suave.\nO homem continua sua fala de forma natural e rápida.${cam ? `\n${cam.trim()}` : ''}`;
-          } else if (num === 7) {
+          } else if (num === 7 && !isLast) {
             actionText = `Close lateral. O homem manuseia o ${productName} revelando a construção e acabamento.\nO homem fala: “${manTikTokSentence || 'Eu comprei na TikTok Shop...'}”${cam || '\nPan curto acompanhando os detalhes.'}`;
-          } else if (num === 8) {
+          } else if (num === 8 && !isLast) {
             actionText = `Plano aberto com rosto. O casal sorri enquanto o homem apoia o ${productName} ao lado com satisfação.\nAfastamento suave revelando o ambiente.\nO homem prepara o encerramento da fala.${cam ? `\n${cam.trim()}` : ''}`;
           } else if (isLast) {
             actionText = `Plano médio com rosto. O homem olha para a câmera e apresenta o ${productName} em destaque.\nEle conclui diretamente para a câmera: “${manCtaSentence || '...toca no carrinho laranja!'}”${cam || '\nPush-in final curto e firme.'}`;
@@ -714,7 +857,6 @@ export function buildProdutos2VeoPrompt(params: {
         }
       }
 
-      // O prompt do Veo orienta pelas cenas do storyboard pelo número delas (Quadros 1 a 9 da imagem anexada)
       const sceneStoryboardRef = ` [Visual e cor do produto: idêntico ao Quadro ${num} do storyboard anexado]`;
       return `CENA ${num} — ${sc.startTime} a ${sc.endTime}s${sceneStoryboardRef}\n${actionText}`;
     })
@@ -729,7 +871,6 @@ export function buildProdutos2VeoPrompt(params: {
   const accentMatch = additionalInstructions?.match(/sotaque\s+([a-záàâãéêíóôõúç]+)/i);
   const accentClause = accentMatch ? `, com sotaque ${accentMatch[1]}` : '';
 
-  // Item 3: Bloco de palavras da fala exclusivas do áudio
   const speechWordsAudioOnlyLines: string[] = [];
   const lowerCopy = safeSpeech.toLowerCase();
 
@@ -817,7 +958,6 @@ Tom da voz: natural, brasileiro, rápido, eufórico, dinâmico e expressivo, com
 NÃO usar locução. NÃO usar narração. Ninguém fala no vídeo e ninguém mexe a boca como se estivesse falando.
 Usar apenas som ambiente natural do cenário e uma trilha instrumental animada e leve, com ritmo que acompanha os cortes.`;
 
-  // Item 5: PRIORIDADE MÁXIMA
   const copyStartClause = useSpeechIntro
     ? 'respeitar a copy validada, falada exatamente uma vez começando obrigatoriamente com "Nossa! ";'
     : 'respeitar a copy validada, falada exatamente uma vez sem introduções extras;';
@@ -832,36 +972,36 @@ Usar apenas som ambiente natural do cenário e uma trilha instrumental animada e
 4. O diálogo completo é falado exatamente uma vez, sem introduções extras, sem reinícios e sem repetições.
 5. Locução rápida, natural, eufórica e clara, com sincronização labial correta para cada personagem.
 6. Usar as cenas como tradução visual do diálogo.
-7. Fidelidade absoluta ao produto e às cores retratadas em cada um dos quadros de 1 a 9 do storyboard anexado.
+7. Fidelidade absoluta ao produto e às cores retratadas em cada um dos quadros de 1 a ${totalScenes} do storyboard anexado.
 8. Usar o storyboard somente como guia visual e nunca exibi-lo.
 9. Começar diretamente com uma nova cena real em movimento.
-10. Recriar as 9 cenas na ordem dos números correspondentes aos quadros de 1 a 9 do storyboard anexado.
+10. Recriar as ${totalScenes} cenas na ordem dos números correspondentes aos quadros de 1 a ${totalScenes} do storyboard anexado.
 11. Fazer um vídeo rápido, realista e muito dinâmico.`
         : `PRIORIDADE MÁXIMA:
 1. vídeo limpo: sem marca d'água, sem logo do TikTok, sem @, sem carrinho e sem nenhum texto adicionado; a marca/logo que já está impressa no produto aparece idêntica às fotos;
 2. ${copyStartClause}
 3. locução RÁPIDA E EUFÓRICA (estilo contando uma novidade imperdível), garantindo ritmo ágil para falar todo o texto com clareza sem cortes;
 4. usar as cenas como tradução visual da copy;
-5. fidelidade absoluta ao produto (PRODUCT LOCK) e às cores retratadas em cada um dos quadros de 1 a 9 do storyboard anexado;
+5. fidelidade absoluta ao produto (PRODUCT LOCK) e às cores retratadas em cada um dos quadros de 1 a ${totalScenes} do storyboard anexado;
 6. usar o storyboard somente como guia visual e nunca exibi-lo;
 7. começar diretamente com uma nova cena real em movimento;
-8. recriar as 9 cenas na ordem dos números correspondentes aos quadros 1 a 9 do storyboard anexado;
+8. recriar as ${totalScenes} cenas na ordem dos números correspondentes aos quadros 1 a ${totalScenes} do storyboard anexado;
 9. fazer um vídeo rápido e muito dinâmico;
 10. usar uma única locução contínua, sem repetições.`
       : `PRIORIDADE MÁXIMA:
 1. vídeo limpo: sem marca d'água, sem logo do TikTok, sem @, sem carrinho e sem nenhum texto adicionado; a marca/logo que já está impressa no produto aparece idêntica às fotos;
 2. seguir a ordem das cenas definida pela copy;
 3. usar as cenas como tradução visual e demonstração real do produto;
-4. fidelidade absoluta ao produto (PRODUCT LOCK) e às cores retratadas em cada um dos quadros de 1 a 9 do storyboard anexado;
+4. fidelidade absoluta ao produto (PRODUCT LOCK) e às cores retratadas em cada um dos quadros de 1 a ${totalScenes} do storyboard anexado;
 5. usar o storyboard somente como guia visual e nunca exibi-lo;
 6. começar diretamente com uma nova cena real em movimento;
-7. recriar as 9 cenas na ordem dos números correspondentes aos quadros 1 a 9 do storyboard anexado;
+7. recriar as ${totalScenes} cenas na ordem dos números correspondentes aos quadros 1 a ${totalScenes} do storyboard anexado;
 8. fazer um vídeo rápido e muito dinâmico;
 9. nenhuma voz e nenhuma fala no vídeo.`;
 
   const productLockColorClause =
     activeVars.length >= 2
-      ? `Manter o modelo, acabamento, textura, proporções e costuras do produto idênticos em todas as cenas. Nas cenas onde o produto alternar de cor ou modelo entre os quadros do storyboard (quadros 1 a 9), reproduza com total fidelidade em cada cena a cor exata retratada no respectivo Quadro correspondente do storyboard anexado.`
+      ? `Manter o modelo, acabamento, textura, proporções e costuras do produto idênticos em todas as cenas. Nas cenas onde o produto alternar de cor ou modelo entre os quadros do storyboard (quadros 1 a ${totalScenes}), reproduza com total fidelidade em cada cena a cor exata retratada no respectivo Quadro correspondente do storyboard anexado.`
       : `Não alterar a aparência do produto entre as cenas. Não redesenhar, não trocar cor, não acrescentar peças e não simplificar detalhes.`;
 
   const coupleDescription = dialogueInfo.dialogueDescription?.trim()
@@ -884,8 +1024,12 @@ PERSONAGEM
 ${avatarDescription} — o mesmo em todas as cenas.
 ${framingPersonRule}`;
 
-  // Item 1, Item 2, Item 4 e CORREÇÃO 2 (Parte G: "gravação real" em vez de "gravação caseira")
-  return `Crie um vídeo vertical 9:16, ultra-realista, com aparência de gravação real feita com smartphone (estilo UGC), com duração total de ${duration} segundos.
+  const correspondenceLines = Array.from({ length: totalScenes }, (_, idx) => {
+    const n = idx + 1;
+    return `- A Cena ${n} corresponde estritamente ao Quadro ${n} do storyboard anexado.`;
+  }).join('\n');
+
+  const fullPrompt = `Crie um vídeo vertical 9:16, ultra-realista, com aparência de gravação real feita com smartphone (estilo UGC), com duração total de ${duration} segundos.
 
 VÍDEO LIMPO — REGRA ABSOLUTA:
 O vídeo é uma filmagem original e limpa. O quadro inteiro mostra somente a cena filmada, do primeiro ao último frame.
@@ -895,52 +1039,47 @@ NÃO adicionar logotipo flutuante.
 NÃO adicionar nome de usuário, @ ou perfil.
 NÃO adicionar logotipo de nenhuma rede social ou aplicativo.
 NÃO adicionar textos, legendas, números, ícones, botões ou stickers.
-NÃO adicionar site, endereço de site, link, URL ou domínio em NENHUMA imagem, caixa, pacote ou embalagem do produto (MESMO QUE APAREÇA NA IMAGEM DE REFERÊNCIA, O VEO NÃO DEVE GERAR NENHUM SITE).
-NÃO adicionar código de barras, barras ou QR code em NENHUMA embalagem, pacote ou produto (MESMO QUE APAREÇA NA IMAGEM DE REFERÊNCIA, O VEO NÃO DEVE GERAR NENHUM QR CODE).
-NÃO inventar produto interno solto nem abrir embalagens/caixas/pacotes fechados (ex.: se for pacote de fraldas, caixa de bombons ou embalagem fechada, manter sempre a embalagem fechada idêntica ao storyboard e referências, sem mostrar bombons soltos ou fraldas fora do pacote).
-NÃO inventar ângulos ou verso/costas que não constem nas fotos de referência anexadas (se o produto foi fotografado apenas de frente, manter o produto sempre de frente).
-MANDATÓRIO: A embalagem, o nome do fabricante com grafia exata, a logomarca original e as cores exatas (tanto do produto quanto da embalagem) devem ser rigorosamente 1:1 idênticas às referências.
-EXCEÇÃO DE LOGO: a marca, o logo e o nome do fabricante que já estão impressos no próprio produto e na embalagem (iguais às fotos de referência e ao storyboard) DEVEM aparecer, idênticos, sempre que aquela parte do produto estiver visível.
+NÃO adicionar site, endereço de site, link, URL ou domínio em caixas, pacotes ou embalagens do produto.
+NÃO adicionar código de barras, barras ou QR code em nenhuma embalagem, pacote ou caixa de produto.
+EXCEÇÃO: a marca, o logo e os textos que já estão impressos no próprio produto (iguais às fotos de referência e ao storyboard) DEVEM aparecer, idênticos, sempre que aquela parte do produto estiver visível.
 
-IMPORTANTE SOBRE A IMAGEM ANEXADA (STORYBOARD DE REFERÊNCIA — 9 QUADROS NUMERADOS):
-A imagem anexada é uma grade 3x3 de storyboard contendo EXATAMENTE 9 quadros numerados de 1 a 9 em ordem de leitura.
+IMPORTANTE SOBRE A IMAGEM ANEXADA (STORYBOARD DE REFERÊNCIA — ${totalScenes} QUADROS NUMERADOS):
+A imagem anexada é uma grade ${gridLabel} de storyboard contendo EXATAMENTE ${totalScenes} quadros numerados de 1 a ${totalScenes} em ordem de leitura.
 NÃO mostre a imagem do storyboard no vídeo.
 NÃO use o storyboard como primeiro frame.
-NÃO use a grade 3x3 como introdução.
+NÃO use a grade ${gridLabel} como introdução.
 NÃO reproduza a imagem completa nem mostre números, bordas ou divisões.
 NÃO faça colagem. NÃO faça tela dividida. NÃO faça mosaico.
-Use o storyboard para entender o produto, as pessoas, os enquadramentos e a progressão contínua das 9 cenas.
+Use o storyboard para entender o produto, as pessoas, os enquadramentos e a progressão contínua das ${totalScenes} cenas.
 RECRIE cada quadro do storyboard como uma NOVA CENA REALISTA E INDEPENDENTE EM MOVIMENTO.
 O PRIMEIRO FRAME DO VÍDEO já deve ser uma cena real em movimento ${firstFrameClause}, e nunca a imagem inteira do storyboard.
 
-CORRESPONDÊNCIA OBRIGATÓRIA AOS QUADROS 1 A 9 DO STORYBOARD:
-O vídeo deve recriar fielmente as 9 micro-cenas seguindo rigorosamente a ordem e o conteúdo visual dos quadros de 1 a 9 da imagem anexada:
-- A Cena 1 corresponde estritamente ao Quadro 1 do storyboard anexado.
-- A Cena 2 corresponde estritamente ao Quadro 2 do storyboard anexado.
-- A Cena 3 corresponde estritamente ao Quadro 3 do storyboard anexado.
-- A Cena 4 corresponde estritamente ao Quadro 4 do storyboard anexado.
-- A Cena 5 corresponde estritamente ao Quadro 5 do storyboard anexado.
-- A Cena 6 corresponde estritamente ao Quadro 6 do storyboard anexado.
-- A Cena 7 corresponde estritamente ao Quadro 7 do storyboard anexado.
-- A Cena 8 corresponde estritamente ao Quadro 8 do storyboard anexado.
-- A Cena 9 corresponde estritamente ao Quadro 9 do storyboard anexado.
-Cada cena do vídeo deve reproduzir os mesmos personagens, roupas, cenário, enquadramento de câmera e ações retratadas no respectivo Quadro (1 a 9) da imagem.
+CORRESPONDÊNCIA OBRIGATÓRIA AOS QUADROS 1 A ${totalScenes} DO STORYBOARD:
+O vídeo deve recriar fielmente as ${totalScenes} micro-cenas seguindo rigorosamente a ordem e o conteúdo visual dos quadros de 1 a ${totalScenes} da imagem anexada:
+${correspondenceLines}
+Cada cena do vídeo deve reproduzir os mesmos personagens, roupas, cenário, enquadramento de câmera e ações retratadas no respectivo Quadro (1 a ${totalScenes}) da imagem.
 
 REGRA DE CORES E VARIAÇÕES POR QUADRO DO STORYBOARD:
-Cada cena do vídeo DEVE reproduzir a cor, estampa e acabamento do produto EXATAMENTE como retratados no respectivo Quadro correspondente (1 a 9) do storyboard anexado.
-Quando o storyboard alternar a cor do produto entre os quadros (por exemplo, uma cor nos quadros 1 a 3, outra cor nos quadros 4 a 6 e outra nos quadros 7 a 9), o vídeo DEVE acompanhar fielmente essa mudança em cada cena, usando a cor do produto ilustrada naquele quadro específico! A imagem do storyboard é a referência visual soberana e absoluta da cor do produto para cada cena.
+Cada cena do vídeo DEVE reproduzir a cor, estampa e acabamento do produto EXATAMENTE como retratados no respectivo Quadro correspondente (1 a ${totalScenes}) do storyboard anexado.
+Quando o storyboard alternar a cor do produto entre os quadros, o vídeo DEVE acompanhar fielmente essa mudança em cada cena, usando a cor do produto ilustrada naquele quadro específico! A imagem do storyboard é a referência visual soberana e absoluta da cor do produto para cada cena.
 
 ========================
-FIDELIDADE DO PRODUTO (PRODUCT LOCK)
+FIDELIDADE DO PRODUTO (PRODUCT LOCK & BLINDAGEM PERICIAL >=90%)
 ========================
 Manter ${productName} exatamente como aparece no storyboard e nas fotos:
 ${productLockBullets}
 ${productLockColorClause} A marca, a logomarca/emblema e os textos do fabricante impressos no próprio produto DEVEM aparecer 100% idênticos às fotos de referência em todas as cenas em que aquela parte do produto estiver visível. Proibido apenas adicionar textos ou logos externos de redes sociais (como TikTok/@/carrinho) na tela.
 
+BLINDAGEM ANTI-MORPHING E CONTINUIDADE TEMPORAL NOS 5 GRUPOS DO DETECTOR DE VÍDEO (OBRIGATÓRIO):
+1. INTEGRIDADE DOS 5 GRUPOS DE COMPONENTES: Preservar 100% da identidade do modelo, corpo principal, base, conexões, cabos/fios, alças, tampas, bicos, fechos, botões, articulações e todas as unidades de kits do segundo 0.0s ao final. Nenhuma peça, bico, tampa ou botão pode desaparecer, surgir do nada ou mudar de formato durante o movimento.
+2. ZERO FUSÃO MÃO-PRODUTO (ANTI-MORPHING): As mãos e os dedos (sempre 5 dedos anatômicos naturais por mão) devem segurar o produto com firmeza pelas laterais ou empunhaduras neutras, mantendo contorno e separação física cristalina entre os dedos e o produto. Os dedos NUNCA podem derreter, atravessar ou se fundir ao corpo do produto e NUNCA devem cobrir a logomarca original do fabricante.
+3. GEOMETRIA RÍGIDA E ESTABILIDADE DIMENSIONAL: Partes rígidas, hastes, bicos, cabos e embalagens devem permanecer 100% sólidos e indeformáveis durante toda a movimentação, sem efeito elástico/borrachudo, sem esticar, sem encolher e sem mudar de espessura entre um frame e outro.
+4. ESTABILIDADE DE COR, TEXTURA E ACABAMENTO: Manter exatamente o mesmo acabamento superficial (fosco, brilhante, metálico ou tecido) e a cor real de cada quadro correspondente do storyboard, sem alterações cromáticas bruscas dentro da mesma tomada.
+
 ${charactersSection}
 
 ========================
-STORYBOARD — 9 MICRO-CENAS
+STORYBOARD — ${totalScenes} MICRO-CENAS
 ========================
 ${scenesBlock}
 
@@ -950,28 +1089,28 @@ ${audioSection}
 ESTILO DO VÍDEO
 ========================
 Vídeo MUITO DINÂMICO e dopaminérgico.
-Criar aproximadamente 9 micro-cenas dentro dos ${duration} segundos.
+Criar aproximadamente ${totalScenes} micro-cenas dentro dos ${duration} segundos.
 - cortes rápidos
 - mudanças frequentes de enquadramento
 - close, macro, POV, plano médio, plano aberto
 - movimentos de mãos
 - demonstração real e física de uso de ${productName}
 - pequenos push-ins e zooms da câmera
-- aparência real de gravação com smartphone moderno topo de linha
-- iluminação clara e límpida de luz do dia (sem tons amarelados ou opacidade)
+- aparência real de gravação com smartphone
+- iluminação natural
 - ${scenarioDescription}
 - UGC premium
 - alta retenção visual
 - nenhuma cena longa ou parada
-A cada aproximadamente 0,8 a 1,3 segundo deve acontecer alguma mudança visual.
+A cada aproximadamente ${totalScenes === 6 || duration === 15 ? '1,5 a 1,7' : '0,8 a 1,3'} segundo deve acontecer alguma mudança visual.
 
 ========================
 PROIBIÇÕES
 ========================
 NÃO mostrar a imagem completa do storyboard.
 NÃO usar o storyboard como primeiro frame.
-NÃO mostrar grade 3x3.
-NÃO mostrar números 1 a 9.
+NÃO mostrar grade ${gridLabel}.
+NÃO mostrar números 1 a ${totalScenes}.
 NÃO mostrar bordas entre cenas.
 NÃO mostrar legendas.
 NÃO adicionar textos na tela.
@@ -986,12 +1125,314 @@ NÃO adicionar site, endereço de site, link ou URL em nenhuma embalagem, caixa 
 NÃO adicionar código de barras ou QR code em nenhuma caixa, pacote ou embalagem do produto.
 
 ${prioritySection}`;
+
+  return appendFidelityLockToVeoPrompt(fullPrompt);
 }
 
 /**
- * Calcula os tempos das 9 cenas somando exatamente 10.0s ou 8.0s (Seção 7.3)
+ * Constrói o Prompt dedicado do Veo 3 para o Modo 4 Cenas (Grade 2x2, 10s)
+ * Estrutura em 10 Seções seguindo estritamente as diretrizes de fidelidade e UGC.
  */
-export function getNineSceneTimings(duration: Produtos2Duration): { start: string; end: string }[] {
+export function buildProdutos2VeoPrompt4Scenes(params: {
+  productName: string;
+  duration?: Produtos2Duration;
+  speechMode: Produtos2SpeechMode;
+  useSpeechIntro?: boolean;
+  finalCopy: string;
+  influencerResolved: 'Homem' | 'Mulher';
+  framing: Produtos2Framing;
+  productLock: string[];
+  avatarDescription: string;
+  scenarioDescription: string;
+  scenes: Produtos2SceneItem[];
+  additionalInstructions?: string;
+  variations?: { name: string; photos: string[] }[];
+  isDialogue?: boolean;
+  dialogueDescription?: string;
+  dialogueScript?: string;
+  speakers?: Array<{ speaker: string; gender?: string; speech: string }>;
+}): string {
+  const {
+    productName,
+    duration: _duration = 10,
+    speechMode: _speechMode,
+    useSpeechIntro = false,
+    finalCopy,
+    influencerResolved,
+    framing,
+    productLock = [],
+    avatarDescription,
+    scenarioDescription,
+    scenes = [],
+    additionalInstructions,
+    variations = [],
+  } = params;
+
+  const safeSpeech = applySpeechIntro(finalCopy, Boolean(useSpeechIntro));
+  const activeVars = (variations || []).filter((v) => v.photos && v.photos.length > 0);
+  const isPackaged = isPackagedProductOnly(
+    productName,
+    '',
+    `${productLock.join(' ')} ${additionalInstructions || ''} ${safeSpeech}`
+  );
+
+  const qtyInfo = detectProductQuantity(
+    productName,
+    '',
+    `${productLock.join(' ')} ${additionalInstructions || ''} ${safeSpeech}`
+  );
+
+  const isOralCare = isOralCareProduct(
+    productName,
+    '',
+    `${productLock.join(' ')} ${additionalInstructions || ''} ${safeSpeech}`
+  );
+
+  const isApparel = isApparelProduct(
+    productName,
+    '',
+    `${productLock.join(' ')} ${additionalInstructions || ''} ${safeSpeech}`
+  );
+
+  const isPov = framing === 'pov';
+  const isAdultMale = influencerResolved === 'Homem';
+  const voiceGender = isAdultMale ? 'MASCULINA' : 'FEMININA';
+  const presenterLabel = isAdultMale ? 'um homem brasileiro' : 'uma mãe brasileira';
+  const personTitle = isAdultMale ? 'pai' : 'mãe';
+
+  // 1. Objetivo Principal
+  const povOrPresenterGoalClause = isPov
+    ? `em primeira pessoa (POV) mostrando apenas as mãos e antebraços ${isAdultMale ? 'masculinos' : 'femininos'}, apresentando uma oferta em ${scenarioDescription}`
+    : `por ${presenterLabel} apresentando uma oferta em sua própria casa (${scenarioDescription})`;
+
+  const quantityWarning = qtyInfo.isKit
+    ? ` Manter rigorosamente a quantidade de ${qtyInfo.quantity} unidades/pacotes do kit em todas as tomadas onde o produto for exibido (nunca mostrar ${qtyInfo.quantity - 1} nem ${qtyInfo.quantity + 1}).`
+    : ` O anúncio é de 1 produto único. NUNCA mostrar 2 ou mais unidades na mesma tela em nenhum momento.`;
+
+  const oralCareWarning = isOralCare
+    ? ` É TERMINANTEMENTE PROIBIDO mostrar "antes e depois" de clareamento ou dentes em close branqueados. O vídeo deve ser produzido sem focar em dentes clareados (demonstrar aparelho e jato limpo d'água na pia ou em copo).`
+    : '';
+
+  const apparelWarning = isApparel
+    ? ` Fidelidade 100% a botões, costuras, cores, padrão visual e caimento da peça de roupa conforme referências.`
+    : '';
+
+  const packagedGoalWarning = isPackaged
+    ? `O vídeo deve mostrar exclusivamente os pacotes fechados de ${productName}. Não abrir as embalagens. Não retirar produtos de dentro dos pacotes. Não mostrar fraldas ou itens soltos, abertos ou qualquer conteúdo interno fora do pacote.${quantityWarning}`
+    : `O produto deve ser retratado estritamente conforme as referências reais anexadas, sem adicionar peças, botões ou detalhes não visíveis. O produto NÃO pode aparentar ser maior que nas fotos reais.${quantityWarning}${oralCareWarning}${apparelWarning}`;
+
+  // 2. Correspondência dos Quadros
+  const sList = scenes.slice(0, 4);
+  const shortScenes = sList.map((sc, i) => {
+    const rawAction = (sc.action || sc.storyboardDescription || `cena ${i + 1}`).trim();
+    return `- Quadro ${i + 1}: ${rawAction.slice(0, 110).replace(/[.]+$/, '')}.`;
+  });
+
+  const continuityElements = isPov
+    ? `as mesmas mãos, o mesmo cenário, o mesmo produto e a mesma iluminação`
+    : `o mesmo personagem, as mesmas roupas, o mesmo cenário e o mesmo produto`;
+
+  // 3. Product Lock
+  const sanitizedProductLock = activeVars.length >= 2
+    ? sanitizeProductLockForVariations(productLock, activeVars, productName)
+    : productLock;
+  const productLockBullets = sanitizedProductLock
+    .map((item) => `- ${item.replace(/^[-•*]\s*/, '')}`)
+    .join('\n');
+
+  const productLockColorClause = activeVars.length >= 2
+    ? `Manter o modelo e detalhes do produto idênticos. Nas cenas onde o produto alternar de cor entre os quadros do storyboard (Quadros 1 a 4), reproduza com total fidelidade em cada cena a cor exata retratada no respectivo Quadro correspondente do storyboard anexado.`
+    : `Não alterar a aparência do produto entre as cenas. Não redesenhar, não trocar cor, não acrescentar peças e não simplificar detalhes.`;
+
+  // 4. Personagem / POV e Ambiente
+  let charactersOrPovSection = '';
+  if (isPov) {
+    charactersOrPovSection = `Vídeo filmado exclusivamente em primeira pessoa (POV). NUNCA mostrar o rosto, a cabeça, o tronco ou as pernas do apresentador.
+Mostrar apenas mãos e antebraços ${isAdultMale ? 'masculinos' : 'femininos'}, com movimentos humanos naturais e foco bem definido no produto.
+O fundo pode ficar suavemente desfocado, mas o produto precisa permanecer visível e reconhecível.
+Cenário: ${scenarioDescription}, com iluminação natural. Manter o mesmo ambiente e a mesma iluminação durante as quatro cenas.`;
+  } else {
+    charactersOrPovSection = `${avatarDescription}.
+A personagem deve parecer uma pessoa real gravando um vídeo espontâneo para compartilhar uma descoberta útil.
+Cenário: ${scenarioDescription}.
+Estética de gravação de smartphone, movimentos humanos naturais, textura de pele realista e iluminação natural.
+Manter a mesma pessoa, as mesmas roupas, o mesmo ambiente e a mesma iluminação nas quatro cenas.`;
+  }
+
+  // 5. Quatro Cenas
+  const sceneTimings = [
+    { start: '0,0', end: '2,5', title: 'GANCHO VISUAL DE ATENÇÃO (HOOK)' },
+    { start: '2,5', end: '5,0', title: 'MOSTRANDO A QUANTIDADE E CONTEXTO' },
+    { start: '5,0', end: '7,5', title: 'DETALHE DO PRODUTO E ESPECIFICAÇÃO' },
+    { start: '7,5', end: '10,0', title: 'APROVAÇÃO, RECOMENDAÇÃO E CHAMADA FINAL' },
+  ];
+
+  const fourScenesBlocks = sceneTimings.map((t, idx) => {
+    const sc = sList[idx];
+    const num = idx + 1;
+    let desc = sc ? getUnifiedSceneDescription(sc) : '';
+    desc = sanitizeSceneFidelityAction(desc, productName);
+    if (activeVars.length >= 2) {
+      desc = sanitizeSceneColorAdjectivesForVeo(desc, num, activeVars, productName);
+    }
+    const cam = sc?.cameraMovement ? ` ${sc.cameraMovement.trim()}` : '';
+
+    return `### CENA ${num} — ${t.start} A ${t.end} SEGUNDOS | ${t.title}
+Reproduzir fielmente a composição do Quadro ${num} do storyboard anexado.
+${desc}${cam}
+Manter enquadramento vertical 9:16 preenchendo a tela inteira com alta nitidez. Não mostrar bordas do storyboard.`;
+  }).join('\n\n');
+
+  // 6. Locução
+  const locucaoTitle = `VOZ ${voiceGender} BRASILEIRA`;
+  const locucaoBody = `Utilizar uma única voz ${voiceGender.toLowerCase()} adulta, brasileira, natural, espontânea e empolgada.
+A voz deve soar como a de um(a) ${personTitle} compartilhando com outras pessoas uma descoberta real e vantajosa.
+Tom de conversa informal, como um vídeo UGC autêntico de recomendação.`;
+
+  // 7. Ritmo e Direção
+  const direcaoVozBody = `A voz deve ser animada, convincente e espontânea, com ritmo ágil e entonação de descoberta.
+Evitar pausas longas, voz robótica ou entonação de comercial publicitário tradicional.
+A fala deve começar logo no início do vídeo e continuar fluida ao longo das quatro cenas, sem cortes e sem reiniciar a cada mudança de cena.
+${!isPov ? 'Os movimentos dos lábios devem acompanhar com sincronia labial natural as falas quando o rosto estiver visível.' : 'A locução ocorre em narração contínua enquanto as mãos manuseiam o produto.'}`;
+
+  // 8. Áudio e Limpeza Visual
+  const speechWordsAudioOnlyLines: string[] = [];
+  const lowerCopy = safeSpeech.toLowerCase();
+  if (lowerCopy.includes('tiktok') || lowerCopy.includes('tik tok')) {
+    speechWordsAudioOnlyLines.push(
+      `- A palavra "TikTok" existe SOMENTE NA LOCUÇÃO. Não adicionar logotipo, perfil ou texto de TikTok na tela.`
+    );
+  }
+  if (lowerCopy.includes('carrinho') || lowerCopy.includes('carrinho laranja')) {
+    speechWordsAudioOnlyLines.push(
+      `- A palavra "carrinho" existe SOMENTE NA LOCUÇÃO. Não desenhar carrinho físico nem botão gráfico.`
+    );
+  }
+
+  // 9. Continuidade e Blindagem Anti-Morphing (Garantia >=90% no Detector de Vídeo)
+  const regrasContinuidadeBody = `Manter o mesmo produto, a mesma bancada/mesa, o mesmo ambiente, ${isPov ? 'as mesmas mãos' : 'a mesma pessoa e roupas'} e a mesma iluminação durante todo o vídeo.
+${isPov ? 'As mãos devem ter anatomia natural: cinco dedos por mão, proporções anatômicas exatas e movimentos fluidos sem atravessar o produto.' : 'Movimentos humanos espontâneos e naturais, com 5 dedos anatômicos perfeitos por mão.'}
+BLINDAGEM PERICIAL ANTI-MORPHING E INTEGRIDADE DOS 5 GRUPOS DO DETECTOR (META >=90% DE FIDELIDADE):
+- Zero Fusão Mão-Produto: Os dedos devem segurar o produto pelas laterais ou áreas neutras com separação visual limpa, sem jamais derreter, atravessar ou se fundir ao produto e sem tampar a logomarca original do fabricante ou botões principais.
+- Permanência 100% dos Componentes: Corpo principal, base, bicos, tampas, cabos, alças, fechos, botões, costuras e todas as peças de kits devem permanecer 100% íntegros do segundo 0,0 ao 10,0. Nenhuma peça pode sumir, surgir repentinamente ou se transformar em outro formato entre frames.
+- Geometria Rígida Indeformável: Não alterar as dimensões, espessura, curvatura, marca, textura (fosca, brilhante ou metálica) ou detalhes do produto entre os cortes. Cabos, bicos e corpo rígido nunca esticam, encolhem ou entortam durante o movimento.
+${isPackaged ? 'Não abrir, rasgar ou deslacrar nenhuma embalagem. Não mostrar itens soltos.' : ''}
+A câmera deve trabalhar com movimentos suaves e controlados de aproximação (push-in) e estabilização firme de smartphone de alta qualidade, mantendo sempre os ângulos documentados nas referências.`;
+
+  const fullPrompt = `# PROMPT VEO / OMNI 3 — ${productName.toUpperCase()}
+## VÍDEO UGC REALISTA — 10 SEGUNDOS — STORYBOARD DE 4 CENAS
+
+### 1. OBJETIVO PRINCIPAL
+Crie um vídeo vertical 9:16, com duração total de 10 segundos, em estilo UGC extremamente realista, como uma gravação espontânea feita com smartphone ${povOrPresenterGoalClause}.
+Use as imagens de referência do produto e o storyboard de quatro quadros anexado.
+**REGRA ABSOLUTA: A FIDELIDADE VISUAL DO PRODUTO TEM PRIORIDADE SOBRE QUALQUER EFEITO CINEMATOGRÁFICO.**
+${packagedGoalWarning}
+
+### 2. REFERÊNCIAS VISUAIS E CORRESPONDÊNCIA DOS QUADROS
+O storyboard anexado contém quatro quadros, organizados em uma grade 2x2. Use cada quadro como referência visual independente para a respectiva cena:
+${shortScenes.join('\n')}
+Transforme cada quadro em uma cena realista, filmada em movimento, preservando ${continuityElements} e a continuidade visual.
+**PROIBIDO mostrar a grade do storyboard no vídeo.** Não reproduzir a colagem, as divisões, as bordas ou a imagem completa dos quatro quadros. Não usar a imagem do storyboard como primeiro frame. Cada cena deve ocupar a tela inteira, em formato vertical 9:16.
+
+### 3. PRODUCT LOCK — FIDELIDADE ABSOLUTA AO PRODUTO
+Utilize as fotografias originais anexadas como autoridade visual máxima para a aparência do produto.
+Preserve rigorosamente todos os detalhes visíveis nas referências:
+${productLockBullets}
+Não redesenhar. Não trocar a marca. Não inventar textos, selos ou botões. Não alterar as cores.
+${productLockColorClause}
+
+### 4. ${isPov ? 'PONTO DE VISTA (POV) E AMBIENTE' : 'PERSONAGEM E AMBIENTE'}
+${charactersOrPovSection}
+
+### 5. STORYBOARD — QUATRO CENAS EM 10 SEGUNDOS
+${fourScenesBlocks}
+
+### 6. LOCUÇÃO — ${locucaoTitle}
+${locucaoBody}
+FALAR EXATAMENTE O TEXTO A SEGUIR:
+“${safeSpeech}”
+Não acrescentar frases. Não repetir palavras. Não criar uma segunda voz. A fala deve começar no início do vídeo e continuar sobre as quatro cenas, sem reiniciar a locução nos cortes.
+
+### 7. DIREÇÃO E RITMO DA LOCUÇÃO
+${direcaoVozBody}
+
+### 8. ÁUDIO E LIMPEZA VISUAL
+Áudio com a voz ${voiceGender.toLowerCase()} e som ambiente natural muito discreto. Não adicionar música estridente, efeitos sonoros artificiais ou outras vozes.
+O vídeo deve mostrar somente a cena filmada.
+Proibido:
+- Legendas.
+- Textos promocionais sobrepostos.
+- Preços na tela.
+- Números flutuantes.
+- Stickers.
+- Logotipos de redes sociais.
+- Nome de usuário ou @.
+- Marca-d'água.
+- Interface de aplicativo.
+- Ícones ou botões de compra.
+- Carrinho de compras desenhado ou sobreposto.
+- Sites, links de internet, URLs ou domínios em caixas, pacotes ou embalagens do produto.
+- Códigos de barras ou QR codes em caixas, pacotes ou embalagens.
+${speechWordsAudioOnlyLines.join('\n')}
+Exceção: os logotipos, marcas e dados que já estão impressos no próprio produto conforme as referências.
+
+### 9. REGRAS DE CONTINUIDADE E PREVENÇÃO DE ERROS
+${regrasContinuidadeBody}
+
+### 10. PRIORIDADES FINAIS
+1. Fidelidade visual máxima às fotografias originais de ${productName}.
+2. Exatamente o produto conforme referências nos quadros em que ele aparecer (presença obrigatória nas Cenas 2, 3 e 4; a Cena 1/Quadro 1 é liberada para focar no hook chamativo mesmo sem o produto).
+3. ${isPackaged ? 'Nenhum produto solto e nenhuma embalagem aberta ou rasgada.' : 'Nenhuma peça ou botão inventado.'}
+4. ${isPov ? 'Somente mãos e antebraços com anatomia natural; nenhum rosto.' : 'Mesmo personagem, roupas e cenário consistentes.'}
+5. Quatro cenas na ordem exata do storyboard (Quadro 1 ao 4).
+6. Vídeo vertical 9:16, com aparência UGC realista de smartphone.
+7. Locução ${voiceGender.toLowerCase()} brasileira, contínua e empolgada.
+8. Nenhum texto ou elemento gráfico acrescentado à tela.
+9. Não mostrar a imagem do storyboard no vídeo final.
+10. Nenhuma embalagem, caixa ou pacote deve conter endereços de site (URL) ou códigos de barras/QR code inventados.
+O resultado deve parecer uma gravação autêntica e real, com ${productName} claramente visível e fiel ao produto original.`;
+
+  return appendFidelityLockToVeoPrompt(fullPrompt);
+}
+
+/**
+ * Calcula os tempos das cenas somando exatamente 10.0s, 15.0s ou 8.0s (suportando 4, 6 ou 9 cenas)
+ */
+export function getNineSceneTimings(
+  duration: Produtos2Duration,
+  sceneCount: 4 | 6 | 9 = 9
+): { start: string; end: string }[] {
+  if (sceneCount === 4) {
+    return [
+      { start: '0.0', end: '2.5' },
+      { start: '2.5', end: '5.0' },
+      { start: '5.0', end: '7.5' },
+      { start: '7.5', end: '10.0' },
+    ];
+  }
+  if (sceneCount === 6) {
+    return [
+      { start: '0.0', end: '1.6' },
+      { start: '1.6', end: '3.3' },
+      { start: '3.3', end: '5.0' },
+      { start: '5.0', end: '6.7' },
+      { start: '6.7', end: '8.3' },
+      { start: '8.3', end: '10.0' },
+    ];
+  }
+  if (duration === 15) {
+    return [
+      { start: '0.0', end: '1.6' },
+      { start: '1.6', end: '3.3' },
+      { start: '3.3', end: '5.0' },
+      { start: '5.0', end: '6.7' },
+      { start: '6.7', end: '8.4' },
+      { start: '8.4', end: '10.1' },
+      { start: '10.1', end: '11.8' },
+      { start: '11.8', end: '13.4' },
+      { start: '13.4', end: '15.0' },
+    ];
+  }
   if (duration === 8) {
     return [
       { start: '0.0', end: '0.8' },
@@ -1039,7 +1480,7 @@ export function extractCleanScenarioFromInstructions(instructions?: string): str
   }
   if (/restaurante/i.test(raw)) {
     const romantic = /rom[âa]ntic/i.test(raw) ? ' para jantar romântico' : '';
-    return `restaurante brasileiro intimista${romantic}, com mesa bem posta e iluminação suave`;
+    return `restaurante brasileiro intimista${romantic}, com mesa bem posta e iluminação clara e acolhedora`;
   }
   if (/praia/i.test(raw)) return 'praia ao ar livre com luz solar natural';
   if (/oficina/i.test(raw)) return 'oficina mecânica bem iluminada';
@@ -1190,6 +1631,8 @@ export function buildDefaultProdutos2Plan(params: {
   additionalInstructions?: string;
   variationNames: string[];
   variations?: { name: string; photos: string[] }[];
+  sceneCount?: 4 | 6 | 9;
+  scenePartIndex?: 1 | 2;
 }): {
   productLock: string[];
   avatarDescription: string;
@@ -1211,9 +1654,11 @@ export function buildDefaultProdutos2Plan(params: {
     additionalInstructions,
     variationNames,
     variations = [],
+    sceneCount = 9,
+    scenePartIndex = 1,
   } = params;
 
-  const timings = getNineSceneTimings(duration);
+  const timings = getNineSceneTimings(duration, sceneCount);
 
   // 1. PRODUCT LOCK
   const colorsNote =
@@ -1229,10 +1674,11 @@ export function buildDefaultProdutos2Plan(params: {
 
   const productLock: string[] = [
     `LOGOMARCA E IDENTIDADE DO FABRICANTE: Preservar 100% idênticos a logomarca, o emblema/símbolo e o nome da marca originais do fabricante impressos/estampados no próprio produto nas fotos de referência (mesmo desenho, cor, tamanho e posição exata na peça, jamais apagar ou alisar a logo do produto)`,
-    `Formato, silhueta, proporção e dimensões exatas de ${productName} conforme fotos anexadas`,
+    `Formato, silhueta, proporção, espessuras e dimensões exatas de ${productName} conforme fotos anexadas (Grupo 1 e Grupo 3 do Detector)`,
     colorsNote,
-    `Textura, material, costuras, encaixes, botões e funções originais preservados 1:1 sem redesenho`,
-    ...(infoHighlights.length > 0 ? infoHighlights : [`Acabamento físico autêntico idêntico em todas as 9 cenas`]),
+    `Estrutura física completa preservada 1:1 (Grupo 2 e Grupo 4 do Detector): corpo principal, bicos, tampas, cabos, alças, botões, costuras, textura e acabamento superficial (fosco/brilhante/metálico) sem redesenho e sem omissão de peças`,
+    `Pegada limpa Anti-Morphing (Grupo 5 e Continuidade Temporal): mãos segurando pelas laterais neutras sem fundir os dedos ao produto e sem cobrir a logomarca ou componentes principais`,
+    ...(infoHighlights.length > 0 ? infoHighlights : [`Acabamento físico autêntico idêntico em todas as ${sceneCount} cenas`]),
   ];
 
   // 2. AVATAR
@@ -1269,34 +1715,83 @@ export function buildDefaultProdutos2Plan(params: {
   const s3 = sentences[2] || s2;
   const sLast = sentences[sentences.length - 1] || s1;
 
-  const visualMap: Produtos2VisualMapItem[] = [
-    {
-      excerpt: s1,
-      intent: 'Gancho visual e apresentação imediata',
-      visualProof: `Close forte revelando ${productName} com nitidez nas mãos e contexto real`,
-      scenes: '1–2',
-    },
-    {
-      excerpt: s2,
-      intent: 'Provar o 1º argumento e benefício central',
-      visualProof: `Ação direta demonstrando o funcionamento/qualidade de ${productName} na prática`,
-      scenes: '3–5',
-    },
-    {
-      excerpt: s3,
-      intent: 'Mostrar detalhe construtivo e utilidade real',
-      visualProof: `Macro do acabamento/material e plano aberto mostrando o benefício no cenário`,
-      scenes: '6–8',
-    },
-    {
-      excerpt: sLast,
-      intent: 'Fechamento de alta conversão (CTA)',
-      visualProof: `Produto em destaque + satisfação evidente no fechamento`,
-      scenes: '9',
-    },
-  ];
+  const visualMap: Produtos2VisualMapItem[] =
+    sceneCount === 4
+      ? [
+          {
+            excerpt: s1,
+            intent: 'Gancho visual e apresentação do produto',
+            visualProof: `Apresentação clara revelando ${productName} com destaque e nitidez`,
+            scenes: '1',
+          },
+          {
+            excerpt: s2,
+            intent: 'Demonstração de quantidade / valor e contexto',
+            visualProof: `${productName} organizado e destacado no ambiente de uso`,
+            scenes: '2',
+          },
+          {
+            excerpt: s3,
+            intent: 'Detalhe do produto e especificações reais',
+            visualProof: `Aproximação em detalhe destacando especificações e identidade visual de ${productName}`,
+            scenes: '3',
+          },
+          {
+            excerpt: sLast,
+            intent: 'Aprovação, recomendação e chamada final (CTA)',
+            visualProof: `Recomendação calorosa com ${productName} em destaque`,
+            scenes: '4',
+          },
+        ]
+      : sceneCount === 6
+      ? [
+          {
+            excerpt: s1,
+            intent: scenePartIndex === 2 ? 'Continuidade da demonstração prática' : 'Gancho visual e apresentação imediata',
+            visualProof: `Close forte revelando ${productName} com nitidez nas mãos e contexto real`,
+            scenes: '1–2',
+          },
+          {
+            excerpt: s2,
+            intent: 'Provar argumentos e detalhes de funcionamento',
+            visualProof: `Ação direta demonstrando o funcionamento/qualidade de ${productName} na prática`,
+            scenes: '3–4',
+          },
+          {
+            excerpt: sLast,
+            intent: scenePartIndex === 2 ? 'Fechamento de alta conversão (CTA)' : 'Benefício em uso real e transição',
+            visualProof: `Produto em destaque + benefício evidente`,
+            scenes: '5–6',
+          },
+        ]
+      : [
+          {
+            excerpt: s1,
+            intent: 'Gancho visual e apresentação imediata',
+            visualProof: `Close forte revelando ${productName} com nitidez nas mãos e contexto real`,
+            scenes: '1–2',
+          },
+          {
+            excerpt: s2,
+            intent: 'Provar o 1º argumento e benefício central',
+            visualProof: `Ação direta demonstrando o funcionamento/qualidade de ${productName} na prática`,
+            scenes: '3–5',
+          },
+          {
+            excerpt: s3,
+            intent: 'Mostrar detalhe construtivo e utilidade real',
+            visualProof: `Macro do acabamento/material e plano aberto mostrando o benefício no cenário`,
+            scenes: '6–8',
+          },
+          {
+            excerpt: sLast,
+            intent: 'Fechamento de alta conversão (CTA)',
+            visualProof: `Produto em destaque + satisfação evidente no fechamento`,
+            scenes: '9',
+          },
+        ];
 
-  // 5. PLANEJAR AS 9 CENAS (Respeitando Calçados Masculinos, Roupas Masculinas ou Produtos Gerais, e o Enquadramento)
+  // 5. PLANEJAR AS CENAS (Respeitando Calçados Masculinos, Roupas Masculinas ou Produtos Gerais, e o Enquadramento)
   const ctaFramingAction =
     framing === 'com_rosto'
       ? `Plano médio frontal. ${isAdultMale ? 'O apresentador' : 'A apresentadora'} segura ${productName} em destaque, olhando e falando para a câmera com sorriso confiante.`
@@ -1311,7 +1806,7 @@ export function buildDefaultProdutos2Plan(params: {
     rawScenes = [
       {
         framing: 'Close POV em primeira pessoa',
-        action: `Mãos masculinas abrindo a caixa e segurando o ${productName} de frente para a câmera, revelando o design lateral e frontal.`,
+        action: `Mãos masculinas segurando o ${productName} de frente para a câmera, revelando o design lateral e frontal.`,
         cameraMovement: 'Leve push-in focado no calçado.',
       },
       {
@@ -1388,7 +1883,7 @@ export function buildDefaultProdutos2Plan(params: {
       {
         framing: framing === 'pov' ? 'Close lateral POV da peça' : 'Plano médio lateral em movimento',
         action: framing === 'pov'
-          ? `Mãos segurando ${productName} de frente em ângulo dinâmico, exibindo o acabamento e os detalhes frontais da peça.`
+          ? `Mãos virando ${productName} para mostrar o verso e acabamento das costas.`
           : `Homem se movimentando (agachando/caminhando) com ${productName}, provando que não prende o movimento.`,
         cameraMovement: 'Acompanhamento dinâmico.',
       },
@@ -1412,115 +1907,76 @@ export function buildDefaultProdutos2Plan(params: {
     ];
   } else {
     // Produtos Gerais (Seção 7.3 e 7.4)
-    const isPackagedOrDiaper = /\b(fralda|fraldas|pacote|embalagem|fardo|pack|caixa|pote)\b/i.test(`${productName} ${productInfo}`);
-    if (isPackagedOrDiaper) {
-      rawScenes = [
-        {
-          framing: 'Close POV muito próximo',
-          action: `Duas mãos adultas seguram a embalagem fechada de ${productName} diante da câmera em ${scenarioDescription}, revelando seu design real e despertando curiosidade imediata.`,
-          cameraMovement: 'Pequeno movimento natural das mãos mostrando a embalagem.',
-        },
-        {
-          framing: framing === 'pov' ? 'Plano médio POV sobre a bancada/ambiente' : 'Plano médio de contexto',
-          action: framing === 'pov'
-            ? `Mãos posicionando o pacote fechado de ${productName} no ambiente em ${scenarioDescription}.`
-            : `${isAdultMale ? 'O apresentador' : 'A apresentadora'} apresenta o pacote fechado de ${productName} no ambiente real (${scenarioDescription}).`,
-          cameraMovement: 'Corte rápido com leve movimento lateral.',
-        },
-        {
-          framing: 'Close rápido e dinâmico de apresentação',
-          action: `Mão adulta segurando a embalagem fechada de ${productName} com firmeza, destacando as especificações e qualidade visíveis no pacote.`,
-          cameraMovement: 'Push-in rápido focado na arte e selos da embalagem.',
-        },
-        {
-          framing: 'Plano médio de recomendação e valor',
-          action: `${isAdultMale ? 'O apresentador' : 'A apresentadora'} segurando o pacote fechado de ${productName} com entusiasmo, comprovando a praticidade e excelente custo-benefício anunciado na copy.`,
-          cameraMovement: 'Câmera dinâmica acompanhando o gesto com o pacote.',
-        },
-        {
-          framing: 'Close nos diferenciais impressos da embalagem',
-          action: `Close focado nas informações impressas, quantidade e diferenciais em destaque no pacote fechado de ${productName} em ${scenarioDescription}.`,
-          cameraMovement: 'Movimento suave de smartphone valorizando os dados da embalagem.',
-        },
-        {
-          framing: 'Close macro extremo de detalhe ("Olha...")',
-          action: `Enquadramento macro focado nos detalhes da embalagem, acabamento do lacre e arte original de ${productName}.`,
-          cameraMovement: 'Foco cravado nos detalhes gráficos e de fabricação do pacote.',
-        },
-        {
-          framing: 'Plano aberto contextual',
-          action: `Visão mais ampla em ${scenarioDescription} mostrando ${isAdultMale ? 'o apresentador' : 'a apresentadora'} segurando o pacote fechado de ${productName} com total confiança e satisfação.`,
-          cameraMovement: 'Panorâmica curta e natural.',
-        },
-        {
-          framing: 'Close de garantia e economia',
-          action: `Demonstração da embalagem fechada de ${productName} bem acomodada e pronta para o dia a dia, evidenciando economia e praticidade.`,
-          cameraMovement: 'Aproximação suave.',
-        },
-        {
-          framing: framing === 'com_rosto' ? 'Plano médio final com rosto' : framing === 'sem_rosto' ? 'Plano médio sem rosto (pescoço para baixo)' : 'Close POV final',
-          action: ctaFramingAction,
-          cameraMovement: 'Final com pequeno movimento de câmera aproximando.',
-        },
-      ];
-    } else {
-      rawScenes = [
-        {
-          framing: 'Close POV muito próximo',
-          action: `Duas mãos adultas seguram ${productName} diante da câmera em ${scenarioDescription}, revelando seu design real e despertando curiosidade imediata.`,
-          cameraMovement: 'Pequeno movimento natural das mãos mostrando o produto.',
-        },
-        {
-          framing: framing === 'pov' ? 'Plano médio POV sobre a bancada/ambiente' : 'Plano médio de contexto',
-          action: framing === 'pov'
-            ? `Mãos posicionando ${productName} no local de uso em ${scenarioDescription}.`
-            : `${isAdultMale ? 'O apresentador' : 'A apresentadora'} apresenta ${productName} no ambiente real (${scenarioDescription}).`,
-          cameraMovement: 'Corte rápido com leve movimento lateral.',
-        },
-        {
-          framing: 'Close rápido e dinâmico de ação',
-          action: `Mão adulta demonstrando o funcionamento de ${productName} na prática para provar o primeiro argumento da fala.`,
-          cameraMovement: 'Push-in rápido focado na ação das mãos.',
-        },
-        {
-          framing: 'Plano médio de resultado imediato',
-          action: `${productName} entrando em funcionamento imediato, mostrando na prática a eficiência prometida na copy.`,
-          cameraMovement: 'Câmera dinâmica acompanhando o efeito.',
-        },
-        {
-          framing: 'Plano de demonstração principal em uso real',
-          action: `Uso real e ativo de ${productName} em ${scenarioDescription}, provando o benefício central citado na locução sem esforço.`,
-          cameraMovement: 'Movimento orgânico de smartphone acompanhando o uso.',
-        },
-        {
-          framing: 'Close macro extremo de detalhe ("Olha...")',
-          action: `Enquadramento macro focado no detalhe construtivo, acabamento premium e material resistente de ${productName}.`,
-          cameraMovement: 'Foco cravado nos detalhes físicos do produto.',
-        },
-        {
-          framing: 'Plano aberto contextual',
-          action: `Visão mais ampla em ${scenarioDescription} mostrando como ${productName} resolve a situação e traz praticidade ao ambiente.`,
-          cameraMovement: 'Panorâmica curta e natural.',
-        },
-        {
-          framing: 'Close de prova física e satisfação',
-          action: `Demonstração da resistência/vedação/acabamento de ${productName} após o uso, evidenciando qualidade superior.`,
-          cameraMovement: 'Aproximação suave.',
-        },
-        {
-          framing: framing === 'com_rosto' ? 'Plano médio final com rosto' : framing === 'sem_rosto' ? 'Plano médio sem rosto (pescoço para baixo)' : 'Close POV final',
-          action: ctaFramingAction,
-          cameraMovement: 'Final com pequeno movimento de câmera aproximando.',
-        },
-      ];
-    }
+    rawScenes = [
+      {
+        framing: 'Close POV muito próximo',
+        action: `Duas mãos adultas seguram ${productName} diante da câmera em ${scenarioDescription}, revelando seu design real e despertando curiosidade imediata.`,
+        cameraMovement: 'Pequeno movimento natural das mãos mostrando o produto.',
+      },
+      {
+        framing: framing === 'pov' ? 'Plano médio POV sobre a bancada/ambiente' : 'Plano médio de contexto',
+        action: framing === 'pov'
+          ? `Mãos posicionando ${productName} no local de uso em ${scenarioDescription}.`
+          : `${isAdultMale ? 'O apresentador' : 'A apresentadora'} apresenta ${productName} no ambiente real (${scenarioDescription}).`,
+        cameraMovement: 'Corte rápido com leve movimento lateral.',
+      },
+      {
+        framing: 'Close rápido e dinâmico de ação',
+        action: `Mão adulta manuseando e apresentando ${productName} de frente na prática (se embalagem/pacote lacrado, mantém o pacote fechado sem abrir nem inventar conteúdo interno).`,
+        cameraMovement: 'Push-in rápido focado na ação das mãos.',
+      },
+      {
+        framing: 'Plano médio de resultado imediato',
+        action: `${productName} entrando em funcionamento imediato, mostrando na prática a eficiência prometida na copy.`,
+        cameraMovement: 'Câmera dinâmica acompanhando o efeito.',
+      },
+      {
+        framing: 'Plano de demonstração principal em uso real',
+        action: `Uso real e ativo de ${productName} em ${scenarioDescription}, provando o benefício central citado na locução sem esforço.`,
+        cameraMovement: 'Movimento orgânico de smartphone acompanhando o uso.',
+      },
+      {
+        framing: 'Close macro extremo de detalhe ("Olha...")',
+        action: `Enquadramento macro focado no detalhe construtivo, acabamento premium e material resistente de ${productName}.`,
+        cameraMovement: 'Foco cravado nos detalhes físicos do produto.',
+      },
+      {
+        framing: 'Plano aberto contextual',
+        action: `Visão mais ampla em ${scenarioDescription} mostrando como ${productName} resolve a situação e traz praticidade ao ambiente.`,
+        cameraMovement: 'Panorâmica curta e natural.',
+      },
+      {
+        framing: 'Close de prova física e satisfação',
+        action: `Demonstração da resistência/vedação/acabamento de ${productName} após o uso, evidenciando qualidade superior.`,
+        cameraMovement: 'Aproximação suave.',
+      },
+      {
+        framing: framing === 'com_rosto' ? 'Plano médio final com rosto' : framing === 'sem_rosto' ? 'Plano médio sem rosto (pescoço para baixo)' : 'Close POV final',
+        action: ctaFramingAction,
+        cameraMovement: 'Final com pequeno movimento de câmera aproximando.',
+      },
+    ];
   }
 
+  const selectedRawScenes =
+    sceneCount === 4
+      ? [
+          rawScenes[0], // Cena 1: gancho visual e apresentação imediata
+          rawScenes[1], // Cena 2: contexto / quantidade organizada
+          rawScenes[5] || rawScenes[2], // Cena 3: detalhe do produto e especificações
+          rawScenes[rawScenes.length - 1], // Cena 4: aprovação, recomendação e chamada final
+        ]
+      : sceneCount === 6
+      ? scenePartIndex === 2
+        ? rawScenes.slice(3, 9) // Cenas de continuidade, detalhes, prova física e CTA final
+        : rawScenes.slice(0, 6) // Cenas de gancho, introdução e desenvolvimento inicial
+      : rawScenes.slice(0, 9);
+
   const activePlanVars = (variations || []).filter((v) => v.photos && v.photos.length > 0);
-  const scenes: Produtos2SceneItem[] = rawScenes.map((sc, idx) => {
+  const rawPlanScenes: Produtos2SceneItem[] = selectedRawScenes.map((sc, idx) => {
     const num = idx + 1;
-    const varInfo = getSceneVariationInfo(num, activePlanVars);
-    const cleanAction = sc.action.trim();
+    const varInfo = getSceneVariationInfo(num, activePlanVars, sceneCount);
+    const cleanAction = sanitizeSceneFidelityAction(sc.action.trim(), productName);
     return {
       number: num,
       startTime: timings[idx].start,
@@ -1532,6 +1988,8 @@ export function buildDefaultProdutos2Plan(params: {
       variationName: varInfo?.variationName,
     };
   });
+
+  const scenes = sanitizeAllScenesForFidelity(rawPlanScenes, productName, productInfo, scenePartIndex);
 
   return {
     productLock,
@@ -1549,25 +2007,40 @@ export function buildProdutos2PlanningSystemPrompt(): string {
   return `Você é o Diretor Criativo Copy-First do Modo Produtos 2.0.
 REGRA-MÃE: A COPY VENDE. O STORYBOARD PROVA VISUALMENTE A COPY. O VÍDEO ANIMA O STORYBOARD SEM NUNCA MOSTRAR A PRÓPRIA FOLHA DO STORYBOARD.
 
-REGRA CRÍTICA E INVIOLÁVEL 1 — PROIBIÇÃO DE INVENTAR CONTEÚDO INTERNO DE EMBALAGENS (EX: CAIXA DE BOMBONS, PACOTE DE FRALDAS, CAIXAS, POTES, FARDOS):
-- O aplicativo NUNCA pode inventar o produto interno! Se o produto que está sendo vendido for uma caixa de bombons e foi anexada apenas a caixa mostrando o exterior, o aplicativo NÃO PODE inventar e mostrar os bombons dentro da caixa se não tiverem sido mostrados nas imagens de referência.
-- Se o produto for um pacote de fraldas, vai aparecer o pacote de fralda fechado igual na imagem de referência, mas NUNCA vai aparecer as fraldas soltas que vêm dentro, a menos que tenham sido fornecidas fotos de referência das fraldas soltas.
-- Se o usuário não forneceu imagem de referência do que vem dentro da embalagem, o aplicativo NÃO PODE inventar o produto. As cenas retratam EXCLUSIVAMENTE a embalagem/pacote fechado real das fotos!
+═══════════════════════════════════════════════════════════════════
+REGRA DE LIBERDADE DO PRIMEIRO FRAME / CENA 1 (HOOK DE ATENÇÃO):
+- NO QUADRO 1 / CENA 1 (PRIMEIRO FRAME DO STORYBOARD E DO VÍDEO), O PRODUTO NÃO É OBRIGADO A APARECER!
+- O primeiro frame serve como HOOK chamativo para prender a atenção do espectador: está 100% liberado para focar na reação de surpresa/curiosidade do apresentador, em uma situação de impacto, problema do cotidiano ou teaser SEM a necessidade de mostrar o produto físico.
+- Se o usuário pedir expressamente nas Instruções Adicionais para mostrar o produto desde o primeiro frame, inclua o produto na Cena 1. Caso contrário (padrão), o primeiro frame é LIVRE: o produto pode aparecer ou não aparecer, de acordo com o que criar o hook mais envolvente.
+- NOS OUTROS TRÊS QUADROS (Cenas 2, 3 e 4 no modo de 4 cenas; ou Cenas 2 a 9 no modo de 9 cenas): A presença do produto é ESTRITAMENTE OBRIGATÓRIA e deve ser 100% fiel às fotos de referência!
 
-REGRA CRÍTICA E INVIOLÁVEL 2 — PROIBIÇÃO DE INVENTAR ÂNGULOS NÃO FORNECIDOS (LOCK DE ÂNGULOS REAIS):
-- O aplicativo NÃO PODE mostrar o produto em ângulo diferente do que foi fornecido nas fotos de referência!
-- Se a foto fornecida mostra o produto apenas de frente e NÃO foi mostrado o verso/costas/traseira, o aplicativo NÃO PODE gerar nenhuma cena ou imagem mostrando o verso, porque isso seria inventar uma imagem inexistente!
-- O produto deve ser sempre mostrado de frente ou em ângulos que mantenham visível a face fotografada. NUNCA planeje ações de virar o produto de costas ou mostrar o verso não fotografado!
-
-REGRA CRÍTICA E INVIOLÁVEL 3 — ZERO SITES E ZERO QR CODES / CÓDIGOS DE BARRAS (MESMO SE ESTIVEREM NA FOTO DE REFERÊNCIA):
-- É TERMINANTEMENTE PROIBIDO prever qualquer site, link de internet, domínio, URL (ex.: www..., .com, .com.br, https) ou código de barras/QR code em qualquer cena ou embalagem.
-- MESMO QUE a embalagem na foto de referência contenha site ou QR code impresso de fábrica, a IA DEVE OMITIR e DEIXAR A ÁREA LIMPA! Nenhuma imagem pode conter site ou QR code!
-
-REGRA CRÍTICA E INVIOLÁVEL 4 — MÁXIMA FIDELIDADE DE EMBALAGEM, NOME DO FABRICANTE, LOGOMARCA E CORES EXATAS (1:1):
-- Manter com precisão cirúrgica a aparência real da embalagem, formato e design das fotos de referência.
-- O nome do fabricante deve ser preservado e escrito exatamente igual às referências (jamais trocar letras, distorcer palavras ou inventar marcas).
-- A logomarca e o símbolo original do fabricante devem estar presentes e idênticos.
-- As cores do produto e as cores da embalagem DEVEM ser 100% idênticas às fotos de referência (não desbotar, não alterar tons, não inventar cores).
+AS 6 REGRAS DE OURO MANDATÓRIAS DE COMPLIANCE TIKTOK SHOP (ZERO-PUNIÇÃO):
+1. TRAVA ESTRITA DE QUANTIDADE DE PRODUTO:
+   - Em todas as cenas em que o produto for exibido (Quadros 2, 3 e 4, e no Quadro 1 caso apareça):
+   - Se o anúncio é de 1 unidade (ex.: 1 celular, 1 relógio, 1 perfume, 1 camisa): o produto DEVE ser retratado estritamente como 1 única unidade! NUNCA pode aparecer 2 celulares ou 2 relógios na mesma tela em nenhum frame.
+   - Se o anúncio é de um kit de N unidades (ex.: kit de 4 pacotes de fraldas, combo com 3 camisetas): TODAS as tomadas do kit DEVEM mostrar RIGOROSAMENTE e EXATAMENTE N unidades (ex.: exatamente 4 pacotes, NUNCA 3 e NUNCA 5). 100% fiel à quantidade do anúncio.
+2. LOGOMARCA, NOME DO FABRICANTE E NOME DO PRODUTO 100% IDÊNTICOS:
+   - A marca, a logomarca, o emblema e o nome do produto impressos ou gravados no produto físico DEVEM ser 100% idênticos em tipografia, formato, desenho, cor, proporção e posição exata às fotos de referência. NUNCA distorcer, inventar marca genérica ou remover a marca original.
+3. PRODUTOS DE USO ORAL SEM ANTES E DEPOIS E SEM CLAREAMENTO DE DENTES:
+   - Para produtos de higiene ou uso oral (irrigador oral, escova de dentes, enxaguante bucal, etc.): É EXPRESSAMENTE PROIBIDO mostrar "antes e depois" de clareamento de dentes ou dar a entender que houve clareamento dental. Fazer o vídeo SEM mostrar dentes em close de branqueamento (demonstrar o manuseio do aparelho, o jato de água na pia ou em um copo com água, bicos e botões, e a apresentadora sorrindo naturalmente com boca fechada ou acolhedora sem focar em dentes).
+4. ROUPAS E PEÇAS DE VESTUÁRIO 100% FIÉIS:
+   - Quando o produto for roupa, a peça precisa ser 100% fiel às fotos de referência em botões (formato, quantidade e cor), costuras, pespontos, cores, detalhes, caimento e padrão visual. NUNCA inventar botões ou costuras que não estejam nas referências.
+5. TAMANHO REAL — PROIBIDO APARENTAR SER MAIOR:
+   - O produto NÃO pode aparentar ser maior do que o tamanho mostrado nas fotos de referência reais. Manter proporções humanas e escala física 100% realistas em relação às mãos, corpo e bancada.
+6. LAYOUT, CORES E ÂNGULOS VISÍVEIS 100% IDÊNTICOS (PROIBIDO INVENTAR ÂNGULOS OCULTOS):
+   - Manter o produto com layout e cores 100% idênticos às fotos de referência. NUNCA criar tomadas mostrando ângulos que não estejam nas fotos de referência (ou seja, NÃO inventar traseira, laterais ou interior). Se apenas a frente foi fotografada, manter o produto de frente.
+7. PROIBIÇÃO ABSOLUTA DE SITE E CÓDIGO DE BARRAS EM EMBALAGENS/CAIXAS:
+   - É TERMINANTEMENTE PROIBIDO prever ou gerar qualquer site, link de internet, domínio, URL (ex.: www..., .com, .com.br) ou código de barras/QR code em qualquer caixa, pacote ou embalagem do produto. As caixas, pacotes e embalagens devem ser 100% limpas desses elementos.
+8. ENGENHARIA REVERSA PREVENTIVA PARA APROVAÇÃO >=90% NOS AUDITORES DE STORYBOARD E DE VÍDEO (5 GRUPOS DO DETECTOR + ANTI-MORPHING):
+   - Tanto o Storyboard quanto o Vídeo gerado no Veo 3 passam por uma Auditoria Pericial Rigorosa que exige nota >=90% (Verde — Aprovado) nos 5 Grupos de Inspeção e na Passagem de Continuidade Temporal. Portanto, PLANEJE CADA CENA E O PRODUCT LOCK DESDE O INÍCIO PARA GARANTIR >90% DE FIDELIDADE:
+     * Grupo 1 (Identidade e Modelo): Descreva e trave o modelo exato, formato geral, silhueta e design característico.
+     * Grupo 2 (Estrutura Física e Todos os Componentes): Inventarie no "productLock" o corpo principal, base, conexões, cabos/fios, alças, tampas, bicos, fechos, botões, articulações e TODAS as peças de kits. Nas cenas, nenhuma peça pode sumir ou mudar de lugar.
+     * Grupo 3 (Design e Proporções): Preserve espessuras, curvaturas e comprimentos reais em escala humana 1:1.
+     * Grupo 4 (Cores, Materiais, Texturas e Acabamento): Especifique o acabamento real (fosco, brilhante, metálico, tecido) e a logomarca original 1:1.
+     * Grupo 5 e Continuidade Temporal Anti-Morphing (CRÍTICO PARA O VEO 3):
+       - Planeje interações de mãos CALMAS, ESTÁVEIS E ANATOMICAMENTE SEPARADAS: oriente que as mãos segurem o produto pelas laterais ou empunhadura neutra, SEM cobrir a logomarca do fabricante, o visor ou botões/bicos principais, e SEM entrelaçar dedos sobre partes finas (evitando fusão mão-objeto / morphing no Veo 3).
+       - Planeje movimentos de câmera CONTROLADOS E SEGUROS ("push-in suave", "estabilização firme de smartphone", "pan curto controlado"): NUNCA peça giros de 360 graus, rotações rápidas, malabarismos ou movimentos bruscos que façam o Veo 3 deformar cabos, bicos ou estrutura!
+═══════════════════════════════════════════════════════════════════
 
 REGRA DE OURO INVIOLÁVEL — LOGOMARCA DO FABRICANTE NO PRODUTO vs ELEMENTOS DE REDE SOCIAL:
 - DIFERENCIE TOTALMENTE:
@@ -1578,9 +2051,27 @@ REGRA DE OURO INVIOLÁVEL — LOGOMARCA DO FABRICANTE NO PRODUTO vs ELEMENTOS DE
 - O 1º item do array "productLock" DEVE ser essa descrição exata da logomarca do fabricante e a exigência de que ela apareça idêntica em todas as cenas onde aquela parte do produto estiver visível.
 - Nas descrições das cenas ("scenes") em que a parte do produto com a logomarca aparece, mencione explicitamente a presença da logomarca original no local exato (ex.: "...exibindo o encosto preto com a logomarca branca original do fabricante no topo").
 
+REGRA SAGRADA DE FIDELIDADE AO PRODUTO ANEXADO — PROIBIÇÃO ABSOLUTA DE INVENTAR PARTES NÃO FOTOGRAFADAS, CONTEÚDO DE EMBALAGENS LACRADAS OU ÂNGULOS NÃO VISÍVEIS (ANTI-REJEIÇÃO DO TIKTOK):
+- O produto deve ser retratado RIGOROSA E EXCLUSIVAMENTE com base no que está visível nas fotos de referência anexadas pelo usuário!
+- REGRA CRÍTICA SOBRE "INFORMAÇÕES DO PRODUTO" (TEXTO vs IMAGEM):
+  * As "Informações do produto" e descrição textual servem EXCLUSIVAMENTE para construir ou adaptar a copy/fala falada (locução).
+  * É TERMINANTEMENTE PROIBIDO usar o texto de "Informações do produto" para inventar cenas visuais, desenhar produtos abertos ou criar detalhes que NÃO estão fotografados nas fotos de referência!
+  * Exemplo Real: se o texto descreve "estampa da galinha pintadinha", "tecnologia de absorção 12h", "gel", "toque de algodão" ou "indicador de umidade", mas as fotos anexadas mostram apenas PACOTES FECHADOS / EMBALAGENS LACRADAS, você NUNCA PODE criar cenas abrindo o pacote, tirando uma fralda de dentro, mostrando a fralda aberta, jogando água na fralda ou tocando no algodão! A imagem do storyboard é 100% sobre o que foi fotografado!
+- REGRA DE PRODUTO LACRADO / EMBALAGEM FECHADA / PACOTES (ex.: pacotes de fraldas fechados, caixas de cosméticos, potes lacrados, combos):
+  * Se as fotos de referência mostram apenas a embalagem fechada ou o pacote lacrado e NÃO há fotos do item avulso solto fora do pacote:
+  * TODAS as 9 cenas (ou 6 cenas) DEVEM retratar e manusear EXCLUSIVAMENTE a EMBALAGEM FECHADA / O PACOTE FECHADO!
+  * NENHUMA cena pode abrir a embalagem, rasgar o plástico, tirar o produto de dentro, mostrar o produto solto/aberto ou fazer testes de absorção/líquidos.
+  * O que fazer nas cenas de demonstração de produto em pacote/embalagem fechada:
+    - Cenas 1–2: Segurar os pacotes fechados de frente, mostrando o combo/estoque com clareza;
+    - Cenas 3–4: Empilhar os pacotes fechados sobre a bancada, cômoda ou mesa de forma organizada;
+    - Cenas 5–6: Apontar com o dedo para os selos, marca, quantidade e benefícios impressos NA PRÓPRIA EMBALAGEM de referência;
+    - Cenas 7–8: Mostrar os pacotes fechados integrados ao ambiente de uso (ex.: quarto do bebê com os pacotes organizados na prateleira);
+    - Cena 9: Abraçar/segurar os pacotes fechados com sorriso de satisfação e recomendação para o carrinho.
+- REGRA DE ÂNGULOS E BOTÕES NÃO VISÍVEIS: É terminantemente proibido inventar outro lado, botões, acessórios ou partes traseiras que não estejam visíveis nas fotos de referência anexadas. Se apenas a frente do produto foi enviada, todas as tomadas devem retratar o produto de frente ou nos ângulos visíveis nas fotos de referência. NENHUM botão, detalhe construtivo ou peça diferente do fotografado pode aparecer.
+
 Sua tarefa é receber:
-1) As fotos reais do produto;
-2) As "Informações do produto" e "Nome do produto";
+1) As fotos reais do produto (FONTE ÚNICA E ABSOLUTA PARA O STORYBOARD E CENAS VISUAIS);
+2) As "Informações do produto" e "Nome do produto" (FONTE EXCLUSIVA PARA A COPY/FALA E NICHO, NUNCA PARA CRIAR CENAS VISUAIS);
 3) A "Copy-base selecionada do banco" (ou copy nova/adaptada do molde do nicho);
 4) As configurações (duração 10s ou 8s, influencer, gênero do cliente, fala, enquadramento, cenário, instruções adicionais, variações anexadas).
 
@@ -1593,6 +2084,9 @@ E retornar um JSON estrito com:
    - NUNCA use a palavra "menina" como vocativo; quando o público for feminino, use "Amiga" ou "Gente". Para masculino, use "Meu amigo", "Cara", "Irmão" ou "Gente".
    - NUNCA mencione "frete grátis" ou "frete gratuito" na fala, a menos que isso tenha sido informado expressamente nas Informações do Produto.
 3. "productLock": array de 4 a 6 strings detalhando fisicamente o produto visto nas fotos (1º item obrigatoriamente a descrição exata da logomarca/emblema/marca impressa no produto e sua posição exata; seguido de formato, proporção, material, textura, botões/costuras/sola/cabos/detalhes).
+   - INCLUA A QUANTIDADE EXATA DO PRODUTO (ex: "Quantidade: Kit de 4 pacotes fechados" ou "Quantidade: 1 celular único").
+   - SE ROUPA: especifique botões, costuras, caimento e detalhes 100% idênticos às fotos.
+   - SE PRODUTO ORAL: especifique que não há exibição de clareamento ou dentes em close.
    - REGRA MANDATÓRIA DE VARIAÇÕES DE COR NO PRODUCT LOCK:
      * Quando houver mais de 1 variação de cor/modelo, NUNCA fixe a cor ou estampa de apenas uma das fotos (ex.: NUNCA escreva "tecido azul-marinho com listras" ou "franjas azul-marinho" como se fosse o produto inteiro!).
      * No "productLock", descreva apenas os aspectos físicos universais da peça (tecido 100% algodão, formato curvo, franjas nas laterais, cordas reforçadas nas pontas, acabamento).
@@ -1621,7 +2115,7 @@ E retornar um JSON estrito com:
    - Variar enquadramentos (nunca duas cenas seguidas iguais): close, macro, POV de mãos, plano médio, plano aberto, uso real.
    - "storyboardDescription" DEVE ser idêntico a "{framing}. {action}" (mesma pessoa, mesma ação, mesmo enquadramento e mesmos objetos, sem inventar objetos extras ou mudar quem aparece entre um campo e outro).
    - Sempre que a parte do produto onde fica a logomarca do fabricante estiver visível na cena, inclua na descrição da cena que a logomarca original está visível e idêntica à foto.
-   - Na Cena 1, escreva "action" de forma direta e objetiva (sem reticências e sem ponto no meio da frase).
+   - Na Cena 1 (Quadro 1 / Hook de abertura): Escreva "action" de forma direta e objetiva (sem reticências e sem ponto no meio da frase). Lembre-se que na Cena 1 o produto NÃO é obrigatório: pode focar 100% no hook de reação/impacto sem o produto, exceto se solicitado nas instruções adicionais. Já nas Cenas 2, 3 e 4 o produto é estritamente obrigatório.
    - Respeitar estritamente o Enquadramento:
      * "com_rosto": rosto aparece em algumas cenas (especialmente gancho e cena 9).
      * "sem_rosto": nunca mostrar o rosto; sempre do pescoço para baixo.
@@ -1630,6 +2124,6 @@ E retornar um JSON estrito com:
      * "avatarDescription": Descreva com riqueza os dois personagens (Mulher e Homem), suas idades aproximadas, etnia (se informada) e continuidade de roupas.
      * "scenarioDescription": Dê prioridade ao ambiente de encontro/interação informado (ex: cafeteria, restaurante intimista ao pôr do sol).
      * "scenes": As Cenas 1 e 2 devem ilustrar a mulher reagindo/admirando o produto e perguntando ao homem; a partir da Cena 3 o homem responde, apresenta o produto, demonstra as funções e na Cena 9 conclui com o CTA.
-   - Proibido texto flutuante externo, legenda, preço, número escrito, carrinho, marca d'água de rede social, @ ou interface de aplicativo dentro das cenas (mas OBRIGATÓRIO manter a logomarca original do fabricante impressa no próprio produto), e É EXPRESSAMENTE PROIBIDO desenhar ou prever site, link de internet, URL ou código de barras/QR code em qualquer caixa, pacote ou embalagem do produto. Além disso, MESMO QUE APAREÇAM NA FOTO DE REFERÊNCIA, É PROIBIDO desenhar qualquer site ou QR code. É PROIBIDO inventar o interior de embalagens/caixas/pacotes fechados (como bombons fora da caixa ou fraldas soltas) ou inventar ângulos/verso/costas que não foram fornecidos nas fotos. As cores do produto e da embalagem, o nome do fabricante e a logomarca devem ser rigorosamente 1:1 iguais à referência.`;
+   - Proibido texto flutuante externo, legenda, preço, número escrito, carrinho, marca d'água de rede social, @ ou interface de aplicativo dentro das cenas (mas OBRIGATÓRIO manter a logomarca original do fabricante impressa no próprio produto).`;
 }
 

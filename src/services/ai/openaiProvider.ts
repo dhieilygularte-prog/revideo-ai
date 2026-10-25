@@ -515,6 +515,8 @@ Retorne estritamente um JSON estruturado:
       additionalInstructions = '',
       hasUserProvidedModel = false,
       isCloneMode = false,
+      aspectRatio,
+      size,
     } = params;
 
     const client = this.getClient();
@@ -541,7 +543,7 @@ Retorne estritamente um JSON estruturado:
     const opticalClarityDirective = `CRITICAL OPTICAL CLARITY & HIGH-DEFINITION SENSOR CALIBRATION:
 - Modern high-end smartphone camera clarity: crystal-clear optical glass lens, razor-sharp focus and rich texture definition.
 - SCENARIO-ACCURATE LIGHTING & ATMOSPHERE: The lighting, atmosphere and color temperature must authentically adapt to the specific scene in the prompt (e.g., candlelight, romantic evening, cozy home, or bright daylight).
-- STRICTLY PROHIBITED: Pale, washed-out, milky, hazy, or muddy look; NO plastic film/veil overlay effect across the lens; NO muddy yellowish plastic cast over the frame. Deliver vivid, rich colors, crisp authentic contrast, and clean sensor optics.`;
+- STRICTLY PROHIBITED: Pale, washed-out, milky, hazy, or muddy look; NO plastic film/veil overlay effect across the lens; NO muddy yellowish plastic cast over the frame. Deliver vivid, rich colors, crisp authentic contrast, and clean sensor optics.\r\n- 90%+ FIDELITY AUDITOR CALIBRATION (5 INSPECTION GROUPS + ANTI-MORPHING): Preserve 100% of the exact product model, silhouette, all physical components (body, nozzles, caps, cables, handles, buttons, seams, and all kit pieces), realistic human scale, exact surface finish (matte, glossy, metallic), and 1:1 manufacturer logo. Hands must have 5 natural fingers gripping neutral sides cleanly without fusing into the product or covering the logo/buttons.`;
 
     // Prioriza correções de auditoria e instruções adicionais sobre o prompt universal já formatado
     const overrides = [
@@ -628,6 +630,64 @@ Mantenha o mesmo modelo/corte e caimento da peça atual; troque somente cores (p
         baseImageFile = imageFiles[0];
       }
 
+      // Calcula o tamanho da imagem conforme proporção solicitada (16:9 horizontal => 1792x1024, 9:16 vertical => 1024x1792)
+      const isLandscape = (aspectRatio === '16:9' || size === '1792x1024') && aspectRatio !== '9:16';
+      const chosenImageSize = (size || (isLandscape ? '1792x1024' : OPENAI_IMAGE_SIZE)) as any;
+
+      const checkIsVertical = (rawB64: string): boolean => {
+        try {
+          const buf = Buffer.from(rawB64, 'base64');
+          if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47 && buf.length >= 24) {
+            return buf.readUInt32BE(20) > buf.readUInt32BE(16);
+          }
+          if (buf[0] === 0xFF && buf[1] === 0xD8) {
+            let offset = 2;
+            while (offset < buf.length - 8) {
+              if (buf[offset] !== 0xFF) break;
+              const marker = buf[offset + 1];
+              if (marker === 0xC0 || marker === 0xC2) {
+                return buf.readUInt16BE(offset + 5) > buf.readUInt16BE(offset + 7);
+              }
+              offset += 2 + buf.readUInt16BE(offset + 2);
+            }
+          }
+        } catch {}
+        return false;
+      };
+
+      // Se é horizontal 16:9 e a imagem de referência anterior era vertical, descartamos ela para não herdar o formato vertical
+      if (isLandscape && referenceFrameBase64 && checkIsVertical(referenceFrameBase64)) {
+        console.warn('[OpenAIProvider] referenceFrameBase64 é vertical em pedido 16:9 horizontal. Descartando imagem base para gerar horizontal limpa.');
+        baseImageFile = null;
+      }
+
+      // Quando for Storyboard horizontal 16:9 widescreen e não houver baseImageFile válida,
+      // usamos client.images.generate diretamente para NÃO herdar o canvas vertical da foto de celular do produto.
+      if (isLandscape && !baseImageFile) {
+        const genLandscapeRes = await client.images.generate({
+          model: OPENAI_IMAGE_MODEL,
+          prompt: effectivePrompt,
+          quality: OPENAI_IMAGE_QUALITY,
+          size: '1792x1024',
+        });
+        const b64Land = genLandscapeRes.data?.[0]?.b64_json;
+        if (b64Land) {
+          const imgCost = globalCostTracker.calculateImageCost(OPENAI_IMAGE_QUALITY);
+          globalCostTracker.recordCall({
+            step: stepName,
+            model: OPENAI_IMAGE_MODEL,
+            costUSD: imgCost.costUSD,
+            costBRL: imgCost.costBRL,
+            details: `Geração horizontal 16:9 nativa (${chosenImageSize})`,
+          });
+          return {
+            success: true,
+            imageUrl: `data:image/png;base64,${b64Land}`,
+            costBRL: imgCost.costBRL,
+          };
+        }
+      }
+
       // Se temos arquivo de imagem de base válido para edição, usamos client.images.edit
       if (baseImageFile) {
         const editImageInput: any = referenceFrameBase64
@@ -638,18 +698,38 @@ Mantenha o mesmo modelo/corte e caimento da peça atual; troque somente cores (p
           image: editImageInput,
           prompt: effectivePrompt,
           quality: OPENAI_IMAGE_QUALITY,
-          size: OPENAI_IMAGE_SIZE,
+          size: chosenImageSize,
         });
 
         const b64 = editResponse.data?.[0]?.b64_json;
         if (b64) {
+          // Se era para ser horizontal 16:9 mas a imagem gerada saiu vertical, refaz nativamente com generate
+          if (isLandscape && checkIsVertical(b64)) {
+            console.warn('[OpenAIProvider] Imagem editada saiu vertical em pedido 16:9. Refazendo via images.generate horizontal...');
+            const genRetry = await client.images.generate({
+              model: OPENAI_IMAGE_MODEL,
+              prompt: effectivePrompt,
+              quality: OPENAI_IMAGE_QUALITY,
+              size: '1792x1024',
+            });
+            const b64Retry = genRetry.data?.[0]?.b64_json;
+            if (b64Retry) {
+              const imgCost = globalCostTracker.calculateImageCost(OPENAI_IMAGE_QUALITY);
+              return {
+                success: true,
+                imageUrl: `data:image/png;base64,${b64Retry}`,
+                costBRL: imgCost.costBRL,
+              };
+            }
+          }
+
           const imgCost = globalCostTracker.calculateImageCost(OPENAI_IMAGE_QUALITY);
           globalCostTracker.recordCall({
             step: stepName,
             model: OPENAI_IMAGE_MODEL,
             costUSD: imgCost.costUSD,
             costBRL: imgCost.costBRL,
-            details: `GeraÃ§Ã£o com ${imageFiles.length} foto(s) de referÃªncia real em qualidade ${OPENAI_IMAGE_QUALITY}`,
+            details: `Geração com ${imageFiles.length} foto(s) de referência real em qualidade ${OPENAI_IMAGE_QUALITY} (${chosenImageSize})`,
           });
 
           return {
@@ -668,12 +748,12 @@ Mantenha o mesmo modelo/corte e caimento da peça atual; troque somente cores (p
         }
       }
 
-      // Caso nÃ£o haja arquivos de referÃªncia vÃ¡lidos, geraÃ§Ã£o direta
+      // Caso não haja arquivos de referência válidos, geração direta
       const genResponse = await client.images.generate({
         model: OPENAI_IMAGE_MODEL,
         prompt: cleanPrompt,
         quality: OPENAI_IMAGE_QUALITY,
-        size: OPENAI_IMAGE_SIZE,
+        size: chosenImageSize,
       });
 
       const b64 = genResponse.data?.[0]?.b64_json;
