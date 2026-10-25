@@ -2985,6 +2985,9 @@ DURAÇÃO MÁXIMA DO VÍDEO: ${duration} segundos. Limite estrito: até ${maxLim
 - Enquadramento: ${framing}
 - Cenário: ${scenario === 'padrao_uso' ? 'Cenário padrão de uso real do produto' : 'Em casa (casa brasileira simples e aconchegante)'}
 - Instruções adicionais prioritárias: ${additionalInstructions || 'Nenhuma'}${variationsClause}
+- REGRA 1 (ZERO SITES E ZERO QR CODES): Mesmo que constem na imagem de referência anexada, É TERMINANTEMENTE PROIBIDO gerar qualquer site, link, URL ou QR code/código de barras. A imagem e o vídeo devem ser 100% limpos de sites e QR codes!
+- REGRA 2 (PROIBIÇÃO DE INVENTAR PRODUTO E ÂNGULOS): O aplicativo NUNCA inventa produtos internos (ex: se for caixa de bombons ou pacote de fraldas e só anexou a embalagem fechada, NUNCA mostrar bombons soltos ou fraldas fora do pacote). Da mesma forma, NUNCA inventar ângulos que não foram fornecidos nas fotos (se a foto foi tirada só de frente, NUNCA mostrar verso/costas/traseira). O produto é retratado fielmente nos ângulos fotografados!
+- REGRA 3 (FIDELIDADE DE EMBALAGEM, FABRICANTE, LOGOMARCA E CORES EXATAS): Manter rigorosamente a mesma aparência da embalagem, o mesmo nome do fabricante com grafia exata, a mesma logomarca e as cores 100% fiéis às fotos de referência (tanto as cores do produto quanto da embalagem).
 
 Retorne APENAS um objeto JSON válido com as chaves:
 {
@@ -3248,11 +3251,15 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
       }
     }
 
-    const noBarcodeUrlDirective = `\n\n========================\nPROIBIÇÃO ABSOLUTA DE SITE E CÓDIGO DE BARRAS EM EMBALAGENS:\nÉ TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, domínio, URL (ex.: www..., .com, .com.br, https) ou código de barras/QR code em qualquer caixa, pacote ou embalagem do produto. As caixas, pacotes e embalagens devem ser 100% limpas de sites e códigos de barras!\n========================`;
+    const noBarcodeUrlDirective = `\n\n========================\nREGRA 1 — ZERO SITES E ZERO QR CODES (MESMO SE CONSTAREM NA IMAGEM DE REFERÊNCIA):\nÉ TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, domínio, URL (ex.: www..., .com, .com.br, https) ou código de barras/QR code em qualquer produto, caixa, pacote ou imagem do storyboard.\nMESMO QUE A IMAGEM DE REFERÊNCIA CONTENHA UM SITE OU QR CODE IMPRESSO NA EMBALAGEM OU NO PRODUTO, VOCÊ DEVE OBRIGATORIAMENTE OMITIR, REMOVER E DEIXAR A ÁREA LIMPA! Nenhuma imagem gerada pode conter site ou QR code!\n========================`;
+
+    const closedPackageDirective = `\n\n========================\nREGRA 2 — PROIBIÇÃO DE INVENTAR PRODUTO INTERNO E ÂNGULOS NÃO FORNECIDOS:\n1. NUNCA INVENTE PRODUTO INTERNO: Se o produto anunciado for uma caixa de bombons, pacote de fraldas, caixa fechada, fardo ou embalagem lacrada e NÃO contêm fotos do item solto de dentro, É TERMINANTEMENTE PROIBIDO desenhar ou mostrar o produto de dentro (exemplo: NUNCA mostrar bombons soltos fora da caixa de bombons, NUNCA mostrar fraldas soltas fora do pacote de fralda, fraldas abertas ou interior do pacote aberto). Em TODOS os 9 quadrantes, deve aparecer RIGOROSAMENTE A EMBALAGEM FECHADA exatamente como nas fotos de referência!\n2. NUNCA INVENTE ÂNGULOS NÃO FOTOGRAFADOS: Se o produto foi fotografado apenas de frente (ou em determinado ângulo) e não foi fornecida foto do verso/costas, É TERMINANTEMENTE PROIBIDO desenhar ou mostrar o verso, costas ou traseira do produto, pois isso seria inventar o que não foi fotografado! Mantenha o produto estritamente nos ângulos fornecidos nas referências.\n========================`;
+
+    const packagingFidelityDirective = `\n\n========================\nREGRA 3 — FIDELIDADE DE EMBALAGEM, NOME DO FABRICANTE, LOGOMARCA E CORES EXATAS (1:1):\n1. APARÊNCIA DA EMBALAGEM: Manter rigorosamente o mesmo formato, grafismos e arte visual da embalagem mostrada nas fotos de referência.\n2. NOME DO FABRICANTE E LOGOMARCA: Preservar o nome do fabricante com grafia 100% idêntica às fotos (jamais trocar letras, distorcer palavras ou inventar marcas). Preservar a logomarca original do fabricante na posição exata.\n3. CORES EXATAS (1:1): As cores do produto E as cores da embalagem do produto DEVEM ser rigorosamente idênticas às fotos de referência anexadas. Nunca mudar tom, saturação ou trocar cores nem do produto, nem da embalagem!\n========================`;
 
     const opticalClarityDirective = `\n\n========================\nDIRETRIZ CRÍTICA DE NITIDEZ ÓPTICA E ZERO PELÍCULA PLÁSTICA/OPACIDADE:\n1. NITIDEZ DE CÂMERA DE SMARTPHONE MODERNO TOPO DE LINHA: Imagem nítida, sensor de alta definição e foco cristalino, retratando a cena com máxima naturalidade e realismo.\n2. ZERO PELÍCULA PLÁSTICA, ZERO OPACIDADE E ZERO PALIDEZ: É terminantemente proibido imagem com aspecto de plástico/filme fosco ou amarelado por cima, névoa leitosa, véu esbranquiçado ou cores pálidas/desbotadas. A imagem deve ter riqueza ótica, contraste autêntico e cores vivas e fiéis.\n3. ILUMINAÇÃO DINÂMICA FIEL AO PROMPT: A iluminação, temperatura de cor e atmosfera devem se adaptar com perfeição à cena e ao cenário especificados no prompt (luz do dia, luz de velas, noite, ambiente interno simples e acolhedor, etc.).\n========================`;
 
-    const baseWithLogo = `${prompt}${logoEnforcementBlock}${noBarcodeUrlDirective}${opticalClarityDirective}`;
+    const baseWithLogo = `${prompt}${logoEnforcementBlock}${noBarcodeUrlDirective}${closedPackageDirective}${packagingFidelityDirective}${opticalClarityDirective}`;
     const effectivePrompt = correctionPrompt && correctionPrompt.trim()
       ? `${baseWithLogo}\n\n========================\nCORREÇÃO OBRIGATÓRIA DE AUDITORIA DE FIDELIDADE DOS 9 QUADRANTES:\n${correctionPrompt.trim()}\n========================`
       : baseWithLogo;
@@ -3533,8 +3540,13 @@ PASSO 2 — REGRAS DE OURO DA FISCALIZAÇÃO POR QUADRANTE (CENA 1 A CENA 9):
        -> Dê OBRIGATORIAMENTE uma nota BAIXA entre 45 e 58 (VERMELHO, abaixo de 60) para aquele quadrante! NUNCA dê nota alta se a parte da logo está visível e a logo sumiu!
        -> No campo "issue" (SEMPRE EM PORTUGUÊS), escreva claramente: "Na Cena X, o produto está diferente: a logomarca original do fabricante ([descreva a logo e onde fica, ex: no encosto]) foi removida e não aparece como na foto de referência."
    - CORES, FORMATO, ESTRUTURA E DETALHES: Verifique se a aparência, formato, estrutura e cor conferem com QUALQUER UMA das fotos/variações de referência anexadas pelo usuário.${variationsAuditRule}
-   - SITES E CÓDIGO DE BARRAS EM EMBALAGENS:
-     * É TERMINANTEMENTE PROIBIDO aparecer site, URL (ex.: www..., .com) ou código de barras/QR code em caixas, pacotes ou embalagens. Se aparecer site ou código de barras na embalagem em qualquer quadrante, marque score < 60 e aponte no issue: "Na Cena X, a embalagem contém site ou código de barras desenhado, o que é proibido."
+   - SITES E QR CODES (MESMO SE CONSTAREM NA IMAGEM DE REFERÊNCIA):
+     * É TERMINANTEMENTE PROIBIDO aparecer site, URL (ex.: www..., .com) ou código de barras/QR code em caixas, pacotes, produtos ou embalagens. Mesmo que constem na referência, devem ser omitidos. Se aparecer site ou QR code em qualquer quadrante, marque score < 60 e aponte no issue: "Na Cena X, a imagem contém site ou QR code desenhado, o que é proibido."
+   - EMBALAGENS FECHADAS E PROIBIÇÃO DE INVENTAR PRODUTO OU ÂNGULO:
+     * Se as fotos anexadas mostrarem apenas a embalagem fechada (ex: caixa de bombons, pacote de fraldas) sem fotos de itens internos: é EXPRESSAMENTE PROIBIDO qualquer quadrante inventar ou mostrar produto interno solto (ex: bombons soltos, fraldas fora do pacote). Se ocorrer, marque score < 60 e aponte no issue.
+     * Se o produto foi fotografado apenas de frente, é PROIBIDO inventar o verso/costas/traseira. Se algum quadrante inventar face não fotografada, marque score < 60 e aponte no issue.
+   - FIDELIDADE DE EMBALAGEM, NOME DO FABRICANTE, LOGOMARCA E CORES EXATAS (1:1):
+     * A aparência da embalagem, o nome do fabricante com grafia exata, a logomarca original e as cores (tanto do produto quanto da embalagem) DEVEM ser 100% fiéis às fotos de referência. Se houver divergência de cores ou grafia errada do fabricante, marque score < 60.
 3. ESCALA INTEIRA DE NOTAS DE CADA QUADRANTE (0 a 100 — NUNCA use decimais de 0 a 1):
    - 90 a 100 (VERDE): Produto 90%+ idêntico a qualquer uma das fotos/variações de referência anexadas (logomarca original presente e fiel quando a área aparece, ou close fiel de outra parte do produto).
    - 71 a 89 (AMARELO): Produto com pequena variação leve de detalhe secundário.

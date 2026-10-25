@@ -1200,6 +1200,26 @@ function buildProdutos2PlanningSystemPrompt() {
   return `Voc\xEA \xE9 o Diretor Criativo Copy-First do Modo Produtos 2.0.
 REGRA-M\xC3E: A COPY VENDE. O STORYBOARD PROVA VISUALMENTE A COPY. O V\xCDDEO ANIMA O STORYBOARD SEM NUNCA MOSTRAR A PR\xD3PRIA FOLHA DO STORYBOARD.
 
+REGRA CR\xCDTICA E INVIOL\xC1VEL 1 \u2014 PROIBI\xC7\xC3O DE INVENTAR CONTE\xDADO INTERNO DE EMBALAGENS (EX: CAIXA DE BOMBONS, PACOTE DE FRALDAS, CAIXAS, POTES, FARDOS):
+- O aplicativo NUNCA pode inventar o produto interno! Se o produto que est\xE1 sendo vendido for uma caixa de bombons e foi anexada apenas a caixa mostrando o exterior, o aplicativo N\xC3O PODE inventar e mostrar os bombons dentro da caixa se n\xE3o tiverem sido mostrados nas imagens de refer\xEAncia.
+- Se o produto for um pacote de fraldas, vai aparecer o pacote de fralda fechado igual na imagem de refer\xEAncia, mas NUNCA vai aparecer as fraldas soltas que v\xEAm dentro, a menos que tenham sido fornecidas fotos de refer\xEAncia das fraldas soltas.
+- Se o usu\xE1rio n\xE3o forneceu imagem de refer\xEAncia do que vem dentro da embalagem, o aplicativo N\xC3O PODE inventar o produto. As cenas retratam EXCLUSIVAMENTE a embalagem/pacote fechado real das fotos!
+
+REGRA CR\xCDTICA E INVIOL\xC1VEL 2 \u2014 PROIBI\xC7\xC3O DE INVENTAR \xC2NGULOS N\xC3O FORNECIDOS (LOCK DE \xC2NGULOS REAIS):
+- O aplicativo N\xC3O PODE mostrar o produto em \xE2ngulo diferente do que foi fornecido nas fotos de refer\xEAncia!
+- Se a foto fornecida mostra o produto apenas de frente e N\xC3O foi mostrado o verso/costas/traseira, o aplicativo N\xC3O PODE gerar nenhuma cena ou imagem mostrando o verso, porque isso seria inventar uma imagem inexistente!
+- O produto deve ser sempre mostrado de frente ou em \xE2ngulos que mantenham vis\xEDvel a face fotografada. NUNCA planeje a\xE7\xF5es de virar o produto de costas ou mostrar o verso n\xE3o fotografado!
+
+REGRA CR\xCDTICA E INVIOL\xC1VEL 3 \u2014 ZERO SITES E ZERO QR CODES / C\xD3DIGOS DE BARRAS (MESMO SE ESTIVEREM NA FOTO DE REFER\xCANCIA):
+- \xC9 TERMINANTEMENTE PROIBIDO prever qualquer site, link de internet, dom\xEDnio, URL (ex.: www..., .com, .com.br, https) ou c\xF3digo de barras/QR code em qualquer cena ou embalagem.
+- MESMO QUE a embalagem na foto de refer\xEAncia contenha site ou QR code impresso de f\xE1brica, a IA DEVE OMITIR e DEIXAR A \xC1REA LIMPA! Nenhuma imagem pode conter site ou QR code!
+
+REGRA CR\xCDTICA E INVIOL\xC1VEL 4 \u2014 M\xC1XIMA FIDELIDADE DE EMBALAGEM, NOME DO FABRICANTE, LOGOMARCA E CORES EXATAS (1:1):
+- Manter com precis\xE3o cir\xFArgica a apar\xEAncia real da embalagem, formato e design das fotos de refer\xEAncia.
+- O nome do fabricante deve ser preservado e escrito exatamente igual \xE0s refer\xEAncias (jamais trocar letras, distorcer palavras ou inventar marcas).
+- A logomarca e o s\xEDmbolo original do fabricante devem estar presentes e id\xEAnticos.
+- As cores do produto e as cores da embalagem DEVEM ser 100% id\xEAnticas \xE0s fotos de refer\xEAncia (n\xE3o desbotar, n\xE3o alterar tons, n\xE3o inventar cores).
+
 REGRA DE OURO INVIOL\xC1VEL \u2014 LOGOMARCA DO FABRICANTE NO PRODUTO vs ELEMENTOS DE REDE SOCIAL:
 - DIFERENCIE TOTALMENTE:
   1) PROIBIDO: Logotipo do TikTok, marca d'\xE1gua de rede social, @usu\xE1rio, bot\xF5es ou \xEDcone de carrinho flutuantes na tela. A palavra "TikTok" NUNCA pode aparecer em "productLock", "avatarDescription", "scenarioDescription", "visualMap" nem em "scenes" (somente dentro de "adaptedCopy" se j\xE1 fizer parte da fala).
@@ -1261,7 +1281,7 @@ E retornar um JSON estrito com:
      * "avatarDescription": Descreva com riqueza os dois personagens (Mulher e Homem), suas idades aproximadas, etnia (se informada) e continuidade de roupas.
      * "scenarioDescription": D\xEA prioridade ao ambiente de encontro/intera\xE7\xE3o informado (ex: cafeteria, restaurante intimista ao p\xF4r do sol).
      * "scenes": As Cenas 1 e 2 devem ilustrar a mulher reagindo/admirando o produto e perguntando ao homem; a partir da Cena 3 o homem responde, apresenta o produto, demonstra as fun\xE7\xF5es e na Cena 9 conclui com o CTA.
-   - Proibido texto flutuante externo, legenda, pre\xE7o, n\xFAmero escrito, carrinho, marca d'\xE1gua de rede social, @ ou interface de aplicativo dentro das cenas (mas OBRIGAT\xD3RIO manter a logomarca original do fabricante impressa no pr\xF3prio produto), e \xC9 EXPRESSAMENTE PROIBIDO desenhar ou prever site, link de internet, URL ou c\xF3digo de barras/QR code em qualquer caixa, pacote ou embalagem do produto.`;
+   - Proibido texto flutuante externo, legenda, pre\xE7o, n\xFAmero escrito, carrinho, marca d'\xE1gua de rede social, @ ou interface de aplicativo dentro das cenas (mas OBRIGAT\xD3RIO manter a logomarca original do fabricante impressa no pr\xF3prio produto), e \xC9 EXPRESSAMENTE PROIBIDO desenhar ou prever site, link de internet, URL ou c\xF3digo de barras/QR code em qualquer caixa, pacote ou embalagem do produto. Al\xE9m disso, MESMO QUE APARE\xC7AM NA FOTO DE REFER\xCANCIA, \xC9 PROIBIDO desenhar qualquer site ou QR code. \xC9 PROIBIDO inventar o interior de embalagens/caixas/pacotes fechados (como bombons fora da caixa ou fraldas soltas) ou inventar \xE2ngulos/verso/costas que n\xE3o foram fornecidos nas fotos. As cores do produto e da embalagem, o nome do fabricante e a logomarca devem ser rigorosamente 1:1 iguais \xE0 refer\xEAncia.`;
 }
 
 // src/produtos2/produtos2UserSpeechExtractor.ts
@@ -4020,6 +4040,9 @@ DURA\xC7\xC3O M\xC1XIMA DO V\xCDDEO: ${duration} segundos. Limite estrito: at\xE
 - Enquadramento: ${framing}
 - Cen\xE1rio: ${scenario === "padrao_uso" ? "Cen\xE1rio padr\xE3o de uso real do produto" : "Em casa (casa brasileira simples e aconchegante)"}
 - Instru\xE7\xF5es adicionais priorit\xE1rias: ${additionalInstructions || "Nenhuma"}${variationsClause}
+- REGRA 1 (ZERO SITES E ZERO QR CODES): Mesmo que constem na imagem de refer\xEAncia anexada, \xC9 TERMINANTEMENTE PROIBIDO gerar qualquer site, link, URL ou QR code/c\xF3digo de barras. A imagem e o v\xEDdeo devem ser 100% limpos de sites e QR codes!
+- REGRA 2 (PROIBI\xC7\xC3O DE INVENTAR PRODUTO E \xC2NGULOS): O aplicativo NUNCA inventa produtos internos (ex: se for caixa de bombons ou pacote de fraldas e s\xF3 anexou a embalagem fechada, NUNCA mostrar bombons soltos ou fraldas fora do pacote). Da mesma forma, NUNCA inventar \xE2ngulos que n\xE3o foram fornecidos nas fotos (se a foto foi tirada s\xF3 de frente, NUNCA mostrar verso/costas/traseira). O produto \xE9 retratado fielmente nos \xE2ngulos fotografados!
+- REGRA 3 (FIDELIDADE DE EMBALAGEM, FABRICANTE, LOGOMARCA E CORES EXATAS): Manter rigorosamente a mesma apar\xEAncia da embalagem, o mesmo nome do fabricante com grafia exata, a mesma logomarca e as cores 100% fi\xE9is \xE0s fotos de refer\xEAncia (tanto as cores do produto quanto da embalagem).
 
 Retorne APENAS um objeto JSON v\xE1lido com as chaves:
 {
@@ -4253,8 +4276,24 @@ REGRA INEGOCI\xC1VEL: Em TODOS os quadrantes do storyboard 3x3 onde essa parte d
     const noBarcodeUrlDirective = `
 
 ========================
-PROIBI\xC7\xC3O ABSOLUTA DE SITE E C\xD3DIGO DE BARRAS EM EMBALAGENS:
-\xC9 TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, dom\xEDnio, URL (ex.: www..., .com, .com.br, https) ou c\xF3digo de barras/QR code em qualquer caixa, pacote ou embalagem do produto. As caixas, pacotes e embalagens devem ser 100% limpas de sites e c\xF3digos de barras!
+REGRA 1 \u2014 ZERO SITES E ZERO QR CODES (MESMO SE CONSTAREM NA IMAGEM DE REFER\xCANCIA):
+\xC9 TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, dom\xEDnio, URL (ex.: www..., .com, .com.br, https) ou c\xF3digo de barras/QR code em qualquer produto, caixa, pacote ou imagem do storyboard.
+MESMO QUE A IMAGEM DE REFER\xCANCIA CONTENHA UM SITE OU QR CODE IMPRESSO NA EMBALAGEM OU NO PRODUTO, VOC\xCA DEVE OBRIGATORIAMENTE OMITIR, REMOVER E DEIXAR A \xC1REA LIMPA! Nenhuma imagem gerada pode conter site ou QR code!
+========================`;
+    const closedPackageDirective = `
+
+========================
+REGRA 2 \u2014 PROIBI\xC7\xC3O DE INVENTAR PRODUTO INTERNO E \xC2NGULOS N\xC3O FORNECIDOS:
+1. NUNCA INVENTE PRODUTO INTERNO: Se o produto anunciado for uma caixa de bombons, pacote de fraldas, caixa fechada, fardo ou embalagem lacrada e N\xC3O cont\xEAm fotos do item solto de dentro, \xC9 TERMINANTEMENTE PROIBIDO desenhar ou mostrar o produto de dentro (exemplo: NUNCA mostrar bombons soltos fora da caixa de bombons, NUNCA mostrar fraldas soltas fora do pacote de fralda, fraldas abertas ou interior do pacote aberto). Em TODOS os 9 quadrantes, deve aparecer RIGOROSAMENTE A EMBALAGEM FECHADA exatamente como nas fotos de refer\xEAncia!
+2. NUNCA INVENTE \xC2NGULOS N\xC3O FOTOGRAFADOS: Se o produto foi fotografado apenas de frente (ou em determinado \xE2ngulo) e n\xE3o foi fornecida foto do verso/costas, \xC9 TERMINANTEMENTE PROIBIDO desenhar ou mostrar o verso, costas ou traseira do produto, pois isso seria inventar o que n\xE3o foi fotografado! Mantenha o produto estritamente nos \xE2ngulos fornecidos nas refer\xEAncias.
+========================`;
+    const packagingFidelityDirective = `
+
+========================
+REGRA 3 \u2014 FIDELIDADE DE EMBALAGEM, NOME DO FABRICANTE, LOGOMARCA E CORES EXATAS (1:1):
+1. APAR\xCANCIA DA EMBALAGEM: Manter rigorosamente o mesmo formato, grafismos e arte visual da embalagem mostrada nas fotos de refer\xEAncia.
+2. NOME DO FABRICANTE E LOGOMARCA: Preservar o nome do fabricante com grafia 100% id\xEAntica \xE0s fotos (jamais trocar letras, distorcer palavras ou inventar marcas). Preservar a logomarca original do fabricante na posi\xE7\xE3o exata.
+3. CORES EXATAS (1:1): As cores do produto E as cores da embalagem do produto DEVEM ser rigorosamente id\xEAnticas \xE0s fotos de refer\xEAncia anexadas. Nunca mudar tom, satura\xE7\xE3o ou trocar cores nem do produto, nem da embalagem!
 ========================`;
     const opticalClarityDirective = `
 
@@ -4264,7 +4303,7 @@ DIRETRIZ CR\xCDTICA DE NITIDEZ \xD3PTICA E ZERO PEL\xCDCULA PL\xC1STICA/OPACIDAD
 2. ZERO PEL\xCDCULA PL\xC1STICA, ZERO OPACIDADE E ZERO PALIDEZ: \xC9 terminantemente proibido imagem com aspecto de pl\xE1stico/filme fosco ou amarelado por cima, n\xE9voa leitosa, v\xE9u esbranqui\xE7ado ou cores p\xE1lidas/desbotadas. A imagem deve ter riqueza \xF3tica, contraste aut\xEAntico e cores vivas e fi\xE9is.
 3. ILUMINA\xC7\xC3O DIN\xC2MICA FIEL AO PROMPT: A ilumina\xE7\xE3o, temperatura de cor e atmosfera devem se adaptar com perfei\xE7\xE3o \xE0 cena e ao cen\xE1rio especificados no prompt (luz do dia, luz de velas, noite, ambiente interno simples e acolhedor, etc.).
 ========================`;
-    const baseWithLogo = `${prompt}${logoEnforcementBlock}${noBarcodeUrlDirective}${opticalClarityDirective}`;
+    const baseWithLogo = `${prompt}${logoEnforcementBlock}${noBarcodeUrlDirective}${closedPackageDirective}${packagingFidelityDirective}${opticalClarityDirective}`;
     const effectivePrompt = correctionPrompt && correctionPrompt.trim() ? `${baseWithLogo}
 
 ========================
@@ -4484,8 +4523,13 @@ PASSO 2 \u2014 REGRAS DE OURO DA FISCALIZA\xC7\xC3O POR QUADRANTE (CENA 1 A CENA
        -> D\xEA OBRIGATORIAMENTE uma nota BAIXA entre 45 e 58 (VERMELHO, abaixo de 60) para aquele quadrante! NUNCA d\xEA nota alta se a parte da logo est\xE1 vis\xEDvel e a logo sumiu!
        -> No campo "issue" (SEMPRE EM PORTUGU\xCAS), escreva claramente: "Na Cena X, o produto est\xE1 diferente: a logomarca original do fabricante ([descreva a logo e onde fica, ex: no encosto]) foi removida e n\xE3o aparece como na foto de refer\xEAncia."
    - CORES, FORMATO, ESTRUTURA E DETALHES: Verifique se a apar\xEAncia, formato, estrutura e cor conferem com QUALQUER UMA das fotos/varia\xE7\xF5es de refer\xEAncia anexadas pelo usu\xE1rio.${variationsAuditRule}
-   - SITES E C\xD3DIGO DE BARRAS EM EMBALAGENS:
-     * \xC9 TERMINANTEMENTE PROIBIDO aparecer site, URL (ex.: www..., .com) ou c\xF3digo de barras/QR code em caixas, pacotes ou embalagens. Se aparecer site ou c\xF3digo de barras na embalagem em qualquer quadrante, marque score < 60 e aponte no issue: "Na Cena X, a embalagem cont\xE9m site ou c\xF3digo de barras desenhado, o que \xE9 proibido."
+   - SITES E QR CODES (MESMO SE CONSTAREM NA IMAGEM DE REFER\xCANCIA):
+     * \xC9 TERMINANTEMENTE PROIBIDO aparecer site, URL (ex.: www..., .com) ou c\xF3digo de barras/QR code em caixas, pacotes, produtos ou embalagens. Mesmo que constem na refer\xEAncia, devem ser omitidos. Se aparecer site ou QR code em qualquer quadrante, marque score < 60 e aponte no issue: "Na Cena X, a imagem cont\xE9m site ou QR code desenhado, o que \xE9 proibido."
+   - EMBALAGENS FECHADAS E PROIBI\xC7\xC3O DE INVENTAR PRODUTO OU \xC2NGULO:
+     * Se as fotos anexadas mostrarem apenas a embalagem fechada (ex: caixa de bombons, pacote de fraldas) sem fotos de itens internos: \xE9 EXPRESSAMENTE PROIBIDO qualquer quadrante inventar ou mostrar produto interno solto (ex: bombons soltos, fraldas fora do pacote). Se ocorrer, marque score < 60 e aponte no issue.
+     * Se o produto foi fotografado apenas de frente, \xE9 PROIBIDO inventar o verso/costas/traseira. Se algum quadrante inventar face n\xE3o fotografada, marque score < 60 e aponte no issue.
+   - FIDELIDADE DE EMBALAGEM, NOME DO FABRICANTE, LOGOMARCA E CORES EXATAS (1:1):
+     * A apar\xEAncia da embalagem, o nome do fabricante com grafia exata, a logomarca original e as cores (tanto do produto quanto da embalagem) DEVEM ser 100% fi\xE9is \xE0s fotos de refer\xEAncia. Se houver diverg\xEAncia de cores ou grafia errada do fabricante, marque score < 60.
 3. ESCALA INTEIRA DE NOTAS DE CADA QUADRANTE (0 a 100 \u2014 NUNCA use decimais de 0 a 1):
    - 90 a 100 (VERDE): Produto 90%+ id\xEAntico a qualquer uma das fotos/varia\xE7\xF5es de refer\xEAncia anexadas (logomarca original presente e fiel quando a \xE1rea aparece, ou close fiel de outra parte do produto).
    - 71 a 89 (AMARELO): Produto com pequena varia\xE7\xE3o leve de detalhe secund\xE1rio.

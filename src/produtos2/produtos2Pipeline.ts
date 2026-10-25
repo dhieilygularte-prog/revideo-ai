@@ -812,7 +812,7 @@ export async function runProdutos2Pipeline(params: {
               .replace(/\[(?:Produto na cor\/variação|Variação de Cor|COR\/VARIAÇÃO|Variação)[^\]]*\]/gi, '')
               .replace(/\s+/g, ' ')
               .trim();
-            const cleanAction =
+            const baseAction =
               form.scenario === 'padrao_uso'
                 ? sanitizeScenarioDescriptionForMode(
                     rawAction,
@@ -821,6 +821,28 @@ export async function runProdutos2Pipeline(params: {
                     form.additionalInstructions
                   )
                 : rawAction;
+
+            // Proteção mandatória contra invenção de produtos internos em embalagens/pacotes fechados (ex: caixa de bombons, pacote de fraldas)
+            const isPackaged = /\b(fralda|fraldas|bombom|bombons|chocolate|pacote|embalagem|fardo|pack|caixa|pote)\b/i.test(`${finalProductName} ${form.productInfo}`);
+            let cleanAction = baseAction;
+            if (isPackaged) {
+              cleanAction = cleanAction
+                .replace(/\b(?:abrindo|rasgando|destrinchando)\s+(?:o\s+)?(?:pacote|embalagem|caixa)\s*(?:de\s+)?(?:fralda[s]?|bombons?|produto)?\b/gi, 'segurando a embalagem fechada')
+                .replace(/\b(?:tirando|retirando|pegando|puxando)\s+(?:uma\s+)?(?:fralda[s]?|bombons?|itens?)\s*(?:de\s+dentro|do\s+pacote|da\s+caixa|da\s+embalagem)?\b/gi, 'destacando a embalagem fechada')
+                .replace(/\b(?:mostrando|exibindo|revelando)\s+(?:o\s+interior|o\s+conteúdo|as\s+fraldas|os\s+bombons|a\s+fralda\s+por\s+dentro)\b/gi, 'destacando as informações da embalagem fechada')
+                .replace(/\b(?:fralda[s]?|bombons?)\s+(?:avulsa[s]?|aberta[s]?|fora\s+do\s+pacote|fora\s+da\s+caixa)\b/gi, 'embalagem fechada')
+                .replace(/\b(?:vestindo|colocando)\s+(?:a\s+)?fralda\s+(?:no\s+bebê|na\s+criança)\b/gi, 'apresentando o pacote fechado de fralda');
+            }
+
+            // Proteção mandatória contra invenção de verso/costas não fotografados
+            cleanAction = cleanAction
+              .replace(/\b(?:virando|mostrando|exibindo)\s+(?:o\s+)?(?:verso|costas|parte\s+traseira)\b/gi, 'destacando a parte frontal e acabamento')
+              .replace(/\b(?:visão|ângulo)\s+(?:posterior|traseiro|das\s+costas)\b/gi, 'visão frontal com acabamento detalhado');
+
+            // Proteção mandatória contra menções a QR code ou site
+            cleanAction = cleanAction
+              .replace(/\b(?:qr\s*code|código\s+qr|site|url|link|www\.[^\s]+)\b/gi, '');
+
             const cleanMovement = stripTikTokOutsideSpeech(
               String(sc.cameraMovement || fallbackPlan.scenes[idx].cameraMovement).trim()
             );

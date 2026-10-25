@@ -491,8 +491,17 @@ PROIBIÇÃO ABSOLUTA: NUNCA gere todos os 9 quadros na mesma cor! É expressamen
 
 Use as fotos anexadas como referência absoluta do produto. Preserve fielmente (PRODUCT LOCK): ${sanitizedProductLock.join('; ')}.
 ${productIdentityRule}
-REGRA OBRIGATÓRIA DE LOGOMARCA DO FABRICANTE NO PRODUTO: A marca, a logomarca, o emblema/símbolo e os textos originais do fabricante que estão impressos, estampados ou gravados no próprio produto nas fotos de referência DEVEM aparecer 100% idênticos (mesmo desenho, formato, cor, proporção e posição exata na peça, como no encosto, painel ou corpo do produto) em TODOS os quadros onde essa parte do produto estiver visível. JAMAIS remova, apague ou deixe lisa a área onde fica a logomarca original do fabricante no produto!
-PROIBIÇÃO ABSOLUTA DE SITE E CÓDIGO DE BARRAS EM EMBALAGENS/CAIXAS: É TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, domínio, URL (ex.: www..., .com, .com.br, https) ou código de barras/QR code em qualquer caixa, pacote ou embalagem do produto. As caixas, pacotes e embalagens devem ser 100% limpas de sites e códigos de barras!
+REGRA 1 — ZERO SITES E ZERO QR CODES / CÓDIGOS DE BARRAS (MESMO SE CONSTAREM NA IMAGEM DE REFERÊNCIA):
+É TERMINANTEMENTE PROIBIDO desenhar qualquer site, link de internet, domínio, URL (ex.: www..., .com, .com.br, https) ou código de barras/QR code em qualquer imagem, produto, embalagem ou caixa do storyboard. MESMO QUE A IMAGEM DE REFERÊNCIA ANEXADA CONTENHA UM SITE OU QR CODE IMPRESSO NA EMBALAGEM OU NO PRODUTO, VOCÊ DEVE OBRIGATORIAMENTE OMITIR, REMOVER E DEIXAR A ÁREA LIMPA! Nenhuma imagem pode conter site ou QR code!
+
+REGRA 2 — PROIBIÇÃO DE INVENTAR PRODUTO INTERNO E PROIBIÇÃO DE INVENTAR ÂNGULOS NÃO FORNECIDOS:
+1) O aplicativo NUNCA inventa produto interno: Se o produto anunciado for uma caixa de bombons, pacote de fraldas, caixa fechada, fardo, pote ou embalagem lacrada e NÃO contêm fotos do item solto de dentro, É TERMINANTEMENTE PROIBIDO criar ou mostrar o produto de dentro da embalagem (exemplo: NUNCA mostrar bombons soltos fora da caixa de bombons, NUNCA mostrar fraldas soltas fora do pacote de fralda, fraldas abertas ou interior do pacote aberto)! Em TODOS os 9 quadros deve aparecer RIGOROSAMENTE A EMBALAGEM/PACOTE FECHADO idêntico à referência!
+2) O aplicativo NUNCA inventa ângulos não fotografados: Se o produto foi mostrado nas fotos de referência apenas de frente (ou em determinado ângulo) e não foi mostrado o verso/costas/traseira, É TERMINANTEMENTE PROIBIDO gerar imagens mostrando o verso, traseira ou costas do produto, pois isso seria inventar o que não foi fotografado! O produto deve ser retratado estritamente nos ângulos fornecidos nas referências anexadas.
+
+REGRA 3 — MÁXIMA FIDELIDADE DE EMBALAGEM, NOME DO FABRICANTE, LOGOMARCA E CORES EXATAS (1:1):
+1) Embalagens: Manter rigorosamente a mesma aparência visual da embalagem das fotos de referência (mesmo formato, proporção, arte gráfica e disposição).
+2) Nome do fabricante e logomarca: O nome do fabricante deve ser escrito de forma 100% correta e idêntica à foto de referência (jamais grafar diferente, distorcer letras ou inventar nomes). A logomarca e o símbolo original do fabricante devem ser preservados 100% fiéis no mesmo local da peça/embalagem. JAMAIS remova, apague ou deixe lisa a área onde fica a logomarca original do fabricante!
+3) Cores exatas 1:1: As cores do produto E as cores da embalagem do produto DEVEM ser rigorosamente idênticas às fotos de referência. NUNCA alterar tons, saturação ou trocar cores nem do produto, nem da embalagem!
 A copy selecionada para este criativo é:
 "${finalCopy}"
 As cenas do storyboard devem ser construídas A PARTIR DESSA COPY. Cada cena deve provar, ilustrar ou reforçar visualmente um trecho da fala.
@@ -512,7 +521,7 @@ ${scenesLines}
 
 Mantenha continuidade de produto, logomarca original do fabricante no produto, personagem, ambiente e iluminação entre as cenas relacionadas. Cada quadro deve parecer uma fotografia real e utilizável como referência de futura animação.
 Adicionar SOMENTE os números 1 a 9 em pequenos selos circulares brancos com número preto, no canto superior esquerdo de cada quadro.
-PROIBIÇÃO EXCLUSIVA DE INTERFACE EXTERNA E PELÍCULA PLÁSTICA: NÃO adicionar frases flutuantes na tela, legendas, textos publicitários externos, ícone de carrinho de compras, botões, setas, preços, interface de aplicativo, logotipo do TikTok ou de rede social, nome de usuário/@, marca d'água externa, NUNCA incluir nenhum site (URL) ou código de barras em nenhuma caixa, pacote ou embalagem, E NUNCA gerar imagem com aspecto de película plástica opaca por cima, névoa leitosa ou palidez desbotada (mantendo obrigatoriamente a logomarca original do fabricante impressa no próprio produto com nitidez e cores fiéis).`;
+PROIBIÇÃO EXCLUSIVA DE INTERFACE EXTERNA, SITES/QR CODES E PELÍCULA PLÁSTICA: NÃO adicionar frases flutuantes na tela, legendas, textos publicitários externos, ícone de carrinho de compras, botões, setas, preços, interface de aplicativo, logotipo do TikTok ou de rede social, nome de usuário/@, marca d'água externa. NUNCA incluir nenhum site (URL) ou QR code/código de barras em nenhuma caixa, pacote ou embalagem (MESMO QUE APAREÇAM NA FOTO DE REFERÊNCIA, DEVEM SER OMITIDOS). NUNCA inventar produto interno solto ou abrir embalagens/pacotes fechados (ex: nunca desenhar bombons soltos fora da caixa de bombons ou fraldas soltas fora do pacote de fralda quando apenas a embalagem fechada foi fornecida). NUNCA inventar ângulos ou verso/costas que não foram fornecidos nas fotos de referência. E NUNCA gerar imagem com aspecto de película plástica opaca por cima, névoa leitosa ou palidez desbotada (mantendo obrigatoriamente a embalagem real, as cores exatas 1:1 tanto do produto quanto da embalagem, e a logomarca e nome do fabricante impressos com fidelidade absoluta).`;
 }
 
 /**
@@ -886,9 +895,12 @@ NÃO adicionar logotipo flutuante.
 NÃO adicionar nome de usuário, @ ou perfil.
 NÃO adicionar logotipo de nenhuma rede social ou aplicativo.
 NÃO adicionar textos, legendas, números, ícones, botões ou stickers.
-NÃO adicionar site, endereço de site, link, URL ou domínio em caixas, pacotes ou embalagens do produto.
-NÃO adicionar código de barras, barras ou QR code em nenhuma embalagem, pacote ou caixa de produto.
-EXCEÇÃO: a marca, o logo e os textos que já estão impressos no próprio produto (iguais às fotos de referência e ao storyboard) DEVEM aparecer, idênticos, sempre que aquela parte do produto estiver visível.
+NÃO adicionar site, endereço de site, link, URL ou domínio em NENHUMA imagem, caixa, pacote ou embalagem do produto (MESMO QUE APAREÇA NA IMAGEM DE REFERÊNCIA, O VEO NÃO DEVE GERAR NENHUM SITE).
+NÃO adicionar código de barras, barras ou QR code em NENHUMA embalagem, pacote ou produto (MESMO QUE APAREÇA NA IMAGEM DE REFERÊNCIA, O VEO NÃO DEVE GERAR NENHUM QR CODE).
+NÃO inventar produto interno solto nem abrir embalagens/caixas/pacotes fechados (ex.: se for pacote de fraldas, caixa de bombons ou embalagem fechada, manter sempre a embalagem fechada idêntica ao storyboard e referências, sem mostrar bombons soltos ou fraldas fora do pacote).
+NÃO inventar ângulos ou verso/costas que não constem nas fotos de referência anexadas (se o produto foi fotografado apenas de frente, manter o produto sempre de frente).
+MANDATÓRIO: A embalagem, o nome do fabricante com grafia exata, a logomarca original e as cores exatas (tanto do produto quanto da embalagem) devem ser rigorosamente 1:1 idênticas às referências.
+EXCEÇÃO DE LOGO: a marca, o logo e o nome do fabricante que já estão impressos no próprio produto e na embalagem (iguais às fotos de referência e ao storyboard) DEVEM aparecer, idênticos, sempre que aquela parte do produto estiver visível.
 
 IMPORTANTE SOBRE A IMAGEM ANEXADA (STORYBOARD DE REFERÊNCIA — 9 QUADROS NUMERADOS):
 A imagem anexada é uma grade 3x3 de storyboard contendo EXATAMENTE 9 quadros numerados de 1 a 9 em ordem de leitura.
@@ -1376,7 +1388,7 @@ export function buildDefaultProdutos2Plan(params: {
       {
         framing: framing === 'pov' ? 'Close lateral POV da peça' : 'Plano médio lateral em movimento',
         action: framing === 'pov'
-          ? `Mãos virando ${productName} para mostrar o verso e acabamento das costas.`
+          ? `Mãos segurando ${productName} de frente em ângulo dinâmico, exibindo o acabamento e os detalhes frontais da peça.`
           : `Homem se movimentando (agachando/caminhando) com ${productName}, provando que não prende o movimento.`,
         cameraMovement: 'Acompanhamento dinâmico.',
       },
@@ -1400,55 +1412,108 @@ export function buildDefaultProdutos2Plan(params: {
     ];
   } else {
     // Produtos Gerais (Seção 7.3 e 7.4)
-    rawScenes = [
-      {
-        framing: 'Close POV muito próximo',
-        action: `Duas mãos adultas seguram ${productName} diante da câmera em ${scenarioDescription}, revelando seu design real e despertando curiosidade imediata.`,
-        cameraMovement: 'Pequeno movimento natural das mãos mostrando o produto.',
-      },
-      {
-        framing: framing === 'pov' ? 'Plano médio POV sobre a bancada/ambiente' : 'Plano médio de contexto',
-        action: framing === 'pov'
-          ? `Mãos posicionando ${productName} no local de uso em ${scenarioDescription}.`
-          : `${isAdultMale ? 'O apresentador' : 'A apresentadora'} apresenta ${productName} no ambiente real (${scenarioDescription}).`,
-        cameraMovement: 'Corte rápido com leve movimento lateral.',
-      },
-      {
-        framing: 'Close rápido e dinâmico de ação',
-        action: `Mão adulta acionando/preparando/abrindo ${productName} na prática para provar o primeiro argumento da fala.`,
-        cameraMovement: 'Push-in rápido focado na ação das mãos.',
-      },
-      {
-        framing: 'Plano médio de resultado imediato',
-        action: `${productName} entrando em funcionamento imediato, mostrando na prática a eficiência prometida na copy.`,
-        cameraMovement: 'Câmera dinâmica acompanhando o efeito.',
-      },
-      {
-        framing: 'Plano de demonstração principal em uso real',
-        action: `Uso real e ativo de ${productName} em ${scenarioDescription}, provando o benefício central citado na locução sem esforço.`,
-        cameraMovement: 'Movimento orgânico de smartphone acompanhando o uso.',
-      },
-      {
-        framing: 'Close macro extremo de detalhe ("Olha...")',
-        action: `Enquadramento macro focado no detalhe construtivo, acabamento premium e material resistente de ${productName}.`,
-        cameraMovement: 'Foco cravado nos detalhes físicos do produto.',
-      },
-      {
-        framing: 'Plano aberto contextual',
-        action: `Visão mais ampla em ${scenarioDescription} mostrando como ${productName} resolve a situação e traz praticidade ao ambiente.`,
-        cameraMovement: 'Panorâmica curta e natural.',
-      },
-      {
-        framing: 'Close de prova física e satisfação',
-        action: `Demonstração da resistência/vedação/acabamento de ${productName} após o uso, evidenciando qualidade superior.`,
-        cameraMovement: 'Aproximação suave.',
-      },
-      {
-        framing: framing === 'com_rosto' ? 'Plano médio final com rosto' : framing === 'sem_rosto' ? 'Plano médio sem rosto (pescoço para baixo)' : 'Close POV final',
-        action: ctaFramingAction,
-        cameraMovement: 'Final com pequeno movimento de câmera aproximando.',
-      },
-    ];
+    const isPackagedOrDiaper = /\b(fralda|fraldas|pacote|embalagem|fardo|pack|caixa|pote)\b/i.test(`${productName} ${productInfo}`);
+    if (isPackagedOrDiaper) {
+      rawScenes = [
+        {
+          framing: 'Close POV muito próximo',
+          action: `Duas mãos adultas seguram a embalagem fechada de ${productName} diante da câmera em ${scenarioDescription}, revelando seu design real e despertando curiosidade imediata.`,
+          cameraMovement: 'Pequeno movimento natural das mãos mostrando a embalagem.',
+        },
+        {
+          framing: framing === 'pov' ? 'Plano médio POV sobre a bancada/ambiente' : 'Plano médio de contexto',
+          action: framing === 'pov'
+            ? `Mãos posicionando o pacote fechado de ${productName} no ambiente em ${scenarioDescription}.`
+            : `${isAdultMale ? 'O apresentador' : 'A apresentadora'} apresenta o pacote fechado de ${productName} no ambiente real (${scenarioDescription}).`,
+          cameraMovement: 'Corte rápido com leve movimento lateral.',
+        },
+        {
+          framing: 'Close rápido e dinâmico de apresentação',
+          action: `Mão adulta segurando a embalagem fechada de ${productName} com firmeza, destacando as especificações e qualidade visíveis no pacote.`,
+          cameraMovement: 'Push-in rápido focado na arte e selos da embalagem.',
+        },
+        {
+          framing: 'Plano médio de recomendação e valor',
+          action: `${isAdultMale ? 'O apresentador' : 'A apresentadora'} segurando o pacote fechado de ${productName} com entusiasmo, comprovando a praticidade e excelente custo-benefício anunciado na copy.`,
+          cameraMovement: 'Câmera dinâmica acompanhando o gesto com o pacote.',
+        },
+        {
+          framing: 'Close nos diferenciais impressos da embalagem',
+          action: `Close focado nas informações impressas, quantidade e diferenciais em destaque no pacote fechado de ${productName} em ${scenarioDescription}.`,
+          cameraMovement: 'Movimento suave de smartphone valorizando os dados da embalagem.',
+        },
+        {
+          framing: 'Close macro extremo de detalhe ("Olha...")',
+          action: `Enquadramento macro focado nos detalhes da embalagem, acabamento do lacre e arte original de ${productName}.`,
+          cameraMovement: 'Foco cravado nos detalhes gráficos e de fabricação do pacote.',
+        },
+        {
+          framing: 'Plano aberto contextual',
+          action: `Visão mais ampla em ${scenarioDescription} mostrando ${isAdultMale ? 'o apresentador' : 'a apresentadora'} segurando o pacote fechado de ${productName} com total confiança e satisfação.`,
+          cameraMovement: 'Panorâmica curta e natural.',
+        },
+        {
+          framing: 'Close de garantia e economia',
+          action: `Demonstração da embalagem fechada de ${productName} bem acomodada e pronta para o dia a dia, evidenciando economia e praticidade.`,
+          cameraMovement: 'Aproximação suave.',
+        },
+        {
+          framing: framing === 'com_rosto' ? 'Plano médio final com rosto' : framing === 'sem_rosto' ? 'Plano médio sem rosto (pescoço para baixo)' : 'Close POV final',
+          action: ctaFramingAction,
+          cameraMovement: 'Final com pequeno movimento de câmera aproximando.',
+        },
+      ];
+    } else {
+      rawScenes = [
+        {
+          framing: 'Close POV muito próximo',
+          action: `Duas mãos adultas seguram ${productName} diante da câmera em ${scenarioDescription}, revelando seu design real e despertando curiosidade imediata.`,
+          cameraMovement: 'Pequeno movimento natural das mãos mostrando o produto.',
+        },
+        {
+          framing: framing === 'pov' ? 'Plano médio POV sobre a bancada/ambiente' : 'Plano médio de contexto',
+          action: framing === 'pov'
+            ? `Mãos posicionando ${productName} no local de uso em ${scenarioDescription}.`
+            : `${isAdultMale ? 'O apresentador' : 'A apresentadora'} apresenta ${productName} no ambiente real (${scenarioDescription}).`,
+          cameraMovement: 'Corte rápido com leve movimento lateral.',
+        },
+        {
+          framing: 'Close rápido e dinâmico de ação',
+          action: `Mão adulta demonstrando o funcionamento de ${productName} na prática para provar o primeiro argumento da fala.`,
+          cameraMovement: 'Push-in rápido focado na ação das mãos.',
+        },
+        {
+          framing: 'Plano médio de resultado imediato',
+          action: `${productName} entrando em funcionamento imediato, mostrando na prática a eficiência prometida na copy.`,
+          cameraMovement: 'Câmera dinâmica acompanhando o efeito.',
+        },
+        {
+          framing: 'Plano de demonstração principal em uso real',
+          action: `Uso real e ativo de ${productName} em ${scenarioDescription}, provando o benefício central citado na locução sem esforço.`,
+          cameraMovement: 'Movimento orgânico de smartphone acompanhando o uso.',
+        },
+        {
+          framing: 'Close macro extremo de detalhe ("Olha...")',
+          action: `Enquadramento macro focado no detalhe construtivo, acabamento premium e material resistente de ${productName}.`,
+          cameraMovement: 'Foco cravado nos detalhes físicos do produto.',
+        },
+        {
+          framing: 'Plano aberto contextual',
+          action: `Visão mais ampla em ${scenarioDescription} mostrando como ${productName} resolve a situação e traz praticidade ao ambiente.`,
+          cameraMovement: 'Panorâmica curta e natural.',
+        },
+        {
+          framing: 'Close de prova física e satisfação',
+          action: `Demonstração da resistência/vedação/acabamento de ${productName} após o uso, evidenciando qualidade superior.`,
+          cameraMovement: 'Aproximação suave.',
+        },
+        {
+          framing: framing === 'com_rosto' ? 'Plano médio final com rosto' : framing === 'sem_rosto' ? 'Plano médio sem rosto (pescoço para baixo)' : 'Close POV final',
+          action: ctaFramingAction,
+          cameraMovement: 'Final com pequeno movimento de câmera aproximando.',
+        },
+      ];
+    }
   }
 
   const activePlanVars = (variations || []).filter((v) => v.photos && v.photos.length > 0);
@@ -1483,6 +1548,26 @@ export function buildDefaultProdutos2Plan(params: {
 export function buildProdutos2PlanningSystemPrompt(): string {
   return `Você é o Diretor Criativo Copy-First do Modo Produtos 2.0.
 REGRA-MÃE: A COPY VENDE. O STORYBOARD PROVA VISUALMENTE A COPY. O VÍDEO ANIMA O STORYBOARD SEM NUNCA MOSTRAR A PRÓPRIA FOLHA DO STORYBOARD.
+
+REGRA CRÍTICA E INVIOLÁVEL 1 — PROIBIÇÃO DE INVENTAR CONTEÚDO INTERNO DE EMBALAGENS (EX: CAIXA DE BOMBONS, PACOTE DE FRALDAS, CAIXAS, POTES, FARDOS):
+- O aplicativo NUNCA pode inventar o produto interno! Se o produto que está sendo vendido for uma caixa de bombons e foi anexada apenas a caixa mostrando o exterior, o aplicativo NÃO PODE inventar e mostrar os bombons dentro da caixa se não tiverem sido mostrados nas imagens de referência.
+- Se o produto for um pacote de fraldas, vai aparecer o pacote de fralda fechado igual na imagem de referência, mas NUNCA vai aparecer as fraldas soltas que vêm dentro, a menos que tenham sido fornecidas fotos de referência das fraldas soltas.
+- Se o usuário não forneceu imagem de referência do que vem dentro da embalagem, o aplicativo NÃO PODE inventar o produto. As cenas retratam EXCLUSIVAMENTE a embalagem/pacote fechado real das fotos!
+
+REGRA CRÍTICA E INVIOLÁVEL 2 — PROIBIÇÃO DE INVENTAR ÂNGULOS NÃO FORNECIDOS (LOCK DE ÂNGULOS REAIS):
+- O aplicativo NÃO PODE mostrar o produto em ângulo diferente do que foi fornecido nas fotos de referência!
+- Se a foto fornecida mostra o produto apenas de frente e NÃO foi mostrado o verso/costas/traseira, o aplicativo NÃO PODE gerar nenhuma cena ou imagem mostrando o verso, porque isso seria inventar uma imagem inexistente!
+- O produto deve ser sempre mostrado de frente ou em ângulos que mantenham visível a face fotografada. NUNCA planeje ações de virar o produto de costas ou mostrar o verso não fotografado!
+
+REGRA CRÍTICA E INVIOLÁVEL 3 — ZERO SITES E ZERO QR CODES / CÓDIGOS DE BARRAS (MESMO SE ESTIVEREM NA FOTO DE REFERÊNCIA):
+- É TERMINANTEMENTE PROIBIDO prever qualquer site, link de internet, domínio, URL (ex.: www..., .com, .com.br, https) ou código de barras/QR code em qualquer cena ou embalagem.
+- MESMO QUE a embalagem na foto de referência contenha site ou QR code impresso de fábrica, a IA DEVE OMITIR e DEIXAR A ÁREA LIMPA! Nenhuma imagem pode conter site ou QR code!
+
+REGRA CRÍTICA E INVIOLÁVEL 4 — MÁXIMA FIDELIDADE DE EMBALAGEM, NOME DO FABRICANTE, LOGOMARCA E CORES EXATAS (1:1):
+- Manter com precisão cirúrgica a aparência real da embalagem, formato e design das fotos de referência.
+- O nome do fabricante deve ser preservado e escrito exatamente igual às referências (jamais trocar letras, distorcer palavras ou inventar marcas).
+- A logomarca e o símbolo original do fabricante devem estar presentes e idênticos.
+- As cores do produto e as cores da embalagem DEVEM ser 100% idênticas às fotos de referência (não desbotar, não alterar tons, não inventar cores).
 
 REGRA DE OURO INVIOLÁVEL — LOGOMARCA DO FABRICANTE NO PRODUTO vs ELEMENTOS DE REDE SOCIAL:
 - DIFERENCIE TOTALMENTE:
@@ -1545,6 +1630,6 @@ E retornar um JSON estrito com:
      * "avatarDescription": Descreva com riqueza os dois personagens (Mulher e Homem), suas idades aproximadas, etnia (se informada) e continuidade de roupas.
      * "scenarioDescription": Dê prioridade ao ambiente de encontro/interação informado (ex: cafeteria, restaurante intimista ao pôr do sol).
      * "scenes": As Cenas 1 e 2 devem ilustrar a mulher reagindo/admirando o produto e perguntando ao homem; a partir da Cena 3 o homem responde, apresenta o produto, demonstra as funções e na Cena 9 conclui com o CTA.
-   - Proibido texto flutuante externo, legenda, preço, número escrito, carrinho, marca d'água de rede social, @ ou interface de aplicativo dentro das cenas (mas OBRIGATÓRIO manter a logomarca original do fabricante impressa no próprio produto), e É EXPRESSAMENTE PROIBIDO desenhar ou prever site, link de internet, URL ou código de barras/QR code em qualquer caixa, pacote ou embalagem do produto.`;
+   - Proibido texto flutuante externo, legenda, preço, número escrito, carrinho, marca d'água de rede social, @ ou interface de aplicativo dentro das cenas (mas OBRIGATÓRIO manter a logomarca original do fabricante impressa no próprio produto), e É EXPRESSAMENTE PROIBIDO desenhar ou prever site, link de internet, URL ou código de barras/QR code em qualquer caixa, pacote ou embalagem do produto. Além disso, MESMO QUE APAREÇAM NA FOTO DE REFERÊNCIA, É PROIBIDO desenhar qualquer site ou QR code. É PROIBIDO inventar o interior de embalagens/caixas/pacotes fechados (como bombons fora da caixa ou fraldas soltas) ou inventar ângulos/verso/costas que não foram fornecidos nas fotos. As cores do produto e da embalagem, o nome do fabricante e a logomarca devem ser rigorosamente 1:1 iguais à referência.`;
 }
 

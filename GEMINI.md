@@ -86,3 +86,27 @@ Este documento contém as regras invioláveis de inteligência artificial e enge
   - É **ESTRITAMENTE PROIBIDO** gerar imagens repetindo a mesma cor se foram fornecidas 3 cores diferentes.
   - Apenas se o produto tiver apenas 1 ou 2 cores anexadas é permitido repetir a cor para preencher as 3 imagens.
 
+
+
+---
+
+## 9. REGRAS INVIOLÁVEIS DE FIDELIDADE (SITES/QR CODE, PRODUTO/ÂNGULOS E EMBALAGEM/CORES)
+
+### 9.1 ZERO SITES E ZERO QR CODES (MESMO QUE CONSTANTES NA IMAGEM DE REFERÊNCIA)
+- Não pode aparecer nenhum tipo de site, URL (ex: www..., .com, https) ou QR Code/código de barras em nenhuma das imagens geradas no storyboard nem no vídeo final.
+- **Mesmo que estejam na imagem de referência:** a IA deve OBRIGATORIAMENTE omitir, remover e deixar a área limpa, sem desenhar sites nem QR codes.
+- No prompt do Veo 3, consta expressamente a proibição de gerar sites e QR codes, garantindo filmagem 100% limpa.
+
+### 9.2 PROIBIÇÃO DE INVENTAR PRODUTO INTERNO E PROIBIÇÃO DE INVENTAR ÂNGULOS NÃO FORNECIDOS
+- **Conteúdo Interno de Embalagens:** Se o produto for uma caixa de bombons, pacote de fraldas, caixa fechada, fardo ou embalagem lacrada e o usuário só anexou a foto do exterior fechado:
+  * É expressamente PROIBIDO inventar e mostrar os itens internos (ex: nunca mostrar bombons soltos fora da caixa, nunca mostrar fraldas soltas fora do pacote de fralda, nunca abrir a caixa ou pacote).
+  * O aplicativo retrata 100% exclusivamente a embalagem fechada real das fotos.
+- **Ângulos Não Fornecidos (Lock de Ângulos Reais):**
+  * Se o produto foi mostrado nas fotos de referência apenas de frente (ou em ângulo específico) e não foi fornecida foto do verso/costas/traseira:
+  * É expressamente PROIBIDO gerar imagens mostrando o verso ou costas do produto, pois isso configuraria invenção visual.
+  * O produto deve ser mostrado estritamente nos ângulos fotografados nas referências anexadas.
+
+### 9.3 FIDELIDADE DE EMBALAGEM, NOME DO FABRICANTE, LOGOMARCA E CORES EXATAS (1:1)
+- **Aparência da Embalagem:** Manter rigorosamente o mesmo formato, grafismos e arte visual da embalagem das fotos de referência.
+- **Nome do Fabricante e Logomarca:** O nome do fabricante deve ser grafado de forma 100% idêntica às fotos (sem inventar letras, distorções ou outras marcas). A logomarca e o símbolo original devem estar no local exato.
+- **Cores Exatas (1:1):** As cores do produto E as cores da embalagem do produto DEVEM ser rigorosamente idênticas às fotos de referência. Nunca alterar, desbotar ou trocar cores nem do produto, nem da embalagem.
