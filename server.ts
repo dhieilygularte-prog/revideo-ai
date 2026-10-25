@@ -4557,14 +4557,17 @@ O array "quadrants" DEVE conter exatamente ${quadrantCount} itens (sceneNumber 1
   }
 });
 
-// ─── ENDPOINT: FISCALIZAÇÃO DE FIDELIDADE DO VÍDEO DO VEO (1 CAPTURA A CADA 2S) ───
+// ─── ENDPOINT: FISCALIZAÇÃO PERICIAL DE FIDELIDADE DO VÍDEO DO VEO (STORYBOARD 1S + FRAMES HD + COMPARAÇÃO VISUAL) ───
 async function handleProdutos2AuditVideo(req: any, res: any) {
   try {
     const {
       videoFrames = [], // Array<{ second: number; frameBase64: string }>
+      contactSheetBase64 = '', // Imagem única em formato Storyboard 1200x660 (1 frame por segundo: 0s, 1s, 2s...)
       productPhotosBase64 = [], // Array<string>
       productName = 'Produto',
       productLock = [],
+      videoFileName = 'video.mp4',
+      videoDurationSeconds = 10,
       isTargetedPass = false,
       suspiciousSeconds = [],
     } = req.body;
@@ -4582,225 +4585,368 @@ async function handleProdutos2AuditVideo(req: any, res: any) {
     }
 
     const lockContext = Array.isArray(productLock) ? productLock.join('; ') : '';
+    const framesTimestampsList = videoFrames.map((vf: any, i: number) => `${vf.second ?? i}s`).join(', ');
     const targetedContextInstruction = isTargetedPass
       ? `\n\n[MODO ATIVO: ETAPA 2 — INSPEÇÃO DIRECIONADA EM ALTA DENSIDADE (1 FRAME POR SEGUNDO NA REGIÃO SUSPEITA)]:
-Na varredura inicial (1 frame a cada 2s), houve sinal suspeito nos segundos: ${Array.isArray(suspiciousSeconds) && suspiciousSeconds.length > 0 ? suspiciousSeconds.map((s: any) => `${s}s`).join(', ') : 'indicados'}.
-Agora você está recebendo frames em alta frequência (1 frame por segundo, incluindo contexto antes, durante e depois do evento suspeito).
-REGRAS ESPECÍFICAS DESTA INSPEÇÃO DIRECIONADA:
-1) Compare os frames de 1 em 1 segundo entre si e com as fotos originais para verificar se a mudança suspeita é PERSISTENTE ou se foi apenas movimento rápido, oclusão passageira pelos dedos/mão, corte de cena, sombra, reflexo ou perspectiva.
-2) Se os frames adjacentes (antes e depois) comprovarem que o produto manteve sua estrutura real e que a suspeita anterior era apenas oclusão da mão, movimento ou ângulo, REABILITE e APROVE o frame com nota >= 90% (Verde), explicando no "issue" que a inspeção de 1 frame/s confirmou a integridade física do produto.
-3) Se os frames de 1 frame/s confirmarem que a alteração ou deformação persiste de fato no intervalo, confirme a nota rigorosa e detalhe a evidência.`
+Na varredura anterior, houve sinal suspeito nos segundos: ${Array.isArray(suspiciousSeconds) && suspiciousSeconds.length > 0 ? suspiciousSeconds.map((s: any) => `${s}s`).join(', ') : 'indicados'}.
+Examine os frames de 1 em 1 segundo e confirme se a divergência é real e persistente ou apenas oclusão/perspectiva.`
       : '';
 
-    const systemInstruction = `Você é o Auditor Pericial de Fidelidade Visual de Produtos para Vídeos Comerciais (Veo 3 / TikTok Shop), operando com metodologia de Detecção Preventiva de Inconsistências (Manual Completo com Complementos de Inspeção).
-Sua missão é auditar ${videoFrames.length} FRAMES extraídos do vídeo (1 captura a cada 2 segundos ao longo do vídeo) e comparar o produto retratado em cada um deles com as FOTOS REAIS DE REFERÊNCIA do produto "${productName}".
+    const systemInstruction = `Você é o Detector Pericial de Inconsistências de Produto em Vídeos Comerciais (Veo 3 / TikTok Shop).
+Você está analisando o vídeo "${videoFileName}" (duração aproximada de ${videoDurationSeconds} segundos), comparando capturas reais de 1 em 1 segundo (${framesTimestampsList}) e o Storyboard de Capturas do Vídeo com as ${photosList.length} imagem(ns) de referência fornecida(s) para o produto "${productName}".
 
-METODOLOGIA OBRIGATÓRIA DE ANÁLISE EM 4 ETAPAS + DIRETRIZES COMPLEMENTARES:
+REGRAS CRÍTICAS DE INSPEÇÃO MICROSCÓPICA E CONTAGEM DE COMPONENTES (NUNCA DEIXE PASSAR DETALHES FÍSICOS ERRADOS):
+1. CONTAGEM EXATA DE CÂMERAS, LENTES, SENSORES, FLASH, TELAS E BOTÕES (ESPECIALMENTE EM CELULARES E ELETRÔNICOS):
+   - CONTE EXATAMENTE quantas lentes traseiras grandes e pequenas existem nas fotos de referência, qual o alinhamento delas (ex: 2 lentes grandes alinhadas verticalmente sem módulo elevado, ou com um pequeno flash circular claro ao lado da lente superior) e compare com CADA frame do vídeo onde a traseira do aparelho aparece!
+   - ERRO CLÁSSICO DO VEO A DETECTAR OBRIGATORIAMENTE: O Veo frequentemente transforma o pequeno flash branco/claro lateral em uma TERCEIRA LENTE ESCURA PRETA (ficando 3 lentes escuras em vez de 2 lentes + flash claro), adiciona um módulo/ilha quadrada que não existe na referência, ou inventa uma TELA/VISOR TRASEIRO ao lado das câmeras (ex: mostrando o rosto da pessoa na traseira do celular)!
+   - Se a foto de referência tem 2 lentes traseiras (e 1 flash pequeno claro) e no vídeo aparecem 3 lentes escuras traseiras ou um visor traseiro na parte de trás do celular, isso é uma 🔴 INCONSISTÊNCIA EVIDENTE GRAVÍSSIMA! Você DEVE reprovar todos os frames onde essa traseira incorreta aparece com nota < 50% (status "red") e criar um achado detalhado ("Configuração das câmeras traseiras")!
+2. CONSISTÊNCIA ENTRE AS PRÓPRIAS IMAGENS DE REFERÊNCIA:
+   - Se houver 2 ou mais imagens de referência, verifique também se elas próprias apresentam diferenças entre si (ou se uma é a foto real do produto e outra é um painel/banner de detalhes) e descreva exatamente o que cada imagem de referência mostra em "referenceNotes"!
+3. EMBALAGENS, CAIXAS E IDENTIFICAÇÃO DO MODELO:
+   - Se o vídeo mostrar caixas/embalagens do produto (ex: caixa preta escrita "${productName}" nos segundos finais), registre um achado específico ("Embalagem e identificação do modelo") apontando em quais segundos a caixa aparece e explicando que, embora a caixa ajude a identificar o modelo anunciado, a embalagem sozinha não comprova que o aparelho físico mostrado no vídeo corresponda exatamente a ele quando o aparelho apresenta divergências visuais.
+4. DEMAIS COMPONENTES FÍSICOS (BICOS, CABOS, BOTÕES, LOGOTIPOS, COSTURAS, PEÇAS DE KITS):
+   - Compare corpo principal, base, bicos, cabos, alças, tampas, botões, logomarca original do fabricante e quantidade de itens.
+   - Não confunda oclusão natural pelos dedos, perspectiva ou iluminação com defeito, MAS qualquer componente extra inventado (3ª lente, tela traseira, botão extra), peça ausente ou modelo diferente deve ser classificado como 🔴 INCONSISTÊNCIA EVIDENTE ("severity": "evident")!
 
-ETAPA 1 — CONSOLIDAÇÃO DE TODAS AS FOTOS DE REFERÊNCIA (FICHA VISUAL CONSOLIDADA):
-Antes de analisar os frames, examine TODAS as fotos de referência como um conjunto integrado:
-- Consolidação Multi-Ângulo: use diferentes ângulos das fotos para esclarecer partes ocultas em outra imagem. NUNCA conclua que uma peça está ausente só porque não aparece em uma foto específica se ela aparece em outra foto de referência!
-- Identidade e Modelo: categoria, tipo, modelo aparente, formato geral e design característico.
-- Estrutura Física e Componentes: corpo principal, base, conexões, cabos/fios, alças, tampas, bicos, fechos, botões, articulações, mecanismos e acessórios.
-- Cores, Materiais e Acabamentos: cores reais exatas, acabamento (fosco, brilhante, metálico), textura e material aparente.
-- Identificação de Marca: logomarcas, relevos, grafismos, etiquetas e inscrições originais do fabricante.
-- KITS E PRODUTOS COM VÁRIAS PEÇAS: inventarie e inspecione cada unidade, acessório ou peça individualmente (não apenas a peça principal ou embalagem).
-- CONFERÊNCIA DE VARIANTES E EMBALAGENS: se as fotos de referência mostrarem variantes, cores, tamanhos ou lotes diferentes, registre cada variante. Qualquer frame onde o produto retratado corresponda a QUALQUER UMA das variantes legítimas anexadas está 100% CORRETO e APROVADO (90 a 100% — Verde).
+COMO PREENCHER OS RECORTES PARA A COMPARAÇÃO VISUAL REAL ("refCropBox" e "videoCropBox"):
+Para cada achado em "findings", indique:
+- "bestRefIndex": número da foto de referência (1 a ${photosList.length}) onde esse componente aparece melhor.
+- "bestFrameSecond": o segundo exato do vídeo (entre ${framesTimestampsList}) onde o problema ou componente aparece com maior nitidez e clareza (ex: 2).
+- "refCropBox": [ymin, xmin, ymax, xmax] em escala de 0 a 1000 (inteiros) delimitando a região do componente (ex: o módulo de câmeras traseiras do celular) na foto de referência #bestRefIndex. Deixe uma margem ao redor do componente para contexto visual claro.
+- "videoCropBox": [ymin, xmin, ymax, xmax] em escala de 0 a 1000 (inteiros) delimitando a região do mesmo componente no frame do vídeo do segundo "bestFrameSecond".
 
-ETAPA 2 — INSPEÇÃO CRONOLÓGICA E COBERTURA REAL DOS QUADROS:
-Examine os ${videoFrames.length} frames na ordem cronológica (início, meio e fim):
-- Identifique cortes, transições de cena, rotações, interações das mãos e mudanças de enquadramento.
-- Aparência inicial do produto, demonstração das funções ao longo do vídeo e aparência final.
-- SEPARAÇÃO DE CENAS CONTEXTUAIS: cenas introdutórias de gancho, humor, modelos ou pessoas sem o produto na tela NÃO são inconsistências do produto físico! Se o produto não estiver em cena, relate "productVisible: false" com score neutro (95%) e aprove, sem jamais inventar defeito físico onde o produto não aparece.
-
-ETAPA 3 — COMPARAÇÃO COMPONENTE POR COMPONENTE (5 GRUPOS DE INSPEÇÃO RIGOROSA):
-Inspecione cada componente visível contra a ficha consolidada de referência:
-1. IDENTIDADE E MODELO:
-   - É rigorosamente o mesmo modelo? Ou exibe formato, curvas ou detalhes exclusivos de outro modelo de produto?
-2. ESTRUTURA FÍSICA E COMPONENTES:
-   - Há peças ausentes, componentes extras inexistentes, peças deslocadas ou estruturalmente alteradas?
-   - REGRA FUNDAMENTAL DE CONTEXTO E PRECISÃO: NÃO confunda oclusão temporária pela mão, sombra ou corte de enquadramento com peça desaparecida! Se a mão cobriu momentaneamente o bico, cabo ou botão, mas a estrutura permanece íntegra, NÃO considere inconsistência.
-3. DESIGN E PROPORÇÕES:
-   - Espessuras, curvaturas, comprimentos e relações entre as partes do produto.
-   - REGRA FUNDAMENTAL DE PRECISÃO: NÃO confunda perspectiva, aproximação ou distância da câmera com deformação física.
-4. CORES, MATERIAIS, TEXTURAS E ACABAMENTO:
-   - Houve alteração real de cor? A textura é incompatível? O logotipo foi apagado, distorcido ou alterado?
-   - REGRA FUNDAMENTAL DE PRECISÃO: NÃO confunda iluminação ambiente (luz quente, luz fria, contraluz), sombras, reflexos ou balanço de branco com troca real de cor.
-5. FUNCIONALIDADES E ACESSÓRIOS DEMONSTRADOS:
-   - O uso demonstrado é compatível com a anatomia e estrutura real do produto comprovadas nas referências.
-
-ETAPA 4 — SEGUNDA PASSAGEM: CONFIRMAÇÃO DE CONTEXTO, CONTINUIDADE E MORPHING POR IA:
-Compare o produto também CONSIGO MESMO entre frames sucessivos (antes, durante e depois de eventos suspeitos):
-- Distinga uma mudança legítima por corte de cena de uma deformação progressiva (morphing) dentro do mesmo take.
-- Fusão do produto com os dedos/mãos do modelo ou com o cenário.
-- Cabos, hastes ou partes que esticam, encolhem ou mudam de espessura repentinamente.
-- Componentes que se transformam em outros objetos durante o movimento.
-- Mudanças bruscas de cor entre frames sem alteração de iluminação da cena.
-
-CRITÉRIOS DE PONTUAÇÃO PARA CADA FRAME:
-- 90 a 100% (Verde - Aprovado): Produto idêntico a qualquer uma das referências reais anexadas (variação <10%), preservando integridade, acabamento e formato real. Variações ópticas normais de perspectiva, iluminação ou oclusão transitória pelas mãos devem ser APROVADAS!
-- 71 a 89% (Amarelo - Pode Passar / Razoável): Pequena variação ou suspeita leve (ex: reflexo intenso alterando tom aparente, leve distorção de borda em movimento rápido).
-- 60 a 70% (Laranja - Cuidado / Risco Médio): Variação moderada perceptível (ex: proporção alterada, textura incompatível, deformação perceptível em movimento).
-- Menor que 60% (Vermelho - Reprovado / Risco de Restrição): Inconsistência evidente comprovada (modelo diferente, componente que desapareceu/surgiu, fusão com a mão, cor inexistente nas fotos de referência, logotipo apagado ou adulterado).
-
-DIRETRIZES DO RELATÓRIO E RASTREABILIDADE:
-- Idioma: Português brasileiro simples, natural, direto e acolhedor.
-- No campo "issue" de cada frame: seja específico e conciso sobre o componente, tempo em segundos e o que foi verificado (ex: "Frame 1 (1s): Corpo e bico idênticos à referência preta; perspectiva natural" ou "Frame 4 (7s): Bico do produto sofreu deformação/fusão com os dedos durante o manuseio").
-- No campo "summary":
-  * Se houver frame <60%: Comece com "🔴 INCONSISTÊNCIA EVIDENTE:" e aponte os segundos e componentes divergentes, recomendando refazer a cena antes de publicar.
-  * Se houver frame entre 60% e 70%: Comece com "🟠 CUIDADO - VARIAÇÃO MODERADA:" destacando onde houve variação e recomendando ajuste.
-  * Se houver frame entre 71% e 89%: Comece com "🟡 POSSÍVEL INCONSISTÊNCIA:" sugerindo conferência dos detalhes apontados antes de publicar.
-  * Se todos os frames forem >=90%: Comece com "🟢 NENHUMA INCONSISTÊNCIA IDENTIFICADA:" atestando a alta fidelidade e consistência do produto ao longo de todos os frames analisados, liberado para publicação.
-
-Retorne ESTRITAMENTE um objeto JSON no formato:
+Retorne ESTRITAMENTE um objeto JSON válido em português com este formato:
 {
+  "overviewText": "Parágrafo inicial direto resumindo o principal achado (ex: 'O principal problema está no conjunto de câmeras traseiras do celular. As referências mostram duas lentes alinhadas verticalmente com um flash claro lateral, enquanto o aparelho mostrado no vídeo aparenta ter três lentes escuras traseiras e um módulo diferente.'). Se estiver tudo 100% idêntico, explique que todos os componentes conferem com as referências.",
+  "summary": "🔴 INCONSISTÊNCIA EVIDENTE: [resumo objetivo] (ou 🟡 POSSÍVEL INCONSISTÊNCIA / 🟢 NENHUMA INCONSISTÊNCIA IDENTIFICADA)",
+  "finalRecommendation": "🔴 Recomendo não publicar esta versão antes de confirmar a identidade visual correta do produto e corrigir as cenas divergentes. Há uma divergência clara entre as referências fornecidas e o produto observado no vídeo.",
+  "coverageNote": "Foram inspecionadas ${videoFrames.length} capturas reais extraídas de 1 em 1 segundo (${framesTimestampsList}) em conjunto com o Storyboard de Capturas e ${photosList.length} imagem(ns) de referência.",
+  "findings": [
+    {
+      "number": 1,
+      "title": "Configuração das câmeras traseiras",
+      "severity": "evident",
+      "referenceNotes": [
+        {
+          "refIndex": 1,
+          "label": "Referência: foto original do produto",
+          "description": "Mostra duas lentes grandes alinhadas verticalmente, com um componente menor (flash claro) ao lado da lente superior."
+        }
+      ],
+      "whatAppearsInVideo": "Nas capturas de aproximadamente 1, 2, 5 e 7 segundos, o celular aparenta ter três lentes traseiras escuras, com duas grandes à esquerda e uma terceira lente escura na parte superior direita (além de exibir um visor traseiro no segundo 7s).",
+      "whereItAppears": "aproximadamente 1, 2, 5 e 7 segundos.",
+      "bestFrameSecond": 2,
+      "bestRefIndex": 1,
+      "refCropBox": [50, 120, 420, 480],
+      "videoCropBox": [180, 320, 580, 720],
+      "howToFix": "confirme qual configuração de câmeras pertence ao modelo realmente anunciado. Se o produto correto tiver duas lentes, substitua as cenas em que aparece a configuração com três lentes ou visor traseiro. Se tiver três, corrija as referências antes de usar o detector para validar o vídeo."
+    }
+  ],
   "frames": [
     {
       "frameNumber": 1,
-      "second": 1.0,
+      "second": 0,
       "productVisible": true,
-      "score": 96,
+      "score": 92,
       "status": "green",
-      "issue": "Curta observação técnica em português sobre a fidelidade do produto neste segundo"
+      "issue": "Frame 1 (0s): Cena de abertura com produto à distância, sem distorção visível."
     }
-  ],
-  "summary": "Resumo pericial em português com diagnóstico geral e recomendações objetivas."
+  ]
 }`;
 
-    // Preferencialmente usamos gpt-4o-mini (o mais econômico e rápido de todos na OpenAI)
+    const finalizeVideoAuditResponse = (parsed: any, usageObj: any) => {
+      const rawFindings: any[] = Array.isArray(parsed.findings) ? parsed.findings : [];
+      const normalizedFindings = rawFindings.map((f: any, idx: number) => {
+        const sevRaw = String(f.severity || 'possible').toLowerCase();
+        const severity: 'evident' | 'possible' | 'observation' =
+          sevRaw.includes('evid') || sevRaw === 'red' || sevRaw === 'high'
+            ? 'evident'
+            : sevRaw.includes('obs') || sevRaw === 'info'
+            ? 'observation'
+            : 'possible';
+
+        const refNotes = Array.isArray(f.referenceNotes)
+          ? f.referenceNotes.map((rn: any, rIdx: number) => ({
+              refIndex: Math.max(1, Math.min(photosList.length, Number(rn.refIndex) || rIdx + 1)),
+              label: String(rn.label || `Referência #${rIdx + 1}`).trim(),
+              description: String(rn.description || '').trim(),
+            }))
+          : [];
+
+        const parseBox = (box: any): [number, number, number, number] | undefined => {
+          if (Array.isArray(box) && box.length === 4) {
+            const nums = box.map((n: any) => Number(n));
+            if (nums.every((n: number) => !isNaN(n) && n >= 0 && n <= 1000)) {
+              return [nums[0], nums[1], nums[2], nums[3]];
+            }
+          }
+          return undefined;
+        };
+
+        return {
+          number: Number(f.number) || idx + 1,
+          title: String(f.title || `Ponto de Inspeção ${idx + 1}`).trim(),
+          severity,
+          referenceNotes: refNotes,
+          whatAppearsInVideo: String(f.whatAppearsInVideo || '').trim(),
+          whereItAppears: String(f.whereItAppears || '').trim(),
+          howToFix: String(f.howToFix || '').trim(),
+          bestFrameSecond: f.bestFrameSecond !== undefined ? Number(f.bestFrameSecond) : undefined,
+          bestRefIndex: Math.max(1, Math.min(photosList.length, Number(f.bestRefIndex) || 1)),
+          refCropBox: parseBox(f.refCropBox),
+          videoCropBox: parseBox(f.videoCropBox),
+        };
+      });
+
+      const hasEvidentFinding = normalizedFindings.some((f) => f.severity === 'evident');
+      const hasPossibleFinding = normalizedFindings.some((f) => f.severity === 'possible');
+
+      // Identifica todos os segundos citados em achados evidentes para garantir que esses frames recebam nota vermelha (<60%)
+      const evidentSecondsSet = new Set<number>();
+      normalizedFindings
+        .filter((f) => f.severity === 'evident')
+        .forEach((f) => {
+          if (f.bestFrameSecond !== undefined && !isNaN(f.bestFrameSecond)) {
+            evidentSecondsSet.add(Math.round(f.bestFrameSecond));
+          }
+          const matches = String(`${f.whereItAppears} ${f.whatAppearsInVideo}`).match(/\b(\d{1,2})\s*(?:s|seg|segundos|\b)/gi) || [];
+          matches.forEach((m) => {
+            const num = parseInt(m.replace(/\D+/g, ''), 10);
+            if (!isNaN(num)) evidentSecondsSet.add(num);
+          });
+        });
+
+      const normalizedFrames = videoFrames.map((vf: any, idx: number) => {
+        const num = idx + 1;
+        const sec = vf.second ?? idx;
+        const found =
+          (parsed.frames || []).find((f: any) => Math.abs(Number(f.second) - Number(sec)) < 0.3) ||
+          (parsed.frames || []).find((f: any) => Number(f.frameNumber) === num) ||
+          (parsed.frames || [])[idx];
+
+        let score = Number(found?.score ?? 94);
+        if (isNaN(score)) score = 94;
+        if (score > 0 && score <= 1) score = Math.round(score * 100);
+
+        let issue = String(
+          found?.issue || `Frame ${num} (${sec}s): Produto ${score >= 90 ? 'idêntico à referência' : 'com variações'}`
+        ).trim();
+
+        const lowerIssue = issue.toLowerCase();
+        const issueMentionsDefect =
+          lowerIssue.includes('três lentes') ||
+          lowerIssue.includes('3 lentes') ||
+          lowerIssue.includes('lente a mais') ||
+          lowerIssue.includes('lente extra') ||
+          lowerIssue.includes('câmera a mais') ||
+          lowerIssue.includes('câmeras diferentes') ||
+          lowerIssue.includes('configuração diferente') ||
+          lowerIssue.includes('diverg') ||
+          lowerIssue.includes('inconsist') ||
+          lowerIssue.includes('incorret') ||
+          lowerIssue.includes('diferente da referência') ||
+          lowerIssue.includes('visor traseiro') ||
+          lowerIssue.includes('tela traseira') ||
+          lowerIssue.includes('deforma');
+
+        if (evidentSecondsSet.has(Math.round(Number(sec))) || issueMentionsDefect) {
+          score = Math.min(score, 48);
+          if (score >= 60) score = 48;
+          const mainEvident = normalizedFindings.find((f) => f.severity === 'evident');
+          if (mainEvident && !issueMentionsDefect) {
+            issue = `Frame ${num} (${sec}s): Divergência detectada em "${mainEvident.title}" — ${mainEvident.whatAppearsInVideo}`;
+          }
+        }
+
+        const status = getAuditColorStatus(score);
+
+        return {
+          frameNumber: num,
+          second: sec,
+          productVisible: found?.productVisible !== false,
+          score,
+          status,
+          issue,
+          frameThumbnail: vf.frameBase64,
+        };
+      });
+
+      const scores = normalizedFrames.map((f: any) => f.score);
+      const minScore = Math.min(...scores);
+      const avgScore = Math.round(scores.reduce((a: number, b: number) => a + b, 0) / scores.length);
+
+      let overallScore = avgScore;
+      let overallStatus: 'green' | 'yellow' | 'orange' | 'red' = 'green';
+      let overallLabel = 'Aprovado: Vídeo Liberado';
+
+      if (hasEvidentFinding || minScore < 60) {
+        overallStatus = 'red';
+        overallScore = Math.min(52, minScore < 60 ? minScore : 48);
+        overallLabel = '🔴 Inconsistência evidente — Risco de Restrição (Reprovado)';
+      } else if (minScore <= 70) {
+        overallStatus = 'orange';
+        overallScore = Math.min(70, minScore);
+        overallLabel = '🟠 Cuidado: Variação Moderada';
+      } else if (hasPossibleFinding || minScore < 90) {
+        overallStatus = 'yellow';
+        overallScore = Math.min(88, minScore < 90 ? minScore : 84);
+        overallLabel = '🟡 Possível inconsistência — Pode Passar (Razoável)';
+      } else {
+        overallStatus = 'green';
+        overallScore = avgScore;
+        overallLabel = '🟢 Nenhuma inconsistência identificada — Vídeo Liberado';
+      }
+
+      const defaultSummary =
+        overallStatus === 'red'
+          ? `🔴 INCONSISTÊNCIA EVIDENTE: ${parsed.overviewText || 'O produto exibido no vídeo apresenta divergências físicas claras em relação às imagens de referência. Não publique esta versão antes de corrigir as cenas apontadas.'}`
+          : overallStatus === 'orange'
+          ? `🟠 CUIDADO - VARIAÇÃO MODERADA: ${parsed.overviewText || 'Variação perceptível identificada no produto. Recomendado ajuste na cena correspondente.'}`
+          : overallStatus === 'yellow'
+          ? `🟡 POSSÍVEL INCONSISTÊNCIA: ${parsed.overviewText || 'Pequenas variações detectadas no produto. Confira os detalhes apontados antes de publicar.'}`
+          : `🟢 NENHUMA INCONSISTÊNCIA IDENTIFICADA: Todos os ${normalizedFrames.length} frames analisados apresentam alta fidelidade e consistência do produto "${productName}" em relação às referências fornecidas.`;
+
+      const defaultFinalRec =
+        overallStatus === 'red'
+          ? '🔴 Recomendo não publicar esta versão antes de confirmar a identidade visual correta do produto e refazer as cenas divergentes. Há uma divergência clara entre as referências fornecidas e os componentes observados no vídeo.'
+          : overallStatus === 'yellow' || overallStatus === 'orange'
+          ? '🟡 Confirme os detalhes apontados antes de publicar. Se a diferença for confirmada em relação ao produto real, substitua as cenas correspondentes.'
+          : '🟢 Não identifiquei inconsistências nas evidências analisadas. O produto manteve suas características visuais consistentes ao longo das capturas verificadas.';
+
+      return res.json({
+        success: true,
+        audit: {
+          overallScore,
+          overallStatus,
+          overallLabel,
+          summary: String(parsed.summary || defaultSummary).trim(),
+          overviewText: String(parsed.overviewText || '').trim(),
+          finalRecommendation: String(parsed.finalRecommendation || defaultFinalRec).trim(),
+          coverageNote: String(
+            parsed.coverageNote ||
+              `Analisadas ${normalizedFrames.length} capturas reais (${framesTimestampsList}) e ${photosList.length} imagem(ns) de referência.`
+          ).trim(),
+          videoFileName,
+          videoDurationSeconds,
+          findings: normalizedFindings,
+          frames: normalizedFrames,
+        },
+        usage: usageObj,
+      });
+    };
+
     if (openAIProvider.isConfigured()) {
       try {
         const client = (openAIProvider as any).getClient();
         const contentBlocks: any[] = [];
 
-        // Adicionar fotos de referência do anúncio (até 6 fotos para cobrir todas as variações mantendo custo mínimo)
+        // 1. Fotos de referência em ALTA RESOLUÇÃO (detail: 'high') para enxergar cada lente, botão, flash e logo
         photosList.slice(0, 6).forEach((photo, idx) => {
           contentBlocks.push({
             type: 'text',
-            text: `[FOTO DE REFERÊNCIA REAL #${idx + 1} DO PRODUTO "${productName}"]:`
+            text: `[IMAGEM DE REFERÊNCIA REAL #${idx + 1} DO PRODUTO "${productName}" — INSPECIONE EM ALTA DEFINIÇÃO A QUANTIDADE E DISPOSIÇÃO EXATA DE CÂMERAS/LENTES, FLASH, BOTÕES, FORMATO E LOGOMARCA]:`,
           });
           contentBlocks.push({
             type: 'image_url',
             image_url: {
               url: photo.startsWith('data:') ? photo : `data:image/jpeg;base64,${photo}`,
-              detail: 'low',
+              detail: 'high',
             },
           });
         });
 
-        // Adicionar os frames do vídeo
-        videoFrames.forEach((frameObj: any, idx: number) => {
-          const sec = frameObj.second ?? (idx * 2 + 1);
+        // 2. Storyboard Contact Sheet de 1 em 1 segundo em ALTA RESOLUÇÃO (detail: 'high'), igual ao app concorrente
+        if (contactSheetBase64 && typeof contactSheetBase64 === 'string') {
           contentBlocks.push({
             type: 'text',
-            text: `[FRAME #${idx + 1} EXTRAÍDO DO VÍDEO DO VEO NO SEGUNDO ${sec}s]:`
+            text: `[STORYBOARD DE ANÁLISE DO VÍDEO (${videoFrames.length} CAPTURAS DE 1 EM 1 SEGUNDO: ${framesTimestampsList}) — VISÃO GERAL DE CONTINUIDADE EM ALTA RESOLUÇÃO]:`,
           });
           contentBlocks.push({
             type: 'image_url',
             image_url: {
-              url: frameObj.frameBase64.startsWith('data:') ? frameObj.frameBase64 : `data:image/jpeg;base64,${frameObj.frameBase64}`,
-              detail: 'low',
+              url: contactSheetBase64.startsWith('data:')
+                ? contactSheetBase64
+                : `data:image/jpeg;base64,${contactSheetBase64}`,
+              detail: 'high',
+            },
+          });
+        }
+
+        // 3. Frames individuais do vídeo em ALTA RESOLUÇÃO (detail: 'high') para zoom pericial em cada segundo
+        videoFrames.forEach((frameObj: any, idx: number) => {
+          const sec = frameObj.second ?? idx;
+          contentBlocks.push({
+            type: 'text',
+            text: `[CAPTURA REAL DO VÍDEO #${idx + 1} — SEGUNDO ${sec}s (00:${String(Math.round(Number(sec))).padStart(2, '0')})]:`,
+          });
+          contentBlocks.push({
+            type: 'image_url',
+            image_url: {
+              url: frameObj.frameBase64.startsWith('data:')
+                ? frameObj.frameBase64
+                : `data:image/jpeg;base64,${frameObj.frameBase64}`,
+              detail: 'high',
             },
           });
         });
 
-        const promptText = `Audite minuciosamente os ${videoFrames.length} frames do vídeo acima comparando com as fotos de referência reais do produto "${productName}".
-Aplique a metodologia de 4 etapas do detector (Ficha visual de referência, inspeção cronológica, comparação componente a componente nos 5 grupos e segunda passagem de continuidade/morphing temporal). Se o produto em cada frame for idêntico a qualquer uma das fotos de referência anexadas, aprove com nota >= 90%. Diferencie perspectiva e iluminação natural de alteração real do produto.${lockContext ? ` Trava do produto: ${lockContext}` : ''}
+        const promptText = `Realize a perícia visual completa do vídeo "${videoFileName}" (${videoDurationSeconds}s) comparando as ${videoFrames.length} capturas (${framesTimestampsList}) e o Storyboard de Capturas com as ${photosList.length} imagem(ns) de referência do produto "${productName}".
+ATENÇÃO ESPECIAL:
+1) Conte o número exato de lentes de câmera, posição do flash, formato do módulo traseiro, botões, telas e logotipos nas fotos de referência e compare com cada frame do vídeo. Se nas fotos de referência o aparelho tiver 2 lentes traseiras (com 1 flash claro pequeno ao lado) e no vídeo aparecerem 3 lentes escuras ou uma tela traseira ao lado das câmeras, classifique OBRIGATORIAMENTE como 🔴 INCONSISTÊNCIA EVIDENTE ("severity": "evident"), dê nota < 50% nos frames correspondentes e preencha "findings" com as coordenadas de recorte ("refCropBox" e "videoCropBox") para a Comparação Visual Real!
+2) Se aparecerem caixas/embalagens do produto no vídeo, adicione também o item numerado sobre "Embalagem e identificação do modelo" indicando em quais segundos aparece e como corrigir.${lockContext ? `\nTrava do produto: ${lockContext}` : ''}
 ${targetedContextInstruction}
-Retorne o JSON estritamente conforme solicitado.`;
+Retorne o JSON estritamente conforme o schema especificado.`;
         contentBlocks.push({ type: 'text', text: promptText });
 
-        const completion = await client.chat.completions.create({
-          model: 'gpt-4o-mini',
-          messages: [
-            { role: 'system', content: systemInstruction },
-            { role: 'user', content: contentBlocks },
-          ],
-          response_format: { type: 'json_object' },
-          temperature: 0.1,
-          max_tokens: 2500,
-        });
+        const modelsToTry = ['gpt-4o', 'gpt-4o-mini'];
+        let completion: any = null;
+        let usedModel = 'gpt-4o';
+
+        for (const modelCandidate of modelsToTry) {
+          try {
+            completion = await client.chat.completions.create({
+              model: modelCandidate,
+              messages: [
+                { role: 'system', content: systemInstruction },
+                { role: 'user', content: contentBlocks },
+              ],
+              response_format: { type: 'json_object' },
+              temperature: 0.1,
+              max_tokens: 3500,
+            });
+            usedModel = modelCandidate;
+            break;
+          } catch (modelErr: any) {
+            console.warn(`Aviso em /api/produtos2-audit-video (${modelCandidate}):`, modelErr?.message || modelErr);
+          }
+        }
+
+        if (!completion) {
+          throw new Error('Não foi possível obter resposta dos modelos de visão da OpenAI.');
+        }
 
         const rawText = completion.choices[0]?.message?.content || '{}';
         const parsed = JSON.parse(rawText);
 
-        const promptTok = completion.usage?.prompt_tokens || 3500;
-        const compTok = completion.usage?.completion_tokens || 350;
+        const promptTok = completion.usage?.prompt_tokens || 6500;
+        const compTok = completion.usage?.completion_tokens || 900;
         const totTok = promptTok + compTok;
-        const costUSD = Math.round(((promptTok * 0.00000015) + (compTok * 0.00000060)) * 10000) / 10000;
-        const costBRL = Math.round((costUSD * 5.60) * 1000) / 1000;
+        const isMini = usedModel.includes('mini');
+        const costUSD =
+          Math.round(
+            ((promptTok / 1_000_000) * (isMini ? 0.15 : 2.5) +
+              (compTok / 1_000_000) * (isMini ? 0.6 : 10.0)) *
+              10000
+          ) / 10000;
+        const costBRL = Math.round(costUSD * 5.7 * 1000) / 1000;
 
-        const normalizedFrames = videoFrames.map((vf: any, idx: number) => {
-          const num = idx + 1;
-          const found = (parsed.frames || []).find((f: any) => Number(f.frameNumber) === num) || (parsed.frames || [])[idx];
-          const sec = vf.second ?? found?.second ?? (idx * 2 + 1);
-          let score = Number(found?.score ?? 94);
-          if (isNaN(score)) score = 94;
-          if (score > 0 && score <= 1) score = Math.round(score * 100);
-
-          const status = getAuditColorStatus(score);
-          const issue = String(found?.issue || `Frame ${num} (${sec}s): Produto ${score >= 90 ? 'idêntico à referência' : 'com variações'}`).trim();
-
-          return {
-            frameNumber: num,
-            second: sec,
-            productVisible: found?.productVisible !== false,
-            score,
-            status,
-            issue,
-            frameThumbnail: vf.frameBase64,
-          };
-        });
-
-        const scores = normalizedFrames.map((f: any) => f.score);
-        const minScore = Math.min(...scores);
-        const avgScore = Math.round(scores.reduce((a: number, b: number) => a + b, 0) / scores.length);
-
-        let overallScore = avgScore;
-        let overallStatus: 'green' | 'yellow' | 'orange' | 'red' = 'green';
-        let overallLabel = 'Aprovado: Vídeo Liberado';
-
-        if (minScore < 60) {
-          overallStatus = 'red';
-          overallScore = Math.min(59, minScore);
-          overallLabel = 'Risco de Restrição: Reprovado';
-        } else if (minScore <= 70) {
-          overallStatus = 'orange';
-          overallScore = Math.min(70, minScore);
-          overallLabel = 'Cuidado: Variação Moderada';
-        } else if (minScore < 90) {
-          overallStatus = 'yellow';
-          overallScore = Math.min(89, minScore);
-          overallLabel = 'Pode Passar: Razoável';
-        } else {
-          overallStatus = 'green';
-          overallScore = avgScore;
-          overallLabel = 'Aprovado: Vídeo Liberado';
-        }
-
-        return res.json({
-          success: true,
-          audit: {
-            overallScore,
-            overallStatus,
-            overallLabel,
-            summary: parsed.summary || (overallStatus === 'green'
-              ? '🟢 NENHUMA INCONSISTÊNCIA IDENTIFICADA: Produto aprovado com alta fidelidade em todos os frames analisados. Estrutura, cores e modelo 100% consistentes com as fotos reais.'
-              : overallStatus === 'yellow'
-              ? `🟡 POSSÍVEL INCONSISTÊNCIA: Pequenas variações detectadas no produto (menor nota: ${minScore}%). Confira os detalhes nos frames antes de postar.`
-              : overallStatus === 'orange'
-              ? `🟠 CUIDADO - VARIAÇÃO MODERADA: Variação perceptível identificada no produto (menor nota: ${minScore}%). Recomendado ajuste na cena correspondente.`
-              : `🔴 INCONSISTÊNCIA EVIDENTE: Produto com alterações ou deformações graves no vídeo (menor nota: ${minScore}%). Não publique esta versão; refaça o vídeo mantendo a fidelidade às referências.`),
-            frames: normalizedFrames,
-          },
-          usage: {
-            promptTokens: promptTok,
-            completionTokens: compTok,
-            totalTokens: totTok,
-            costUSD,
-            costBRL: Math.max(0.01, Math.round(costBRL * 100) / 100),
-            model: 'gpt-4o-mini',
-          },
+        return finalizeVideoAuditResponse(parsed, {
+          promptTokens: promptTok,
+          completionTokens: compTok,
+          totalTokens: totTok,
+          costUSD,
+          costBRL: Math.max(0.02, Math.round(costBRL * 100) / 100),
+          model: usedModel,
         });
       } catch (openAiErr: any) {
         console.warn('Erro OpenAI em /api/produtos2-audit-video:', openAiErr?.message || openAiErr);
@@ -4815,23 +4961,30 @@ Retorne o JSON estritamente conforme solicitado.`;
     if (process.env.GEMINI_API_KEY) {
       try {
         const parts: any[] = [];
-        photosList.slice(0, 5).forEach((photo: string, idx: number) => {
+        photosList.slice(0, 6).forEach((photo: string, idx: number) => {
           const parsedRef = parseInlineImage(photo);
           if (parsedRef) {
-            parts.push({ text: `[FOTO DE REFERÊNCIA REAL #${idx + 1} DO PRODUTO "${productName}"]:` });
+            parts.push({ text: `[IMAGEM DE REFERÊNCIA REAL #${idx + 1} DO PRODUTO "${productName}"]:` });
             parts.push({ inlineData: parsedRef });
           }
         });
+        if (contactSheetBase64 && typeof contactSheetBase64 === 'string') {
+          const parsedSheet = parseInlineImage(contactSheetBase64);
+          if (parsedSheet) {
+            parts.push({ text: `[STORYBOARD DE ANÁLISE DO VÍDEO (${framesTimestampsList})]:` });
+            parts.push({ inlineData: parsedSheet });
+          }
+        }
         videoFrames.forEach((frameObj: any, idx: number) => {
-          const sec = frameObj.second ?? (idx * 2 + 1);
+          const sec = frameObj.second ?? idx;
           const parsedFrame = parseInlineImage(frameObj.frameBase64);
           if (parsedFrame) {
-            parts.push({ text: `[FRAME #${idx + 1} DO VÍDEO NO SEGUNDO ${sec}s]:` });
+            parts.push({ text: `[CAPTURA REAL DO VÍDEO #${idx + 1} NO SEGUNDO ${sec}s]:` });
             parts.push({ inlineData: parsedFrame });
           }
         });
         parts.push({
-          text: `${systemInstruction}${targetedContextInstruction}\n\nAudite os frames acima e retorne o JSON estritamente no schema solicitado.`
+          text: `${systemInstruction}${targetedContextInstruction}\n\nAudite os frames acima e retorne o JSON estritamente no schema solicitado.`,
         });
 
         const auditRes = await getGenAI().models.generateContent({
@@ -4843,78 +4996,16 @@ Retorne o JSON estritamente conforme solicitado.`;
         });
 
         const parsed = JSON.parse(auditRes.text || '{}');
-        const pTok = auditRes.usageMetadata?.promptTokenCount || 3500;
-        const cTok = auditRes.usageMetadata?.candidatesTokenCount || 350;
+        const pTok = auditRes.usageMetadata?.promptTokenCount || 5500;
+        const cTok = auditRes.usageMetadata?.candidatesTokenCount || 850;
 
-        const normalizedFrames = videoFrames.map((vf: any, idx: number) => {
-          const num = idx + 1;
-          const found = (parsed.frames || []).find((f: any) => Number(f.frameNumber) === num) || (parsed.frames || [])[idx];
-          const sec = vf.second ?? found?.second ?? (idx * 2 + 1);
-          let score = Number(found?.score ?? 94);
-          if (isNaN(score)) score = 94;
-          if (score > 0 && score <= 1) score = Math.round(score * 100);
-          const status = getAuditColorStatus(score);
-          const issue = String(found?.issue || `Frame ${num} (${sec}s): Produto ${score >= 90 ? 'idêntico à referência' : 'com variações'}`).trim();
-          return {
-            frameNumber: num,
-            second: sec,
-            productVisible: found?.productVisible !== false,
-            score,
-            status,
-            issue,
-            frameThumbnail: vf.frameBase64,
-          };
-        });
-
-        const scores = normalizedFrames.map((f: any) => f.score);
-        const minScore = Math.min(...scores);
-        const avgScore = Math.round(scores.reduce((a: number, b: number) => a + b, 0) / scores.length);
-
-        let overallScore = avgScore;
-        let overallStatus: 'green' | 'yellow' | 'orange' | 'red' = 'green';
-        let overallLabel = 'Aprovado: Vídeo Liberado';
-
-        if (minScore < 60) {
-          overallStatus = 'red';
-          overallScore = Math.min(59, minScore);
-          overallLabel = 'Risco de Restrição: Reprovado';
-        } else if (minScore <= 70) {
-          overallStatus = 'orange';
-          overallScore = Math.min(70, minScore);
-          overallLabel = 'Cuidado: Variação Moderada';
-        } else if (minScore < 90) {
-          overallStatus = 'yellow';
-          overallScore = Math.min(89, minScore);
-          overallLabel = 'Pode Passar: Razoável';
-        } else {
-          overallStatus = 'green';
-          overallScore = avgScore;
-          overallLabel = 'Aprovado: Vídeo Liberado';
-        }
-
-        return res.json({
-          success: true,
-          audit: {
-            overallScore,
-            overallStatus,
-            overallLabel,
-            summary: parsed.summary || (overallStatus === 'green'
-              ? '🟢 NENHUMA INCONSISTÊNCIA IDENTIFICADA: Produto aprovado com alta fidelidade em todos os frames analisados. Estrutura, cores e modelo 100% consistentes com as fotos reais.'
-              : overallStatus === 'yellow'
-              ? `🟡 POSSÍVEL INCONSISTÊNCIA: Pequenas variações detectadas no produto (menor nota: ${minScore}%). Confira os detalhes nos frames antes de postar.`
-              : overallStatus === 'orange'
-              ? `🟠 CUIDADO - VARIAÇÃO MODERADA: Variação perceptível identificada no produto (menor nota: ${minScore}%). Recomendado ajuste na cena correspondente.`
-              : `🔴 INCONSISTÊNCIA EVIDENTE: Produto com alterações ou deformações graves no vídeo (menor nota: ${minScore}%). Não publique esta versão; refaça o vídeo mantendo a fidelidade às referências.`),
-            frames: normalizedFrames,
-          },
-          usage: {
-            promptTokens: pTok,
-            completionTokens: cTok,
-            totalTokens: pTok + cTok,
-            costUSD: 0.001,
-            costBRL: 0.01,
-            model: 'gemini-2.5-flash',
-          },
+        return finalizeVideoAuditResponse(parsed, {
+          promptTokens: pTok,
+          completionTokens: cTok,
+          totalTokens: pTok + cTok,
+          costUSD: 0.004,
+          costBRL: 0.02,
+          model: 'gemini-2.5-flash',
         });
       } catch (gemErr: any) {
         console.warn('Erro Gemini em /api/produtos2-audit-video:', gemErr?.message || gemErr);
