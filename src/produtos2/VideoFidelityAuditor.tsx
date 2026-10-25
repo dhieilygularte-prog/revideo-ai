@@ -356,13 +356,13 @@ async function buildVisualComparisonBanner(params: {
           ymax *= 10;
           xmax *= 10;
         }
-        // Adiciona 15% de respiro para manter contexto visual claro ao redor do componente
-        const padH = (ymax - ymin) * 0.15;
-        const padW = (xmax - xmin) * 0.15;
+        // Adiciona 6% de respiro para manter o recorte bem focado apenas no componente (ex: apenas as lentes da câmera)
+        const padH = (ymax - ymin) * 0.06;
+        const padW = (xmax - xmin) * 0.06;
         const y1 = Math.max(0, Math.min(950, ymin - padH));
         const x1 = Math.max(0, Math.min(950, xmin - padW));
-        const y2 = Math.min(1000, Math.max(y1 + 120, ymax + padH));
-        const x2 = Math.min(1000, Math.max(x1 + 120, xmax + padW));
+        const y2 = Math.min(1000, Math.max(y1 + 80, ymax + padH));
+        const x2 = Math.min(1000, Math.max(x1 + 80, xmax + padW));
 
         sx = Math.round((x1 / 1000) * iw);
         sy = Math.round((y1 / 1000) * ih);
@@ -1074,15 +1074,22 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
           {Array.isArray(audit.findings) && audit.findings.length > 0 && (
             <div className="space-y-4">
               {audit.findings.map((finding) => {
+                const preferredRefIdx = Number(finding.bestRefIndex) || 1;
                 const refNotesToRender =
                   Array.isArray(finding.referenceNotes) && finding.referenceNotes.length > 0
-                    ? finding.referenceNotes
-                    : effectiveReferencePhotos.slice(0, 2).map((_, idx) => ({
-                        refIndex: idx + 1,
-                        label: `Referência ${idx + 1}: imagem fornecida`,
-                        description:
-                          'Imagem original utilizada como base de comparação para verificar a estrutura e os detalhes deste componente.',
-                      }));
+                    ? finding.referenceNotes.map((rn, idx) =>
+                        idx === 0 && finding.referenceNotes!.length === 1
+                          ? { ...rn, refIndex: preferredRefIdx }
+                          : rn
+                      )
+                    : [
+                        {
+                          refIndex: preferredRefIdx,
+                          label: `Referência: foto original do produto`,
+                          description:
+                            'Imagem original utilizada como base de comparação para verificar a estrutura e os detalhes deste componente.',
+                        },
+                      ];
 
                 return (
                   <div

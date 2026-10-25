@@ -5705,16 +5705,18 @@ REGRAS CR\xCDTICAS DE INSPE\xC7\xC3O MICROSC\xD3PICA E CONTAGEM DE COMPONENTES (
    - Descreva em "referenceNotes" o que cada imagem de refer\xEAncia mostra.
    - Se o v\xEDdeo mostrar caixas/embalagens do produto (ex: nos segundos 8s e 9s), registre um achado ("Embalagem e identifica\xE7\xE3o do modelo") apontando em quais segundos a caixa aparece.
 
-COMO PREENCHER OS RECORTES PARA A COMPARA\xC7\xC3O VISUAL REAL ("refCropBox" e "videoCropBox"):
+COMO ESCOLHER A FOTO DE REFER\xCANCIA CORRETA ("bestRefIndex") E OS RECORTES CIR\xDARGICOS ("refCropBox" e "videoCropBox"):
 Para cada achado em "findings", indique:
-- "bestRefIndex": n\xFAmero da foto de refer\xEAncia (1 a ${photosList.length}) onde esse componente aparece melhor.
-- "bestFrameSecond": o segundo exato do v\xEDdeo (entre ${framesTimestampsList}) onde o erro aparece com maior nitidez e clareza (ex: 2 para as 3 lentes traseiras; 7 para a tela na traseira).
-- "refCropBox": [ymin, xmin, ymax, xmax] em escala de 0 a 1000 (inteiros) delimitando a regi\xE3o do componente (ex: o m\xF3dulo de c\xE2meras traseiras do celular) na foto de refer\xEAncia #bestRefIndex.
-- "videoCropBox": [ymin, xmin, ymax, xmax] em escala de 0 a 1000 (inteiros) delimitando a regi\xE3o do mesmo componente no frame do v\xEDdeo do segundo "bestFrameSecond".
+- "bestRefIndex": n\xFAmero inteiro (de 1 a ${photosList.length}) da Imagem de Refer\xEAncia que MELHOR RETRATA especificamente a parte/componente que est\xE1 com problema no v\xEDdeo!
+  * REGRA CR\xCDTICA DE ESCOLHA DA REFER\xCANCIA: Voc\xEA recebeu ${photosList.length} imagem(ns) de refer\xEAncia (#1 a #${photosList.length}). NUNCA escolha a Imagem #1 no autom\xE1tico! Se o erro for nas c\xE2meras/lentes traseiras do celular, olhe todas as ${photosList.length} imagens de refer\xEAncia e escolha aquela que mostra a TRASEIRA E AS LENTES DO CELULAR grandes, n\xEDtidas e de frente (por exemplo, se a Refer\xEAncia #1 for um banner com detalhes laterais/inferiores e a Refer\xEAncia #2 mostrar o celular de frente e de costas com as lentes traseiras claras, escolha OBRIGATORIAMENTE "bestRefIndex": 2!).
+  * Em "referenceNotes", coloque PRIMEIRO a nota referente \xE0 imagem #bestRefIndex escolhida (com "refIndex" igual a "bestRefIndex")!
+- "bestFrameSecond": o segundo exato do v\xEDdeo (entre ${framesTimestampsList}) onde o erro aparece mais de perto e com maior nitidez (ex: 2).
+- "refCropBox": [ymin, xmin, ymax, xmax] em escala de 0 a 1000 delimitando ESTRITAMENTE E APENAS a parte do produto analisada (ex: APENAS o conjunto das lentes das c\xE2meras traseiras e flash na imagem de refer\xEAncia #bestRefIndex, sem pegar textos promocionais, sem pegar a parte de baixo do celular e sem pegar a tela frontal ao lado!).
+- "videoCropBox": [ymin, xmin, ymax, xmax] em escala de 0 a 1000 delimitando ESTRITAMENTE E APENAS a mesma parte do produto no frame do v\xEDdeo (ex: APENAS o conjunto das lentes traseiras do celular, sem incluir o rosto da pessoa!).
 
-Retorne ESTRITAMENTE um objeto JSON v\xE1lido em portugu\xEAs com este formato:
+Retorne ESTRITAMENTE um objeto JSON v\xE1lido em portugu\xEAs com este formato (substitua todos os valores pelo diagn\xF3stico real das imagens fornecidas):
 {
-  "overviewText": "Par\xE1grafo inicial direto resumindo os principais erros encontrados (ex: 'O principal problema est\xE1 no conjunto de c\xE2meras traseiras e na parte traseira do celular. As refer\xEAncias mostram duas lentes alinhadas verticalmente com um flash claro lateral e traseira lisa, enquanto no v\xEDdeo o aparelho aparece com tr\xEAs lentes escuras traseiras (1s, 2s, 5s, 6s, 7s) e exibe incorretamente uma tela acesa na parte traseira nos segundos 6s e 7s.').",
+  "overviewText": "Par\xE1grafo inicial direto resumindo os principais erros encontrados.",
   "summary": "\u{1F534} INCONSIST\xCANCIA EVIDENTE: [resumo objetivo] (ou \u{1F7E1} POSS\xCDVEL INCONSIST\xCANCIA / \u{1F7E2} NENHUMA INCONSIST\xCANCIA IDENTIFICADA)",
   "finalRecommendation": "\u{1F534} Recomendo n\xE3o publicar esta vers\xE3o antes de corrigir as cenas divergentes. H\xE1 diverg\xEAncia clara entre as refer\xEAncias fornecidas e o aparelho observado no v\xEDdeo.",
   "coverageNote": "Analisado o Storyboard de Capturas de 1 em 1 segundo (${framesTimestampsList}) em conjunto com ${photosList.length} imagem(ns) de refer\xEAncia.",
@@ -5725,18 +5727,18 @@ Retorne ESTRITAMENTE um objeto JSON v\xE1lido em portugu\xEAs com este formato:
       "severity": "evident",
       "referenceNotes": [
         {
-          "refIndex": 1,
-          "label": "Refer\xEAncia: foto original do produto",
-          "description": "Mostra duas lentes grandes alinhadas verticalmente, com um pequeno flash claro ao lado da lente superior e tampa traseira lisa."
+          "refIndex": ${photosList.length >= 2 ? 2 : 1},
+          "label": "Refer\xEAncia: foto original mostrando o componente",
+          "description": "Descreva fielmente como o componente aparece na melhor foto de refer\xEAncia."
         }
       ],
-      "whatAppearsInVideo": "Nas capturas de 1s, 2s, 5s, 6s e 7s, o celular apresenta tr\xEAs lentes traseiras escuras em vez de duas. Al\xE9m disso, nos segundos 6s e 7s, aparece incorretamente uma tela acesa na parte traseira do celular ao lado das c\xE2meras.",
-      "whereItAppears": "segundos 1s, 2s, 5s, 6s e 7s.",
+      "whatAppearsInVideo": "Descreva exatamente o erro observado no v\xEDdeo e em quais segundos ele aparece.",
+      "whereItAppears": "segundos exatos onde ocorre.",
       "bestFrameSecond": 2,
-      "bestRefIndex": 1,
-      "refCropBox": [50, 120, 420, 480],
-      "videoCropBox": [180, 320, 580, 720],
-      "howToFix": "substitua as cenas de 1s, 2s, 5s, 6s e 7s para que a traseira mantenha exatamente duas lentes verticais com flash claro e sem tela na parte traseira."
+      "bestRefIndex": ${photosList.length >= 2 ? 2 : 1},
+      "refCropBox": [80, 140, 360, 390],
+      "videoCropBox": [430, 260, 740, 560],
+      "howToFix": "explique de forma pr\xE1tica quais segundos substituir e o que ajustar."
     }
   ],
   "frames": [
@@ -5755,11 +5757,20 @@ Retorne ESTRITAMENTE um objeto JSON v\xE1lido em portugu\xEAs com este formato:
       const normalizedFindings = rawFindings.map((f, idx) => {
         const sevRaw = String(f.severity || "possible").toLowerCase();
         const severity = sevRaw.includes("evid") || sevRaw === "red" || sevRaw === "high" ? "evident" : sevRaw.includes("obs") || sevRaw === "info" ? "observation" : "possible";
-        const refNotes = Array.isArray(f.referenceNotes) ? f.referenceNotes.map((rn, rIdx) => ({
-          refIndex: Math.max(1, Math.min(photosList.length, Number(rn.refIndex) || rIdx + 1)),
-          label: String(rn.label || `Refer\xEAncia #${rIdx + 1}`).trim(),
+        const chosenBestRef = Math.max(1, Math.min(photosList.length, Number(f.bestRefIndex) || 1));
+        let refNotes = Array.isArray(f.referenceNotes) ? f.referenceNotes.map((rn, rIdx) => ({
+          refIndex: Math.max(
+            1,
+            Math.min(photosList.length, Number(rn.refIndex) || (rIdx === 0 ? chosenBestRef : rIdx + 1))
+          ),
+          label: String(rn.label || `Refer\xEAncia #${rIdx === 0 ? chosenBestRef : rIdx + 1}`).trim(),
           description: String(rn.description || "").trim()
         })) : [];
+        if (refNotes.length === 1) {
+          refNotes[0].refIndex = chosenBestRef;
+        } else if (refNotes.length > 1) {
+          refNotes.sort((a, b) => a.refIndex === chosenBestRef ? -1 : b.refIndex === chosenBestRef ? 1 : 0);
+        }
         const parseBox = (box) => {
           if (Array.isArray(box) && box.length === 4) {
             const nums = box.map((n) => Number(n));
@@ -5778,7 +5789,7 @@ Retorne ESTRITAMENTE um objeto JSON v\xE1lido em portugu\xEAs com este formato:
           whereItAppears: String(f.whereItAppears || "").trim(),
           howToFix: String(f.howToFix || "").trim(),
           bestFrameSecond: f.bestFrameSecond !== void 0 ? Number(f.bestFrameSecond) : void 0,
-          bestRefIndex: Math.max(1, Math.min(photosList.length, Number(f.bestRefIndex) || 1)),
+          bestRefIndex: chosenBestRef,
           refCropBox: parseBox(f.refCropBox),
           videoCropBox: parseBox(f.videoCropBox)
         };
@@ -5963,6 +5974,125 @@ Retorne o JSON estritamente conforme o schema especificado.`;
         }
         const rawText = completion.choices[0]?.message?.content || "{}";
         const parsed = JSON.parse(rawText);
+        if (Array.isArray(parsed.findings) && parsed.findings.length > 0 && photosList.length > 0) {
+          try {
+            const cropBlocks = [];
+            photosList.slice(0, 6).forEach((photo, idx) => {
+              cropBlocks.push({
+                type: "text",
+                text: `[FOTO DE REFER\xCANCIA #${idx + 1}]:`
+              });
+              cropBlocks.push({
+                type: "image_url",
+                image_url: {
+                  url: photo.startsWith("data:") ? photo : `data:image/jpeg;base64,${photo}`,
+                  detail: "high"
+                }
+              });
+            });
+            const usedSecMap = /* @__PURE__ */ new Map();
+            parsed.findings.forEach((f) => {
+              const targetSec = f.bestFrameSecond !== void 0 ? Number(f.bestFrameSecond) : 2;
+              const matchedVf = videoFrames.find((vf) => vf.frameBase64 && Math.abs(Number(vf.second) - targetSec) < 0.6) || videoFrames.find((vf) => vf.frameBase64);
+              if (matchedVf && matchedVf.frameBase64) {
+                const secKey = Math.round(Number(matchedVf.second));
+                f.bestFrameSecond = secKey;
+                usedSecMap.set(secKey, matchedVf.frameBase64);
+              }
+            });
+            usedSecMap.forEach((b64, sec) => {
+              cropBlocks.push({
+                type: "text",
+                text: `[CAPTURA DO V\xCDDEO NO SEGUNDO ${sec}s]:`
+              });
+              cropBlocks.push({
+                type: "image_url",
+                image_url: {
+                  url: b64.startsWith("data:") ? b64 : `data:image/jpeg;base64,${b64}`,
+                  detail: "high"
+                }
+              });
+            });
+            const findingsSummaryForCrop = parsed.findings.map((f, idx) => ({
+              index: idx,
+              title: f.title,
+              whatAppearsInVideo: f.whatAppearsInVideo,
+              bestFrameSecond: f.bestFrameSecond
+            }));
+            cropBlocks.push({
+              type: "text",
+              text: `Voc\xEA \xE9 um Especialista em Recorte Fotogr\xE1fico Pericial (Bounding Box 0..1000).
+Para cada achado abaixo, precisamos montar uma imagem comparativa lado a lado mostrando APENAS A PARTE ESPEC\xCDFICA DO PRODUTO QUE EST\xC1 COM PROBLEMA (por exemplo: se o problema for nas c\xE2meras/lentes traseiras do celular, queremos mostrar APENAS o recorte fechado das lentes traseiras na Foto de Refer\xEAncia correta ao lado do recorte fechado das lentes traseiras na Captura do V\xEDdeo!).
+
+REGRAS OBRIGAT\xD3RIAS:
+1. ESCOLHA DA FOTO DE REFER\xCANCIA CORRETA ("bestRefIndex" de 1 a ${photosList.length}):
+   - Examine todas as ${photosList.length} Fotos de Refer\xEAncia acima (#1 a #${photosList.length}).
+   - Escolha como "bestRefIndex" a Foto de Refer\xEAncia que mostra a parte analisada (ex: a traseira do celular com as lentes das c\xE2meras) em MAIOR DESTAQUE, DE FRENTE E N\xCDTIDA!
+   - PROIBIDO escolher uma foto que mostra apenas a lateral/base do aparelho ou textos promocionais ("Qualidade de primeira linha / Design sim\xE9trico") quando outra foto de refer\xEAncia (ex: #2) mostra claramente a traseira do celular e as lentes das c\xE2meras!
+2. RECORTE FECHADO NA FOTO DE REFER\xCANCIA ("refCropBox": [ymin, xmin, ymax, xmax] em escala 0 a 1000):
+   - Dentro da Foto de Refer\xEAncia #bestRefIndex escolhida, localize a caixa delimitadora [ymin, xmin, ymax, xmax] que enquadra APENAS o componente espec\xEDfico (ex: APENAS o conjunto das 2 lentes traseiras e o flash no canto superior da traseira do celular, deixando de fora o resto do corpo do celular e deixando de fora a tela frontal!).
+3. RECORTE FECHADO NA CAPTURA DO V\xCDDEO ("videoCropBox": [ymin, xmin, ymax, xmax] em escala 0 a 1000):
+   - Na Captura do V\xEDdeo do segundo correspondente, localize a caixa delimitadora [ymin, xmin, ymax, xmax] que enquadra APENAS o mesmo componente com erro (ex: APENAS o m\xF3dulo com as 3 lentes traseiras no celular, deixando de fora o rosto/boca da pessoa!).
+
+Achados para localizar:
+${JSON.stringify(findingsSummaryForCrop, null, 2)}
+
+Retorne APENAS um JSON no formato:
+{
+  "crops": [
+    {
+      "index": 0,
+      "bestRefIndex": 2,
+      "refDescription": "Descri\xE7\xE3o curta do que aparece especificamente nessa foto de refer\xEAncia #bestRefIndex para este componente",
+      "refCropBox": [ymin, xmin, ymax, xmax],
+      "videoCropBox": [ymin, xmin, ymax, xmax]
+    }
+  ]
+}`
+            });
+            const cropComp = await client.chat.completions.create({
+              model: "gpt-4o",
+              messages: [{ role: "user", content: cropBlocks }],
+              response_format: { type: "json_object" },
+              temperature: 0,
+              max_tokens: 800
+            });
+            const cropParsed = JSON.parse(cropComp.choices[0]?.message?.content || "{}");
+            if (Array.isArray(cropParsed.crops)) {
+              cropParsed.crops.forEach((c) => {
+                const targetFinding = parsed.findings[Number(c.index)];
+                if (!targetFinding) return;
+                if (c.bestRefIndex) {
+                  targetFinding.bestRefIndex = Math.max(1, Math.min(photosList.length, Number(c.bestRefIndex)));
+                }
+                if (Array.isArray(c.refCropBox) && c.refCropBox.length === 4) {
+                  targetFinding.refCropBox = c.refCropBox;
+                }
+                if (Array.isArray(c.videoCropBox) && c.videoCropBox.length === 4) {
+                  targetFinding.videoCropBox = c.videoCropBox;
+                }
+                if (targetFinding.bestRefIndex) {
+                  if (!Array.isArray(targetFinding.referenceNotes) || targetFinding.referenceNotes.length === 0) {
+                    targetFinding.referenceNotes = [
+                      {
+                        refIndex: targetFinding.bestRefIndex,
+                        label: `Refer\xEAncia #${targetFinding.bestRefIndex}: foto original do produto`,
+                        description: c.refDescription || "Foto original mostrando o componente de refer\xEAncia."
+                      }
+                    ];
+                  } else {
+                    targetFinding.referenceNotes[0].refIndex = targetFinding.bestRefIndex;
+                    if (c.refDescription && String(c.refDescription).trim().length > 10) {
+                      targetFinding.referenceNotes[0].description = String(c.refDescription).trim();
+                    }
+                  }
+                }
+              });
+            }
+          } catch (cropErr) {
+            console.warn("Aviso no refinamento cir\xFArgico de recortes:", cropErr?.message || cropErr);
+          }
+        }
         const promptTok = completion.usage?.prompt_tokens || 6500;
         const compTok = completion.usage?.completion_tokens || 900;
         const totTok = promptTok + compTok;
