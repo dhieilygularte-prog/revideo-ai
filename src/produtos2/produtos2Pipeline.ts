@@ -1400,10 +1400,11 @@ export async function runProdutos2Pipeline(params: {
   }
 
   const is4Scenes = sceneMode === '1_cena_10s_4f';
+  const is6Scenes = sceneMode === '1_cena_10s_6f';
   const isTwoScenes = sceneMode === '2_cenas_10s';
   const effectiveDuration: Produtos2Duration =
     sceneMode === '1_cena_15s' ? 15 : form.duration === 8 ? 8 : 10;
-  const targetSceneCount: 4 | 6 | 9 = is4Scenes ? 4 : isTwoScenes ? 6 : 9;
+  const targetSceneCount: 4 | 6 | 9 = is4Scenes ? 4 : (is6Scenes || isTwoScenes) ? 6 : 9;
 
   onProgress?.(8, '1/6 Identificando produto, nicho e especificações...');
 
@@ -1503,6 +1504,8 @@ export async function runProdutos2Pipeline(params: {
       ? '3/6 Dividindo fala em 2 partes e planejando as 6 cenas da Cena 1...'
       : is4Scenes
       ? '3/6 Construindo Mapa Visual da Copy, Product Lock e 4 Cenas (Grade 2x2)...'
+      : is6Scenes
+      ? '3/6 Construindo Mapa Visual da Copy, Product Lock e 6 Cenas (Grade 2x3)...'
       : '3/6 Construindo Mapa Visual da Copy, Product Lock (incluindo logomarca) e 9 Micro-Cenas...'
   );
 
@@ -1694,7 +1697,7 @@ export async function runProdutos2Pipeline(params: {
   const isUserCopy = form.selectedSpeechOption === 'user_speech' || Boolean(form.customCopy && form.customCopy.trim());
   const isAurora = form.selectedSpeechOption === 'aurora_copy' || form.copyEngine === 'aurora_copy';
 
-  if ((sceneMode === '1_cena_10s' || sceneMode === '1_cena_10s_4f') && !isUserCopy && !isAurora) {
+  if ((sceneMode === '1_cena_10s' || sceneMode === '1_cena_10s_4f' || sceneMode === '1_cena_10s_6f') && !isUserCopy && !isAurora) {
     finalCopy = calibrateCopyToTargetWindow({
       copy: finalCopy,
       duration: form.duration,
@@ -1742,6 +1745,8 @@ export async function runProdutos2Pipeline(params: {
       ? '4/6 Gerando Storyboard da Cena 1 (6 quadros numerados 1080x1920)...'
       : is4Scenes
       ? '4/6 Gerando Storyboard 2x2 (4 cenas em alta resolução 1080x1920)...'
+      : is6Scenes
+      ? '4/6 Gerando Storyboard 2x3 (6 cenas em alta resolução 1080x1920)...'
       : '4/6 Gerando PRIMEIRO a imagem do Storyboard 3x3 (9 cenas numeradas 1080x1920)...'
   );
 
@@ -1771,6 +1776,8 @@ export async function runProdutos2Pipeline(params: {
         ? 'Fiscalizando fidelidade do produto nos 6 quadrantes da Cena 1...'
         : is4Scenes
         ? '5/6 Fiscalizando fidelidade do produto nos 4 quadrantes do Storyboard 2x2...'
+        : is6Scenes
+        ? '5/6 Fiscalizando fidelidade do produto nos 6 quadrantes do Storyboard 2x3...'
         : '5/6 Fiscalizando fidelidade do produto em cada um dos 9 quadrantes do Storyboard...'
     );
     const [highResUrl, auditRes] = await Promise.all([
@@ -1821,7 +1828,7 @@ export async function runProdutos2Pipeline(params: {
       : form.selectedSpeechOption === 'banco2'
       ? 'Banco de Copies (Opção 2)'
       : form.selectedSpeechOption === 'banco1'
-      ? (sceneMode === '1_cena_10s' || sceneMode === '1_cena_10s_4f')
+      ? (sceneMode === '1_cena_10s' || sceneMode === '1_cena_10s_4f' || sceneMode === '1_cena_10s_6f')
         ? 'Banco de Copies (Opção 1)'
         : 'Aurora Copy'
       : copySourceLabel;
@@ -2281,6 +2288,7 @@ export async function regenerateProdutos2Storyboard(params: {
     (isTargetScene2 && result.scene2
       ? result.scene2.storyboardAudit?.correctionPrompt
       : result.storyboardAudit?.correctionPrompt) || '';
+  const is6Scenes = result.sceneMode === '1_cena_10s_6f' || (targetScenes && targetScenes.length === 6);
   const is4Scenes = result.sceneMode === '1_cena_10s_4f' || (targetScenes && targetScenes.length === 4);
 
   const effectiveVariations = (form.variations && form.variations.length > 0)
@@ -2342,7 +2350,7 @@ REGRAS ESTRITAS DE PRESERVAÇÃO E EXECUÇÃO:
     previousStoryboardImageBase64: targetPrevImageUrl,
     correctionPrompt: combinedCorrection || undefined,
     aiProfile,
-    sceneCount: is4Scenes ? 4 : isTwoScenes ? 6 : 9,
+    sceneCount: is4Scenes ? 4 : (is6Scenes || isTwoScenes) ? 6 : 9,
     aspectRatio: '9:16',
   });
 

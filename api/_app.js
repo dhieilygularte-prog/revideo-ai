@@ -4619,7 +4619,8 @@ DURA\xC7\xC3O M\xC1XIMA DO V\xCDDEO: ${duration} segundos. Limite estrito: at\xE
   NUNCA coloque no "productLock" a cor ou estampa de apenas uma das varia\xE7\xF5es (ex: PROIBIDO escrever "tecido azul-marinho com listras" no productLock se essa for apenas uma das varia\xE7\xF5es)!
   Descreva no "productLock" as caracter\xEDsticas universais da pe\xE7a e declare: "Varia\xE7\xF5es oficiais de cor: ${activeReqVars.map((v) => v.name).join(", ")}, todas corretas e representadas nos seus respectivos quadros do storyboard".
   Nas descri\xE7\xF5es das cenas, NUNCA cite a cor de uma varia\xE7\xE3o em cenas de outra varia\xE7\xE3o!` : "";
-    const twoScenesContinuityClause = expectedSceneCount === 6 ? scenePartIndex === 2 ? `
+    const isTwoScenes = req.body.sceneMode === "2_cenas_10s";
+    const twoScenesContinuityClause = isTwoScenes && expectedSceneCount === 6 ? scenePartIndex === 2 ? `
 - MODO DUAS CENAS (ESTA \xC9 A CENA 2 \u2014 6 QUADROS NUMERADOS DE 1 A 6 EM GRADE 2x3, DURA\xC7\xC3O 10 SEGUNDOS):
   * REGRA INEGOCI\xC1VEL DE CONTINUIDADE NARRATIVA E VISUAL DA CENA 2:
     Esta Cena 2 d\xE1 CONTINUIDADE DIRETA ao v\xEDdeo iniciado na Cena 1.
@@ -4629,6 +4630,14 @@ DURA\xC7\xC3O M\xC1XIMA DO V\xCDDEO: ${duration} segundos. Limite estrito: at\xE
     \u2022 Mantenha 100% de continuidade de personagem (mesmo avatarDescription e mesma roupa), mesmo cen\xE1rio (scenarioDescription), mesma ilumina\xE7\xE3o e mesmo Product Lock da Cena 1!` : `
 - MODO DUAS CENAS (ESTA \xC9 A CENA 1 \u2014 6 QUADROS NUMERADOS DE 1 A 6 EM GRADE 2x3, DURA\xC7\xC3O 10 SEGUNDOS):
   * Planeje EXATAMENTE 6 cenas numeradas de 1 a 6 (0.0s a 10.0s) representando o gancho visual imediato, a introdu\xE7\xE3o e o desenvolvimento inicial da demonstra\xE7\xE3o do produto.` : "";
+    const singleScene6fClause = req.body.sceneMode === "1_cena_10s_6f" ? `
+- MODO 1 CENA 10S (6 CENAS EM GRADE 2x3 - 2 COLUNAS x 3 LINHAS):
+  * Planeje EXATAMENTE 6 micro-cenas numeradas de 1 a 6 cobrindo de 0.0s a 10.0s (~1.6s cada micro-cena).
+  * O fluxo narrativo deve ser completo e din\xE2mico:
+    - Cena 1 (0.0-1.6s): Gancho visual imediato apresentando o produto em m\xE3os ou em primeiro plano.
+    - Cenas 2 a 4 (1.6-6.7s): Demonstra\xE7\xE3o pr\xE1tica dos principais recursos, facilidade de uso e benef\xEDcios reais.
+    - Cena 5 (6.7-8.3s): Detalhe ou resultado satisfat\xF3rio do produto em a\xE7\xE3o.
+    - Cena 6 (8.3-10.0s): Chamada para a\xE7\xE3o final (CTA) com o produto em destaque.` : "";
     const systemInstruction = buildProdutos2PlanningSystemPrompt();
     const charLimitNote = duration === 8 ? "M\xC1XIMO 199 CARACTERES COM ESPA\xC7OS" : duration === 15 ? "AT\xC9 335 CARACTERES COM ESPA\xC7OS" : "AT\xC9 225 CARACTERES COM ESPA\xC7OS";
     const isPackaged = isPackagedProductOnly(productName, productInfo);
@@ -4649,7 +4658,7 @@ DURA\xC7\xC3O M\xC1XIMA DO V\xCDDEO: ${duration} segundos. Limite estrito: at\xE
 - Regra do primeiro quadro (Quadro 1 / Hook): O produto N\xC3O \xE9 obrigat\xF3rio no primeiro frame/cena 1 (est\xE1 100% liberado para ser um hook chamativo de rea\xE7\xE3o, express\xE3o de impacto, problema ou curiosidade sem o produto, salvo se o usu\xE1rio pedir explicitamente para mostrar o produto desde o in\xEDcio nas instru\xE7\xF5es adicionais). J\xE1 nos outros quadros (Cenas 2 em diante), a presen\xE7a do produto \xE9 estritamente obrigat\xF3ria e 100% fiel!
 - Enquadramento: ${framing}
 - Cen\xE1rio: ${scenario === "padrao_uso" ? "Cen\xE1rio padr\xE3o de uso real do produto" : "Em casa (casa brasileira simples e aconchegante)"}
-- Instru\xE7\xF5es adicionais priorit\xE1rias: ${additionalInstructions || "Nenhuma"}${variationsClause}${twoScenesContinuityClause}
+- Instru\xE7\xF5es adicionais priorit\xE1rias: ${additionalInstructions || "Nenhuma"}${variationsClause}${twoScenesContinuityClause}${singleScene6fClause}
 
 Retorne APENAS um objeto JSON v\xE1lido com as chaves:
 {
@@ -4924,10 +4933,10 @@ app.post("/api/produtos2-generate-storyboard", async (req, res) => {
     const isAchadinhos2 = isAchadinhosBlockNum === 2 || isAchadinhosBlockNum === 0 && (/MODO AURORA ACHADINHOS.*CENA 2/i.test(promptStr) || /Storyboard 2A\/2B\/2C|achadinhos_storyboard_2/i.test(promptStr));
     const isAchadinhos3 = isAchadinhosBlockNum === 3 || isAchadinhosBlockNum === 0 && (/MODO AURORA ACHADINHOS.*CENA 3/i.test(promptStr) || /Storyboard 3A\/3B\/3C|achadinhos_storyboard_3/i.test(promptStr));
     const isAchadinhosBlock = isAchadinhos1 || isAchadinhos2 || isAchadinhos3;
-    const isStrictlyVerticalMode = req.body.sceneMode === "1_cena_10s_4f" || req.body.sceneMode === "1_cena_10s" || req.body.sceneMode === "1_cena_15s" || req.body.sceneMode === "2_cenas_10s" || isLeilaoMode || req.body.aspectRatio === "9:16" && !isAchadinhosBlock;
+    const isStrictlyVerticalMode = req.body.sceneMode === "1_cena_10s_4f" || req.body.sceneMode === "1_cena_10s_6f" || req.body.sceneMode === "1_cena_10s" || req.body.sceneMode === "1_cena_15s" || req.body.sceneMode === "2_cenas_10s" || isLeilaoMode || req.body.aspectRatio === "9:16" && !isAchadinhosBlock;
     const isLandscapeStoryboard = (isAchadinhosBlock || req.body.aspectRatio === "16:9" && !isLeilaoMode) && !isStrictlyVerticalMode;
     const isFourFrames = reqSceneCount === 4 || req.body.sceneMode === "1_cena_10s_4f" || /GRADE\s+2x2|EXATAMENTE\s+4\s+(?:QUADROS|CENAS)/i.test(String(prompt));
-    const isSixFrames = !isFourFrames && (reqSceneCount === 6 || /GRADE\s+2x3|EXATAMENTE\s+6\s+(?:QUADROS|CENAS)/i.test(String(prompt)));
+    const isSixFrames = !isFourFrames && (reqSceneCount === 6 || req.body.sceneMode === "1_cena_10s_6f" || /GRADE\s+2x3|EXATAMENTE\s+6\s+(?:QUADROS|CENAS)/i.test(String(prompt)));
     const frameCount = isAchadinhosBlock ? 3 : isLeilaoMode ? 1 : isFourFrames ? 4 : isSixFrames ? 6 : 9;
     const gridLabel = isAchadinhosBlock ? "3 colunas verticais lado a lado em uma \xFAnica imagem horizontal 16:9 widescreen (grade 1 linha x 3 colunas: Quadro A \xE0 esquerda, Quadro B ao centro, Quadro C \xE0 direita), sem n\xFAmeros, sem bal\xF5es e sem legendas sobrepostas" : isLeilaoMode ? "1 quadro fotogr\xE1fico vertical \xFAnico 9:16 (sem n\xFAmero)" : isFourFrames ? "2x2 (2 colunas x 2 linhas), com 4 quadrantes grandes e n\xEDtidos (Quadro 1 topo esquerdo, Quadro 2 topo direito, Quadro 3 inferior esquerdo, Quadro 4 inferior direito)" : isSixFrames ? "2x3 (2 colunas x 3 linhas)" : "3x3 (3 colunas x 3 linhas)";
     const chosenAspectRatio = isLandscapeStoryboard ? "16:9" : "9:16";

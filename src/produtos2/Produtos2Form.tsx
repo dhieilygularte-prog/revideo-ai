@@ -137,7 +137,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
 
 
   const currentSceneMode: Produtos2SceneMode = form.sceneMode || '1_cena_10s_4f';
-  const is10sSingle = currentSceneMode === '1_cena_10s' || currentSceneMode === '1_cena_10s_4f';
+  const is10sSingle = currentSceneMode === '1_cena_10s' || currentSceneMode === '1_cena_10s_4f' || currentSceneMode === '1_cena_10s_6f';
   const is15sSingle = currentSceneMode === '1_cena_15s';
   const isTwoScenes = currentSceneMode === '2_cenas_10s';
   const isAchadinhos = currentSceneMode === 'modo_achadinhos';
@@ -1289,7 +1289,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                 : '1 Cena 10S 4F ✓'}
             </span>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2 bg-slate-950/90 p-1.5 rounded-xl border border-zinc-700/60">
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-7 gap-2 bg-slate-950/90 p-1.5 rounded-xl border border-zinc-700/60">
             {/* 1. 1 Cena 10S 4F (Padrão) */}
             <button
               type="button"
@@ -1310,7 +1310,27 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
             >
               1 Cena 10S 4F
             </button>
-            {/* 2. 1 Cena 10S (Original 9 Frames) */}
+            {/* 2. 1 Cena 10S 6F (Intermediário 6 Frames) */}
+            <button
+              type="button"
+              disabled={isViewOnly}
+              onClick={() => {
+                if (isViewOnly) return;
+                onChange((prev) => ({
+                  ...prev,
+                  sceneMode: '1_cena_10s_6f',
+                  duration: 10,
+                }));
+              }}
+              className={`py-2.5 px-3 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                currentSceneMode === '1_cena_10s_6f'
+                  ? accentBtnClass
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              1 Cena 10S 6F
+            </button>
+            {/* 3. 1 Cena 10S (Original 9 Frames) */}
             <button
               type="button"
               disabled={isViewOnly}

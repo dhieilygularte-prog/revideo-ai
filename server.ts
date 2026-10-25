@@ -3282,8 +3282,9 @@ DURAÇÃO MÁXIMA DO VÍDEO: ${duration} segundos. Limite estrito: até ${maxLim
   Nas descrições das cenas, NUNCA cite a cor de uma variação em cenas de outra variação!`
         : '';
 
+    const isTwoScenes = req.body.sceneMode === '2_cenas_10s';
     const twoScenesContinuityClause =
-      expectedSceneCount === 6
+      isTwoScenes && expectedSceneCount === 6
         ? scenePartIndex === 2
           ? `\n- MODO DUAS CENAS (ESTA É A CENA 2 — 6 QUADROS NUMERADOS DE 1 A 6 EM GRADE 2x3, DURAÇÃO 10 SEGUNDOS):
   * REGRA INEGOCIÁVEL DE CONTINUIDADE NARRATIVA E VISUAL DA CENA 2:
@@ -3294,6 +3295,17 @@ DURAÇÃO MÁXIMA DO VÍDEO: ${duration} segundos. Limite estrito: até ${maxLim
     • Mantenha 100% de continuidade de personagem (mesmo avatarDescription e mesma roupa), mesmo cenário (scenarioDescription), mesma iluminação e mesmo Product Lock da Cena 1!`
           : `\n- MODO DUAS CENAS (ESTA É A CENA 1 — 6 QUADROS NUMERADOS DE 1 A 6 EM GRADE 2x3, DURAÇÃO 10 SEGUNDOS):
   * Planeje EXATAMENTE 6 cenas numeradas de 1 a 6 (0.0s a 10.0s) representando o gancho visual imediato, a introdução e o desenvolvimento inicial da demonstração do produto.`
+        : '';
+
+    const singleScene6fClause =
+      req.body.sceneMode === '1_cena_10s_6f'
+        ? `\n- MODO 1 CENA 10S (6 CENAS EM GRADE 2x3 - 2 COLUNAS x 3 LINHAS):
+  * Planeje EXATAMENTE 6 micro-cenas numeradas de 1 a 6 cobrindo de 0.0s a 10.0s (~1.6s cada micro-cena).
+  * O fluxo narrativo deve ser completo e dinâmico:
+    - Cena 1 (0.0-1.6s): Gancho visual imediato apresentando o produto em mãos ou em primeiro plano.
+    - Cenas 2 a 4 (1.6-6.7s): Demonstração prática dos principais recursos, facilidade de uso e benefícios reais.
+    - Cena 5 (6.7-8.3s): Detalhe ou resultado satisfatório do produto em ação.
+    - Cena 6 (8.3-10.0s): Chamada para ação final (CTA) com o produto em destaque.`
         : '';
 
     const systemInstruction = buildProdutos2PlanningSystemPrompt();
@@ -3323,7 +3335,7 @@ DURAÇÃO MÁXIMA DO VÍDEO: ${duration} segundos. Limite estrito: até ${maxLim
 - Regra do primeiro quadro (Quadro 1 / Hook): O produto NÃO é obrigatório no primeiro frame/cena 1 (está 100% liberado para ser um hook chamativo de reação, expressão de impacto, problema ou curiosidade sem o produto, salvo se o usuário pedir explicitamente para mostrar o produto desde o início nas instruções adicionais). Já nos outros quadros (Cenas 2 em diante), a presença do produto é estritamente obrigatória e 100% fiel!
 - Enquadramento: ${framing}
 - Cenário: ${scenario === 'padrao_uso' ? 'Cenário padrão de uso real do produto' : 'Em casa (casa brasileira simples e aconchegante)'}
-- Instruções adicionais prioritárias: ${additionalInstructions || 'Nenhuma'}${variationsClause}${twoScenesContinuityClause}
+- Instruções adicionais prioritárias: ${additionalInstructions || 'Nenhuma'}${variationsClause}${twoScenesContinuityClause}${singleScene6fClause}
 
 Retorne APENAS um objeto JSON válido com as chaves:
 {
@@ -3642,6 +3654,7 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
 
     const isStrictlyVerticalMode =
       req.body.sceneMode === '1_cena_10s_4f' ||
+      req.body.sceneMode === '1_cena_10s_6f' ||
       req.body.sceneMode === '1_cena_10s' ||
       req.body.sceneMode === '1_cena_15s' ||
       req.body.sceneMode === '2_cenas_10s' ||
@@ -3659,6 +3672,7 @@ app.post('/api/produtos2-generate-storyboard', async (req, res) => {
     const isSixFrames =
       !isFourFrames &&
       (reqSceneCount === 6 ||
+      req.body.sceneMode === '1_cena_10s_6f' ||
       /GRADE\s+2x3|EXATAMENTE\s+6\s+(?:QUADROS|CENAS)/i.test(String(prompt)));
     const frameCount = isAchadinhosBlock ? 3 : isLeilaoMode ? 1 : isFourFrames ? 4 : isSixFrames ? 6 : 9;
     const gridLabel = isAchadinhosBlock
