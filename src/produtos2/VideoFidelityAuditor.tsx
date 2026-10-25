@@ -125,10 +125,10 @@ async function extractHighResVideoFrames1fps(
         return;
       }
 
-      // Alta resolução por frame (até 960px no lado maior, ex: 540x960px) para nitidez pericial das lentes/componentes
+      // Alta resolução por frame (até 1280px no lado maior, ex: 720x1280px HD) para nitidez máxima das lentes/componentes
       let w = video.videoWidth || 720;
       let h = video.videoHeight || 1280;
-      const maxSide = 960;
+      const maxSide = 1280;
       if (w > maxSide || h > maxSide) {
         if (w > h) {
           h = Math.round((h * maxSide) / w);
@@ -153,7 +153,7 @@ async function extractHighResVideoFrames1fps(
             video.removeEventListener('seeked', onSeeked);
             try {
               ctx.drawImage(video, 0, 0, w, h);
-              const b64 = canvas.toDataURL('image/jpeg', 0.9);
+              const b64 = canvas.toDataURL('image/jpeg', 0.88);
               extracted.push({ second: time, frameBase64: b64 });
             } catch (drawErr) {
               console.warn('Erro ao desenhar frame:', drawErr);
@@ -539,11 +539,22 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
       const contactSheetDataUrl = await buildVideoContactSheetStoryboard(frames);
 
       setStatusMessage(
-        `Analisando ${frames.length} capturas em alta definição contra ${compressedRefs.length} imagem(ns) de referência...`
+        `Analisando Storyboard HD (${frames.length} capturas) contra ${compressedRefs.length} imagem(ns) de referência...`
       );
 
+      // Para economizar tokens (~65% de redução) e evitar payloads pesados na rede:
+      // Enviamos a Prancha Única do Storyboard em Alta Definição (0s..9s) + apenas 4 capturas estratégicas de zoom (1s, 2s, 6s, 7s)
+      const zoomSecondsSet = new Set([1, 2, 6, 7]);
+      const lightweightFramesPayload = frames.map((f, idx) => ({
+        second: f.second,
+        frameBase64:
+          !contactSheetDataUrl || zoomSecondsSet.has(Math.round(f.second)) || frames.length <= 4 || idx === Math.floor(frames.length / 2)
+            ? f.frameBase64
+            : '',
+      }));
+
       const payloadBody = JSON.stringify({
-        videoFrames: frames,
+        videoFrames: lightweightFramesPayload,
         contactSheetBase64: contactSheetDataUrl,
         productPhotosBase64: compressedRefs,
         productName,
@@ -590,8 +601,26 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
         throw new Error(lastErrorMsg || 'Falha ao auditar vídeo.');
       }
 
+      // Hidrata cada frame retornado com a captura em ALTA DEFINIÇÃO (720x1280px) que já está na memória do navegador
+      const hydratedFrames = Array.isArray(parsedData.audit.frames)
+        ? parsedData.audit.frames.map((af: any, idx: number) => {
+            const matchedLocal =
+              frames.find((lf) => Math.abs(lf.second - Number(af.second)) < 0.3) || frames[idx];
+            const cleanIssue = String(af.issue || '')
+              .replace(/^(?:frame|captura|quadro|cena)\s*\d+\s*(?:\(\s*\d+\s*s\s*\))?\s*[:\-–—]\s*/i, '')
+              .replace(/^\(\s*\d+\s*s\s*\)\s*[:\-–—]\s*/i, '')
+              .trim();
+            return {
+              ...af,
+              issue: cleanIssue,
+              frameThumbnail: matchedLocal?.frameBase64 || af.frameThumbnail,
+            };
+          })
+        : [];
+
       let finalAudit: VideoFidelityAudit = {
         ...parsedData.audit,
+        frames: hydratedFrames,
         contactSheetUrl: contactSheetDataUrl || parsedData.audit.contactSheetUrl,
         videoFileName: fileToAudit.name,
         videoDurationSeconds: durationSeconds,
@@ -1278,10 +1307,13 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
                         <span className="font-mono">{frame.score}%</span>
                       </div>
                       <p
-                        className="text-[10px] leading-tight opacity-90 line-clamp-3"
+                        className="text-[10px] leading-snug opacity-95"
                         title={frame.issue}
                       >
-                        {frame.issue}
+                        {String(frame.issue || '')
+                          .replace(/^(?:frame|captura|quadro|cena)\s*\d+\s*(?:\(\s*\d+\s*s\s*\))?\s*[:\-–—]\s*/i, '')
+                          .replace(/^\(\s*\d+\s*s\s*\)\s*[:\-–—]\s*/i, '')
+                          .trim()}
                       </p>
                     </div>
                   </div>

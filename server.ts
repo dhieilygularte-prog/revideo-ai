@@ -4593,53 +4593,53 @@ Examine os frames de 1 em 1 segundo e confirme se a divergência é real e persi
       : '';
 
     const systemInstruction = `Você é o Detector Pericial de Inconsistências de Produto em Vídeos Comerciais (Veo 3 / TikTok Shop).
-Você está analisando o vídeo "${videoFileName}" (duração aproximada de ${videoDurationSeconds} segundos), comparando capturas reais de 1 em 1 segundo (${framesTimestampsList}) e o Storyboard de Capturas do Vídeo com as ${photosList.length} imagem(ns) de referência fornecida(s) para o produto "${productName}".
+Você está analisando o vídeo "${videoFileName}" (duração aproximada de ${videoDurationSeconds} segundos), comparando o Storyboard de Análise do Vídeo (capturas reais de 1 em 1 segundo: ${framesTimestampsList}) e capturas em alta definição com as ${photosList.length} imagem(ns) de referência fornecida(s) para o produto "${productName}".
 
 REGRAS CRÍTICAS DE INSPEÇÃO MICROSCÓPICA E CONTAGEM DE COMPONENTES (NUNCA DEIXE PASSAR DETALHES FÍSICOS ERRADOS):
 1. CONTAGEM EXATA DE CÂMERAS, LENTES, SENSORES, FLASH, TELAS E BOTÕES (ESPECIALMENTE EM CELULARES E ELETRÔNICOS):
-   - CONTE EXATAMENTE quantas lentes traseiras grandes e pequenas existem nas fotos de referência, qual o alinhamento delas (ex: 2 lentes grandes alinhadas verticalmente sem módulo elevado, ou com um pequeno flash circular claro ao lado da lente superior) e compare com CADA frame do vídeo onde a traseira do aparelho aparece!
-   - ERRO CLÁSSICO DO VEO A DETECTAR OBRIGATORIAMENTE: O Veo frequentemente transforma o pequeno flash branco/claro lateral em uma TERCEIRA LENTE ESCURA PRETA (ficando 3 lentes escuras em vez de 2 lentes + flash claro), adiciona um módulo/ilha quadrada que não existe na referência, ou inventa uma TELA/VISOR TRASEIRO ao lado das câmeras (ex: mostrando o rosto da pessoa na traseira do celular)!
-   - Se a foto de referência tem 2 lentes traseiras (e 1 flash pequeno claro) e no vídeo aparecem 3 lentes escuras traseiras ou um visor traseiro na parte de trás do celular, isso é uma 🔴 INCONSISTÊNCIA EVIDENTE GRAVÍSSIMA! Você DEVE reprovar todos os frames onde essa traseira incorreta aparece com nota < 50% (status "red") e criar um achado detalhado ("Configuração das câmeras traseiras")!
-2. CONSISTÊNCIA ENTRE AS PRÓPRIAS IMAGENS DE REFERÊNCIA:
-   - Se houver 2 ou mais imagens de referência, verifique também se elas próprias apresentam diferenças entre si (ou se uma é a foto real do produto e outra é um painel/banner de detalhes) e descreva exatamente o que cada imagem de referência mostra em "referenceNotes"!
-3. EMBALAGENS, CAIXAS E IDENTIFICAÇÃO DO MODELO:
-   - Se o vídeo mostrar caixas/embalagens do produto (ex: caixa preta escrita "${productName}" nos segundos finais), registre um achado específico ("Embalagem e identificação do modelo") apontando em quais segundos a caixa aparece e explicando que, embora a caixa ajude a identificar o modelo anunciado, a embalagem sozinha não comprova que o aparelho físico mostrado no vídeo corresponda exatamente a ele quando o aparelho apresenta divergências visuais.
-4. DEMAIS COMPONENTES FÍSICOS (BICOS, CABOS, BOTÕES, LOGOTIPOS, COSTURAS, PEÇAS DE KITS):
-   - Compare corpo principal, base, bicos, cabos, alças, tampas, botões, logomarca original do fabricante e quantidade de itens.
-   - Não confunda oclusão natural pelos dedos, perspectiva ou iluminação com defeito, MAS qualquer componente extra inventado (3ª lente, tela traseira, botão extra), peça ausente ou modelo diferente deve ser classificado como 🔴 INCONSISTÊNCIA EVIDENTE ("severity": "evident")!
+   - CONTE EXATAMENTE quantas lentes traseiras grandes e pequenas existem nas fotos de referência, qual o alinhamento delas (ex: 2 lentes grandes alinhadas verticalmente sem módulo elevado, ou com um pequeno flash circular claro ao lado da lente superior) e compare com CADA segundo do vídeo onde a traseira do aparelho aparece!
+   - ERRO CLÁSSICO #1 DO VEO (LENTE EXTRA): O Veo frequentemente transforma o pequeno flash branco/claro lateral em uma TERCEIRA LENTE ESCURA PRETA (ficando 3 lentes escuras em vez de 2 lentes + flash claro) ou adiciona um módulo/ilha diferente da referência!
+   - ERRO CLÁSSICO #2 DO VEO (TELA ACESA / IMAGEM NA PARTE TRASEIRA DO CELULAR, ESPECIALMENTE EM 6s E 7s): Inspecione com atenção máxima as cenas em que a pessoa segura o celular na horizontal (modo jogo/paisagem ou tirando foto/selfie, ex: segundos 6s e 7s). Verifique se na PARTE TRASEIRA do celular (ao lado das câmeras traseiras!) aparece incorretamente uma TELA ACESA / IMAGEM DE JOGO / SELFIE DA PESSOA onde na referência deveria ser apenas a tampa traseira lisa do aparelho! Se a tela aparecer na parte traseira do celular (ex: nos segundos 6s e 7s) ou se houver 3 lentes traseiras (ex: 1s, 2s, 5s, 6s, 7s), você DEVE reprovar TODOS esses segundos (< 50%, status "red") e citar explicitamente tanto as 3 lentes quanto a tela aparecendo na parte traseira do celular!
+2. FRAMES CORRETOS DEVEM FICAR EM VERDE (NOTA >= 92%):
+   - Nos segundos em que o produto aparece CORRETO e sem erro visível (por exemplo: mostrando apenas a tela frontal normal em 3s, mostrando a entrada inferior USB-C correta em 4s, cena aberta sem distorção em 0s, ou segurando apenas a caixa em 8s/9s), dê nota ALTA (>= 92%, status "green")! NUNCA dê nota vermelha (< 60%) para um frame onde você mesmo escreveu que está "sem inconsistências"!
+3. NOMENCLATURA LIMPA EM CADA FRAME:
+   - No campo "issue" de cada item de "frames", NÃO repita "Frame 1 (0s):" ou "Frame 2 (1s):" no início da frase! Escreva DIRETAMENTE o diagnóstico daquele segundo (ex: "Mostra três lentes escuras na traseira, divergindo da referência de duas lentes." ou "Mostra a tela aparecendo incorretamente na parte traseira do celular junto com três lentes." ou "Mostra a parte frontal do produto sem inconsistências.").
+4. CONSISTÊNCIA ENTRE AS PRÓPRIAS IMAGENS DE REFERÊNCIA E EMBALAGEM:
+   - Descreva em "referenceNotes" o que cada imagem de referência mostra.
+   - Se o vídeo mostrar caixas/embalagens do produto (ex: nos segundos 8s e 9s), registre um achado ("Embalagem e identificação do modelo") apontando em quais segundos a caixa aparece.
 
 COMO PREENCHER OS RECORTES PARA A COMPARAÇÃO VISUAL REAL ("refCropBox" e "videoCropBox"):
 Para cada achado em "findings", indique:
 - "bestRefIndex": número da foto de referência (1 a ${photosList.length}) onde esse componente aparece melhor.
-- "bestFrameSecond": o segundo exato do vídeo (entre ${framesTimestampsList}) onde o problema ou componente aparece com maior nitidez e clareza (ex: 2).
-- "refCropBox": [ymin, xmin, ymax, xmax] em escala de 0 a 1000 (inteiros) delimitando a região do componente (ex: o módulo de câmeras traseiras do celular) na foto de referência #bestRefIndex. Deixe uma margem ao redor do componente para contexto visual claro.
+- "bestFrameSecond": o segundo exato do vídeo (entre ${framesTimestampsList}) onde o erro aparece com maior nitidez e clareza (ex: 2 para as 3 lentes traseiras; 7 para a tela na traseira).
+- "refCropBox": [ymin, xmin, ymax, xmax] em escala de 0 a 1000 (inteiros) delimitando a região do componente (ex: o módulo de câmeras traseiras do celular) na foto de referência #bestRefIndex.
 - "videoCropBox": [ymin, xmin, ymax, xmax] em escala de 0 a 1000 (inteiros) delimitando a região do mesmo componente no frame do vídeo do segundo "bestFrameSecond".
 
 Retorne ESTRITAMENTE um objeto JSON válido em português com este formato:
 {
-  "overviewText": "Parágrafo inicial direto resumindo o principal achado (ex: 'O principal problema está no conjunto de câmeras traseiras do celular. As referências mostram duas lentes alinhadas verticalmente com um flash claro lateral, enquanto o aparelho mostrado no vídeo aparenta ter três lentes escuras traseiras e um módulo diferente.'). Se estiver tudo 100% idêntico, explique que todos os componentes conferem com as referências.",
+  "overviewText": "Parágrafo inicial direto resumindo os principais erros encontrados (ex: 'O principal problema está no conjunto de câmeras traseiras e na parte traseira do celular. As referências mostram duas lentes alinhadas verticalmente com um flash claro lateral e traseira lisa, enquanto no vídeo o aparelho aparece com três lentes escuras traseiras (1s, 2s, 5s, 6s, 7s) e exibe incorretamente uma tela acesa na parte traseira nos segundos 6s e 7s.').",
   "summary": "🔴 INCONSISTÊNCIA EVIDENTE: [resumo objetivo] (ou 🟡 POSSÍVEL INCONSISTÊNCIA / 🟢 NENHUMA INCONSISTÊNCIA IDENTIFICADA)",
-  "finalRecommendation": "🔴 Recomendo não publicar esta versão antes de confirmar a identidade visual correta do produto e corrigir as cenas divergentes. Há uma divergência clara entre as referências fornecidas e o produto observado no vídeo.",
-  "coverageNote": "Foram inspecionadas ${videoFrames.length} capturas reais extraídas de 1 em 1 segundo (${framesTimestampsList}) em conjunto com o Storyboard de Capturas e ${photosList.length} imagem(ns) de referência.",
+  "finalRecommendation": "🔴 Recomendo não publicar esta versão antes de corrigir as cenas divergentes. Há divergência clara entre as referências fornecidas e o aparelho observado no vídeo.",
+  "coverageNote": "Analisado o Storyboard de Capturas de 1 em 1 segundo (${framesTimestampsList}) em conjunto com ${photosList.length} imagem(ns) de referência.",
   "findings": [
     {
       "number": 1,
-      "title": "Configuração das câmeras traseiras",
+      "title": "Configuração das câmeras traseiras e tela na traseira",
       "severity": "evident",
       "referenceNotes": [
         {
           "refIndex": 1,
           "label": "Referência: foto original do produto",
-          "description": "Mostra duas lentes grandes alinhadas verticalmente, com um componente menor (flash claro) ao lado da lente superior."
+          "description": "Mostra duas lentes grandes alinhadas verticalmente, com um pequeno flash claro ao lado da lente superior e tampa traseira lisa."
         }
       ],
-      "whatAppearsInVideo": "Nas capturas de aproximadamente 1, 2, 5 e 7 segundos, o celular aparenta ter três lentes traseiras escuras, com duas grandes à esquerda e uma terceira lente escura na parte superior direita (além de exibir um visor traseiro no segundo 7s).",
-      "whereItAppears": "aproximadamente 1, 2, 5 e 7 segundos.",
+      "whatAppearsInVideo": "Nas capturas de 1s, 2s, 5s, 6s e 7s, o celular apresenta três lentes traseiras escuras em vez de duas. Além disso, nos segundos 6s e 7s, aparece incorretamente uma tela acesa na parte traseira do celular ao lado das câmeras.",
+      "whereItAppears": "segundos 1s, 2s, 5s, 6s e 7s.",
       "bestFrameSecond": 2,
       "bestRefIndex": 1,
       "refCropBox": [50, 120, 420, 480],
       "videoCropBox": [180, 320, 580, 720],
-      "howToFix": "confirme qual configuração de câmeras pertence ao modelo realmente anunciado. Se o produto correto tiver duas lentes, substitua as cenas em que aparece a configuração com três lentes ou visor traseiro. Se tiver três, corrija as referências antes de usar o detector para validar o vídeo."
+      "howToFix": "substitua as cenas de 1s, 2s, 5s, 6s e 7s para que a traseira mantenha exatamente duas lentes verticais com flash claro e sem tela na parte traseira."
     }
   ],
   "frames": [
@@ -4647,9 +4647,9 @@ Retorne ESTRITAMENTE um objeto JSON válido em português com este formato:
       "frameNumber": 1,
       "second": 0,
       "productVisible": true,
-      "score": 92,
+      "score": 94,
       "status": "green",
-      "issue": "Frame 1 (0s): Cena de abertura com produto à distância, sem distorção visível."
+      "issue": "Cena de abertura com o produto à distância, sem inconsistências visíveis."
     }
   ]
 }`;
@@ -4701,7 +4701,7 @@ Retorne ESTRITAMENTE um objeto JSON válido em português com este formato:
       const hasEvidentFinding = normalizedFindings.some((f) => f.severity === 'evident');
       const hasPossibleFinding = normalizedFindings.some((f) => f.severity === 'possible');
 
-      // Identifica todos os segundos citados em achados evidentes para garantir que esses frames recebam nota vermelha (<60%)
+      // Identifica apenas segundos explicitamente seguidos de "s" / "seg" / "segundos" ou "00:XX" em achados evidentes
       const evidentSecondsSet = new Set<number>();
       normalizedFindings
         .filter((f) => f.severity === 'evident')
@@ -4709,9 +4709,15 @@ Retorne ESTRITAMENTE um objeto JSON válido em português com este formato:
           if (f.bestFrameSecond !== undefined && !isNaN(f.bestFrameSecond)) {
             evidentSecondsSet.add(Math.round(f.bestFrameSecond));
           }
-          const matches = String(`${f.whereItAppears} ${f.whatAppearsInVideo}`).match(/\b(\d{1,2})\s*(?:s|seg|segundos|\b)/gi) || [];
-          matches.forEach((m) => {
+          const textToScan = String(`${f.whereItAppears} ${f.whatAppearsInVideo}`);
+          const secMatches = textToScan.match(/\b(\d{1,2})\s*(?:s|seg|segundos)\b/gi) || [];
+          secMatches.forEach((m) => {
             const num = parseInt(m.replace(/\D+/g, ''), 10);
+            if (!isNaN(num)) evidentSecondsSet.add(num);
+          });
+          const timecodeMatches = textToScan.match(/00:(\d{2})/g) || [];
+          timecodeMatches.forEach((m) => {
+            const num = parseInt(m.split(':')[1], 10);
             if (!isNaN(num)) evidentSecondsSet.add(num);
           });
         });
@@ -4720,42 +4726,65 @@ Retorne ESTRITAMENTE um objeto JSON válido em português com este formato:
         const num = idx + 1;
         const sec = vf.second ?? idx;
         const found =
-          (parsed.frames || []).find((f: any) => Math.abs(Number(f.second) - Number(sec)) < 0.3) ||
-          (parsed.frames || []).find((f: any) => Number(f.frameNumber) === num) ||
+          (parsed.frames || []).find((f: any) => f.second !== undefined && Math.abs(Number(f.second) - Number(sec)) < 0.3) ||
           (parsed.frames || [])[idx];
 
         let score = Number(found?.score ?? 94);
         if (isNaN(score)) score = 94;
         if (score > 0 && score <= 1) score = Math.round(score * 100);
 
+        // Remove prefixos repetidos ou deslocados como "Frame 2 (1s): " para nunca duplicar nomenclatura no card
         let issue = String(
-          found?.issue || `Frame ${num} (${sec}s): Produto ${score >= 90 ? 'idêntico à referência' : 'com variações'}`
-        ).trim();
+          found?.issue || (score >= 90 ? 'Produto consistente com a referência, sem distorções visíveis.' : 'Apresenta variação visual em relação à referência.')
+        )
+          .replace(/^(?:frame|captura|quadro|cena)\s*\d+\s*(?:\(\s*\d+\s*s\s*\))?\s*[:\-–—]\s*/i, '')
+          .replace(/^\(\s*\d+\s*s\s*\)\s*[:\-–—]\s*/i, '')
+          .trim();
 
         const lowerIssue = issue.toLowerCase();
-        const issueMentionsDefect =
-          lowerIssue.includes('três lentes') ||
-          lowerIssue.includes('3 lentes') ||
-          lowerIssue.includes('lente a mais') ||
-          lowerIssue.includes('lente extra') ||
-          lowerIssue.includes('câmera a mais') ||
-          lowerIssue.includes('câmeras diferentes') ||
-          lowerIssue.includes('configuração diferente') ||
-          lowerIssue.includes('diverg') ||
-          lowerIssue.includes('inconsist') ||
-          lowerIssue.includes('incorret') ||
-          lowerIssue.includes('diferente da referência') ||
-          lowerIssue.includes('visor traseiro') ||
-          lowerIssue.includes('tela traseira') ||
-          lowerIssue.includes('deforma');
 
-        if (evidentSecondsSet.has(Math.round(Number(sec))) || issueMentionsDefect) {
-          score = Math.min(score, 48);
-          if (score >= 60) score = 48;
+        // Verifica PRIMEIRO se a descrição afirma que o frame está CORRETO / SEM INCONSISTÊNCIAS
+        const issueExplicitlyClean =
+          lowerIssue.includes('sem inconsist') ||
+          lowerIssue.includes('sem diverg') ||
+          lowerIssue.includes('sem distor') ||
+          lowerIssue.includes('sem erro') ||
+          lowerIssue.includes('idêntic') ||
+          lowerIssue.includes('fiel à referência') ||
+          lowerIssue.includes('consistente com a referência');
+
+        const issueMentionsDefect =
+          !issueExplicitlyClean &&
+          (lowerIssue.includes('três lentes') ||
+            lowerIssue.includes('3 lentes') ||
+            lowerIssue.includes('lente a mais') ||
+            lowerIssue.includes('lente extra') ||
+            lowerIssue.includes('câmera a mais') ||
+            lowerIssue.includes('câmeras diferentes') ||
+            lowerIssue.includes('configuração diferente') ||
+            lowerIssue.includes('diverg') ||
+            lowerIssue.includes('inconsist') ||
+            lowerIssue.includes('incorret') ||
+            lowerIssue.includes('diferente da referência') ||
+            lowerIssue.includes('visor traseiro') ||
+            lowerIssue.includes('tela traseira') ||
+            lowerIssue.includes('tela na traseira') ||
+            lowerIssue.includes('tela na parte traseira') ||
+            lowerIssue.includes('deforma'));
+
+        if (issueExplicitlyClean && !evidentSecondsSet.has(Math.round(Number(sec)))) {
+          // Garante que frames sem inconsistências fiquem VERDES (>= 92%)!
+          score = Math.max(score, 93);
+        } else if (issueMentionsDefect || (evidentSecondsSet.has(Math.round(Number(sec))) && !issueExplicitlyClean)) {
+          score = Math.min(score, 45);
+          if (score >= 60) score = 45;
           const mainEvident = normalizedFindings.find((f) => f.severity === 'evident');
           if (mainEvident && !issueMentionsDefect) {
-            issue = `Frame ${num} (${sec}s): Divergência detectada em "${mainEvident.title}" — ${mainEvident.whatAppearsInVideo}`;
+            issue = `Divergência detectada em "${mainEvident.title}" — ${mainEvident.whatAppearsInVideo}`;
           }
+        } else if (issueExplicitlyClean && score < 90) {
+          // Mesmo que o segundo tenha sido citado genericamente, se a análise individual deste frame diz "Mostra a frente/embalagem, sem inconsistências", mantém VERDE!
+          score = 93;
         }
 
         const status = getAuditColorStatus(score);
@@ -4767,7 +4796,7 @@ Retorne ESTRITAMENTE um objeto JSON válido em português com este formato:
           score,
           status,
           issue,
-          frameThumbnail: vf.frameBase64,
+          frameThumbnail: contactSheetBase64 ? undefined : vf.frameBase64,
         };
       });
 
@@ -4872,8 +4901,9 @@ Retorne ESTRITAMENTE um objeto JSON válido em português com este formato:
           });
         }
 
-        // 3. Frames individuais do vídeo em ALTA RESOLUÇÃO (detail: 'high') para zoom pericial em cada segundo
+        // 3. Frames de zoom em ALTA RESOLUÇÃO (detail: 'high') quando fornecidos
         videoFrames.forEach((frameObj: any, idx: number) => {
+          if (!frameObj.frameBase64) return;
           const sec = frameObj.second ?? idx;
           contentBlocks.push({
             type: 'text',
@@ -4890,10 +4920,11 @@ Retorne ESTRITAMENTE um objeto JSON válido em português com este formato:
           });
         });
 
-        const promptText = `Realize a perícia visual completa do vídeo "${videoFileName}" (${videoDurationSeconds}s) comparando as ${videoFrames.length} capturas (${framesTimestampsList}) e o Storyboard de Capturas com as ${photosList.length} imagem(ns) de referência do produto "${productName}".
+        const promptText = `Realize a perícia visual completa do vídeo "${videoFileName}" (${videoDurationSeconds}s) comparando o Storyboard de Análise de 1 em 1 segundo (${framesTimestampsList}) e as capturas em alta resolução com as ${photosList.length} imagem(ns) de referência do produto "${productName}".
 ATENÇÃO ESPECIAL:
-1) Conte o número exato de lentes de câmera, posição do flash, formato do módulo traseiro, botões, telas e logotipos nas fotos de referência e compare com cada frame do vídeo. Se nas fotos de referência o aparelho tiver 2 lentes traseiras (com 1 flash claro pequeno ao lado) e no vídeo aparecerem 3 lentes escuras ou uma tela traseira ao lado das câmeras, classifique OBRIGATORIAMENTE como 🔴 INCONSISTÊNCIA EVIDENTE ("severity": "evident"), dê nota < 50% nos frames correspondentes e preencha "findings" com as coordenadas de recorte ("refCropBox" e "videoCropBox") para a Comparação Visual Real!
-2) Se aparecerem caixas/embalagens do produto no vídeo, adicione também o item numerado sobre "Embalagem e identificação do modelo" indicando em quais segundos aparece e como corrigir.${lockContext ? `\nTrava do produto: ${lockContext}` : ''}
+1) Conte o número exato de lentes de câmera, posição do flash, formato do módulo traseiro, botões, telas e logotipos nas fotos de referência e compare com cada segundo do vídeo (${framesTimestampsList}). Se nas fotos de referência o aparelho tiver 2 lentes traseiras (com 1 flash claro pequeno ao lado e traseira lisa) e no vídeo aparecerem 3 lentes escuras (ex: 1s, 2s, 5s, 6s, 7s) OU uma TELA ACESA / IMAGEM aparecendo na PARTE TRASEIRA do celular ao lado das câmeras (especialmente quando o celular está na horizontal nos segundos 6s e 7s!), classifique OBRIGATORIAMENTE como 🔴 INCONSISTÊNCIA EVIDENTE ("severity": "evident"), dê nota < 50% nos segundos correspondentes (incluindo 6s e 7s!) e preencha "findings" com as coordenadas de recorte ("refCropBox" e "videoCropBox") para a Comparação Visual Real!
+2) Nos segundos em que o produto aparece SEM ERRO (ex: frente normal em 3s, parte inferior correta em 4s, cena aberta sem distorção em 0s, ou apenas a caixa em 8s e 9s), dê nota VERDE (>= 92%, status "green")!
+3) No campo "issue" de cada frame, NÃO escreva "Frame 1 (0s):" ou "Frame 2 (1s):" no começo; escreva direto o diagnóstico daquele segundo.${lockContext ? `\nTrava do produto: ${lockContext}` : ''}
 ${targetedContextInstruction}
 Retorne o JSON estritamente conforme o schema especificado.`;
         contentBlocks.push({ type: 'text', text: promptText });
