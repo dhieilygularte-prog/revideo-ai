@@ -141,4 +141,12 @@ Este documento contém as regras invioláveis de inteligência artificial e enge
 - **🟠 CUIDADO - VARIAÇÃO MODERADA (60% a 70%):** Variação perceptível no produto; recomendado ajuste preventivo na cena.
 - **🔴 INCONSISTÊNCIA EVIDENTE (<60%):** Diferença clara ou deformação estrutural; recomendação obrigatória de não publicar a versão atual e refazer mantendo as características originais.
 
+### 10.4 DIRETRIZES COMPLEMENTARES DE PRECISÃO E CONTEXTO
+- **Consolidação Multi-Ângulo de Referências:** usar as fotos em conjunto; nunca assumir que uma peça está ausente só porque não aparece em um dos ângulos se ela aparece em outro.
+- **Separação de Cenas Contextuais:** abertura com modelo, humor, introduções ou gancho sem o produto físico em cena NÃO são defeitos de produto. Atribuir "productVisible: false" com aprovação neutra (95%), sem inventar inconsistências.
+- **Verificação Temporal de Mudanças (Antes, Durante e Depois):** antes de declarar que uma peça sumiu ou deformou, verificar se o evento é corte de cena ou oclusão transitória pela mão/sombra vs morphing contínuo de IA.
+- **Variantes e Embalagens:** se houver múltiplas embalagens, cores ou kits legítimos nas referências, qualquer uma que coincida é aprovada.
+- **Separação Estrita de Falha Técnica e Resultado Visual:** limitações de câmera ou foco não devem ser convertidas em inconsistências de fabricação do produto.
+
+
 
