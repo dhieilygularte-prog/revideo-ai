@@ -2194,16 +2194,14 @@ export function selectAndAdaptProdutos2Copy(params: {
   if (candidates.length === 0) {
     matchPriority = 'outra_copy_do_banco';
     if (specs.kitQuantity && specs.kitQuantity >= 2) {
-      candidates = activeBank.filter((e) => ['CLI-03', 'CLI-04', 'CLI-05', 'ELE-03', 'ENE-01'].includes(e.id));
+      candidates = activeBank.filter((e) => ['CLI-03', 'CLI-04', 'CLI-05', 'ELE-03', 'ENE-01', 'LIM-01', 'CAS-02'].includes(e.id));
     } else if (specs.isKidsProduct) {
       candidates = activeBank.filter((e) => ['INF-01', 'INF-02', 'INF-03', 'INF-04', 'INF-05', 'INF-06'].includes(e.id));
     } else if (specs.isExpensive) {
-      candidates = activeBank.filter((e) => ['FIT-01', 'FIT-02', 'ELE-03', 'ELE-06', 'ELE-07', 'ENE-01', 'MOB-04'].includes(e.id));
+      candidates = activeBank.filter((e) => ['FIT-01', 'FIT-02', 'ELE-01', 'ELE-03', 'ELE-06', 'ELE-07', 'ENE-01', 'MOB-01', 'MOB-04', 'SOM-02'].includes(e.id));
     } else {
-      // Copies reais super versáteis do banco que se adaptam perfeitamente a qualquer produto
-      candidates = activeBank.filter((e) =>
-        ['ELE-03', 'ELE-06', 'ELE-07', 'ENE-01', 'FIT-01', 'FIT-02', 'CLI-01', 'CLI-02', 'LIM-01', 'CAS-03'].includes(e.id)
-      );
+      // Todas as copies do banco ativo já possuem adaptação fiel por ID; prioriza primeiro o pool amplo e depois todo o banco ativo
+      candidates = activeBank;
     }
     if (candidates.length === 0) {
       candidates = activeBank.length > 0 ? activeBank : rawActiveBank;
@@ -2381,20 +2379,20 @@ export function adaptBankCopyToProduct(
     // preservando todo o resto da copy original do banco (gancho, cadência, urgência e CTA) 100% intacto!
     switch (entry.id) {
       case 'INF-01':
-        // Original: "Eu achei que um jipe elétrico desses custava mais de dois mil reais, até ver essa oferta aqui no TikTok Shop. Minha filha ficou doida quando viu. Tem controle remoto pros pais, farol de LED, música e aguenta até 30 quilos. Pelo preço que tá hoje no carrinho laranja, vale cada centavo. Corre antes que acabe o estoque!"
+        // Original: "Eu não quero nem saber o preço, eu quero saber em quantas vezes dá pra parcelar. Imagina a felicidade de uma criança ganhando um jipe elétrico desses? É diversão garantida e aquele presente que faz os olhos brilharem."
         if (isActualToy) {
-          text = `Eu achei que ${umProd} desses custava uma fortuna, até ver essa oferta aqui no TikTok Shop. Minha filha ficou doida quando viu. ${conciseFeatureSentence} Pelo preço que tá hoje no carrinho laranja, vale cada centavo. Corre antes que acabe o estoque!`;
+          text = `Eu não quero nem saber o preço, eu quero saber em quantas vezes dá pra parcelar. Imagina a felicidade de uma criança ganhando ${umProd} ${isFem ? 'dessas' : 'desses'}? É diversão garantida e aquele presente que faz os olhos brilharem.`;
         } else {
-          text = `Eu achei que ${esseProd} saía muito mais caro, até ver essa oferta aqui no TikTok Shop. Aqui em casa salvou demais! ${conciseFeatureSentence} Pelo preço que tá hoje no carrinho laranja, vale cada centavo. Corre antes que acabe o estoque!`;
+          text = `Eu não quero nem saber o preço, eu quero saber em quantas vezes dá pra parcelar. Imagina a maravilha de garantir ${umProd} ${isFem ? 'dessas' : 'desses'}? ${conciseFeatureSentence}`;
         }
         break;
 
       case 'INF-02':
-        // Original: "Gente, olha a felicidade da minha pequena com esse jipe elétrico que chegou do TikTok Shop! Ele tem bateria recarregável, cinto de segurança, toca música no Bluetooth e eu ainda controlo tudo pelo controle remoto. Tá com um desconto absurdo hoje, clica no carrinho laranja aqui embaixo e garante o do seu filho!"
+        // Original: "Eu não quero saber o preço, eu quero saber em quantas vezes parcela. Imagina a alegria da criança de ganhar esse jipe elétrico. Perfeito!"
         if (isActualToy) {
-          text = `Gente, olha a felicidade da minha pequena com ${esseProd} que chegou do TikTok Shop! ${conciseFeatureSentence} Tá com um desconto absurdo hoje, clica no carrinho laranja aqui embaixo e garante pro seu pequeno!`;
+          text = `Eu não quero saber o preço, eu quero saber em quantas vezes parcela. Imagina a alegria da criança de ganhar ${esseProd}. ${isFem ? 'Perfeita' : 'Perfeito'}!`;
         } else {
-          text = `Gente, olha que maravilha ${esseProd} que chegou do TikTok Shop! ${conciseFeatureSentence} Tá com um desconto absurdo hoje, clica no carrinho laranja aqui embaixo e garante já pro seu bebê!`;
+          text = `Eu não quero saber o preço, eu quero saber em quantas vezes parcela. Imagina a praticidade de garantir ${esseProd}, ${shortWithClause}. ${isFem ? 'Perfeita' : 'Perfeito'}!`;
         }
         break;
 
@@ -2404,7 +2402,7 @@ export function adaptBankCopyToProduct(
         if (isActualToy) {
           text = `Olha o brinquedo que tá deixando a criançada apaixonada. ${EsseProd} ${temFeatures}. Garanta o presente que vai fazer sucesso.`;
         } else {
-          text = `Olha o achado que tá salvando as mamães e papais. ${EsseProd} ${temFeatures}. Garanta já essa economia aqui no carrinho.`;
+          text = `Olha o achado que tá deixando todo mundo apaixonado. ${EsseProd} ${temFeatures}. Garanta já ${oSeu} que tá fazendo sucesso.`;
         }
         break;
       }
@@ -2415,23 +2413,18 @@ export function adaptBankCopyToProduct(
         break;
 
       case 'INF-05': {
-        // Original: "Presente perfeito pra tirar as crianças do celular! Esse triciclo elétrico aguenta até 60 quilos, tem chave de partida, LED colorido e faz manobras radicais com total segurança. Aproveita que entrou em oferta relâmpago no TikTok Shop e já clica no carrinho laranja!"
-        const temFeatures = `tem ${shortWithClause.replace(/^com\s+/i, '')}`;
+        // Original: "Não é porque você não é rico que seu filho não pode ter um desses. Olha esse triciclo elétrico, imagina a alegria dele andando por aí. Clique onde está escrito "veja aqui", olha o preço e aproveita, que está em oferta."
         if (isActualToy) {
-          text = `Presente perfeito pra tirar as crianças do celular! ${EsseProd} ${temFeatures}. Aproveita que entrou em oferta relâmpago no TikTok Shop e já clica no carrinho laranja!`;
+          text = `Não é porque você não é rico que seu filho não pode ter ${isFem ? 'uma dessas' : 'um desses'}. Olha ${esseProd}, imagina a alegria dele brincando por aí. Clique onde está escrito "veja aqui", olha o preço e aproveita, que está em oferta.`;
         } else {
-          text = `Achado perfeito pra quem quer qualidade e economia! ${EsseProd} ${temFeatures}. Aproveita que entrou em oferta relâmpago no TikTok Shop e já clica no carrinho laranja!`;
+          text = `Não é porque você não é rico que você não pode ter ${isFem ? 'uma dessas' : 'um desses'}. Olha ${esseProd}, ${shortWithClause}. Clique onde está escrito "veja aqui", olha o preço e aproveita, que está em oferta.`;
         }
         break;
       }
 
       case 'INF-06':
-        // Original: "Olha a cara de alegria dele com esse triciclo elétrico novo! A bateria dura bastante, tem som Bluetooth, luz de LED na roda e é super resistente. Se você quer ver seu filho brincando de verdade, clica no botão laranja aqui embaixo porque tá com preço promocional!"
-        if (isActualToy) {
-          text = `Olha a cara de alegria dele com ${esseProd} novo! ${conciseFeatureSentence} Se você quer ver seu filho brincando de verdade, clica no botão laranja aqui embaixo porque tá com preço promocional!`;
-        } else {
-          text = `Olha que maravilha ${esseProd} que acabou de chegar! ${conciseFeatureSentence} Se você quer garantir conforto e economia de verdade, clica no botão laranja aqui embaixo porque tá com preço promocional!`;
-        }
+        // Original: "Olha que prático: tem cobertura, proteção e alça para empurrar, facilitando muito os passeios do dia a dia. Corre conferir no carrinho laranja."
+        text = `Olha que ${isFem ? 'prática' : 'prático'}: ${esseProd} ${shortWithClause}, facilitando muito o dia a dia. Corre conferir no carrinho laranja.`;
         break;
 
       case 'FIT-01':
@@ -2449,11 +2442,28 @@ export function adaptBankCopyToProduct(
         break;
 
       case 'ELE-01':
+        // Original: "Meu Deus, olha essa câmera digital! É perfeita pra gravar vídeos em 4K, super estável. Clica no link e garante a sua agora."
+        text = `Meu Deus, olha ${esseProd}! É ${isFem ? 'perfeita' : 'perfeito'}, ${shortWithClause}. Clica no link e garante ${oSeu} agora.`;
+        break;
+
       case 'ELE-02':
+        // Original: "Ah, mas o rico gosta de ser feito de bobo mesmo, né? Paga caro na maçã sendo que aqui tem smartwatch completo, com garantia e parcelamento sem juros. Aproveita que tá rolando oferta até meia-noite."
+        text = `Ah, mas o rico gosta de ser feito de bobo mesmo, né? Paga caro por aí sendo que aqui tem ${spokenName} ${shortWithClause}, com garantia e parcelamento sem juros. Aproveita que tá rolando oferta até meia-noite.`;
+        break;
+
       case 'ELE-04':
+        // Original: "Procurando o celular mais top do momento? Esse é o novo Poco X8 Pro. Olha esse design! Ele voa com um processador de ponta e a bateria dura muito. Curtiu? Comenta aqui o que achou."
+        text = `Procurando ${isFem ? 'a' : 'o'} ${spokenName} mais top do momento? Olha esse design! ${conciseFeatureSentence} Curtiu? Comenta aqui o que achou.`;
+        break;
+
       case 'ELE-05':
+        // Original: "Gente, olha esse lançamento! Consegui meu BML S26 Ultra. Olha essa tela infinita, o design é simplesmente incrível, é muito rápido, são 512 GB de memória, fotos em alta resolução. Corre pra garantir!"
+        text = `Gente, olha esse lançamento! Consegui ${isFem ? 'minha' : 'meu'} ${spokenName}. Olha esse acabamento, o design é simplesmente incrível, ${shortWithClause}. Corre pra garantir!`;
+        break;
+
       case 'ELE-08':
-        text = `Olha o que acabou de chegar por uma fração do preço! ${EsseProd} ${shortWithClause}. ${conciseFeatureSentence} Tá disponível no carrinho laranja com super desconto, corre antes que acabe!`;
+        // Original: "Vou fazer preço de fábrica nesse tablet lançamento do TikTok. Nesse preço, nem na China! Compre apertando no botão abaixo."
+        text = `Vou fazer preço de fábrica ${isFem ? 'nessa' : 'nesse'} ${spokenName} lançamento do TikTok. Nesse preço, nem na China! Compre apertando no botão abaixo.`;
         break;
 
       case 'ELE-06':
@@ -2472,11 +2482,12 @@ export function adaptBankCopyToProduct(
         break;
 
       case 'ENE-02':
-        text = `${EsseProd} entrou em promoção e o preço caiu muito. ${conciseFeatureSentence} Aproveita enquanto ainda tem no estoque e garante ${oSeu} clicando no carrinho laranja.`;
+        // Original: "Consegui pegar a minha na loja. Essa bateria é incrível. Olha o visor LCD, super leve, conector pronto e célula de lítio com BMS integrado. Muito superior ao chumbo-ácido. Corre antes que acabe tudo."
+        text = `Consegui pegar ${isFem ? 'a minha' : 'o meu'} na loja. ${EsseProd} é incrível. ${conciseFeatureSentence} Qualidade muito superior. Corre antes que acabe tudo.`;
         break;
 
       case 'ELE-03':
-        // Original: "Olha o preço disso aqui agora! Acabou de entrar em oferta relâmpago e tem muita gente conseguindo pegar com frete grátis. Aproveita, que só vai até a meia-noite. Eu vou deixar o link com desconto aqui no carrinho laranja. Já clica e pega o seu antes que acabe!"
+        // Original: "Olha o preço disso aqui agora! Acabou de entrar em oferta relâmpago com super desconto exclusivo. Aproveita que só vai até meia-noite. O link tá aqui no carrinho laranja, corre e pega o seu antes que acabe!"
         text = text
           .replace(/\bOlha o preço disso aqui agora!/i, `Olha o preço ${desseProd} agora!`)
           .replace(/\bpega o seu\b/i, `pega ${oSeu}`);
@@ -2489,7 +2500,7 @@ export function adaptBankCopyToProduct(
 
       case 'CLI-02':
         // Original: "Tá calor? Então aproveita! Esses ventiladores estão com preço muito bom aí na promoção. Tem gente comprando até para revender. Corre e confira no carrinho!"
-        text = `Olha essa oportunidade! ${EsseProd} tá com preço muito bom aí na promoção. Tem gente comprando até para revender. Corre e confira no carrinho!`;
+        text = `Então aproveita! ${EsseProd} tá com preço muito bom aí na promoção. Tem gente comprando até para revender. Corre e confira no carrinho!`;
         break;
 
       case 'CLI-03':
@@ -2514,69 +2525,83 @@ export function adaptBankCopyToProduct(
       }
 
       case 'LIM-01':
-        // Original: "Tá cansada daquelas luvas que rasgam por qualquer coisinha? Olha a resistência dessa Viniflex da Vabani. O ajuste é perfeito e não tem aquele pó chato pra sujar a mão. A sensibilidade ao toque é surreal. Serve pra comida, limpeza, estética, tudo que você imaginar. Vem 100 unidades na caixa, rende demais. Clica no carrinho e garante a sua."
-        text = `Olha a qualidade ${desseProd} que acabou de chegar. ${conciseFeatureSentence} O resultado é impecável e rende demais no uso. Clica no carrinho e garante ${oSeu}.`;
+        // Original: "Tá cansada daquelas luvas que rasgam por qualquer coisinha? Olha a resistência da Viniflex! Ajuste perfeito, sem aquele pó chato e com máxima sensibilidade. Serve pra tudo e vem 100 unidades. Clica no carrinho e garante a sua."
+        text = `Tá cansada de produto frágil que estraga fácil? Olha a resistência ${desseProd}! ${conciseFeatureSentence} Serve pra tudo no dia a dia. Clica no carrinho e garante ${oSeu}.`;
         break;
 
-      case 'CAS-01': {
-        const isOrganizer = /organizador|rack|armario|estante|sapateira|cesto|gaveteir|suporte|banheiro/i.test(targetProdNorm);
-        if (isOrganizer) {
-          text = `Quer mais praticidade e organização sem dor de cabeça? Olha isso! É ${umProd} ${shortWithClause}. ${conciseFeatureSentence} Garante ${oSeu} aqui no link.`;
-        } else {
-          text = `Olha a qualidade ${desseProd} que acabou de chegar. ${conciseFeatureSentence} O resultado é incrível pro seu dia a dia. Garante ${oSeu} aqui no link.`;
-        }
+      case 'CAS-01':
+        // Original: "Falta espaço no banheiro e você não pode furar o azulejo? Olha isso! Rack de chão super reforçado que aproveita o espaço sobre o vaso sem bambear. Cabe tudo e deixa sua pia livre. Garante o seu na cor preta aqui no link."
+        text = `Quer mais praticidade e organização sem dor de cabeça? Olha isso! ${EsseProd} super ${isFem ? 'reforçada' : 'reforçado'}, ${shortWithClause}. ${conciseFeatureSentence} Garante ${oSeu} aqui no link.`;
         break;
-      }
 
       case 'CAS-02':
-        text = `Se você busca praticidade de verdade, olha ${esseProd}! ${conciseFeatureSentence} Clica no carrinho laranja pra garantir com desconto!`;
+        // Original: "Chegou meu kit de pastilhas pra vaso sanitário do TikTok Shop! Cheirinho maravilhoso logo que abre e espuma ativa limpando tudinho sem você precisar ficar esfregando o vaso sanitário todo dia."
+        text = `Chegou ${isFem ? 'minha' : 'meu'} ${spokenName} do TikTok Shop! ${conciseFeatureSentence} Facilitando tudinho na rotina sem você precisar sofrer todo dia.`;
         break;
 
       case 'RED-01':
-        text = `Olha que delícia de achado! ${EsseProd} ${shortWithClause || 'super confortável e resistente'}. ${conciseFeatureSentence} Clica no carrinho e garante ${oSeu}!`;
+        // Original: "Olha que delícia de achado! Essa rede de descanso é feita em 100% algodão, super macia, resistente e cabe com conforto total. Perfeita pra relaxar na varanda e tirar aquele cochilo. Clica no carrinho e garante a sua!"
+        text = `Olha que delícia de achado! ${EsseProd} é ${shortWithClause || 'super confortável e resistente'}. ${conciseFeatureSentence} Clica no carrinho e garante ${oSeu}!`;
         break;
 
       case 'RED-02':
-        text = `Quer qualidade e conforto de verdade no dia a dia? ${EsseProd} ${shortWithClause} não decepciona e aguenta o tranco. Clica aqui embaixo e garante ${oSeu}!`;
+        // Original: "Quer descansar de verdade e tirar aquele cochilo gostoso? Essa rede em algodão reforçado é puro conforto, não esquenta e aguenta o tranco. Clica aqui embaixo e garante a sua!"
+        text = `Quer qualidade e conforto de verdade no dia a dia? ${EsseProd} ${shortWithClause} é puro conforto e aguenta o tranco. Clica aqui embaixo e garante ${oSeu}!`;
         break;
 
       case 'CAS-03':
-        text = `Olha a qualidade ${desseProd}: ${shortWithClause}. É super prático e já faz toda a diferença na hora. Clica no link pra garantir ${oSeu}.`;
+        // Original: "Finalmente os entregadores vão achar minha casa, e com muito estilo. Olha a qualidade: acabamento espelhado e letras em relevo. Fácil de instalar, transforma a fachada na hora. Clica no link pra fazer a sua com seu endereço."
+        text = `Finalmente achei ${esseProd} com muito estilo. Olha a qualidade: ${shortWithClause}. Fácil de usar, faz toda a diferença na hora. Clica no link pra garantir ${oSeu}.`;
         break;
 
       case 'COZ-01':
-        text = `Gente, olha essa loucura! Todo mundo correndo pra pegar ${esseProd}, mas já garanti! Acabei de trazer pra casa, ${shortWithClause}. ${conciseFeatureSentence} Vamos pro carrinho agora, esse modelo esgota num piscar de olhos, não fiquem sem!`;
+        // Original: "Gente, olha essa loucura! Todo mundo correndo pra panificadora! Acabei de trazer pra casa, são 19 programas automáticos que fazem tudo sozinha. Corre pro carrinho agora, esse modelo esgota num piscar de olhos, não fiquem sem!"
+        text = `Gente, olha essa loucura! Todo mundo correndo pra pegar ${esseProd}! Acabei de trazer pra casa, ${shortWithClause}. Corre pro carrinho agora, esse modelo esgota num piscar de olhos, não fiquem sem!`;
         break;
 
       case 'JAR-01':
-        text = `Gente, acabou de chegar ${esseProd}. ${conciseFeatureSentence} Facilitou demais a rotina sem dor de cabeça. Pra garantir com desconto, dá uma olhada por aqui.`;
+        // Original: "Gente, acabou de chegar esse pulverizador elétrico. Coloquei água, ajustei a alça e pronto. Aperto o botão e já consigo pulverizar as plantas sem ficar bombeando com a mão. Pra cuidar do jardim, dá uma olhada por aqui."
+        text = `Gente, acabou de chegar ${esseProd}. ${conciseFeatureSentence} Super prático de usar no dia a dia sem esforço. Dá uma olhada por aqui.`;
         break;
 
       case 'AGR-01':
-        text = `Quer resolver tudo com muito mais praticidade? ${EsseProd} ${shortWithClause}. ${conciseFeatureSentence} Toque no carrinho laranja!`;
+        // Original: "Quer preparar a terra com muito mais praticidade? Esse motocultivador Buffalo de 7 cavalos já vem com arado, ideal para preparar o solo. Uma máquina forte para a roça. Toque no carrinho laranja!"
+        text = `Quer muito mais praticidade no dia a dia? ${EsseProd} ${shortWithClause}. ${conciseFeatureSentence} Toque no carrinho laranja!`;
         break;
 
       case 'FER-01':
-        text = `Olha a praticidade ${desseProd}! ${conciseFeatureSentence} Confere no carrinho!`;
+        // Original: "Ainda fazendo força para crimpar? Olha esse alicate hidráulico à bateria! Vem na maleta, com matrizes. Confere no carrinho!"
+        text = `Ainda fazendo esforço à toa? Olha ${esseProd}! ${conciseFeatureSentence} Confere no carrinho!`;
         break;
 
       case 'FER-02':
-        text = `Gente, olha esse achado! ${EsseProd} entrou em superoferta. ${conciseFeatureSentence} Tem envio para todo o Brasil, gente! Corre e clica aqui embaixo, no carrinho, pra garantir ${oSeu}.`;
+        // Original: "Gente, olha esse achado pra quem trabalha com metal! Punção elétrica com 200 W e 20 toneladas de força. Vem com 9 matrizes pra furos perfeitos, acabamento impecável e envio rápido. Clica no carrinho pra garantir a sua."
+        text = `Gente, olha esse achado incrível! ${EsseProd} ${shortWithClause}, acabamento impecável e envio rápido. Clica no carrinho pra garantir ${oSeu}.`;
         break;
 
       case 'BEL-01':
-        text = `Gente, achei ${esseProd} perfeito. ${conciseFeatureSentence} Olha isso, a qualidade é incrível. Clica aqui embaixo pra ver.`;
+        // Original: "Gente, achei o elástico perfeito, que não quebra o cabelo. Super macio, estica muito e não dá dor de cabeça. Segura qualquer volume de cabelo o dia todo, olha isso. As cores são lindas. Clica aqui embaixo pra ver."
+        text = `Gente, achei ${esseProd} ${isFem ? 'perfeita' : 'perfeito'}. ${conciseFeatureSentence} Olha isso, o acabamento é lindo. Clica aqui embaixo pra ver.`;
         break;
 
       case 'BEL-02':
-        text = `Olha ${esseProd} que acabou de chegar. ${conciseFeatureSentence} Entrega qualidade de verdade com segurança total. Clica no carrinho e garante ${oSeu}.`;
+        // Original: "Adeus, chapinha que queima a testa. Olha essa escova de cerâmica. Esquenta muito rápido, alisa desde a raiz sem puxar os fios e vem com suporte seguro pra apoiar na mesa. Clica no carrinho e garante a sua."
+        text = `Olha ${esseProd} que acabou de chegar. ${conciseFeatureSentence} Clica no carrinho e garante ${oSeu}.`;
         break;
 
       case 'MOB-01':
+        // Original: "Gente, não é mais seis mil, divide isso por dois! Olha a loucura que fizeram aí embaixo. 36 volts, 350 watts, retrô, LED. Qualquer um pode comprar."
+        text = `Gente, divide esse valor por dois! Olha a loucura que fizeram aí embaixo com ${esseProd}. ${conciseFeatureSentence} Qualquer um pode comprar.`;
+        break;
+
       case 'MOB-02':
+        // Original: "Pessoal, dá uma olhada nesse preço: essa scooter elétrica retrô, disponível em duas cores, preta e vermelha. Aproveitem!"
+        text = `Pessoal, dá uma olhada nesse preço: ${esseProd}, ${shortWithClause}. Aproveitem!`;
+        break;
+
       case 'MOB-03':
-      case 'MOB-05':
-        text = `Olha que espetáculo ${esseProd}! ${conciseFeatureSentence} Economia e praticidade de verdade pro seu dia a dia. Clica aqui no carrinho laranja e garante ${oSeu} na promoção!`;
+        // Original: "Olha essa bike elétrica, que linda, dobrável, super prática para o dia a dia. Eu já deixei no carrinho laranja, corre garantir a sua."
+        text = `Olha ${esseProd}, que ${isFem ? 'linda' : 'lindo'}, super ${isFem ? 'prática' : 'prático'} para o dia a dia. Eu já deixei no carrinho laranja, corre garantir ${oSeu}.`;
         break;
 
       case 'MOB-04':
@@ -2586,12 +2611,157 @@ export function adaptBankCopyToProduct(
           .replace(/\bcompre a sua\b/i, `compre ${oSeu}`);
         break;
 
-      default: {
-        // Adaptação genérica segura para qualquer outra copy (PES, NAT, SOM, GAR, PET, MOT, PES2, FES, MUS, etc.):
-        // preserva o gancho ou CTA característico mas substitui especificações exclusivas do produto antigo pelas do novo produto
-        text = `Gente, olha esse achado que tá todo mundo comentando! ${EsseProd} ${shortWithClause}. ${conciseFeatureSentence} Aproveita que tá com preço promocional no carrinho laranja, corre antes que acabe!`;
+      case 'MOB-05':
+        // Original: "Olha essa e-bike! Trava e vai! Muito rápida, motor de 400 watts, farol potente, freio top, amortecedor central, banco confortável, bateria removível, dobra em segundos, cabe no porta-malas. A melhor e-bike!"
+        text = `Olha ${esseProd}! ${conciseFeatureSentence} ${isFem ? 'A melhor' : 'O melhor'} ${spokenName}!`;
         break;
-      }
+
+      case 'PES-01':
+        text = `Gente, olha a qualidade ${desseProd}. ${conciseFeatureSentence} Olha o acabamento premium, o preço tá ridículo no carrinho.`;
+        break;
+
+      case 'PES-02':
+        text = `Gente, finalmente chegou ${esseProd} que eu tanto queria testar. ${conciseFeatureSentence} Equipamento sensacional.`;
+        break;
+
+      case 'PES-03':
+        text = `Gente, olha a qualidade ${desseProd} que acabou de chegar. ${conciseFeatureSentence} Corre para o link e garante ${oSeu}.`;
+        break;
+
+      case 'PES-04':
+        text = `Gente, o segredo para ter qualidade de verdade chegou. Olha ${esseProd}, ${shortWithClause}. E a resistência é absurda, não estraga por nada. Clica no carrinho para garantir ${oSeu}.`;
+        break;
+
+      case 'NAT-01':
+        text = `Olha isso! ${EsseProd} ${shortWithClause}. ${conciseFeatureSentence} Clica no carrinho.`;
+        break;
+
+      case 'NAT-02':
+        text = `Fim do sufoco no dia a dia. ${EsseProd} é ${isFem ? 'perfeita' : 'perfeito'}, ${shortWithClause}. Muito mais conforto pra você. Vai conferir!`;
+        break;
+
+      case 'SOM-01':
+        text = `Potência e qualidade de verdade. ${EsseProd} é ${isFem ? 'perfeita' : 'perfeito'}, ${shortWithClause}. Clique no link e garanta já ${oSeu}.`;
+        break;
+
+      case 'SOM-02':
+        text = `Baixou o preço ${desseProd} mais ${isFem ? 'vendida' : 'vendido'} aqui do TikTok Shop. Clica no carrinho laranja pra você desbloquear a oferta relâmpago e já finaliza pra você não perder esse super desconto. Mas atenção, é só até meia-noite, tá?`;
+        break;
+
+      case 'SOM-03':
+        text = `A qualidade ${desseProd} não combina com esse valor. ${conciseFeatureSentence} Pega no carrinho laranja.`;
+        break;
+
+      case 'SOM-04':
+        text = `Quer dar um upgrade no seu dia a dia? Conheça ${esseProd}, ${shortWithClause}. Clique no link e garanta ${oSeu}.`;
+        break;
+
+      case 'SOM-05':
+        text = `Quer transformar sua rotina? ${EsseProd} ${shortWithClause} entrega aquele upgrade que faz diferença. Garanta ${oSeu}!`;
+        break;
+
+      case 'SOM-06':
+        text = `Olha ${esseProd}, o design é absurdo. ${conciseFeatureSentence} Veja só a qualidade e o acabamento impecável.`;
+        break;
+
+      case 'SOM-07':
+        text = `Olha ${esseProd}, ${shortWithClause}. ${conciseFeatureSentence} Venha conferir!`;
+        break;
+
+      case 'SOM-08':
+        text = `Olha esse unboxing. ${EsseProd} chegou. Olha só o design e o acabamento. ${conciseFeatureSentence} Curtiu? Adquira já ${oSeu}.`;
+        break;
+
+      case 'SOM-09':
+        text = `${EsseProd} vai mudar o seu dia a dia, ${shortWithClause}. Estoque limitado. Garanta já ${oSeu}.`;
+        break;
+
+      case 'SOM-10':
+        text = `Olha a qualidade ${desseProd}! ${conciseFeatureSentence} Garanta ${oSeu}.`;
+        break;
+
+      case 'SOM-11':
+        text = `${EsseProd} entrega qualidade profissional num design incrível, ${shortWithClause}. Clica no link e aproveite!`;
+        break;
+
+      case 'GAR-01':
+        text = `Gente, achei ${esseProd} mais ${isFem ? 'estética e perfeita' : 'bonito e perfeito'} pro dia a dia. ${conciseFeatureSentence} Clica aqui embaixo pra escolher ${oSeu}.`;
+        break;
+
+      case 'GAR-02':
+        text = `Gente, achei ${esseProd} mais ${isFem ? 'linda' : 'lindo'} pro meu dia a dia. ${conciseFeatureSentence} Recomendo!`;
+        break;
+
+      case 'GAR-03':
+        text = `Tô apaixonada por ${esseProd}. ${conciseFeatureSentence} Olha que ${isFem ? 'linda' : 'lindo'}! Vou deixar o link promocional no carrinho. Aproveita!`;
+        break;
+
+      case 'GAR-04':
+        text = `Gente, achei ${esseProd} mais ${isFem ? 'estilosa e perfeita' : 'estiloso e perfeito'} para o dia a dia. ${conciseFeatureSentence} Clica aqui embaixo para escolher ${oSeu}.`;
+        break;
+
+      case 'PET-01':
+        text = `Olha ${esseProd} que prático pro dia a dia. ${conciseFeatureSentence} Resolve de verdade sem dor de cabeça.`;
+        break;
+
+      case 'MOT-01':
+        text = `Olha o que acabou de chegar: ${esseProd} super resistente, ${shortWithClause}. Proteção e qualidade garantidas clicando aqui embaixo.`;
+        break;
+
+      case 'PES2-01':
+        text = `Gente, quem trabalha o dia todo precisa ver ${esseProd}. ${conciseFeatureSentence} Clica aqui embaixo para garantir ${oSeu}.`;
+        break;
+
+      case 'FES-01':
+        text = `Olha o acabamento ${desseProd}! ${conciseFeatureSentence} Muito fácil de usar e super ${isFem ? 'prática' : 'prático'} pro dia a dia.`;
+        break;
+
+      case 'MUS-01':
+        text = `Quem comprou ontem ${esseProd} vai chorar ao ver o preço que está hoje. ${conciseFeatureSentence} Compre já no TikTok Shop!`;
+        break;
+
+      case 'CAL-01':
+        text = `Gente, a caixa do TikTok chegou! Olha ${esseProd}, ${shortWithClause}. Super leve e muito confortável. Clica aqui embaixo, vale muito a pena!`;
+        break;
+
+      case 'CAL-02':
+        text = `Olha ${esseProd}. Versátil, ${isFem ? 'moderna e perfeita' : 'moderno e perfeito'} para acompanhar a rotina. O link está no carrinho.`;
+        break;
+
+      case 'CAL-03':
+        text = `Paguei o preço de um e recebi ${esseProd}, ${shortWithClause}. Qualidade surreal e super leve. Quase de graça hoje. Clique aqui embaixo antes que acabe.`;
+        break;
+
+      case 'CAL-04':
+        text = `Cara, não acredito que chegou ${esseProd}. Olha a qualidade disso aqui: não deforma e é super confortável pro dia a dia. Clica no carrinho e garante ${oSeu}.`;
+        break;
+
+      case 'ROU-01':
+        text = `Se liga ${isFem ? 'nessa' : 'nesse'} ${spokenName}, o visual é insano e a qualidade vai te surpreender. ${conciseFeatureSentence} O estoque tá voando, já garante ${oSeu}.`;
+        break;
+
+      case 'ROU-02':
+        text = `Irmão, achei ${esseProd} que resolveu meu dia a dia. ${conciseFeatureSentence} Conforto total. Clica aqui embaixo e garante ${oSeu}.`;
+        break;
+
+      case 'ROU-03':
+        text = `Gente, olha ${esseProd}. ${conciseFeatureSentence} Conforto máximo pro dia a dia, com total liberdade.`;
+        break;
+
+      case 'ROU-04':
+        text = `E aí, mano, olha o que eu recebi. ${EsseProd} de altíssima qualidade, ${shortWithClause}. Toca embaixo e garante ${oSeu}.`;
+        break;
+
+      case 'ROU-05':
+        text = `Achei ${esseProd} ${isFem ? 'perfeita' : 'perfeito'} pro dia a dia. ${conciseFeatureSentence} Clica e garanta ${oSeu}.`;
+        break;
+
+      case 'ROU-06':
+        text = `Cara, olha o que eu achei no TikTok. ${EsseProd}, ${shortWithClause}. O melhor achado tá aqui no carrinho laranja.`;
+        break;
+
+      default:
+        break;
     }
   }
 

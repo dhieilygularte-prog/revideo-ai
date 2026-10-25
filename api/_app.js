@@ -4110,32 +4110,31 @@ INFORMA\xC7\xD5ES DO PRODUTO: ${productInfo || ""}`,
     }
     if (action === "adapt_bank_copies") {
       try {
-        const { copy1, copy2, clientGender: clientGender2, enforceRange200To225 } = req.body;
+        const { copy1, copy2, clientGender: clientGender2 } = req.body;
         if (!copy1 && !copy2) {
           return res.json({ success: true });
         }
-        const reqSceneMode = req.body.sceneMode || "1_cena_10s";
-        const targetMin = Number(req.body.targetMinChars) || (reqSceneMode === "1_cena_15s" ? 310 : 200);
-        const targetMax = Number(req.body.targetMaxChars) || (reqSceneMode === "1_cena_15s" ? 335 : 225);
-        const enforceStrictRange = Boolean(enforceRange200To225 || targetMax === 335);
-        const charRuleText = enforceStrictRange ? `- REGRA OBRIGAT\xD3RIA DE TAMANHO: A fala adaptada DEVE ter OBRIGATORIAMENTE ENTRE ${targetMin} E ${targetMax} CARACTERES (incluindo espa\xE7os e pontua\xE7\xE3o). NUNCA entregue menos de ${targetMin} caracteres e NUNCA ultrapasse ${targetMax} caracteres!` : `- Cada fala adaptada deve ter entre 160 e ${targetMax} caracteres (NUNCA ultrapasse ${targetMax} caracteres).`;
-        const adaptSystem = `Voc\xEA \xE9 um Especialista S\xEAnior em Direct Response para TikTok Shop Brasil.
-Existe na mem\xF3ria do aplicativo um banco de 64 falas validadas de an\xFAncios reais que j\xE1 est\xE3o vendendo muito.
-Sua miss\xE3o \xE9 ADAPTAR as falas sorteadas do banco para o PRODUTO ATUAL do usu\xE1rio, seguindo estritamente estas regras:
+        const targetMax = 225;
+        const adaptSystem = `Voc\xEA \xE9 um Especialista S\xEAnior em Adapta\xE7\xE3o Cir\xFArgica de Copies para TikTok Shop Brasil.
+Existe na mem\xF3ria do aplicativo um banco de 63 copies reais validadas.
+Voc\xEA receber\xE1 uma ou duas copies sorteadas diretamente desse banco ("Texto original no banco") e a "Sugest\xE3o base local".
+Sua \xFAnica miss\xE3o \xE9 ADAPTAR o texto original da copy sorteada para o PRODUTO ATUAL do usu\xE1rio, mantendo o texto O MAIS ORIGINAL E FIEL POSS\xCDVEL \xE0 copy do banco.
 
-REGRA DE OURO DA ADAPTA\xC7\xC3O (MUDAR O M\xCDNIMO POSS\xCDVEL DA ESTRUTURA, MAS 100% FIEL AO PRODUTO ATUAL):
-1. SE FOR O MESMO PRODUTO (isSameProduct = true):
-   - Mantenha a estrutura original da fala! Altere APENAS especifica\xE7\xF5es divergentes (ex: marca, modelo, pot\xEAncia em Watts, capacidade em ml/litros, polegadas, quantidade do kit) e concord\xE2ncia de g\xEAnero.
-2. SE FOR OUTRO PRODUTO DO MESMO NICHO OU OUTRA COPY DO BANCO (isSameProduct = false):
-   - As falas do banco j\xE1 possuem ganchos, cad\xEAncia e chamadas para a\xE7\xE3o (CTA) altamente validados. Por isso, MUDE O M\xCDNIMO POSS\xCDVEL da estrutura persuasiva (mantenha o estilo do gancho, o ritmo das frases, a urg\xEAncia e o CTA final).
-   - POR\xC9M, substitua 100% de qualquer men\xE7\xE3o \xE0 categoria ou nome do produto antigo e 100% das caracter\xEDsticas exclusivas do produto antigo pelas caracter\xEDsticas REAIS do produto atual (extra\xEDdas de INFORMA\xC7\xD5ES DO PRODUTO).
-   - PROIBI\xC7\xC3O ABSOLUTA DE ABSURDOS:
-     * Se a copy original era de um brinquedo/triciclo/jipe (ex: "Olha o brinquedo que t\xE1 deixando a crian\xE7ada apaixonada... faz drift 360, tem luzes de LED, 3 velocidades" ou "ele gira em 360 graus") e o produto atual \xE9 um Kit de Fraldas (ou qualquer item que n\xE3o seja brinquedo de manobra): JAMAIS chame fralda de "brinquedo" ou "presente", e JAMAIS diga que fralda "faz drift 360", "tem luzes de LED", "3 velocidades" ou "gira em 360 graus"! Troque "brinquedo" por algo coerente (ex: "achado", "kit", "oferta") e troque "faz drift 360, tem luzes de LED, 3 velocidades" pelos benef\xEDcios reais do produto (ex: "tem at\xE9 12 horas de absor\xE7\xE3o, camada macia, el\xE1sticos confort\xE1veis e estampa da Galinha Pintadinha").
-     * Nunca deixe caracter\xEDsticas do produto antigo (como "tela curva", "suporta 100 quilos", "silenciosa com painel LED", "vara de carbono", "amplificador") em um produto que n\xE3o tem isso.
-     * Ignore avisos legais/seguran\xE7a das informa\xE7\xF5es do produto (como "perigo de sufocamento", "mantenha sacos pl\xE1sticos longe", "consulte um m\xE9dico", "data de validade"). Use apenas os benef\xEDcios reais de venda!
-3. LIMITE DE CARACTERES E FORMATA\xC7\xC3O PARA VOZ DE IA:
-   ${charRuleText}
-   - Escreva medidas por extenso para leitura perfeita da voz de IA ("12 horas", "200 fraldas", "50 unidades").
+REGRAS INVIOL\xC1VEIS DE FIDELIDADE AO BANCO DE COPIES:
+1. PROIBIDO INVENTAR COPY NOVA OU REESCREVER A ESTRUTURA:
+   - NUNCA crie uma copy do zero.
+   - NUNCA mude a frase de abertura (gancho inicial) da copy original do banco, exceto para trocar o nome/categoria do produto antigo pelo nome do produto atual.
+   - NUNCA mude o CTA final (chamada para a\xE7\xE3o final) da copy original do banco.
+   - NUNCA adicione frases extras de enchimento no final (como "Entrega muita praticidade...", "Confere todos os detalhes aqui embaixo", etc.) que n\xE3o existiam na copy original!
+2. COMO ADAPTAR FIELMENTE AO PRODUTO ATUAL:
+   - SE FOR O MESMO PRODUTO (isSameProduct = true): Mantenha 99% do "Texto original no banco" intacto! Altere APENAS especifica\xE7\xF5es divergentes (ex: marca/modelo, pot\xEAncia em Watts, capacidade em ml/litros, polegadas, quantidade do kit) e concord\xE2ncia de g\xEAnero.
+   - SE FOR OUTRO PRODUTO (isSameProduct = false): Mantenha a exata estrutura de frases, vocativos, ritmo e CTA do "Texto original no banco" (ou da "Sugest\xE3o base local"), substituindo APENAS o nome/tipo do produto antigo pelo nome do produto atual e trocando SOMENTE o trecho que descrevia caracter\xEDsticas exclusivas do produto antigo (ex: "tela curva", "drift 360", "suporta 100 quilos", "silenciosa com painel LED", "vara de carbono", "400 watts") por 1 ou 2 caracter\xEDsticas reais e curtas do produto atual extra\xEDdas de INFORMA\xC7\xD5ES DO PRODUTO.
+   - Se a copy original falava "Olha o brinquedo que t\xE1 deixando a crian\xE7ada apaixonada" e o produto atual N\xC3O for um brinquedo (ex: fralda, ferramenta, cosm\xE9tico), troque apenas a palavra "brinquedo" pelo nome do produto atual (ex: "Olha essa fralda...").
+   - Ignore avisos legais/seguran\xE7a das informa\xE7\xF5es do produto (como "perigo de sufocamento", "consulte um m\xE9dico").
+3. LIMITE M\xC1XIMO ESTRITO DE 225 CARACTERES:
+   - A copy adaptada deve ter NO M\xC1XIMO 225 CARACTERES (incluindo espa\xE7os e pontua\xE7\xE3o). NUNCA ultrapasse 225 caracteres!
+   - Se a copy original do banco j\xE1 for mais curta (ex: 120 a 195 caracteres), MANTENHA O TAMANHO CURTO NATURAL DELA. Jamais invente frases para tentar chegar a 200 caracteres!
+   - Escreva medidas e n\xFAmeros de forma natural para leitura de voz.
 
 Retorne SOMENTE um JSON estrito no formato:
 {
@@ -4148,7 +4147,7 @@ Retorne SOMENTE um JSON estrito no formato:
 ${productInfo || productName || ""}
 - G\xEAnero do P\xFAblico: ${clientGender2 || "unissex"}
 - Apresentador(a): ${influencer || "Mulher"}
-${enforceStrictRange ? `- TAMANHO OBRIGAT\xD3RIO: Estritamente entre ${targetMin} e ${targetMax} caracteres com espa\xE7os!` : ""}
+- LIMITE M\xC1XIMO: No m\xE1ximo ${targetMax} caracteres com espa\xE7os (mantenha o texto o mais original poss\xEDvel em rela\xE7\xE3o ao Texto original no banco!).
 
 FALA 1 DO BANCO DE MEM\xD3RIA (${copy1?.id || "Copy 1"} - Produto original da copy: "${copy1?.originalProductType || ""}" - Mesmo produto? ${copy1?.isSameProduct ? "SIM" : "N\xC3O"}):
 Texto original da Fala 1 no banco: "${copy1?.originalText || ""}"
@@ -4160,7 +4159,7 @@ Sugest\xE3o base local da Fala 2: "${copy2?.localAdaptedText || ""}"` : ""}`;
         const aiOut = await executeFastAIText({
           systemPrompt: adaptSystem,
           userPrompt: adaptUser,
-          temperature: 0.25,
+          temperature: 0.15,
           jsonMode: true
         });
         let parsed = {};
@@ -4177,16 +4176,11 @@ Sugest\xE3o base local da Fala 2: "${copy2?.localAdaptedText || ""}"` : ""}`;
         }
         let adapted1 = fixCommonSlips(normalizeVoiceText((parsed.adaptedCopy1 || copy1?.localAdaptedText || "").trim()));
         let adapted2 = fixCommonSlips(normalizeVoiceText((parsed.adaptedCopy2 || copy2?.localAdaptedText || "").trim()));
-        if (enforceStrictRange) {
-          if (adapted1) adapted1 = calibrateSpeechToRange(adapted1, targetMin, targetMax);
-          if (adapted2) adapted2 = calibrateSpeechToRange(adapted2, targetMin, targetMax);
-        } else {
-          if (adapted1.length > targetMax) {
-            adapted1 = condenseSpeechMinimallyTo225(adapted1, targetMax, targetMin);
-          }
-          if (adapted2.length > targetMax) {
-            adapted2 = condenseSpeechMinimallyTo225(adapted2, targetMax, targetMin);
-          }
+        if (adapted1.length > targetMax) {
+          adapted1 = condenseSpeechMinimallyTo225(adapted1, targetMax, 130);
+        }
+        if (adapted2.length > targetMax) {
+          adapted2 = condenseSpeechMinimallyTo225(adapted2, targetMax, 130);
         }
         return res.json({
           success: true,
@@ -4196,15 +4190,12 @@ Sugest\xE3o base local da Fala 2: "${copy2?.localAdaptedText || ""}"` : ""}`;
         });
       } catch (err) {
         console.warn("Erro ao adaptar copies do banco via IA, mantendo adapta\xE7\xE3o local:", err?.message || err);
-        const fallback1 = req.body?.copy1?.localAdaptedText || "";
-        const fallback2 = req.body?.copy2?.localAdaptedText || "";
-        const reqSceneMode = req.body?.sceneMode || "1_cena_10s";
-        const targetMin = Number(req.body?.targetMinChars) || (reqSceneMode === "1_cena_15s" ? 310 : 200);
-        const targetMax = Number(req.body?.targetMaxChars) || (reqSceneMode === "1_cena_15s" ? 335 : 225);
+        const fallback1 = (req.body?.copy1?.localAdaptedText || "").trim();
+        const fallback2 = (req.body?.copy2?.localAdaptedText || "").trim();
         return res.json({
           success: true,
-          adaptedCopy1: req.body?.enforceRange200To225 && fallback1 ? calibrateSpeechToRange(fallback1, targetMin, targetMax) : fallback1,
-          adaptedCopy2: req.body?.enforceRange200To225 && fallback2 ? calibrateSpeechToRange(fallback2, targetMin, targetMax) : fallback2
+          adaptedCopy1: fallback1.length > 225 ? condenseSpeechMinimallyTo225(fallback1, 225, 130) : fallback1,
+          adaptedCopy2: fallback2.length > 225 ? condenseSpeechMinimallyTo225(fallback2, 225, 130) : fallback2
         });
       }
     }

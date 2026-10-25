@@ -147,7 +147,11 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
   const [previousAuroraCopies, setPreviousAuroraCopies] = useState<string[]>(() =>
     result.finalCopy ? [result.finalCopy] : []
   );
-  const [usedBankCopyIds, setUsedBankCopyIds] = useState<string[]>([]);
+  const [usedBankCopyIds, setUsedBankCopyIds] = useState<string[]>(() =>
+    result.copyId && !['USER-SPEECH', 'AURORA-01', 'BANCO-01', 'BANCO-02', 'CUSTOM'].includes(result.copyId)
+      ? [result.copyId]
+      : []
+  );
   const [generatedCopySourceLabel, setGeneratedCopySourceLabel] = useState<string | undefined>(undefined);
   const [isSpeechMicRecording, setIsSpeechMicRecording] = useState(false);
   const [speechAppliedSuccess, setSpeechAppliedSuccess] = useState(false);
@@ -539,9 +543,7 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
       setIsGeneratingBankCopy(true);
     }
 
-    const reqMin = isScene2 ? 200 : minCharsScene1;
-    const reqMax = isScene2 ? 225 : maxCharsScene1;
-    const reqMode = isScene2 ? '1_cena_10s' : is15sSingle ? '1_cena_15s' : '1_cena_10s';
+    const reqMax = 225;
 
     try {
       const localPick = selectAndAdaptProdutos2Copy({
@@ -556,8 +558,8 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
       });
 
       setUsedBankCopyIds((prev) => {
-        const next = [...prev, localPick.copyId];
-        return next.length >= 50 ? [localPick.copyId] : next;
+        const next = prev.includes(localPick.copyId) ? prev : [...prev, localPick.copyId];
+        return next.length >= 55 ? [localPick.copyId] : next;
       });
 
       const res = await fetch('/api/produtos2-planning', {
@@ -569,15 +571,15 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
           productInfo: result.productInfo || result.productName,
           clientGender: result.clientGender || 'Unissex',
           influencer: result.influencerResolved,
-          enforceRange200To225: reqMax === 225,
-          sceneMode: reqMode,
-          targetMinChars: reqMin,
+          enforceRange200To225: false,
+          sceneMode: '1_cena_10s',
+          targetMinChars: 110,
           targetMaxChars: reqMax,
           copy1: {
             id: localPick.copyId,
             originalText: localPick.baseEntry?.text || localPick.finalCopy,
             originalProductType: localPick.baseEntry?.productType || '',
-            isSameProduct: false,
+            isSameProduct: Boolean(localPick.isSameProductBankCopy),
             localAdaptedText: localPick.finalCopy,
           },
           aiProfile,
@@ -588,17 +590,17 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
       const adapted = (data?.success && data?.adaptedCopy1) ? data.adaptedCopy1 : localPick.finalCopy;
       if (isScene2) {
         setSpeechInput2(adapted);
-        setGeneratedCopySourceLabel2('Adaptada do Banco de Copies');
+        setGeneratedCopySourceLabel2(localPick.copySourceLabel || `Adaptada do Banco de Copies (${localPick.copyId})`);
       } else {
         setSpeechInput(adapted);
-        setGeneratedCopySourceLabel('Adaptada do Banco de Copies');
+        setGeneratedCopySourceLabel(localPick.copySourceLabel || `Adaptada do Banco de Copies (${localPick.copyId})`);
       }
 
       if (data?.usage) {
         recordSpeechStepUsage(
           data.usage,
           `Geração de Copy (Banco de Copies — Trocar fala${isTwoScenes ? ` Cena ${targetScene}` : ''})`,
-          `Adaptação da copy #${localPick.copyId} do banco para o produto (${reqMin} a ${reqMax} caracteres)`
+          `Adaptação fiel da copy #${localPick.copyId} do banco para o produto (máx. ${reqMax} caracteres)`
         );
       }
     } catch (err: any) {
