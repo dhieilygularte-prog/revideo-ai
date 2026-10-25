@@ -287,8 +287,8 @@ async function buildVisualComparisonBanner(params: {
       loadImageElement(videoFrameUrl),
     ]);
 
-    const W = 1040;
-    const H = 560;
+    const W = 1200;
+    const H = 650;
     const canvas = document.createElement('canvas');
     canvas.width = W;
     canvas.height = H;
@@ -299,32 +299,32 @@ async function buildVisualComparisonBanner(params: {
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, W, H);
 
-    // Cabeçalho superior
-    ctx.fillStyle = '#09090b';
-    ctx.font = 'bold 21px Inter, system-ui, -apple-system, sans-serif';
+    // Cabeçalho superior (idêntico à prancha pericial 1200x650)
+    ctx.fillStyle = '#000000';
+    ctx.font = 'bold 24px Inter, system-ui, -apple-system, sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     const titleUpper = (finding.title || 'COMPONENTE ANALISADO').toUpperCase();
-    ctx.fillText(`COMPARAÇÃO VISUAL — ${titleUpper}`, 32, 24);
+    ctx.fillText(`COMPARAÇÃO VISUAL — ${titleUpper}`, 32, 26);
 
-    ctx.fillStyle = '#52525b';
-    ctx.font = '14px Inter, system-ui, -apple-system, sans-serif';
+    ctx.fillStyle = '#3f3f46';
+    ctx.font = '16px Inter, system-ui, -apple-system, sans-serif';
     ctx.fillText(
       'Recortes de imagens reais fornecidas; recortes mantêm o conteúdo original.',
       32,
-      54
+      62
     );
 
     // Rótulos das duas colunas
-    const colY = 92;
+    const colY = 114;
     const leftX = 32;
-    const rightX = 536;
-    const boxW = 472;
-    const boxH = 415;
-    const imgTopY = 122;
+    const rightX = 650;
+    const boxW = 500;
+    const boxH = 485;
+    const imgTopY = 148;
 
-    ctx.fillStyle = '#09090b';
-    ctx.font = 'bold 18px Inter, system-ui, -apple-system, sans-serif';
+    ctx.fillStyle = '#000000';
+    ctx.font = 'bold 21px Inter, system-ui, -apple-system, sans-serif';
     ctx.fillText('REFERÊNCIA ORIGINAL', leftX, colY);
 
     const formattedSec = `00:${String(Math.max(0, Math.round(second))).padStart(2, '0')}`;
@@ -356,7 +356,7 @@ async function buildVisualComparisonBanner(params: {
           ymax *= 10;
           xmax *= 10;
         }
-        // Adiciona 12% de respiro para manter contexto visual claro ao redor do componente
+        // Adiciona 15% de respiro para manter contexto visual claro ao redor do componente
         const padH = (ymax - ymin) * 0.15;
         const padW = (xmax - xmin) * 0.15;
         const y1 = Math.max(0, Math.min(950, ymin - padH));
@@ -374,17 +374,9 @@ async function buildVisualComparisonBanner(params: {
       const drawW = Math.round(sw * scale);
       const drawH = Math.round(sh * scale);
       const offsetX = destX + Math.round((maxW - drawW) / 2);
-      const offsetY = destY + Math.round((maxH - drawH) / 2);
-
-      // Fundo suave cinza muito claro na área da imagem
-      ctx.fillStyle = '#f8fafc';
-      ctx.fillRect(offsetX, offsetY, drawW, drawH);
+      const offsetY = destY;
 
       ctx.drawImage(img, sx, sy, sw, sh, offsetX, offsetY, drawW, drawH);
-
-      ctx.strokeStyle = '#e2e8f0';
-      ctx.lineWidth = 1.5;
-      ctx.strokeRect(offsetX, offsetY, drawW, drawH);
     };
 
     drawCroppedPreservingAspect(refImg, finding.refCropBox, leftX, imgTopY, boxW, boxH);
