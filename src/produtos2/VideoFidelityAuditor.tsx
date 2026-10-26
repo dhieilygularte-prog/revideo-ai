@@ -558,19 +558,17 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
         `Analisando Storyboard HD (${frames.length} capturas) contra ${compressedRefs.length} imagem(ns) de referência...`
       );
 
-      // Para economizar tokens (~65% de redução) e evitar payloads pesados na rede:
-      // Enviamos a Prancha Única do Storyboard em Alta Definição (0s..9s) + apenas 4 capturas estratégicas de zoom (1s, 2s, 6s, 7s)
-      const zoomSecondsSet = new Set([1, 2, 6, 7]);
-      const lightweightFramesPayload = frames.map((f, idx) => ({
-        second: f.second,
-        frameBase64:
-          !contactSheetDataUrl || zoomSecondsSet.has(Math.round(f.second)) || frames.length <= 4 || idx === Math.floor(frames.length / 2)
-            ? f.frameBase64
-            : '',
-      }));
+      // Envia TODOS os frames (0s..9s) compactados para o servidor (garantindo que o segundo exato do erro, ex: 4s, esteja sempre presente para inspeção e recorte pericial!),
+      // mantendo os frames em resolução máxima (720x1280) na memória do navegador para montar a Comparação Visual.
+      const allFramesPayload = await Promise.all(
+        frames.map(async (f) => ({
+          second: f.second,
+          frameBase64: await compressPhotoForVideoAudit(f.frameBase64, 720, 0.8),
+        }))
+      );
 
       const payloadBody = JSON.stringify({
-        videoFrames: lightweightFramesPayload,
+        videoFrames: allFramesPayload,
         contactSheetBase64: contactSheetDataUrl,
         productPhotosBase64: compressedRefs,
         productName,
@@ -618,6 +616,7 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
       }
 
       // Hidrata cada frame retornado com a captura em ALTA DEFINIÇÃO (720x1280px) que já está na memória do navegador
+      // e garante que nenhum frame com diagnóstico limpo ("Produto consistente...") fique vermelho!
       const hydratedFrames = Array.isArray(parsedData.audit.frames)
         ? parsedData.audit.frames.map((af: any, idx: number) => {
             const matchedLocal =
@@ -626,8 +625,24 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
               .replace(/^(?:frame|captura|quadro|cena)\s*\d+\s*(?:\(\s*\d+\s*s\s*\))?\s*[:\-–—]\s*/i, '')
               .replace(/^\(\s*\d+\s*s\s*\)\s*[:\-–—]\s*/i, '')
               .trim();
+            const isExplicitlyClean =
+              /sem inconsist|sem diverg|sem distor|sem erro|consistente com a|consistente com as|produto consistente|fiel à referência|correto|aprovado/i.test(
+                cleanIssue
+              );
+            const finalScore = isExplicitlyClean ? 94 : Number(af.score ?? 94);
+            const finalStatus =
+              finalScore >= 90
+                ? 'green'
+                : finalScore >= 71
+                ? 'yellow'
+                : finalScore >= 60
+                ? 'orange'
+                : 'red';
             return {
               ...af,
+              second: matchedLocal?.second ?? Number(af.second ?? idx),
+              score: finalScore,
+              status: finalStatus,
               issue: cleanIssue,
               frameThumbnail: matchedLocal?.frameBase64 || af.frameThumbnail,
             };
@@ -643,58 +658,95 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
       };
 
       // Gerar os cartões PNG de "COMPARAÇÃO VISUAL REAL" (Referência Original vs Captura Real do Vídeo) para cada achado
+      // Seguindo estritamente as Etapas A–F do protocolo: vincula a comparação ao frame real reprovado onde o defeito aparece!
       if (Array.isArray(finalAudit.findings) && finalAudit.findings.length > 0) {
         setStatusMessage('Gerando recortes de comparação visual real lado a lado...');
+        const defectFramesList = hydratedFrames.filter(
+          (f) =>
+            f.score < 75 &&
+            !/sem inconsist|consistente com a|consistente com as|produto consistente/i.test(f.issue || '')
+        );
+
         const enrichedFindings = await Promise.all(
-          finalAudit.findings.map(async (finding) => {
+          finalAudit.findings.map(async (finding, fIdx) => {
             const refIdx = Math.max(
               0,
               Math.min(compressedRefs.length - 1, (Number(finding.bestRefIndex) || 1) - 1)
             );
             const refUrl = compressedRefs[refIdx] || compressedRefs[0];
 
-            // Localiza o frame mais próximo do segundo do defeito real
-            let targetSec = Number(finding.bestFrameSecond);
-            const frameAtSec = finalAudit.frames?.find((f) => Math.abs(f.second - targetSec) < 0.6);
-            const isClean = frameAtSec && (
-              frameAtSec.score >= 90 ||
-              /consistente|sem inconsistência|sem divergência/i.test(frameAtSec.issue || '')
-            );
+            // 1. Verifica se há menção explícita de segundo no texto do achado
+            const textToSearch = `${finding.whereItAppears || ''} ${finding.whatAppearsInVideo || ''} ${finding.title || ''}`;
+            const secMatch =
+              textToSearch.match(/\b([0-9]|10)\s*(?:s|seg|segundos?)\b/i) ||
+              textToSearch.match(/00:0?([0-9]|10)/i);
+            const mentionedSec = secMatch ? Number(secMatch[1]) : null;
 
-            if (isNaN(targetSec) || isClean) {
-              const textToSearch = `${finding.whereItAppears || ''} ${finding.whatAppearsInVideo || ''} ${finding.title || ''}`;
-              const secMatch = textToSearch.match(/\b([0-9]|10)\s*(?:s|seg|segundos?)\b/i) || textToSearch.match(/00:0?([0-9]|10)/i);
-              if (secMatch) {
-                targetSec = Number(secMatch[1]);
-              } else {
-                const defectFrame = finalAudit.frames?.find((f) => f.score < 75 && !/consistente|sem inconsistência/i.test(f.issue || ''));
-                if (defectFrame) {
-                  targetSec = defectFrame.second;
-                } else if (isNaN(targetSec)) {
-                  targetSec = 4;
-                }
+            // 2. Se houver frames reprovados (ex: Frame 5 aos 4s), o frame da Comparação Visual DEVE ser um frame reprovado
+            // e JAMAIS um frame aprovado/limpo (como 2s onde aparece a tela frontal)!
+            let targetSec = Number(finding.bestFrameSecond);
+            let matchedDefectFrame =
+              defectFramesList.find((df) => !isNaN(targetSec) && Math.abs(df.second - targetSec) < 0.5) ||
+              defectFramesList.find((df) => mentionedSec !== null && Math.abs(df.second - mentionedSec) < 0.5) ||
+              defectFramesList[fIdx] ||
+              defectFramesList[0];
+
+            if (matchedDefectFrame) {
+              targetSec = matchedDefectFrame.second;
+            } else {
+              const frameAtSec = hydratedFrames.find((f) => Math.abs(f.second - targetSec) < 0.5);
+              const isClean =
+                frameAtSec &&
+                (frameAtSec.score >= 90 ||
+                  /sem inconsist|consistente com a|consistente com as|produto consistente/i.test(
+                    frameAtSec.issue || ''
+                  ));
+              if (isNaN(targetSec) || isClean) {
+                targetSec = mentionedSec ?? 4;
               }
             }
 
             const matchedFrame =
-              frames.reduce((best, curr) =>
-                Math.abs(curr.second - targetSec) < Math.abs(best.second - targetSec) ? curr : best
-              , frames[0]) || frames[0];
+              frames.reduce(
+                (best, curr) =>
+                  Math.abs(curr.second - targetSec) < Math.abs(best.second - targetSec) ? curr : best,
+                frames[0]
+              ) || frames[0];
+
+            const improvedTitle =
+              !finding.title || /^ponto de inspe[çc][ãa]o/i.test(finding.title.trim())
+                ? matchedDefectFrame?.issue?.replace(/\.$/, '') || finding.title
+                : finding.title;
+
+            const improvedWhat =
+              finding.whatAppearsInVideo || matchedDefectFrame?.issue || '';
+
+            const formattedTime = `00:${String(Math.max(0, Math.round(matchedFrame.second))).padStart(2, '0')}`;
+            const improvedWhere = matchedDefectFrame
+              ? `Frame ${matchedDefectFrame.frameNumber} (${matchedFrame.second}s — ${formattedTime})`
+              : finding.whereItAppears || `${matchedFrame.second}s (${formattedTime})`;
+
+            const updatedFinding: VideoAuditFinding = {
+              ...finding,
+              title: improvedTitle,
+              whatAppearsInVideo: improvedWhat,
+              whereItAppears: improvedWhere,
+              bestFrameSecond: matchedFrame.second,
+            };
 
             if (refUrl && matchedFrame?.frameBase64) {
               const compUrl = await buildVisualComparisonBanner({
-                finding,
+                finding: updatedFinding,
                 referencePhotoUrl: refUrl,
                 videoFrameUrl: matchedFrame.frameBase64,
                 second: matchedFrame.second,
               });
               return {
-                ...finding,
-                bestFrameSecond: matchedFrame.second,
+                ...updatedFinding,
                 comparisonImageUrl: compUrl || undefined,
               };
             }
-            return finding;
+            return updatedFinding;
           })
         );
         finalAudit = {

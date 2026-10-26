@@ -5730,29 +5730,26 @@ DIRETRIZES FUNDAMENTAIS DE PER\xCDCIA VISUAL (PRECIS\xC3O M\xC1XIMA E ZERO FALSO
    - "bestFrameSecond": n\xFAmero inteiro (entre ${framesTimestampsList}) indicando o SEGUNDO EXATO onde a diverg\xEAncia/erro visual aparece com mais clareza no v\xEDdeo (ex: se a c\xE2mera extra e o m\xF3dulo com 3 lentes aparecem aos 4s, defina OBRIGATORIAMENTE "bestFrameSecond": 4!). NUNCA aponte um segundo onde o produto est\xE1 de frente ou sem erro!
    - "refCropBox" e "videoCropBox": caixas delimitadoras [ymin, xmin, ymax, xmax] em escala de 0 a 1000 que englobam o componente completo com folga.
 
-Retorne ESTRITAMENTE um objeto JSON v\xE1lido em portugu\xEAs com este formato:
+Retorne ESTRITAMENTE um objeto JSON v\xE1lido em portugu\xEAs com este formato (se n\xE3o houver erro no v\xEDdeo, retorne "findings": [] vazio; se houver erro f\xEDsico real em algum frame, preencha todos os campos do objeto em "findings" vinculando ao segundo exato do frame reprovado):
 {
   "overviewText": "Resumo pericial objetivo confirmando conformidade do produto ou detalhando diverg\xEAncias reais se houver.",
   "summary": "\u{1F7E2} NENHUMA INCONSIST\xCANCIA IDENTIFICADA: [resumo] (ou \u{1F534} INCONSIST\xCANCIA EVIDENTE / \u{1F7E1} POSS\xCDVEL INCONSIST\xCANCIA)",
   "finalRecommendation": "Recomenda\xE7\xE3o pr\xE1tica e direta sobre publica\xE7\xE3o ou refilmagens.",
   "coverageNote": "Analisadas as capturas reais (${framesTimestampsList}) em conjunto com ${photosList.length} imagem(ns) de refer\xEAncia.",
   "findings": [
-    /* REGRA DE OURO: Se o produto exibido no v\xEDdeo estiver consistente e correto em rela\xE7\xE3o \xE0s fotos de refer\xEAncia, retorne "findings": [] VAZIO!
-       Se houver diverg\xEAncia f\xEDsica real grave e comprovada (ex: c\xE2mera extra em 4s), preencha o achado:
-       {
-         "number": 1,
-         "title": "M\xF3dulo traseiro com c\xE2mera extra",
-         "severity": "evident",
-         "referenceNotes": [{ "refIndex": 2, "label": "Refer\xEAncia original", "description": "Carca\xE7a lisa com 2 lentes e flash" }],
-         "whatAppearsInVideo": "Mostra m\xF3dulo com 3 lentes e c\xE2mera extra aos 4s",
-         "whereItAppears": "4s",
-         "bestFrameSecond": 4,
-         "bestRefIndex": 2,
-         "refCropBox": [ymin, xmin, ymax, xmax],
-         "videoCropBox": [ymin, xmin, ymax, xmax],
-         "howToFix": "Regerar sem a c\xE2mera extra"
-       }
-    */
+    {
+      "number": 1,
+      "title": "Nome claro e espec\xEDfico da inconsist\xEAncia (ex: M\xF3dulo traseiro com c\xE2mera extra \u2014 3 lentes e bloco elevado)",
+      "severity": "evident",
+      "referenceNotes": [{ "refIndex": 1, "label": "Refer\xEAncia original", "description": "Traseira original com carca\xE7a lisa, 2 lentes verticais e flash lateral" }],
+      "whatAppearsInVideo": "Descri\xE7\xE3o objetiva do que aparece no frame do erro em compara\xE7\xE3o com a foto de refer\xEAncia",
+      "whereItAppears": "Frame 5 (4s \u2014 00:04)",
+      "bestFrameSecond": 4,
+      "bestRefIndex": 1,
+      "refCropBox": [100, 200, 900, 800],
+      "videoCropBox": [150, 100, 750, 600],
+      "howToFix": "Substituir ou regerar o trecho de 4s mantendo apenas as 2 lentes originais sem bloco elevado."
+    }
   ],
   "frames": [
     {
@@ -5765,17 +5762,135 @@ Retorne ESTRITAMENTE um objeto JSON v\xE1lido em portugu\xEAs com este formato:
     }
   ]
 }`;
-    const finalizeVideoAuditResponse = (parsed, usageObj) => {
-      const rawFindings = (Array.isArray(parsed.findings) ? parsed.findings : []).filter((f) => {
-        const titleLow = String(f?.title || "").toLowerCase();
-        const whatLow = String(f?.whatAppearsInVideo || "").toLowerCase();
+    const syncFramesAndFindings = (parsed) => {
+      const parseSecNum = (val) => {
+        if (val === void 0 || val === null || val === "") return null;
+        if (typeof val === "number" && !isNaN(val)) return Math.round(val);
+        const str = String(val).trim();
+        const m = str.match(/(\d+(?:\.\d+)?)/);
+        return m ? Math.round(Number(m[1])) : null;
+      };
+      const normalizedFrames = videoFrames.map((vf, idx) => {
+        const num = idx + 1;
+        const sec = Math.round(Number(vf.second ?? idx));
+        const found = (Array.isArray(parsed.frames) ? parsed.frames : []).find((f) => {
+          const fSec = parseSecNum(f?.second);
+          return fSec !== null && Math.abs(fSec - sec) < 0.4;
+        }) || (Array.isArray(parsed.frames) ? parsed.frames : []).find(
+          (f) => Number(f?.frameNumber) === num
+        ) || (Array.isArray(parsed.frames) ? parsed.frames : [])[idx];
+        let score = Number(found?.score ?? 94);
+        if (isNaN(score)) score = 94;
+        if (score > 0 && score <= 1) score = Math.round(score * 100);
+        let issue = String(
+          found?.issue || (score >= 90 ? "Produto consistente com as refer\xEAncias, sem inconsist\xEAncias." : "Apresenta varia\xE7\xE3o visual em rela\xE7\xE3o \xE0 refer\xEAncia.")
+        ).replace(/^(?:frame|captura|quadro|cena)\s*\d+\s*(?:\(\s*\d+\s*s\s*\))?\s*[:\-–—]\s*/i, "").replace(/^\(\s*\d+\s*s\s*\)\s*[:\-–—]\s*/i, "").trim();
+        const lowerRaw = issue.toLowerCase();
+        if ((lowerRaw.includes("bot\xE3o") || lowerRaw.includes("anel vermelho")) && (lowerRaw.includes("n\xE3o vis\xEDvel") || lowerRaw.includes("n\xE3o \xE9 vis\xEDvel") || lowerRaw.includes("ausente") || lowerRaw.includes("n\xE3o aparece") || lowerRaw.includes("n\xE3o d\xE1 para ver"))) {
+          issue = "Produto consistente com as refer\xEAncias, sem inconsist\xEAncias.";
+          score = 94;
+        }
+        const lowerIssue = issue.toLowerCase();
+        const issueExplicitlyClean = lowerIssue.includes("sem inconsist") || lowerIssue.includes("sem diverg") || lowerIssue.includes("sem distor") || lowerIssue.includes("sem erro") || lowerIssue.includes("id\xEAntic") || lowerIssue.includes("fiel \xE0 refer\xEAncia") || lowerIssue.includes("fiel \xE0s refer\xEAncias") || lowerIssue.includes("consistente com a refer\xEAncia") || lowerIssue.includes("consistente com as refer\xEAncia") || lowerIssue.includes("produto consistente") || lowerIssue.includes("correto") || lowerIssue.includes("aprovado");
+        const issueMentionsDefect = !issueExplicitlyClean && (lowerIssue.includes("c\xE2mera extra") || lowerIssue.includes("lente extra") || lowerIssue.includes("terceira c\xE2mera") || lowerIssue.includes("terceira lente") || lowerIssue.includes("tr\xEAs lentes") || lowerIssue.includes("3 lentes") || lowerIssue.includes("c\xE2mera a mais") || lowerIssue.includes("lente a mais") || lowerIssue.includes("bloco elevado") || lowerIssue.includes("m\xF3dulo retangular") || lowerIssue.includes("m\xF3dulo traseiro") || lowerIssue.includes("ilha") || lowerIssue.includes("c\xE2meras diferentes") || lowerIssue.includes("desproporcional") || lowerIssue.includes("muito maior") || lowerIssue.includes("gigante") || lowerIssue.includes("configura\xE7\xE3o diferente") || lowerIssue.includes("diverg") || lowerIssue.includes("inconsist") || lowerIssue.includes("incorret") || lowerIssue.includes("diferente da refer\xEAncia") || lowerIssue.includes("deforma"));
+        if (issueExplicitlyClean) {
+          score = 94;
+        } else if (issueMentionsDefect || score < 60) {
+          score = Math.min(score, 45);
+        } else if (score >= 90) {
+          score = 94;
+        } else {
+          score = Math.max(65, score);
+        }
+        const status = getAuditColorStatus(score);
+        return {
+          frameNumber: num,
+          second: sec,
+          productVisible: found?.productVisible !== false,
+          score,
+          status,
+          issue,
+          frameThumbnail: contactSheetBase64 ? void 0 : vf.frameBase64
+        };
+      });
+      const defectFrames = normalizedFrames.filter((fr) => fr.score < 75);
+      let rawFindings = (Array.isArray(parsed.findings) ? parsed.findings : []).filter((f) => {
+        const titleLow = String(f?.title || f?.issue || f?.finding_description || "").toLowerCase();
+        const whatLow = String(f?.whatAppearsInVideo || f?.description || f?.issue || "").toLowerCase();
         if ((titleLow.includes("bot\xE3o") || whatLow.includes("bot\xE3o") || titleLow.includes("anel vermelho") || whatLow.includes("anel vermelho")) && (whatLow.includes("n\xE3o vis\xEDvel") || whatLow.includes("n\xE3o \xE9 vis\xEDvel") || whatLow.includes("ausente") || whatLow.includes("n\xE3o aparece") || whatLow.includes("n\xE3o d\xE1 para ver"))) {
           return false;
         }
         return true;
       });
+      if (defectFrames.length > 0 && rawFindings.length === 0) {
+        rawFindings = defectFrames.map((df, idx) => ({
+          number: idx + 1,
+          title: df.issue.replace(/\.$/, ""),
+          severity: "evident",
+          whatAppearsInVideo: df.issue,
+          whereItAppears: `Frame ${df.frameNumber} (${df.second}s \u2014 00:${String(df.second).padStart(2, "0")})`,
+          bestFrameSecond: df.second,
+          bestRefIndex: 1,
+          howToFix: "Substituir ou regerar o trecho divergente mantendo fidelidade estrita \xE0s fotos de refer\xEAncia."
+        }));
+      }
+      rawFindings = rawFindings.map((f, idx) => {
+        const rawCandidateSec = parseSecNum(f.bestFrameSecond) ?? parseSecNum(f.second) ?? parseSecNum(f.verified_timestamp_seconds) ?? parseSecNum(f.requested_timestamp_seconds);
+        const textToSearch = `${f.whereItAppears || ""} ${f.whatAppearsInVideo || ""} ${f.title || ""} ${f.issue || ""} ${f.finding_description || ""}`;
+        const secMatch = textToSearch.match(/\b([0-9]|10)\s*(?:s|seg|segundos?)\b/i) || textToSearch.match(/00:0?([0-9]|10)/i);
+        const mentionedSec = secMatch ? Number(secMatch[1]) : null;
+        const frameMatch = textToSearch.match(/\b(?:frame|quadro|captura)\s*([1-9]|10)\b/i);
+        const mentionedFrameNum = frameMatch ? Number(frameMatch[1]) : null;
+        const secFromFrameNum = mentionedFrameNum ? normalizedFrames.find((nf) => nf.frameNumber === mentionedFrameNum)?.second ?? null : null;
+        let chosenDefectFrame = null;
+        if (defectFrames.length > 0) {
+          chosenDefectFrame = defectFrames.find((df) => mentionedSec !== null && Math.abs(df.second - mentionedSec) < 0.5) || defectFrames.find((df) => secFromFrameNum !== null && Math.abs(df.second - secFromFrameNum) < 0.5) || defectFrames.find((df) => rawCandidateSec !== null && Math.abs(df.second - rawCandidateSec) < 0.5) || defectFrames[idx] || defectFrames[0];
+        }
+        let verifiedSec;
+        if (chosenDefectFrame) {
+          verifiedSec = chosenDefectFrame.second;
+        } else {
+          const candidate = mentionedSec ?? secFromFrameNum ?? rawCandidateSec;
+          const frameAtCandidate = candidate !== null ? normalizedFrames.find((nf) => Math.abs(nf.second - candidate) < 0.5) : null;
+          if (candidate !== null && frameAtCandidate && frameAtCandidate.score < 90) {
+            verifiedSec = frameAtCandidate.second;
+          } else {
+            verifiedSec = candidate ?? 4;
+          }
+        }
+        const matchedFrameObj = normalizedFrames.find((nf) => Math.abs(nf.second - verifiedSec) < 0.5) || chosenDefectFrame || normalizedFrames[0];
+        let rawTitle = String(
+          f.title || f.observed_region || f.finding_description || f.issue || ""
+        ).trim();
+        if (!rawTitle || /^ponto de inspe[çc][ãa]o/i.test(rawTitle) || /^achado\s*\d+$/i.test(rawTitle)) {
+          rawTitle = chosenDefectFrame?.issue?.replace(/\.$/, "") || String(f.whatAppearsInVideo || "").replace(/\.$/, "") || "Inconsist\xEAncia visual no componente do produto";
+        }
+        let rawWhat = String(
+          f.whatAppearsInVideo || f.finding_description || f.description || f.issue || ""
+        ).trim();
+        if (!rawWhat && chosenDefectFrame?.issue) {
+          rawWhat = chosenDefectFrame.issue;
+        }
+        const formattedTime = `00:${String(Math.max(0, Math.round(verifiedSec))).padStart(2, "0")}`;
+        const frameNumLabel = matchedFrameObj?.frameNumber ? `Frame ${matchedFrameObj.frameNumber}` : `Segundo ${verifiedSec}s`;
+        const verifiedWhere = `${frameNumLabel} (${verifiedSec}s \u2014 ${formattedTime})`;
+        return {
+          ...f,
+          number: Number(f.number) || idx + 1,
+          title: rawTitle,
+          whatAppearsInVideo: rawWhat,
+          whereItAppears: verifiedWhere,
+          bestFrameSecond: verifiedSec
+        };
+      });
+      parsed.frames = normalizedFrames;
+      parsed.findings = rawFindings;
+      return { normalizedFrames, rawFindings };
+    };
+    const finalizeVideoAuditResponse = (parsed, usageObj) => {
+      const { normalizedFrames, rawFindings } = syncFramesAndFindings(parsed);
       const normalizedFindings = rawFindings.map((f, idx) => {
-        const sevRaw = String(f.severity || "possible").toLowerCase();
+        const sevRaw = String(f.severity || "evident").toLowerCase();
         const severity = sevRaw.includes("evid") || sevRaw === "red" || sevRaw === "high" ? "evident" : sevRaw.includes("obs") || sevRaw === "info" ? "observation" : "possible";
         const chosenBestRef = Math.max(1, Math.min(photosList.length, Number(f.bestRefIndex) || 1));
         let refNotes = Array.isArray(f.referenceNotes) ? f.referenceNotes.map((rn, rIdx) => ({
@@ -5783,7 +5898,7 @@ Retorne ESTRITAMENTE um objeto JSON v\xE1lido em portugu\xEAs com este formato:
             1,
             Math.min(photosList.length, Number(rn.refIndex) || (rIdx === 0 ? chosenBestRef : rIdx + 1))
           ),
-          label: String(rn.label || `Refer\xEAncia #${rIdx === 0 ? chosenBestRef : rIdx + 1}`).trim(),
+          label: String(rn.label || `Refer\xEAncia #${rIdx === 0 ? chosenBestRef : rIdx + 1}: foto original do produto`).trim(),
           description: String(rn.description || "").trim()
         })) : [];
         if (refNotes.length === 1) {
@@ -5802,13 +5917,15 @@ Retorne ESTRITAMENTE um objeto JSON v\xE1lido em portugu\xEAs com este formato:
         };
         return {
           number: Number(f.number) || idx + 1,
-          title: String(f.title || `Ponto de Inspe\xE7\xE3o ${idx + 1}`).trim(),
+          title: String(f.title || "Inconsist\xEAncia visual no produto").trim(),
           severity,
           referenceNotes: refNotes,
           whatAppearsInVideo: String(f.whatAppearsInVideo || "").trim(),
           whereItAppears: String(f.whereItAppears || "").trim(),
-          howToFix: String(f.howToFix || "").trim(),
-          bestFrameSecond: f.bestFrameSecond !== void 0 ? Number(f.bestFrameSecond) : void 0,
+          howToFix: String(
+            f.howToFix || "Substituir ou regerar o trecho apontado mantendo fidelidade estrita \xE0s fotos de refer\xEAncia."
+          ).trim(),
+          bestFrameSecond: f.bestFrameSecond !== void 0 ? Number(f.bestFrameSecond) : 4,
           bestRefIndex: chosenBestRef,
           refCropBox: parseBox(f.refCropBox),
           videoCropBox: parseBox(f.videoCropBox)
@@ -5816,61 +5933,6 @@ Retorne ESTRITAMENTE um objeto JSON v\xE1lido em portugu\xEAs com este formato:
       });
       const hasEvidentFinding = normalizedFindings.some((f) => f.severity === "evident");
       const hasPossibleFinding = normalizedFindings.some((f) => f.severity === "possible");
-      const evidentSecondsSet = /* @__PURE__ */ new Set();
-      normalizedFindings.filter((f) => f.severity === "evident").forEach((f) => {
-        if (f.bestFrameSecond !== void 0 && !isNaN(f.bestFrameSecond)) {
-          evidentSecondsSet.add(Math.round(f.bestFrameSecond));
-        }
-        const whereText = String(f.whereItAppears || "");
-        const secMatches = whereText.match(/\b(\d{1,2})\s*(?:s|seg|segundos)\b/gi) || [];
-        secMatches.forEach((m) => {
-          const num = parseInt(m.replace(/\D+/g, ""), 10);
-          if (!isNaN(num)) evidentSecondsSet.add(num);
-        });
-        const timecodeMatches = whereText.match(/00:(\d{2})/g) || [];
-        timecodeMatches.forEach((m) => {
-          const num = parseInt(m.split(":")[1], 10);
-          if (!isNaN(num)) evidentSecondsSet.add(num);
-        });
-      });
-      const normalizedFrames = videoFrames.map((vf, idx) => {
-        const num = idx + 1;
-        const sec = vf.second ?? idx;
-        const found = (parsed.frames || []).find((f) => f.second !== void 0 && Math.abs(Number(f.second) - Number(sec)) < 0.3) || (parsed.frames || [])[idx];
-        let score = Number(found?.score ?? 94);
-        if (isNaN(score)) score = 94;
-        if (score > 0 && score <= 1) score = Math.round(score * 100);
-        let issue = String(
-          found?.issue || (score >= 90 ? "Produto consistente com a refer\xEAncia, sem distor\xE7\xF5es vis\xEDveis." : "Apresenta varia\xE7\xE3o visual em rela\xE7\xE3o \xE0 refer\xEAncia.")
-        ).replace(/^(?:frame|captura|quadro|cena)\s*\d+\s*(?:\(\s*\d+\s*s\s*\))?\s*[:\-–—]\s*/i, "").replace(/^\(\s*\d+\s*s\s*\)\s*[:\-–—]\s*/i, "").trim();
-        const lowerRaw = issue.toLowerCase();
-        if ((lowerRaw.includes("bot\xE3o") || lowerRaw.includes("anel vermelho")) && (lowerRaw.includes("n\xE3o vis\xEDvel") || lowerRaw.includes("n\xE3o \xE9 vis\xEDvel") || lowerRaw.includes("ausente") || lowerRaw.includes("n\xE3o aparece") || lowerRaw.includes("n\xE3o d\xE1 para ver"))) {
-          issue = "Produto consistente com a refer\xEAncia, sem distor\xE7\xF5es vis\xEDveis.";
-          score = 94;
-        }
-        const lowerIssue = issue.toLowerCase();
-        const issueExplicitlyClean = lowerIssue.includes("sem inconsist") || lowerIssue.includes("sem diverg") || lowerIssue.includes("sem distor") || lowerIssue.includes("sem erro") || lowerIssue.includes("id\xEAntic") || lowerIssue.includes("fiel \xE0 refer\xEAncia") || lowerIssue.includes("consistente com a refer\xEAncia") || lowerIssue.includes("correto") || lowerIssue.includes("aprovado");
-        const issueMentionsDefect = !issueExplicitlyClean && (lowerIssue.includes("c\xE2mera extra") || lowerIssue.includes("lente extra") || lowerIssue.includes("terceira c\xE2mera") || lowerIssue.includes("terceira lente") || lowerIssue.includes("tr\xEAs lentes") || lowerIssue.includes("3 lentes") || lowerIssue.includes("c\xE2mera a mais") || lowerIssue.includes("lente a mais") || lowerIssue.includes("bloco elevado") || lowerIssue.includes("m\xF3dulo retangular") || lowerIssue.includes("ilha") || lowerIssue.includes("c\xE2meras diferentes") || lowerIssue.includes("desproporcional") || lowerIssue.includes("muito maior") || lowerIssue.includes("gigante") || lowerIssue.includes("configura\xE7\xE3o diferente") || lowerIssue.includes("diverg") || lowerIssue.includes("inconsist") || lowerIssue.includes("incorret") || lowerIssue.includes("diferente da refer\xEAncia") || lowerIssue.includes("deforma"));
-        if (issueExplicitlyClean) {
-          score = Math.max(score, 94);
-        } else if (issueMentionsDefect || score < 60 || evidentSecondsSet.has(Math.round(Number(sec)))) {
-          score = Math.min(score, 45);
-        } else if (score >= 90) {
-          score = 94;
-        } else {
-          score = Math.max(65, score);
-        }
-        const status = getAuditColorStatus(score);
-        return {
-          frameNumber: num,
-          second: sec,
-          productVisible: found?.productVisible !== false,
-          score,
-          status,
-          issue,
-          frameThumbnail: contactSheetBase64 ? void 0 : vf.frameBase64
-        };
-      });
       const scores = normalizedFrames.map((f) => f.score);
       const minScore = Math.min(...scores);
       const avgScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
@@ -6008,6 +6070,7 @@ Retorne o JSON estritamente conforme o schema especificado.`;
         }
         const rawText = completion.choices[0]?.message?.content || "{}";
         const parsed = JSON.parse(rawText);
+        syncFramesAndFindings(parsed);
         if (Array.isArray(parsed.findings) && parsed.findings.length > 0 && photosList.length > 0) {
           try {
             const cropBlocks = [];
@@ -6026,51 +6089,10 @@ Retorne o JSON estritamente conforme o schema especificado.`;
             });
             const usedSecMap = /* @__PURE__ */ new Map();
             parsed.findings.forEach((f) => {
-              let targetSec = null;
-              const textToSearch = `${f.whereItAppears || ""} ${f.whatAppearsInVideo || ""} ${f.title || ""}`;
-              const secMatch = textToSearch.match(/\b([0-9]|10)\s*(?:s|seg|segundos?)\b/i) || textToSearch.match(/00:0?([0-9]|10)/i);
-              const mentionedSec = secMatch ? Number(secMatch[1]) : null;
-              const frameMatch = textToSearch.match(/\b(?:frame|quadro|captura)\s*([1-9]|10)\b/i);
-              const mentionedFrameNum = frameMatch ? Number(frameMatch[1]) : null;
-              const frameFromNum = mentionedFrameNum ? (Array.isArray(parsed.frames) ? parsed.frames : []).find(
-                (fr) => Number(fr.frameNumber) === mentionedFrameNum
-              ) || videoFrames[mentionedFrameNum - 1] : null;
-              const secFromFrameNum = frameFromNum?.second !== void 0 ? Number(frameFromNum.second) : null;
-              const defectFrames = (Array.isArray(parsed.frames) ? parsed.frames : []).filter((fr) => {
-                const s = Number(fr.score);
-                const iss = String(fr.issue || "").toLowerCase();
-                const isClean = iss.includes("sem inconsist") || iss.includes("consistente") || iss.includes("sem diverg");
-                return !isClean && (s < 75 || iss.includes("c\xE2mera") || iss.includes("lente") || iss.includes("bloco") || iss.includes("extra") || iss.includes("anel"));
-              });
-              const rawSec = f.bestFrameSecond !== void 0 ? Number(f.bestFrameSecond) : null;
-              const frameAtRawSec = (Array.isArray(parsed.frames) ? parsed.frames : []).find(
-                (fr) => rawSec !== null && Math.abs(Number(fr.second) - rawSec) < 0.6
+              const targetSec = Number(f.bestFrameSecond ?? 4);
+              const matchedVf = videoFrames.find(
+                (vf) => vf.frameBase64 && Math.abs(Number(vf.second) - targetSec) < 0.6
               );
-              const isRawSecClean = frameAtRawSec && (Number(frameAtRawSec.score) >= 90 || String(frameAtRawSec.issue || "").toLowerCase().includes("sem inconsist") || String(frameAtRawSec.issue || "").toLowerCase().includes("consistente"));
-              if (rawSec !== null && !isRawSecClean) {
-                targetSec = rawSec;
-              } else if (mentionedSec !== null && videoFrames.some((vf) => Math.abs(Number(vf.second) - mentionedSec) < 0.6)) {
-                targetSec = mentionedSec;
-              } else if (secFromFrameNum !== null && !isNaN(secFromFrameNum)) {
-                targetSec = secFromFrameNum;
-              } else if (defectFrames.length > 0) {
-                const findTerms = `${f.title} ${f.whatAppearsInVideo}`.toLowerCase();
-                const bestDefect = defectFrames.reduce((best, curr) => {
-                  const currIss = String(curr.issue || "").toLowerCase();
-                  const bestIss = String(best.issue || "").toLowerCase();
-                  const currMatch = currIss.includes("c\xE2mera") && findTerms.includes("c\xE2mera") || currIss.includes("lente") && findTerms.includes("lente");
-                  const bestMatch = bestIss.includes("c\xE2mera") && findTerms.includes("c\xE2mera") || bestIss.includes("lente") && findTerms.includes("lente");
-                  if (currMatch && !bestMatch) return curr;
-                  if (!currMatch && bestMatch) return best;
-                  return Number(curr.score) < Number(best.score) ? curr : best;
-                }, defectFrames[0]);
-                targetSec = Number(bestDefect.second);
-              } else if (rawSec !== null) {
-                targetSec = rawSec;
-              } else {
-                targetSec = 4;
-              }
-              const matchedVf = videoFrames.find((vf) => vf.frameBase64 && Math.abs(Number(vf.second) - targetSec) < 0.6) || videoFrames.find((vf) => vf.frameBase64);
               if (matchedVf && matchedVf.frameBase64) {
                 const secKey = Math.round(Number(matchedVf.second));
                 f.bestFrameSecond = secKey;
@@ -6080,7 +6102,7 @@ Retorne o JSON estritamente conforme o schema especificado.`;
             usedSecMap.forEach((b64, sec) => {
               cropBlocks.push({
                 type: "text",
-                text: `[CAPTURA DO V\xCDDEO NO SEGUNDO ${sec}s]:`
+                text: `[CAPTURA REAL DO V\xCDDEO NO SEGUNDO EXATO DO ERRO (${sec}s \u2014 00:${String(sec).padStart(2, "0")})]:`
               });
               cropBlocks.push({
                 type: "image_url",
@@ -6099,17 +6121,18 @@ Retorne o JSON estritamente conforme o schema especificado.`;
             cropBlocks.push({
               type: "text",
               text: `Voc\xEA \xE9 um Especialista em Recorte Fotogr\xE1fico Pericial (Bounding Box 0..1000).
-Para cada achado abaixo, precisamos montar uma imagem comparativa lado a lado mostrando APENAS A PARTE ESPEC\xCDFICA DO PRODUTO QUE EST\xC1 COM PROBLEMA (por exemplo: se o problema for nas c\xE2meras/lentes traseiras do celular, queremos mostrar APENAS o recorte fechado das lentes traseiras na Foto de Refer\xEAncia correta ao lado do recorte fechado das lentes traseiras na Captura do V\xEDdeo!).
+Para cada achado abaixo, vamos montar a imagem de COMPARA\xC7\xC3O VISUAL lado a lado:
+- Painel Esquerdo: FOTO DE REFER\xCANCIA ORIGINAL (mostrando o mesmo \xE2ngulo/componente do produto, ex: a traseira do celular com as lentes originais).
+- Painel Direito: CAPTURA REAL DO V\xCDDEO no segundo exato do erro (ex: 00:04 mostrando a traseira do celular com a c\xE2mera extra / 3 lentes).
 
 REGRAS OBRIGAT\xD3RIAS:
 1. ESCOLHA DA FOTO DE REFER\xCANCIA CORRETA ("bestRefIndex" de 1 a ${photosList.length}):
    - Examine todas as ${photosList.length} Fotos de Refer\xEAncia acima (#1 a #${photosList.length}).
-   - Escolha como "bestRefIndex" a Foto de Refer\xEAncia que mostra a parte analisada (ex: a traseira do celular com as lentes das c\xE2meras) em MAIOR DESTAQUE, DE FRENTE E N\xCDTIDA!
-   - PROIBIDO escolher uma foto que mostra apenas a lateral/base do aparelho ou textos promocionais ("Qualidade de primeira linha / Design sim\xE9trico") quando outra foto de refer\xEAncia (ex: #2) mostra claramente a traseira do celular e as lentes das c\xE2meras!
+   - Escolha como "bestRefIndex" a Foto de Refer\xEAncia que mostra o mesmo \xE2ngulo/componente analisado (ex: a traseira do celular com as lentes das c\xE2meras) de forma clara e direta.
 2. RECORTE NA FOTO DE REFER\xCANCIA ("refCropBox": [ymin, xmin, ymax, xmax] em escala 0 a 1000):
-   - Localize a caixa delimitadora que enquadra o componente espec\xEDfico com folga generosa (ex: o conjunto completo das lentes traseiras e flash no canto da traseira do celular, ou o bot\xE3o lateral correto). NUNCA corte nenhuma lente pela metade nas laterais!
-3. RECORTE NA CAPTURA DO V\xCDDEO ("videoCropBox": [ymin, xmin, ymax, xmax] em escala 0 a 1000):
-   - Localize a caixa delimitadora que enquadra o componente com erro por inteiro (ex: o m\xF3dulo completo de c\xE2meras e lentes com margem folgada, ou o bot\xE3o lateral com o anel divergente na borda do aparelho). NUNCA forne\xE7a caixas estreitas que cortem o produto pela metade!
+   - Enquadre o aparelho/componente analisado preservando contexto suficiente para reconhecer o produto e as lentes sem cortar detalhes pela metade.
+3. RECORTE NA CAPTURA REAL DO V\xCDDEO ("videoCropBox": [ymin, xmin, ymax, xmax] em escala 0 a 1000):
+   - Enquadre o produto e o m\xF3dulo de c\xE2meras/componente divergente na captura do v\xEDdeo, mantendo contexto suficiente para identificar o aparelho nas m\xE3os sem cortar nenhuma lente pela metade.
 
 Achados para localizar:
 ${JSON.stringify(findingsSummaryForCrop, null, 2)}
@@ -6119,7 +6142,9 @@ Retorne APENAS um JSON no formato:
   "crops": [
     {
       "index": 0,
-      "bestRefIndex": 2,
+      "bestRefIndex": 1,
+      "title": "T\xEDtulo claro e objetivo da diverg\xEAncia (ex: M\xF3dulo traseiro com c\xE2mera extra \u2014 3 lentes e bloco elevado)",
+      "whatAppearsInVideo": "Descri\xE7\xE3o clara comparando o que aparece no frame do v\xEDdeo com a foto de refer\xEAncia",
       "refDescription": "Descri\xE7\xE3o curta do que aparece especificamente nessa foto de refer\xEAncia #bestRefIndex para este componente",
       "refCropBox": [ymin, xmin, ymax, xmax],
       "videoCropBox": [ymin, xmin, ymax, xmax]
@@ -6132,7 +6157,7 @@ Retorne APENAS um JSON no formato:
               messages: [{ role: "user", content: cropBlocks }],
               response_format: { type: "json_object" },
               temperature: 0,
-              max_tokens: 800
+              max_tokens: 900
             });
             const cropParsed = JSON.parse(cropComp.choices[0]?.message?.content || "{}");
             if (Array.isArray(cropParsed.crops)) {
@@ -6141,6 +6166,12 @@ Retorne APENAS um JSON no formato:
                 if (!targetFinding) return;
                 if (c.bestRefIndex) {
                   targetFinding.bestRefIndex = Math.max(1, Math.min(photosList.length, Number(c.bestRefIndex)));
+                }
+                if (c.title && String(c.title).trim().length > 5 && !/ponto de inspe/i.test(String(c.title))) {
+                  targetFinding.title = String(c.title).trim();
+                }
+                if (c.whatAppearsInVideo && String(c.whatAppearsInVideo).trim().length > 10) {
+                  targetFinding.whatAppearsInVideo = String(c.whatAppearsInVideo).trim();
                 }
                 if (Array.isArray(c.refCropBox) && c.refCropBox.length === 4) {
                   targetFinding.refCropBox = c.refCropBox;
