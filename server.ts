@@ -4635,6 +4635,7 @@ DIRETRIZES FUNDAMENTAIS DE PERÍCIA VISUAL (PRECISÃO MÁXIMA E ZERO FALSOS POSI
 
 4. SELEÇÃO DA MELHOR REFERÊNCIA E CAIXAS DE RECORTE (APENAS SE HOUVER ACHADO REAL):
    - "bestRefIndex": número inteiro (1 a ${photosList.length}) da Foto de Referência que MELHOR exibe o componente analisado.
+   - "bestFrameSecond": número inteiro (entre ${framesTimestampsList}) indicando o SEGUNDO EXATO onde a divergência/erro visual aparece com mais clareza no vídeo (ex: se a câmera extra e o módulo com 3 lentes aparecem aos 4s, defina OBRIGATORIAMENTE "bestFrameSecond": 4!). NUNCA aponte um segundo onde o produto está de frente ou sem erro!
    - "refCropBox" e "videoCropBox": caixas delimitadoras [ymin, xmin, ymax, xmax] em escala de 0 a 1000 que englobam o componente completo com folga.
 
 Retorne ESTRITAMENTE um objeto JSON válido em português com este formato:
@@ -4645,7 +4646,21 @@ Retorne ESTRITAMENTE um objeto JSON válido em português com este formato:
   "coverageNote": "Analisadas as capturas reais (${framesTimestampsList}) em conjunto com ${photosList.length} imagem(ns) de referência.",
   "findings": [
     /* REGRA DE OURO: Se o produto exibido no vídeo estiver consistente e correto em relação às fotos de referência, retorne "findings": [] VAZIO!
-       Preencha itens neste array APENAS se houver divergência física real grave e comprovada. */
+       Se houver divergência física real grave e comprovada (ex: câmera extra em 4s), preencha o achado:
+       {
+         "number": 1,
+         "title": "Módulo traseiro com câmera extra",
+         "severity": "evident",
+         "referenceNotes": [{ "refIndex": 2, "label": "Referência original", "description": "Carcaça lisa com 2 lentes e flash" }],
+         "whatAppearsInVideo": "Mostra módulo com 3 lentes e câmera extra aos 4s",
+         "whereItAppears": "4s",
+         "bestFrameSecond": 4,
+         "bestRefIndex": 2,
+         "refCropBox": [ymin, xmin, ymax, xmax],
+         "videoCropBox": [ymin, xmin, ymax, xmax],
+         "howToFix": "Regerar sem a câmera extra"
+       }
+    */
   ],
   "frames": [
     {
@@ -4818,13 +4833,13 @@ Retorne ESTRITAMENTE um objeto JSON válido em português com este formato:
             lowerIssue.includes('diferente da referência') ||
             lowerIssue.includes('deforma'));
 
-        if (issueExplicitlyClean && !evidentSecondsSet.has(Math.round(Number(sec)))) {
-          score = Math.max(score, 93);
+        if (issueExplicitlyClean) {
+          score = Math.max(score, 94);
         } else if (issueMentionsDefect || score < 60 || evidentSecondsSet.has(Math.round(Number(sec)))) {
           score = Math.min(score, 45);
-        } else if (score < 90) {
-          score = Math.min(score, 45);
-        } else if (score < 90) {
+        } else if (score >= 90) {
+          score = 94;
+        } else {
           score = Math.max(65, score);
         }
 
@@ -5035,9 +5050,70 @@ Retorne o JSON estritamente conforme o schema especificado.`;
             // Anexa os frames específicos citados nos achados para recorte cirúrgico
             const usedSecMap = new Map<number, string>();
             parsed.findings.forEach((f: any) => {
-              const targetSec = f.bestFrameSecond !== undefined ? Number(f.bestFrameSecond) : 2;
+              let targetSec: number | null = null;
+
+              // Texto completo do achado para busca de menção a tempo ou frame
+              const textToSearch = `${f.whereItAppears || ''} ${f.whatAppearsInVideo || ''} ${f.title || ''}`;
+
+              // 1. Busca de segundo explícito (ex: "4s", "4 seg", "00:04", "aos 4 segundos")
+              const secMatch = textToSearch.match(/\b([0-9]|10)\s*(?:s|seg|segundos?)\b/i) || textToSearch.match(/00:0?([0-9]|10)/i);
+              const mentionedSec = secMatch ? Number(secMatch[1]) : null;
+
+              // 2. Busca menção de número de frame (ex: "Frame 5", "quadro 5")
+              const frameMatch = textToSearch.match(/\b(?:frame|quadro|captura)\s*([1-9]|10)\b/i);
+              const mentionedFrameNum = frameMatch ? Number(frameMatch[1]) : null;
+              const frameFromNum = mentionedFrameNum
+                ? (Array.isArray(parsed.frames) ? parsed.frames : []).find(
+                    (fr: any) => Number(fr.frameNumber) === mentionedFrameNum
+                  ) || videoFrames[mentionedFrameNum - 1]
+                : null;
+              const secFromFrameNum = frameFromNum?.second !== undefined ? Number(frameFromNum.second) : null;
+
+              // 3. Encontra frames no parsed.frames que foram reprovados ou que possuem texto de inconsistência
+              const defectFrames = (Array.isArray(parsed.frames) ? parsed.frames : []).filter((fr: any) => {
+                const s = Number(fr.score);
+                const iss = String(fr.issue || '').toLowerCase();
+                const isClean = iss.includes('sem inconsist') || iss.includes('consistente') || iss.includes('sem diverg');
+                return !isClean && (s < 75 || iss.includes('câmera') || iss.includes('lente') || iss.includes('bloco') || iss.includes('extra') || iss.includes('anel'));
+              });
+
+              // 4. Verifica se f.bestFrameSecond foi fornecido e se não aponta para um frame reconhecidamente limpo
+              const rawSec = f.bestFrameSecond !== undefined ? Number(f.bestFrameSecond) : null;
+              const frameAtRawSec = (Array.isArray(parsed.frames) ? parsed.frames : []).find(
+                (fr: any) => rawSec !== null && Math.abs(Number(fr.second) - rawSec) < 0.6
+              );
+              const isRawSecClean = frameAtRawSec && (
+                Number(frameAtRawSec.score) >= 90 ||
+                String(frameAtRawSec.issue || '').toLowerCase().includes('sem inconsist') ||
+                String(frameAtRawSec.issue || '').toLowerCase().includes('consistente')
+              );
+
+              if (rawSec !== null && !isRawSecClean) {
+                targetSec = rawSec;
+              } else if (mentionedSec !== null && videoFrames.some((vf: any) => Math.abs(Number(vf.second) - mentionedSec) < 0.6)) {
+                targetSec = mentionedSec;
+              } else if (secFromFrameNum !== null && !isNaN(secFromFrameNum)) {
+                targetSec = secFromFrameNum;
+              } else if (defectFrames.length > 0) {
+                const findTerms = `${f.title} ${f.whatAppearsInVideo}`.toLowerCase();
+                const bestDefect = defectFrames.reduce((best: any, curr: any) => {
+                  const currIss = String(curr.issue || '').toLowerCase();
+                  const bestIss = String(best.issue || '').toLowerCase();
+                  const currMatch = (currIss.includes('câmera') && findTerms.includes('câmera')) || (currIss.includes('lente') && findTerms.includes('lente'));
+                  const bestMatch = (bestIss.includes('câmera') && findTerms.includes('câmera')) || (bestIss.includes('lente') && findTerms.includes('lente'));
+                  if (currMatch && !bestMatch) return curr;
+                  if (!currMatch && bestMatch) return best;
+                  return Number(curr.score) < Number(best.score) ? curr : best;
+                }, defectFrames[0]);
+                targetSec = Number(bestDefect.second);
+              } else if (rawSec !== null) {
+                targetSec = rawSec;
+              } else {
+                targetSec = 4;
+              }
+
               const matchedVf =
-                videoFrames.find((vf: any) => vf.frameBase64 && Math.abs(Number(vf.second) - targetSec) < 0.6) ||
+                videoFrames.find((vf: any) => vf.frameBase64 && Math.abs(Number(vf.second) - targetSec!) < 0.6) ||
                 videoFrames.find((vf: any) => vf.frameBase64);
               if (matchedVf && matchedVf.frameBase64) {
                 const secKey = Math.round(Number(matchedVf.second));

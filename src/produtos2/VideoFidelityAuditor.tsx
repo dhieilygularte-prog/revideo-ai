@@ -653,9 +653,29 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
             );
             const refUrl = compressedRefs[refIdx] || compressedRefs[0];
 
-            // Localiza o frame mais próximo do segundo indicado no achado
-            const targetSec =
-              finding.bestFrameSecond !== undefined ? Number(finding.bestFrameSecond) : 1;
+            // Localiza o frame mais próximo do segundo do defeito real
+            let targetSec = Number(finding.bestFrameSecond);
+            const frameAtSec = finalAudit.frames?.find((f) => Math.abs(f.second - targetSec) < 0.6);
+            const isClean = frameAtSec && (
+              frameAtSec.score >= 90 ||
+              /consistente|sem inconsistência|sem divergência/i.test(frameAtSec.issue || '')
+            );
+
+            if (isNaN(targetSec) || isClean) {
+              const textToSearch = `${finding.whereItAppears || ''} ${finding.whatAppearsInVideo || ''} ${finding.title || ''}`;
+              const secMatch = textToSearch.match(/\b([0-9]|10)\s*(?:s|seg|segundos?)\b/i) || textToSearch.match(/00:0?([0-9]|10)/i);
+              if (secMatch) {
+                targetSec = Number(secMatch[1]);
+              } else {
+                const defectFrame = finalAudit.frames?.find((f) => f.score < 75 && !/consistente|sem inconsistência/i.test(f.issue || ''));
+                if (defectFrame) {
+                  targetSec = defectFrame.second;
+                } else if (isNaN(targetSec)) {
+                  targetSec = 4;
+                }
+              }
+            }
+
             const matchedFrame =
               frames.reduce((best, curr) =>
                 Math.abs(curr.second - targetSec) < Math.abs(best.second - targetSec) ? curr : best
