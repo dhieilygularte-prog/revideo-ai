@@ -315,72 +315,88 @@ async function buildVisualComparisonBanner(params: {
       62
     );
 
-    // Rótulos das duas colunas
+    // Rótulos das duas colunas e caixas quadradas periciais (1:1)
     const colY = 114;
-    const leftX = 32;
-    const rightX = 650;
-    const boxW = 500;
-    const boxH = 485;
+    const boxSize = 470;
+    const leftX = 65;
+    const rightX = 665;
     const imgTopY = 148;
 
     ctx.fillStyle = '#000000';
     ctx.font = 'bold 21px Inter, system-ui, -apple-system, sans-serif';
+    ctx.textAlign = 'left';
     ctx.fillText('REFERÊNCIA ORIGINAL', leftX, colY);
 
     const formattedSec = `00:${String(Math.max(0, Math.round(second))).padStart(2, '0')}`;
     ctx.fillText(`CAPTURA REAL DO VÍDEO — ${formattedSec}`, rightX, colY);
 
-    // Função auxiliar para recortar com margem de segurança mantendo a proporção original sem esticar
-    const drawCroppedPreservingAspect = (
+    // Função para recortar um QUADRADO perfeito (1:1) centralizado no componente
+    // com margem de respito suficiente para NUNCA cortar lentes ou detalhes pela metade
+    const drawSquareCropped = (
       img: HTMLImageElement,
       cropBox: [number, number, number, number] | undefined,
       destX: number,
       destY: number,
-      maxW: number,
-      maxH: number
+      destSize: number
     ) => {
-      const iw = img.width || 600;
-      const ih = img.height || 600;
+      const iw = img.naturalWidth || img.width || 600;
+      const ih = img.naturalHeight || img.height || 600;
 
-      let sx = 0;
-      let sy = 0;
-      let sw = iw;
-      let sh = ih;
+      let cx = iw / 2;
+      let cy = ih / 2;
+      let boxW = iw * 0.45;
+      let boxH = ih * 0.45;
 
-      if (cropBox && cropBox.length === 4) {
+      if (cropBox && Array.isArray(cropBox) && cropBox.length === 4) {
         let [ymin, xmin, ymax, xmax] = cropBox;
-        // Se vier em escala 0..100 em vez de 0..1000, normaliza para 0..1000
         if (ymax <= 100 && xmax <= 100 && (ymax > 1 || xmax > 1)) {
           ymin *= 10;
           xmin *= 10;
           ymax *= 10;
           xmax *= 10;
         }
-        // Adiciona 6% de respiro para manter o recorte bem focado apenas no componente (ex: apenas as lentes da câmera)
-        const padH = (ymax - ymin) * 0.06;
-        const padW = (xmax - xmin) * 0.06;
-        const y1 = Math.max(0, Math.min(950, ymin - padH));
-        const x1 = Math.max(0, Math.min(950, xmin - padW));
-        const y2 = Math.min(1000, Math.max(y1 + 80, ymax + padH));
-        const x2 = Math.min(1000, Math.max(x1 + 80, xmax + padW));
+        const pxX1 = (Math.max(0, Math.min(1000, xmin)) / 1000) * iw;
+        const pxY1 = (Math.max(0, Math.min(1000, ymin)) / 1000) * ih;
+        const pxX2 = (Math.max(0, Math.min(1000, xmax)) / 1000) * iw;
+        const pxY2 = (Math.max(0, Math.min(1000, ymax)) / 1000) * ih;
 
-        sx = Math.round((x1 / 1000) * iw);
-        sy = Math.round((y1 / 1000) * ih);
-        sw = Math.max(60, Math.min(iw - sx, Math.round(((x2 - x1) / 1000) * iw)));
-        sh = Math.max(60, Math.min(ih - sy, Math.round(((y2 - y1) / 1000) * ih)));
+        cx = (pxX1 + pxX2) / 2;
+        cy = (pxY1 + pxY2) / 2;
+        boxW = Math.max(40, Math.abs(pxX2 - pxX1));
+        boxH = Math.max(40, Math.abs(pxY2 - pxY1));
       }
 
-      const scale = Math.min(maxW / sw, maxH / sh);
-      const drawW = Math.round(sw * scale);
-      const drawH = Math.round(sh * scale);
-      const offsetX = destX + Math.round((maxW - drawW) / 2);
-      const offsetY = destY;
+      // Expande com 45% de margem em torno do componente para enquadrar completamente sem cortar nada na lateral ou na vertical
+      const targetSide = Math.max(boxW, boxH) * 1.45;
+      const maxPossible = Math.min(iw, ih);
+      const minPossible = Math.min(maxPossible, Math.max(160, maxPossible * 0.35));
+      const squareSide = Math.max(minPossible, Math.min(maxPossible, targetSide));
 
-      ctx.drawImage(img, sx, sy, sw, sh, offsetX, offsetY, drawW, drawH);
+      let sx = Math.round(cx - squareSide / 2);
+      let sy = Math.round(cy - squareSide / 2);
+
+      if (sx < 0) sx = 0;
+      if (sy < 0) sy = 0;
+      if (sx + squareSide > iw) sx = Math.max(0, iw - Math.round(squareSide));
+      if (sy + squareSide > ih) sy = Math.max(0, ih - Math.round(squareSide));
+
+      const sw = Math.min(iw - sx, Math.round(squareSide));
+      const sh = Math.min(ih - sy, Math.round(squareSide));
+
+      // Fundo cinza suave neutro antes de desenhar a imagem
+      ctx.fillStyle = '#f4f4f5';
+      ctx.fillRect(destX, destY, destSize, destSize);
+
+      ctx.drawImage(img, sx, sy, sw, sh, destX, destY, destSize, destSize);
+
+      // Borda sutil pericial ao redor do quadrado
+      ctx.strokeStyle = '#e4e4e7';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(destX, destY, destSize, destSize);
     };
 
-    drawCroppedPreservingAspect(refImg, finding.refCropBox, leftX, imgTopY, boxW, boxH);
-    drawCroppedPreservingAspect(vidImg, finding.videoCropBox, rightX, imgTopY, boxW, boxH);
+    drawSquareCropped(refImg, finding.refCropBox, leftX, imgTopY, boxSize);
+    drawSquareCropped(vidImg, finding.videoCropBox, rightX, imgTopY, boxSize);
 
     return canvas.toDataURL('image/png');
   } catch (err) {
