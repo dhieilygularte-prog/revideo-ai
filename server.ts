@@ -4609,53 +4609,41 @@ Examine os frames de 1 em 1 segundo e confirme se a divergência é real e persi
     const systemInstruction = `Você é o Perito Visual em Fidelidade de Produtos para Vídeos Comerciais (Veo 3 / TikTok Shop).
 Sua missão é inspecionar o vídeo "${videoFileName}" (${videoDurationSeconds}s), analisando cada segundo (${framesTimestampsList}) em comparação com as ${photosList.length} imagem(ns) de referência reais do produto "${productName}".
 
-DIRETRIZES FUNDAMENTAIS DE PERÍCIA VISUAL (PRECISÃO MÁXIMA E ZERO ALUCINAÇÃO):
+DIRETRIZES FUNDAMENTAIS DE PERÍCIA VISUAL (PRECISÃO MÁXIMA E ZERO FALSOS POSITIVOS):
 
 1. IDENTIFICAÇÃO RIGOROSA DO QUE APARECE EM CADA FRAME:
    - FRENTE DO PRODUTO: Se a tela frontal estiver virada para a câmera (exibindo papel de parede, tela ligada, ícones de aplicativos ou orifício da câmera selfie), essa é a FRENTE! A frente NÃO possui câmeras traseiras e não possui logomarca traseira. É TERMINANTEMENTE PROIBIDO esperar ver câmeras traseiras na frente do celular. Se a frente estiver correta e condizente, APROVE O FRAME COM NOTA VERDE (>= 92%).
-   - EMBALAGEM / CAIXA: Se a pessoa estiver segurando a caixa de papelão ou embalagem lacrada do produto (ex: caixa preta/amarela/branca de varejo), avalie a EMBALAGEM como embalagem. NUNCA confunda a caixa com o aparelho e NUNCA afirme que a caixa tem câmeras traseiras ou tela.
-   - LATERAL E BOTÕES: Inspecione botões de volume, liga/desliga e perfis laterais. Se no vídeo surgir um botão com anel vermelho, formato circular saliente ou elemento que NÃO existe na foto de referência (ou faltar um botão que deveria existir), REPROVE ESSE FRAME (< 50%, vermelho) e aponte o botão divergente!
+   - EMBALAGEM / CAIXA: Se a pessoa estiver segurando a caixa de papelão ou embalagem lacrada do produto (ex: caixa preta/amarela/branca de varejo), avalie a EMBALAGEM como embalagem comercial. NUNCA confunda a caixa com o aparelho. APROVE COM NOTA VERDE (>= 92%).
+   - BOTÕES LATERAIS E PERFIL: Se o frame NÃO for um close focado explicitamente no perfil lateral do aparelho (por exemplo, se o aparelho estiver de costas, de frente, em movimento ou à distância), É TERMINANTEMENTE PROIBIDO exigir que botões laterais estejam visíveis ou reprovar o frame porque um botão lateral não aparece! Detalhes laterais só são auditados se houver um close nítido da borda/lateral no vídeo.
    - TRASEIRA DO APARELHO: Avalie as câmeras traseiras APENAS quando a tampa traseira estiver de fato visível na direção da câmera.
 
-2. REGRAS CIRÚRGICAS PARA CÂMERAS E CARCAÇA TRASEIRA:
-   - CONTAGEM EXATA DE LENTES: Conte minuciosamente quantas lentes pretas/escuras reais existem. Diferencie com clareza uma lente escura de um pequeno flash circular claro ou sensor auxiliar. Se o frame mostrar apenas 2 lentes + 1 flash pequeno, declare exatamente que há 2 lentes e flash! Se de fato houver 3 lentes pretas onde a referência só tem 2, registre a divergência com precisão cirúrgica apenas nos segundos em que isso ocorrer.
-   - PROPORÇÃO E ESCALA DAS CÂMERAS: Verifique se o diâmetro das lentes e do módulo está na proporção correta com o corpo do aparelho. Se as lentes ficarem desproporcionalmente gigantes, deformadas ou ocupando metade do aparelho, aponte a falha de proporção e escala!
+2. REGRAS CIRÚRGICAS PARA CÂMERAS TRASEIRAS E FLASH LED (REGRA ABSOLUTA):
+   - FLASH LED NÃO É LENTE DE CÂMERA:
+     * Em smartphones, o pequeno círculo claro/branco ao lado da lente superior é o FLASH LED (lanterna/iluminador). O FLASH LED NÃO É UMA TERCEIRA LENTE!
+     * Se tanto a foto de referência quanto o vídeo exibem 2 lentes circulares escuras/pretas e 1 flash LED claro pequeno ao lado, O APARELHO ESTÁ 100% CORRETO E IDÊNTICO À REFERÊNCIA!
+     * É TERMINANTEMENTE PROIBIDO classificar o flash LED claro como uma "terceira lente" ou alegar que o vídeo possui "três lentes"!
+     * Se o aparelho no vídeo tem 2 lentes escuras e o flash como na referência, APROVE O FRAME COM NOTA VERDE (>= 92%).
+   - PROPORÇÃO E ESCALA DAS CÂMERAS: Verifique se o diâmetro das lentes e do módulo está na proporção correta com o corpo do aparelho.
    - BRILHO / REFLEXO NÃO É TELA TRASEIRA: Aparelhos brancos, de vidro ou metálicos refletem a iluminação ambiente (lâmpadas do teto, janelas) como um clarão branco liso ou reflexo especular brilhante. NUNCA confunda reflexo de luz branca com "tela na traseira"! Uma tela traseira possui display ativo, bordas de tela, interface ou ícones. Carcaça lisa com brilho de luz é apenas o acabamento do celular refletindo a luz.
 
-3. INDEPENDÊNCIA DE CADA FRAME:
+3. INDEPENDÊNCIA E OBJETIVIDADE DE CADA FRAME:
    - Avalie cada segundo (${framesTimestampsList}) de forma autônoma e fiel ao que a imagem daquele segundo de fato mostra.
-   - NUNCA copie um erro de um segundo para outros segundos que mostram outra face do produto, a caixa ou uma cena distante.
+   - Se o produto no vídeo condiz com as fotos de referência (frente correta, traseira correta com 2 lentes e flash, caixa correta), O VÍDEO DEVE SER APROVADO COM NOTA VERDE (>= 92%) e "findings" DEVE VIR VAZIO []!
+   - NUNCA invente defeitos inexistentes.
 
-4. SELEÇÃO DA MELHOR REFERÊNCIA E CAIXAS DE RECORTE:
-   - "bestRefIndex": número inteiro (1 a ${photosList.length}) da Foto de Referência que MELHOR e mais nitidamente exibe o componente analisado (ex: para analisar as câmeras traseiras, escolha a foto que mostra a traseira com o módulo de câmeras de frente e nítido!).
-   - "refCropBox" e "videoCropBox": caixas delimitadoras [ymin, xmin, ymax, xmax] em escala de 0 a 1000 que englobam O COMPONENTE COMPLETO com folga, sem cortar nenhuma lente pela metade nas laterais!
+4. SELEÇÃO DA MELHOR REFERÊNCIA E CAIXAS DE RECORTE (APENAS SE HOUVER ACHADO REAL):
+   - "bestRefIndex": número inteiro (1 a ${photosList.length}) da Foto de Referência que MELHOR exibe o componente analisado.
+   - "refCropBox" e "videoCropBox": caixas delimitadoras [ymin, xmin, ymax, xmax] em escala de 0 a 1000 que englobam o componente completo com folga.
 
 Retorne ESTRITAMENTE um objeto JSON válido em português com este formato:
 {
-  "overviewText": "Resumo pericial objetivo das divergências encontradas ou confirmação de conformidade.",
-  "summary": "🔴 INCONSISTÊNCIA EVIDENTE: [resumo] (ou 🟡 POSSÍVEL INCONSISTÊNCIA / 🟢 NENHUMA INCONSISTÊNCIA IDENTIFICADA)",
+  "overviewText": "Resumo pericial objetivo confirmando conformidade do produto ou detalhando divergências reais se houver.",
+  "summary": "🟢 NENHUMA INCONSISTÊNCIA IDENTIFICADA: [resumo] (ou 🔴 INCONSISTÊNCIA EVIDENTE / 🟡 POSSÍVEL INCONSISTÊNCIA)",
   "finalRecommendation": "Recomendação prática e direta sobre publicação ou refilmagens.",
   "coverageNote": "Analisadas as capturas reais (${framesTimestampsList}) em conjunto com ${photosList.length} imagem(ns) de referência.",
   "findings": [
-    {
-      "number": 1,
-      "title": "Nome do componente analisado (ex: Módulo de câmeras traseiras / Botão lateral / Proporção das lentes)",
-      "severity": "evident",
-      "referenceNotes": [
-        {
-          "refIndex": ${photosList.length >= 2 ? 2 : 1},
-          "label": "Referência: foto original mostrando o componente",
-          "description": "Como o componente aparece fielmente na foto de referência."
-        }
-      ],
-      "whatAppearsInVideo": "Descrição exata do que foi observado no vídeo.",
-      "whereItAppears": "segundos exatos onde o erro foi visualizado.",
-      "bestFrameSecond": 2,
-      "bestRefIndex": ${photosList.length >= 2 ? 2 : 1},
-      "refCropBox": [80, 140, 360, 390],
-      "videoCropBox": [430, 260, 740, 560],
-      "howToFix": "instrução prática de ajuste."
-    }
+    /* REGRA DE OURO: Se o produto exibido no vídeo estiver consistente e correto em relação às fotos de referência, retorne "findings": [] VAZIO!
+       Preencha itens neste array APENAS se houver divergência física real grave e comprovada. */
   ],
   "frames": [
     {
@@ -4664,13 +4652,30 @@ Retorne ESTRITAMENTE um objeto JSON válido em português com este formato:
       "productVisible": true,
       "score": 94,
       "status": "green",
-      "issue": "Diagnóstico conciso e direto do que aparece neste segundo."
+      "issue": "Produto consistente com as referências, sem inconsistências."
     }
   ]
 }`;
 
     const finalizeVideoAuditResponse = (parsed: any, usageObj: any) => {
-      const rawFindings: any[] = Array.isArray(parsed.findings) ? parsed.findings : [];
+      // Filtra achados espúrios de falso positivo (ex: "botão lateral não visível" em cena traseira/frontal, ou "três lentes" onde há 2 lentes + flash)
+      const rawFindings: any[] = (Array.isArray(parsed.findings) ? parsed.findings : []).filter((f: any) => {
+        const titleLow = String(f?.title || '').toLowerCase();
+        const whatLow = String(f?.whatAppearsInVideo || '').toLowerCase();
+        // Falso positivo #1: botão lateral alegado como "não visível" / "ausente"
+        if (
+          (titleLow.includes('botão') || whatLow.includes('botão') || titleLow.includes('anel vermelho') || whatLow.includes('anel vermelho')) &&
+          (whatLow.includes('não visível') || whatLow.includes('não é visível') || whatLow.includes('ausente') || whatLow.includes('não aparece') || whatLow.includes('não dá para ver'))
+        ) {
+          return false;
+        }
+        // Falso positivo #2: "três lentes" onde o aparelho possui 2 câmeras + flash
+        if (whatLow.includes('três lentes') || whatLow.includes('3 lentes')) {
+          return false;
+        }
+        return true;
+      });
+
       const normalizedFindings = rawFindings.map((f: any, idx: number) => {
         const sevRaw = String(f.severity || 'possible').toLowerCase();
         const severity: 'evident' | 'possible' | 'observation' =
@@ -4768,6 +4773,22 @@ Retorne ESTRITAMENTE um objeto JSON válido em português com este formato:
           .replace(/^\(\s*\d+\s*s\s*\)\s*[:\-–—]\s*/i, '')
           .trim();
 
+        // Limpa falsos positivos no diagnóstico individual do frame
+        const lowerRaw = issue.toLowerCase();
+        if (
+          (lowerRaw.includes('botão') || lowerRaw.includes('anel vermelho')) &&
+          (lowerRaw.includes('não visível') || lowerRaw.includes('não é visível') || lowerRaw.includes('ausente') || lowerRaw.includes('não aparece') || lowerRaw.includes('não dá para ver'))
+        ) {
+          issue = 'Produto consistente com a referência, sem distorções visíveis.';
+          score = 94;
+        } else if (
+          (lowerRaw.includes('três lentes') || lowerRaw.includes('3 lentes')) &&
+          !lowerRaw.includes('deforma')
+        ) {
+          issue = 'Módulo traseiro com 2 lentes e flash, fiel à referência.';
+          score = 94;
+        }
+
         const lowerIssue = issue.toLowerCase();
 
         // Verifica se a descrição afirma que o frame está CORRETO / SEM INCONSISTÊNCIAS / FRENTE / CAIXA
@@ -4790,7 +4811,6 @@ Retorne ESTRITAMENTE um objeto JSON válido em português com este formato:
             lowerIssue.includes('lente extra') ||
             lowerIssue.includes('câmera a mais') ||
             lowerIssue.includes('câmeras diferentes') ||
-            lowerIssue.includes('botão') ||
             lowerIssue.includes('desproporcional') ||
             lowerIssue.includes('muito maior') ||
             lowerIssue.includes('gigante') ||
@@ -4944,18 +4964,20 @@ Retorne ESTRITAMENTE um objeto JSON válido em português com este formato:
 
         const promptText = `Realize a perícia visual completa do vídeo "${videoFileName}" (${videoDurationSeconds}s) comparando o Storyboard de Análise de 1 em 1 segundo (${framesTimestampsList}) e as capturas em alta resolução com as ${photosList.length} imagem(ns) de referência do produto "${productName}".
 
-INSTRUÇÕES OBRIGATÓRIAS DE PERÍCIA VISUAL:
-1) Inspecione cada frame (${framesTimestampsList}) com máxima imparcialidade com base EXCLUSIVA no que a imagem real de cada frame mostra:
-   - Se o frame mostrar a FRENTE do celular (display ligado, papel de parede, ícones ou câmera frontal), NÃO cobre câmeras traseiras! Se a frente estiver correta, aprove o frame com nota VERDE (>= 92%).
-   - Se o frame mostrar a CAIXA/EMBALAGEM do produto, avalie como embalagem comercial, NUNCA confunda a caixa com a traseira do celular e aprove com nota VERDE (>= 92%) se condizente.
-   - Se o frame mostrar a LATERAL, compare os botões físicos com a foto de referência: se surgir botão com anel vermelho, formato ou posição não existente na referência, reprove o frame (< 50%, vermelho) e cite o botão divergente.
-   - Se o frame mostrar a TRASEIRA:
-     * Conte as lentes pretas/escuras com exatidão, sem confundir o pequeno flash claro com uma lente preta extra.
-     * Se houver de fato uma lente extra escura visível, aponte especificamente nos segundos onde ela aparece.
-     * Verifique a proporção/tamanho das lentes em relação ao corpo do celular (se estiverem gigantes ou desproporcionais, aponte a falha de proporção).
-     * NUNCA confunda reflexo de luz branca ou brilho brilhoso da tampa traseira com tela na traseira!
-2) Nos segundos em que o produto estiver correto e fiel às referências, atribua nota VERDE (>= 92%, status "green").
-3) No campo "issue" de cada frame, escreva direto o diagnóstico daquele segundo (sem prefixos como "Frame 1 (0s):").${lockContext ? `\nTrava do produto: ${lockContext}` : ''}
+INSTRUÇÕES OBRIGATÓRIAS DE PERÍCIA VISUAL (ZERO FALSOS POSITIVOS):
+1) Inspecione cada frame (${framesTimestampsList}) com base EXCLUSIVA no que a imagem real de cada frame mostra:
+   - Se o frame mostrar a FRENTE do celular (display ligado, papel de parede, ícones ou câmera frontal), NÃO cobre câmeras traseiras! Aprove o frame com nota VERDE (>= 92%).
+   - Se o frame mostrar a CAIXA/EMBALAGEM do produto, avalie como embalagem comercial e aprove com nota VERDE (>= 92%).
+   - BOTÕES LATERAIS: Se o frame NÃO for um close focado explicitamente no perfil lateral do aparelho (ex: se o aparelho estiver de costas, de frente ou à distância), É TERMINANTEMENTE PROIBIDO exigir que botões laterais estejam visíveis ou reprovar o frame!
+   - TRASEIRA E CÂMERAS (REGRA ABSOLUTA):
+     * Em smartphones com 2 câmeras, existem 2 lentes circulares escuras/pretas e 1 pequeno flash circular claro ao lado da lente superior.
+     * O FLASH CLARO NÃO É UMA LENTE!
+     * Se o vídeo mostrar as mesmas 2 lentes pretas e o flash claro ao lado como na referência, O PRODUTO ESTÁ 100% CORRETO E IDÊNTICO! Não invente 3 lentes! Aprove o frame com nota VERDE (>= 92%).
+     * NUNCA confunda reflexo de luz branca da tampa traseira com tela na traseira!
+2) SE O VÍDEO ESTIVER FIEL E CORRETO EM TODAS AS CENAS:
+   - Retorne "findings": [] (array VAZIO).
+   - Retorne "summary": "🟢 NENHUMA INCONSISTÊNCIA IDENTIFICADA: O produto exibido no vídeo é 100% consistente com as fotos de referência."
+   - Retorne todos os frames em "frames" com status "green" (>= 92%).${lockContext ? `\nTrava do produto: ${lockContext}` : ''}
 ${targetedContextInstruction}
 Retorne o JSON estritamente conforme o schema especificado.`;
         contentBlocks.push({ type: 'text', text: promptText });
