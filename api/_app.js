@@ -3375,8 +3375,7 @@ async function generateImageWithSeedream(params) {
     response_format: "url"
   };
   const hosts = [
-    "https://ark.ap-southeast.bytepluses.com/api/v3/images/generations",
-    "https://ark.byteplus.com/api/v3/images/generations"
+    "https://ark.ap-southeast.bytepluses.com/api/v3/images/generations"
   ];
   let lastError = "";
   for (const url of hosts) {
@@ -3404,7 +3403,7 @@ async function generateImageWithSeedream(params) {
       } else if (res.ok && Array.isArray(data?.data) && data.data[0]?.b64_json) {
         return { success: true, imageUrl: `data:image/png;base64,${data.data[0].b64_json}` };
       } else {
-        lastError = data?.error?.message || data?.message || `Status ${res.status}`;
+        lastError = data?.error?.message || data?.message || JSON.stringify(data?.error || data);
       }
     } catch (err) {
       lastError = err?.message || "Erro de rede ao conectar com Seedream";
