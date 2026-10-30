@@ -1731,9 +1731,20 @@ async function generateImageWithKling(params: {
     };
   }
 
+  const englishFidelityHeader = params.imageReferenceBase64
+    ? 'CRITICAL PRODUCT ISOLATION: Reproduce ONLY the clothing/garment 1:1 from the reference image. DO NOT copy the person, face, hair, body, tattoos, or background from the reference photo. Generate a completely NEW model and NEW setting as described below:\n'
+    : '';
+
+  const klingPrompt = compactPromptToLimit(
+    params.prompt,
+    2200,
+    `${englishFidelityHeader}${IMAGE_REFERENCE_FIDELITY_HEADER}`
+  );
+
   const payload: any = {
     model_name: 'kling-v3',
-    prompt: compactPromptToLimit(params.prompt, 2300, params.imageReferenceBase64 ? IMAGE_REFERENCE_FIDELITY_HEADER : ''),
+    prompt: klingPrompt,
+    negative_prompt: 'original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry',
     aspect_ratio: params.aspectRatio || '9:16',
     n: 1,
     watermark_info: {
@@ -1746,7 +1757,7 @@ async function generateImageWithKling(params: {
     if (rawB64.length > 50) {
       payload.image = rawB64;
       payload.image_reference = 'subject';
-      payload.image_fidelity = 0.65;
+      payload.image_fidelity = 0.50;
       payload.human_fidelity = 0.0;
     }
   }

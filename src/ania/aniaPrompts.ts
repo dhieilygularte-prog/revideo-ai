@@ -56,6 +56,8 @@ export function buildAniaImage1Prompt(params: {
     } else {
       pessoaDesc = `senhor brasileiro idoso de terceira idade (${body === 'Plus size' ? 'corpo plus size cheinho' : body === 'Magro' ? 'porte magro' : 'porte médio natural'}), postura natural, pele madura realista`;
     }
+  } else if (hasCustomModelOrFace) {
+    pessoaDesc = `nova modelo com as características solicitadas nas instruções do usuário (${(additionalInstructions || "").trim()}), corpo natural e realista, postura autêntica`;
   } else {
     if (gender === 'Mulher') {
       if (body === 'Plus size') {
