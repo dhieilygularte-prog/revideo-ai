@@ -153,7 +153,6 @@ export async function runAniaPipeline(
       naturalEnvironment: Boolean(form.naturalEnvironment),
       productInfo: form.productInfo,
       additionalInstructions: form.additionalInstructions,
-      imageModel: form.imageModel || 'seedream_5_0_pro',
       customSpeech: form.customSpeech,
       moves,
       candidates: form.customSpeech?.trim() ? [] : falasSelection.candidates,
@@ -221,6 +220,7 @@ export async function runAniaPipeline(
     colorName: normalizedColors[0].name,
     fabricDescription: fabricObj.description,
     scenarioDescription: scenarioDesc,
+    additionalInstructions: form.additionalInstructions,
   });
 
   const img1Promise = (async (): Promise<{ url: string; audit: any }> => {
@@ -440,6 +440,7 @@ export async function runAniaPipeline(
       gender: resolvedGender,
       body: form.body,
       category: planningResult.categoria,
+      additionalInstructions: form.additionalInstructions,
     });
 
     try {
@@ -590,6 +591,7 @@ export async function regenerateAniaSingleImage(params: {
         fabricDescription: fabricObj.description,
         detalhesTrava: result.planning.detalhes_trava,
         scenarioDescription: scenarioDesc,
+        additionalInstructions: customCorrection || form.additionalInstructions,
       })
     : buildAniaColorSwapPrompt({
         productName: form.productName,
@@ -603,6 +605,7 @@ export async function regenerateAniaSingleImage(params: {
         gender: resolvedGender,
         body: form.body,
         category: result.planning.categoria,
+        additionalInstructions: customCorrection || form.additionalInstructions,
       });
 
   const data = await postJson<{ success: boolean; imageUrl: string; error?: string }>('/api/generate-scene-image', {
@@ -619,6 +622,7 @@ export async function regenerateAniaSingleImage(params: {
       : (ageMode === 'child' ? `Mesmas mãos em POV da Imagem 1, apresentando o produto infantil na cor ${col.name}` : productMode === 'footwear' ? `Mesma pessoa e pés da Imagem 1, alterando somente o calçado para a cor ${col.name}` : `Mesma modelo e pose da Imagem 1 sem rosto, vestindo a ${result.planning.peca || form.productName} na cor ${col.name}`),
     correctionPrompt: customCorrection,
     additionalInstructions: form.additionalInstructions,
+    imageModel: form.imageModel || 'seedream_5_0_pro',
     aiProfile,
   });
 

@@ -20,6 +20,7 @@ export function buildAniaImage1Prompt(params: {
   fabricDescription: string;
   detalhesTrava?: string[];
   scenarioDescription?: string;
+  additionalInstructions?: string;
 }): string {
   const {
     productName,
@@ -32,7 +33,13 @@ export function buildAniaImage1Prompt(params: {
     fabricDescription,
     detalhesTrava = [],
     scenarioDescription,
+    additionalInstructions,
   } = params;
+
+  const hasCustomModelOrFace = Boolean(
+    additionalInstructions &&
+    /loira|loiro|morena|moreno|ruiva|ruivo|cabelo|rosto|olhos|olhando|express[aã]o|sorrindo|maquiagem|espelho|cabe[çc]a|face/i.test(additionalInstructions)
+  );
 
   const isFootwear = productMode === 'footwear' || category === 'CALCADO';
   const isChild = ageMode === 'child';
@@ -77,6 +84,8 @@ export function buildAniaImage1Prompt(params: {
     enquadramento = 'enquadramento vertical 9:16 do joelho para baixo (joelhos, canelas, tornozelos e pés), câmera próxima, com foco total e nítido no calçado nos pés no chão; o cenário aparece sem ocupar área excessiva. NUNCA MOSTRAR O ROSTO.';
   } else if (tipo === 'INFERIOR') {
     enquadramento = 'enquadramento vertical 9:16 da linha logo abaixo do busto para baixo (aparece só a barra da blusa e o cós; nunca o busto inteiro). Se for calça, mostrar até os pés. Se for short, bermuda ou saia, mostrar todo o comprimento da peça e as pernas. NUNCA MOSTRAR O ROSTO.';
+  } else if (hasCustomModelOrFace) {
+    enquadramento = 'enquadramento vertical 9:16 valorizando a nova modelo e a composição conforme as instruções do usuário.';
   } else {
     enquadramento = 'enquadramento vertical 9:16 do pescoço para baixo (nunca mostrar a cabeça ou o rosto). Câmera um pouco afastada, mostrando a peça inteira e o caimento com naturalidade.';
   }
@@ -93,9 +102,15 @@ export function buildAniaImage1Prompt(params: {
       ? detalhesTrava.join(', ')
       : 'modelagem fiel, costuras, cós, solado e caimento exatamente como na foto enviada';
 
-  const ambienteDesc = scenarioDescription || 'quarto simples e aconchegante de uma casa brasileira real, organizado, piso limpo, iluminação frontal suave e realista';
+  const ambienteDesc = additionalInstructions && /quarto|sala|praia|rua|academia|est[uú]dio|espelho|varanda|banheiro|cozinha|cen[aá]rio/i.test(additionalInstructions)
+    ? `${scenarioDescription || ''}. Detalhes do ambiente: ${additionalInstructions.trim()}`
+    : (scenarioDescription || 'quarto simples e aconchegante de uma casa brasileira real, organizado, piso limpo, iluminação frontal suave e realista');
 
-  return `Use a imagem enviada como REFERÊNCIA PRINCIPAL E OBRIGATÓRIA DO PRODUTO (${productName}, cor ${colorName || 'referência'}).
+  const userInstructionsHeader = additionalInstructions && additionalInstructions.trim()
+    ? `\n\nINSTRUÇÕES ADICIONAIS DO USUÁRIO (CENÁRIO, MODELO E DETALHES - PRIORIDADE MÁXIMA):\n${additionalInstructions.trim()}\n`
+    : '';
+
+  return `Use a imagem enviada como REFERÊNCIA PRINCIPAL E OBRIGATÓRIA DO PRODUTO (${productName}, cor ${colorName || 'referência'}).${userInstructionsHeader}
 
 Crie uma nova imagem ultra-realista, estilo fotografia de smartphone, mostrando ${pessoaDesc} apresentando/usando EXATAMENTE o produto da referência.
 
@@ -117,7 +132,7 @@ ILUMINAÇÃO: luz suave e uniforme vindo da direção da câmera, destacando cor
 ESTILO: fotografia real de celular moderno, alta definição, textura verdadeira e proporções humanas corretas.
 
 PROIBIÇÕES ABSOLUTAS E REGRAS DE INTEGRIDADE:
-- NUNCA MOSTRAR O ROSTO (estritamente do pescoço para baixo ou pés).
+- ${hasCustomModelOrFace ? 'Enquadramento flexível e livre respeitando as instruções de modelo e cenário do usuário.' : 'NUNCA MOSTRAR O ROSTO (estritamente do pescoço para baixo ou pés).'}
 - PROIBIDO GERAR CRIANÇAS (em modo infantil, apenas mãos de adultos em POV apresentando a peça).
 - FIDELIDADE TOTAL AO DECOTE E MODELAGEM (SEM ALTERAÇÕES DE DECOTE): Reproduza 100% fielmente o recorte, decote, alças, caimento e aberturas da peça de referência exatamente como estão na foto original (seja decote V, profundo, tomara-que-caia, camisola, alcinha ou lingerie). É estritamente proibido fechar, cobrir, subir o decote ou modificar o corte do produto.
 - PRESERVAÇÃO TOTAL DO COMPRIMENTO ORIGINAL (SEM COBRIR BARRIGA ARTIFICIALMENTE): Se a peça de referência for cropped, top curto, biquíni, maiô, conjunto curto ou peça que exponha a cintura/barriga, mantenha o comprimento exato da foto original. É proibido alongar a peça, cobrir o abdômen artificialmente ou adicionar blusas por baixo que não existam na peça real.
@@ -140,6 +155,7 @@ export function buildAniaColorSwapPrompt(params: {
   gender?: AniaGender;
   body?: AniaBody;
   category?: AniaCategory;
+  additionalInstructions?: string;
 }): string {
   const {
     productName,
@@ -150,15 +166,22 @@ export function buildAniaColorSwapPrompt(params: {
     ageMode = 'adult',
     scenarioDescription,
     body = 'Normal',
+    additionalInstructions,
   } = params;
   const isFootwear = productMode === 'footwear';
   const isChild = ageMode === 'child';
   const targetRefWord = imageSlot === 3 ? 'TERCEIRA' : 'SEGUNDA';
   const pecaNome = (productName || peca || (isFootwear ? 'calçado' : 'peça principal')).trim();
-  const ambienteDesc = scenarioDescription || 'quarto simples e aconchegante de uma casa brasileira real, organizado, piso limpo, iluminação frontal suave e realista';
+  const ambienteDesc = additionalInstructions && /quarto|sala|praia|rua|academia|est[uú]dio|espelho|varanda|banheiro|cozinha|cen[aá]rio/i.test(additionalInstructions)
+    ? `${scenarioDescription || ''}. Detalhes do ambiente: ${additionalInstructions.trim()}`
+    : (scenarioDescription || 'quarto simples e aconchegante de uma casa brasileira real, organizado, piso limpo, iluminação frontal suave e realista');
+
+  const userInstBlock = additionalInstructions && additionalInstructions.trim()
+    ? `\nINSTRUÇÕES ADICIONAIS DO USUÁRIO (CENÁRIO E DETALHES):\n${additionalInstructions.trim()}\n`
+    : '';
 
   if (isFootwear) {
-    return `Use a PRIMEIRA imagem como base absoluta.
+    return `Use a PRIMEIRA imagem como base absoluta.${userInstBlock}
 
 Troque SOMENTE o calçado dos pés pelo calçado/cor mostrada na ${targetRefWord} imagem de referência: ${colorName}.
 
@@ -205,7 +228,7 @@ A ${targetRefWord} imagem serve exclusivamente como referência da cor/variaçã
 IGNORE E DESCARTE COMPLETAMENTE qualquer fundo, manequim, cabide, loja, modelo ou estúdio da ${targetRefWord} imagem de referência! Não copie dela formato de corpo, modelo, cenário ou iluminação.
 
 Mantenha 100% idênticos à PRIMEIRA imagem:
-mesma pessoa, mesmo corpo (${body}), mesma pose, mesma posição de braços e pernas, mesmo enquadramento vertical 9:16 do pescoço para baixo (sem rosto), mesma câmera, mesma distância, mesmo cenário (${ambienteDesc}), mesmo fundo, mesma iluminação, mesmo cabelo visível, mesma roupa complementar e mesmo calçado quando ele não for o produto vendido.
+mesma pessoa, mesmo corpo (${body}), mesma pose, mesma posição de braços e pernas, mesmo enquadramento vertical 9:16 e composição da PRIMEIRA imagem (mantendo a mesma pessoa, pose e modelo), mesma câmera, mesma distância, mesmo cenário (${ambienteDesc}), mesmo fundo, mesma iluminação, mesmo cabelo visível, mesma roupa complementar e mesmo calçado quando ele não for o produto vendido.
 
 NÃO recrie a fotografia.
 NÃO gere outra modelo.

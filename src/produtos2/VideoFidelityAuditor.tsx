@@ -200,7 +200,7 @@ async function buildVideoContactSheetStoryboard(
   if (!frames || frames.length === 0) return '';
   try {
     const loadedImages = await Promise.all(
-      frames.map(async (f) => ({
+      frames.map(async (f: any) => ({
         second: f.second,
         img: await loadImageElement(f.frameBase64),
       }))
@@ -496,7 +496,7 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
     const fileArray = Array.from(files);
     Promise.all(
       fileArray.map(
-        (f) =>
+        (f: any) =>
           new Promise<string>((resolve) => {
             const reader = new FileReader();
             reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
@@ -567,7 +567,7 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
       // Envia TODOS os frames (0s..9s) compactados para o servidor (garantindo que o segundo exato do erro, ex: 4s, esteja sempre presente para inspeção e recorte pericial!),
       // mantendo os frames em resolução máxima (720x1280) na memória do navegador para montar a Comparação Visual.
       const allFramesPayload = await Promise.all(
-        frames.map(async (f) => ({
+        frames.map(async (f: any) => ({
           second: f.second,
           frameBase64: await compressPhotoForVideoAudit(f.frameBase64, 720, 0.8),
         }))
@@ -671,7 +671,7 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
         // Quem manda na imagem que aparece em "CAPTURA REAL DO VÍDEO" é ESTRITAMENTE o frame em VERMELHO
         // (reprovado) das 10 Capturas Individuais abaixo!
         const redFramesList = hydratedFrames.filter(
-          (f) =>
+          (f: any) =>
             f.status === 'red' ||
             f.score < 60 ||
             (f.score < 75 &&
@@ -680,7 +680,7 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
               ))
         );
         const defectFramesList =
-          redFramesList.length > 0 ? redFramesList : hydratedFrames.filter((f) => f.score < 80);
+          redFramesList.length > 0 ? redFramesList : hydratedFrames.filter((f: any) => f.score < 80);
 
         const enrichedFindings = await Promise.all(
           finalAudit.findings.map(async (finding, fIdx) => {
@@ -697,9 +697,9 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
             // 2. Localiza no array local de frames o frame exato do erro em vermelho (ex: Frame 5 aos 4s)
             const matchedFrame =
               (chosenDefect &&
-                (frames.find((f) => Math.abs(f.second - chosenDefect.second) < 0.5) ||
+                (frames.find((f: any) => Math.abs(f.second - chosenDefect.second) < 0.5) ||
                   frames[chosenDefect.frameNumber - 1])) ||
-              frames.find((f) => Math.abs(f.second - targetSec) < 0.5) ||
+              frames.find((f: any) => Math.abs(f.second - targetSec) < 0.5) ||
               frames.reduce(
                 (best, curr) =>
                   Math.abs(curr.second - targetSec) < Math.abs(best.second - targetSec) ? curr : best,

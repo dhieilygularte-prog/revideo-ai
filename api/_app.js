@@ -3186,7 +3186,7 @@ function simplifyToSingleColorWord(raw) {
 }
 app.post("/api/detect-dominant-color", async (req, res) => {
   try {
-    const { photoBase64, productName, productMode, aiProfile } = req.body;
+    const { photoBase64, productName, productMode, aiProfile: _aiProfile } = req.body;
     if (!photoBase64) {
       return res.status(400).json({ success: false, error: "Foto n\xE3o fornecida" });
     }
@@ -3294,7 +3294,7 @@ ${body}` : body).slice(0, maxChars);
   }
   return result;
 }
-var IMAGE_REFERENCE_FIDELITY_HEADER = "REGRA CR\xCDTICA DE PRODUTO VS MODELO/CEN\xC1RIO: A imagem de refer\xEAncia anexada serve EXCLUSIVAMENTE para copiar a pe\xE7a de roupa/produto real. N\xC3O COPIE a modelo, a pessoa, o rosto, o corpo ou o cen\xE1rio de fundo da foto de refer\xEAncia! Voc\xEA DEVE gerar uma NOVA modelo e um NOVO cen\xE1rio conforme solicitados no prompt, vestindo exatamente a MESMA pe\xE7a 1:1 reproduzida fielmente da foto (mesmo tipo, modelagem, corte, decote, al\xE7as, transpar\xEAncia, renda e cor). Enquadramento do pesco\xE7o para baixo (sem rosto).";
+var IMAGE_REFERENCE_FIDELITY_HEADER = "REGRA CR\xCDTICA DE PRODUTO VS MODELO/CEN\xC1RIO: A imagem de refer\xEAncia anexada serve EXCLUSIVAMENTE para copiar a pe\xE7a de roupa/produto real. \xC9 EXPRESSAMENTE PROIBIDO COPIAR A MODELO, A PESSOA OU O CEN\xC1RIO DE FUNDO DA FOTO DE REFER\xCANCIA! Voc\xEA DEVE gerar uma NOVA pessoa e um NOVO cen\xE1rio seguindo rigorosamente as instru\xE7\xF5es e descri\xE7\xE3o do prompt abaixo. Copie da imagem de refer\xEAncia \xDANICA E EXCLUSIVAMENTE a pe\xE7a de roupa/produto 1:1 com fidelidade total (mesmo formato, corte, decote, al\xE7as, tecido, renda, transpar\xEAncia e cor).";
 function toDataUri(b64) {
   if (!b64 || typeof b64 !== "string") return void 0;
   const s = b64.trim();
@@ -3325,7 +3325,7 @@ async function generateImageWithKling(params) {
     if (rawB64.length > 50) {
       payload.image = rawB64;
       payload.image_reference = "subject";
-      payload.image_fidelity = 0.75;
+      payload.image_fidelity = 0.65;
       payload.human_fidelity = 0;
     }
   }
@@ -3430,7 +3430,6 @@ ${params.prompt}` : params.prompt,
     payload.image = refImages[0];
   } else if (refImages.length > 1) {
     payload.image = refImages;
-    payload.sequential_image_generation = "disabled";
   }
   const hosts = [
     "https://ark.ap-southeast.bytepluses.com/api/v3/images/generations"
@@ -3438,7 +3437,7 @@ ${params.prompt}` : params.prompt,
   let lastError = "";
   for (const url of hosts) {
     try {
-      let res = await fetch(url, {
+      const res = await fetch(url, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${apiKey}`,
@@ -3446,29 +3445,18 @@ ${params.prompt}` : params.prompt,
         },
         body: JSON.stringify(payload)
       });
-      let text = await res.text();
+      const text = await res.text();
       let data = null;
       try {
         data = JSON.parse(text);
       } catch {
         data = { error: { message: text } };
       }
-      if (!res.ok && (data?.error?.code === "ModelNotFound" || data?.error?.message?.includes("model"))) {
-        payload.model = "seedream-5-0-pro";
-        res = await fetch(url, {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${apiKey}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(payload)
-        });
-        text = await res.text();
-        try {
-          data = JSON.parse(text);
-        } catch {
-          data = { error: { message: text } };
-        }
+      if (!res.ok) {
+        const errMsg = data?.error?.message || data?.message || text || res.statusText;
+        lastError = `BytePlus Seedream (${res.status}): ${errMsg}`;
+        console.warn("Seedream BytePlus erro:", lastError);
+        continue;
       }
       if (res.ok && Array.isArray(data?.data) && data.data[0]?.url) {
         const imgUrl = data.data[0].url;
@@ -3578,7 +3566,15 @@ app.post("/api/generate-scene-image", async (req, res) => {
     if (!prompt) {
       return res.status(400).json({ success: false, error: "Prompt n\xE3o fornecido" });
     }
-    const effectivePrompt = sanitizeStoryboardPromptForFidelity(prompt, productType, req.body.productInfo);
+    const userExtras = [additionalInstructions, correctionPrompt].filter((s) => typeof s === "string" && s.trim().length > 0).map((s) => s.trim()).join("\n");
+    let basePromptWithUser = prompt;
+    if (userExtras && !prompt.includes(userExtras)) {
+      basePromptWithUser = `INSTRU\xC7\xD5ES ADICIONAIS PRIORIT\xC1RIAS DO USU\xC1RIO (CEN\xC1RIO, MODELO E DETALHES):
+${userExtras}
+
+${prompt}`;
+    }
+    const effectivePrompt = sanitizeStoryboardPromptForFidelity(basePromptWithUser, productType, req.body.productInfo);
     const requestedImageModel = req.body?.imageModel;
     if (requestedImageModel === "kling_3_0") {
       const klingResult = await generateImageWithKling({
