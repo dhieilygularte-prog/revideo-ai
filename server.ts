@@ -1809,7 +1809,7 @@ async function generateImageWithSeedream(params: {
   }
 
   const payload: any = {
-    model: 'seedream-5-0-pro',
+    model: 'dola-seedream-5-0-pro-260628',
     prompt: params.prompt,
     size: '1024x1792',
     response_format: 'url',
@@ -1822,7 +1822,7 @@ async function generateImageWithSeedream(params: {
   let lastError = '';
   for (const url of hosts) {
     try {
-      const res = await fetch(url, {
+      let res = await fetch(url, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${apiKey}`,
@@ -1831,12 +1831,31 @@ async function generateImageWithSeedream(params: {
         body: JSON.stringify(payload),
       });
 
-      const text = await res.text();
+      // Se der erro de model not found, tentar o nome alternativo 'seedream-5-0-pro'
+      let text = await res.text();
       let data: any = null;
       try {
         data = JSON.parse(text);
       } catch {
         data = { error: { message: text } };
+      }
+
+      if (!res.ok && (data?.error?.code === 'ModelNotFound' || data?.error?.message?.includes('model'))) {
+        payload.model = 'seedream-5-0-pro';
+        res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+        text = await res.text();
+        try {
+          data = JSON.parse(text);
+        } catch {
+          data = { error: { message: text } };
+        }
       }
 
       if (res.ok && Array.isArray(data?.data) && data.data[0]?.url) {
@@ -1857,7 +1876,8 @@ async function generateImageWithSeedream(params: {
         lastError = `BytePlus Seedream (${res.status}): ${errMsg}`;
       }
     } catch (err: any) {
-      lastError = err?.message || 'Erro de rede ao conectar com Seedream';
+      const cause = err?.cause ? (err.cause.message || err.cause.code || JSON.stringify(err.cause)) : '';
+      lastError = `Seedream fetch error (${err?.message || 'unknown'}): ${cause} [keyPrefix: ${apiKey ? apiKey.slice(0, 6) : 'empty'}, len: ${apiKey ? apiKey.length : 0}]`;
     }
   }
 
