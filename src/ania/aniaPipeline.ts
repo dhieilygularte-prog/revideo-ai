@@ -153,6 +153,7 @@ export async function runAniaPipeline(
       naturalEnvironment: Boolean(form.naturalEnvironment),
       productInfo: form.productInfo,
       additionalInstructions: form.additionalInstructions,
+      imageModel: form.imageModel || 'seedream_5_0_pro',
       customSpeech: form.customSpeech,
       moves,
       candidates: form.customSpeech?.trim() ? [] : falasSelection.candidates,
@@ -237,6 +238,7 @@ export async function runAniaPipeline(
         ? 'Pés calçando o produto em ângulo frontal'
         : 'Em pé de frente, postura natural sem rosto',
       additionalInstructions: form.additionalInstructions,
+      imageModel: form.imageModel || 'seedream_5_0_pro',
       aiProfile,
     });
 
@@ -456,6 +458,7 @@ export async function runAniaPipeline(
         location: scenarioDesc,
         actionDescription: `Mesma pessoa, mesma pose, mesmo quarto e mesmo enquadramento da Imagem 1, alterando exclusivamente a cor do ${form.productName} para ${col.name}`,
         additionalInstructions: form.additionalInstructions,
+      imageModel: form.imageModel || 'seedream_5_0_pro',
         aiProfile,
       });
 

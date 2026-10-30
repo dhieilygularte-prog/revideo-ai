@@ -71,7 +71,10 @@ export interface AniaFormState {
   additionalInstructions: string;
   customSpeech: string;
   veoModelMode: VeoModelMode;
+  imageModel: AniaImageModel;
 }
+
+export type AniaImageModel = 'seedream_5_0_pro' | 'kling_3_0' | 'openai';
 
 export interface AniaPlanningResult {
   categoria: AniaCategory;

@@ -1907,6 +1907,12 @@ if (!process.env.OPENAI_API_KEY) {
 if (!process.env.GEMINI_API_KEY) {
   process.env.GEMINI_API_KEY = process.env.GEMINIAPI || process.env.GEMINI_KEY || process.env.VITE_GEMINI_API_KEY || "";
 }
+if (!process.env.KLING_API_KEY) {
+  process.env.KLING_API_KEY = process.env.APIKLINGVALIDA || process.env.Apikling || process.env.APIKLING || process.env.Apiklingdhieily || "";
+}
+if (!process.env.SEEDREAM_API_KEY) {
+  process.env.SEEDREAM_API_KEY = process.env.APISEEDREAMVALIDA || process.env.APISEEDREAM || process.env.BYTEPLUS_ARK_API_KEY || "";
+}
 var __filename = fileURLToPath(import.meta.url);
 var __dirname = path.dirname(__filename);
 var app = express();
@@ -3266,6 +3272,208 @@ Responda ESTRITAMENTE em UMA \xDANICA PALAVRA da cor b\xE1sica em portugu\xEAs, 
     return res.status(500).json({ success: false, error: err?.message || "Erro interno" });
   }
 });
+async function generateImageWithKling(params) {
+  const apiKey = (process.env.KLING_API_KEY || "").trim();
+  if (!apiKey) {
+    return {
+      success: false,
+      error: "Chave do Kling (KLING_API_KEY ou APIKLINGVALIDA) n\xE3o configurada no ambiente."
+    };
+  }
+  const payload = {
+    model_name: "kling-v3",
+    prompt: params.prompt,
+    aspect_ratio: params.aspectRatio || "9:16",
+    n: 1
+  };
+  if (params.imageReferenceBase64) {
+    const rawB64 = params.imageReferenceBase64.replace(/^data:image\/[a-z]+;base64,/, "").trim();
+    if (rawB64.length > 50) {
+      payload.image = rawB64;
+      payload.image_fidelity = 0.7;
+    }
+  }
+  const hosts = ["https://api.klingai.com", "https://api-singapore.klingai.com"];
+  let submitRes = null;
+  let usedHost = hosts[0];
+  for (const host of hosts) {
+    try {
+      const res = await fetch(`${host}/v1/images/generations`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok && data?.code === 0 && data?.data?.task_id) {
+        submitRes = data;
+        usedHost = host;
+        break;
+      } else if (data?.message) {
+        console.warn(`Kling tentativa em ${host}:`, data.message);
+        submitRes = data;
+      }
+    } catch (err) {
+      console.warn(`Erro na chamada ao Kling em ${host}:`, err?.message);
+    }
+  }
+  if (!submitRes?.data?.task_id) {
+    return {
+      success: false,
+      error: submitRes?.message || "Falha ao iniciar gera\xE7\xE3o de imagem no Kling 3.0."
+    };
+  }
+  const taskId = submitRes.data.task_id;
+  const startTime = Date.now();
+  while (Date.now() - startTime < 9e4) {
+    await new Promise((r) => setTimeout(r, 3e3));
+    try {
+      const statusRes = await fetch(`${usedHost}/v1/images/generations/${taskId}`, {
+        headers: { "Authorization": `Bearer ${apiKey}` }
+      });
+      const statusData = await statusRes.json();
+      const taskStatus = statusData?.data?.task_status;
+      if (taskStatus === "succeed") {
+        const imgUrl = statusData?.data?.task_result?.images?.[0]?.url;
+        if (imgUrl) {
+          try {
+            const imgFetch = await fetch(imgUrl);
+            const arrayBuffer = await imgFetch.arrayBuffer();
+            const b64 = Buffer.from(arrayBuffer).toString("base64");
+            const mime = imgFetch.headers.get("content-type") || "image/jpeg";
+            return { success: true, imageUrl: `data:${mime};base64,${b64}` };
+          } catch {
+            return { success: true, imageUrl: imgUrl };
+          }
+        }
+      } else if (taskStatus === "failed") {
+        return {
+          success: false,
+          error: statusData?.data?.task_status_msg || "Kling 3.0 retornou falha na gera\xE7\xE3o."
+        };
+      }
+    } catch (pollErr) {
+      console.warn("Erro no polling do Kling:", pollErr?.message);
+    }
+  }
+  return { success: false, error: "Tempo limite excedido na gera\xE7\xE3o do Kling 3.0 (timeout 90s)." };
+}
+async function generateImageWithSeedream(params) {
+  const apiKey = (process.env.SEEDREAM_API_KEY || "").trim();
+  if (!apiKey) {
+    return {
+      success: false,
+      error: "Chave do Seedream (SEEDREAM_API_KEY ou APISEEDREAMVALIDA) n\xE3o configurada no ambiente."
+    };
+  }
+  const payload = {
+    model: "seedream-5-0-pro",
+    prompt: params.prompt,
+    size: "1024x1792",
+    response_format: "url"
+  };
+  const hosts = [
+    "https://ark.ap-southeast.bytepluses.com/api/v3/images/generations",
+    "https://ark.byteplus.com/api/v3/images/generations"
+  ];
+  let lastError = "";
+  for (const url of hosts) {
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok && Array.isArray(data?.data) && data.data[0]?.url) {
+        const imgUrl = data.data[0].url;
+        try {
+          const imgFetch = await fetch(imgUrl);
+          const arrayBuffer = await imgFetch.arrayBuffer();
+          const b64 = Buffer.from(arrayBuffer).toString("base64");
+          const mime = imgFetch.headers.get("content-type") || "image/jpeg";
+          return { success: true, imageUrl: `data:${mime};base64,${b64}` };
+        } catch {
+          return { success: true, imageUrl: imgUrl };
+        }
+      } else if (res.ok && Array.isArray(data?.data) && data.data[0]?.b64_json) {
+        return { success: true, imageUrl: `data:image/png;base64,${data.data[0].b64_json}` };
+      } else {
+        lastError = data?.error?.message || data?.message || `Status ${res.status}`;
+      }
+    } catch (err) {
+      lastError = err?.message || "Erro de rede ao conectar com Seedream";
+    }
+  }
+  return { success: false, error: lastError || "Falha ao gerar imagem com Seedream 5.0 Pro." };
+}
+app.get("/api/test-image-providers", async (_req, res) => {
+  const klingKey = (process.env.KLING_API_KEY || "").trim();
+  const seedreamKey = (process.env.SEEDREAM_API_KEY || "").trim();
+  const results = {
+    kling: { configured: Boolean(klingKey) },
+    seedream: { configured: Boolean(seedreamKey) }
+  };
+  if (klingKey) {
+    try {
+      const kRes = await fetch("https://api.klingai.com/v1/images/generations", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${klingKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model_name: "kling-v3",
+          prompt: "ping test",
+          aspect_ratio: "9:16",
+          n: 1
+        })
+      });
+      const kData = await kRes.json();
+      results.kling = {
+        configured: true,
+        httpStatus: kRes.status,
+        code: kData?.code,
+        message: kData?.message || (kData?.code === 0 ? "Conectado com sucesso (kling-v3)" : "Erro"),
+        taskId: kData?.data?.task_id || null,
+        ok: kData?.code === 0
+      };
+    } catch (kErr) {
+      results.kling = { configured: true, ok: false, error: kErr?.message };
+    }
+  }
+  if (seedreamKey) {
+    try {
+      const sRes = await fetch("https://ark.ap-southeast.bytepluses.com/api/v3/images/generations", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${seedreamKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "seedream-5-0-pro",
+          prompt: "ping test",
+          size: "1024x1792"
+        })
+      });
+      const sData = await sRes.json();
+      results.seedream = {
+        configured: true,
+        httpStatus: sRes.status,
+        error: sData?.error || null,
+        ok: sRes.status === 200
+      };
+    } catch (sErr) {
+      results.seedream = { configured: true, ok: false, error: sErr?.message };
+    }
+  }
+  return res.json({ success: true, results });
+});
 app.post("/api/generate-scene-image", async (req, res) => {
   try {
     const {
@@ -3289,6 +3497,23 @@ app.post("/api/generate-scene-image", async (req, res) => {
       return res.status(400).json({ success: false, error: "Prompt n\xE3o fornecido" });
     }
     const effectivePrompt = sanitizeStoryboardPromptForFidelity(prompt, productType, req.body.productInfo);
+    const requestedImageModel = req.body?.imageModel;
+    if (requestedImageModel === "kling_3_0") {
+      const klingResult = await generateImageWithKling({
+        prompt: effectivePrompt,
+        imageReferenceBase64: modelReferenceBase64 || productPhotoBase64,
+        aspectRatio: req.body.aspectRatio || "9:16"
+      });
+      return res.json(klingResult);
+    }
+    if (requestedImageModel === "seedream_5_0_pro") {
+      const seedreamResult = await generateImageWithSeedream({
+        prompt: effectivePrompt,
+        imageReferenceBase64: modelReferenceBase64 || productPhotoBase64,
+        aspectRatio: req.body.aspectRatio || "9:16"
+      });
+      return res.json(seedreamResult);
+    }
     const activeProfile = req.body?.aiProfile || getRequestAIProfile(req);
     if (activeProfile === "openai") {
       if (!openAIProvider.isConfigured()) {

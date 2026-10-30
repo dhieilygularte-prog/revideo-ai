@@ -171,6 +171,7 @@ export default function App() {
     additionalInstructions: '',
     customSpeech: '',
     veoModelMode: 'veo3_basic_8s',
+    imageModel: 'seedream_5_0_pro',
   });
   const [aniaResult, setAniaResult] = useState<AniaResultState | null>(null);
   const [isProcessingAnia, setIsProcessingAnia] = useState(false);
