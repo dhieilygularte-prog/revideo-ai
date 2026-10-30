@@ -299,31 +299,40 @@ export async function extractDominantColorFromImage(base64: string): Promise<str
               }
 
               // Classificação por pixel individual
-              if (l < 0.16) {
-                colorVotes['Preto'] += 1;
+              if (l < 0.24) {
+                // Tecidos escuros, rendas, forros, pretos
+                colorVotes['Preto'] += 4.5;
               } else if (l > 0.88 && s < 0.18) {
-                colorVotes['Branco'] += 1;
-              } else if (s < 0.16) {
-                colorVotes['Cinza'] += 1;
+                colorVotes['Branco'] += 3.5;
+              } else if (s < 0.15) {
+                colorVotes['Cinza'] += 3.0;
               } else {
-                // Pixel cromático com cor ativa (Verde, Azul, Marrom, etc.)
+                // Detecção de tom de pele humano (evita classificar braços/pernas/colo como roupa 'Laranja')
+                const isSkinTone = (h >= 12 && h <= 46) && (s >= 0.15 && s <= 0.65) && (l >= 0.35 && l <= 0.85);
+                if (isSkinTone) {
+                  // Ignora tom de pele para não contaminar a cor da roupa
+                  continue;
+                }
+
                 totalChromaticVotes += 2.5;
 
                 if (h >= 0 && h < 18) {
                   if (s > 0.22 && l < 0.40 && r > g && r > b) {
                     colorVotes['Marrom'] += 3.5;
                   } else if (l < 0.35) {
-                    colorVotes['Vinho'] += 2.5;
+                    colorVotes['Vinho'] += 3.0;
                   } else {
-                    colorVotes['Vermelho'] += 2.5;
+                    colorVotes['Vermelho'] += 3.0;
                   }
                 } else if (h >= 18 && h < 48) {
                   if (l < 0.45 && s < 0.75) {
                     colorVotes['Marrom'] += 4;
                   } else if (l > 0.65 && s < 0.45) {
                     colorVotes['Bege'] += 2.5;
+                  } else if (s > 0.68) {
+                    colorVotes['Laranja'] += 3.0;
                   } else {
-                    colorVotes['Laranja'] += 2.5;
+                    colorVotes['Bege'] += 2.0;
                   }
                 } else if (h >= 48 && h < 75) {
                   // Faixa de transição entre Mostarda, Bege e Verde Militar/Oliva
@@ -356,13 +365,6 @@ export async function extractDominantColorFromImage(base64: string): Promise<str
           }
 
           if (totalValidPixels === 0) return resolve('Branco');
-
-          // Se mais de 10% dos pixels não-fundo têm cor cromática, desconsidera Cinza/Preto/Branco de fundo/sola
-          if (totalChromaticVotes > totalValidPixels * 0.10) {
-            delete colorVotes['Cinza'];
-            delete colorVotes['Branco'];
-            delete colorVotes['Preto'];
-          }
 
           let bestColor = 'Preto';
           let maxVotes = -1;

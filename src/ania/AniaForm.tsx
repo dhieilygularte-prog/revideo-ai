@@ -355,6 +355,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
             photoBase64: base64,
             productName: form.productName,
             productMode: form.productMode,
+            aiProfile: 'openai',
           }),
         });
         if (res.ok) {

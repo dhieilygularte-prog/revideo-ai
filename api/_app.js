@@ -3191,25 +3191,24 @@ app.post("/api/detect-dominant-color", async (req, res) => {
       return res.status(400).json({ success: false, error: "Foto n\xE3o fornecida" });
     }
     const cleanB64 = photoBase64.startsWith("data:") ? photoBase64 : `data:image/jpeg;base64,${photoBase64}`;
-    const promptText = `Analise a foto deste item comercial (${productName || (productMode === "footwear" ? "cal\xE7ado / t\xEAnis" : "roupa")}) e identifique com m\xE1xima precis\xE3o a cor predominante do corpo/cabedal/tecido principal.
-REGRAS OBRIGAT\xD3RIAS:
-1. Se for cal\xE7ado/t\xEAnis: ignore a sola de borracha (branca/preta) e foque exclusivamente no cabedal (parte superior/tecido/couro).
-2. Ignore o fundo branco/cinza, sombras, piso ou manequins.
-3. Se o cabedal for verde (oliva, militar, musgo, etc.), responda: Verde
-4. Se o cabedal for marrom (caramelo, caf\xE9, chocolate), responda: Marrom
-5. Se o cabedal for azul (marinho, jeans, royal, celeste), responda: Azul
-6. Se o cabedal for vermelho/vinho, responda: Vermelho
-7. Se o cabedal for rosa/pink, responda: Rosa
-8. Se o cabedal for amarelo/mostarda, responda: Amarelo
-9. Se o cabedal for bege/nude/areia, responda: Bege
-10. Se o cabedal for laranja/terracota, responda: Laranja
-11. Se o cabedal for roxo/lil\xE1s, responda: Roxo
-12. Se o cabedal for preto, responda: Preto
-13. Se o cabedal for branco, responda: Branco
-14. Se o cabedal for cinza/chumbo, responda: Cinza
+    const promptText = `Analise a foto deste item comercial (${productName || (productMode === "footwear" ? "cal\xE7ado / t\xEAnis" : "roupa")}) e identifique com m\xE1xima precis\xE3o a cor predominante da PE\xC7A DE ROUPA / PRODUTO PRINCIPAL.
+REGRAS CR\xCDTICAS:
+1. Ignore completamente a pele da pessoa/modelo, cabelo, bra\xE7os, pernas, rosto ou corpo.
+2. Ignore o fundo, piso, paredes, manequins ou m\xF3veis.
+3. Se a pe\xE7a de roupa for preta (mesmo com renda, transpar\xEAncia, tule ou decote), responda: Preto
+4. Se for branca/off-white, responda: Branco
+5. Se for azul (marinho, jeans, royal, celeste), responda: Azul
+6. Se for vermelha/vinho, responda: Vermelho
+7. Se for rosa/pink, responda: Rosa
+8. Se for verde (oliva, militar, musgo, esmeralda), responda: Verde
+9. Se for marrom/caramelo/caf\xE9, responda: Marrom
+10. Se for bege/nude/areia, responda: Bege
+11. Se for cinza/chumbo, responda: Cinza
+12. Se for amarelo/mostarda, responda: Amarelo
+13. Se for laranja/terracota, responda: Laranja
+14. Se for roxo/lil\xE1s, responda: Roxo
 Responda ESTRITAMENTE em UMA \xDANICA PALAVRA da cor b\xE1sica em portugu\xEAs, sem pontua\xE7\xE3o e sem explica\xE7\xF5es.`;
-    const activeProfile = aiProfile || getRequestAIProfile(req);
-    if (activeProfile === "openai" && openAIProvider.isConfigured()) {
+    if (openAIProvider && openAIProvider.isConfigured()) {
       const client = openAIProvider.getClient();
       for (const visionModel of ["gpt-4o-mini", "gpt-4o", "gpt-5.6-luna", OPENAI_BRAIN_MODEL]) {
         try {
@@ -3295,7 +3294,7 @@ ${body}` : body).slice(0, maxChars);
   }
   return result;
 }
-var IMAGE_REFERENCE_FIDELITY_HEADER = "REGRA PRINCIPAL: a imagem de refer\xEAncia anexada \xE9 o PRODUTO REAL. Reproduza a MESMA pe\xE7a 1:1 (mesmo tipo de pe\xE7a, modelagem, comprimento, decote, al\xE7as, recortes, renda/estampa, tecido e cor). N\xE3o troque, n\xE3o simplifique e n\xE3o invente outra roupa. N\xE3o cubra nem altere decote ou comprimento. Sem rosto (do pesco\xE7o para baixo).";
+var IMAGE_REFERENCE_FIDELITY_HEADER = "REGRA CR\xCDTICA DE PRODUTO VS MODELO/CEN\xC1RIO: A imagem de refer\xEAncia anexada serve EXCLUSIVAMENTE para copiar a pe\xE7a de roupa/produto real. N\xC3O COPIE a modelo, a pessoa, o rosto, o corpo ou o cen\xE1rio de fundo da foto de refer\xEAncia! Voc\xEA DEVE gerar uma NOVA modelo e um NOVO cen\xE1rio conforme solicitados no prompt, vestindo exatamente a MESMA pe\xE7a 1:1 reproduzida fielmente da foto (mesmo tipo, modelagem, corte, decote, al\xE7as, transpar\xEAncia, renda e cor). Enquadramento do pesco\xE7o para baixo (sem rosto).";
 function toDataUri(b64) {
   if (!b64 || typeof b64 !== "string") return void 0;
   const s = b64.trim();
@@ -3325,7 +3324,9 @@ async function generateImageWithKling(params) {
     const rawB64 = params.imageReferenceBase64.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, "").trim();
     if (rawB64.length > 50) {
       payload.image = rawB64;
-      payload.image_fidelity = 0.9;
+      payload.image_reference = "subject";
+      payload.image_fidelity = 0.75;
+      payload.human_fidelity = 0;
     }
   }
   const hosts = ["https://api.klingai.com", "https://api-singapore.klingai.com"];

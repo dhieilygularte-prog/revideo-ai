@@ -1581,27 +1581,26 @@ app.post('/api/detect-dominant-color', async (req, res) => {
       ? photoBase64
       : `data:image/jpeg;base64,${photoBase64}`;
 
-    const promptText = `Analise a foto deste item comercial (${productName || (productMode === 'footwear' ? 'calçado / tênis' : 'roupa')}) e identifique com máxima precisão a cor predominante do corpo/cabedal/tecido principal.
-REGRAS OBRIGATÓRIAS:
-1. Se for calçado/tênis: ignore a sola de borracha (branca/preta) e foque exclusivamente no cabedal (parte superior/tecido/couro).
-2. Ignore o fundo branco/cinza, sombras, piso ou manequins.
-3. Se o cabedal for verde (oliva, militar, musgo, etc.), responda: Verde
-4. Se o cabedal for marrom (caramelo, café, chocolate), responda: Marrom
-5. Se o cabedal for azul (marinho, jeans, royal, celeste), responda: Azul
-6. Se o cabedal for vermelho/vinho, responda: Vermelho
-7. Se o cabedal for rosa/pink, responda: Rosa
-8. Se o cabedal for amarelo/mostarda, responda: Amarelo
-9. Se o cabedal for bege/nude/areia, responda: Bege
-10. Se o cabedal for laranja/terracota, responda: Laranja
-11. Se o cabedal for roxo/lilás, responda: Roxo
-12. Se o cabedal for preto, responda: Preto
-13. Se o cabedal for branco, responda: Branco
-14. Se o cabedal for cinza/chumbo, responda: Cinza
+    const promptText = `Analise a foto deste item comercial (${productName || (productMode === 'footwear' ? 'calçado / tênis' : 'roupa')}) e identifique com máxima precisão a cor predominante da PEÇA DE ROUPA / PRODUTO PRINCIPAL.
+REGRAS CRÍTICAS:
+1. Ignore completamente a pele da pessoa/modelo, cabelo, braços, pernas, rosto ou corpo.
+2. Ignore o fundo, piso, paredes, manequins ou móveis.
+3. Se a peça de roupa for preta (mesmo com renda, transparência, tule ou decote), responda: Preto
+4. Se for branca/off-white, responda: Branco
+5. Se for azul (marinho, jeans, royal, celeste), responda: Azul
+6. Se for vermelha/vinho, responda: Vermelho
+7. Se for rosa/pink, responda: Rosa
+8. Se for verde (oliva, militar, musgo, esmeralda), responda: Verde
+9. Se for marrom/caramelo/café, responda: Marrom
+10. Se for bege/nude/areia, responda: Bege
+11. Se for cinza/chumbo, responda: Cinza
+12. Se for amarelo/mostarda, responda: Amarelo
+13. Se for laranja/terracota, responda: Laranja
+14. Se for roxo/lilás, responda: Roxo
 Responda ESTRITAMENTE em UMA ÚNICA PALAVRA da cor básica em português, sem pontuação e sem explicações.`;
 
-    // 1. Provedor OpenAI
-    const activeProfile = aiProfile || getRequestAIProfile(req);
-    if (activeProfile === 'openai' && openAIProvider.isConfigured()) {
+    // 1. Provedor OpenAI (prioritário por alta precisão visual e sem distorcer tom de pele)
+    if (openAIProvider && openAIProvider.isConfigured()) {
       const client = (openAIProvider as any).getClient();
       for (const visionModel of ['gpt-4o-mini', 'gpt-4o', 'gpt-5.6-luna', OPENAI_BRAIN_MODEL]) {
         try {
@@ -1708,7 +1707,7 @@ function compactPromptToLimit(prompt: string, maxChars: number, criticalHeader: 
 }
 
 const IMAGE_REFERENCE_FIDELITY_HEADER =
-  'REGRA PRINCIPAL: a imagem de referência anexada é o PRODUTO REAL. Reproduza a MESMA peça 1:1 (mesmo tipo de peça, modelagem, comprimento, decote, alças, recortes, renda/estampa, tecido e cor). Não troque, não simplifique e não invente outra roupa. Não cubra nem altere decote ou comprimento. Sem rosto (do pescoço para baixo).';
+  'REGRA CRÍTICA DE PRODUTO VS MODELO/CENÁRIO: A imagem de referência anexada serve EXCLUSIVAMENTE para copiar a peça de roupa/produto real. NÃO COPIE a modelo, a pessoa, o rosto, o corpo ou o cenário de fundo da foto de referência! Você DEVE gerar uma NOVA modelo e um NOVO cenário conforme solicitados no prompt, vestindo exatamente a MESMA peça 1:1 reproduzida fielmente da foto (mesmo tipo, modelagem, corte, decote, alças, transparência, renda e cor). Enquadramento do pescoço para baixo (sem rosto).';
 
 function toDataUri(b64?: string): string | undefined {
   if (!b64 || typeof b64 !== 'string') return undefined;
@@ -1746,7 +1745,9 @@ async function generateImageWithKling(params: {
     const rawB64 = params.imageReferenceBase64.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, '').trim();
     if (rawB64.length > 50) {
       payload.image = rawB64;
-      payload.image_fidelity = 0.9;
+      payload.image_reference = 'subject';
+      payload.image_fidelity = 0.75;
+      payload.human_fidelity = 0.0;
     }
   }
 
