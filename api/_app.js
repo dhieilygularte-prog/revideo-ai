@@ -3316,7 +3316,10 @@ async function generateImageWithKling(params) {
     model_name: "kling-v3",
     prompt: compactPromptToLimit(params.prompt, 2300, params.imageReferenceBase64 ? IMAGE_REFERENCE_FIDELITY_HEADER : ""),
     aspect_ratio: params.aspectRatio || "9:16",
-    n: 1
+    n: 1,
+    watermark_info: {
+      enabled: false
+    }
   };
   if (params.imageReferenceBase64) {
     const rawB64 = params.imageReferenceBase64.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, "").trim();

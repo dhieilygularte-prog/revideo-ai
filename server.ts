@@ -1737,6 +1737,9 @@ async function generateImageWithKling(params: {
     prompt: compactPromptToLimit(params.prompt, 2300, params.imageReferenceBase64 ? IMAGE_REFERENCE_FIDELITY_HEADER : ''),
     aspect_ratio: params.aspectRatio || '9:16',
     n: 1,
+    watermark_info: {
+      enabled: false,
+    },
   };
 
   if (params.imageReferenceBase64) {
