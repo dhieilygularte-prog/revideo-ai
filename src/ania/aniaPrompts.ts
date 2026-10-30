@@ -84,8 +84,8 @@ export function buildAniaImage1Prompt(params: {
   const parteSuperior =
     !isChild && !isFootwear && tipo === 'INFERIOR'
       ? gender === 'Mulher'
-        ? '\nPARTE SUPERIOR OBRIGATÓRIA: blusa básica lisa elegante e discreta (ex: branca, off-white ou preta neutra) usada POR DENTRO do cós do shorts/calça/saia ou cobrindo totalmente a cintura. REGRA INVIOLÁVEL: NUNCA DEIXAR BARRIGA DE FORA (zero barriga/umbigo expostos, estritamente proibido cropped curto que deixe a barriga à mostra). A blusa deve cobrir 100% o abdômen e a linha da cintura.'
-        : '\nPARTE SUPERIOR OBRIGATÓRIA: camiseta básica lisa discreta e neutra cobrindo totalmente a cintura e o abdômen, sem barriga de fora.'
+        ? '\nPARTE SUPERIOR: parte de cima neutra, discreta e harmoniosa, acompanhando com naturalidade a peça inferior sem alterar a proposta do produto.'
+        : '\nPARTE SUPERIOR: camiseta básica neutra combinando com a peça inferior.'
       : '';
 
   const detalhesList =
@@ -119,8 +119,8 @@ ESTILO: fotografia real de celular moderno, alta definição, textura verdadeira
 PROIBIÇÕES ABSOLUTAS E REGRAS DE INTEGRIDADE:
 - NUNCA MOSTRAR O ROSTO (estritamente do pescoço para baixo ou pés).
 - PROIBIDO GERAR CRIANÇAS (em modo infantil, apenas mãos de adultos em POV apresentando a peça).
-- REDUÇÃO DISCRETA DE DECOTE (DECOTE MODERADO SEM ALTERAR A PEÇA): Se a roupa de referência tiver decote profundo com exposição excessiva do colo ou seios, eleve discretamente o ponto central do decote em 20% a 35% diminuindo a exposição sem fechar exageradamente e mantendo 100% o formato original (ex: se for decote V, continua decote V discreto), com as mesmas alças, caimento, tecido e costuras.
-- ZERO BARRIGA EXPOSTA (NUNCA DEIXAR BARRIGA OU UMBIGO DE FORA): Mesmo que a foto de referência original mostre a modelo com barriga de fora ou cropped, a imagem final DEVE cobrir o abdômen (usando blusa neutra por baixo ou prolongamento discreto), preservando o produto principal.
+- FIDELIDADE TOTAL AO DECOTE E MODELAGEM (SEM ALTERAÇÕES DE DECOTE): Reproduza 100% fielmente o recorte, decote, alças, caimento e aberturas da peça de referência exatamente como estão na foto original (seja decote V, profundo, tomara-que-caia, camisola, alcinha ou lingerie). É estritamente proibido fechar, cobrir, subir o decote ou modificar o corte do produto.
+- PRESERVAÇÃO TOTAL DO COMPRIMENTO ORIGINAL (SEM COBRIR BARRIGA ARTIFICIALMENTE): Se a peça de referência for cropped, top curto, biquíni, maiô, conjunto curto ou peça que exponha a cintura/barriga, mantenha o comprimento exato da foto original. É proibido alongar a peça, cobrir o abdômen artificialmente ou adicionar blusas por baixo que não existam na peça real.
 - CARACTERÍSTICAS LOCALIZADAS PERMANECEM LOCALIZADAS: Se uma característica for de uma parte (ex: gola canelada, punho canelado, cós elástico, detalhe em renda), aplique SOMENTE naquela parte específica, NUNCA na peça inteira.
 - COR DECLARADA TEM PRIORIDADE ABSOLUTA: A cor escrita pelo usuário (${colorName}) tem prioridade total e indiscutível sobre qualquer variação ou distorção de luz da foto.
 - ZERO TATUAGENS em homem ou mulher.
