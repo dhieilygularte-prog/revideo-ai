@@ -1671,6 +1671,49 @@ Responda ESTRITAMENTE em UMA ÚNICA PALAVRA da cor básica em português, sem po
 });
 
 // ─── GERADORES DE IMAGEM EXTERNOS: KLING 3.0 & SEEDREAM 5.0 PRO ───────────────
+// Compacta prompts longos preservando as regras críticas no início (Kling aceita no máximo 2500 caracteres)
+function compactPromptToLimit(prompt: string, maxChars: number, criticalHeader: string): string {
+  const clean = (s: string) =>
+    String(s || '')
+      .replace(/\r/g, '')
+      .replace(/[ \t]+/g, ' ')
+      .replace(/\n{2,}/g, '\n')
+      .trim();
+
+  const header = clean(criticalHeader);
+  let body = clean(prompt);
+  const full = header ? `${header}\n${body}` : body;
+  if (full.length <= maxChars) return full;
+
+  // Remove blocos de menor prioridade (ambiente/iluminação/estilo detalhados) antes de truncar
+  const lowPriority = /^(ILUMINAÇÃO|ESTILO|POSE E APARÊNCIA|- Sem acessórios|- Postura natural|- Sem textos|- ZERO TATUAGENS em)/i;
+  body = body
+    .split('\n')
+    .filter((line) => !lowPriority.test(line.trim()))
+    .join('\n');
+
+  const budget = maxChars - header.length - 1;
+  if (body.length > budget) {
+    let cut = body.slice(0, budget);
+    const lastStop = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('.\n'), cut.lastIndexOf('\n'));
+    if (lastStop > budget * 0.6) cut = cut.slice(0, lastStop + 1);
+    body = cut.trim();
+  }
+  return (header ? `${header}\n${body}` : body).slice(0, maxChars);
+}
+
+const IMAGE_REFERENCE_FIDELITY_HEADER =
+  'REGRA PRINCIPAL: a imagem de referência anexada é o PRODUTO REAL. Reproduza a MESMA peça 1:1 (mesmo tipo de peça, modelagem, comprimento, decote, alças, recortes, renda/estampa, tecido e cor). Não troque, não simplifique e não invente outra roupa. Não cubra nem altere decote ou comprimento. Sem rosto (do pescoço para baixo).';
+
+function toDataUri(b64?: string): string | undefined {
+  if (!b64 || typeof b64 !== 'string') return undefined;
+  const s = b64.trim();
+  if (s.length < 50) return undefined;
+  if (s.startsWith('data:image/')) return s;
+  if (s.startsWith('http')) return s;
+  return `data:image/jpeg;base64,${s}`;
+}
+
 async function generateImageWithKling(params: {
   prompt: string;
   imageReferenceBase64?: string;
@@ -1686,16 +1729,16 @@ async function generateImageWithKling(params: {
 
   const payload: any = {
     model_name: 'kling-v3',
-    prompt: params.prompt,
+    prompt: compactPromptToLimit(params.prompt, 2450, params.imageReferenceBase64 ? IMAGE_REFERENCE_FIDELITY_HEADER : ''),
     aspect_ratio: params.aspectRatio || '9:16',
     n: 1,
   };
 
   if (params.imageReferenceBase64) {
-    const rawB64 = params.imageReferenceBase64.replace(/^data:image\/[a-z]+;base64,/, '').trim();
+    const rawB64 = params.imageReferenceBase64.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, '').trim();
     if (rawB64.length > 50) {
       payload.image = rawB64;
-      payload.image_fidelity = 0.7;
+      payload.image_fidelity = 0.9;
     }
   }
 
@@ -1774,6 +1817,7 @@ async function generateImageWithKling(params: {
 async function generateImageWithSeedream(params: {
   prompt: string;
   imageReferenceBase64?: string;
+  referenceImages?: (string | undefined)[];
   aspectRatio?: string;
 }): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
   let apiKey = (
@@ -1808,12 +1852,28 @@ async function generateImageWithSeedream(params: {
     };
   }
 
+  const refImages = (params.referenceImages && params.referenceImages.length > 0
+    ? params.referenceImages
+    : [params.imageReferenceBase64]
+  )
+    .map((img) => toDataUri(img))
+    .filter((img): img is string => Boolean(img))
+    .slice(0, 10);
+
   const payload: any = {
     model: 'dola-seedream-5-0-pro-260628',
-    prompt: params.prompt,
+    prompt: refImages.length > 0 ? `${IMAGE_REFERENCE_FIDELITY_HEADER}\n\n${params.prompt}` : params.prompt,
     size: '1024x1792',
     response_format: 'url',
+    watermark: false,
   };
+
+  if (refImages.length === 1) {
+    payload.image = refImages[0];
+  } else if (refImages.length > 1) {
+    payload.image = refImages;
+    payload.sequential_image_generation = 'disabled';
+  }
 
   const hosts = [
     'https://ark.ap-southeast.bytepluses.com/api/v3/images/generations',
@@ -1989,9 +2049,20 @@ app.post('/api/generate-scene-image', async (req, res) => {
     }
 
     if (requestedImageModel === 'seedream_5_0_pro') {
+      // Ordem: 1ª = imagem base (Imagem 1 nas trocas de cor), depois fotos reais do produto
+      const seen = new Set<string>();
+      const orderedRefs = [modelReferenceBase64, productPhotoBase64, ...(Array.isArray(productPhotosBase64) ? productPhotosBase64 : [])]
+        .filter((img: any) => typeof img === 'string' && img.length > 50)
+        .filter((img: string) => {
+          const key = img.slice(-120);
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
       const seedreamResult = await generateImageWithSeedream({
         prompt: effectivePrompt,
         imageReferenceBase64: modelReferenceBase64 || productPhotoBase64,
+        referenceImages: orderedRefs,
         aspectRatio: req.body.aspectRatio || '9:16',
       });
       return res.json(seedreamResult);

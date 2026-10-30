@@ -3272,6 +3272,34 @@ Responda ESTRITAMENTE em UMA \xDANICA PALAVRA da cor b\xE1sica em portugu\xEAs, 
     return res.status(500).json({ success: false, error: err?.message || "Erro interno" });
   }
 });
+function compactPromptToLimit(prompt, maxChars, criticalHeader) {
+  const clean = (s) => String(s || "").replace(/\r/g, "").replace(/[ \t]+/g, " ").replace(/\n{2,}/g, "\n").trim();
+  const header = clean(criticalHeader);
+  let body = clean(prompt);
+  const full = header ? `${header}
+${body}` : body;
+  if (full.length <= maxChars) return full;
+  const lowPriority = /^(ILUMINAÇÃO|ESTILO|POSE E APARÊNCIA|- Sem acessórios|- Postura natural|- Sem textos|- ZERO TATUAGENS em)/i;
+  body = body.split("\n").filter((line) => !lowPriority.test(line.trim())).join("\n");
+  const budget = maxChars - header.length - 1;
+  if (body.length > budget) {
+    let cut = body.slice(0, budget);
+    const lastStop = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf(".\n"), cut.lastIndexOf("\n"));
+    if (lastStop > budget * 0.6) cut = cut.slice(0, lastStop + 1);
+    body = cut.trim();
+  }
+  return (header ? `${header}
+${body}` : body).slice(0, maxChars);
+}
+var IMAGE_REFERENCE_FIDELITY_HEADER = "REGRA PRINCIPAL: a imagem de refer\xEAncia anexada \xE9 o PRODUTO REAL. Reproduza a MESMA pe\xE7a 1:1 (mesmo tipo de pe\xE7a, modelagem, comprimento, decote, al\xE7as, recortes, renda/estampa, tecido e cor). N\xE3o troque, n\xE3o simplifique e n\xE3o invente outra roupa. N\xE3o cubra nem altere decote ou comprimento. Sem rosto (do pesco\xE7o para baixo).";
+function toDataUri(b64) {
+  if (!b64 || typeof b64 !== "string") return void 0;
+  const s = b64.trim();
+  if (s.length < 50) return void 0;
+  if (s.startsWith("data:image/")) return s;
+  if (s.startsWith("http")) return s;
+  return `data:image/jpeg;base64,${s}`;
+}
 async function generateImageWithKling(params) {
   const apiKey = (process.env.KLING_API_KEY || "").trim();
   if (!apiKey) {
@@ -3282,15 +3310,15 @@ async function generateImageWithKling(params) {
   }
   const payload = {
     model_name: "kling-v3",
-    prompt: params.prompt,
+    prompt: compactPromptToLimit(params.prompt, 2450, params.imageReferenceBase64 ? IMAGE_REFERENCE_FIDELITY_HEADER : ""),
     aspect_ratio: params.aspectRatio || "9:16",
     n: 1
   };
   if (params.imageReferenceBase64) {
-    const rawB64 = params.imageReferenceBase64.replace(/^data:image\/[a-z]+;base64,/, "").trim();
+    const rawB64 = params.imageReferenceBase64.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, "").trim();
     if (rawB64.length > 50) {
       payload.image = rawB64;
-      payload.image_fidelity = 0.7;
+      payload.image_fidelity = 0.9;
     }
   }
   const hosts = ["https://api.klingai.com", "https://api-singapore.klingai.com"];
@@ -3380,12 +3408,22 @@ async function generateImageWithSeedream(params) {
       error: "Chave do Seedream (SEEDREAM_API_KEY / apiauroraseedreamvip) n\xE3o encontrada nas vari\xE1veis de ambiente da Vercel."
     };
   }
+  const refImages = (params.referenceImages && params.referenceImages.length > 0 ? params.referenceImages : [params.imageReferenceBase64]).map((img) => toDataUri(img)).filter((img) => Boolean(img)).slice(0, 10);
   const payload = {
     model: "dola-seedream-5-0-pro-260628",
-    prompt: params.prompt,
+    prompt: refImages.length > 0 ? `${IMAGE_REFERENCE_FIDELITY_HEADER}
+
+${params.prompt}` : params.prompt,
     size: "1024x1792",
-    response_format: "url"
+    response_format: "url",
+    watermark: false
   };
+  if (refImages.length === 1) {
+    payload.image = refImages[0];
+  } else if (refImages.length > 1) {
+    payload.image = refImages;
+    payload.sequential_image_generation = "disabled";
+  }
   const hosts = [
     "https://ark.ap-southeast.bytepluses.com/api/v3/images/generations"
   ];
@@ -3543,9 +3581,17 @@ app.post("/api/generate-scene-image", async (req, res) => {
       return res.json(klingResult);
     }
     if (requestedImageModel === "seedream_5_0_pro") {
+      const seen = /* @__PURE__ */ new Set();
+      const orderedRefs = [modelReferenceBase64, productPhotoBase64, ...Array.isArray(productPhotosBase64) ? productPhotosBase64 : []].filter((img) => typeof img === "string" && img.length > 50).filter((img) => {
+        const key = img.slice(-120);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
       const seedreamResult = await generateImageWithSeedream({
         prompt: effectivePrompt,
         imageReferenceBase64: modelReferenceBase64 || productPhotoBase64,
+        referenceImages: orderedRefs,
         aspectRatio: req.body.aspectRatio || "9:16"
       });
       return res.json(seedreamResult);
