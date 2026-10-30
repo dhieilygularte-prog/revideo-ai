@@ -1699,7 +1699,12 @@ function compactPromptToLimit(prompt: string, maxChars: number, criticalHeader: 
     if (lastStop > budget * 0.6) cut = cut.slice(0, lastStop + 1);
     body = cut.trim();
   }
-  return (header ? `${header}\n${body}` : body).slice(0, maxChars);
+  let result = (header ? `${header}\n${body}` : body).slice(0, maxChars);
+  // Garantia extra: alguns provedores contam bytes UTF-8 (acentos = 2 bytes)
+  while (Buffer.byteLength(result, 'utf8') > maxChars && result.length > 0) {
+    result = result.slice(0, result.length - 20);
+  }
+  return result;
 }
 
 const IMAGE_REFERENCE_FIDELITY_HEADER =
@@ -1729,7 +1734,7 @@ async function generateImageWithKling(params: {
 
   const payload: any = {
     model_name: 'kling-v3',
-    prompt: compactPromptToLimit(params.prompt, 2450, params.imageReferenceBase64 ? IMAGE_REFERENCE_FIDELITY_HEADER : ''),
+    prompt: compactPromptToLimit(params.prompt, 2300, params.imageReferenceBase64 ? IMAGE_REFERENCE_FIDELITY_HEADER : ''),
     aspect_ratio: params.aspectRatio || '9:16',
     n: 1,
   };

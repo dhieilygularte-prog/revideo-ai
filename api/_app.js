@@ -3288,8 +3288,12 @@ ${body}` : body;
     if (lastStop > budget * 0.6) cut = cut.slice(0, lastStop + 1);
     body = cut.trim();
   }
-  return (header ? `${header}
+  let result = (header ? `${header}
 ${body}` : body).slice(0, maxChars);
+  while (Buffer.byteLength(result, "utf8") > maxChars && result.length > 0) {
+    result = result.slice(0, result.length - 20);
+  }
+  return result;
 }
 var IMAGE_REFERENCE_FIDELITY_HEADER = "REGRA PRINCIPAL: a imagem de refer\xEAncia anexada \xE9 o PRODUTO REAL. Reproduza a MESMA pe\xE7a 1:1 (mesmo tipo de pe\xE7a, modelagem, comprimento, decote, al\xE7as, recortes, renda/estampa, tecido e cor). N\xE3o troque, n\xE3o simplifique e n\xE3o invente outra roupa. N\xE3o cubra nem altere decote ou comprimento. Sem rosto (do pesco\xE7o para baixo).";
 function toDataUri(b64) {
@@ -3310,7 +3314,7 @@ async function generateImageWithKling(params) {
   }
   const payload = {
     model_name: "kling-v3",
-    prompt: compactPromptToLimit(params.prompt, 2450, params.imageReferenceBase64 ? IMAGE_REFERENCE_FIDELITY_HEADER : ""),
+    prompt: compactPromptToLimit(params.prompt, 2300, params.imageReferenceBase64 ? IMAGE_REFERENCE_FIDELITY_HEADER : ""),
     aspect_ratio: params.aspectRatio || "9:16",
     n: 1
   };
