@@ -61,11 +61,15 @@ if (!process.env.KLING_API_KEY) {
     process.env.Apiklingdhieily ||
     '';
 }
-if (!process.env.SEEDREAM_API_KEY) {
+if (!process.env.SEEDREAM_API_KEY || process.env.SEEDREAM_API_KEY.startsWith('apikey-20261030152315-sqr2q')) {
   process.env.SEEDREAM_API_KEY =
+    process.env.apiauroraseedreamvip ||
+    process.env.APIAURORASEEDREAMVIP ||
+    process.env.Apiauroraseedreamvip ||
     process.env.APISEEDREAMVALIDA ||
     process.env.APISEEDREAM ||
     process.env.BYTEPLUS_ARK_API_KEY ||
+    process.env.SEEDREAM_API_KEY ||
     '';
 }
 
@@ -1772,11 +1776,35 @@ async function generateImageWithSeedream(params: {
   imageReferenceBase64?: string;
   aspectRatio?: string;
 }): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
-  const apiKey = (process.env.SEEDREAM_API_KEY || '').trim();
+  let apiKey = (
+    process.env.apiauroraseedreamvip ||
+    process.env.APIAURORASEEDREAMVIP ||
+    process.env.Apiauroraseedreamvip ||
+    process.env.SEEDREAM_API_KEY ||
+    process.env.APISEEDREAMVALIDA ||
+    process.env.APISEEDREAM ||
+    process.env.BYTEPLUS_ARK_API_KEY ||
+    ''
+  ).trim();
+
+  // Se a chave ainda for a antiga rejeitada ou vazia, vasculhar outras variáveis
+  if (!apiKey || apiKey.startsWith('apikey-20261030152315-sqr2q')) {
+    for (const k of Object.keys(process.env)) {
+      const lk = k.toLowerCase();
+      if (lk.includes('seedream') || lk.includes('byteplus') || lk.includes('ark')) {
+        const val = (process.env[k] || '').trim();
+        if (val && !val.startsWith('apikey-20261030152315-sqr2q')) {
+          apiKey = val;
+          break;
+        }
+      }
+    }
+  }
+
   if (!apiKey) {
     return {
       success: false,
-      error: 'Chave do Seedream (SEEDREAM_API_KEY ou APISEEDREAMVALIDA) não configurada no ambiente.',
+      error: 'Chave do Seedream (SEEDREAM_API_KEY / apiauroraseedreamvip) não encontrada nas variáveis de ambiente da Vercel.',
     };
   }
 
@@ -1803,7 +1831,14 @@ async function generateImageWithSeedream(params: {
         body: JSON.stringify(payload),
       });
 
-      const data = await res.json();
+      const text = await res.text();
+      let data: any = null;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = { error: { message: text } };
+      }
+
       if (res.ok && Array.isArray(data?.data) && data.data[0]?.url) {
         const imgUrl = data.data[0].url;
         try {
@@ -1818,7 +1853,8 @@ async function generateImageWithSeedream(params: {
       } else if (res.ok && Array.isArray(data?.data) && data.data[0]?.b64_json) {
         return { success: true, imageUrl: `data:image/png;base64,${data.data[0].b64_json}` };
       } else {
-        lastError = data?.error?.message || data?.message || JSON.stringify(data?.error || data);
+        const errMsg = data?.error?.message || data?.message || JSON.stringify(data?.error || data);
+        lastError = `BytePlus Seedream (${res.status}): ${errMsg}`;
       }
     } catch (err: any) {
       lastError = err?.message || 'Erro de rede ao conectar com Seedream';

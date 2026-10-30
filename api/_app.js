@@ -1910,8 +1910,8 @@ if (!process.env.GEMINI_API_KEY) {
 if (!process.env.KLING_API_KEY) {
   process.env.KLING_API_KEY = process.env.APIKLINGVALIDA || process.env.Apikling || process.env.APIKLING || process.env.Apiklingdhieily || "";
 }
-if (!process.env.SEEDREAM_API_KEY) {
-  process.env.SEEDREAM_API_KEY = process.env.APISEEDREAMVALIDA || process.env.APISEEDREAM || process.env.BYTEPLUS_ARK_API_KEY || "";
+if (!process.env.SEEDREAM_API_KEY || process.env.SEEDREAM_API_KEY.startsWith("apikey-20261030152315-sqr2q")) {
+  process.env.SEEDREAM_API_KEY = process.env.apiauroraseedreamvip || process.env.APIAURORASEEDREAMVIP || process.env.Apiauroraseedreamvip || process.env.APISEEDREAMVALIDA || process.env.APISEEDREAM || process.env.BYTEPLUS_ARK_API_KEY || process.env.SEEDREAM_API_KEY || "";
 }
 var __filename = fileURLToPath(import.meta.url);
 var __dirname = path.dirname(__filename);
@@ -3361,11 +3361,23 @@ async function generateImageWithKling(params) {
   return { success: false, error: "Tempo limite excedido na gera\xE7\xE3o do Kling 3.0 (timeout 90s)." };
 }
 async function generateImageWithSeedream(params) {
-  const apiKey = (process.env.SEEDREAM_API_KEY || "").trim();
+  let apiKey = (process.env.apiauroraseedreamvip || process.env.APIAURORASEEDREAMVIP || process.env.Apiauroraseedreamvip || process.env.SEEDREAM_API_KEY || process.env.APISEEDREAMVALIDA || process.env.APISEEDREAM || process.env.BYTEPLUS_ARK_API_KEY || "").trim();
+  if (!apiKey || apiKey.startsWith("apikey-20261030152315-sqr2q")) {
+    for (const k of Object.keys(process.env)) {
+      const lk = k.toLowerCase();
+      if (lk.includes("seedream") || lk.includes("byteplus") || lk.includes("ark")) {
+        const val = (process.env[k] || "").trim();
+        if (val && !val.startsWith("apikey-20261030152315-sqr2q")) {
+          apiKey = val;
+          break;
+        }
+      }
+    }
+  }
   if (!apiKey) {
     return {
       success: false,
-      error: "Chave do Seedream (SEEDREAM_API_KEY ou APISEEDREAMVALIDA) n\xE3o configurada no ambiente."
+      error: "Chave do Seedream (SEEDREAM_API_KEY / apiauroraseedreamvip) n\xE3o encontrada nas vari\xE1veis de ambiente da Vercel."
     };
   }
   const payload = {
@@ -3388,7 +3400,13 @@ async function generateImageWithSeedream(params) {
         },
         body: JSON.stringify(payload)
       });
-      const data = await res.json();
+      const text = await res.text();
+      let data = null;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = { error: { message: text } };
+      }
       if (res.ok && Array.isArray(data?.data) && data.data[0]?.url) {
         const imgUrl = data.data[0].url;
         try {
@@ -3403,7 +3421,8 @@ async function generateImageWithSeedream(params) {
       } else if (res.ok && Array.isArray(data?.data) && data.data[0]?.b64_json) {
         return { success: true, imageUrl: `data:image/png;base64,${data.data[0].b64_json}` };
       } else {
-        lastError = data?.error?.message || data?.message || JSON.stringify(data?.error || data);
+        const errMsg = data?.error?.message || data?.message || JSON.stringify(data?.error || data);
+        lastError = `BytePlus Seedream (${res.status}): ${errMsg}`;
       }
     } catch (err) {
       lastError = err?.message || "Erro de rede ao conectar com Seedream";
