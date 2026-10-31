@@ -6,8 +6,8 @@ import { AIProfile, AI_PROFILES } from '../config/aiProfiles';
 
 interface HeaderProps {
   tokenStats?: TokenUsageStats;
-  mode?: 'produtos2' | 'ania' | 'clone' | 'produto';
-  onModeChange?: (mode: 'produtos2' | 'ania' | 'clone' | 'produto') => void;
+  mode?: 'produtos2' | 'ania' | 'clone' | 'produto' | 'anamaria';
+  onModeChange?: (mode: 'produtos2' | 'ania' | 'clone' | 'produto' | 'anamaria') => void;
   aiProfile?: AIProfile;
   onAIProfileChange?: (profile: AIProfile) => void;
 }
@@ -70,6 +70,19 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Package className="w-3.5 h-3.5 text-emerald-200" />
               <span>Modo Produtos 2.0</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onModeChange('anamaria')}
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                mode === 'anamaria'
+                  ? 'bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-700 text-zinc-950 shadow-md border border-amber-400 font-black'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              <span>Modo Ana Maria</span>
             </button>
 
             <button

@@ -56,6 +56,7 @@ interface Produtos2FormProps {
   isViewOnly?: boolean;
   hasExistingResult?: boolean;
   onGoToResults?: () => void;
+  onNavigateToAnaMaria?: () => void;
 }
 
 /**
@@ -122,6 +123,7 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
   isViewOnly = false,
   hasExistingResult = false,
   onGoToResults,
+  onNavigateToAnaMaria,
 }) => {
   const [activeMic, setActiveMic] = useState<'info' | 'instructions' | 'user' | 'banco1' | 'banco2' | 'aurora' | null>(null);
   const [isGeneratingSpeeches, setIsGeneratingSpeeches] = useState(false);
@@ -1158,21 +1160,27 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
             </div>
           </button>
 
-          <div
-            className="p-3 rounded-xl border border-zinc-800/60 bg-zinc-950/40 text-zinc-500 flex items-center justify-between gap-2 opacity-60 cursor-not-allowed"
-            title="Vestuário Feminino no Modo Produtos 2.0 será liberado em breve (use o Modo Ania para roupas femininas)"
+          <button
+            type="button"
+            onClick={() => {
+              if (onNavigateToAnaMaria) {
+                onNavigateToAnaMaria();
+              }
+            }}
+            className="p-3 rounded-xl border border-amber-500/50 bg-gradient-to-r from-amber-950/70 via-stone-950 to-zinc-950 text-amber-200 hover:border-amber-400 hover:text-white transition-all flex items-center justify-between gap-2 cursor-pointer shadow-md shadow-amber-950/40 group hover:scale-[1.01]"
+            title="Abrir o Modo Ana Maria (Vitrine Estática 10s · Selfie no Espelho)"
           >
             <div className="flex items-center gap-2.5">
-              <Lock className="w-4 h-4 shrink-0 text-zinc-500" />
+              <Sparkles className="w-5 h-5 shrink-0 text-amber-400 group-hover:scale-110 transition-transform" />
               <div>
-                <div className="text-xs font-bold">Vestuário Feminino</div>
-                <div className="text-[10px]">Storyboard + Espelho</div>
+                <div className="text-xs font-black uppercase tracking-wide text-amber-300">Modo Ana Maria</div>
+                <div className="text-[11px] text-zinc-400">Selfie Espelho · Vitrine 10s · Kling Omni</div>
               </div>
             </div>
-            <span className="px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 text-[10px] font-bold uppercase">
-              Em breve
+            <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold uppercase border border-amber-500/40">
+              Abrir
             </span>
-          </div>
+          </button>
         </div>
 
         {/* Sub-opção de Vestuário Masculino: Calçados vs Roupas (Item 12: verde em Vestuário Masculino) */}

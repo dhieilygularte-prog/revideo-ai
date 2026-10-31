@@ -25,6 +25,7 @@ import { AniaFormState, AniaResultState } from './ania/types';
 import { ProdutoFormState, ProdutoResultState } from './produto/types';
 import { Produtos2Form } from './produtos2/Produtos2Form';
 import { Produtos2FormState, Produtos2ResultState } from './produtos2/types';
+import { AnaMariaFormState, AnaMariaResultState } from './anamaria/types';
 import { AIProfile } from './config/aiProfiles';
 
 const VideoInputCard = lazy(() =>
@@ -72,17 +73,26 @@ const ProdutoResults = lazy(() =>
 const GenerationHistoryModal = lazy(() =>
   import('./produtos2/GenerationHistoryModal').then((m) => ({ default: m.GenerationHistoryModal }))
 );
+const AnaMariaForm = lazy(() =>
+  import('./anamaria/AnaMariaForm').then((m) => ({ default: m.AnaMariaForm }))
+);
+const AnaMariaResults = lazy(() =>
+  import('./anamaria/AnaMariaResults').then((m) => ({ default: m.AnaMariaResults }))
+);
+const AnaMariaHistoryModal = lazy(() =>
+  import('./anamaria/AnaMariaHistoryModal').then((m) => ({ default: m.AnaMariaHistoryModal }))
+);
 
 export default function App() {
-  // Mode Selection State ('produtos2' default por padrão no APP, opções: 'produtos2' | 'ania' | 'clone' | 'produto')
-  const [appMode, setAppMode] = useState<'produtos2' | 'ania' | 'clone' | 'produto'>('produtos2');
+  // Mode Selection State ('produtos2' default por padrão no APP, opções: 'produtos2' | 'ania' | 'clone' | 'produto' | 'anamaria')
+  const [appMode, setAppMode] = useState<'produtos2' | 'ania' | 'clone' | 'produto' | 'anamaria'>('produtos2');
 
   // AI Profile Selection State ('openai' default no modo clonagem)
   const [aiProfile, setAiProfile] = useState<AIProfile>('openai');
 
-  const handleModeChange = (newMode: 'produtos2' | 'ania' | 'clone' | 'produto') => {
+  const handleModeChange = (newMode: 'produtos2' | 'ania' | 'clone' | 'produto' | 'anamaria') => {
     setAppMode(newMode);
-    if (newMode === 'clone') {
+    if (newMode === 'clone' || newMode === 'anamaria') {
       setAiProfile('openai');
     }
   };
@@ -178,6 +188,26 @@ export default function App() {
   const [aniaProgressPercent, setAniaProgressPercent] = useState(0);
   const [aniaStatusMessage, setAniaStatusMessage] = useState('');
   const [aniaErrorMessage, setAniaErrorMessage] = useState<string | null>(null);
+
+  // Modo Ana Maria State
+  const [anaMariaPage, setAnaMariaPage] = useState<'form' | 'results'>('form');
+  const [isProcessingAnaMaria, setIsProcessingAnaMaria] = useState(false);
+  const [anaMariaProgressPercent, setAnaMariaProgressPercent] = useState(0);
+  const [anaMariaStatusMessage, setAnaMariaStatusMessage] = useState('');
+  const [anaMariaErrorMessage, setAnaMariaErrorMessage] = useState<string | null>(null);
+  const [isAnaMariaHistoryOpen, setIsAnaMariaHistoryOpen] = useState(false);
+
+  const [anaMariaForm, setAnaMariaForm] = useState<AnaMariaFormState>({
+    productName: '',
+    referencePhotos: [],
+    influencer: 'Mulher',
+    bodyType: 'normal',
+    additionalInstructions: '',
+    imageModel: 'seedream_5_0_pro',
+    videoPromptLimit: 'unlimited',
+  });
+
+  const [anaMariaResult, setAnaMariaResult] = useState<AnaMariaResultState | null>(null);
 
   // Video Reference State (Modo Clonagem)
   const [videoData, setVideoData] = useState<ReferenceVideoData | null>(null);
@@ -1194,6 +1224,57 @@ export default function App() {
     });
   };
 
+  // ─── MODO ANA MARIA HANDLERS ──────────────────────────────────────────────
+  const handleStartAnaMaria = async () => {
+    if (!anaMariaForm.referencePhotos || anaMariaForm.referencePhotos.length === 0) {
+      alert('Por favor, anexe ao menos 1 foto da peça.');
+      return;
+    }
+    setAnaMariaErrorMessage(null);
+    setIsProcessingAnaMaria(true);
+    setAnaMariaProgressPercent(10);
+    setAnaMariaStatusMessage('Iniciando geração no Modo Ana Maria...');
+
+    try {
+      const { runAnaMariaPipeline } = await import('./anamaria/anaMariaPipeline');
+      const res = await runAnaMariaPipeline(
+        anaMariaForm,
+        {
+          onProgress: (_step, pct) => setAnaMariaProgressPercent(pct),
+          onStatusMessage: (msg) => setAnaMariaStatusMessage(msg),
+        },
+        aiProfile
+      );
+
+      setAnaMariaResult(res);
+      setAnaMariaPage('results');
+      playCompletionSound(1);
+    } catch (err: any) {
+      console.error('Erro na execução do Modo Ana Maria:', err);
+      setAnaMariaErrorMessage(err?.message || 'Falha ao processar no Modo Ana Maria.');
+    } finally {
+      setIsProcessingAnaMaria(false);
+    }
+  };
+
+  const handleResetAnaMariaForm = () => {
+    setAnaMariaForm({
+      productName: '',
+      referencePhotos: [],
+      influencer: 'Mulher',
+      bodyType: 'normal',
+      additionalInstructions: '',
+      imageModel: 'seedream_5_0_pro',
+      videoPromptLimit: 'unlimited',
+    });
+    setAnaMariaResult(null);
+    setAnaMariaPage('form');
+  };
+
+  const handleContinueAnaMariaProduct = () => {
+    setAnaMariaPage('form');
+  };
+
   // Modo Produtos 2.0 Pipeline Trigger
   const handleStartProdutos2 = async () => {
     setIsProcessingProdutos2(true);
@@ -1806,12 +1887,18 @@ export default function App() {
 
   return (
     <div className={`min-h-screen text-zinc-100 flex flex-col font-sans selection:bg-purple-500/20 selection:text-purple-300 transition-colors duration-300 ${
-      appMode === 'produto' ? 'bg-[#1c130e]' : 'bg-zinc-950'
+      appMode === 'produto'
+        ? 'bg-[#1c130e]'
+        : appMode === 'anamaria'
+        ? 'bg-[#140e09]'
+        : 'bg-zinc-950'
     }`}>
       <Header
         tokenStats={
           appMode === 'produtos2'
             ? (produtos2Result?.tokenUsage || (sessionTokenStats.totalTokens > 0 ? sessionTokenStats : undefined))
+            : appMode === 'anamaria'
+            ? (anaMariaResult?.tokenUsage || sessionTokenStats)
             : appMode === 'ania'
             ? (aniaResult?.tokenUsage || sessionTokenStats)
             : (analysisResult?.tokenUsage || sessionTokenStats)
@@ -1825,9 +1912,45 @@ export default function App() {
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 space-y-8">
         <Suspense fallback={null}>
         {/* ========================================================================= */}
-        {/* MODO PRODUTOS 2.0 VIEW (Padrão no App)                                    */}
+        {/* MODO ANA MARIA VIEW                                                       */}
         {/* ========================================================================= */}
-        {appMode === 'produtos2' ? (
+        {appMode === 'anamaria' ? (
+          <div className="space-y-6">
+            {anaMariaErrorMessage && (
+              <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl text-xs text-rose-300 flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-bold text-sm">Aviso no Processamento (Modo Ana Maria):</p>
+                  <p className="text-rose-200/90 leading-relaxed">{anaMariaErrorMessage}</p>
+                </div>
+              </div>
+            )}
+
+            {!anaMariaResult || anaMariaPage === 'form' ? (
+              <AnaMariaForm
+                form={anaMariaForm}
+                onChange={setAnaMariaForm}
+                onSubmit={handleStartAnaMaria}
+                isProcessing={isProcessingAnaMaria}
+                progressPercent={anaMariaProgressPercent}
+                statusMessage={anaMariaStatusMessage}
+                onOpenHistory={() => setIsAnaMariaHistoryOpen(true)}
+                onNavigateToProdutos2={() => setAppMode('produtos2')}
+              />
+            ) : (
+              <AnaMariaResults
+                result={anaMariaResult}
+                onUpdateResult={setAnaMariaResult}
+                onBackToForm={() => setAnaMariaPage('form')}
+                onCreateNew={handleResetAnaMariaForm}
+                onContinueProduct={handleContinueAnaMariaProduct}
+                onOpenHistory={() => setIsAnaMariaHistoryOpen(true)}
+                onOpenPreviewModal={(url, title) => setPreviewModal({ isOpen: true, url, title })}
+                aiProfile={aiProfile}
+              />
+            )}
+          </div>
+        ) : appMode === 'produtos2' ? (
           <div className="space-y-6">
             {produtos2ErrorMessage && (
               <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl text-xs text-rose-300 flex items-start gap-3">
@@ -1853,6 +1976,10 @@ export default function App() {
                 isViewOnly={Boolean(produtos2Result && isProdutos2ViewOnly)}
                 hasExistingResult={Boolean(produtos2Result)}
                 onGoToResults={() => setProdutos2Page('results')}
+                onNavigateToAnaMaria={() => {
+                  setAppMode('anamaria');
+                  setAnaMariaPage('form');
+                }}
               />
             ) : (
               <div className="space-y-6">
@@ -2245,6 +2372,27 @@ export default function App() {
             isOpen={isHistoryOpen}
             onClose={() => setIsHistoryOpen(false)}
             onSelectCreative={handleReopenFromHistory}
+            onOpenPreview={(url, title) => setPreviewModal({ isOpen: true, url, title })}
+          />
+        )}
+        {isAnaMariaHistoryOpen && (
+          <AnaMariaHistoryModal
+            isOpen={isAnaMariaHistoryOpen}
+            onClose={() => setIsAnaMariaHistoryOpen(false)}
+            onSelectCreative={(item) => {
+              setAnaMariaResult(item);
+              setAnaMariaForm({
+                productName: item.productName,
+                referencePhotos: item.referencePhotos,
+                influencer: item.influencer,
+                bodyType: item.bodyType,
+                additionalInstructions: item.additionalInstructions,
+                imageModel: item.imageModel,
+                videoPromptLimit: item.videoPromptLimit,
+              });
+              setAnaMariaPage('results');
+              setIsAnaMariaHistoryOpen(false);
+            }}
             onOpenPreview={(url, title) => setPreviewModal({ isOpen: true, url, title })}
           />
         )}
