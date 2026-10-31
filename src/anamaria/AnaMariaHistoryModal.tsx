@@ -66,11 +66,11 @@ export const AnaMariaHistoryModal: React.FC<AnaMariaHistoryModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-4xl max-h-[85vh] flex flex-col rounded-2xl border border-amber-500/40 bg-zinc-950 text-zinc-100 shadow-2xl">
+      <div className="relative w-full max-w-4xl max-h-[85vh] flex flex-col rounded-2xl border border-emerald-500/40 bg-zinc-950 text-zinc-100 shadow-2xl">
         {/* Header do Modal */}
         <div className="flex items-center justify-between p-4 sm:p-5 border-b border-zinc-800">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
               <History className="w-4 h-4" />
             </div>
             <div>
@@ -108,7 +108,7 @@ export const AnaMariaHistoryModal: React.FC<AnaMariaHistoryModalProps> = ({
         <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
           {items.length === 0 ? (
             <div className="text-center py-12 space-y-2">
-              <Sparkles className="w-8 h-8 text-amber-500/40 mx-auto" />
+              <Sparkles className="w-8 h-8 text-emerald-500/40 mx-auto" />
               <p className="text-xs font-bold text-zinc-400">Nenhuma geração anterior encontrada.</p>
               <p className="text-[11px] text-zinc-600">
                 Gere fotos e vídeos no Modo Ana Maria para acessá-los aqui a qualquer momento.
@@ -118,7 +118,7 @@ export const AnaMariaHistoryModal: React.FC<AnaMariaHistoryModalProps> = ({
             items.map((it) => (
               <div
                 key={it.id}
-                className="p-4 rounded-xl border border-amber-500/30 bg-zinc-900/60 hover:border-amber-500/60 transition-all flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between"
+                className="p-4 rounded-xl border border-emerald-500/30 bg-zinc-900/60 hover:border-emerald-500/60 transition-all flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between"
               >
                 {/* Thumbnail e dados */}
                 <div className="flex items-center gap-3.5 min-w-0">
@@ -146,11 +146,11 @@ export const AnaMariaHistoryModal: React.FC<AnaMariaHistoryModalProps> = ({
                       <h3 className="text-xs font-bold text-white truncate max-w-xs">
                         {it.productName || 'Peça Sem Nome'}
                       </h3>
-                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                         {it.influencer} · {it.bodyType === 'plus_size' ? 'Plus' : 'Normal'}
                       </span>
                     </div>
-                    <p className="text-[11px] text-amber-200/90 truncate max-w-sm">
+                    <p className="text-[11px] text-emerald-200/90 truncate max-w-sm">
                       {it.headline}
                     </p>
                     <p className="text-[10px] text-zinc-500">
@@ -189,7 +189,7 @@ export const AnaMariaHistoryModal: React.FC<AnaMariaHistoryModalProps> = ({
                       onSelectCreative(it);
                       onClose();
                     }}
-                    className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-zinc-950 text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
+                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
                   >
                     <span>Carregar</span>
                     <ArrowRight className="w-3.5 h-3.5" />

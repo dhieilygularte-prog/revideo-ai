@@ -77,11 +77,11 @@ export const Header: React.FC<HeaderProps> = ({
               onClick={() => onModeChange('anamaria')}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 mode === 'anamaria'
-                  ? 'bg-gradient-to-r from-amber-600 via-yellow-600 to-amber-700 text-zinc-950 shadow-md border border-amber-400 font-black'
+                  ? 'bg-gradient-to-r from-emerald-600 to-green-700 text-white shadow-md border border-emerald-400/50 font-black ring-2 ring-emerald-400/30'
                   : 'text-zinc-400 hover:text-white'
               }`}
             >
-              <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+              <Sparkles className="w-3.5 h-3.5 text-emerald-300" />
               <span>Modo Ana Maria</span>
             </button>
 

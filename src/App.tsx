@@ -1934,6 +1934,8 @@ export default function App() {
                 isProcessing={isProcessingAnaMaria}
                 progressPercent={anaMariaProgressPercent}
                 statusMessage={anaMariaStatusMessage}
+                hasExistingResult={Boolean(anaMariaResult)}
+                onGoToResults={() => setAnaMariaPage('results')}
                 onOpenHistory={() => setIsAnaMariaHistoryOpen(true)}
                 onNavigateToProdutos2={() => setAppMode('produtos2')}
               />
