@@ -25,7 +25,7 @@ function formatTimestampForFile(timestamp?: number): string {
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const hours = String(d.getHours()).padStart(2, '0');
   const minutes = String(d.getMinutes()).padStart(2, '0');
-  return `${day}.${month} às ${hours}h${minutes}`;
+  return `${day}.${month} as ${hours}h${minutes}`;
 }
 
 async function urlToUint8Array(url: string): Promise<Uint8Array> {
@@ -104,6 +104,10 @@ ${result.hashtags}
   zip.file(`Prompt de Video - ${cleanName} (${horaStr}).txt`, cleanVideoPrompt);
 
   // Gerar e baixar arquivo .zip com o nome "Modo Ana Maria - [Produto].zip"
-  const zipBlob = await zip.generateAsync({ type: 'blob' });
+  const zipBlob = await zip.generateAsync({
+    type: 'blob',
+    compression: 'DEFLATE',
+    compressionOptions: { level: 6 },
+  });
   downloadBlob(zipBlob, `Modo Ana Maria - ${cleanName}.zip`);
 }

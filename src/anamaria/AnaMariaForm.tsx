@@ -8,7 +8,6 @@ import {
   Check,
   AlertCircle,
   History,
-  ArrowLeft,
   ArrowRight,
   Layers,
   Cpu,
@@ -46,7 +45,6 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   hasExistingResult = false,
   onGoToResults,
   onOpenHistory,
-  onNavigateToProdutos2,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -101,26 +99,23 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-12 animate-fade-in">
-      {/* ─── BANNER PRINCIPAL (PALETA VERDE ESMERALDA / VESTUÁRIO MASCULINO) ─── */}
-      <div className="relative overflow-hidden rounded-2xl border border-emerald-500/40 bg-gradient-to-br from-emerald-950/60 via-zinc-950 to-zinc-950 p-5 sm:p-7 shadow-2xl shadow-emerald-950/40">
-        <div className="absolute -top-12 -right-12 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+      {/* ─── BANNER PRINCIPAL (PALETA AZUL PRODUTOS 2.0 - ITENS 1, 2 E 3) ─── */}
+      <div className="relative overflow-hidden rounded-2xl border border-sky-500/40 bg-gradient-to-br from-sky-950/60 via-zinc-950 to-zinc-950 p-5 sm:p-7 shadow-2xl shadow-sky-950/40">
+        <div className="absolute -top-12 -right-12 w-48 h-48 bg-sky-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-600 to-green-700 flex items-center justify-center shadow-lg shadow-emerald-950/60 text-white font-black">
-              <Sparkles className="w-6 h-6 text-emerald-200" />
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-sky-950/60 text-white font-black">
+              <Sparkles className="w-6 h-6 text-sky-200" />
             </div>
             <div>
               <div className="flex items-center gap-2.5">
                 <h1 className="text-xl sm:text-2xl font-black text-white tracking-wide uppercase">
                   Modo Ana Maria
                 </h1>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-sky-500/20 text-sky-300 border border-sky-500/40">
                   Vitrine 10s · Selfie Espelho
                 </span>
               </div>
-              <p className="text-xs sm:text-sm text-emerald-200/80 mt-0.5 max-w-2xl leading-relaxed">
-                Gere uma foto hiper-realista vertical 9:16 da modelo usando sua peça no cenário residencial com corte no queixo, prompt de animação de 10s no espelho e headline viral.
-              </p>
             </div>
           </div>
 
@@ -129,40 +124,29 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               <button
                 type="button"
                 onClick={onOpenHistory}
-                className="px-3.5 py-2 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 border border-zinc-700 text-emerald-300 text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-sm hover:border-emerald-500/50"
+                className="px-3.5 py-2 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 border border-zinc-700 text-sky-300 text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-sm hover:border-sky-500/50"
               >
-                <History className="w-4 h-4 text-emerald-400" />
+                <History className="w-4 h-4 text-sky-400" />
                 <span>Histórico</span>
-              </button>
-            )}
-            {onNavigateToProdutos2 && (
-              <button
-                type="button"
-                onClick={onNavigateToProdutos2}
-                className="px-3 py-2 rounded-xl bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
-                title="Voltar ao Modo Produtos 2.0"
-              >
-                <ArrowLeft className="w-3.5 h-3.5 text-zinc-400" />
-                <span>Produtos 2.0</span>
               </button>
             )}
           </div>
         </div>
       </div>
 
-      {/* ─── BOTÃO DE AVANÇAR PARA A PÁGINA DE RESULTADOS (ITEM 5) ─── */}
+      {/* ─── BOTÃO DE AVANÇAR PARA A PÁGINA DE RESULTADOS (PADRÃO PRODUTOS 2.0) ─── */}
       {hasExistingResult && onGoToResults && (
-        <div className="flex items-center justify-between p-3.5 sm:p-4 bg-emerald-950/40 border border-emerald-500/50 rounded-2xl shadow-lg animate-fade-in">
+        <div className="flex items-center justify-between p-3.5 sm:p-4 bg-sky-950/40 border border-sky-500/50 rounded-2xl shadow-lg animate-fade-in">
           <div className="flex items-center gap-2.5">
-            <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span className="text-xs font-bold text-emerald-200">
+            <Sparkles className="w-4 h-4 text-sky-400 shrink-0" />
+            <span className="text-xs font-bold text-sky-200">
               Você já possui uma imagem gerada neste modo.
             </span>
           </div>
           <button
             type="button"
             onClick={onGoToResults}
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-green-700 hover:from-emerald-500 hover:to-green-600 text-white text-xs font-black flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-emerald-950/40"
+            className="px-4 py-2 rounded-xl bg-gradient-to-r from-sky-600 to-blue-700 hover:from-sky-500 hover:to-blue-600 text-white text-xs font-black flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-sky-950/40"
           >
             <span>Avançar para a página com a imagem gerada</span>
             <ArrowRight className="w-4 h-4" />
@@ -171,15 +155,14 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       )}
 
       {/* ─── CARD 1: FOTOS DE REFERÊNCIA DO PRODUTO (ATÉ 10 FOTOS) ─── */}
-      <div className="rounded-2xl border border-emerald-900/40 bg-zinc-950/80 backdrop-blur-sm p-5 sm:p-6 shadow-xl space-y-4">
+      <div className="rounded-2xl border border-sky-950/60 bg-zinc-950/80 backdrop-blur-sm p-5 sm:p-6 shadow-xl space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/80 pb-3">
           <div className="flex items-center gap-2.5">
-            <ImageIcon className="w-5 h-5 text-emerald-400" />
+            <ImageIcon className="w-5 h-5 text-sky-400" />
             <div>
               <h2 className="text-sm font-bold text-white uppercase tracking-wide">
                 1. Fotos de Referência da Peça (Até 10 fotos)
               </h2>
-              {/* Texto atualizado conforme item 15 */}
               <p className="text-[11px] text-zinc-400">
                 Anexe fotos de frente, costas, detalhes do tecido e caimento. Todas as fotos devem ser do mesmo produto e na mesma cor.
               </p>
@@ -189,7 +172,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             <span
               className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${
                 form.referencePhotos.length > 0
-                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                  ? 'bg-sky-500/20 text-sky-300 border-sky-500/40'
                   : 'bg-zinc-900 text-zinc-400 border-zinc-800'
               }`}
             >
@@ -236,12 +219,12 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             onClick={() => fileInputRef.current?.click()}
             className={`border-2 border-dashed rounded-xl p-6 sm:p-8 text-center cursor-pointer transition-all ${
               isDragging
-                ? 'border-emerald-400 bg-emerald-500/10'
-                : 'border-zinc-800 hover:border-emerald-500/50 hover:bg-zinc-900/60 bg-zinc-900/30'
+                ? 'border-sky-400 bg-sky-500/10'
+                : 'border-zinc-800 hover:border-sky-500/50 hover:bg-zinc-900/60 bg-zinc-900/30'
             }`}
           >
             <div className="flex flex-col items-center gap-2">
-              <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+              <div className="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
                 <Upload className="w-6 h-6" />
               </div>
               <p className="text-xs sm:text-sm font-bold text-zinc-200">
@@ -260,7 +243,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             {form.referencePhotos.map((photo, index) => (
               <div
                 key={index}
-                className="relative group rounded-xl overflow-hidden border border-emerald-500/30 bg-zinc-900 aspect-[9/16] max-h-48 flex items-center justify-center"
+                className="relative group rounded-xl overflow-hidden border border-sky-500/30 bg-zinc-900 aspect-[9/16] max-h-48 flex items-center justify-center"
               >
                 <img
                   src={photo}
@@ -269,7 +252,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-2">
                   <div className="flex justify-between items-center">
-                    <span className="px-1.5 py-0.5 rounded bg-zinc-900/90 text-emerald-300 text-[10px] font-bold">
+                    <span className="px-1.5 py-0.5 rounded bg-zinc-900/90 text-sky-300 text-[10px] font-bold">
                       #{index + 1}
                     </span>
                     <button
@@ -285,7 +268,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                     </button>
                   </div>
                   {index === 0 && (
-                    <span className="px-1.5 py-0.5 rounded bg-emerald-600/90 text-white text-[9px] font-black uppercase text-center">
+                    <span className="px-1.5 py-0.5 rounded bg-sky-600/90 text-white text-[9px] font-black uppercase text-center">
                       Foto Principal
                     </span>
                   )}
@@ -296,17 +279,17 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         )}
 
         {form.referencePhotos.length === 0 && (
-          <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+          <div className="p-3 bg-sky-500/10 border border-sky-500/30 rounded-xl text-xs text-sky-300 flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-sky-400 shrink-0" />
             <span>Por favor, anexe ao menos 1 foto da peça para prosseguir com a geração.</span>
           </div>
         )}
       </div>
 
       {/* ─── CARD 2: NOME DA PEÇA / PRODUTO ─── */}
-      <div className="rounded-2xl border border-emerald-900/40 bg-zinc-950/80 backdrop-blur-sm p-5 sm:p-6 shadow-xl space-y-3">
+      <div className="rounded-2xl border border-sky-950/60 bg-zinc-950/80 backdrop-blur-sm p-5 sm:p-6 shadow-xl space-y-3">
         <div className="flex items-center gap-2 border-b border-zinc-800/80 pb-2.5">
-          <Layers className="w-4 h-4 text-emerald-400" />
+          <Layers className="w-4 h-4 text-sky-400" />
           <h2 className="text-sm font-bold text-white uppercase tracking-wide">
             2. Nome da Peça / Produto (Opcional)
           </h2>
@@ -319,14 +302,14 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           value={form.productName}
           onChange={(e) => onChange((prev) => ({ ...prev, productName: e.target.value }))}
           placeholder="Ex: Macacão Fitness Feminino, Cinta Modeladora Abdominal, Vestido Longo com Decote..."
-          className="w-full px-4 py-2.5 rounded-xl bg-zinc-900/90 border border-zinc-700/80 text-white placeholder-zinc-500 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+          className="w-full px-4 py-2.5 rounded-xl bg-zinc-900/90 border border-zinc-700/80 text-white placeholder-zinc-500 text-sm focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
         />
       </div>
 
       {/* ─── CARD 3: MODELO (INFLUENCER) & TIPO DE CORPO ─── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Influenciador */}
-        <div className="rounded-2xl border border-emerald-900/40 bg-zinc-950/80 backdrop-blur-sm p-5 shadow-xl space-y-3">
+        <div className="rounded-2xl border border-sky-950/60 bg-zinc-950/80 backdrop-blur-sm p-5 shadow-xl space-y-3">
           <div className="border-b border-zinc-800/80 pb-2">
             <h3 className="text-xs font-bold text-white uppercase tracking-wide">
               3. Influenciador / Modelo
@@ -339,7 +322,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               onClick={() => onChange((prev) => ({ ...prev, influencer: 'Mulher' }))}
               className={`p-3 rounded-xl border text-center transition-all cursor-pointer font-bold text-xs flex items-center justify-center gap-2 ${
                 form.influencer === 'Mulher'
-                  ? 'bg-gradient-to-r from-emerald-600 to-green-700 border-emerald-400 text-white shadow-lg shadow-emerald-950/60 ring-2 ring-emerald-400/40 font-black'
+                  ? 'bg-gradient-to-r from-sky-600 to-blue-700 border-sky-400 text-white shadow-lg shadow-sky-950/60 ring-2 ring-sky-400/40 font-black'
                   : 'bg-zinc-900/80 border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700'
               }`}
             >
@@ -351,7 +334,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               onClick={() => onChange((prev) => ({ ...prev, influencer: 'Homem' }))}
               className={`p-3 rounded-xl border text-center transition-all cursor-pointer font-bold text-xs flex items-center justify-center gap-2 ${
                 form.influencer === 'Homem'
-                  ? 'bg-gradient-to-r from-emerald-600 to-green-700 border-emerald-400 text-white shadow-lg shadow-emerald-950/60 ring-2 ring-emerald-400/40 font-black'
+                  ? 'bg-gradient-to-r from-sky-600 to-blue-700 border-sky-400 text-white shadow-lg shadow-sky-950/60 ring-2 ring-sky-400/40 font-black'
                   : 'bg-zinc-900/80 border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700'
               }`}
             >
@@ -362,7 +345,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         </div>
 
         {/* Tipo de Corpo */}
-        <div className="rounded-2xl border border-emerald-900/40 bg-zinc-950/80 backdrop-blur-sm p-5 shadow-xl space-y-3">
+        <div className="rounded-2xl border border-sky-950/60 bg-zinc-950/80 backdrop-blur-sm p-5 shadow-xl space-y-3">
           <div className="border-b border-zinc-800/80 pb-2">
             <h3 className="text-xs font-bold text-white uppercase tracking-wide">
               4. Tipo de Corpo
@@ -375,7 +358,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               onClick={() => onChange((prev) => ({ ...prev, bodyType: 'normal' }))}
               className={`p-3 rounded-xl border text-center transition-all cursor-pointer font-bold text-xs flex items-center justify-center gap-2 ${
                 form.bodyType === 'normal'
-                  ? 'bg-gradient-to-r from-emerald-600 to-green-700 border-emerald-400 text-white shadow-lg shadow-emerald-950/60 ring-2 ring-emerald-400/40 font-black'
+                  ? 'bg-gradient-to-r from-sky-600 to-blue-700 border-sky-400 text-white shadow-lg shadow-sky-950/60 ring-2 ring-sky-400/40 font-black'
                   : 'bg-zinc-900/80 border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700'
               }`}
             >
@@ -387,7 +370,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               onClick={() => onChange((prev) => ({ ...prev, bodyType: 'plus_size' }))}
               className={`p-3 rounded-xl border text-center transition-all cursor-pointer font-bold text-xs flex items-center justify-center gap-2 ${
                 form.bodyType === 'plus_size'
-                  ? 'bg-gradient-to-r from-emerald-600 to-green-700 border-emerald-400 text-white shadow-lg shadow-emerald-950/60 ring-2 ring-emerald-400/40 font-black'
+                  ? 'bg-gradient-to-r from-sky-600 to-blue-700 border-sky-400 text-white shadow-lg shadow-sky-950/60 ring-2 ring-sky-400/40 font-black'
                   : 'bg-zinc-900/80 border-zinc-800 text-zinc-400 hover:text-white hover:border-zinc-700'
               }`}
             >
@@ -398,8 +381,8 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         </div>
       </div>
 
-      {/* ─── CARD 5: INSTRUÇÕES ADICIONAIS (SEM TEXTO "PRIORIDADE MÁXIMA" - ITEM 17) ─── */}
-      <div className="rounded-2xl border border-emerald-900/40 bg-zinc-950/80 backdrop-blur-sm p-5 sm:p-6 shadow-xl space-y-3">
+      {/* ─── CARD 5: INSTRUÇÕES ADICIONAIS ─── */}
+      <div className="rounded-2xl border border-sky-950/60 bg-zinc-950/80 backdrop-blur-sm p-5 sm:p-6 shadow-xl space-y-3">
         <div className="border-b border-zinc-800/80 pb-2">
           <h2 className="text-sm font-bold text-white uppercase tracking-wide">
             5. Instruções Adicionais
@@ -413,17 +396,17 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           value={form.additionalInstructions}
           onChange={(e) => onChange((prev) => ({ ...prev, additionalInstructions: e.target.value }))}
           placeholder="Ex: Modelo ruiva; cenário em quarto com luz natural..."
-          className="w-full px-4 py-2.5 rounded-xl bg-zinc-900/95 border border-zinc-700/80 text-white placeholder-zinc-500 text-sm focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+          className="w-full px-4 py-2.5 rounded-xl bg-zinc-900/95 border border-zinc-700/80 text-white placeholder-zinc-500 text-sm focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
         />
       </div>
 
-      {/* ─── CARD 6: CONFIGURAÇÕES DE MOTORES (LIMPOS - ITENS 18 E 19) ─── */}
+      {/* ─── CARD 6: CONFIGURAÇÕES DE MOTORES (VISUAL LIMPO) ─── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Seletor de Gerador de Imagem (Apenas o nome do modelo - Item 18) */}
-        <div className="rounded-2xl border border-emerald-900/40 bg-zinc-950/80 backdrop-blur-sm p-5 shadow-xl space-y-3">
+        {/* Seletor de Gerador de Imagem */}
+        <div className="rounded-2xl border border-sky-950/60 bg-zinc-950/80 backdrop-blur-sm p-5 shadow-xl space-y-3">
           <div className="border-b border-zinc-800/80 pb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Cpu className="w-4 h-4 text-emerald-400" />
+              <Cpu className="w-4 h-4 text-sky-400" />
               <h3 className="text-xs font-bold text-white uppercase tracking-wide">
                 6. Gerador de Imagem
               </h3>
@@ -436,12 +419,12 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               onClick={() => onChange((prev) => ({ ...prev, imageModel: 'seedream_5_0_pro' }))}
               className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between text-xs font-bold ${
                 form.imageModel === 'seedream_5_0_pro'
-                  ? 'bg-gradient-to-r from-emerald-600 to-green-700 border-emerald-400 text-white shadow shadow-emerald-950/60 ring-2 ring-emerald-400/40'
+                  ? 'bg-gradient-to-r from-sky-600 to-blue-700 border-sky-400 text-white shadow shadow-sky-950/60 ring-2 ring-sky-400/40'
                   : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-white'
               }`}
             >
               <span>SeaDream 5.0 Pro</span>
-              {form.imageModel === 'seedream_5_0_pro' && <Check className="w-4 h-4 text-emerald-200 stroke-[3]" />}
+              {form.imageModel === 'seedream_5_0_pro' && <Check className="w-4 h-4 text-sky-200 stroke-[3]" />}
             </button>
 
             <button
@@ -449,12 +432,12 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               onClick={() => onChange((prev) => ({ ...prev, imageModel: 'kling_3_0' }))}
               className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between text-xs font-bold ${
                 form.imageModel === 'kling_3_0'
-                  ? 'bg-gradient-to-r from-emerald-600 to-green-700 border-emerald-400 text-white shadow shadow-emerald-950/60 ring-2 ring-emerald-400/40'
+                  ? 'bg-gradient-to-r from-sky-600 to-blue-700 border-sky-400 text-white shadow shadow-sky-950/60 ring-2 ring-sky-400/40'
                   : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-white'
               }`}
             >
               <span>Kling 3.0</span>
-              {form.imageModel === 'kling_3_0' && <Check className="w-4 h-4 text-emerald-200 stroke-[3]" />}
+              {form.imageModel === 'kling_3_0' && <Check className="w-4 h-4 text-sky-200 stroke-[3]" />}
             </button>
 
             <button
@@ -462,21 +445,21 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               onClick={() => onChange((prev) => ({ ...prev, imageModel: 'openai' }))}
               className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between text-xs font-bold ${
                 form.imageModel === 'openai'
-                  ? 'bg-gradient-to-r from-emerald-600 to-green-700 border-emerald-400 text-white shadow shadow-emerald-950/60 ring-2 ring-emerald-400/40'
+                  ? 'bg-gradient-to-r from-sky-600 to-blue-700 border-sky-400 text-white shadow shadow-sky-950/60 ring-2 ring-sky-400/40'
                   : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-white'
               }`}
             >
               <span>OpenAI (ChatGPT)</span>
-              {form.imageModel === 'openai' && <Check className="w-4 h-4 text-emerald-200 stroke-[3]" />}
+              {form.imageModel === 'openai' && <Check className="w-4 h-4 text-sky-200 stroke-[3]" />}
             </button>
           </div>
         </div>
 
-        {/* Seletor de Prompt de Vídeo (Visual limpo - Item 19) */}
-        <div className="rounded-2xl border border-emerald-900/40 bg-zinc-950/80 backdrop-blur-sm p-5 shadow-xl space-y-3">
+        {/* Seletor de Prompt de Vídeo */}
+        <div className="rounded-2xl border border-sky-950/60 bg-zinc-950/80 backdrop-blur-sm p-5 shadow-xl space-y-3">
           <div className="border-b border-zinc-800/80 pb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Scissors className="w-4 h-4 text-emerald-400" />
+              <Scissors className="w-4 h-4 text-sky-400" />
               <h3 className="text-xs font-bold text-white uppercase tracking-wide">
                 7. Prompt de Vídeo
               </h3>
@@ -489,12 +472,12 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               onClick={() => onChange((prev) => ({ ...prev, videoPromptLimit: 'unlimited' }))}
               className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between text-xs font-bold ${
                 form.videoPromptLimit === 'unlimited'
-                  ? 'bg-gradient-to-r from-emerald-600 to-green-700 border-emerald-400 text-white shadow shadow-emerald-950/60 ring-2 ring-emerald-400/40'
+                  ? 'bg-gradient-to-r from-sky-600 to-blue-700 border-sky-400 text-white shadow shadow-sky-950/60 ring-2 ring-sky-400/40'
                   : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-white'
               }`}
             >
               <span>Padrão (Sem Limite)</span>
-              {form.videoPromptLimit === 'unlimited' && <Check className="w-4 h-4 text-emerald-200 stroke-[3]" />}
+              {form.videoPromptLimit === 'unlimited' && <Check className="w-4 h-4 text-sky-200 stroke-[3]" />}
             </button>
 
             <button
@@ -502,12 +485,12 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               onClick={() => onChange((prev) => ({ ...prev, videoPromptLimit: '5000' }))}
               className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between text-xs font-bold ${
                 form.videoPromptLimit === '5000'
-                  ? 'bg-gradient-to-r from-emerald-600 to-green-700 border-emerald-400 text-white shadow shadow-emerald-950/60 ring-2 ring-emerald-400/40'
+                  ? 'bg-gradient-to-r from-sky-600 to-blue-700 border-sky-400 text-white shadow shadow-sky-950/60 ring-2 ring-sky-400/40'
                   : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-white'
               }`}
             >
               <span>Até 5.000 Caracteres</span>
-              {form.videoPromptLimit === '5000' && <Check className="w-4 h-4 text-emerald-200 stroke-[3]" />}
+              {form.videoPromptLimit === '5000' && <Check className="w-4 h-4 text-sky-200 stroke-[3]" />}
             </button>
 
             <button
@@ -515,12 +498,12 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               onClick={() => onChange((prev) => ({ ...prev, videoPromptLimit: '2500' }))}
               className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between text-xs font-bold ${
                 form.videoPromptLimit === '2500'
-                  ? 'bg-gradient-to-r from-emerald-600 to-green-700 border-emerald-400 text-white shadow shadow-emerald-950/60 ring-2 ring-emerald-400/40'
+                  ? 'bg-gradient-to-r from-sky-600 to-blue-700 border-sky-400 text-white shadow shadow-sky-950/60 ring-2 ring-sky-400/40'
                   : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-white'
               }`}
             >
               <span>Até 2.500 Caracteres</span>
-              {form.videoPromptLimit === '2500' && <Check className="w-4 h-4 text-emerald-200 stroke-[3]" />}
+              {form.videoPromptLimit === '2500' && <Check className="w-4 h-4 text-sky-200 stroke-[3]" />}
             </button>
           </div>
         </div>
@@ -528,24 +511,24 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
 
       {/* ─── BARRA DE PROGRESSO EM TEMPO REAL ─── */}
       {isProcessing && (
-        <div className="p-5 rounded-2xl border border-emerald-500/40 bg-zinc-950/95 space-y-3 animate-fade-in shadow-xl">
+        <div className="p-5 rounded-2xl border border-sky-500/40 bg-zinc-950/95 space-y-3 animate-fade-in shadow-xl">
           <div className="flex items-center justify-between text-xs">
-            <span className="font-bold text-emerald-300 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-emerald-400 animate-spin" />
+            <span className="font-bold text-sky-300 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-sky-400 animate-spin" />
               <span>{statusMessage || 'Processando Modo Ana Maria...'}</span>
             </span>
-            <span className="font-mono text-emerald-400 font-bold">{progressPercent}%</span>
+            <span className="font-mono text-sky-400 font-bold">{progressPercent}%</span>
           </div>
           <div className="w-full h-2 rounded-full bg-zinc-800 overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-300 rounded-full"
+              className="h-full bg-gradient-to-r from-sky-500 to-blue-500 transition-all duration-300 rounded-full"
               style={{ width: `${Math.max(5, progressPercent)}%` }}
             />
           </div>
         </div>
       )}
 
-      {/* ─── BOTÃO DE AÇÃO: GERAR VÍDEO ─── */}
+      {/* ─── BOTÃO DE AÇÃO: GERAR VÍDEO (PADRÃO PRODUTOS 2.0) ─── */}
       <div className="pt-2">
         <button
           type="button"
@@ -553,7 +536,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           onClick={onSubmit}
           className={`w-full py-4 px-6 rounded-2xl font-black text-sm sm:text-base uppercase tracking-wider transition-all flex items-center justify-center gap-3 cursor-pointer shadow-xl ${
             canSubmit
-              ? 'bg-gradient-to-r from-emerald-600 via-green-600 to-emerald-700 text-white hover:brightness-110 shadow-emerald-950/60 ring-2 ring-emerald-400/50 hover:scale-[1.01]'
+              ? 'bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-700 text-white hover:brightness-110 shadow-sky-950/60 ring-2 ring-sky-400/50 hover:scale-[1.01]'
               : 'bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700/50'
           }`}
         >

@@ -17,6 +17,7 @@ import {
   Mic,
   Home,
   Cpu,
+  CheckCircle2,
 } from 'lucide-react';
 import { AnaMariaResultState } from './types';
 import {
@@ -52,11 +53,23 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
   onOpenPreviewModal,
   aiProfile = 'openai',
 }) => {
-  // Estados de destaque azul ativo ao copiar/baixar (item 14)
+  // Classes padrão do Modo Produtos 2.0
+  const copiedBlueSectionClass =
+    'bg-gradient-to-br from-sky-900/85 via-blue-900/80 to-slate-900/95 border-2 border-sky-400 shadow-xl shadow-sky-950/60 ring-2 ring-sky-400/40';
+  const defaultSectionClass = 'bg-zinc-950/80 border border-sky-950/60 shadow-xl';
+
+  // Estados de destaque azul ativo ao copiar/baixar (itens 6, 7 e 14)
   const [copiedPrompt, setCopiedPrompt] = useState(false);
+  const [hasCopiedPromptOnce, setHasCopiedPromptOnce] = useState(false);
+
   const [copiedHashtags, setCopiedHashtags] = useState(false);
+  const [hasCopiedHashtagsOnce, setHasCopiedHashtagsOnce] = useState(false);
+
   const [copiedHeadline, setCopiedHeadline] = useState(false);
+  const [hasCopiedHeadlineOnce, setHasCopiedHeadlineOnce] = useState(false);
+
   const [downloadedImage, setDownloadedImage] = useState(false);
+  const [hasDownloadedImageOnce, setHasDownloadedImageOnce] = useState(false);
 
   // Estados de ajuste de imagem
   const [imageTweakText, setImageTweakText] = useState('');
@@ -77,15 +90,16 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
   const promptRecRef = useRef<any>(null);
   const promptStreamRef = useRef<MediaStream | null>(null);
 
-  // Estado de exportação do ZIP
+  // Estado de exportação do ZIP com ref lock contra cliques duplos (item 8)
   const [isExportingZip, setIsExportingZip] = useState(false);
+  const isExportingZipRef = useRef(false);
 
   // Limpa prompt de qualquer prefixo "🎥 PROMPT DE VÍDEO..." (item 24)
   const cleanVideoPrompt = result.videoPrompt
     .replace(/^🎥 PROMPT DE VÍDEO[^\n]*\n+/i, '')
     .trim();
 
-  // Microfone para campo de alteração da imagem (item 8)
+  // Microfone para campo de alteração da imagem
   const toggleImageMicrophone = async () => {
     if (isImageMicRecording) {
       if (imageRecRef.current) {
@@ -133,7 +147,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
     }
   };
 
-  // Microfone para campo de correção do prompt de vídeo (item 10)
+  // Microfone para campo de correção do prompt de vídeo
   const togglePromptMicrophone = async () => {
     if (isPromptMicRecording) {
       if (promptRecRef.current) {
@@ -181,12 +195,13 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
     }
   };
 
-  // Handlers de cópia e download com destaque em azul (item 14)
+  // Handlers de cópia e download com destaque em azul igual Produtos 2.0 (itens 6, 7 e 14)
   const handleCopyPrompt = async () => {
     try {
       await navigator.clipboard.writeText(cleanVideoPrompt);
       setCopiedPrompt(true);
-      setTimeout(() => setCopiedPrompt(false), 3000);
+      setHasCopiedPromptOnce(true);
+      setTimeout(() => setCopiedPrompt(false), 2500);
     } catch {}
   };
 
@@ -194,7 +209,8 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
     try {
       await navigator.clipboard.writeText(result.hashtags);
       setCopiedHashtags(true);
-      setTimeout(() => setCopiedHashtags(false), 3000);
+      setHasCopiedHashtagsOnce(true);
+      setTimeout(() => setCopiedHashtags(false), 2500);
     } catch {}
   };
 
@@ -202,7 +218,8 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
     try {
       await navigator.clipboard.writeText(result.headline);
       setCopiedHeadline(true);
-      setTimeout(() => setCopiedHeadline(false), 3000);
+      setHasCopiedHeadlineOnce(true);
+      setTimeout(() => setCopiedHeadline(false), 2500);
     } catch {}
   };
 
@@ -210,20 +227,24 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
     try {
       await downloadAnaMariaSingleImage(result.imageUrl, result.productName);
       setDownloadedImage(true);
-      setTimeout(() => setDownloadedImage(false), 3000);
+      setHasDownloadedImageOnce(true);
+      setTimeout(() => setDownloadedImage(false), 2500);
     } catch (err) {
       console.warn('Erro ao baixar imagem:', err);
     }
   };
 
   const handleExportZip = async () => {
+    if (isExportingZipRef.current) return;
+    isExportingZipRef.current = true;
+    setIsExportingZip(true);
     try {
-      setIsExportingZip(true);
       await exportAnaMariaZip(result);
     } catch (err) {
       console.warn('Erro ao exportar ZIP:', err);
     } finally {
       setIsExportingZip(false);
+      isExportingZipRef.current = false;
     }
   };
 
@@ -251,6 +272,8 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
         audit: res.audit || result.audit,
       });
       setImageTweakText('');
+      setHasDownloadedImageOnce(false);
+      setDownloadedImage(false);
     } catch (err: any) {
       alert(`Falha ao refazer imagem: ${err?.message || err}`);
     } finally {
@@ -282,6 +305,8 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
         imageModel: 'seedream_5_0_pro',
         audit: res.audit || result.audit,
       });
+      setHasDownloadedImageOnce(false);
+      setDownloadedImage(false);
     } catch (err: any) {
       alert(`Falha ao refazer com SeaDream 5.0: ${err?.message || err}`);
     } finally {
@@ -310,6 +335,8 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
         ...result,
         imageUrl: res.imageUrl,
       });
+      setHasDownloadedImageOnce(false);
+      setDownloadedImage(false);
     } catch (err: any) {
       alert(`Falha ao trocar cenário: ${err?.message || err}`);
     } finally {
@@ -333,6 +360,8 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
         videoPrompt: refined,
       });
       setPromptCorrectionText('');
+      setHasCopiedPromptOnce(false);
+      setCopiedPrompt(false);
     } catch (err: any) {
       alert(`Falha ao refazer prompt: ${err?.message || err}`);
     } finally {
@@ -345,28 +374,28 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-16 animate-fade-in">
-      {/* ─── NAVEGAÇÃO SUPERIOR: VOLTAR PARA A PÁGINA ANTERIOR (ITEM 9) ─── */}
+      {/* ─── NAVEGAÇÃO SUPERIOR: VOLTAR PARA A PÁGINA ANTERIOR ─── */}
       <div className="flex items-center justify-start">
         <button
           type="button"
           onClick={onBackToForm}
-          className="px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white border border-zinc-700 hover:border-emerald-500/50 text-xs font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-md"
+          className="px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white border border-zinc-700 hover:border-sky-500/50 text-xs font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-md"
         >
-          <ArrowLeft className="w-4 h-4 text-emerald-400" />
+          <ArrowLeft className="w-4 h-4 text-sky-400" />
           <span>Voltar para a página anterior</span>
         </button>
       </div>
 
-      {/* ─── BOTÕES DE AÇÃO SUPERIORES (PADRÃO PRODUTOS 2.0 - ITENS 9, 12 E 13) ─── */}
+      {/* ─── BOTÕES DE AÇÃO SUPERIORES (PADRÃO PRODUTOS 2.0) ─── */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-zinc-800">
         <div className="flex flex-wrap items-center gap-2.5">
-          {/* NOVO PRODUTO (Item 12) */}
+          {/* NOVO PRODUTO */}
           <button
             type="button"
             onClick={onCreateNew}
-            className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-xs font-bold text-emerald-300 hover:text-white rounded-xl flex items-center gap-2 transition-colors cursor-pointer border border-zinc-700"
+            className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-xs font-bold text-sky-300 hover:text-white rounded-xl flex items-center gap-2 transition-colors cursor-pointer border border-zinc-700"
           >
-            <RotateCcw className="w-4 h-4 text-emerald-400" />
+            <RotateCcw className="w-4 h-4 text-sky-400" />
             <span>NOVO PRODUTO</span>
           </button>
 
@@ -374,21 +403,21 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
           <button
             type="button"
             onClick={onContinueProduct}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-emerald-950/40"
+            className="px-4 py-2 bg-gradient-to-r from-sky-600 to-blue-700 hover:from-sky-500 hover:to-blue-600 text-white font-black text-xs rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-sky-950/40"
           >
             <Sparkles className="w-4 h-4 text-white" />
             <span>Continuar no produto</span>
           </button>
 
-          {/* Trocar Cenário (Item 13) */}
+          {/* Trocar Cenário */}
           <button
             type="button"
             disabled={isSwitchingScenario || isRegeneratingImage}
             onClick={handleSwitchScenario}
-            className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 border border-emerald-500/50 hover:border-emerald-400 text-emerald-300 hover:text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-sm"
+            className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 border border-sky-500/50 hover:border-sky-400 text-sky-300 hover:text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-sm"
             title="Gera novamente a mesma modelo e roupa em outro cômodo da casa com frente iluminada e fundo penumbroso"
           >
-            <Home className={`w-4 h-4 text-emerald-400 ${isSwitchingScenario ? 'animate-spin' : ''}`} />
+            <Home className={`w-4 h-4 text-sky-400 ${isSwitchingScenario ? 'animate-spin' : ''}`} />
             <span>{isSwitchingScenario ? 'Trocando cenário...' : 'Trocar Cenário'}</span>
           </button>
         </div>
@@ -409,7 +438,25 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
         {/* COLUNA ESQUERDA: FOTO GERADA (VERTICAL 9:16) */}
         <div className="md:col-span-5 space-y-4">
-          <div className="rounded-2xl border-2 border-emerald-500/40 bg-zinc-950 p-3 shadow-2xl relative group">
+          <div
+            className={`rounded-2xl transition-all duration-300 p-3 shadow-2xl relative group ${
+              hasDownloadedImageOnce
+                ? copiedBlueSectionClass
+                : 'border-2 border-sky-500/40 bg-zinc-950'
+            }`}
+          >
+            {/* Header da Imagem com Badge Baixado */}
+            <div className="flex items-center justify-between pb-2 px-1">
+              <span className="text-[11px] font-bold text-zinc-300 uppercase tracking-wide">
+                Foto Gerada 9:16
+              </span>
+              {hasDownloadedImageOnce && (
+                <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-sky-300" /> BAIXADO ✓
+                </span>
+              )}
+            </div>
+
             {/* Imagem Vertical 9:16 */}
             <div className="relative aspect-[9/16] w-full rounded-xl overflow-hidden bg-black flex items-center justify-center">
               <img
@@ -430,11 +477,11 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                 className="absolute top-3 right-3 p-2 rounded-xl bg-black/70 hover:bg-black/90 text-white backdrop-blur-md border border-white/20 transition-all cursor-pointer shadow-lg group-hover:scale-105"
                 title="Ampliar Imagem"
               >
-                <Eye className="w-4 h-4 text-emerald-300" />
+                <Eye className="w-4 h-4 text-sky-300" />
               </button>
 
               {/* Badge de Motor no Topo Esquerdo */}
-              <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-zinc-950/80 backdrop-blur-md border border-emerald-500/40 text-[10px] font-bold text-emerald-300 uppercase">
+              <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-zinc-950/80 backdrop-blur-md border border-sky-500/40 text-[10px] font-bold text-sky-300 uppercase">
                 {result.imageModel === 'seedream_5_0_pro'
                   ? 'SeaDream 5.0 Pro'
                   : result.imageModel === 'kling_3_0'
@@ -442,14 +489,14 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                   : 'OpenAI'}
               </div>
 
-              {/* Botão de Download Rápido com destaque azul ativo (item 14) */}
+              {/* Botão de Download Rápido com destaque azul ativo */}
               <button
                 type="button"
                 onClick={handleDownloadImage}
                 className={`absolute bottom-3 right-3 px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-xl ${
-                  downloadedImage
-                    ? 'bg-blue-600 text-white border border-blue-400 ring-2 ring-blue-500/50'
-                    : 'bg-zinc-950/85 hover:bg-emerald-600 text-emerald-300 hover:text-white border border-emerald-500/40 backdrop-blur-md'
+                  hasDownloadedImageOnce || downloadedImage
+                    ? 'bg-sky-500 hover:bg-sky-400 text-white border border-sky-300 ring-2 ring-sky-300/60'
+                    : 'bg-zinc-950/85 hover:bg-sky-600 text-sky-300 hover:text-white border border-sky-500/40 backdrop-blur-md'
                 }`}
                 title="Baixar Imagem"
               >
@@ -468,14 +515,14 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
             </div>
           </div>
 
-          {/* Botão Grande de Baixar Imagem (Item 14: maior e com destaque azul ao clicar) */}
+          {/* Botão Grande de Baixar Imagem (Maior e azul no padrão Produtos 2.0) */}
           <button
             type="button"
             onClick={handleDownloadImage}
-            className={`w-full py-3 px-5 rounded-xl text-sm font-black flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md ${
-              downloadedImage
-                ? 'bg-blue-600 text-white border border-blue-400 ring-2 ring-blue-500/50'
-                : 'bg-zinc-900 hover:bg-zinc-800 text-emerald-300 hover:text-white border border-emerald-500/40 hover:border-emerald-400'
+            className={`w-full py-3.5 px-5 rounded-xl text-sm font-black flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md ${
+              hasDownloadedImageOnce || downloadedImage
+                ? 'bg-sky-500 hover:bg-sky-400 text-white border border-sky-300 ring-2 ring-sky-300/60'
+                : 'bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white border border-sky-400/40'
             }`}
           >
             {downloadedImage ? (
@@ -485,7 +532,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
               </>
             ) : (
               <>
-                <Download className="w-4 h-4 text-emerald-400" />
+                <Download className="w-4 h-4 text-sky-200" />
                 <span>Baixar Imagem ({result.productName ? `${result.productName} Aurora.png` : 'Aurora.png'})</span>
               </>
             )}
@@ -496,9 +543,9 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
             type="button"
             disabled={isRegeneratingImage}
             onClick={() => handleRegenerateImage()}
-            className="w-full py-2.5 px-4 rounded-xl border border-emerald-500/40 bg-emerald-950/30 hover:bg-emerald-900/40 text-emerald-200 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer hover:border-emerald-400"
+            className="w-full py-2.5 px-4 rounded-xl border border-sky-500/40 bg-sky-950/30 hover:bg-sky-900/40 text-sky-200 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer hover:border-sky-400"
           >
-            <RefreshCw className={`w-3.5 h-3.5 text-emerald-400 ${isRegeneratingImage ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 text-sky-400 ${isRegeneratingImage ? 'animate-spin' : ''}`} />
             <span>{isRegeneratingImage ? 'Refazendo Imagem...' : 'Refazer Imagem (Maior Fidelidade)'}</span>
           </button>
 
@@ -508,27 +555,27 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
               type="button"
               disabled={isRegeneratingImage}
               onClick={handleRegenerateWithSeaDream}
-              className="w-full py-2.5 px-4 rounded-xl border border-emerald-400 bg-gradient-to-r from-emerald-600 to-green-700 hover:brightness-110 text-white text-xs font-black flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md shadow-emerald-950/60"
+              className="w-full py-2.5 px-4 rounded-xl border border-sky-400 bg-gradient-to-r from-sky-600 to-blue-700 hover:brightness-110 text-white text-xs font-black flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md shadow-sky-950/60"
             >
               <Cpu className="w-4 h-4 text-white" />
               <span>REFAZER COM SEEDREAM 5.0</span>
             </button>
           )}
 
-          {/* Campo: Deseja Fazer Alteração na Imagem? COM MICROFONE (Item 8) */}
+          {/* Campo: Deseja Fazer Alteração na Imagem? COM MICROFONE */}
           <div className="p-4 rounded-2xl border border-zinc-800 bg-zinc-950/80 space-y-2.5">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-zinc-300 block">
                 Deseja fazer alteração na imagem?
               </label>
-              {/* Botão de Ditar com Microfone (Item 8) */}
+              {/* Botão de Ditar com Microfone */}
               <button
                 type="button"
                 onClick={toggleImageMicrophone}
                 className={`p-1.5 rounded-lg border text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
                   isImageMicRecording
                     ? 'bg-rose-500 text-white border-rose-400 animate-pulse'
-                    : 'bg-zinc-900 hover:bg-zinc-800 text-emerald-300 border-zinc-700 hover:border-emerald-500'
+                    : 'bg-zinc-900 hover:bg-zinc-800 text-sky-300 border-zinc-700 hover:border-sky-500'
                 }`}
                 title="Ditar alterações por voz"
               >
@@ -541,15 +588,15 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
               value={imageTweakText}
               onChange={(e) => setImageTweakText(e.target.value)}
               placeholder="Ex.: Ajustar o caimento da saia, escurecer um pouco o tom do tecido..."
-              className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
+              className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-sky-500"
             />
             <button
               type="button"
               disabled={isRegeneratingImage || !imageTweakText.trim()}
               onClick={() => handleRegenerateImage(imageTweakText)}
-              className="w-full py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 text-xs font-bold text-emerald-300 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+              className="w-full py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 text-xs font-bold text-sky-300 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
             >
-              <Wand2 className="w-3.5 h-3.5 text-emerald-400" />
+              <Wand2 className="w-3.5 h-3.5 text-sky-400" />
               <span>Refazer Imagem com Ajuste</span>
             </button>
           </div>
@@ -558,15 +605,15 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
         {/* COLUNA DIREITA: FIDELIDADE + PROMPT DE VÍDEO + BAIXAR TUDO + HASHTAGS + HEADLINE */}
         <div className="md:col-span-7 space-y-5">
           {/* 1. CARD DE ANÁLISE DE FIDELIDADE */}
-          <div className="p-4 sm:p-5 rounded-2xl border border-emerald-500/40 bg-zinc-950/80 shadow-xl space-y-2.5">
+          <div className="p-4 sm:p-5 rounded-2xl border border-sky-500/40 bg-zinc-950/80 shadow-xl space-y-2.5">
             <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
               <div className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                <ShieldCheck className="w-5 h-5 text-sky-400" />
                 <h3 className="text-xs font-black text-white uppercase tracking-wide">
                   Análise de Fidelidade da Peça
                 </h3>
               </div>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-sky-500/20 text-sky-300 border border-sky-500/40">
                 {auditScore}% {auditLabel}
               </span>
             </div>
@@ -574,32 +621,41 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
             <div className="grid grid-cols-2 gap-2 text-[11px] text-zinc-300">
               <div className="p-2 rounded-lg bg-zinc-900/80 border border-zinc-800/60">
                 <span className="text-zinc-500 block text-[10px]">Calçado Automático:</span>
-                <span className="font-bold text-emerald-300">{result.shoeDescription}</span>
+                <span className="font-bold text-sky-300">{result.shoeDescription}</span>
               </div>
               <div className="p-2 rounded-lg bg-zinc-900/80 border border-zinc-800/60">
                 <span className="text-zinc-500 block text-[10px]">Enquadramento:</span>
-                <span className="font-bold text-emerald-300">Corte do Queixo para baixo</span>
+                <span className="font-bold text-sky-300">Corte do Queixo para baixo</span>
               </div>
             </div>
           </div>
 
-          {/* 2. CARD DO PROMPT DE VÍDEO (KLING 3.0 OMNI · 10S) */}
-          <div className="p-5 rounded-2xl border border-emerald-500/40 bg-zinc-950/80 shadow-xl space-y-3">
+          {/* 2. CARD DO PROMPT DE VÍDEO (COM DESTAQUE AZUL AO COPIAR - ITENS 6, 7 E 14) */}
+          <div
+            className={`p-5 rounded-2xl transition-all duration-300 space-y-3 ${
+              hasCopiedPromptOnce ? copiedBlueSectionClass : defaultSectionClass
+            }`}
+          >
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/80 pb-2.5">
               <div className="flex items-center gap-2">
-                <Video className="w-4 h-4 text-emerald-400" />
-                <h3 className="text-xs font-black text-white uppercase tracking-wide">
-                  Prompt do Vídeo (Kling 3.0 Omni · 10 Segundos)
+                <Video className="w-4 h-4 text-sky-400" />
+                <h3 className="text-xs font-black text-white uppercase tracking-wide flex items-center gap-2">
+                  <span>Prompt do Vídeo (Kling 3.0 Omni · 10 Segundos)</span>
+                  {hasCopiedPromptOnce && (
+                    <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-sky-300" /> COPIADO ✓
+                    </span>
+                  )}
                 </h3>
               </div>
-              {/* Botão Copiar Prompt (Item 14: maior e azul quando copiado) */}
+              {/* Botão Copiar Prompt (Maior e azul igual Produtos 2.0) */}
               <button
                 type="button"
                 onClick={handleCopyPrompt}
                 className={`py-2 px-4 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-md ${
-                  copiedPrompt
-                    ? 'bg-blue-600 text-white border border-blue-400 ring-2 ring-blue-500/50'
-                    : 'bg-zinc-900 hover:bg-zinc-800 text-emerald-300 border border-emerald-600/40 hover:border-emerald-400'
+                  hasCopiedPromptOnce || copiedPrompt
+                    ? 'bg-sky-500 hover:bg-sky-400 text-white border border-sky-300 ring-2 ring-sky-300/60'
+                    : 'bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white'
                 }`}
               >
                 {copiedPrompt ? (
@@ -616,25 +672,31 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
               </button>
             </div>
 
-            {/* Prompt limpo sem o cabeçalho 🎥 PROMPT DE VÍDEO... (item 24) */}
-            <div className="p-3.5 rounded-xl bg-zinc-900/95 border border-zinc-800 text-xs font-mono text-zinc-300 max-h-48 overflow-y-auto whitespace-pre-wrap leading-relaxed select-all">
+            {/* Prompt limpo sem o cabeçalho 🎥 PROMPT DE VÍDEO... */}
+            <div
+              className={`p-3.5 rounded-xl text-xs font-mono max-h-48 overflow-y-auto whitespace-pre-wrap leading-relaxed select-all transition-all ${
+                hasCopiedPromptOnce
+                  ? 'bg-slate-950/90 border border-sky-400/60 text-sky-50'
+                  : 'bg-zinc-950 border border-zinc-800 text-zinc-200'
+              }`}
+            >
               {cleanVideoPrompt}
             </div>
 
-            {/* Ajustar ou Corrigir Prompt com IA COM MICROFONE (Item 10) */}
+            {/* Ajustar ou Corrigir Prompt com IA COM MICROFONE */}
             <div className="pt-2 border-t border-zinc-800/80 space-y-2">
               <div className="flex items-center justify-between">
                 <label className="text-[11px] font-bold text-zinc-400 block">
                   Ajustar ou corrigir esse prompt com IA:
                 </label>
-                {/* Botão de Ditar com Microfone (Item 10) */}
+                {/* Botão de Ditar com Microfone */}
                 <button
                   type="button"
                   onClick={togglePromptMicrophone}
                   className={`p-1.5 rounded-lg border text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
                     isPromptMicRecording
                       ? 'bg-rose-500 text-white border-rose-400 animate-pulse'
-                      : 'bg-zinc-900 hover:bg-zinc-800 text-emerald-300 border-zinc-700 hover:border-emerald-500'
+                      : 'bg-zinc-900 hover:bg-zinc-800 text-sky-300 border-zinc-700 hover:border-sky-500'
                   }`}
                   title="Ditar ajuste por voz"
                 >
@@ -648,13 +710,13 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                   value={promptCorrectionText}
                   onChange={(e) => setPromptCorrectionText(e.target.value)}
                   placeholder="Ex.: Ajustar para movimentos mais lentos da modelo, suavizar o caimento da peça..."
-                  className="flex-1 px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-700 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-emerald-500"
+                  className="flex-1 px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-700 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-sky-500"
                 />
                 <button
                   type="button"
                   disabled={isRefiningPrompt || !promptCorrectionText.trim()}
                   onClick={handleRefinePrompt}
-                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1 transition-all cursor-pointer shadow-sm"
+                  className="px-3 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1 transition-all cursor-pointer shadow-sm"
                 >
                   <Wand2 className={`w-3.5 h-3.5 ${isRefiningPrompt ? 'animate-spin' : ''}`} />
                   <span>{isRefiningPrompt ? 'Refazendo...' : 'Refazer Prompt'}</span>
@@ -663,35 +725,44 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
             </div>
           </div>
 
-          {/* 3. BOTÃO DE BAIXAR TUDO (.ZIP) EMBAIXO DO PROMPT (ITEM 6) */}
+          {/* 3. BOTÃO DE BAIXAR TUDO (.ZIP) EMBAIXO DO PROMPT (PADRÃO PRODUTOS 2.0) */}
           <div>
             <button
               type="button"
               disabled={isExportingZip}
               onClick={handleExportZip}
-              className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 to-green-700 hover:from-emerald-500 hover:to-green-600 text-white text-sm font-black flex items-center justify-center gap-2.5 shadow-xl shadow-emerald-950/60 ring-2 ring-emerald-400/40 transition-all cursor-pointer hover:scale-[1.01]"
+              className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-700 hover:from-sky-500 hover:to-blue-600 text-white text-sm font-black flex items-center justify-center gap-2.5 shadow-xl shadow-sky-950/60 ring-2 ring-sky-400/40 transition-all cursor-pointer hover:scale-[1.01]"
             >
               <Download className="w-5 h-5 text-white" />
               <span>{isExportingZip ? 'Compactando...' : 'Baixar Tudo (.zip)'}</span>
             </button>
           </div>
 
-          {/* 4. CARD DE HASHTAGS (SOMENTE HASHTAGS, BOTÃO MAIOR E AZUL - ITENS 11 E 14) */}
-          <div className="p-5 rounded-2xl border border-emerald-500/40 bg-zinc-950/80 shadow-xl space-y-3">
+          {/* 4. CARD DE HASHTAGS (COM DESTAQUE AZUL AO COPIAR - ITENS 6 E 14) */}
+          <div
+            className={`p-5 rounded-2xl transition-all duration-300 space-y-3 ${
+              hasCopiedHashtagsOnce ? copiedBlueSectionClass : defaultSectionClass
+            }`}
+          >
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/80 pb-2.5">
               <div className="flex items-center gap-2">
-                <Hash className="w-4 h-4 text-emerald-400" />
-                <h3 className="text-xs font-black text-white uppercase tracking-wide">
-                  Hashtags
+                <Hash className="w-4 h-4 text-sky-400" />
+                <h3 className="text-xs font-black text-white uppercase tracking-wide flex items-center gap-2">
+                  <span>Hashtags</span>
+                  {hasCopiedHashtagsOnce && (
+                    <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-sky-300" /> COPIADO ✓
+                    </span>
+                  )}
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={handleCopyHashtags}
                 className={`py-2 px-4 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-md ${
-                  copiedHashtags
-                    ? 'bg-blue-600 text-white border border-blue-400 ring-2 ring-blue-500/50'
-                    : 'bg-zinc-900 hover:bg-zinc-800 text-emerald-300 border border-emerald-600/40 hover:border-emerald-400'
+                  hasCopiedHashtagsOnce || copiedHashtags
+                    ? 'bg-sky-500 hover:bg-sky-400 text-white border border-sky-300 ring-2 ring-sky-300/60'
+                    : 'bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white'
                 }`}
               >
                 {copiedHashtags ? (
@@ -708,27 +779,42 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
               </button>
             </div>
 
-            <div className="p-3 rounded-xl bg-zinc-900/95 border border-zinc-800 text-xs font-mono text-emerald-200 select-all">
+            <div
+              className={`p-3 rounded-xl text-xs font-mono select-all transition-all ${
+                hasCopiedHashtagsOnce
+                  ? 'bg-slate-950/90 border border-sky-400/60 text-sky-100'
+                  : 'bg-zinc-900/95 border border-zinc-800 text-sky-200'
+              }`}
+            >
               {result.hashtags}
             </div>
           </div>
 
-          {/* 5. CARD DE HEADLINE (BOTÃO MAIOR E AZUL - ITENS 11 E 14) */}
-          <div className="p-5 rounded-2xl border border-emerald-500/40 bg-zinc-950/80 shadow-xl space-y-3">
+          {/* 5. CARD DE HEADLINE (COM DESTAQUE AZUL AO COPIAR - ITENS 7 E 14) */}
+          <div
+            className={`p-5 rounded-2xl transition-all duration-300 space-y-3 ${
+              hasCopiedHeadlineOnce ? copiedBlueSectionClass : defaultSectionClass
+            }`}
+          >
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/80 pb-2.5">
               <div className="flex items-center gap-2">
-                <Smile className="w-4 h-4 text-emerald-400" />
-                <h3 className="text-xs font-black text-white uppercase tracking-wide">
-                  Headline
+                <Smile className="w-4 h-4 text-sky-400" />
+                <h3 className="text-xs font-black text-white uppercase tracking-wide flex items-center gap-2">
+                  <span>Headline</span>
+                  {hasCopiedHeadlineOnce && (
+                    <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-sky-300" /> COPIADO ✓
+                    </span>
+                  )}
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={handleCopyHeadline}
                 className={`py-2 px-4 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-md ${
-                  copiedHeadline
-                    ? 'bg-blue-600 text-white border border-blue-400 ring-2 ring-blue-500/50'
-                    : 'bg-zinc-900 hover:bg-zinc-800 text-emerald-300 border border-emerald-600/40 hover:border-emerald-400'
+                  hasCopiedHeadlineOnce || copiedHeadline
+                    ? 'bg-sky-500 hover:bg-sky-400 text-white border border-sky-300 ring-2 ring-sky-300/60'
+                    : 'bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white'
                 }`}
               >
                 {copiedHeadline ? (
@@ -745,7 +831,13 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
               </button>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-zinc-900/95 border border-zinc-800 text-sm font-semibold text-white select-all">
+            <div
+              className={`p-3.5 rounded-xl text-sm font-semibold select-all transition-all ${
+                hasCopiedHeadlineOnce
+                  ? 'bg-slate-950/90 border border-sky-400/60 text-white'
+                  : 'bg-zinc-900/95 border border-zinc-800 text-white'
+              }`}
+            >
               {result.headline}
             </div>
           </div>

@@ -1889,8 +1889,6 @@ export default function App() {
     <div className={`min-h-screen text-zinc-100 flex flex-col font-sans selection:bg-purple-500/20 selection:text-purple-300 transition-colors duration-300 ${
       appMode === 'produto'
         ? 'bg-[#1c130e]'
-        : appMode === 'anamaria'
-        ? 'bg-[#140e09]'
         : 'bg-zinc-950'
     }`}>
       <Header
@@ -1898,7 +1896,7 @@ export default function App() {
           appMode === 'produtos2'
             ? (produtos2Result?.tokenUsage || (sessionTokenStats.totalTokens > 0 ? sessionTokenStats : undefined))
             : appMode === 'anamaria'
-            ? (anaMariaResult?.tokenUsage || sessionTokenStats)
+            ? (anaMariaPage === 'results' ? (anaMariaResult?.tokenUsage || (sessionTokenStats.totalTokens > 0 ? sessionTokenStats : undefined)) : undefined)
             : appMode === 'ania'
             ? (aniaResult?.tokenUsage || sessionTokenStats)
             : (analysisResult?.tokenUsage || sessionTokenStats)

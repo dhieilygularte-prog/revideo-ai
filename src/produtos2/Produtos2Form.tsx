@@ -1167,17 +1167,17 @@ export const Produtos2Form: React.FC<Produtos2FormProps> = ({
                 onNavigateToAnaMaria();
               }
             }}
-            className="p-3 rounded-xl border border-emerald-500/50 bg-gradient-to-r from-emerald-950/70 via-zinc-950 to-zinc-950 text-emerald-200 hover:border-emerald-400 hover:text-white transition-all flex items-center justify-between gap-2 cursor-pointer shadow-md shadow-emerald-950/40 group hover:scale-[1.01]"
+            className="p-3 rounded-xl border border-sky-500/50 bg-gradient-to-r from-sky-950/70 via-zinc-950 to-zinc-950 text-sky-200 hover:border-sky-400 hover:text-white transition-all flex items-center justify-between gap-2 cursor-pointer shadow-md shadow-sky-950/40 group hover:scale-[1.01]"
             title="Abrir o Modo Ana Maria (Vitrine Estática 10s · Selfie no Espelho)"
           >
             <div className="flex items-center gap-2.5">
-              <Sparkles className="w-5 h-5 shrink-0 text-emerald-400 group-hover:scale-110 transition-transform" />
+              <Sparkles className="w-5 h-5 shrink-0 text-sky-400 group-hover:scale-110 transition-transform" />
               <div>
-                <div className="text-xs font-black uppercase tracking-wide text-emerald-300">Modo Ana Maria</div>
+                <div className="text-xs font-black uppercase tracking-wide text-sky-300">Modo Ana Maria</div>
                 <div className="text-[11px] text-zinc-400">Selfie Espelho · Vitrine 10s · Kling Omni</div>
               </div>
             </div>
-            <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-bold uppercase border border-emerald-500/40">
+            <span className="px-2 py-0.5 rounded bg-sky-500/20 text-sky-300 text-[10px] font-bold uppercase border border-sky-500/40">
               Abrir
             </span>
           </button>
