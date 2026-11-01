@@ -2026,6 +2026,8 @@ app.post('/api/generate-scene-image', async (req, res) => {
       productPhotosBase64 = [],
       modelReferenceBase64,
       referenceFrameBase64,
+      scenarioPhotoBase64,
+      isAnaMariaMode = false,
       variationName = 'Variação 1',
       productType = 'produto comercial',
       targetAngle = 'front',
@@ -2060,7 +2062,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
     if (requestedImageModel === 'kling_3_0') {
       const klingResult = await generateImageWithKling({
         prompt: effectivePrompt,
-        imageReferenceBase64: modelReferenceBase64 || productPhotoBase64,
+        imageReferenceBase64: scenarioPhotoBase64 || modelReferenceBase64 || productPhotoBase64,
         aspectRatio: req.body.aspectRatio || '9:16',
       });
       return res.json(klingResult);
@@ -2069,7 +2071,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
     if (requestedImageModel === 'seedream_5_0_pro') {
       // Ordem: 1ª = imagem base (Imagem 1 nas trocas de cor), depois fotos reais do produto
       const seen = new Set<string>();
-      const orderedRefs = [modelReferenceBase64, productPhotoBase64, ...(Array.isArray(productPhotosBase64) ? productPhotosBase64 : [])]
+      const orderedRefs = [scenarioPhotoBase64, modelReferenceBase64, productPhotoBase64, ...(Array.isArray(productPhotosBase64) ? productPhotosBase64 : [])]
         .filter((img: any) => typeof img === 'string' && img.length > 50)
         .filter((img: string) => {
           const key = img.slice(-120);
@@ -2079,7 +2081,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
         });
       const seedreamResult = await generateImageWithSeedream({
         prompt: effectivePrompt,
-        imageReferenceBase64: modelReferenceBase64 || productPhotoBase64,
+        imageReferenceBase64: scenarioPhotoBase64 || modelReferenceBase64 || productPhotoBase64,
         referenceImages: orderedRefs,
         aspectRatio: req.body.aspectRatio || '9:16',
       });
@@ -2102,6 +2104,8 @@ app.post('/api/generate-scene-image', async (req, res) => {
           productPhotosBase64,
           modelReferenceBase64,
           referenceFrameBase64,
+          scenarioPhotoBase64,
+          isAnaMariaMode,
           variationName,
           productType,
           targetAngle,
@@ -2134,6 +2138,22 @@ app.post('/api/generate-scene-image', async (req, res) => {
     }
 
     const parts: any[] = [];
+
+    if (scenarioPhotoBase64) {
+      const parsedScenario = parseInlineImage(scenarioPhotoBase64);
+      if (parsedScenario) {
+        parts.push({ inlineData: parsedScenario });
+        parts.push({
+          text: `[REFERÊNCIA DE CENÁRIO RESIDENCIAL FIXO (MANDATÓRIA)]:
+- A imagem de referência acima é o CENÁRIO REAL FIXO OBRIGATÓRIO onde a modelo deve ser posicionada:
+  * Piso de porcelanato bege marmorizado brilhante.
+  * Parede clara à direita com interruptor duplo branco e batente com vidro.
+  * Porta de madeira escura aberta à esquerda com batente escuro e fechadura metálica.
+  * Corredor ao fundo com iluminação suave.
+- Posicione a modelo em pé EXATAMENTE neste cenário com smartphone na mão em selfie no espelho, preservando rigorosamente as características arquitetônicas deste cômodo.`
+        });
+      }
+    }
 
     // Se temos modelReferenceBase64:
     // Em Modo Ania (isCloneMode === false): aplica CANVAS LOCK total (mesma pose, mesmo quarto, apenas troca de cor).

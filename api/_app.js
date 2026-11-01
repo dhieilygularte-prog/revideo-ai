@@ -865,6 +865,8 @@ Retorne estritamente um JSON estruturado:
       productPhotosBase64 = [],
       modelReferenceBase64,
       referenceFrameBase64,
+      scenarioPhotoBase64,
+      isAnaMariaMode = false,
       variationName = "Varia\xE7\xE3o 1",
       productType = "produto comercial",
       correctionPrompt,
@@ -892,7 +894,15 @@ Retorne estritamente um JSON estruturado:
 - VIVID, VIBRANT COLORS & CLEAN WHITE BALANCE: Colors must be lively, vivid, saturated with natural commercial pop, and harmonized with the environment. Maintain clean neutral white balance (pure whites, deep clean blacks, natural healthy skin tones).
 - STRICTLY PROHIBITED (ZERO YELLOWISH / ZERO OPAQUE): NO yellowish tint, NO warm tungsten/amber/sepia cast, NO dull/opaque/lifeless look, NO pale/washed-out/milky/hazy veil, and NO plastic film overlay across the lens.
 - 90%+ FIDELITY AUDITOR CALIBRATION (5 INSPECTION GROUPS + ANTI-MORPHING): Preserve 100% of the exact product model, silhouette, all physical components (body, nozzles, caps, cables, handles, buttons, seams, and all kit pieces), realistic human scale, exact surface finish (matte, glossy, metallic), and 1:1 manufacturer logo. Hands must have 5 natural fingers gripping neutral sides cleanly without fusing into the product or covering the logo/buttons.`;
+    const scenarioLockDirective = scenarioPhotoBase64 ? `CRITICAL SCENARIO AND BACKGROUND ANCHOR (EXACT ROOM REPLICATION):
+- The attached scenario reference image defines the EXACT room and interior architecture.
+- Hallway/room with beige marbled porcelain tile flooring with realistic gloss reflection.
+- Dark wood door on the left with silver metallic door handle.
+- White tiled wall on the right with dual white light switch and glass door frame.
+- Slightly dimmed hallway corridor extending directly in the background.
+- Place the woman standing directly inside this EXACT architectural setting holding the smartphone in front of the mirror. Do NOT create or invent a different room, do NOT change the walls or floor.` : "";
     const overrides = [
+      scenarioLockDirective,
       modelAntiViolationDirective,
       opticalClarityDirective,
       correctionPrompt && `CRITICAL QUALITY OVERRIDE: ${correctionPrompt.trim()}`,
@@ -910,6 +920,12 @@ ${prompt}` : prompt;
         const cleanB64 = dataUrl.replace(/^data:image\/[a-zA-Z0-9+.-]+;base64,/i, "").replace(/[\r\n\s]/g, "");
         return new File([Buffer.from(cleanB64, "base64")], `${baseName}.${ext}`, { type: mime });
       };
+      if (scenarioPhotoBase64) {
+        try {
+          imageFiles.push(toImageFile(scenarioPhotoBase64, "reference_scenario_background"));
+        } catch {
+        }
+      }
       allPhotos.slice(0, 4).forEach((photoStr, idx) => {
         try {
           if (photoStr && typeof photoStr === "string") {
@@ -954,6 +970,12 @@ Mantenha o mesmo modelo/corte e caimento da pe\xE7a atual; troque somente cores 
       } else if (referenceFrameBase64) {
         try {
           baseImageFile = toImageFile(referenceFrameBase64, "previous_storyboard");
+        } catch {
+          baseImageFile = imageFiles[0] || null;
+        }
+      } else if (scenarioPhotoBase64) {
+        try {
+          baseImageFile = toImageFile(scenarioPhotoBase64, "scenario_room_base");
         } catch {
           baseImageFile = imageFiles[0] || null;
         }
@@ -3559,6 +3581,8 @@ app.post("/api/generate-scene-image", async (req, res) => {
       productPhotosBase64 = [],
       modelReferenceBase64,
       referenceFrameBase64,
+      scenarioPhotoBase64,
+      isAnaMariaMode = false,
       variationName = "Varia\xE7\xE3o 1",
       productType = "produto comercial",
       targetAngle = "front",
@@ -3586,14 +3610,14 @@ ${prompt}`;
     if (requestedImageModel === "kling_3_0") {
       const klingResult = await generateImageWithKling({
         prompt: effectivePrompt,
-        imageReferenceBase64: modelReferenceBase64 || productPhotoBase64,
+        imageReferenceBase64: scenarioPhotoBase64 || modelReferenceBase64 || productPhotoBase64,
         aspectRatio: req.body.aspectRatio || "9:16"
       });
       return res.json(klingResult);
     }
     if (requestedImageModel === "seedream_5_0_pro") {
       const seen = /* @__PURE__ */ new Set();
-      const orderedRefs = [modelReferenceBase64, productPhotoBase64, ...Array.isArray(productPhotosBase64) ? productPhotosBase64 : []].filter((img) => typeof img === "string" && img.length > 50).filter((img) => {
+      const orderedRefs = [scenarioPhotoBase64, modelReferenceBase64, productPhotoBase64, ...Array.isArray(productPhotosBase64) ? productPhotosBase64 : []].filter((img) => typeof img === "string" && img.length > 50).filter((img) => {
         const key = img.slice(-120);
         if (seen.has(key)) return false;
         seen.add(key);
@@ -3601,7 +3625,7 @@ ${prompt}`;
       });
       const seedreamResult = await generateImageWithSeedream({
         prompt: effectivePrompt,
-        imageReferenceBase64: modelReferenceBase64 || productPhotoBase64,
+        imageReferenceBase64: scenarioPhotoBase64 || modelReferenceBase64 || productPhotoBase64,
         referenceImages: orderedRefs,
         aspectRatio: req.body.aspectRatio || "9:16"
       });
@@ -3622,6 +3646,8 @@ ${prompt}`;
           productPhotosBase64,
           modelReferenceBase64,
           referenceFrameBase64,
+          scenarioPhotoBase64,
+          isAnaMariaMode,
           variationName,
           productType,
           targetAngle,
@@ -3651,6 +3677,21 @@ ${prompt}`;
       });
     }
     const parts = [];
+    if (scenarioPhotoBase64) {
+      const parsedScenario = parseInlineImage(scenarioPhotoBase64);
+      if (parsedScenario) {
+        parts.push({ inlineData: parsedScenario });
+        parts.push({
+          text: `[REFER\xCANCIA DE CEN\xC1RIO RESIDENCIAL FIXO (MANDAT\xD3RIA)]:
+- A imagem de refer\xEAncia acima \xE9 o CEN\xC1RIO REAL FIXO OBRIGAT\xD3RIO onde a modelo deve ser posicionada:
+  * Piso de porcelanato bege marmorizado brilhante.
+  * Parede clara \xE0 direita com interruptor duplo branco e batente com vidro.
+  * Porta de madeira escura aberta \xE0 esquerda com batente escuro e fechadura met\xE1lica.
+  * Corredor ao fundo com ilumina\xE7\xE3o suave.
+- Posicione a modelo em p\xE9 EXATAMENTE neste cen\xE1rio com smartphone na m\xE3o em selfie no espelho, preservando rigorosamente as caracter\xEDsticas arquitet\xF4nicas deste c\xF4modo.`
+        });
+      }
+    }
     if (modelReferenceBase64 && !isCloneMode) {
       const parsedModel = parseInlineImage(modelReferenceBase64);
       if (parsedModel) {

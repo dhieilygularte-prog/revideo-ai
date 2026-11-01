@@ -28,35 +28,123 @@ function formatTimestampForFile(timestamp?: number): string {
   return `${day}.${month} as ${hours}h${minutes}`;
 }
 
-async function urlToUint8Array(url: string): Promise<Uint8Array> {
-  if (url.startsWith('data:')) {
-    const base64Data = url.split(',')[1];
-    const binaryStr = atob(base64Data);
-    const len = binaryStr.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i++) {
-      bytes[i] = binaryStr.charCodeAt(i);
-    }
-    return bytes;
-  }
-  const res = await fetch(url);
-  const buffer = await res.arrayBuffer();
-  return new Uint8Array(buffer);
+/**
+ * Garante que a imagem gerada esteja na resolução exata de 2160x3840 pixels (4K vertical 9:16)
+ * com máxima nitidez e interpolação de alta qualidade.
+ */
+export async function ensureHighResAnaMariaDataUrl(
+  inputUrlOrBase64: string,
+  targetWidth = 2160,
+  targetHeight = 3840
+): Promise<string> {
+  if (typeof window === 'undefined') return inputUrlOrBase64;
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        if (img.width === targetWidth && img.height === targetHeight) {
+          resolve(inputUrlOrBase64);
+          return;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(inputUrlOrBase64);
+          return;
+        }
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+        const dataUrl = canvas.toDataURL('image/png', 1.0);
+        resolve(dataUrl);
+      } catch (err) {
+        console.warn('Erro ao redimensionar imagem para 2160x3840 no canvas:', err);
+        resolve(inputUrlOrBase64);
+      }
+    };
+    img.onerror = () => {
+      resolve(inputUrlOrBase64);
+    };
+    img.src = inputUrlOrBase64;
+  });
 }
 
 /**
- * Baixa a imagem com a nomenclatura: "[Nome do Produto] Aurora.png" (item 22)
+ * Converte qualquer imagem ou dataURL para Blob PNG com 2160x3840 pixels garantidos.
+ */
+export async function ensureHighResAnaMariaBlob(
+  inputUrlOrBase64: string,
+  targetWidth = 2160,
+  targetHeight = 3840
+): Promise<Blob> {
+  if (typeof window === 'undefined') return new Blob([]);
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          fetch(inputUrlOrBase64)
+            .then((r) => r.blob())
+            .then(resolve)
+            .catch(() => resolve(new Blob([])));
+          return;
+        }
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              resolve(blob);
+            } else {
+              fetch(inputUrlOrBase64)
+                .then((r) => r.blob())
+                .then(resolve)
+                .catch(() => resolve(new Blob([])));
+            }
+          },
+          'image/png',
+          1.0
+        );
+      } catch (err) {
+        console.warn('Erro ao gerar blob 2160x3840 no canvas:', err);
+        fetch(inputUrlOrBase64)
+          .then((r) => r.blob())
+          .then(resolve)
+          .catch(() => resolve(new Blob([])));
+      }
+    };
+    img.onerror = () => {
+      fetch(inputUrlOrBase64)
+        .then((r) => r.blob())
+        .then(resolve)
+        .catch(() => resolve(new Blob([])));
+    };
+    img.src = inputUrlOrBase64;
+  });
+}
+
+/**
+ * Baixa a imagem individual com resolução de 2160x3840 pixels
+ * Nomenclatura: "[Nome do Produto] Aurora.png"
  */
 export async function downloadAnaMariaSingleImage(imageUrl: string, productName: string) {
   const cleanName = sanitizeCleanName(productName);
   const fileName = `${cleanName} Aurora.png`;
 
   try {
-    const bytes = await urlToUint8Array(imageUrl);
-    const blob = new Blob([bytes], { type: 'image/png' });
+    const blob = await ensureHighResAnaMariaBlob(imageUrl, 2160, 3840);
     downloadBlob(blob, fileName);
   } catch (err) {
-    console.warn('Erro ao baixar imagem via blob:', err);
+    console.warn('Erro ao baixar imagem via blob de alta resolução:', err);
     const a = document.createElement('a');
     a.href = imageUrl;
     a.download = fileName;
@@ -67,11 +155,12 @@ export async function downloadAnaMariaSingleImage(imageUrl: string, productName:
 }
 
 /**
- * Exporta o pacote .zip (item 23):
- * - Imagem: "[Nome do Produto] Aurora.png"
+ * Exporta o pacote .zip (Item 23 e Item 8):
+ * - Imagem em 2160x3840 pixels: "[Nome do Produto] Aurora.png"
  * - Doc 1: "Hastags e Headline - [Nome do Produto] (hora da geração).txt"
  * - Doc 2: "Prompt de Video - [Nome do Produto] (hora da geração).txt"
  * - Nome do ZIP: "Modo Ana Maria - [Nome do Produto].zip"
+ * - Sem subpastas adicionais (todos os arquivos na raiz do .zip)
  */
 export async function exportAnaMariaZip(result: AnaMariaResultState): Promise<void> {
   const { default: JSZip } = await import('jszip');
@@ -80,15 +169,16 @@ export async function exportAnaMariaZip(result: AnaMariaResultState): Promise<vo
   const cleanName = sanitizeCleanName(result.productName);
   const horaStr = formatTimestampForFile(result.timestamp);
 
-  // 1. Imagem Principal: "[Nome do Produto] Aurora.png"
+  // 1. Imagem Principal em 2160x3840 pixels: "[Nome do Produto] Aurora.png"
   try {
-    const imgBytes = await urlToUint8Array(result.imageUrl);
-    zip.file(`${cleanName} Aurora.png`, imgBytes);
+    const imgBlob = await ensureHighResAnaMariaBlob(result.imageUrl, 2160, 3840);
+    const imgBuffer = await imgBlob.arrayBuffer();
+    zip.file(`${cleanName} Aurora.png`, imgBuffer);
   } catch (err) {
-    console.warn('Falha ao adicionar imagem no zip:', err);
+    console.warn('Falha ao adicionar imagem de alta resolução no zip:', err);
   }
 
-  // 2. Doc de Hashtags e Headline (item 23)
+  // 2. Doc de Hashtags e Headline (sem caracteres estranhos ou pastas aninhadas)
   const hashtagsAndHeadlineContent = `HEADLINE:
 ${result.headline}
 

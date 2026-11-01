@@ -509,6 +509,8 @@ Retorne estritamente um JSON estruturado:
       productPhotosBase64 = [],
       modelReferenceBase64,
       referenceFrameBase64,
+      scenarioPhotoBase64,
+      isAnaMariaMode = false,
       variationName = 'Variação 1',
       productType = 'produto comercial',
       correctionPrompt,
@@ -546,8 +548,19 @@ Retorne estritamente um JSON estruturado:
 - STRICTLY PROHIBITED (ZERO YELLOWISH / ZERO OPAQUE): NO yellowish tint, NO warm tungsten/amber/sepia cast, NO dull/opaque/lifeless look, NO pale/washed-out/milky/hazy veil, and NO plastic film overlay across the lens.
 - 90%+ FIDELITY AUDITOR CALIBRATION (5 INSPECTION GROUPS + ANTI-MORPHING): Preserve 100% of the exact product model, silhouette, all physical components (body, nozzles, caps, cables, handles, buttons, seams, and all kit pieces), realistic human scale, exact surface finish (matte, glossy, metallic), and 1:1 manufacturer logo. Hands must have 5 natural fingers gripping neutral sides cleanly without fusing into the product or covering the logo/buttons.`;
 
+    const scenarioLockDirective = scenarioPhotoBase64
+      ? `CRITICAL SCENARIO AND BACKGROUND ANCHOR (EXACT ROOM REPLICATION):
+- The attached scenario reference image defines the EXACT room and interior architecture.
+- Hallway/room with beige marbled porcelain tile flooring with realistic gloss reflection.
+- Dark wood door on the left with silver metallic door handle.
+- White tiled wall on the right with dual white light switch and glass door frame.
+- Slightly dimmed hallway corridor extending directly in the background.
+- Place the woman standing directly inside this EXACT architectural setting holding the smartphone in front of the mirror. Do NOT create or invent a different room, do NOT change the walls or floor.`
+      : '';
+
     // Prioriza correções de auditoria e instruções adicionais sobre o prompt universal já formatado
     const overrides = [
+      scenarioLockDirective,
       modelAntiViolationDirective,
       opticalClarityDirective,
       correctionPrompt && `CRITICAL QUALITY OVERRIDE: ${correctionPrompt.trim()}`,
@@ -565,6 +578,13 @@ Retorne estritamente um JSON estruturado:
         const cleanB64 = dataUrl.replace(/^data:image\/[a-zA-Z0-9+.-]+;base64,/i, '').replace(/[\r\n\s]/g, '');
         return new File([Buffer.from(cleanB64, 'base64')], `${baseName}.${ext}`, { type: mime });
       };
+
+      // Adiciona foto de cenário como primeira referência se fornecida
+      if (scenarioPhotoBase64) {
+        try {
+          imageFiles.push(toImageFile(scenarioPhotoBase64, 'reference_scenario_background'));
+        } catch {}
+      }
 
       // Converte até 4 fotos de referência mais relevantes para envio com seu MIME real
       allPhotos.slice(0, 4).forEach((photoStr, idx) => {
@@ -622,6 +642,12 @@ Mantenha o mesmo modelo/corte e caimento da peça atual; troque somente cores (p
       } else if (referenceFrameBase64) {
         try {
           baseImageFile = toImageFile(referenceFrameBase64, 'previous_storyboard');
+        } catch {
+          baseImageFile = imageFiles[0] || null;
+        }
+      } else if (scenarioPhotoBase64) {
+        try {
+          baseImageFile = toImageFile(scenarioPhotoBase64, 'scenario_room_base');
         } catch {
           baseImageFile = imageFiles[0] || null;
         }

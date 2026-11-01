@@ -6,11 +6,21 @@ export type AnaMariaImageModel = 'seedream_5_0_pro' | 'kling_3_0' | 'openai';
 export type AnaMariaVideoPromptLimit = 'unlimited' | '5000' | '2500';
 export type AnaMariaShoeCategory = 'A_CHINELO' | 'B_TENIS' | 'C_OUTRO';
 
+export type AnaMariaAuditColorStatus = 'green' | 'yellow' | 'orange' | 'red';
+
+export interface AnaMariaAuditCriterion {
+  name: string;
+  score: number;
+  status: AnaMariaAuditColorStatus;
+  issue?: string;
+}
+
 export interface AnaMariaAudit {
   score: number;
-  status: 'green' | 'yellow' | 'red';
+  status: AnaMariaAuditColorStatus;
   label: string;
   issues: string[];
+  criteria?: AnaMariaAuditCriterion[];
   correctionPrompt?: string;
 }
 

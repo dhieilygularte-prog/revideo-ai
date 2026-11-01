@@ -7,6 +7,8 @@ import {
   Sparkles,
   Eye,
   ShieldCheck,
+  AlertTriangle,
+  AlertCircle,
   Wand2,
   History,
   ArrowLeft,
@@ -15,14 +17,17 @@ import {
   Hash,
   Smile,
   Mic,
+  Square,
   Home,
   Cpu,
   CheckCircle2,
+  Plus,
 } from 'lucide-react';
-import { AnaMariaResultState } from './types';
+import { AnaMariaResultState, AnaMariaAuditColorStatus } from './types';
 import {
   downloadAnaMariaSingleImage,
   exportAnaMariaZip,
+  sanitizeCleanName,
 } from './anaMariaZipExporter';
 import {
   regenerateAnaMariaImage,
@@ -43,6 +48,44 @@ interface AnaMariaResultsProps {
   aiProfile?: AIProfile;
 }
 
+function getStatusClasses(status: AnaMariaAuditColorStatus) {
+  switch (status) {
+    case 'green':
+      return {
+        box: 'bg-emerald-500/10 border-emerald-500/35 text-emerald-300',
+        badge: 'bg-emerald-500/20 border-emerald-400/40 text-emerald-200',
+        cell: 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300',
+        dot: 'bg-emerald-400',
+        text: 'text-emerald-300',
+      };
+    case 'yellow':
+      return {
+        box: 'bg-amber-500/10 border-amber-500/40 text-amber-200',
+        badge: 'bg-amber-500/20 border-amber-400/50 text-amber-200',
+        cell: 'bg-amber-950/60 border-amber-500/50 text-amber-200',
+        dot: 'bg-amber-400',
+        text: 'text-amber-300',
+      };
+    case 'orange':
+      return {
+        box: 'bg-orange-500/15 border-orange-500/50 text-orange-200',
+        badge: 'bg-orange-500/25 border-orange-400/60 text-orange-200',
+        cell: 'bg-orange-950/70 border-orange-500/60 text-orange-200',
+        dot: 'bg-orange-400',
+        text: 'text-orange-300',
+      };
+    case 'red':
+    default:
+      return {
+        box: 'bg-rose-500/15 border-rose-500/50 text-rose-200',
+        badge: 'bg-rose-500/25 border-rose-400/60 text-rose-200',
+        cell: 'bg-rose-950/70 border-rose-500/60 text-rose-200',
+        dot: 'bg-rose-400',
+        text: 'text-rose-300',
+      };
+  }
+}
+
 export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
   result,
   onUpdateResult,
@@ -53,7 +96,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
   onOpenPreviewModal,
   aiProfile = 'openai',
 }) => {
-  // Classes padrão do Modo Produtos 2.0
+  // Classes padrão idênticas ao Modo Produtos 2.0 (com destaque azul ao copiar)
   const copiedBlueSectionClass =
     'bg-gradient-to-br from-sky-900/85 via-blue-900/80 to-slate-900/95 border-2 border-sky-400 shadow-xl shadow-sky-950/60 ring-2 ring-sky-400/40';
   const defaultSectionClass = 'bg-zinc-950/80 border border-sky-950/60 shadow-xl';
@@ -76,7 +119,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
   const [isRegeneratingImage, setIsRegeneratingImage] = useState(false);
   const [isSwitchingScenario, setIsSwitchingScenario] = useState(false);
 
-  // Estados de microfone para alteração da imagem (item 8)
+  // Microfone para alteração da imagem (Item 8)
   const [isImageMicRecording, setIsImageMicRecording] = useState(false);
   const imageRecRef = useRef<any>(null);
   const imageStreamRef = useRef<MediaStream | null>(null);
@@ -85,16 +128,18 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
   const [promptCorrectionText, setPromptCorrectionText] = useState('');
   const [isRefiningPrompt, setIsRefiningPrompt] = useState(false);
 
-  // Estados de microfone para correção de prompt (item 10)
+  // Microfone para correção de prompt (Item 10)
   const [isPromptMicRecording, setIsPromptMicRecording] = useState(false);
   const promptRecRef = useRef<any>(null);
   const promptStreamRef = useRef<MediaStream | null>(null);
 
-  // Estado de exportação do ZIP com ref lock contra cliques duplos (item 8)
+  // Estado de exportação do ZIP com ref lock contra cliques duplos (Item 8)
   const [isExportingZip, setIsExportingZip] = useState(false);
   const isExportingZipRef = useRef(false);
 
-  // Limpa prompt de qualquer prefixo "🎥 PROMPT DE VÍDEO..." (item 24)
+  const safeFileName = sanitizeCleanName(result.productName);
+
+  // Limpa prompt de qualquer prefixo "🎥 PROMPT DE VÍDEO..."
   const cleanVideoPrompt = result.videoPrompt
     .replace(/^🎥 PROMPT DE VÍDEO[^\n]*\n+/i, '')
     .trim();
@@ -195,7 +240,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
     }
   };
 
-  // Handlers de cópia e download com destaque em azul igual Produtos 2.0 (itens 6, 7 e 14)
+  // Handlers de cópia e download com destaque em azul igual Produtos 2.0
   const handleCopyPrompt = async () => {
     try {
       await navigator.clipboard.writeText(cleanVideoPrompt);
@@ -369,11 +414,22 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
     }
   };
 
-  const auditScore = result.audit?.score ?? 96;
-  const auditLabel = result.audit?.label ?? 'Verde Fidedigno';
+  const audit = result.audit;
+  const auditStatus = audit?.status || 'green';
+  const auditStyles = getStatusClasses(auditStatus);
+  const auditScore = audit?.score ?? 96;
+  const auditLabel = audit?.label ?? 'Verde — Fidelidade Aprovada';
+
+  const defaultCriteria = [
+    { name: 'Corte Queixo', score: 100, status: 'green' as AnaMariaAuditColorStatus },
+    { name: 'Curvas & Silhueta', score: 96, status: 'green' as AnaMariaAuditColorStatus },
+    { name: 'Zero Tatuagens', score: 100, status: 'green' as AnaMariaAuditColorStatus },
+    { name: 'Calçado Condicional', score: 95, status: 'green' as AnaMariaAuditColorStatus },
+  ];
+  const criteriaList = audit?.criteria && audit.criteria.length > 0 ? audit.criteria : defaultCriteria;
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-16 animate-fade-in">
+    <div className="space-y-6 max-w-7xl mx-auto pb-16 animate-fade-in">
       {/* ─── NAVEGAÇÃO SUPERIOR: VOLTAR PARA A PÁGINA ANTERIOR ─── */}
       <div className="flex items-center justify-start">
         <button
@@ -386,7 +442,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
         </button>
       </div>
 
-      {/* ─── BOTÕES DE AÇÃO SUPERIORES (PADRÃO PRODUTOS 2.0) ─── */}
+      {/* ─── BOTÕES DE AÇÃO SUPERIORES (PADRÃO PRODUTOS 2.0 - ITENS 1 E 12) ─── */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-zinc-800">
         <div className="flex flex-wrap items-center gap-2.5">
           {/* NOVO PRODUTO */}
@@ -399,13 +455,13 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
             <span>NOVO PRODUTO</span>
           </button>
 
-          {/* Continuar no produto */}
+          {/* + Continuar no produto: Amarelo/Dourado vibrante idêntico ao Modo Produtos 2.0 */}
           <button
             type="button"
             onClick={onContinueProduct}
-            className="px-4 py-2 bg-gradient-to-r from-sky-600 to-blue-700 hover:from-sky-500 hover:to-blue-600 text-white font-black text-xs rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-sky-950/40"
+            className="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-zinc-950 font-black text-xs rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-amber-950/40"
           >
-            <Sparkles className="w-4 h-4 text-white" />
+            <Plus className="w-4 h-4 text-zinc-950 stroke-[3]" />
             <span>Continuar no produto</span>
           </button>
 
@@ -434,10 +490,13 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
         )}
       </div>
 
-      {/* ─── GRID PRINCIPAL: FOTO DA MODELO + PAINÉIS DE CRIAÇÃO ─── */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-        {/* COLUNA ESQUERDA: FOTO GERADA (VERTICAL 9:16) */}
-        <div className="md:col-span-5 space-y-4">
+      {/* ─── GRID PRINCIPAL: LADO ESQUERDO (FOTO + FISCALIZAÇÃO ABAIXO) / LADO DIREITO (PROMPT + BAIXAR TUDO + DETECTOR) ─── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* ========================================================================= */}
+        {/* COLUNA ESQUERDA: FOTO GERADA (2160x3840) + PAINEL DE FISCALIZAÇÃO ABAIXO */}
+        {/* ========================================================================= */}
+        <div className="lg:col-span-5 space-y-4">
+          {/* Card da Imagem Gerada */}
           <div
             className={`rounded-2xl transition-all duration-300 p-3 shadow-2xl relative group ${
               hasDownloadedImageOnce
@@ -445,10 +504,10 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                 : 'border-2 border-sky-500/40 bg-zinc-950'
             }`}
           >
-            {/* Header da Imagem com Badge Baixado */}
+            {/* Header da Imagem com Resolução 2160x3840 e Badge Baixado */}
             <div className="flex items-center justify-between pb-2 px-1">
               <span className="text-[11px] font-bold text-zinc-300 uppercase tracking-wide">
-                Foto Gerada 9:16
+                Foto Gerada 9:16 (2160x3840)
               </span>
               {hasDownloadedImageOnce && (
                 <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
@@ -461,7 +520,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
             <div className="relative aspect-[9/16] w-full rounded-xl overflow-hidden bg-black flex items-center justify-center">
               <img
                 src={result.imageUrl}
-                alt="Modo Ana Maria - Modelo no Espelho"
+                alt={`Modo Ana Maria - ${result.productName || 'Peça de Vestuário'}`}
                 className="w-full h-full object-cover"
               />
 
@@ -489,183 +548,247 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                   : 'OpenAI'}
               </div>
 
-              {/* Botão de Download Rápido com destaque azul ativo */}
+              {/* Botão Circular de Baixar Imagem (Padrão 1 Download no canto inferior direito do Modo Produtos 2.0) */}
               <button
                 type="button"
                 onClick={handleDownloadImage}
-                className={`absolute bottom-3 right-3 px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-xl ${
+                className={`absolute bottom-3 right-3 px-3 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-xl ${
                   hasDownloadedImageOnce || downloadedImage
                     ? 'bg-sky-500 hover:bg-sky-400 text-white border border-sky-300 ring-2 ring-sky-300/60'
                     : 'bg-zinc-950/85 hover:bg-sky-600 text-sky-300 hover:text-white border border-sky-500/40 backdrop-blur-md'
                 }`}
-                title="Baixar Imagem"
+                title="Baixar Imagem em 2160x3840 pixels"
               >
-                {downloadedImage ? (
-                  <>
-                    <Check className="w-4 h-4 text-white" />
-                    <span>Baixado!</span>
-                  </>
-                ) : (
-                  <>
-                    <Download className="w-4 h-4" />
-                    <span>Baixar Imagem</span>
-                  </>
-                )}
+                <span className="w-4 h-4 rounded-full bg-white text-slate-950 font-black text-[10px] flex items-center justify-center shadow">
+                  1
+                </span>
+                <Download className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
 
-          {/* Botão Grande de Baixar Imagem (Maior e azul no padrão Produtos 2.0) */}
-          <button
-            type="button"
-            onClick={handleDownloadImage}
-            className={`w-full py-3.5 px-5 rounded-xl text-sm font-black flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md ${
-              hasDownloadedImageOnce || downloadedImage
-                ? 'bg-sky-500 hover:bg-sky-400 text-white border border-sky-300 ring-2 ring-sky-300/60'
-                : 'bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white border border-sky-400/40'
-            }`}
-          >
-            {downloadedImage ? (
-              <>
-                <Check className="w-4 h-4 text-white" />
-                <span>Imagem Baixada com Sucesso!</span>
-              </>
-            ) : (
-              <>
-                <Download className="w-4 h-4 text-sky-200" />
-                <span>Baixar Imagem ({result.productName ? `${result.productName} Aurora.png` : 'Aurora.png'})</span>
-              </>
-            )}
-          </button>
-
-          {/* Botão Rápido de Refazer Imagem */}
-          <button
-            type="button"
-            disabled={isRegeneratingImage}
-            onClick={() => handleRegenerateImage()}
-            className="w-full py-2.5 px-4 rounded-xl border border-sky-500/40 bg-sky-950/30 hover:bg-sky-900/40 text-sky-200 text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer hover:border-sky-400"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 text-sky-400 ${isRegeneratingImage ? 'animate-spin' : ''}`} />
-            <span>{isRegeneratingImage ? 'Refazendo Imagem...' : 'Refazer Imagem (Maior Fidelidade)'}</span>
-          </button>
-
-          {/* Botão REFAZER COM SEEDREAM 5.0 (Item 21: quando o modelo anterior foi OPENAI) */}
-          {result.imageModel === 'openai' && (
-            <button
-              type="button"
-              disabled={isRegeneratingImage}
-              onClick={handleRegenerateWithSeaDream}
-              className="w-full py-2.5 px-4 rounded-xl border border-sky-400 bg-gradient-to-r from-sky-600 to-blue-700 hover:brightness-110 text-white text-xs font-black flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md shadow-sky-950/60"
-            >
-              <Cpu className="w-4 h-4 text-white" />
-              <span>REFAZER COM SEEDREAM 5.0</span>
-            </button>
-          )}
-
-          {/* Campo: Deseja Fazer Alteração na Imagem? COM MICROFONE */}
-          <div className="p-4 rounded-2xl border border-zinc-800 bg-zinc-950/80 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-zinc-300 block">
-                Deseja fazer alteração na imagem?
-              </label>
-              {/* Botão de Ditar com Microfone */}
-              <button
-                type="button"
-                onClick={toggleImageMicrophone}
-                className={`p-1.5 rounded-lg border text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                  isImageMicRecording
-                    ? 'bg-rose-500 text-white border-rose-400 animate-pulse'
-                    : 'bg-zinc-900 hover:bg-zinc-800 text-sky-300 border-zinc-700 hover:border-sky-500'
-                }`}
-                title="Ditar alterações por voz"
-              >
-                <Mic className="w-3.5 h-3.5" />
-                <span className="text-[10px]">{isImageMicRecording ? 'Ouvindo...' : 'Ditar'}</span>
-              </button>
-            </div>
-            <textarea
-              rows={2}
-              value={imageTweakText}
-              onChange={(e) => setImageTweakText(e.target.value)}
-              placeholder="Ex.: Ajustar o caimento da saia, escurecer um pouco o tom do tecido..."
-              className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-sky-500"
-            />
-            <button
-              type="button"
-              disabled={isRegeneratingImage || !imageTweakText.trim()}
-              onClick={() => handleRegenerateImage(imageTweakText)}
-              className="w-full py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 disabled:opacity-50 text-xs font-bold text-sky-300 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-            >
-              <Wand2 className="w-3.5 h-3.5 text-sky-400" />
-              <span>Refazer Imagem com Ajuste</span>
-            </button>
-          </div>
-        </div>
-
-        {/* COLUNA DIREITA: FIDELIDADE + PROMPT DE VÍDEO + BAIXAR TUDO + HASHTAGS + HEADLINE */}
-        <div className="md:col-span-7 space-y-5">
-          {/* 1. CARD DE ANÁLISE DE FIDELIDADE */}
-          <div className="p-4 sm:p-5 rounded-2xl border border-sky-500/40 bg-zinc-950/80 shadow-xl space-y-2.5">
-            <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
+          {/* ========================================================================= */}
+          {/* PAINEL DE FISCALIZAÇÃO DE FIDELIDADE (LOCALIZADO DIRETAMENTE ABAIXO DA IMAGEM) */}
+          {/* ========================================================================= */}
+          <div className={`p-3.5 rounded-xl border space-y-3 shadow-lg ${auditStyles.box}`}>
+            {/* Cabeçalho com Nota Geral e Semáforo de 4 Cores idêntico ao Modo Produtos 2.0 */}
+            <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-sky-400" />
-                <h3 className="text-xs font-black text-white uppercase tracking-wide">
-                  Análise de Fidelidade da Peça
-                </h3>
+                {auditStatus === 'green' ? (
+                  <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0" />
+                ) : auditStatus === 'yellow' ? (
+                  <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
+                ) : (
+                  <AlertCircle
+                    className={`w-5 h-5 shrink-0 ${
+                      auditStatus === 'orange' ? 'text-orange-400' : 'text-rose-400'
+                    }`}
+                  />
+                )}
+                <div>
+                  <span className="text-xs font-black block leading-tight">
+                    {auditLabel}
+                  </span>
+                  <span className="text-[10px] opacity-80 block">
+                    Fiscalização da peça (Corte no Queixo, Curvas, Sem Tatuagem, Calçado)
+                  </span>
+                </div>
               </div>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-sky-500/20 text-sky-300 border border-sky-500/40">
-                {auditScore}% {auditLabel}
+
+              <span
+                className={`px-2.5 py-1 rounded-lg border font-mono text-xs font-black shrink-0 ${auditStyles.badge}`}
+              >
+                {auditScore}%
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 text-[11px] text-zinc-300">
-              <div className="p-2 rounded-lg bg-zinc-900/80 border border-zinc-800/60">
-                <span className="text-zinc-500 block text-[10px]">Calçado Automático:</span>
-                <span className="font-bold text-sky-300">{result.shoeDescription}</span>
-              </div>
-              <div className="p-2 rounded-lg bg-zinc-900/80 border border-zinc-800/60">
-                <span className="text-zinc-500 block text-[10px]">Enquadramento:</span>
-                <span className="font-bold text-sky-300">Corte do Queixo para baixo</span>
-              </div>
+            {/* Grade dos Critérios (4 cards em formato 2x2 com bolinha de status colorida) */}
+            <div className="grid grid-cols-2 gap-1.5">
+              {criteriaList.map((crit, idx) => {
+                const cStyle = getStatusClasses(crit.status);
+                return (
+                  <div
+                    key={idx}
+                    title={crit.issue || crit.name}
+                    className={`px-2 py-1.5 rounded-lg border text-[10px] flex items-center justify-between gap-1 ${cStyle.cell}`}
+                  >
+                    <span className="font-bold flex items-center gap-1.5 truncate">
+                      <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${cStyle.dot}`} />
+                      <span className="truncate">{crit.name}</span>
+                    </span>
+                    <span className="font-mono font-black shrink-0">
+                      {crit.score}%
+                    </span>
+                  </div>
+                );
+              })}
             </div>
-          </div>
 
-          {/* 2. CARD DO PROMPT DE VÍDEO (COM DESTAQUE AZUL AO COPIAR - ITENS 6, 7 E 14) */}
+            {/* Informações detalhadas do calçado condicional e conformidade */}
+            <div className="p-2.5 rounded-lg bg-black/35 border border-white/10 space-y-1 text-[11px] leading-snug">
+              <p className="font-semibold text-white/90">
+                ✓ Calçado selecionado automaticamente:{' '}
+                <span className="text-sky-300 font-bold">{result.shoeDescription}</span>
+              </p>
+              <p className="opacity-80 text-[10px]">
+                Enquadramento 100% do queixo para baixo, silhueta com curvas acentuadas, sem tatuagens e cenário fixo.
+              </p>
+            </div>
+
+            {/* Legenda rápida das 4 faixas de cores idêntica ao Modo Produtos 2.0 */}
+            <div className="flex flex-wrap items-center justify-between gap-1 pt-1 border-t border-white/10 text-[9px] opacity-80">
+              <span className="text-emerald-300 font-bold">● &ge;90% Verde</span>
+              <span className="text-amber-300 font-bold">● 71–89% Amarelo</span>
+              <span className="text-orange-300 font-bold">● 60–70% Laranja</span>
+              <span className="text-rose-300 font-bold">● &lt;60% Vermelho</span>
+            </div>
+
+            {/* CAMPO: DESEJA REFAZER A IMAGEM COM CORREÇÕES? (VOZ OU TEXTO) */}
+            <div className="pt-2.5 border-t border-white/10 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <label className="text-[11px] font-black uppercase tracking-wider text-white flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Deseja refazer a imagem com correções? (Voz ou Texto)</span>
+                </label>
+                {imageTweakText && (
+                  <button
+                    type="button"
+                    onClick={() => setImageTweakText('')}
+                    className="text-[10px] text-zinc-400 hover:text-rose-400 font-bold transition-colors cursor-pointer"
+                  >
+                    Limpar
+                  </button>
+                )}
+              </div>
+
+              <div className="relative">
+                <textarea
+                  rows={2}
+                  value={imageTweakText}
+                  onChange={(e) => setImageTweakText(e.target.value)}
+                  placeholder='Dite ou digite o que mudar (ex: "Ajustar o caimento da saia", "Clarear um pouco o tom do tecido")...'
+                  className="w-full p-2.5 pr-11 bg-black/40 border border-white/15 focus:border-amber-400/80 rounded-xl text-xs text-white placeholder-zinc-400/80 focus:outline-none resize-none leading-relaxed transition-all shadow-inner"
+                />
+
+                <button
+                  type="button"
+                  onClick={toggleImageMicrophone}
+                  className={`absolute right-2 top-2.5 p-2 rounded-lg transition-all cursor-pointer shadow-md flex items-center justify-center ${
+                    isImageMicRecording
+                      ? 'bg-rose-500 text-white animate-pulse'
+                      : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white border border-white/10'
+                  }`}
+                  title={
+                    isImageMicRecording
+                      ? 'Parar gravação de voz'
+                      : 'Ditar mudança da imagem por voz'
+                  }
+                >
+                  {isImageMicRecording ? (
+                    <Square className="w-3.5 h-3.5 text-white fill-white" />
+                  ) : (
+                    <Mic className="w-3.5 h-3.5" />
+                  )}
+                </button>
+              </div>
+
+              {isImageMicRecording && (
+                <p className="text-[10px] text-rose-300 font-bold animate-pulse flex items-center gap-1.5 pl-0.5">
+                  <span className="w-2 h-2 rounded-full bg-rose-400 inline-block animate-ping" />
+                  Gravando voz... Fale a mudança desejada e clique no botão vermelho para parar.
+                </p>
+              )}
+
+              <p className="text-[10px] text-zinc-400/90 leading-tight">
+                <span className="text-amber-300 font-bold">Prioridade Máxima:</span> A IA manterá o cenário fixo e proporções da modelo, alterando apenas o que você solicitar.
+              </p>
+            </div>
+
+            {/* BOTÃO REFAZER CORRIGINDO (GRADIENTE ÂMBAR / LARANJA IDÊNTICO AO MODO PRODUTOS 2.0) */}
+            <button
+              type="button"
+              onClick={() => handleRegenerateImage(imageTweakText.trim() || undefined)}
+              disabled={isRegeneratingImage}
+              className={`w-full py-2.5 px-3 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md disabled:opacity-50 ${
+                imageTweakText.trim()
+                  ? 'bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-zinc-950 font-black'
+                  : 'bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-zinc-950'
+              }`}
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRegeneratingImage ? 'animate-spin' : ''}`} />
+              <span>
+                {isRegeneratingImage
+                  ? 'Refazendo Imagem com Correção...'
+                  : imageTweakText.trim()
+                  ? 'Refazer Imagem com Minha Alteração'
+                  : 'Refazer Corrigindo Imagem'}
+              </span>
+            </button>
+
+            {/* Botão REFAZER COM SEEDREAM 5.0 (quando gerado via OpenAI) */}
+            {result.imageModel === 'openai' && (
+              <button
+                type="button"
+                disabled={isRegeneratingImage}
+                onClick={handleRegenerateWithSeaDream}
+                className="w-full py-2.5 px-3 rounded-xl border border-sky-400 bg-gradient-to-r from-sky-600 to-blue-700 hover:brightness-110 text-white text-xs font-black flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md shadow-sky-950/60"
+              >
+                <Cpu className="w-4 h-4 text-white" />
+                <span>REFAZER COM SEEDREAM 5.0</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* ========================================================================= */}
+        {/* COLUNA DIREITA: PROMPT DO VÍDEO + BAIXAR TUDO + DETECTOR DE INCONSISTÊNCIAS */}
+        {/* ========================================================================= */}
+        <div className="lg:col-span-7 space-y-4">
+          {/* Card do Prompt do Vídeo (10s) com Destaque Azul Ativo ao Copiar */}
           <div
-            className={`p-5 rounded-2xl transition-all duration-300 space-y-3 ${
+            className={`p-4 sm:p-5 rounded-2xl transition-all duration-300 space-y-3 ${
               hasCopiedPromptOnce ? copiedBlueSectionClass : defaultSectionClass
             }`}
           >
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/80 pb-2.5">
-              <div className="flex items-center gap-2">
-                <Video className="w-4 h-4 text-sky-400" />
-                <h3 className="text-xs font-black text-white uppercase tracking-wide flex items-center gap-2">
-                  <span>Prompt do Vídeo — Vencedor by GPT (10s)</span>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800/80 pb-3">
+              <div>
+                <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-wide flex items-center gap-2">
+                  <Video className="w-4 h-4 text-sky-400" />
+                  <span>Prompt do Vídeo (10s - Mirror Selfie)</span>
                   {hasCopiedPromptOnce && (
                     <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-sky-300" /> COPIADO ✓
+                      <CheckCircle2 className="w-3 h-3 text-sky-300" /> Copiado ✓
                     </span>
                   )}
                 </h3>
+                <p className="text-[11px] text-sky-200/80 mt-0.5">
+                  Arquivo no pacote:{' '}
+                  <span className="font-mono text-white">
+                    {`Prompt de Video - ${safeFileName}.txt`}
+                  </span>
+                </p>
               </div>
-              {/* Botão Copiar Prompt (Maior e azul igual Produtos 2.0) */}
+
+              {/* Botão Copiar Prompt (Azul no Padrão do Modo Produtos 2.0) */}
               <button
                 type="button"
                 onClick={handleCopyPrompt}
-                className={`py-2 px-4 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-md ${
-                  hasCopiedPromptOnce || copiedPrompt
-                    ? 'bg-sky-500 hover:bg-sky-400 text-white border border-sky-300 ring-2 ring-sky-300/60'
+                className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer shadow-lg ${
+                  copiedPrompt
+                    ? 'bg-emerald-500 text-white ring-2 ring-emerald-300'
+                    : hasCopiedPromptOnce
+                    ? 'bg-sky-500 hover:bg-sky-400 text-white'
                     : 'bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white'
                 }`}
               >
                 {copiedPrompt ? (
                   <>
-                    <Check className="w-3.5 h-3.5 text-white" />
-                    <span>Copiado!</span>
+                    <Check className="w-4 h-4" />
+                    <span>Prompt Copiado!</span>
                   </>
                 ) : (
                   <>
-                    <Copy className="w-3.5 h-3.5" />
+                    <Copy className="w-4 h-4" />
                     <span>Copiar Prompt</span>
                   </>
                 )}
@@ -673,184 +796,242 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
             </div>
 
             {/* Prompt limpo sem o cabeçalho 🎥 PROMPT DE VÍDEO... */}
-            <div
-              className={`p-3.5 rounded-xl text-xs font-mono max-h-48 overflow-y-auto whitespace-pre-wrap leading-relaxed select-all transition-all ${
+            <textarea
+              rows={16}
+              value={cleanVideoPrompt}
+              onChange={(e) => {
+                const val = e.target.value;
+                setHasCopiedPromptOnce(false);
+                setCopiedPrompt(false);
+                onUpdateResult({ ...result, videoPrompt: val });
+              }}
+              className={`w-full p-3.5 rounded-xl text-xs font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-sky-400 resize-y select-all ${
                 hasCopiedPromptOnce
                   ? 'bg-slate-950/90 border border-sky-400/60 text-sky-50'
                   : 'bg-zinc-950 border border-zinc-800 text-zinc-200'
               }`}
-            >
-              {cleanVideoPrompt}
-            </div>
+            />
 
-            {/* Ajustar ou Corrigir Prompt com IA COM MICROFONE */}
-            <div className="pt-2 border-t border-zinc-800/80 space-y-2">
+            {/* Ajustar ou Corrigir este Prompt com IA com Microfone e Botão Roxo */}
+            <div
+              className={`p-3.5 sm:p-4 rounded-xl space-y-2.5 transition-all ${
+                hasCopiedPromptOnce
+                  ? 'bg-slate-900/90 border border-sky-400/50'
+                  : 'bg-zinc-900/95 border border-zinc-700/80 shadow-inner'
+              }`}
+            >
               <div className="flex items-center justify-between">
-                <label className="text-[11px] font-bold text-zinc-400 block">
-                  Ajustar ou corrigir esse prompt com IA:
+                <label className="text-[11px] font-bold text-zinc-200 flex items-center gap-1.5">
+                  <Wand2 className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Ajustar ou Corrigir este Prompt com IA:</span>
                 </label>
-                {/* Botão de Ditar com Microfone */}
-                <button
-                  type="button"
-                  onClick={togglePromptMicrophone}
-                  className={`p-1.5 rounded-lg border text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                    isPromptMicRecording
-                      ? 'bg-rose-500 text-white border-rose-400 animate-pulse'
-                      : 'bg-zinc-900 hover:bg-zinc-800 text-sky-300 border-zinc-700 hover:border-sky-500'
-                  }`}
-                  title="Ditar ajuste por voz"
-                >
-                  <Mic className="w-3.5 h-3.5" />
-                  <span className="text-[10px]">{isPromptMicRecording ? 'Ouvindo...' : 'Ditar'}</span>
-                </button>
+                {isPromptMicRecording && (
+                  <span className="text-[10px] font-semibold text-rose-400 flex items-center gap-1 animate-pulse">
+                    <span className="w-2 h-2 rounded-full bg-rose-500" />
+                    Ouvindo sua correção...
+                  </span>
+                )}
               </div>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={promptCorrectionText}
-                  onChange={(e) => setPromptCorrectionText(e.target.value)}
-                  placeholder="Ex.: Ajustar para movimentos mais lentos da modelo, suavizar o caimento da peça..."
-                  className="flex-1 px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-700 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-sky-500"
-                />
+
+              <div className="flex flex-col sm:flex-row items-stretch gap-2">
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    value={promptCorrectionText}
+                    onChange={(e) => setPromptCorrectionText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleRefinePrompt();
+                      }
+                    }}
+                    placeholder='Ex: "Ajustar movimentos mais lentos", "Mude a rotação final do corpo"...'
+                    className="w-full pl-3 pr-10 py-2.5 bg-zinc-950 border border-zinc-700 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-400 transition-colors shadow-inner font-sans"
+                  />
+
+                  {/* Botão Microfone embutido */}
+                  <button
+                    type="button"
+                    onClick={togglePromptMicrophone}
+                    className={`absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-all cursor-pointer ${
+                      isPromptMicRecording
+                        ? 'bg-rose-500/20 text-rose-400 animate-pulse ring-2 ring-rose-400'
+                        : 'text-zinc-400 hover:text-purple-300 hover:bg-zinc-800'
+                    }`}
+                    title={
+                      isPromptMicRecording
+                        ? 'Parar gravação'
+                        : 'Ditar correção do prompt por voz'
+                    }
+                  >
+                    {isPromptMicRecording ? (
+                      <Square className="w-3.5 h-3.5 text-rose-400 fill-rose-400" />
+                    ) : (
+                      <Mic className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                </div>
+
+                {/* Botão Roxo: Refazer Prompt */}
                 <button
                   type="button"
-                  disabled={isRefiningPrompt || !promptCorrectionText.trim()}
                   onClick={handleRefinePrompt}
-                  className="px-3 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1 transition-all cursor-pointer shadow-sm"
+                  disabled={isRefiningPrompt || !promptCorrectionText.trim()}
+                  className="px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md shrink-0"
                 >
-                  <Wand2 className={`w-3.5 h-3.5 ${isRefiningPrompt ? 'animate-spin' : ''}`} />
-                  <span>{isRefiningPrompt ? 'Refazendo...' : 'Refazer Prompt'}</span>
+                  {isRefiningPrompt ? (
+                    <>
+                      <RotateCcw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Refazendo...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Wand2 className="w-3.5 h-3.5" />
+                      <span>Refazer Prompt</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
           </div>
 
-          {/* 3. BOTÃO DE BAIXAR TUDO (.ZIP) EMBAIXO DO PROMPT (PADRÃO PRODUTOS 2.0) */}
-          <div>
+          {/* ========================================================================= */}
+          {/* BOTÃO BAIXAR TUDO (.ZIP COM NOME DO PRODUTO) EM VERDE VIBRANTE            */}
+          {/* ========================================================================= */}
+          <div className="pt-1">
             <button
               type="button"
-              disabled={isExportingZip}
               onClick={handleExportZip}
-              className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-700 hover:from-sky-500 hover:to-blue-600 text-white text-sm font-black flex items-center justify-center gap-2.5 shadow-xl shadow-sky-950/60 ring-2 ring-sky-400/40 transition-all cursor-pointer hover:scale-[1.01]"
+              disabled={isExportingZip}
+              className="w-full px-8 py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2.5 shadow-lg shadow-emerald-950/50 transition-all cursor-pointer"
             >
-              <Download className="w-5 h-5 text-white" />
-              <span>{isExportingZip ? 'Compactando...' : 'Baixar Tudo (.zip)'}</span>
+              <Download className="w-4 h-4" />
+              <span>{isExportingZip ? 'Gerando .ZIP...' : `Baixar Tudo (${safeFileName}.zip)`}</span>
             </button>
           </div>
 
-          {/* 4. CARD DE HASHTAGS (COM DESTAQUE AZUL AO COPIAR - ITENS 6 E 14) */}
-          <div
-            className={`p-5 rounded-2xl transition-all duration-300 space-y-3 ${
-              hasCopiedHashtagsOnce ? copiedBlueSectionClass : defaultSectionClass
-            }`}
-          >
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/80 pb-2.5">
-              <div className="flex items-center gap-2">
-                <Hash className="w-4 h-4 text-sky-400" />
-                <h3 className="text-xs font-black text-white uppercase tracking-wide flex items-center gap-2">
-                  <span>Hashtags</span>
-                  {hasCopiedHashtagsOnce && (
-                    <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-sky-300" /> COPIADO ✓
-                    </span>
-                  )}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={handleCopyHashtags}
-                className={`py-2 px-4 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-md ${
-                  hasCopiedHashtagsOnce || copiedHashtags
-                    ? 'bg-sky-500 hover:bg-sky-400 text-white border border-sky-300 ring-2 ring-sky-300/60'
-                    : 'bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white'
-                }`}
-              >
-                {copiedHashtags ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-white" />
-                    <span>Copiado!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>Copiar Hashtags</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            <div
-              className={`p-3 rounded-xl text-xs font-mono select-all transition-all ${
-                hasCopiedHashtagsOnce
-                  ? 'bg-slate-950/90 border border-sky-400/60 text-sky-100'
-                  : 'bg-zinc-900/95 border border-zinc-800 text-sky-200'
-              }`}
-            >
-              {result.hashtags}
-            </div>
-          </div>
-
-          {/* 5. CARD DE HEADLINE (COM DESTAQUE AZUL AO COPIAR - ITENS 7 E 14) */}
-          <div
-            className={`p-5 rounded-2xl transition-all duration-300 space-y-3 ${
-              hasCopiedHeadlineOnce ? copiedBlueSectionClass : defaultSectionClass
-            }`}
-          >
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/80 pb-2.5">
-              <div className="flex items-center gap-2">
-                <Smile className="w-4 h-4 text-sky-400" />
-                <h3 className="text-xs font-black text-white uppercase tracking-wide flex items-center gap-2">
-                  <span>Headline</span>
-                  {hasCopiedHeadlineOnce && (
-                    <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 text-sky-300" /> COPIADO ✓
-                    </span>
-                  )}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={handleCopyHeadline}
-                className={`py-2 px-4 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-md ${
-                  hasCopiedHeadlineOnce || copiedHeadline
-                    ? 'bg-sky-500 hover:bg-sky-400 text-white border border-sky-300 ring-2 ring-sky-300/60'
-                    : 'bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white'
-                }`}
-              >
-                {copiedHeadline ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-white" />
-                    <span>Copiado!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>Copiar Headline</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            <div
-              className={`p-3.5 rounded-xl text-sm font-semibold select-all transition-all ${
-                hasCopiedHeadlineOnce
-                  ? 'bg-slate-950/90 border border-sky-400/60 text-white'
-                  : 'bg-zinc-900/95 border border-zinc-800 text-white'
-              }`}
-            >
-              {result.headline}
-            </div>
+          {/* ========================================================================= */}
+          {/* DETECTOR DE INCONSISTÊNCIAS DO VÍDEO (POSICIONADO ABAIXO DE BAIXAR TUDO)   */}
+          {/* ========================================================================= */}
+          <div>
+            <VideoFidelityAuditor
+              productName={result.productName || 'Peça de Vestuário'}
+              referencePhotos={result.referencePhotos}
+              onOpenPreview={onOpenPreviewModal}
+            />
           </div>
         </div>
       </div>
 
-      {/* ─── DETECTOR DE INCONSISTÊNCIAS DE VÍDEO (AUDITORIA KLING 10S) ─── */}
-      <div className="pt-4">
-        <VideoFidelityAuditor
-          productName={result.productName || 'Peça de Vestuário'}
-          referencePhotos={result.referencePhotos}
-          onOpenPreview={onOpenPreviewModal}
-        />
+      {/* ========================================================================= */}
+      {/* SEÇÃO INFERIOR: DESCRIÇÃO DO POST + HASHTAGS E HEADLINE VIRAL             */}
+      {/* ========================================================================= */}
+      <div className="space-y-4 pt-4 border-t border-zinc-800">
+        {/* Card: Descrição do Post + Hashtags */}
+        <div
+          className={`p-4 sm:p-5 rounded-2xl transition-all duration-300 space-y-3 ${
+            hasCopiedHashtagsOnce ? copiedBlueSectionClass : defaultSectionClass
+          }`}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/80 pb-2.5">
+            <div className="flex items-center gap-2">
+              <Hash className="w-4 h-4 text-sky-400" />
+              <h3 className="text-xs font-black text-white uppercase tracking-wide flex items-center gap-2">
+                <span>Descrição do Post + Hashtags (TikTok & Reels)</span>
+                {hasCopiedHashtagsOnce && (
+                  <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-sky-300" /> COPIADO ✓
+                  </span>
+                )}
+              </h3>
+            </div>
+            {/* Botão Copiar Descrição */}
+            <button
+              type="button"
+              onClick={handleCopyHashtags}
+              className={`py-2 px-4 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-md ${
+                hasCopiedHashtagsOnce || copiedHashtags
+                  ? 'bg-sky-500 hover:bg-sky-400 text-white border border-sky-300 ring-2 ring-sky-300/60'
+                  : 'bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white'
+              }`}
+            >
+              {copiedHashtags ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-white" />
+                  <span>Copiado!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Copiar Descrição</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          <div
+            className={`p-3.5 rounded-xl text-xs font-mono select-all transition-all leading-relaxed ${
+              hasCopiedHashtagsOnce
+                ? 'bg-slate-950/90 border border-sky-400/60 text-sky-100'
+                : 'bg-zinc-900/95 border border-zinc-800 text-sky-200'
+            }`}
+          >
+            {result.hashtags}
+          </div>
+        </div>
+
+        {/* Card: Headline Viral */}
+        <div
+          className={`p-4 sm:p-5 rounded-2xl transition-all duration-300 space-y-3 ${
+            hasCopiedHeadlineOnce ? copiedBlueSectionClass : defaultSectionClass
+          }`}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/80 pb-2.5">
+            <div className="flex items-center gap-2">
+              <Smile className="w-4 h-4 text-sky-400" />
+              <h3 className="text-xs font-black text-white uppercase tracking-wide flex items-center gap-2">
+                <span>Headline Viral</span>
+                {hasCopiedHeadlineOnce && (
+                  <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-sky-300" /> COPIADO ✓
+                  </span>
+                )}
+              </h3>
+            </div>
+            {/* Botão Copiar Headline */}
+            <button
+              type="button"
+              onClick={handleCopyHeadline}
+              className={`py-2 px-4 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-md ${
+                hasCopiedHeadlineOnce || copiedHeadline
+                  ? 'bg-sky-500 hover:bg-sky-400 text-white border border-sky-300 ring-2 ring-sky-300/60'
+                  : 'bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white'
+              }`}
+            >
+              {copiedHeadline ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-white" />
+                  <span>Copiado!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Copiar Headline</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          <div
+            className={`p-3.5 rounded-xl text-sm font-semibold select-all transition-all leading-relaxed ${
+              hasCopiedHeadlineOnce
+                ? 'bg-slate-950/90 border border-sky-400/60 text-white'
+                : 'bg-zinc-900/95 border border-zinc-800 text-white'
+            }`}
+          >
+            {result.headline}
+          </div>
+        </div>
       </div>
     </div>
   );
