@@ -149,9 +149,73 @@ RESULTADO: ${isMale ? 'brasileiro real' : 'brasileira real com curvas marcantes'
 }
 
 /**
- * Constrói o Prompt de Vídeo do Modo Ana Maria (Vitrine Estática 10s no Espelho)
- * Sem o título '🎥 PROMPT DE VÍDEO...' no texto (item 24)
- * Corte do queixo para baixo (item 2)
+ * Prompt Mestre de Movimentos Padrão do Modo Ana Maria
+ * Nome: "Vencedor by GPT" (Choreografia exata de 10 segundos no espelho)
+ */
+export const VENCEDOR_BY_GPT_PROMPT = `Create a 10-second ultra-photorealistic vertical 9:16 mirror-selfie fashion video. Use the attached reference image as the absolute visual starting point.
+
+The animation must reproduce the following exact sequence of movements in one continuous, natural recording.
+
+**IDENTITY AND PRODUCT PRESERVATION**
+
+Preserve exactly the same woman, body shape, proportions, skin, hair, clothing, garment color, neckline, fabric, seams, texture, accessories, smartphone, mirror, room and lighting from the reference image.
+
+Do not redesign, modify, replace or reinterpret any part of the clothing. The garment must remain identical throughout the entire video.
+
+**FACE AND CAMERA FRAMING**
+
+Never reveal the woman's face. Maintain the original framing from the neck or chin down, exactly as shown in the reference image.
+
+She holds the smartphone in one hand throughout the entire recording. The phone remains in front of the mirror, maintaining the original mirror-selfie composition.
+
+**EXACT MOVEMENT CHOREOGRAPHY**
+
+0–1 SECOND:
+The woman starts standing naturally in front of the mirror, holding her phone with one hand. Her free arm hangs relaxed beside her body.
+
+1–2 SECONDS:
+She slowly raises her free hand toward her chest and gently places her fingers on the upper bust area, making natural contact with the fabric.
+
+2–4 SECONDS:
+She slowly slides her open palm down across the front of the dress, moving from the bust toward the abdomen and waist. Her hand continues downward toward the hip and upper thigh, following the body's natural contours.
+
+4–5 SECONDS:
+She continues the gentle downward movement, briefly touching the lower abdomen and hip area, demonstrating how the dress fits against the body.
+
+5–7.5 SECONDS:
+She brings her free hand back toward the side of her waist, pinches a small section of the dress fabric between her fingers and gently pulls the material outward several times in short, subtle movements, demonstrating the fabric's elasticity and fitted construction. She releases the fabric naturally.
+
+7.5–8.5 SECONDS:
+She moves her free arm outward and slightly away from her body while beginning to shift her weight and reposition her feet.
+
+8.5–10 SECONDS:
+She gradually rotates her torso and hips into a three-quarter side profile, turning approximately 70–90 degrees relative to her original frontal position. She keeps holding the smartphone and maintains the mirror-selfie posture. Her final position clearly displays the side silhouette, waist, hips and rear fit of the garment. She does not turn completely away from the mirror.
+
+**BODY LANGUAGE AND NATURALISM**
+
+All movements must look like a real woman casually recording a fashion demonstration in front of a mirror.
+
+Maintain realistic body mechanics, natural hand articulation, subtle weight transfers and believable fabric movement.
+
+The woman must not make exaggerated gestures, dance, walk away, or perform additional movements not specified in the choreography.
+
+**CAMERA AND VISUAL STYLE**
+
+Maintain a realistic smartphone mirror recording, with stable framing and only very subtle natural handheld movement.
+
+No cinematic camera movements, no zooms, no cuts, no transitions and no changes in the environment.
+
+The entire sequence must happen in one uninterrupted take.
+
+No visible face, no speech, no subtitles, no captions, no added graphics, no logos or watermarks.
+
+**FINAL PRIORITY:**
+Reproduce the exact movement sequence and timing described above while preserving the original reference image. The woman's movements must be natural, fluid and realistic. The clothing must remain visually identical to the reference image in every frame.`;
+
+/**
+ * Constrói o Prompt de Vídeo do Modo Ana Maria
+ * Prompt Padrão de Movimentos: "Vencedor by GPT"
+ * Corte do queixo para baixo, sem rosto, vitrine 10s contínua
  */
 export function buildAnaMariaVideoPrompt(params: {
   productName: string;
@@ -161,46 +225,35 @@ export function buildAnaMariaVideoPrompt(params: {
 }): string {
   const isMale = params.influencer === 'Homem';
   const limit = params.limit || 'unlimited';
-  const personWord = isMale ? 'O homem' : 'A mulher';
-  const personObj = isMale ? 'ele' : 'ela';
 
-  // Base integral limpa (sem o cabeçalho 🎥 PROMPT DE VÍDEO...)
-  const fullPrompt = `Vídeo vertical 1080x1920, câmera totalmente estática presa em tripé ou apoiada, sem nenhum movimento de câmera, nenhum corte de cena, plano sequência único de 8 a 10 segundos.
+  let base = VENCEDOR_BY_GPT_PROMPT;
 
-REGRA OBRIGATÓRIA DE ENQUADRAMENTO: O enquadramento é estritamente do queixo para baixo, nunca mostrando os lábios, boca, olhos ou o rosto. Preservar o corte frontal natural da selfie no espelho.
+  if (isMale) {
+    base = base
+      .replace(/\bwoman\b/g, 'man')
+      .replace(/\bwoman's\b/g, "man's")
+      .replace(/\bShe\b/g, 'He')
+      .replace(/\bshe\b/g, 'he')
+      .replace(/\bHer\b/g, 'His')
+      .replace(/\bher\b/g, 'his')
+      .replace(/\bbust\b/g, 'chest')
+      .replace(/\bdress\b/g, 'garment');
+  }
 
-${personWord} está em pé diante do espelho, parada no mesmo lugar em pose que valoriza as curvas da roupa, segurando o celular na altura do peito/queixo como se estivesse tirando uma selfie contínua.
-
-Cronologia dos movimentos (10 segundos):
-- 0 a 2 segundos: ${personWord} está parada em pose neutra, olhando para o próprio reflexo no espelho com postura elegante e natural destacando a cintura e os quadris.
-- 2 a 4 segundos: ${personObj} leva lentamente a mão livre até a lateral do corpo ou até o tecido da roupa, tocando-o suavemente como se estivesse sentindo a textura ou ajustando o caimento da peça.
-- 4 a 6 segundos: ${personObj} levanta levemente o braço livre até a altura do ombro ou da alça da roupa, com os dedos relaxados, mantendo o corpo com uma leve inclinação lateral sutil e confiante.
-- 6 a 8 segundos: ${personObj} move a mesma mão até a cintura, apoiando-a suavemente, mantendo os ombros retos e o peso do corpo levemente deslocado para uma perna, criando uma pose natural e envolvente que valoriza a silhueta.
-- 8 a 10 segundos: mantém a pose final harmônica diante do espelho, com respiração calma e caimento natural do tecido, finalizando o take de vitrine estática perfeitamente.
-
-Detalhes visuais e continuidade:
-Iluminação residencial constante com frente bem iluminada e fundo suavemente penumbroso, sem flicker. Nenhuma mudança de enquadramento, zoom ou corte — tudo acontece dentro do mesmo plano fixo mostrando ${personWord.toLowerCase()} da altura do queixo aos pés refletida no espelho. Movimentos lentos, fluidos e naturais, sem tremores.
-ZERO TATUAGENS. Zero alterações na modelagem, cor, costuras ou detalhes da roupa apresentada.`;
+  if (params.additionalInstructions && params.additionalInstructions.trim().length > 0) {
+    base += `\n\n**ADDITIONAL INSTRUCTIONS:**\n${params.additionalInstructions.trim()}`;
+  }
 
   if (limit === 'unlimited') {
-    return fullPrompt.trim();
+    return base.trim();
   }
 
   if (limit === '5000') {
-    if (fullPrompt.length <= 5000) return fullPrompt.trim();
-    return fullPrompt.slice(0, 4980).trim();
+    if (base.length <= 5000) return base.trim();
+    return base.slice(0, 4980).trim();
   }
 
   // Até 2.500 caracteres
-  const compact2500 = `Vídeo vertical 1080x1920, câmera estática sem cortes, plano sequência único de 10s diante do espelho.
-REGRA INVIOLÁVEL: Corte estrito da altura do queixo para baixo, SEM MOSTRAR O ROSTO OU BOCA. ZERO TATUAGENS.
-${personWord} segura smartphone na selfie no espelho apresentando a roupa colada ao corpo com curvas acentuadas.
-- 0-2s: Pose neutra parada diante do espelho, postura alinhada destacando cintura e quadris.
-- 2-4s: Leva a mão livre até a lateral da roupa, tocando suavemente o tecido para demonstrar caimento e textura.
-- 4-6s: Levanta a mão livre até a alça/ombro com dedos relaxados, leve inclinação do corpo.
-- 6-8s: Apoia a mão na cintura com peso deslocado para uma perna em pose harmônica que valoriza a silhueta.
-- 8-10s: Pose final estável, respiração natural, luz frontal suave destacando a peça.
-Câmera estática no espelho, sem zoom, iluminação residencial estável sem flicker, movimentos lentos e fluidos, fidelidade 100% à roupa.`.trim();
-
-  return compact2500.slice(0, 2500).trim();
+  if (base.length <= 2500) return base.trim();
+  return base.slice(0, 2480).trim();
 }

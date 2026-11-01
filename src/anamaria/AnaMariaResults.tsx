@@ -640,7 +640,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
               <div className="flex items-center gap-2">
                 <Video className="w-4 h-4 text-sky-400" />
                 <h3 className="text-xs font-black text-white uppercase tracking-wide flex items-center gap-2">
-                  <span>Prompt do Vídeo (Kling 3.0 Omni · 10 Segundos)</span>
+                  <span>Prompt do Vídeo — Vencedor by GPT (10s)</span>
                   {hasCopiedPromptOnce && (
                     <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3 text-sky-300" /> COPIADO ✓
