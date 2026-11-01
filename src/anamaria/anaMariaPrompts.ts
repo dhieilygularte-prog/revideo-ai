@@ -82,14 +82,21 @@ export function buildAnaMariaImagePrompt(
   const isMale = form.influencer === 'Homem';
   const isPlusSize = form.bodyType === 'plus_size';
 
-  // Descrição corporal com curvas hiper-acentuadas (atendendo ao feedback 3 e às fotos 4 e 9)
+  // Descrição corporal com curvas hiper-acentuadas ou Plus Size autêntico (manequim 48-52)
   const modelDescription = isMale
-    ? `Homem brasileiro adulto, entre 25 e 35 anos, aparência natural e cotidiana. Pele morena-clara de subtom quente, com textura real e poros naturais. Corpo masculino ${
-        isPlusSize ? 'plus size proporcional e forte' : 'atlético, ombros largos, cintura alinhada e pernas definidas'
-      }. Cabelo castanho-escuro curto alinhado.`
-    : `Mulher brasileira adulta, entre 25 e 35 anos, aparência natural e cotidiana. Pele morena-clara de subtom quente, com textura real de pele e poros naturais. Corpo feminino com CURVAS HIPER-ACENTUADAS E PRONUNCIADAS (silhueta violão marcante): cintura extremamente fina, estreita e desenhada, quadris visivelmente largos, proeminentes e bem arredondados, coxas grossas, torneadas e volumosas, e bumbum empinado e curvilíneo. A modelagem da roupa fica perfeitamente assentada ao corpo, valorizando intensamente a cintura fina e os quadris arredondados ${
-        isPlusSize ? 'em proporção plus size voluptuosa e harmônica' : 'em formato violão escultural natural'
-      }. Cabelos longos castanho-escuros levemente ondulados caindo sobre os ombros e costas.`;
+    ? isPlusSize
+      ? 'Homem brasileiro adulto PLUS SIZE REAL (manequim 50 a 54 / XXL, porte físico grande, encorpado, forte e pesado). Pele morena-clara de subtom quente, com textura real e poros naturais. Cabelo castanho-escuro curto alinhado.'
+      : 'Homem brasileiro adulto, entre 25 e 35 anos, aparência natural e cotidiana. Pele morena-clara de subtom quente, com textura real e poros naturais. Corpo masculino atlético, ombros largos, cintura alinhada e pernas definidas. Cabelo castanho-escuro curto alinhado.'
+    : isPlusSize
+      ? `Mulher brasileira adulta PLUS SIZE REAL E AUTÊNTICA (manequim 48 a 52 / US 16-18, corpo plus size encorpado, voluptuoso, carnudo e curvilíneo):
+- Silhueta plus size real com volume e peso naturais, exatamente como em modelos plus size autênticas de moda feminina.
+- Coxas bem grossas, carnudas, cheias e fartas; quadris visivelmente largos, proeminentes e bem arredondados.
+- Cintura curvilínea suave proporcional a uma mulher plus size real (TERMINANTEMENTE PROIBIDO cintura fina ou estreita de modelo magra; abdômen suavemente arredondado, macio e natural, sem barriga chapada ou atlética).
+- Busto volumoso e colo farto com decote natural bem preenchido.
+- Braços cheios, carnudos e naturais (sem magreza).
+- Pele morena-clara de subtom quente com textura real de pele, viço natural e poros visíveis, sem imperfeições pesadas. Cabelos longos castanho-escuros caindo sobre os ombros.
+- A peça de roupa assenta perfeitamente justa no corpo plus size, valorizando as curvas cheias e o volume encorpado exatamente como em modelos plus size reais.`
+      : `Mulher brasileira adulta, entre 25 e 35 anos, aparência natural e cotidiana. Pele morena-clara de subtom quente, com textura real de pele e poros naturais. Corpo feminino com CURVAS HIPER-ACENTUADAS E PRONUNCIADAS (silhueta violão marcante): cintura fina, estreita e desenhada, quadris visivelmente largos, proeminentes e bem arredondados, coxas grossas, torneadas e volumosas, e bumbum empinado e curvilíneo em formato violão escultural natural. Cabelos longos castanho-escuros levemente ondulados caindo sobre os ombros e costas.`;
 
   const phoneDescription = isMale
     ? 'O modelo segura um smartphone moderno com uma das mãos na altura do queixo/peito, simulando selfie diante do espelho de corpo inteiro. Unhas curtas e limpas.'
@@ -107,12 +114,14 @@ export function buildAnaMariaImagePrompt(
   const scenarioText = SCENARIO_DESCRIPTIONS[scenarioRoom] || SCENARIO_DESCRIPTIONS.hall_espelho;
 
   const prompt = `${additionalBlock}Crie uma fotografia hiper-realista vertical 9:16 de ${
-    isMale ? 'um homem brasileiro adulto' : 'uma mulher brasileira adulta com curvas acentuadas'
+    isMale
+      ? (isPlusSize ? 'um homem brasileiro adulto PLUS SIZE (porte grande, manequim 50-54)' : 'um homem brasileiro adulto')
+      : (isPlusSize ? 'uma mulher brasileira adulta autêntica PLUS SIZE (corpo voluptuoso e encorpado, coxas grossas, quadris largos, manequim 48 a 52)' : 'uma mulher brasileira adulta com curvas acentuadas')
   } apresentando a roupa da imagem de referência, em uma selfie diante do espelho de corpo inteiro, reproduzindo fielmente o cenário residencial.
 
 ## 1. MODELO E SILHUETA CORPORAL
 ${modelDescription}
-**REGRA OBRIGATÓRIA: ${isMale ? 'o modelo' : 'a modelo'} não pode ter NENHUMA tatuagem em qualquer parte do corpo (pele 100% limpa).**
+${isPlusSize ? '**REGRA OBRIGATÓRIA DE PLUS SIZE: O corpo DEVE ser verdadeiramente PLUS SIZE (manequim 48 a 52 / US 16-18), com coxas grossas e carnudas, quadris bem largos e curvas naturais de mulher plus size real (TERMINANTEMENTE PROIBIDO gerar modelo magra, PROIBIDO cintura fina ou estreita de passarela, PROIBIDO barriga chapada/seca). O corpo deve ter volume, peso e curvas generosas e fartas.**\n' : ''}**REGRA OBRIGATÓRIA: ${isMale ? 'o modelo' : 'a modelo'} não pode ter NENHUMA tatuagem em qualquer parte do corpo (pele 100% limpa).**
 
 ## 2. ROSTO — CORTE OBRIGATÓRIO ESTRITO NO QUEIXO (SEM LÁBIOS E SEM NARIZ)
 Enquadrar a cabeça RIGOROSAMENTE DA ALTURA DA BASE DO QUEIXO PARA BAIXO.
@@ -141,7 +150,7 @@ O mesmo calçado escolhido deve aparecer posicionado corretamente nos dois pés 
 ## 8. FIDELIDADE ABSOLUTA À ROUPA
 A roupa da imagem de referência deve ser reproduzida exatamente 1:1: mesma cor, tonalidade, tecido, textura, costuras, decote, alças, comprimento e caimento justo moldando o corpo com curvas acentuadas.
 
-RESULTADO: ${isMale ? 'brasileiro real' : 'brasileira real com curvas marcantes'} em selfie no espelho, corte estrito da altura do queixo para baixo, sem tatuagens, calçado correto e iluminação destacando a roupa.`;
+RESULTADO: ${isMale ? (isPlusSize ? 'brasileiro real plus size (manequim 50-54)' : 'brasileiro real') : (isPlusSize ? 'brasileira real autêntica plus size (manequim 48 a 52, corpo voluptuoso e encorpado)' : 'brasileira real com curvas marcantes')} em selfie no espelho, corte estrito da altura do queixo para baixo, sem tatuagens, calçado correto e iluminação destacando a roupa.`;
 
   return {
     prompt: prompt.trim(),

@@ -203,7 +203,7 @@ export default function App() {
     influencer: 'Mulher',
     bodyType: 'normal',
     additionalInstructions: '',
-    imageModel: 'seedream_5_0_pro',
+    imageModel: 'openai',
     videoPromptLimit: 'unlimited',
   });
 
@@ -1278,7 +1278,7 @@ export default function App() {
       influencer: 'Mulher',
       bodyType: 'normal',
       additionalInstructions: '',
-      imageModel: 'seedream_5_0_pro',
+      imageModel: 'openai',
       videoPromptLimit: 'unlimited',
     });
     setAnaMariaResult(null);

@@ -139,6 +139,7 @@ export async function runAnaMariaPipeline(
       isAnaMariaMode: true,
       aspectRatio: '9:16',
       imageModel: form.imageModel,
+      bodyType: form.bodyType,
       aiProfile,
       additionalInstructions: form.additionalInstructions,
     }
@@ -231,6 +232,7 @@ export async function regenerateAnaMariaImage(params: {
       isAnaMariaMode: true,
       aspectRatio: '9:16',
       imageModel: effectiveImageModel,
+      bodyType: effectiveForm.bodyType,
       aiProfile,
       additionalInstructions: effectiveForm.additionalInstructions,
     }
@@ -289,6 +291,7 @@ export async function regenerateAnaMariaNewScenario(params: {
       isAnaMariaMode: false,
       aspectRatio: '9:16',
       imageModel: form.imageModel,
+      bodyType: form.bodyType,
       aiProfile,
       additionalInstructions: form.additionalInstructions,
     }

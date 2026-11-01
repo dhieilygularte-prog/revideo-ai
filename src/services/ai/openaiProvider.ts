@@ -519,6 +519,7 @@ Retorne estritamente um JSON estruturado:
       isCloneMode = false,
       aspectRatio,
       size,
+      bodyType,
     } = params;
 
     const client = this.getClient();
@@ -602,16 +603,45 @@ Retorne estritamente um JSON estruturado:
       const isStoryboardGrid =
         /grade\s+(?:3x3|2x3|2x2)|(?:\b4|\b6|\b9)\s+(?:cenas|quadros)|storyboard/i.test(prompt);
 
+      const isPlusSizeRequest =
+        bodyType === 'plus_size' ||
+        /plus[-_\s]*size|manequim\s*(?:48|50|52)/i.test(prompt) ||
+        /plus[-_\s]*size/i.test(additionalInstructions);
+
       if (isAnaMariaMode && scenarioPhotoBase64) {
-        effectivePrompt = `[CRITICAL MANDATORY BACKGROUND AND PRODUCT LOCK - MODO ANA MARIA]:
-The reference image 1 is the EXACT mandatory residential hallway/room:
-- Beige marbled porcelain tile floor with distinct tile grout lines and polished reflections.
-- Dark wood door on the left with silver handle and dark wooden door frame.
-- Off-white wall on the right with light switch and glass door frame.
-- Dimly lit hallway corridor extending in the background.
-Place the woman standing directly inside this EXACT architectural room/hallway, holding a smartphone in front of the mirror. Do NOT create or invent a different room, do NOT change the walls or floor.
-She wears the exact clothing from the attached product reference photos with 1:1 fidelity to fabric, color, neckline, and fit.
-STRICT NO-FACE / CHIN-DOWN FRAMING: Frame strictly from the bottom of the chin down. The lips, mouth, nose, and eyes must NEVER appear in the frame. Zero tattoos on skin. Curvaceous silhouette with pronounced hips and narrow waist.`;
+        const bodyBlock = isPlusSizeRequest
+          ? `[AUTHENTIC REAL PLUS-SIZE FEMALE BODY MANDATE (MANEQUIM 48 A 52 / US 16-18)]:
+- The woman MUST be an authentic, full-figured PLUS-SIZE woman with real voluptuous curves, natural weight and generous proportions.
+- Heavy, thick, full fleshy thighs; wide, prominent rounded hips.
+- Soft, natural, fuller curvy midriff and waist proportional to a real plus-size woman (STRICTLY FORBIDDEN: skinny waist, narrow model waist, flat washboard abs, or thin athletic frame).
+- Full bust and decolletage filling the neckline naturally.
+- Naturally fuller, soft arms (no thin arms).
+- The garment fits snugly and flatteringly over her real plus-size body, exactly as seen on real plus-size fashion models.`
+          : `[CURVACEOUS FEMALE BODY SILHOUETTE]:
+- Brazilian woman with natural hourglass curves, wide hips, defined waist, and shapely legs.
+- The garment fits snugly and flatteringly over her curves.`;
+
+        effectivePrompt = `[CRITICAL EDIT DIRECTIVE - INPAINT MODEL INTO EXACT SCENARIO - MODO ANA MARIA]:
+You are editing the base scenario photograph (Reference Image 1).
+KEEP the architectural setting from Image 1 100% UNCHANGED and INTACT:
+- Exactly the same beige marbled porcelain tile floor with realistic polished reflections and grout lines.
+- Exactly the same dark wood door on the left with silver metallic handle and dark wooden door frame.
+- Exactly the same off-white tiled wall on the right with the dual light switch and glass door frame.
+- Exactly the same hallway extending in the background.
+- DO NOT invent, generate, or redraw a new room. Place the woman standing inside this EXACT real room from Image 1 in front of the mirror taking a mirror-selfie.
+
+[PRODUCT FIDELITY MANDATE (REFERENCE IMAGE 2+)]:
+- The woman wears the EXACT garment shown in reference image 2 (and subsequent photos): 1:1 identical color, shade, fabric texture, seams, straps, neckline, cut, and fit.
+
+${bodyBlock}
+
+[STRICT FRAMING & FACE PROHIBITION]:
+- STRICT CHIN-DOWN FRAMING: Frame strictly from the bottom base of the chin downward.
+- ABSOLUTELY NEVER reveal lips, mouth, nose, eyes or upper face. Face MUST stay 100% OUT OF FRAME.
+- Zero tattoos anywhere on the skin (100% clean skin).
+- Modern smartphone held naturally in one hand in front of the mirror taking the mirror-selfie.
+
+${cleanPrompt}`;
       }
 
       // Se temos referência de modelo mestre:
@@ -727,8 +757,8 @@ Mantenha o mesmo modelo/corte e caimento da peça atual; troque somente cores (p
 
       // Se temos arquivo de imagem de base válido para edição, usamos client.images.edit
       if (baseImageFile) {
-        const editImageInput: any = (isAnaMariaMode && scenarioPhotoBase64)
-          ? baseImageFile
+        const editImageInput: any = (isAnaMariaMode && scenarioPhotoBase64 && imageFiles.length > 1)
+          ? imageFiles
           : (referenceFrameBase64
             ? baseImageFile
             : (!modelReferenceBase64 && imageFiles.length > 1 ? imageFiles : baseImageFile));

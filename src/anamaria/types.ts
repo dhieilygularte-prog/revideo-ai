@@ -30,7 +30,7 @@ export interface AnaMariaFormState {
   influencer: AnaMariaInfluencer; // Padrão: 'Mulher'
   bodyType: AnaMariaBodyType; // Padrão: 'normal'
   additionalInstructions: string; // Prioridade máxima
-  imageModel: AnaMariaImageModel; // Padrão: 'seedream_5_0_pro'
+  imageModel: AnaMariaImageModel; // Padrão: 'openai'
   videoPromptLimit: AnaMariaVideoPromptLimit; // Padrão: 'unlimited'
 }
 

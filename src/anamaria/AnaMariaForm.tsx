@@ -135,22 +135,22 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         </div>
       </div>
 
-      {/* ─── BOTÃO DE AVANÇAR PARA A PÁGINA DE RESULTADOS (PADRÃO PRODUTOS 2.0) ─── */}
+      {/* ─── BOTÃO DE AVANÇAR PARA A PÁGINA DE RESULTADOS (AMARELO VIBRANTE - ITEM 3) ─── */}
       {hasExistingResult && onGoToResults && (
-        <div className="flex items-center justify-between p-3.5 sm:p-4 bg-sky-950/40 border border-sky-500/50 rounded-2xl shadow-lg animate-fade-in">
+        <div className="flex items-center justify-between p-3.5 sm:p-4 bg-amber-500/10 border border-amber-500/40 rounded-2xl shadow-lg animate-fade-in">
           <div className="flex items-center gap-2.5">
-            <Sparkles className="w-4 h-4 text-sky-400 shrink-0" />
-            <span className="text-xs font-bold text-sky-200">
+            <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+            <span className="text-xs font-bold text-amber-200">
               Você já possui uma imagem gerada neste modo.
             </span>
           </div>
           <button
             type="button"
             onClick={onGoToResults}
-            className="px-4 py-2 rounded-xl bg-gradient-to-r from-sky-600 to-blue-700 hover:from-sky-500 hover:to-blue-600 text-white text-xs font-black flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-sky-950/40"
+            className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-zinc-950 text-xs font-black flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-amber-950/40"
           >
             <span>Avançar para a página com a imagem gerada</span>
-            <ArrowRight className="w-4 h-4" />
+            <ArrowRight className="w-4 h-4 text-zinc-950 stroke-[3]" />
           </button>
         </div>
       )}
@@ -417,6 +417,22 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           <div className="space-y-2">
             <button
               type="button"
+              onClick={() => onChange((prev) => ({ ...prev, imageModel: 'openai' }))}
+              className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between text-xs font-bold ${
+                form.imageModel === 'openai'
+                  ? 'bg-gradient-to-r from-sky-600 to-blue-700 border-sky-400 text-white shadow shadow-sky-950/60 ring-2 ring-sky-400/40'
+                  : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-white'
+              }`}
+            >
+              <div className="flex flex-col">
+                <span>OpenAI — Inserção no Cenário Real</span>
+                <span className="text-[10px] font-normal opacity-85">(Recomendado: edita a foto real sem recriar o fundo)</span>
+              </div>
+              {form.imageModel === 'openai' && <Check className="w-4 h-4 text-sky-200 stroke-[3]" />}
+            </button>
+
+            <button
+              type="button"
               onClick={() => onChange((prev) => ({ ...prev, imageModel: 'seedream_5_0_pro' }))}
               className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between text-xs font-bold ${
                 form.imageModel === 'seedream_5_0_pro'
@@ -439,19 +455,6 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             >
               <span>Kling 3.0</span>
               {form.imageModel === 'kling_3_0' && <Check className="w-4 h-4 text-sky-200 stroke-[3]" />}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => onChange((prev) => ({ ...prev, imageModel: 'openai' }))}
-              className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between text-xs font-bold ${
-                form.imageModel === 'openai'
-                  ? 'bg-gradient-to-r from-sky-600 to-blue-700 border-sky-400 text-white shadow shadow-sky-950/60 ring-2 ring-sky-400/40'
-                  : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-white'
-              }`}
-            >
-              <span>OpenAI (ChatGPT)</span>
-              {form.imageModel === 'openai' && <Check className="w-4 h-4 text-sky-200 stroke-[3]" />}
             </button>
           </div>
         </div>

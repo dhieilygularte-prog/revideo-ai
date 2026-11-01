@@ -1745,7 +1745,9 @@ async function generateImageWithKling(params: {
     ? 'CRITICAL PRODUCT ISOLATION: Reproduce ONLY the clothing/garment 1:1 from the reference image. DO NOT copy the person, face, hair, body, tattoos, or background from the reference photo. Generate a completely NEW model and NEW setting as described below:\n'
     : '';
 
-  const headerKling = params.isAnaMariaMode ? ANAMARIA_IMAGE_HEADER : `${englishFidelityHeader}${IMAGE_REFERENCE_FIDELITY_HEADER}`;
+  const isPlus = params.bodyType === 'plus_size' || /plus[-_\s]*size/i.test(params.prompt);
+  const plusRule = isPlus ? '[REGRA PLUS SIZE: Mulher brasileira adulta verdadeiramente PLUS SIZE (manequim 48 a 52 / US 16-18), com corpo encorpado, coxas bem grossas e carnudas, quadris largos e curvas generosas de mulher plus size real. Proibido modelo magra.]\n\n' : '';
+  const headerKling = params.isAnaMariaMode ? `${plusRule}${ANAMARIA_IMAGE_HEADER}` : `${englishFidelityHeader}${IMAGE_REFERENCE_FIDELITY_HEADER}`;
   const klingPrompt = compactPromptToLimit(
     params.prompt,
     2200,
@@ -1895,7 +1897,9 @@ async function generateImageWithSeedream(params: {
     .filter((img): img is string => Boolean(img))
     .slice(0, 10);
 
-  const headerSeedream = params.isAnaMariaMode ? ANAMARIA_IMAGE_HEADER : IMAGE_REFERENCE_FIDELITY_HEADER;
+  const isPlus = params.bodyType === 'plus_size' || /plus[-_\s]*size/i.test(params.prompt);
+  const plusRule = isPlus ? '[REGRA PLUS SIZE: Mulher brasileira adulta verdadeiramente PLUS SIZE (manequim 48 a 52 / US 16-18), com corpo encorpado, coxas bem grossas e carnudas, quadris largos e curvas generosas de mulher plus size real. Proibido modelo magra.]\n\n' : '';
+  const headerSeedream = params.isAnaMariaMode ? `${plusRule}${ANAMARIA_IMAGE_HEADER}` : IMAGE_REFERENCE_FIDELITY_HEADER;
   const payload: any = {
     model: 'dola-seedream-5-0-pro-260628',
     prompt: refImages.length > 0 ? `${headerSeedream}\n\n${params.prompt}` : params.prompt,
@@ -2044,6 +2048,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
       referenceFrameBase64,
       scenarioPhotoBase64,
       isAnaMariaMode = false,
+      bodyType = req.body?.bodyType,
       variationName = 'Variação 1',
       productType = 'produto comercial',
       targetAngle = 'front',
@@ -2081,6 +2086,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
         imageReferenceBase64: scenarioPhotoBase64 || modelReferenceBase64 || productPhotoBase64,
         aspectRatio: req.body.aspectRatio || '9:16',
         isAnaMariaMode,
+        bodyType,
         scenarioPhotoBase64,
       });
       return res.json(klingResult);
@@ -2103,6 +2109,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
         referenceImages: orderedRefs,
         aspectRatio: req.body.aspectRatio || '9:16',
         isAnaMariaMode,
+        bodyType,
         scenarioPhotoBase64,
       });
       return res.json(seedreamResult);
@@ -2110,7 +2117,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
 
     // ─── ROTEAMENTO BASEADO NO PERFIL DE IA SELECIONADO ────────────────────
     const activeProfile = req.body?.aiProfile || getRequestAIProfile(req);
-    if (activeProfile === 'openai') {
+    if (requestedImageModel === 'openai' || activeProfile === 'openai') {
       if (!openAIProvider.isConfigured()) {
         return res.json({
           success: false,
@@ -2126,6 +2133,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
           referenceFrameBase64,
           scenarioPhotoBase64,
           isAnaMariaMode,
+          bodyType,
           variationName,
           productType,
           targetAngle,
