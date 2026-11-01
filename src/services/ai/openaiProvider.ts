@@ -602,6 +602,18 @@ Retorne estritamente um JSON estruturado:
       const isStoryboardGrid =
         /grade\s+(?:3x3|2x3|2x2)|(?:\b4|\b6|\b9)\s+(?:cenas|quadros)|storyboard/i.test(prompt);
 
+      if (isAnaMariaMode && scenarioPhotoBase64) {
+        effectivePrompt = `[CRITICAL MANDATORY BACKGROUND AND PRODUCT LOCK - MODO ANA MARIA]:
+The reference image 1 is the EXACT mandatory residential hallway/room:
+- Beige marbled porcelain tile floor with distinct tile grout lines and polished reflections.
+- Dark wood door on the left with silver handle and dark wooden door frame.
+- Off-white wall on the right with light switch and glass door frame.
+- Dimly lit hallway corridor extending in the background.
+Place the woman standing directly inside this EXACT architectural room/hallway, holding a smartphone in front of the mirror. Do NOT create or invent a different room, do NOT change the walls or floor.
+She wears the exact clothing from the attached product reference photos with 1:1 fidelity to fabric, color, neckline, and fit.
+STRICT NO-FACE / CHIN-DOWN FRAMING: Frame strictly from the bottom of the chin down. The lips, mouth, nose, and eyes must NEVER appear in the frame. Zero tattoos on skin. Curvaceous silhouette with pronounced hips and narrow waist.`;
+      }
+
       // Se temos referência de modelo mestre:
       // Em Modo Ania (!isCloneMode && !isStoryboardGrid): é uma EDIÇÃO LOCALIZADA com trava de quarto/pose via client.images.edit
       // Em Modo Clonagem ou Storyboard 3x3 (Produtos 2.0): NÃO substituímos o prompt por troca de roupa! Mantemos o prompt completo e as fotos reais do produto!
@@ -715,9 +727,11 @@ Mantenha o mesmo modelo/corte e caimento da peça atual; troque somente cores (p
 
       // Se temos arquivo de imagem de base válido para edição, usamos client.images.edit
       if (baseImageFile) {
-        const editImageInput: any = referenceFrameBase64
+        const editImageInput: any = (isAnaMariaMode && scenarioPhotoBase64)
           ? baseImageFile
-          : (!modelReferenceBase64 && imageFiles.length > 1 ? imageFiles : baseImageFile);
+          : (referenceFrameBase64
+            ? baseImageFile
+            : (!modelReferenceBase64 && imageFiles.length > 1 ? imageFiles : baseImageFile));
         const editResponse = await client.images.edit({
           model: OPENAI_IMAGE_MODEL,
           image: editImageInput,

@@ -21,6 +21,7 @@ import {
   AnaMariaVideoPromptLimit,
 } from './types';
 import { compressAndResizeImage } from '../ania/aniaLibrary';
+import { ProgressBar } from '../components/ProgressBar';
 
 interface AnaMariaFormProps {
   form: AnaMariaFormState;
@@ -509,26 +510,16 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         </div>
       </div>
 
-      {/* ─── BARRA DE PROGRESSO EM TEMPO REAL ─── */}
+      {/* ─── BARRA DE PROGRESSO COM GIF IGUAL AO MODO PRODUTOS 2.0 ─── */}
       {isProcessing && (
-        <div className="p-5 rounded-2xl border border-sky-500/40 bg-zinc-950/95 space-y-3 animate-fade-in shadow-xl">
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-bold text-sky-300 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-sky-400 animate-spin" />
-              <span>{statusMessage || 'Processando Modo Ana Maria...'}</span>
-            </span>
-            <span className="font-mono text-sky-400 font-bold">{progressPercent}%</span>
-          </div>
-          <div className="w-full h-2 rounded-full bg-zinc-800 overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-sky-500 to-blue-500 transition-all duration-300 rounded-full"
-              style={{ width: `${Math.max(5, progressPercent)}%` }}
-            />
-          </div>
-        </div>
+        <ProgressBar
+          currentStep="generating_images"
+          progressPercent={progressPercent}
+          statusMessage={statusMessage || 'Gerando vídeo no Modo Ana Maria...'}
+        />
       )}
 
-      {/* ─── BOTÃO DE AÇÃO: GERAR VÍDEO (PADRÃO PRODUTOS 2.0) ─── */}
+      {/* ─── BOTÃO DE AÇÃO: GERAR VÍDEO (VERDE VIBRANTE PADRÃO PRODUTOS 2.0) ─── */}
       <div className="pt-2">
         <button
           type="button"
@@ -536,7 +527,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           onClick={onSubmit}
           className={`w-full py-4 px-6 rounded-2xl font-black text-sm sm:text-base uppercase tracking-wider transition-all flex items-center justify-center gap-3 cursor-pointer shadow-xl ${
             canSubmit
-              ? 'bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-700 text-white hover:brightness-110 shadow-sky-950/60 ring-2 ring-sky-400/50 hover:scale-[1.01]'
+              ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-sky-600 hover:from-emerald-500 hover:via-teal-500 hover:to-sky-500 text-white shadow-emerald-950/50 hover:scale-[1.01]'
               : 'bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700/50'
           }`}
         >

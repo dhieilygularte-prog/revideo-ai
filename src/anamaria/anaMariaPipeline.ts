@@ -259,12 +259,12 @@ export async function regenerateAnaMariaImage(params: {
   return { imageUrl: highResUrl, audit, imageModel: effectiveImageModel };
 }
 
-const ROOM_LIST: AnaMariaRoomType[] = ['quarto', 'sala', 'closet', 'hall_espelho'];
+const ALTERNATIVE_ROOMS: AnaMariaRoomType[] = ['quarto', 'sala', 'closet'];
 
 /**
- * Trocar Cenário (Item 13):
+ * Trocar Cenário (Item 13 e Item 5):
  * Gera novamente a imagem mantendo a mesma modelo, mesma roupa e mesmo ângulo,
- * porém colocando-a em outro cômodo da mesma casa (quarto, sala, closet ou hall),
+ * porém colocando-a em outro cômodo da mesma casa (quarto, sala ou closet),
  * com iluminação frontal natural e fundo mais penumbroso/carente de iluminação.
  */
 export async function regenerateAnaMariaNewScenario(params: {
@@ -274,8 +274,8 @@ export async function regenerateAnaMariaNewScenario(params: {
 }): Promise<{ imageUrl: string; room: AnaMariaRoomType }> {
   const { form, currentRoom, aiProfile = 'openai' } = params;
 
-  // Seleciona um cômodo diferente do atual
-  const availableRooms = ROOM_LIST.filter((r) => r !== currentRoom);
+  // Seleciona um cômodo alternativo diferente do atual (quarto, sala ou closet)
+  const availableRooms = ALTERNATIVE_ROOMS.filter((r) => r !== currentRoom);
   const nextRoom = availableRooms[Math.floor(Math.random() * availableRooms.length)] || 'quarto';
 
   const { prompt } = buildAnaMariaImagePrompt(form, nextRoom);
@@ -286,7 +286,7 @@ export async function regenerateAnaMariaNewScenario(params: {
       prompt,
       productPhotoBase64: form.referencePhotos[0],
       productPhotosBase64: form.referencePhotos.slice(0, 10),
-      isAnaMariaMode: true,
+      isAnaMariaMode: false,
       aspectRatio: '9:16',
       imageModel: form.imageModel,
       aiProfile,

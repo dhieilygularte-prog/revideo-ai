@@ -937,6 +937,17 @@ ${prompt}` : prompt;
       let baseImageFile = null;
       let effectivePrompt = cleanPrompt;
       const isStoryboardGrid = /grade\s+(?:3x3|2x3|2x2)|(?:\b4|\b6|\b9)\s+(?:cenas|quadros)|storyboard/i.test(prompt);
+      if (isAnaMariaMode && scenarioPhotoBase64) {
+        effectivePrompt = `[CRITICAL MANDATORY BACKGROUND AND PRODUCT LOCK - MODO ANA MARIA]:
+The reference image 1 is the EXACT mandatory residential hallway/room:
+- Beige marbled porcelain tile floor with distinct tile grout lines and polished reflections.
+- Dark wood door on the left with silver handle and dark wooden door frame.
+- Off-white wall on the right with light switch and glass door frame.
+- Dimly lit hallway corridor extending in the background.
+Place the woman standing directly inside this EXACT architectural room/hallway, holding a smartphone in front of the mirror. Do NOT create or invent a different room, do NOT change the walls or floor.
+She wears the exact clothing from the attached product reference photos with 1:1 fidelity to fabric, color, neckline, and fit.
+STRICT NO-FACE / CHIN-DOWN FRAMING: Frame strictly from the bottom of the chin down. The lips, mouth, nose, and eyes must NEVER appear in the frame. Zero tattoos on skin. Curvaceous silhouette with pronounced hips and narrow waist.`;
+      }
       if (modelReferenceBase64 && !isCloneMode && !isStoryboardGrid) {
         baseImageFile = toImageFile(modelReferenceBase64, "imagem_1_base");
         const swatchStr = productPhotoBase64 || productPhotosBase64[0];
@@ -1034,7 +1045,7 @@ Mantenha o mesmo modelo/corte e caimento da pe\xE7a atual; troque somente cores 
         }
       }
       if (baseImageFile) {
-        const editImageInput = referenceFrameBase64 ? baseImageFile : !modelReferenceBase64 && imageFiles.length > 1 ? imageFiles : baseImageFile;
+        const editImageInput = isAnaMariaMode && scenarioPhotoBase64 ? baseImageFile : referenceFrameBase64 ? baseImageFile : !modelReferenceBase64 && imageFiles.length > 1 ? imageFiles : baseImageFile;
         const editResponse = await client.images.edit({
           model: OPENAI_IMAGE_MODEL,
           image: editImageInput,
@@ -3317,6 +3328,7 @@ ${body}` : body).slice(0, maxChars);
   return result;
 }
 var IMAGE_REFERENCE_FIDELITY_HEADER = "REGRA CR\xCDTICA DE PRODUTO VS MODELO/CEN\xC1RIO: A imagem de refer\xEAncia anexada serve EXCLUSIVAMENTE para copiar a pe\xE7a de roupa/produto real. \xC9 EXPRESSAMENTE PROIBIDO COPIAR A MODELO, A PESSOA OU O CEN\xC1RIO DE FUNDO DA FOTO DE REFER\xCANCIA! Voc\xEA DEVE gerar uma NOVA pessoa e um NOVO cen\xE1rio seguindo rigorosamente as instru\xE7\xF5es e descri\xE7\xE3o do prompt abaixo. Copie da imagem de refer\xEAncia \xDANICA E EXCLUSIVAMENTE a pe\xE7a de roupa/produto 1:1 com fidelidade total (mesmo formato, corte, decote, al\xE7as, tecido, renda, transpar\xEAncia e cor).";
+var ANAMARIA_IMAGE_HEADER = "[REGRA CR\xCDTICA DE CEN\xC1RIO REAL FIXO E PRODUTO NO MODO ANA MARIA]:\nA Imagem de Refer\xEAncia 1 \xE9 o CEN\xC1RIO REAL FIXO OBRIGAT\xD3RIO (c\xF4modo da casa com ch\xE3o de porcelanato bege marmorizado brilhante, porta de madeira escura com frisos \xE0 esquerda, parede clara com interruptores \xE0 direita e corredor ao fundo).\nVoc\xEA DEVE MANTER ESTE EXATO CEN\xC1RIO E FUNDO como a cena onde a modelo est\xE1 posicionada diante do espelho. N\xC3O gere um cen\xE1rio diferente nem altere a arquitetura, o piso ou as portas do c\xF4modo!\nPosicione a modelo em p\xE9 EXATAMENTE neste cen\xE1rio com smartphone na m\xE3o em selfie no espelho.\nA roupa usada pela modelo deve ser uma r\xE9plica 1:1 exata das fotos de produto anexadas nas demais refer\xEAncias.\nEnquadramento estrito: somente do queixo para baixo. L\xE1bios, boca, nariz e olhos NUNCA aparecem em nenhum momento. Zero tatuagens.";
 function toDataUri(b64) {
   if (!b64 || typeof b64 !== "string") return void 0;
   const s = b64.trim();
@@ -3334,15 +3346,16 @@ async function generateImageWithKling(params) {
     };
   }
   const englishFidelityHeader = params.imageReferenceBase64 ? "CRITICAL PRODUCT ISOLATION: Reproduce ONLY the clothing/garment 1:1 from the reference image. DO NOT copy the person, face, hair, body, tattoos, or background from the reference photo. Generate a completely NEW model and NEW setting as described below:\n" : "";
+  const headerKling = params.isAnaMariaMode ? ANAMARIA_IMAGE_HEADER : `${englishFidelityHeader}${IMAGE_REFERENCE_FIDELITY_HEADER}`;
   const klingPrompt = compactPromptToLimit(
     params.prompt,
     2200,
-    `${englishFidelityHeader}${IMAGE_REFERENCE_FIDELITY_HEADER}`
+    headerKling
   );
   const payload = {
     model_name: "kling-v3",
     prompt: klingPrompt,
-    negative_prompt: "original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry",
+    negative_prompt: params.isAnaMariaMode ? "face, lips, mouth, nose, eyes, tattoos on skin, deformed hands, bad anatomy, blurry, watermark" : "original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry",
     aspect_ratio: params.aspectRatio || "9:16",
     n: 1,
     watermark_info: {
@@ -3446,9 +3459,10 @@ async function generateImageWithSeedream(params) {
     };
   }
   const refImages = (params.referenceImages && params.referenceImages.length > 0 ? params.referenceImages : [params.imageReferenceBase64]).map((img) => toDataUri(img)).filter((img) => Boolean(img)).slice(0, 10);
+  const headerSeedream = params.isAnaMariaMode ? ANAMARIA_IMAGE_HEADER : IMAGE_REFERENCE_FIDELITY_HEADER;
   const payload = {
     model: "dola-seedream-5-0-pro-260628",
-    prompt: refImages.length > 0 ? `${IMAGE_REFERENCE_FIDELITY_HEADER}
+    prompt: refImages.length > 0 ? `${headerSeedream}
 
 ${params.prompt}` : params.prompt,
     size: "1024x1792",
@@ -3611,7 +3625,9 @@ ${prompt}`;
       const klingResult = await generateImageWithKling({
         prompt: effectivePrompt,
         imageReferenceBase64: scenarioPhotoBase64 || modelReferenceBase64 || productPhotoBase64,
-        aspectRatio: req.body.aspectRatio || "9:16"
+        aspectRatio: req.body.aspectRatio || "9:16",
+        isAnaMariaMode,
+        scenarioPhotoBase64
       });
       return res.json(klingResult);
     }
@@ -3627,7 +3643,9 @@ ${prompt}`;
         prompt: effectivePrompt,
         imageReferenceBase64: scenarioPhotoBase64 || modelReferenceBase64 || productPhotoBase64,
         referenceImages: orderedRefs,
-        aspectRatio: req.body.aspectRatio || "9:16"
+        aspectRatio: req.body.aspectRatio || "9:16",
+        isAnaMariaMode,
+        scenarioPhotoBase64
       });
       return res.json(seedreamResult);
     }

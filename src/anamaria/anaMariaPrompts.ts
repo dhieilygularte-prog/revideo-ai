@@ -58,7 +58,7 @@ export type AnaMariaRoomType = 'hall_espelho' | 'quarto' | 'sala' | 'closet';
 
 export const SCENARIO_DESCRIPTIONS: Record<AnaMariaRoomType, string> = {
   hall_espelho:
-    'Ambiente residencial autêntico diante do espelho de corpo inteiro no hall/corredor com banheiro integrado (fiel à foto de referência do cenário): no primeiro plano onde a modelo pisa, piso de porcelanato/cerâmica bege rajado com manchas marmorizadas em tons caramelo, areia e marrom suave brilhante. No lado esquerdo, porta de madeira maciça escura envernizada (tom mogno/nogueira com frisos horizontais em baixo relevo) com batente de madeira combinando e maçaneta reta tipo alavanca em aço inox/cromado escovado. No lado direito, parede com azulejos brancos lisos brilhantes, interruptor/espelho duplo vertical branco com teclas retangulares e estrutura de perfil de alumínio fosco com folha de vidro temperado transparente (box de banheiro). Ao fundo, vão de porta aberto revelando cômodo/corredor interno com piso bege claro fosco liso e parede neutra off-white/cinza claro sob iluminação indireta mais fraca. A iluminação natural clara frontal incide diretamente sobre a modelo, a roupa e o piso rajado da frente, enquanto o cômodo ao fundo permanece em suave penumbra acolhedora, garantindo contraste nítido e foco visual 100% absoluto no corpo da modelo e na peça anunciada.',
+    'Ambiente residencial autêntico diante do espelho de corpo inteiro no hall/corredor com banheiro integrado (UTILIZAR EXATAMENTE A FOTO DE REFERÊNCIA DO CENÁRIO ANEXADA): A foto de referência do cenário é o ambiente real obrigatório e inviolável. No primeiro plano onde a modelo pisa, reproduza exatamente o mesmo piso de porcelanato/cerâmica bege rajado com manchas marmorizadas brilhantes da foto de referência. No lado esquerdo, a mesma porta de madeira escura com frisos horizontais em baixo relevo, batente escuro e maçaneta reta de inox da foto. No lado direito, a mesma parede com azulejos claros, interruptor duplo branco e perfil com folha de vidro da foto. Ao fundo, o mesmo vão aberto revelando o corredor interno sob iluminação suave. Posicione a modelo em pé EXATAMENTE neste cenário da foto anexada. É expressamente proibido criar outro cômodo ou alterar a arquitetura, o piso e as portas da foto de referência.',
   quarto:
     'Quarto da mesma residência em frente ao espelho de corpo inteiro: ambiente limpo e aconchegante, piso de porcelanato bege claro, cabeceira de cama estofada neutra e porta de madeira escura visíveis discretamente ao fundo. Iluminação frontal natural suave que ilumina a frente da modelo com perfeição, enquanto o fundo do quarto permanece com iluminação indireta mais baixa e suave para que o foco fique total na modelo e na roupa. Espaço limpo e sem distrações.',
   sala:
@@ -114,10 +114,12 @@ export function buildAnaMariaImagePrompt(
 ${modelDescription}
 **REGRA OBRIGATÓRIA: ${isMale ? 'o modelo' : 'a modelo'} não pode ter NENHUMA tatuagem em qualquer parte do corpo (pele 100% limpa).**
 
-## 2. ROSTO — CORTE OBRIGATÓRIO NO QUEIXO
-Enquadrar a cabeça RIGOROSAMENTE DA ALTURA DA BASE DO QUEIXO PARA BAIXO. Olhos, sobrancelhas, testa, nariz e boca devem ficar COMPLETAMENTE FORA da imagem. Mostrar somente a base do queixo, o pescoço, o colo e todo o corpo para baixo. Nunca mostrar o rosto inteiro nem a boca. O corte deve parecer uma selfie espontânea natural tirada no espelho.
+## 2. ROSTO — CORTE OBRIGATÓRIO ESTRITO NO QUEIXO (SEM LÁBIOS E SEM NARIZ)
+Enquadrar a cabeça RIGOROSAMENTE DA ALTURA DA BASE DO QUEIXO PARA BAIXO.
+É TERMINANTEMENTE PROIBIDO MOSTRAR LÁBIOS, BOCA, NARIZ OU OLHOS EM QUALQUER MOMENTO OU PARTE DO ENQUADRAMENTO.
+Os lábios, a boca, o nariz e os olhos devem ficar 100% FORA da imagem em todas as circunstâncias. Mostrar somente a ponta inferior do queixo, o pescoço, o colo e todo o corpo para baixo. Nunca mostrar o rosto inteiro, nunca mostrar a boca e nunca mostrar o nariz. O corte deve parecer uma selfie espontânea natural tirada no espelho com corte exato no queixo.
 
-## 3. CENÁRIO E ILUMINAÇÃO
+## 3. CENÁRIO REAL FIXO E ILUMINAÇÃO (BASE NA FOTO ANEXADA)
 ${scenarioText}
 A parte da frente onde a modelo aparece deve ser iluminada de forma natural e clara, e o fundo do cômodo mais carente de iluminação (em penumbra suave) para que o foco visual fique integralmente na modelo e na roupa. Cenário residencial limpo e sem distrações.
 
@@ -162,10 +164,12 @@ Preserve exactly the same woman, body shape, proportions, skin, hair, clothing, 
 
 Do not redesign, modify, replace or reinterpret any part of the clothing. The garment must remain identical throughout the entire video.
 
-**FACE AND CAMERA FRAMING**
+**FACE AND CAMERA FRAMING (STRICT NO-FACE / CHIN-DOWN LOCK)**
 
-Never reveal the woman's face. Maintain the original framing from the neck or chin down, exactly as shown in the reference image.
-
+The camera framing is strictly and permanently from the bottom base of the chin downward.
+NEVER reveal the woman's face, lips, mouth, or nose at any point or frame in this video.
+The lips, mouth, nose, eyes and upper face MUST REMAIN 100% OUT OF FRAME throughout the entire 10-second recording.
+Only the base of the chin, neck, collarbone, torso, hips, and legs are visible.
 She holds the smartphone in one hand throughout the entire recording. The phone remains in front of the mirror, maintaining the original mirror-selfie composition.
 
 **EXACT MOVEMENT CHOREOGRAPHY**
@@ -203,6 +207,8 @@ The woman must not make exaggerated gestures, dance, walk away, or perform addit
 
 Maintain a realistic smartphone mirror recording, with stable framing and only very subtle natural handheld movement.
 
+Strict chin-down framing: Absolutely NO visible face, NO lips, NO mouth, NO nose, and NO eyes in any frame.
+
 No cinematic camera movements, no zooms, no cuts, no transitions and no changes in the environment.
 
 The entire sequence must happen in one uninterrupted take.
@@ -210,7 +216,7 @@ The entire sequence must happen in one uninterrupted take.
 No visible face, no speech, no subtitles, no captions, no added graphics, no logos or watermarks.
 
 **FINAL PRIORITY:**
-Reproduce the exact movement sequence and timing described above while preserving the original reference image. The woman's movements must be natural, fluid and realistic. The clothing must remain visually identical to the reference image in every frame.`;
+Strict no-face rule: The camera framing is strictly from the base of the chin down. Under NO circumstances should the lips, mouth, nose, or eyes appear in any frame of the video. Reproduce the exact movement sequence and timing described above while preserving the original reference image. The woman's movements must be natural, fluid and realistic. The clothing must remain visually identical to the reference image in every frame.`;
 
 /**
  * Constrói o Prompt de Vídeo do Modo Ana Maria

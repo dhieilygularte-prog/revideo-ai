@@ -1709,6 +1709,14 @@ function compactPromptToLimit(prompt: string, maxChars: number, criticalHeader: 
 const IMAGE_REFERENCE_FIDELITY_HEADER =
   'REGRA CRÍTICA DE PRODUTO VS MODELO/CENÁRIO: A imagem de referência anexada serve EXCLUSIVAMENTE para copiar a peça de roupa/produto real. É EXPRESSAMENTE PROIBIDO COPIAR A MODELO, A PESSOA OU O CENÁRIO DE FUNDO DA FOTO DE REFERÊNCIA! Você DEVE gerar uma NOVA pessoa e um NOVO cenário seguindo rigorosamente as instruções e descrição do prompt abaixo. Copie da imagem de referência ÚNICA E EXCLUSIVAMENTE a peça de roupa/produto 1:1 com fidelidade total (mesmo formato, corte, decote, alças, tecido, renda, transparência e cor).';
 
+const ANAMARIA_IMAGE_HEADER =
+  '[REGRA CRÍTICA DE CENÁRIO REAL FIXO E PRODUTO NO MODO ANA MARIA]:\n' +
+  'A Imagem de Referência 1 é o CENÁRIO REAL FIXO OBRIGATÓRIO (cômodo da casa com chão de porcelanato bege marmorizado brilhante, porta de madeira escura com frisos à esquerda, parede clara com interruptores à direita e corredor ao fundo).\n' +
+  'Você DEVE MANTER ESTE EXATO CENÁRIO E FUNDO como a cena onde a modelo está posicionada diante do espelho. NÃO gere um cenário diferente nem altere a arquitetura, o piso ou as portas do cômodo!\n' +
+  'Posicione a modelo em pé EXATAMENTE neste cenário com smartphone na mão em selfie no espelho.\n' +
+  'A roupa usada pela modelo deve ser uma réplica 1:1 exata das fotos de produto anexadas nas demais referências.\n' +
+  'Enquadramento estrito: somente do queixo para baixo. Lábios, boca, nariz e olhos NUNCA aparecem em nenhum momento. Zero tatuagens.';
+
 function toDataUri(b64?: string): string | undefined {
   if (!b64 || typeof b64 !== 'string') return undefined;
   const s = b64.trim();
@@ -1722,6 +1730,8 @@ async function generateImageWithKling(params: {
   prompt: string;
   imageReferenceBase64?: string;
   aspectRatio?: string;
+  isAnaMariaMode?: boolean;
+  scenarioPhotoBase64?: string;
 }): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
   const apiKey = (process.env.KLING_API_KEY || '').trim();
   if (!apiKey) {
@@ -1735,16 +1745,19 @@ async function generateImageWithKling(params: {
     ? 'CRITICAL PRODUCT ISOLATION: Reproduce ONLY the clothing/garment 1:1 from the reference image. DO NOT copy the person, face, hair, body, tattoos, or background from the reference photo. Generate a completely NEW model and NEW setting as described below:\n'
     : '';
 
+  const headerKling = params.isAnaMariaMode ? ANAMARIA_IMAGE_HEADER : `${englishFidelityHeader}${IMAGE_REFERENCE_FIDELITY_HEADER}`;
   const klingPrompt = compactPromptToLimit(
     params.prompt,
     2200,
-    `${englishFidelityHeader}${IMAGE_REFERENCE_FIDELITY_HEADER}`
+    headerKling
   );
 
   const payload: any = {
     model_name: 'kling-v3',
     prompt: klingPrompt,
-    negative_prompt: 'original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry',
+    negative_prompt: params.isAnaMariaMode
+      ? 'face, lips, mouth, nose, eyes, tattoos on skin, deformed hands, bad anatomy, blurry, watermark'
+      : 'original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry',
     aspect_ratio: params.aspectRatio || '9:16',
     n: 1,
     watermark_info: {
@@ -1839,6 +1852,8 @@ async function generateImageWithSeedream(params: {
   imageReferenceBase64?: string;
   referenceImages?: (string | undefined)[];
   aspectRatio?: string;
+  isAnaMariaMode?: boolean;
+  scenarioPhotoBase64?: string;
 }): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
   let apiKey = (
     process.env.apiauroraseedreamvip ||
@@ -1880,9 +1895,10 @@ async function generateImageWithSeedream(params: {
     .filter((img): img is string => Boolean(img))
     .slice(0, 10);
 
+  const headerSeedream = params.isAnaMariaMode ? ANAMARIA_IMAGE_HEADER : IMAGE_REFERENCE_FIDELITY_HEADER;
   const payload: any = {
     model: 'dola-seedream-5-0-pro-260628',
-    prompt: refImages.length > 0 ? `${IMAGE_REFERENCE_FIDELITY_HEADER}\n\n${params.prompt}` : params.prompt,
+    prompt: refImages.length > 0 ? `${headerSeedream}\n\n${params.prompt}` : params.prompt,
     size: '1024x1792',
     response_format: 'url',
     watermark: false,
@@ -2064,6 +2080,8 @@ app.post('/api/generate-scene-image', async (req, res) => {
         prompt: effectivePrompt,
         imageReferenceBase64: scenarioPhotoBase64 || modelReferenceBase64 || productPhotoBase64,
         aspectRatio: req.body.aspectRatio || '9:16',
+        isAnaMariaMode,
+        scenarioPhotoBase64,
       });
       return res.json(klingResult);
     }
@@ -2084,6 +2102,8 @@ app.post('/api/generate-scene-image', async (req, res) => {
         imageReferenceBase64: scenarioPhotoBase64 || modelReferenceBase64 || productPhotoBase64,
         referenceImages: orderedRefs,
         aspectRatio: req.body.aspectRatio || '9:16',
+        isAnaMariaMode,
+        scenarioPhotoBase64,
       });
       return res.json(seedreamResult);
     }
