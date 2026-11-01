@@ -1251,7 +1251,21 @@ export default function App() {
       playCompletionSound(1);
     } catch (err: any) {
       console.error('Erro na execução do Modo Ana Maria:', err);
-      setAnaMariaErrorMessage(err?.message || 'Falha ao processar no Modo Ana Maria.');
+      const isChunkError =
+        err?.message?.includes('dynamically imported module') ||
+        err?.message?.includes('Failed to fetch') ||
+        err?.name === 'ChunkLoadError';
+
+      if (isChunkError) {
+        setAnaMariaErrorMessage(
+          'Nova versão do app detectada! Recarregando a página automaticamente para sincronizar os novos arquivos...'
+        );
+        setTimeout(() => {
+          window.location.reload();
+        }, 1200);
+      } else {
+        setAnaMariaErrorMessage(err?.message || 'Falha ao processar no Modo Ana Maria.');
+      }
     } finally {
       setIsProcessingAnaMaria(false);
     }
