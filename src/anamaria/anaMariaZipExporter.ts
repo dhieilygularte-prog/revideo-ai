@@ -58,8 +58,8 @@ export async function ensureHighResAnaMariaDataUrl(
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
-        // Qualidade 0.93 em JPEG: Resolução exata de 1080x1920 pixels com ~1,2MB a 2MB (ideal para Kling 3.0)
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.93);
+        // Qualidade 0.99 em JPEG: Máxima pureza visual e preservação total de microtexturas para Kling 3.0
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.99);
         resolve(dataUrl);
       } catch (err) {
         console.warn('Erro ao redimensionar imagem para 1080x1920 no canvas:', err);
@@ -113,7 +113,7 @@ export async function ensureHighResAnaMariaBlob(
             }
           },
           'image/jpeg',
-          0.93
+          0.99
         );
       } catch (err) {
         console.warn('Erro ao gerar blob 1080x1920 no canvas:', err);
