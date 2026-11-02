@@ -1,0 +1,522 @@
+import { AnaMariaMasterId, AnaMariaPresentationMode } from './types';
+
+export interface AnaMariaMasterPromptItem {
+  id: AnaMariaMasterId;
+  number: number;
+  shortName: string;
+  cardTitle: string;
+  objective: string;
+  videoUrl: string;
+  categories: AnaMariaPresentationMode[];
+  primaryCategory: AnaMariaPresentationMode;
+  preferredScenarioId?: string;
+  isPov?: boolean;
+  allowsFaceByDefault?: boolean;
+  // Blocos de identidade física da modelo (para geração de imagem)
+  bodyStandardText: string;
+  skinAndRealismText: string;
+  hairIdentityText: string;
+  faceAndMakeupText?: string;
+  accessoriesIdentityText: string;
+  lightingAndCameraText: string;
+  // Prompt de movimentos original completo da Mestra (para geração do vídeo)
+  movementPromptText: string;
+}
+
+/**
+ * MÓDULO UNIVERSAL — ESTRUTURA CORPORAL PLUS SIZE
+ * (Sobrepõe exclusivamente a estrutura corporal da Mestra selecionada quando bodyType === 'plus_size')
+ */
+export const UNIVERSAL_PLUS_SIZE_MODULE = `## MÓDULO UNIVERSAL — ESTRUTURA CORPORAL PLUS SIZE (PRIORIDADE SOBERANA DE CORPO)
+Quando a opção PLUS SIZE está selecionada, gerar uma mulher adulta com estrutura corporal GENUINAMENTE PLUS SIZE (manequim 48 a 52 / XXL), apresentando volume adiposo evidente e curvas generosas (NUNCA apenas levemente acima do peso ou "cheinha", mas verdadeiramente plus size com peso corporal real e evidente).
+
+Referência obrigatória de volume corporal:
+- Quadris largos, volumosos e arredondados.
+- Coxas grossas, cheias e volumosas.
+- Braços cheios e carnudos.
+- Busto volumoso e colo preenchido.
+- Abdômen naturalmente arredondado (NUNCA chapado) e glúteos proporcionais à estrutura corporal plus size.
+- A cintura pode apresentar definição moderada dentro da silhueta plus size, mas NUNCA deve ser artificialmente estreita ou fina. As pernas NÃO devem ser finas ou excessivamente musculosas.
+- Reproduzir a distribuição natural de gordura subcutânea, com pequenas dobras abdominais naturais, volume evidente nas laterais da cintura, ondulações naturais nas coxas e compressões da pele coerentes com a postura.
+
+TEXTURA CORPORAL REALISTA:
+- Preservar poros, microtextura cutânea, pequenas irregularidades naturais, microcelulites discretas, variações naturais de tonalidade e marcas reais de compressão da pele.
+- Não aplicar filtros de beleza, suavização artificial, efeito porcelana, pele encerada ou acabamento plástico.
+
+INDEPENDÊNCIA DE CARACTERÍSTICAS FÍSICAS:
+- Este módulo define exclusivamente a estrutura corporal e o volume da mulher.
+- Preservar o tom/subtom de pele, cor/comprimento/textura dos cabelos e os acessórios (colares, pulseiras, anéis, unhas) determinados pela Mestra selecionada ou pelas Instruções Adicionais do usuário.
+- REGRA DE FIDELIDADE: NUNCA interpretar PLUS SIZE como apenas levemente acima do peso. O volume corporal deve ser claramente perceptível e compatível com uma modelo plus size real.`;
+
+export const UNIVERSAL_MALE_PLUS_SIZE_MODULE = `## MÓDULO UNIVERSAL — ESTRUTURA CORPORAL MASCULINA PLUS SIZE (PRIORIDADE SOBERANA DE CORPO)
+Gerar um homem adulto com estrutura corporal GENUINAMENTE PLUS SIZE (manequim 52 a 56 / XXL), apresentando porte físico grande, pesado e robusto, com volume adiposo evidente:
+- Tronco largo e volumoso, peitoral cheio e abdômen arredondado proeminente (nunca barriga tanquinho ou chapada).
+- Braços grossos e cheios, ombros largos e pernas grossas e pesadas.
+- Textura humana hiper-realista com poros visíveis, dobras naturais de tecido adiposo e caimento real da roupa sobre o corpo grande.`;
+
+export const MASTER_PROMPTS_GALLERY: AnaMariaMasterPromptItem[] = [
+  {
+    id: 'mestra_ana_maria',
+    number: 1,
+    shortName: '01. Mestra Ana Maria',
+    cardTitle: '01. MESTRA ANA MARIA — FRENTE + ELASTICIDADE + GIRO 3/4',
+    objective:
+      'Objetivo: mostrar o produto inteiro de frente, demonstrar a elasticidade na cintura e girar 3/4 exibindo a silhueta.',
+    videoUrl:
+      'https://excursaomdr.s3.sa-east-1.amazonaws.com/VIDEOS+GALERIA+AURORA/PROMPT+ANA+MARIA-+BY+GPT+LEU+O+VIDEO+ORIGINAL+OTIMO.mp4',
+    categories: ['mirror_selfie'],
+    primaryCategory: 'mirror_selfie',
+    bodyStandardText: `Corpo feminino com silhueta ampulheta bem definida, curvas evidentes e proporções anatomicamente naturais:
+- Cintura estreita, visivelmente marcada e proporcional ao restante do corpo.
+- Quadris largos, arredondados e bem desenhados, com diferença visual perceptível entre cintura e quadril.
+- Glúteos naturalmente volumosos e arredondados.
+- Coxas cheias, volumosas e proporcionais ao quadril.
+- Busto de médio a cheio, abdômen com aparência natural (sem aspecto artificialmente chapado ou fisiculturista) e braços proporcionais.`,
+    skinAndRealismText: `Pele clara a morena-clara com subtom neutro ou levemente quente e textura fotográfica humana verdadeira:
+- Poros discretamente perceptíveis, microtexturas naturais da pele, pequenas variações de tonalidade e dobras reais nas articulações.
+- PROIBIDO pele de plástico, efeito porcelana, efeito boneca ou brilho oleoso exagerado.`,
+    hairIdentityText: `Cabelo feminino natural e fotográfico (cabelos longos castanho-escuros levemente ondulados por padrão, permitindo variações naturais conforme solicitado pelo usuário).`,
+    accessoriesIdentityText: `Acessórios femininos delicados predominantemente dourados (Identidade Mestra Ana Maria):
+- COLARES: 2 a 3 correntes douradas delicadas em camadas no colo (choker fina + corrente média com pequenos detalhes pendentes + corrente longa com pequeno pingente medalhão oval dourado).
+- PULSEIRAS: Uma pulseira de corrente dourada fina e delicada em cada pulso, com pequena correntinha extensora pendente.
+- ANÉIS: Anéis femininos delicados nos dedos (sem anéis grandes ou chamativos).
+- UNHAS: Bem cuidadas, comprimento curto a médio, esmalte nude, rosado claro ou natural.`,
+    lightingAndCameraText: `Fotografia vertical 9:16 espontânea de smartphone diante do espelho, câmera na altura do tórax, iluminação ambiente suave, difusa e realista com exposição equilibrada e sombras naturais.`,
+    movementPromptText: `Create a 10-second ultra-photorealistic vertical 9:16 mirror-selfie fashion video. Use the attached reference image as the absolute visual starting point.
+
+The animation must reproduce the following exact sequence of movements in one continuous, natural recording.
+
+**IDENTITY AND PRODUCT PRESERVATION**
+
+Preserve exactly the same model, body shape, proportions, skin, hair, clothing, garment color, neckline, fabric, seams, texture, accessories, smartphone, mirror, room and lighting from the reference image.
+
+Do not redesign, modify, replace or reinterpret any part of the clothing. The garment must remain identical throughout the entire video.
+
+**FACE AND CAMERA FRAMING (STRICT CHIN-DOWN & ANTI-UPWARD TILT LOCK)**
+
+Never reveal the model's face. Maintain the original framing strictly from the bottom base of the chin downward throughout all 10 seconds, exactly as shown in the reference image.
+The lips, mouth, nose, eyes and upper face MUST REMAIN 100% OUT OF FRAME throughout the entire recording.
+The camera must remain anchored at chest level and must NEVER tilt upward or drift above the base of the chin, especially during the 8.5–10s rotation.
+
+She holds the smartphone in one hand throughout the entire recording. The phone remains in front of the mirror, maintaining the original mirror-selfie composition.
+
+**EXACT MOVEMENT CHOREOGRAPHY**
+
+0–1 SECOND:
+The woman starts standing naturally in front of the mirror, holding her phone with one hand. Her free arm hangs relaxed beside her body.
+
+1–2 SECONDS:
+She slowly raises her free hand toward her chest and gently places her fingers on the upper bust area, making natural contact with the fabric.
+
+2–4 SECONDS:
+She slowly slides her open palm down across the front of the garment, moving from the bust toward the abdomen and waist. Her hand continues downward toward the hip and upper thigh, following the body's natural contours.
+
+4–5 SECONDS:
+She continues the gentle downward movement, briefly touching the lower abdomen and hip area, demonstrating how the garment fits against the body.
+
+5–7.5 SECONDS:
+She brings her free hand back toward the side of her waist, pinches a small section of the garment fabric between her fingers and gently pulls the material outward several times in short, subtle movements, demonstrating the fabric's elasticity and fitted construction. She releases the fabric naturally.
+
+7.5–8.5 SECONDS:
+She moves her free arm outward and slightly away from her body while beginning to shift her weight and reposition her feet.
+
+8.5–10 SECONDS:
+She gradually rotates her torso and hips into a three-quarter side profile, turning approximately 70–90 degrees relative to her original frontal position. She keeps holding the smartphone and maintains the mirror-selfie posture. Her final position clearly displays the side silhouette, waist, hips and rear fit of the garment. She does not turn completely away from the mirror.
+
+**BODY LANGUAGE AND NATURALISM**
+
+All movements must look like a real woman casually recording a fashion demonstration in front of a mirror.
+Maintain realistic body mechanics, natural hand articulation, subtle weight transfers and believable fabric movement.
+The woman must not make exaggerated gestures, dance, walk away, or perform additional movements not specified in the choreography.
+
+**CAMERA AND VISUAL STYLE**
+
+Maintain a realistic smartphone mirror recording, with stable framing and only very subtle natural handheld movement.
+No cinematic camera movements, no zooms, no cuts, no transitions and no changes in the environment.
+The entire sequence must happen in one uninterrupted take.
+No visible face, no lips, no speech, no subtitles, no captions, no added graphics, no logos or watermarks.
+
+**FINAL PRIORITY:**
+Reproduce the exact movement sequence and timing described above while preserving the original reference image. The movements must be natural, fluid and realistic. The clothing must remain visually identical to the reference image in every frame.`,
+  },
+  {
+    id: 'mestra_iara',
+    number: 2,
+    shortName: '02. Mestra Iara Vitrine',
+    cardTitle: '02. MESTRA IARA — ELASTICIDADE + ALISAMENTO + PERFIL LATERAL',
+    objective:
+      'Objetivo: puxar lateral mostrando elasticidade, alisar do abdômen ao busto e girar de perfil mostrando caimento.',
+    videoUrl:
+      'https://excursaomdr.s3.sa-east-1.amazonaws.com/VIDEOS+GALERIA+AURORA/VIDEO+MESTRE+IARA+VITRINE.mp4',
+    categories: ['mirror_selfie'],
+    primaryCategory: 'mirror_selfie',
+    bodyStandardText: `Silhueta feminina curvilínea em formato ampulheta com proporções anatomicamente naturais (Padrão Mestra Iara):
+- Cintura visivelmente marcada e estreita em relação aos quadris.
+- Quadris largos, arredondados e bem definidos.
+- Glúteos naturalmente volumosos e arredondados.
+- Coxas volumosas, cheias e proporcionais ao quadril.
+- Busto de médio a cheio, abdômen natural e transição orgânica entre cintura, quadril e coxas.`,
+    skinAndRealismText: `Pele clara a morena-clara com subtom neutro ou levemente quente, textura humana realista com poros discretamente perceptíveis e dobras naturais. Proibido pele artificialmente lisa, efeito plástico ou porcelana.`,
+    hairIdentityText: `CARACTERÍSTICA FIXA DA MESTRA IARA — CABELO CACHEADO ESCURO:
+- Cabelo comprido abaixo dos ombros (até a região das costas).
+- Tonalidade castanho-escura a preta.
+- Cachos naturais e bem definidos, textura cacheada com movimento, volume natural e fios realistas.`,
+    accessoriesIdentityText: `ACESSÓRIOS EXCLUSIVOS DA MESTRA IARA (OBRIGATÓRIO):
+- COLAR ÚNICO: Exatamente UM único colar delicado de corrente fina dourada com pequeno pingente em formato de coração centralizado na região do colo (NUNCA adicionar vários colares sobrepostos).
+- PULSEIRAS: Obrigatoriamente UMA pulseira fina e delicada dourada em CADA pulso (nos dois pulsos).
+- ANÉIS (PROIBIDO): AUSÊNCIA TOTAL DE ANÉIS. Não colocar nenhum anel ou aliança nos dedos em nenhuma circunstância.
+- UNHAS: Naturais e bem cuidadas, comprimento curto a médio, esmalte nude, rosado ou natural.`,
+    lightingAndCameraText: `Fotografia vertical 9:16 espontânea feita por smartphone diante do espelho, iluminação ambiente suave, difusa e equilibrada.`,
+    movementPromptText: `Vídeo vertical 9:16 de 10 segundos hiper-realista. Use a imagem de referência anexada como ponto de partida visual absoluto e reproduza rigorosamente a sequência de movimentos descrita abaixo, respeitando a ordem, o tempo, a continuidade e a naturalidade de cada gesto.
+
+**PRESERVAÇÃO DE IDENTIDADE E PRODUTO:**
+Preservar exatamente a mesma modelo da imagem de referência (incluindo seu cabelo longo escuro cacheado, colar único com pingente de coração, uma pulseira dourada em cada pulso e ausência total de anéis), o mesmo cenário e 100% da construção, cor, tecido, costuras e detalhes da roupa anexada.
+
+**REGRA ABSOLUTA DE ENQUADRAMENTO (CORTE NO QUEIXO — SEM ROSTO E SEM LÁBIOS):**
+O rosto e os lábios nunca devem aparecer. Manter permanentemente o enquadramento rigoroso da base do queixo para baixo durante todos os 10 segundos, sem revelar boca, lábios, nariz, olhos ou rosto completo. A câmera deve permanecer travada na altura do tórax e jamais inclinar para cima.
+
+**SEQUÊNCIA DE MOVIMENTOS — CRONOLOGIA OBRIGATÓRIA:**
+
+**0s–1,5s — Demonstração de elasticidade:**
+Com a mão livre inicialmente posicionada na região do abdômen, deslizar a mão até a lateral da peça. Segurar delicadamente o tecido pela extremidade lateral e puxá-lo horizontalmente para fora, afastando-o do corpo. Manter o tecido esticado por um breve instante e depois soltá-lo suavemente, permitindo que retorne naturalmente à posição original.
+
+**1,5s–3,5s — Demonstração frontal:**
+Após soltar o tecido, retornar a mão à região abdominal e deslizá-la lentamente para cima, passando a palma suavemente pela parte frontal da peça em direção à região do busto. Realizar um movimento natural de alisamento do tecido, finalizando com a mão próxima à região central superior da peça.
+
+**3,5s–5,5s — Giro lateral:**
+Afastar a mão da parte frontal e iniciar uma rotação gradual do corpo para um ângulo de três quartos, continuando até alcançar uma posição de perfil lateral. O quadril e os ombros devem girar juntos, com pequenos ajustes naturais dos pés para completar a rotação. Deixar os braços relaxados durante o movimento.
+
+**5,5s–6,5s — Apresentação lateral:**
+Manter a posição de perfil lateral por aproximadamente um segundo. Fazer uma discreta transferência de peso entre as pernas, mantendo a postura natural e permitindo visualizar o caimento lateral da peça. Evitar movimentos exagerados.
+
+**6,5s–7,5s — Retorno frontal:**
+Girar suavemente o corpo de volta para a posição frontal, reposicionando os pés naturalmente. Durante o retorno, levar a mão livre até a região abdominal e deslizar suavemente a palma sobre a parte frontal da peça.
+
+**7,5s–9,5s — Pose frontal:**
+Permanecer de frente, relaxar o braço livre ao lado do corpo e realizar pequenos ajustes naturais de postura. Transferir discretamente o peso entre as pernas. Fazer um pequeno movimento com a mão próximo à lateral do quadril, mantendo a pose frontal e valorizando visualmente o caimento da peça.
+
+**9,5s–10s — Pose final:**
+Iniciar uma nova rotação suave do corpo para uma posição de três quartos, deixando o quadril acompanhar o movimento. Levar a mão livre novamente à região abdominal e finalizar mantendo a pose levemente lateralizada.
+
+**REGRAS DE EXECUÇÃO:**
+- Reproduzir os movimentos na ordem e nos intervalos estabelecidos, em um único take contínuo sem cortes.
+- Todos os gestos devem ser suaves, naturais e realistas, com velocidade humana natural.
+- Não modificar o enquadramento para revelar o rosto ou lábios.
+- Manter a mão que segura o celular em sua posição durante toda a sequência.
+- Vídeo 100% silencioso (sem fala, sem locução, sem legendas ou textos na tela).`,
+  },
+  {
+    id: 'mestra_duda',
+    number: 3,
+    shortName: '03. Mestra Duda',
+    cardTitle: '03. MESTRA DUDA — EXPLORAÇÃO TÁTIL ESPONTÂNEA + GIRO SUAVE',
+    objective:
+      'Objetivo: demonstração comercial fluida explorando frente, cintura e quadril com as mãos e giro lateral suave.',
+    videoUrl:
+      'https://excursaomdr.s3.sa-east-1.amazonaws.com/VIDEOS+GALERIA+AURORA/VIDEO+MESTRE+DUDA+BY+5+VIDEOS.mp4',
+    categories: ['mirror_selfie'],
+    primaryCategory: 'mirror_selfie',
+    bodyStandardText: `Silhueta feminina curvilínea em formato ampulheta com proporções anatômicas naturais (Padrão Mestra Duda):
+- Cintura bem marcada, visivelmente mais estreita que os quadris.
+- Quadris arredondados e definidos, glúteos naturalmente volumosos e coxas cheias e proporcionais.
+- Busto de médio a cheio, braços relativamente esguios e ombros harmoniosos.`,
+    skinAndRealismText: `Pele clara a clara-média com subtom neutro ou levemente quente, textura humana realista com poros discretamente perceptíveis e variações naturais. Proibido pele plástica ou efeito porcelana.`,
+    hairIdentityText: `CARACTERÍSTICA DA MESTRA DUDA — CABELO LISO CASTANHO-CLARO A MÉDIO:
+- Cabelo comprido abaixo dos ombros (até a região das costas), textura predominantemente lisa com leve ondulação natural nas pontas.
+- Tonalidade castanho-claro a castanho-médio com reflexos/mechas discretamente mais claras.`,
+    accessoriesIdentityText: `Acessórios delicados predominantemente dourados (Identidade Mestra Duda):
+- COLAR: Um único colar delicado de corrente fina dourada com pequeno pingente centralizado (coração, medalhinha ou ponto de luz minimalista) próximo à base do pescoço.
+- PULSEIRAS: Pulseiras finas e delicadas douradas nos pulsos.
+- ANÉIS: Anéis delicados dourados/metálicos discretos nos dedos.
+- UNHAS: Bem cuidadas, comprimento curto a médio, esmalte nude, rosado ou natural.`,
+    lightingAndCameraText: `Fotografia vertical 9:16 espontânea de smartphone diante do espelho, iluminação ambiente suave, difusa e realista.`,
+    movementPromptText: `Crie um vídeo vertical 9:16 hiper-realista de 10 segundos de demonstração da peça com movimentos naturais, espontâneos e fluidos, seguindo o estilo de demonstração comercial de moda da Mestra Duda. Use a imagem de referência anexada como ponto de partida visual absoluto.
+
+**PRESERVAÇÃO DE IDENTIDADE E PRODUTO:**
+Preservar integralmente a mesma modelo da imagem de referência (cabelo comprido liso castanho-claro a médio, colar único delicado, pulseiras e anéis delicados), o mesmo cenário e 100% da roupa original sem modificar cores, modelagem, costuras, estampas ou acabamentos.
+
+**PADRÃO DE DEMONSTRAÇÃO:**
+A demonstração deve ser feita principalmente por meio de movimentos delicados das mãos sobre a peça, combinados com pequenas mudanças naturais de postura, quadril e posicionamento corporal.
+
+**1. EXPLORAÇÃO DA PEÇA COM AS MÃOS**
+Utilize a mão livre para demonstrar visualmente a roupa. Faça movimentos naturais de contato com o tecido, utilizando a palma e os dedos para percorrer diferentes regiões da peça.
+Alterne de forma fluida entre:
+- Tocar delicadamente a parte frontal da roupa.
+- Deslizar a mão sobre o tecido, em movimentos verticais ou horizontais suaves.
+- Percorrer a região superior, central e inferior da peça.
+- Passar suavemente pela cintura, quadril e laterais mostrando a modelagem.
+- Fazer pequenos gestos de apresentação dos detalhes e do caimento, afastando momentaneamente a mão e reposicionando-a naturalmente.
+
+**2. MOVIMENTAÇÃO CORPORAL**
+Enquanto demonstra a peça, realizar pequenas mudanças naturais de postura:
+- Transferir suavemente o peso de uma perna para outra.
+- Fazer movimentos discretos de quadril e pequenas rotações do tronco.
+- Realizar um giro parcial e suave (3/4) para apresentar o caimento lateral da roupa, retornando naturalmente à posição frontal.
+
+**3. NATURALIDADE, CÂMERA E FIDELIDADE**
+- Os movimentos devem ser delicados, seguros e naturais; as mãos devem tocar efetivamente o tecido sem deformar ou esticar exageradamente a roupa.
+- Manter o enquadramento e a posição da câmera estáveis durante toda a demonstração, em um único take contínuo sem cortes, zooms ou transições.
+
+**4. ÁUDIO — SEM FALA**
+- NÃO HÁ FALA, NÃO HÁ DIÁLOGOS, NÃO HÁ NARRAÇÃO E NÃO HÁ LOCUÇÃO.
+- O vídeo deve ser exclusivamente uma demonstração visual e silenciosa da peça.`,
+  },
+  {
+    id: 'mestra_nay',
+    number: 4,
+    shortName: '04. Mestra Nay Vitrine',
+    cardTitle: '04. MESTRA NAY — DESLIZAMENTO CONTÍNUO DE CIMA PARA BAIXO',
+    objective:
+      'Objetivo: demonstração contínua deslizando a mão da parte superior até o quadril e coxa sob iluminação clara.',
+    videoUrl:
+      'https://excursaomdr.s3.sa-east-1.amazonaws.com/VIDEOS+GALERIA+AURORA/VIDEO+MESTRE+NAY+VITRINE.mp4',
+    categories: ['mirror_selfie', 'com_rosto'],
+    primaryCategory: 'mirror_selfie',
+    bodyStandardText: `Silhueta feminina curvilínea em formato ampulheta com forte contraste entre cintura e quadril (Padrão Mestra Nay):
+- Cintura estreita, bastante definida e visivelmente marcada.
+- Quadris largos, arredondados e proporcionais, glúteos naturalmente volumosos e coxas cheias.
+- Busto de médio a cheio e braços relativamente esguios e proporcionais.`,
+    skinAndRealismText: `Pele clara a morena-clara com subtom neutro ou levemente quente, textura humana realista com poros discretamente perceptíveis e dobras anatômicas naturais. Proibido pele plástica ou porcelana.`,
+    hairIdentityText: `CARACTERÍSTICA FIXA DA MESTRA NAY — CABELO LONGO ESCURO LISO COM DIVISÃO CENTRAL:
+- Cabelo comprido abaixo dos ombros (até as costas), tonalidade castanho-escura a preta.
+- Textura predominantemente lisa, divisão central, caimento reto e alinhado com brilho natural.`,
+    accessoriesIdentityText: `Acessórios delicados e minimalistas (Identidade Mestra Nay):
+- PULSEIRAS (OBRIGATÓRIO NOS DOIS PULSOS): Pulseiras finas e delicadas de corrente dourada nos DOIS pulsos.
+- ANÉIS: Anéis finos e delicados dourados nos dedos.
+- COLARES: Sem colar obrigatório (colo limpo ou no máximo uma corrente extremamente fina e discreta quando necessário).
+- UNHAS: Comprimento médio a médio-longo, formato oval ou levemente amendoado, esmalte rosado, nude ou natural.`,
+    lightingAndCameraText: `ILUMINAÇÃO PADRÃO CLARO E NATURAL DA MESTRA NAY:
+- Iluminação ambiente interna clara, luz frontal suave e difusa, exposição equilibrada e sombras discretas, sem escurecimento artificial do fundo e sem flash estourado.`,
+    movementPromptText: `Crie um vídeo vertical 9:16 hiper-realista de 10 segundos com uma demonstração comercial da peça com movimentos naturais, delicados e contínuos, seguindo o estilo de apresentação da referência Mestra Nay. Use a imagem de referência anexada como ponto de partida visual absoluto.
+
+**PRESERVAÇÃO DE IDENTIDADE E PRODUTO:**
+Preservar integralmente a mesma modelo da imagem de referência (cabelo longo escuro e liso, pulseiras douradas delicadas nos dois pulsos, iluminação clara e natural), o mesmo cenário e 100% da peça original sem modificar cores, modelagem, costuras, estampas ou acabamentos.
+
+**SEQUÊNCIA DE DEMONSTRAÇÃO:**
+1. Iniciar mantendo uma postura natural de apresentação diante do espelho, com pequenas mudanças de apoio e posicionamento corporal.
+2. Elevar gradualmente a mão livre em direção à parte superior frontal da peça.
+3. Apoiar delicadamente a palma e os dedos sobre o tecido, realizando um movimento natural de contato e demonstração.
+4. Em seguida, deslizar a mão continuamente da região superior em direção ao abdômen, mantendo contato suave com o tecido.
+5. Continuar o percurso descendente, passando pela região abdominal inferior e cintura.
+6. Prosseguir com a mão em direção ao quadril e à região superior da coxa, demonstrando o caimento da peça por meio de um movimento suave e contínuo.
+7. Finalizar afastando naturalmente a mão do tecido, mantendo uma postura descontraída.
+
+**MOVIMENTAÇÃO CORPORAL E ESTILO DOS GESTOS:**
+- Fazer pequenas transferências naturais de peso entre as pernas e movimentos discretos de quadril.
+- Preservar a orientação predominantemente frontal, evitando giros exagerados ou mudanças bruscas.
+- Priorizar movimentos contínuos de cima para baixo com a palma e os dedos, sem puxar ou deformar a roupa.
+- Manter a câmera estável em um único take contínuo, sem cortes ou transições.
+
+**ÁUDIO — AUSÊNCIA TOTAL DE FALA:**
+- NÃO HÁ FALA, NÃO HÁ DIÁLOGOS, NÃO HÁ NARRAÇÃO E NÃO HÁ LOCUÇÃO.
+- NÃO SIMULAR CONVERSAÇÃO E NÃO MOVIMENTAR A BOCA COMO SE ESTIVESSE FALANDO.
+- O vídeo deve ser exclusivamente uma demonstração visual e silenciosa.`,
+  },
+  {
+    id: 'mestra_catza',
+    number: 5,
+    shortName: '05. Mestra Catza (Flash / Com Rosto)',
+    cardTitle: '01. MESTRA CATZA — COM ROSTO & FLASH DIRETO NO ESPELHO',
+    objective:
+      'Objetivo: apresentação UGC no espelho com flash traseiro ligado, fundo mais escuro e foco na parte superior e cintura.',
+    videoUrl:
+      'https://excursaomdr.s3.sa-east-1.amazonaws.com/VIDEOS+GALERIA+AURORA/VIDEO+VITRINE+MESTRE+CATZA+COM+ROSTO.mp4',
+    categories: ['com_rosto', 'mirror_selfie'],
+    primaryCategory: 'com_rosto',
+    preferredScenarioId: 'cenario_24',
+    allowsFaceByDefault: true,
+    bodyStandardText: `Silhueta feminina esguia e curvilínea em formato ampulheta com proporções anatômicas naturais (Padrão Mestra Catza):
+- Cintura bem definida e marcada, quadris arredondados e proporcionais, glúteos naturalmente arredondados e coxas com volume proporcional.
+- Busto de médio a cheio, abdômen natural e braços relativamente finos e proporcionais.`,
+    skinAndRealismText: `Pele clara-média a morena-clara com subtom predominantemente quente, textura humana realista com poros discretamente perceptíveis. O flash deve iluminar a pele de maneira fotográfica e realista, sem aparência plástica ou oleosa.`,
+    hairIdentityText: `CARACTERÍSTICA FIXA DA MESTRA CATZA — CABELO LONGO PRETO/CASTANHO MUITO ESCURO E LISO:
+- Cabelo comprido abaixo dos ombros (até as costas), tonalidade preta ou castanho muito escuro, textura predominantemente lisa com divisão central e caimento natural ao redor dos ombros.`,
+    faceAndMakeupText: `ROSTO E MAQUIAGEM DA MESTRA CATZA (QUANDO NO MODO COM ROSTO / UGC):
+- Rosto feminino delicado, jovem e harmonioso com traços faciais proporcionais.
+- Sobrancelhas escuras e bem definidas, olhos com maquiagem marcada, cílios destacados e delineado escuro.
+- Lábios naturalmente volumosos com batom nude, marrom-rosado ou rosado de acabamento levemente brilhante (gloss discreto).`,
+    accessoriesIdentityText: `Acessórios delicados dourados (Identidade Mestra Catza):
+- COLAR: Um único colar delicado de corrente fina dourada com pequeno pingente centralizado.
+- PULSEIRAS: Pulseiras finas e delicadas douradas nos pulsos.
+- ANÉIS: Anéis delicados dourados/metálicos discretos.
+- UNHAS: Comprimento curto a médio, esmalte nude, rosado ou vermelho.`,
+    lightingAndCameraText: `ASSINATURA FOTOGRÁFICA OBRIGATÓRIA DA MESTRA CATZA — FLASH DIRETO DE SMARTPHONE E FUNDO SUBEXPOSTO:
+- Fotografia vertical 9:16 de espelho feita com smartphone utilizando o FLASH TRASEIRO ATIVADO apontado para o espelho (com reflexo luminoso realista do flash próximo à câmera do celular).
+- Luz frontal direta do flash destacando nitidamente a modelo e a roupa em primeiro plano.
+- O ambiente ao fundo deve apresentar exposição ligeiramente reduzida (fundo um pouco mais escuro com sombras ambientais mais profundas), criando contraste autêntico entre a modelo iluminada pelo flash e o cômodo ao fundo.`,
+    movementPromptText: `Crie um vídeo vertical 9:16 hiper-realista de 10 segundos de demonstração comercial de moda com movimentos naturais, delicados e espontâneos, seguindo o estilo de apresentação da referência Mestra Catza. Use a imagem de referência anexada como ponto de partida visual absoluto.
+
+**PRESERVAÇÃO DE IDENTIDADE, ILUMINAÇÃO COM FLASH E PRODUTO:**
+Preservar integralmente a modelo da imagem de referência (cabelo longo escuro e liso, acessórios delicados, iluminação característica com flash direto do smartphone ligado no espelho e ambiente ao fundo ligeiramente mais escuro) e 100% da roupa original sem modificar cores, modelagem, costuras, estampas ou acabamentos.
+
+**HIERARQUIA DE MOVIMENTOS — ORDEM DE PREFERÊNCIA:**
+
+**PRIORIDADE 1 — MOVIMENTOS NA PARTE SUPERIOR (IDENTIDADE PRINCIPAL):**
+Privilegiar gestos delicados com a mão livre na parte superior da peça:
+- Elevar a mão livre em direção à região superior frontal da roupa.
+- Tocar suavemente o tecido com os dedos e a palma, fazendo pequenos deslizamentos sobre o colo, decote, ombros ou acabamento superior da peça.
+- Alternar de forma espontânea entre tocar o tecido e afastar momentaneamente a mão, descendo suavemente em direção à cintura.
+
+**PRIORIDADE 2 — MOVIMENTOS COMPLEMENTARES NO ABDÔMEN E CINTURA:**
+- Deslizar a mão da região superior em direção ao abdômen e tocar delicadamente a cintura, demonstrando o ajuste e o caimento do tecido no corpo.
+
+**PRIORIDADE 3 — AJUSTES SUTIS NA PARTE INFERIOR:**
+- Fazer apenas toques ou ajustes sutis na barra, quadril ou coxa quando adequado à peça, sem puxar ou deformar a roupa.
+
+**MOVIMENTAÇÃO CORPORAL E CÂMERA:**
+- Incorporar pequenas mudanças naturais de postura: transferência suave de peso entre as pernas, discretos ajustes de quadril e ombros, privilegiando a apresentação frontal e diagonal suave (sem giros completos).
+- Manter a câmera estável em um único take contínuo, sem cortes ou transições.
+
+**ÁUDIO — AUSÊNCIA TOTAL DE FALA:**
+- NÃO HÁ FALA, NÃO HÁ DIÁLOGOS, NÃO HÁ NARRAÇÃO E NÃO HÁ LOCUÇÃO.
+- NÃO SIMULAR CONVERSAÇÃO E NÃO MOVIMENTAR A BOCA COMO SE ESTIVESSE FALANDO.
+- O vídeo deve ser exclusivamente uma demonstração visual e silenciosa.`,
+  },
+  {
+    id: 'pov_cinta_85k',
+    number: 6,
+    shortName: '01. POV Cinta 85K (Unhas Vermelhas)',
+    cardTitle: '01. MESTRA POV 85K — UNBOXING + COMPARAÇÃO DE 2 PEÇAS',
+    objective:
+      'Objetivo: demonstração POV na cama retirando embalagem plástica, apresentando 2 cores lado a lado e apontando detalhes.',
+    videoUrl:
+      'https://excursaomdr.s3.sa-east-1.amazonaws.com/VIDEOS+GALERIA+AURORA/CINTA+85K.mp4',
+    categories: ['pov'],
+    primaryCategory: 'pov',
+    preferredScenarioId: 'cenario_pov_1',
+    isPov: true,
+    bodyStandardText: `ENQUADRAMENTO EXCLUSIVO POV (PRIMEIRA PESSOA — SOMENTE MÃOS E ANTEBRAÇOS):
+- A modelo NÃO deve aparecer (não mostrar rosto, cabeça, tronco, cabelo ou pernas).
+- Mostrar exclusivamente duas mãos femininas adultas jovens e delicadas e parte dos antebraços entrando pela parte inferior do enquadramento sobre a cama.`,
+    skinAndRealismText: `Mãos femininas delicadas e proporcionais com dedos relativamente longos, pele clara a morena-clara de subtom levemente quente, textura humana realista com poros e pequenas linhas naturais nas articulações.`,
+    hairIdentityText: `Sem cabelo visível (enquadramento POV 90 graus voltado para a cama).`,
+    accessoriesIdentityText: `IDENTIDADE VISUAL DAS MÃOS — MESTRA POV 85K:
+- UNHAS (PRIORIDADE MÁXIMA): Esmalte VERMELHO VIVO intenso e brilhante, comprimento curto a médio, formato quadrado com cantos suavemente arredondados, manicure impecável.
+- PULSEIRAS DOURADAS ASSIMÉTRICAS: No pulso direito, composição de 2 a 3 pulseiras finas douradas delicadas sobrepostas com pequenos pingentes; no pulso esquerdo, 1 pulseira fina dourada minimalista.
+- ANÉIS: Anéis finos e delicados dourados em diferentes dedos.
+- TATUAGENS MINIMALISTAS: Pequenos desenhos geométricos em traço fino e discreto na região do punho/antebraço e dorso da mão esquerda.`,
+    lightingAndCameraText: `Câmera posicionada diretamente acima da cama em ângulo superior POV de 90 graus (formato vertical 9:16), iluminação clara, suave e difusa com sombras naturais.`,
+    movementPromptText: `Crie um vídeo vertical hiper-realista 9:16 de 10 segundos, em estilo POV (Point of View em primeira pessoa, câmera fixa a 90 graus acima da cama), reproduzindo fielmente a sequência de unboxing e demonstração manual descrita abaixo. Use a imagem inicial anexada como referência soberana.
+
+**1. PRODUTOS DE REFERÊNCIA E REGRA INEGOCIÁVEL DE CONSTRUÇÃO:**
+Reproduzir os dois produtos sobre a cama com fidelidade absoluta às imagens originais.
+- Não abrir ou desdobrar partes que não estejam naturalmente abertas na referência.
+- Não criar aberturas, compartimentos, botões, fechos, zíperes ou costuras inexistentes.
+- Não esticar ou deformar o produto. Manter exatamente a construção original.
+
+**2. MÃOS E ACESSÓRIOS (IDENTIDADE MESTRA POV 85K):**
+Mostrar exclusivamente duas mãos femininas e antebraços entrando pela parte inferior do enquadramento:
+- Pele clara a morena-clara com textura realista.
+- Unhas com esmalte vermelho vivo e brilhante (formato quadrado arredondado).
+- Anéis finos dourados nos dedos, 2 a 3 pulseiras douradas delicadas no pulso direito e 1 pulseira fina dourada no pulso esquerdo, além de pequenas tatuagens minimalistas de traço fino próximas ao pulso/mão esquerda.
+
+**3. COREOGRAFIA — 10 SEGUNDOS:**
+
+**0–1,5s — RETIRADA DA EMBALAGEM:**
+Começar com os dois produtos sobre a cama. Se houver embalagem plástica transparente sobre eles, uma mão estabiliza os produtos enquanto a outra puxa a embalagem plástica diagonalmente para fora e a afasta para a lateral esquerda; caso já estejam sem plástico na foto inicial, iniciar segurando suavemente os dois produtos pelas laterais no centro da cama.
+
+**1,5–3s — APRESENTAÇÃO DO PRIMEIRO PRODUTO:**
+Segurar o primeiro produto pelas extremidades laterais e levantá-lo da superfície, apresentando sua parte frontal à câmera e mantendo sua estrutura original intacta.
+
+**3–4s — POSICIONAMENTO:**
+Devolver o primeiro produto à superfície na região esquerda do enquadramento e passar suavemente as mãos sobre sua superfície para alisar o tecido.
+
+**4–5s — DEMONSTRAÇÃO DO PRIMEIRO PRODUTO:**
+Segurar delicadamente as laterais do primeiro produto, levantá-lo ligeiramente mostrando seu acabamento original sem esticar ou deformar, e devolvê-lo à superfície.
+
+**5–6,5s — APRESENTAÇÃO DO SEGUNDO PRODUTO:**
+Alcançar o segundo produto com as duas mãos e levantá-lo da superfície, apresentando-o de frente para a câmera com sua modelagem e estrutura originais.
+
+**6,5–7,5s — COMPARAÇÃO LADO A LADO:**
+Posicionar os dois produtos lado a lado sobre a cama e passar delicadamente as mãos sobre suas superfícies.
+
+**7,5–8,5s — DEMONSTRAÇÃO DOS DETALHES:**
+Manter uma mão apoiada sobre o primeiro produto e, com o dedo indicador da outra mão, apontar e percorrer detalhes reais do segundo produto.
+
+**8,5–9s — AFASTAMENTO DO PRIMEIRO PRODUTO:**
+Deslocar o primeiro produto para a lateral esquerda mentre a outra mão mantém o segundo produto organizado.
+
+**9–10s — APRESENTAÇÃO FINAL:**
+Centralizar o segundo produto sobre a cama, segurar delicadamente suas extremidades laterais fazendo um pequeno ajuste de posicionamento e finalizar com ele centralizado e íntegro.
+
+**4. CÂMERA E ÁUDIO:**
+- Vertical 9:16, 10 segundos, câmera fixa em visão superior de 90 graus, sem cortes, sem zoom e sem textos na tela.
+- ÁUDIO: 100% silencioso (SEM FALA, sem diálogos, sem narração ou locução).`,
+  },
+  {
+    id: 'pov_blusinhas_13k',
+    number: 7,
+    shortName: '02. POV 2 Peças 13K (Unhas Vinho Escuro)',
+    cardTitle: '02. MESTRA POV 13K — DEMONSTRAÇÃO TÁTIL DE 2 PEÇAS NA CAMA',
+    objective:
+      'Objetivo: demonstração POV segurando e alternando 2 peças completas na cama com toque tátil no tecido.',
+    videoUrl:
+      'https://excursaomdr.s3.sa-east-1.amazonaws.com/VIDEOS+GALERIA+AURORA/POV+DE+13K.mp4',
+    categories: ['pov'],
+    primaryCategory: 'pov',
+    preferredScenarioId: 'cenario_pov_2',
+    isPov: true,
+    bodyStandardText: `ENQUADRAMENTO EXCLUSIVO POV (PRIMEIRA PESSOA — SOMENTE MÃOS E ANTEBRAÇOS):
+- A modelo NÃO deve aparecer (não mostrar rosto, cabeça, tronco, cabelo ou pernas).
+- Mostrar exclusivamente duas mãos femininas adultas delicadas, punhos e parte dos antebraços entrando pela parte inferior do enquadramento sobre a cama.`,
+    skinAndRealismText: `Mãos femininas de aparência jovem adulta com dedos relativamente finos e alongados, pele clara a morena-clara com textura humana realista, poros discretos e dobras naturais nas articulações.`,
+    hairIdentityText: `Sem cabelo visível (enquadramento POV superior sobre a cama).`,
+    accessoriesIdentityText: `IDENTIDADE VISUAL DAS MÃOS — MESTRA POV 13K:
+- UNHAS (CARACTERÍSTICA PRINCIPAL): Unhas compridas em formato AMENDOADO ALONGADO com pontas afiladas, esmalte VINHO MUITO ESCURO (bordô profundo próximo do preto) com acabamento brilhante uniforme.
+- PULSEIRAS PRATEADAS ASSIMÉTRICAS: Duas pulseiras finas de corrente prateada delicada em um pulso e uma pulseira fina prateada no outro pulso.
+- ANÉIS PRATEADOS: Anéis finos e minimalistas prateados nos dedos (sem joias douradas e sem pedras grandes).`,
+    lightingAndCameraText: `Câmera posicionada em visão superior POV (formato vertical 9:16) voltada para a cama do cenário selecionado, iluminação natural realista destacando a textura das duas peças e das mãos.`,
+    movementPromptText: `Vídeo vertical hiper-realista 9:16, com duração de 10 a 12 segundos, em perspectiva POV (Point of View em primeira pessoa), reproduzindo uma demonstração natural de duas peças de roupa feita exclusivamente pelas mãos de uma pessoa sobre a cama.
+
+**1. REGRA MÁXIMA — FIDELIDADE ABSOLUTA E EXATAMENTE DUAS PEÇAS COMPLETAS:**
+A imagem inicial anexada é a referência visual soberana e imutável das duas peças de roupa.
+- Durante todo o vídeo devem existir EXATAMENTE DUAS PEÇAS DE ROUPA COMPLETAS, independentes e indivisíveis.
+- É terminantemente proibido criar uma terceira peça, deixar retalhos/fragmentos/sobras de tecido sobre a cama ao levantar uma peça, ou modificar cores, corte, decote, costuras e detalhes originais.
+- Quando uma peça for levantada pelas mãos, a roupa inteira deve acompanhar o movimento como um único objeto completo.
+
+**2. APARÊNCIA DAS MÃOS E ACESSÓRIOS (IDENTIDADE MESTRA POV 13K):**
+Mostrar exclusivamente os antebraços e as mãos femininas em primeira pessoa:
+- Pele natural com textura humana realista.
+- Unhas compridas em formato amendoado alongado com esmalte vinho muito escuro/preto brilhante.
+- Pulseiras finas metálicas prateadas nos dois pulsos (duas em um pulso e uma no outro) e anéis finos prateados.
+
+**3. COREOGRAFIA DOS MOVIMENTOS — SEQUÊNCIA OBRIGATÓRIA:**
+
+**0–2 SEGUNDOS | APRESENTAÇÃO DA PRIMEIRA PEÇA:**
+As duas mãos seguram a primeira peça pelas extremidades laterais (polegares na frente e demais dedos apoiando por trás), mantendo a roupa aberta, suspensa e direcionada para a câmera para exibir sua parte frontal com pequenos ajustes naturais sem esticar excessivamente.
+
+**2–4 SEGUNDOS | TROCA E REPOSICIONAMENTO:**
+As mãos abaixam suavemente a primeira peça sobre a superfície e se deslocam para segurar a segunda peça pelas extremidades laterais, levantando-a de forma limpa (sem deixar nenhum fragmento de tecido para trás).
+
+**4–7 SEGUNDOS | APRESENTAÇÃO DA SEGUNDA PEÇA:**
+As duas mãos trazem a segunda peça para o primeiro plano diante da câmera, ajustando levemente sua abertura com os dedos para exibir sua parte frontal centralizada e íntegra.
+
+**7–9 SEGUNDOS | RETORNO À PRIMEIRA PEÇA:**
+As mãos retornam à primeira peça e a levantam integralmente pelas extremidades, aproximando-a suavemente da câmera aberta enquanto a segunda peça permanece íntegra sobre a cama.
+
+**9–11 SEGUNDOS | DEMONSTRAÇÃO TÁTIL DO TECIDO:**
+Uma das mãos sustenta de forma estável a extremidade da primeira peça enquanto a outra mão desliza suavemente sobre a superfície do tecido em um movimento contínuo de alisamento e exploração tátil com as pontas dos dedos, demonstrando a maciez e o acabamento real da peça.
+
+**11–12 SEGUNDOS | FINALIZAÇÃO:**
+A primeira peça é abaixada naturalmente, deixando a segunda peça completa e visível sobre a cama enquanto as mãos se afastam gradualmente do enquadramento.
+
+**4. RESTRIÇÕES DE ÁUDIO E CÂMERA:**
+- Demonstração completamente silenciosa (SEM FALA, sem diálogos, sem narração, sem locução e sem textos na tela).
+- Único take contínuo e fluido em visão POV.`,
+  },
+];
+
+export function getMasterPromptById(id?: AnaMariaMasterId): AnaMariaMasterPromptItem {
+  if (!id) return MASTER_PROMPTS_GALLERY[0];
+  return MASTER_PROMPTS_GALLERY.find((item) => item.id === id) || MASTER_PROMPTS_GALLERY[0];
+}
+
+export function getDefaultMasterForMode(mode: AnaMariaPresentationMode): AnaMariaMasterPromptItem {
+  if (mode === 'pov') {
+    return MASTER_PROMPTS_GALLERY.find((m) => m.id === 'pov_cinta_85k') || MASTER_PROMPTS_GALLERY[5];
+  }
+  if (mode === 'com_rosto') {
+    return MASTER_PROMPTS_GALLERY.find((m) => m.id === 'mestra_catza') || MASTER_PROMPTS_GALLERY[4];
+  }
+  return MASTER_PROMPTS_GALLERY[0];
+}

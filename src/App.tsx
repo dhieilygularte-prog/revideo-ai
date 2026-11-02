@@ -202,6 +202,8 @@ export default function App() {
     referencePhotos: [],
     influencer: 'Mulher',
     bodyType: 'normal',
+    presentationMode: 'mirror_selfie',
+    selectedMasterId: 'mestra_ana_maria',
     additionalInstructions: '',
     imageModel: 'seedream_5_0_pro',
     videoPromptLimit: 'unlimited',
@@ -1277,6 +1279,8 @@ export default function App() {
       referencePhotos: [],
       influencer: 'Mulher',
       bodyType: 'normal',
+      presentationMode: 'mirror_selfie',
+      selectedMasterId: 'mestra_ana_maria',
       additionalInstructions: '',
       imageModel: 'seedream_5_0_pro',
       videoPromptLimit: 'unlimited',
@@ -2400,9 +2404,13 @@ export default function App() {
                 referencePhotos: item.referencePhotos,
                 influencer: item.influencer,
                 bodyType: item.bodyType,
+                presentationMode: item.presentationMode || 'mirror_selfie',
+                selectedMasterId: item.selectedMasterId || 'mestra_ana_maria',
                 additionalInstructions: item.additionalInstructions,
                 imageModel: item.imageModel,
                 videoPromptLimit: item.videoPromptLimit,
+                selectedScenarioId: item.selectedScenarioId,
+                selectedScenarioNumber: item.selectedScenarioNumber,
               });
               setAnaMariaPage('results');
               setIsAnaMariaHistoryOpen(false);

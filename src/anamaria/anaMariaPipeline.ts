@@ -12,7 +12,8 @@ import { resolveHeadlineAndHashtags } from './anaMariaBank';
 import { AIProfile } from '../config/aiProfiles';
 import { PREFERRED_SCENARIO_BASE64 } from './assets/scenarioImage';
 import { ensureHighResAnaMariaDataUrl } from './anaMariaZipExporter';
-import { SCENARIO_GALLERY_ITEMS } from './scenarioGalleryData';
+import { SCENARIO_GALLERY_ITEMS, POV_SCENARIO_GALLERY_ITEMS } from './scenarioGalleryData';
+import { getMasterPromptById } from './masterPromptsData';
 
 export interface AnaMariaPipelineCallbacks {
   onProgress?: (stepName: string, percent: number) => void;
@@ -102,16 +103,67 @@ async function resolveScenarioBase64(form: AnaMariaFormState): Promise<string> {
 
 /**
  * Garante que um cenário esteja sempre definido.
- * Se o usuário não tiver escolhido nenhum cenário na galeria, sorteia randomicamente
- * um dos 23 cenários vencedores da galeria (Item opcional, sem travar o processamento).
+ * Se o usuário não tiver escolhido nenhum cenário na galeria:
+ * - No modo POV: escolhe um dos 2 cenários POV da galeria POV.
+ * - Para Mestra Catza (quando nenhum cenário foi selecionado): prioriza o Cenário 24 (ambiente mais escuro com flash).
+ * - Nos demais casos: sorteia randomicamente um dos 24 cenários vencedores da galeria.
  */
 export function ensureAnaMariaScenario(form: AnaMariaFormState): AnaMariaFormState {
-  if (form.selectedScenarioId && (form.selectedScenarioUrl || form.selectedScenarioBase64)) {
+  const master = getMasterPromptById(form.selectedMasterId);
+  const mode = form.presentationMode || (master.isPov ? 'pov' : 'mirror_selfie');
+  const isPov = mode === 'pov' || Boolean(master.isPov);
+
+  if (isPov) {
+    // Verifica se já tem um cenário POV selecionado
+    if (
+      form.selectedScenarioId &&
+      form.selectedScenarioId.startsWith('cenario_pov_') &&
+      (form.selectedScenarioUrl || form.selectedScenarioBase64)
+    ) {
+      return form;
+    }
+    const preferredPov =
+      POV_SCENARIO_GALLERY_ITEMS.find((s) => s.id === master.preferredScenarioId) ||
+      POV_SCENARIO_GALLERY_ITEMS[Math.floor(Math.random() * POV_SCENARIO_GALLERY_ITEMS.length)] ||
+      POV_SCENARIO_GALLERY_ITEMS[0];
+    if (!preferredPov) return form;
+    return {
+      ...form,
+      presentationMode: 'pov',
+      selectedScenarioId: preferredPov.id,
+      selectedScenarioNumber: preferredPov.number,
+      selectedScenarioUrl: preferredPov.fullUrl,
+      selectedScenarioBase64: undefined,
+    };
+  }
+
+  // Modo Mirror Selfie ou Com Rosto: se já tem um cenário normal selecionado, mantém
+  if (
+    form.selectedScenarioId &&
+    !form.selectedScenarioId.startsWith('cenario_pov_') &&
+    (form.selectedScenarioUrl || form.selectedScenarioBase64)
+  ) {
     return form;
   }
+
   if (!SCENARIO_GALLERY_ITEMS || SCENARIO_GALLERY_ITEMS.length === 0) {
     return form;
   }
+
+  // Preferência pelo Cenário 24 (ou cenários mais escuros) quando a Mestra Catza estiver selecionada sem cenário manual
+  if (master.id === 'mestra_catza' && master.preferredScenarioId) {
+    const catzaScenario = SCENARIO_GALLERY_ITEMS.find((s) => s.id === master.preferredScenarioId);
+    if (catzaScenario) {
+      return {
+        ...form,
+        selectedScenarioId: catzaScenario.id,
+        selectedScenarioNumber: catzaScenario.number,
+        selectedScenarioUrl: catzaScenario.fullUrl,
+        selectedScenarioBase64: undefined,
+      };
+    }
+  }
+
   const randomIndex = Math.floor(Math.random() * SCENARIO_GALLERY_ITEMS.length);
   const randomScenario = SCENARIO_GALLERY_ITEMS[randomIndex] || SCENARIO_GALLERY_ITEMS[0];
   return {
@@ -137,18 +189,20 @@ export async function runAnaMariaPipeline(
     throw new Error('Por favor, anexe ao menos 1 foto de referência da peça.');
   }
 
-  // Se o usuário não escolheu um cenário na galeria, sorteia um dos 23 de forma randômica
+  // Se o usuário não escolheu um cenário na galeria, sorteia de acordo com o modo/mestra
   const form = ensureAnaMariaScenario(rawForm);
+  const master = getMasterPromptById(form.selectedMasterId);
+  const activeMode = form.presentationMode || (master.isPov ? 'pov' : 'mirror_selfie');
 
   // 1. Geração de Prompts & Calçado Condicional
   onProgress('prompt_building', 20);
-  onStatusMessage('Analisando peça, calçado condicional e gerando prompt mestre...');
+  onStatusMessage(`Analisando peça e aplicando identidade de ${master.shortName}...`);
 
   const { prompt: imagePrompt, shoeCategory, shoeDescription } = buildAnaMariaImagePrompt(form, 'hall_espelho');
 
   // 2. Banco de Headlines & Hashtags + Prompt de Vídeo (instantâneo)
   onProgress('copy_matching', 35);
-  onStatusMessage('Formatando headline vencedora e prompt de vitrine 10s...');
+  onStatusMessage(`Formatando headline vencedora e prompt de movimentos (${master.shortName})...`);
 
   const { headline, hashtags } = resolveHeadlineAndHashtags({
     productName: form.productName,
@@ -160,6 +214,9 @@ export async function runAnaMariaPipeline(
   const videoPrompt = buildAnaMariaVideoPrompt({
     productName: form.productName,
     influencer: form.influencer,
+    bodyType: form.bodyType,
+    presentationMode: activeMode,
+    selectedMasterId: form.selectedMasterId,
     limit: form.videoPromptLimit,
     additionalInstructions: form.additionalInstructions,
     hasSelectedScenario: Boolean(form.selectedScenarioId),
@@ -237,6 +294,8 @@ export async function runAnaMariaPipeline(
     additionalInstructions: form.additionalInstructions,
     imageModel: form.imageModel,
     videoPromptLimit: form.videoPromptLimit,
+    presentationMode: activeMode,
+    selectedMasterId: form.selectedMasterId || 'mestra_ana_maria',
     selectedScenarioId: form.selectedScenarioId,
     selectedScenarioNumber: form.selectedScenarioNumber,
     imagePrompt,

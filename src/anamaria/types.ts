@@ -5,6 +5,15 @@ export type AnaMariaBodyType = 'normal' | 'plus_size';
 export type AnaMariaImageModel = 'seedream_5_0_pro' | 'kling_3_0' | 'openai';
 export type AnaMariaVideoPromptLimit = 'unlimited' | '5000' | '2500';
 export type AnaMariaShoeCategory = 'A_CHINELO' | 'B_TENIS' | 'C_OUTRO';
+export type AnaMariaPresentationMode = 'mirror_selfie' | 'pov' | 'com_rosto';
+export type AnaMariaMasterId =
+  | 'mestra_ana_maria'
+  | 'mestra_iara'
+  | 'mestra_duda'
+  | 'mestra_nay'
+  | 'mestra_catza'
+  | 'pov_cinta_85k'
+  | 'pov_blusinhas_13k';
 
 export type AnaMariaAuditColorStatus = 'green' | 'yellow' | 'orange' | 'red';
 
@@ -32,8 +41,10 @@ export interface AnaMariaFormState {
   additionalInstructions: string; // Prioridade máxima
   imageModel: AnaMariaImageModel; // Padrão: 'seedream_5_0_pro'
   videoPromptLimit: AnaMariaVideoPromptLimit; // Padrão: 'unlimited'
+  presentationMode?: AnaMariaPresentationMode; // Padrão: 'mirror_selfie'
+  selectedMasterId?: AnaMariaMasterId; // Padrão: 'mestra_ana_maria'
   selectedScenarioId?: string; // ID do cenário escolhido da vitrine (ex.: 'cenario_0')
-  selectedScenarioNumber?: number; // Número do cenário escolhido (1 a 22)
+  selectedScenarioNumber?: number; // Número do cenário escolhido (1 a 24)
   selectedScenarioUrl?: string; // URL da imagem cheia
   selectedScenarioBase64?: string; // Base64 da imagem cheia para inpainting
 }
@@ -49,6 +60,8 @@ export interface AnaMariaResultState {
   additionalInstructions: string;
   imageModel: AnaMariaImageModel;
   videoPromptLimit: AnaMariaVideoPromptLimit;
+  presentationMode?: AnaMariaPresentationMode;
+  selectedMasterId?: AnaMariaMasterId;
   selectedScenarioId?: string;
   selectedScenarioNumber?: number;
   imagePrompt: string;

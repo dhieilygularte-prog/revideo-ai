@@ -183,5 +183,40 @@ export const SCENARIO_GALLERY_ITEMS: AnaMariaScenarioItem[] = [
     "title": "Cenário 22",
     "thumbUrl": "/scenarios/gallery/thumbnails/22.webp",
     "fullUrl": "/scenarios/gallery/22.png"
+  },
+  {
+    "id": "cenario_23",
+    "file": "23.png",
+    "number": 23,
+    "title": "Cenário 23",
+    "thumbUrl": "/scenarios/gallery/thumbnails/23.webp",
+    "fullUrl": "/scenarios/gallery/23.png"
+  },
+  {
+    "id": "cenario_24",
+    "file": "24.png",
+    "number": 24,
+    "title": "Cenário 24 (Catza)",
+    "thumbUrl": "/scenarios/gallery/thumbnails/24.webp",
+    "fullUrl": "/scenarios/gallery/24.png"
+  }
+];
+
+export const POV_SCENARIO_GALLERY_ITEMS: AnaMariaScenarioItem[] = [
+  {
+    "id": "cenario_pov_1",
+    "file": "1.png",
+    "number": 1,
+    "title": "Cenário POV 1 (Colcha Branca & Manta Rosé)",
+    "thumbUrl": "/scenarios/pov/thumbnails/1.webp",
+    "fullUrl": "/scenarios/pov/1.png"
+  },
+  {
+    "id": "cenario_pov_2",
+    "file": "2.png",
+    "number": 2,
+    "title": "Cenário POV 2 (Lençol Rosa & Luz Solar)",
+    "thumbUrl": "/scenarios/pov/thumbnails/2.webp",
+    "fullUrl": "/scenarios/pov/2.png"
   }
 ];

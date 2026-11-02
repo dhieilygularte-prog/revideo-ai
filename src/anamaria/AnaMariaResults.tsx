@@ -96,10 +96,10 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
   onOpenPreviewModal,
   aiProfile = 'openai',
 }) => {
-  // Classes padrão idênticas ao Modo Produtos 2.0 (com destaque azul ao copiar)
+  // Classes padrão com contraste da paleta Dark Obsidian + Laranja/Âmbar
   const copiedBlueSectionClass =
     'bg-gradient-to-br from-sky-900/85 via-blue-900/80 to-slate-900/95 border-2 border-sky-400 shadow-xl shadow-sky-950/60 ring-2 ring-sky-400/40';
-  const defaultSectionClass = 'bg-zinc-950/80 border border-sky-950/60 shadow-xl';
+  const defaultSectionClass = 'bg-[#111113]/95 border border-orange-500/30 shadow-xl';
 
   // Estados de destaque azul ativo ao copiar/baixar (itens 6, 7 e 14)
   const [copiedPrompt, setCopiedPrompt] = useState(false);
@@ -303,6 +303,8 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
           referencePhotos: result.referencePhotos,
           influencer: result.influencer,
           bodyType: result.bodyType,
+          presentationMode: result.presentationMode,
+          selectedMasterId: result.selectedMasterId,
           additionalInstructions: result.additionalInstructions,
           imageModel: result.imageModel,
           videoPromptLimit: result.videoPromptLimit,
@@ -338,9 +340,13 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
           referencePhotos: result.referencePhotos,
           influencer: result.influencer,
           bodyType: result.bodyType,
+          presentationMode: result.presentationMode,
+          selectedMasterId: result.selectedMasterId,
           additionalInstructions: result.additionalInstructions,
           imageModel: 'seedream_5_0_pro',
           videoPromptLimit: result.videoPromptLimit,
+          selectedScenarioId: result.selectedScenarioId,
+          selectedScenarioNumber: result.selectedScenarioNumber,
         },
         imageModelOverride: 'seedream_5_0_pro',
         aiProfile,
@@ -371,6 +377,8 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
           referencePhotos: result.referencePhotos,
           influencer: result.influencer,
           bodyType: result.bodyType,
+          presentationMode: result.presentationMode,
+          selectedMasterId: result.selectedMasterId,
           additionalInstructions: result.additionalInstructions,
           imageModel: result.imageModel,
           videoPromptLimit: result.videoPromptLimit,
@@ -424,7 +432,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
   const auditScore = audit?.score ?? 96;
   const auditLabel = audit?.label ?? 'Verde — Fidelidade Aprovada';
 
-  const defaultCriteria = [
+  const defaultCriteria: { name: string; score: number; status: AnaMariaAuditColorStatus; issue?: string }[] = [
     { name: 'Corte Queixo', score: 100, status: 'green' as AnaMariaAuditColorStatus },
     { name: 'Curvas & Silhueta', score: 96, status: 'green' as AnaMariaAuditColorStatus },
     { name: 'Zero Tatuagens', score: 100, status: 'green' as AnaMariaAuditColorStatus },
@@ -439,23 +447,23 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
         <button
           type="button"
           onClick={onBackToForm}
-          className="px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 hover:text-white border border-zinc-700 hover:border-sky-500/50 text-xs font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-md"
+          className="px-4 py-2.5 bg-[#111113] hover:bg-zinc-900 text-zinc-200 hover:text-white border border-orange-500/35 hover:border-orange-400 text-xs font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-md"
         >
-          <ArrowLeft className="w-4 h-4 text-sky-400" />
+          <ArrowLeft className="w-4 h-4 text-orange-400" />
           <span>Voltar para a página anterior</span>
         </button>
       </div>
 
       {/* ─── BOTÕES DE AÇÃO SUPERIORES (PADRÃO PRODUTOS 2.0 - ITENS 1 E 12) ─── */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-zinc-800">
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-orange-500/20">
         <div className="flex flex-wrap items-center gap-2.5">
           {/* NOVO PRODUTO */}
           <button
             type="button"
             onClick={onCreateNew}
-            className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-xs font-bold text-sky-300 hover:text-white rounded-xl flex items-center gap-2 transition-colors cursor-pointer border border-zinc-700"
+            className="px-4 py-2 bg-[#111113] hover:bg-zinc-800 text-xs font-bold text-orange-200 hover:text-white rounded-xl flex items-center gap-2 transition-colors cursor-pointer border border-orange-500/35 hover:border-orange-400"
           >
-            <RotateCcw className="w-4 h-4 text-sky-400" />
+            <RotateCcw className="w-4 h-4 text-orange-400" />
             <span>NOVO PRODUTO</span>
           </button>
 
@@ -463,7 +471,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
           <button
             type="button"
             onClick={onContinueProduct}
-            className="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-zinc-950 font-black text-xs rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-amber-950/40"
+            className="px-4 py-2 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-zinc-950 font-black text-xs rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-orange-950/40"
           >
             <Plus className="w-4 h-4 text-zinc-950 stroke-[3]" />
             <span>Continuar no produto</span>
@@ -474,10 +482,10 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
             type="button"
             disabled={isSwitchingScenario || isRegeneratingImage}
             onClick={handleSwitchScenario}
-            className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 border border-sky-500/50 hover:border-sky-400 text-sky-300 hover:text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-sm"
+            className="px-4 py-2 bg-[#111113] hover:bg-zinc-800 border border-orange-500/45 hover:border-orange-400 text-orange-200 hover:text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-sm"
             title="Gera novamente a mesma modelo e roupa em outro cômodo da casa com frente iluminada e fundo penumbroso"
           >
-            <Home className={`w-4 h-4 text-sky-400 ${isSwitchingScenario ? 'animate-spin' : ''}`} />
+            <Home className={`w-4 h-4 text-orange-400 ${isSwitchingScenario ? 'animate-spin' : ''}`} />
             <span>{isSwitchingScenario ? 'Trocando cenário...' : 'Trocar Cenário'}</span>
           </button>
         </div>
@@ -486,9 +494,9 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
           <button
             type="button"
             onClick={onOpenHistory}
-            className="px-3.5 py-2 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border border-zinc-800 hover:border-zinc-700 text-xs font-medium rounded-xl flex items-center gap-2 transition-colors cursor-pointer shadow-sm"
+            className="px-3.5 py-2 bg-[#111113]/90 hover:bg-zinc-800 text-zinc-400 hover:text-orange-200 border border-orange-500/25 hover:border-orange-400/50 text-xs font-medium rounded-xl flex items-center gap-2 transition-colors cursor-pointer shadow-sm"
           >
-            <History className="w-3.5 h-3.5 text-zinc-400" />
+            <History className="w-3.5 h-3.5 text-orange-400/80" />
             <span>Histórico de Gerações</span>
           </button>
         )}
@@ -505,12 +513,12 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
             className={`rounded-2xl transition-all duration-300 p-3 shadow-2xl relative group ${
               hasDownloadedImageOnce
                 ? copiedBlueSectionClass
-                : 'border-2 border-sky-500/40 bg-zinc-950'
+                : 'border-2 border-orange-500/45 bg-[#111113]'
             }`}
           >
             {/* Header da Imagem com Resolução 1080x1920 e Badge Baixado */}
             <div className="flex items-center justify-between pb-2 px-1">
-              <span className="text-[11px] font-bold text-zinc-300 uppercase tracking-wide">
+              <span className="text-[11px] font-bold text-orange-200/90 uppercase tracking-wide">
                 Foto Gerada 9:16 (1080x1920)
               </span>
               {hasDownloadedImageOnce && (
@@ -537,14 +545,14 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                     `Modo Ana Maria - ${result.productName || 'Peça de Vestuário'}`
                   )
                 }
-                className="absolute top-3 right-3 p-2 rounded-xl bg-black/70 hover:bg-black/90 text-white backdrop-blur-md border border-white/20 transition-all cursor-pointer shadow-lg group-hover:scale-105"
+                className="absolute top-3 right-3 p-2 rounded-xl bg-black/70 hover:bg-black/90 text-white backdrop-blur-md border border-orange-400/30 transition-all cursor-pointer shadow-lg group-hover:scale-105"
                 title="Ampliar Imagem"
               >
-                <Eye className="w-4 h-4 text-sky-300" />
+                <Eye className="w-4 h-4 text-orange-300" />
               </button>
 
               {/* Badge de Motor no Topo Esquerdo */}
-              <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-zinc-950/80 backdrop-blur-md border border-sky-500/40 text-[10px] font-bold text-sky-300 uppercase">
+              <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-zinc-950/85 backdrop-blur-md border border-orange-500/45 text-[10px] font-bold text-orange-300 uppercase">
                 {result.imageModel === 'seedream_5_0_pro'
                   ? 'SeaDream 5.0 Pro'
                   : result.imageModel === 'kling_3_0'
@@ -559,7 +567,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                 className={`absolute bottom-3 right-3 px-3 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-xl ${
                   hasDownloadedImageOnce || downloadedImage
                     ? 'bg-sky-500 hover:bg-sky-400 text-white border border-sky-300 ring-2 ring-sky-300/60'
-                    : 'bg-zinc-950/85 hover:bg-sky-600 text-sky-300 hover:text-white border border-sky-500/40 backdrop-blur-md'
+                    : 'bg-zinc-950/85 hover:bg-orange-600 text-orange-300 hover:text-white border border-orange-500/50 backdrop-blur-md'
                 }`}
                 title="Baixar Imagem em 1080x1920 pixels"
               >
@@ -754,26 +762,34 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
               hasCopiedPromptOnce ? copiedBlueSectionClass : defaultSectionClass
             }`}
           >
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800/80 pb-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-orange-500/20 pb-3">
               <div>
                 <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-wide flex items-center gap-2">
-                  <Video className="w-4 h-4 text-sky-400" />
-                  <span>Prompt do Vídeo (10s - Mirror Selfie)</span>
+                  <Video className="w-4 h-4 text-orange-400" />
+                  <span>
+                    Prompt do Vídeo (10s -{' '}
+                    {result.presentationMode === 'pov'
+                      ? 'Modo POV'
+                      : result.presentationMode === 'com_rosto'
+                      ? 'Com Rosto'
+                      : 'Mirror Selfie'}
+                    )
+                  </span>
                   {hasCopiedPromptOnce && (
                     <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
                       <CheckCircle2 className="w-3 h-3 text-sky-300" /> Copiado ✓
                     </span>
                   )}
                 </h3>
-                <p className="text-[11px] text-sky-200/80 mt-0.5">
+                <p className="text-[11px] text-zinc-400 mt-0.5">
                   Arquivo no pacote:{' '}
-                  <span className="font-mono text-white">
+                  <span className="font-mono text-orange-200">
                     {`Prompt de Video - ${safeFileName}.txt`}
                   </span>
                 </p>
               </div>
 
-              {/* Botão Copiar Prompt (Azul no Padrão do Modo Produtos 2.0) */}
+              {/* Botão Copiar Prompt */}
               <button
                 type="button"
                 onClick={handleCopyPrompt}
@@ -782,7 +798,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                     ? 'bg-emerald-500 text-white ring-2 ring-emerald-300'
                     : hasCopiedPromptOnce
                     ? 'bg-sky-500 hover:bg-sky-400 text-white'
-                    : 'bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white'
+                    : 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950'
                 }`}
               >
                 {copiedPrompt ? (
@@ -809,24 +825,24 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                 setCopiedPrompt(false);
                 onUpdateResult({ ...result, videoPrompt: val });
               }}
-              className={`w-full p-3.5 rounded-xl text-xs font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-sky-400 resize-y select-all ${
+              className={`w-full p-3.5 rounded-xl text-xs font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-orange-400 resize-y select-all ${
                 hasCopiedPromptOnce
                   ? 'bg-slate-950/90 border border-sky-400/60 text-sky-50'
-                  : 'bg-zinc-950 border border-zinc-800 text-zinc-200'
+                  : 'bg-zinc-950 border border-orange-500/25 text-zinc-200'
               }`}
             />
 
-            {/* Ajustar ou Corrigir este Prompt com IA com Microfone e Botão Roxo */}
+            {/* Ajustar ou Corrigir este Prompt com IA com Microfone e Botão Laranja */}
             <div
               className={`p-3.5 sm:p-4 rounded-xl space-y-2.5 transition-all ${
                 hasCopiedPromptOnce
                   ? 'bg-slate-900/90 border border-sky-400/50'
-                  : 'bg-zinc-900/95 border border-zinc-700/80 shadow-inner'
+                  : 'bg-zinc-900/95 border border-orange-500/25 shadow-inner'
               }`}
             >
               <div className="flex items-center justify-between">
                 <label className="text-[11px] font-bold text-zinc-200 flex items-center gap-1.5">
-                  <Wand2 className="w-3.5 h-3.5 text-purple-400" />
+                  <Wand2 className="w-3.5 h-3.5 text-orange-400" />
                   <span>Ajustar ou Corrigir este Prompt com IA:</span>
                 </label>
                 {isPromptMicRecording && (
@@ -850,7 +866,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                       }
                     }}
                     placeholder='Ex: "Ajustar movimentos mais lentos", "Mude a rotação final do corpo"...'
-                    className="w-full pl-3 pr-10 py-2.5 bg-zinc-950 border border-zinc-700 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-400 transition-colors shadow-inner font-sans"
+                    className="w-full pl-3 pr-10 py-2.5 bg-zinc-950 border border-orange-500/30 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-orange-400 transition-colors shadow-inner font-sans"
                   />
 
                   {/* Botão Microfone embutido */}
@@ -860,7 +876,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                     className={`absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-all cursor-pointer ${
                       isPromptMicRecording
                         ? 'bg-rose-500/20 text-rose-400 animate-pulse ring-2 ring-rose-400'
-                        : 'text-zinc-400 hover:text-purple-300 hover:bg-zinc-800'
+                        : 'text-zinc-400 hover:text-orange-300 hover:bg-zinc-800'
                     }`}
                     title={
                       isPromptMicRecording
@@ -876,12 +892,12 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                   </button>
                 </div>
 
-                {/* Botão Roxo: Refazer Prompt */}
+                {/* Botão Laranja: Refazer Prompt */}
                 <button
                   type="button"
                   onClick={handleRefinePrompt}
                   disabled={isRefiningPrompt || !promptCorrectionText.trim()}
-                  className="px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md shrink-0"
+                  className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-zinc-950 text-xs font-black rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md shrink-0"
                 >
                   {isRefiningPrompt ? (
                     <>
@@ -930,16 +946,16 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
       {/* ========================================================================= */}
       {/* SEÇÃO INFERIOR: DESCRIÇÃO DO POST + HASHTAGS E HEADLINE VIRAL             */}
       {/* ========================================================================= */}
-      <div className="space-y-4 pt-4 border-t border-zinc-800">
+      <div className="space-y-4 pt-4 border-t border-orange-500/20">
         {/* Card: Descrição do Post + Hashtags */}
         <div
           className={`p-4 sm:p-5 rounded-2xl transition-all duration-300 space-y-3 ${
             hasCopiedHashtagsOnce ? copiedBlueSectionClass : defaultSectionClass
           }`}
         >
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/80 pb-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-orange-500/20 pb-2.5">
             <div className="flex items-center gap-2">
-              <Hash className="w-4 h-4 text-sky-400" />
+              <Hash className="w-4 h-4 text-orange-400" />
               <h3 className="text-xs font-black text-white uppercase tracking-wide flex items-center gap-2">
                 <span>Descrição do Post + Hashtags (TikTok & Reels)</span>
                 {hasCopiedHashtagsOnce && (
@@ -956,7 +972,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
               className={`py-2 px-4 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-md ${
                 hasCopiedHashtagsOnce || copiedHashtags
                   ? 'bg-sky-500 hover:bg-sky-400 text-white border border-sky-300 ring-2 ring-sky-300/60'
-                  : 'bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white'
+                  : 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950'
               }`}
             >
               {copiedHashtags ? (
@@ -977,7 +993,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
             className={`p-3.5 rounded-xl text-xs font-mono select-all transition-all leading-relaxed ${
               hasCopiedHashtagsOnce
                 ? 'bg-slate-950/90 border border-sky-400/60 text-sky-100'
-                : 'bg-zinc-900/95 border border-zinc-800 text-sky-200'
+                : 'bg-zinc-900/95 border border-orange-500/25 text-orange-100'
             }`}
           >
             {result.hashtags}
@@ -990,9 +1006,9 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
             hasCopiedHeadlineOnce ? copiedBlueSectionClass : defaultSectionClass
           }`}
         >
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/80 pb-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-orange-500/20 pb-2.5">
             <div className="flex items-center gap-2">
-              <Smile className="w-4 h-4 text-sky-400" />
+              <Smile className="w-4 h-4 text-orange-400" />
               <h3 className="text-xs font-black text-white uppercase tracking-wide flex items-center gap-2">
                 <span>Headline Viral</span>
                 {hasCopiedHeadlineOnce && (
@@ -1009,7 +1025,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
               className={`py-2 px-4 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-md ${
                 hasCopiedHeadlineOnce || copiedHeadline
                   ? 'bg-sky-500 hover:bg-sky-400 text-white border border-sky-300 ring-2 ring-sky-300/60'
-                  : 'bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white'
+                  : 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950'
               }`}
             >
               {copiedHeadline ? (
@@ -1030,7 +1046,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
             className={`p-3.5 rounded-xl text-sm font-semibold select-all transition-all leading-relaxed ${
               hasCopiedHeadlineOnce
                 ? 'bg-slate-950/90 border border-sky-400/60 text-white'
-                : 'bg-zinc-900/95 border border-zinc-800 text-white'
+                : 'bg-zinc-900/95 border border-orange-500/25 text-white'
             }`}
           >
             {result.headline}
