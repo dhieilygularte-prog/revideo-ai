@@ -58,7 +58,8 @@ export async function ensureHighResAnaMariaDataUrl(
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
-        const dataUrl = canvas.toDataURL('image/png', 1.0);
+        // Qualidade 0.93 em JPEG: Mantém resolução exata 2160x3840 pixels ultra nítida e reduz tamanho de 8MB para 3-4MB
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.93);
         resolve(dataUrl);
       } catch (err) {
         console.warn('Erro ao redimensionar imagem para 2160x3840 no canvas:', err);
@@ -111,8 +112,8 @@ export async function ensureHighResAnaMariaBlob(
                 .catch(() => resolve(new Blob([])));
             }
           },
-          'image/png',
-          1.0
+          'image/jpeg',
+          0.93
         );
       } catch (err) {
         console.warn('Erro ao gerar blob 2160x3840 no canvas:', err);
@@ -134,11 +135,11 @@ export async function ensureHighResAnaMariaBlob(
 
 /**
  * Baixa a imagem individual com resolução de 2160x3840 pixels
- * Nomenclatura: "[Nome do Produto] Aurora.png"
+ * Nomenclatura: "[Nome do Produto] Aurora.jpg"
  */
 export async function downloadAnaMariaSingleImage(imageUrl: string, productName: string) {
   const cleanName = sanitizeCleanName(productName);
-  const fileName = `${cleanName} Aurora.png`;
+  const fileName = `${cleanName} Aurora.jpg`;
 
   try {
     const blob = await ensureHighResAnaMariaBlob(imageUrl, 2160, 3840);
@@ -156,7 +157,7 @@ export async function downloadAnaMariaSingleImage(imageUrl: string, productName:
 
 /**
  * Exporta o pacote .zip (Item 23 e Item 8):
- * - Imagem em 2160x3840 pixels: "[Nome do Produto] Aurora.png"
+ * - Imagem em 2160x3840 pixels: "[Nome do Produto] Aurora.jpg"
  * - Doc 1: "Hastags e Headline - [Nome do Produto] (hora da geração).txt"
  * - Doc 2: "Prompt de Video - [Nome do Produto] (hora da geração).txt"
  * - Nome do ZIP: "Modo Ana Maria - [Nome do Produto].zip"
@@ -169,11 +170,11 @@ export async function exportAnaMariaZip(result: AnaMariaResultState): Promise<vo
   const cleanName = sanitizeCleanName(result.productName);
   const horaStr = formatTimestampForFile(result.timestamp);
 
-  // 1. Imagem Principal em 2160x3840 pixels: "[Nome do Produto] Aurora.png"
+  // 1. Imagem Principal em 2160x3840 pixels: "[Nome do Produto] Aurora.jpg"
   try {
     const imgBlob = await ensureHighResAnaMariaBlob(result.imageUrl, 2160, 3840);
     const imgBuffer = await imgBlob.arrayBuffer();
-    zip.file(`${cleanName} Aurora.png`, imgBuffer);
+    zip.file(`${cleanName} Aurora.jpg`, imgBuffer);
   } catch (err) {
     console.warn('Falha ao adicionar imagem de alta resolução no zip:', err);
   }

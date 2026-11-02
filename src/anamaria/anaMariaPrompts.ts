@@ -103,8 +103,32 @@ export function buildAnaMariaImagePrompt(
     : 'A modelo segura um smartphone moderno com capa rosa-clara com uma das mãos na altura do peito/queixo, simulando selfie espontânea diante do espelho de corpo inteiro. Unhas cuidadas com esmalte nude ou rosa-claro.';
 
   const accessoriesDescription = isMale
-    ? 'Relógio de pulso masculino discreto com pulseira escura ou metálica. Aparência cotidiana e limpa.'
-    : 'Colar dourado fino com pequeno pingente dourado no colo, pulseiras delicadas nos pulsos e anéis discretos. Aparência cotidiana elegante sem ostentação excessiva.';
+    ? 'Relógio de pulso masculino discreto com pulseira escura ou metálica. Aparência cotidiana e limpa. Zero tatuagens.'
+    : `**WOMEN'S MODEL — FIXED SIGNATURE JEWELRY (APLICADO EXCLUSIVAMENTE PARA MODELO FEMININA)**:
+A modelo feminina deve usar OBRIGATORIAMENTE o seguinte conjunto de jóias fixas em todas as imagens geradas:
+
+1. TRÊS COLARES DOURADOS EM CAMADAS (EXACTLY THREE LAYERED GOLD NECKLACES):
+- 1º colar: Choker de corrente dourada bem fina e delicada, rente à base do pescoço, sem pingente visível.
+- 2º colar: Corrente dourada fina um pouco mais longa, com pequenos detalhes decorativos pendentes distribuídos na parte frontal.
+- 3º colar: Corrente dourada delicada mais longa com um pequeno pingente medalhão oval dourado.
+Os três colares devem ser usados juntos no colo, com espaçamento natural, delicados e sobrepostos.
+
+2. PULSEIRAS DOURADAS — UMA EM CADA PULSO (BRACELETS — ONE ON EACH WRIST):
+- Exatamente uma pulseira de corrente dourada fina e delicada em CADA pulso.
+- Elo metálico muito fino e leve, com pequeno fecho e uma correntinha extensora pendurada delicadamente para baixo seguindo a gravidade.
+- Visual de jóia cotidiana delicada e realista (não usar braceletes grossos ou algemas rígidas).
+
+3. ANÉIS PRATEADOS — EXATAMENTE TRÊS ANÉIS (THREE DELICATE SILVER-TONE RINGS):
+- 1 anel prateado ligeiramente mais largo com pequeno detalhe central decorativo brilhante na mão livre.
+- 1 anel prateado fino e liso na mão que segura o smartphone.
+- 1 anel prateado delicado com pequenas pedrinhas brilhantes também na mão que segura o smartphone.
+
+4. CORES E MATERIAIS DAS JÓIAS:
+- Colares e pulseiras: metal dourado fino e delicado.
+- Anéis: metal prateado com brilho realista.
+
+5. CONSISTÊNCIA PERMANENTE DE JÓIAS (ALTA PRIORIDADE):
+Conjunto permanente da identidade visual da modelo feminina. Jamais remova, substitua ou adicione brincos grandes, colares grossos, relógio feminino ou jóias pesadas.`;
 
   const additionalBlock =
     form.additionalInstructions && form.additionalInstructions.trim().length > 0
@@ -187,13 +211,21 @@ The animation must reproduce the following exact sequence of movements in one co
 
 Preserve exactly the same woman, body shape, proportions, skin, hair, clothing, garment color, neckline, fabric, seams, texture, accessories, smartphone, mirror, room and lighting from the reference image.
 
-Do not redesign, modify, replace or reinterpret any part of the clothing. The garment must remain identical throughout the entire video.
+FEMALE MODEL SIGNATURE JEWELRY:
+The female model consistently wears three layered gold necklaces (choker, medium dangling chain, long chain with small oval gold medallion), two delicate gold chain bracelets with dangling extenders (one on each wrist), and three delicate silver-tone rings.
 
-**FACE AND CAMERA FRAMING (STRICT NO-FACE / CHIN-DOWN LOCK)**
+Do not redesign, modify, replace or reinterpret any part of the clothing or accessories. The garment must remain identical throughout the entire video.
 
-The camera framing is strictly and permanently from the bottom base of the chin downward.
+**FACE AND CAMERA FRAMING (STRICT CHIN-DOWN & ANTI-UPWARD TILT LOCK)**
+
+The camera framing is strictly and permanently from the bottom base of the chin downward throughout all 10 seconds.
 NEVER reveal the woman's face, lips, mouth, or nose at any point or frame in this video.
 The lips, mouth, nose, eyes and upper face MUST REMAIN 100% OUT OF FRAME throughout the entire 10-second recording.
+
+CRITICAL CAMERA HEIGHT LOCK & ANTI-LIP PROHIBITION:
+- The camera must remain anchored at mid-chest/torso level. It must NEVER tilt upward, pan upward, or drift up above the base of the chin at any point, especially during the 8.5–10 second profile rotation or the end of the video.
+- STRICTLY FORBIDDEN: Any visible lips, swollen or puffy lips, cosmetic botox-style lips, mouth, or facial features.
+- The lower edge of the chin is the absolute hard ceiling of the camera frame.
 Only the base of the chin, neck, collarbone, torso, hips, and legs are visible.
 She holds the smartphone in one hand throughout the entire recording. The phone remains in front of the mirror, maintaining the original mirror-selfie composition.
 
@@ -218,7 +250,9 @@ She brings her free hand back toward the side of her waist, pinches a small sect
 She moves her free arm outward and slightly away from her body while beginning to shift her weight and reposition her feet.
 
 8.5–10 SECONDS:
-She gradually rotates her torso and hips into a three-quarter side profile, turning approximately 70–90 degrees relative to her original frontal position. She keeps holding the smartphone and maintains the mirror-selfie posture. Her final position clearly displays the side silhouette, waist, hips and rear fit of the garment. She does not turn completely away from the mirror.
+She gradually rotates her torso and hips into a three-quarter side profile, turning approximately 70–90 degrees relative to her original frontal position.
+CAMERA LOCK: The camera remains strictly at mid-chest level and MUST NOT tilt upward during or after the rotation. The framing remains anchored strictly below the chin (never showing lips, mouth or botox-style lips).
+She keeps holding the smartphone and maintains the mirror-selfie posture. Her final position clearly displays the side silhouette, waist, hips and rear fit of the garment. She does not turn completely away from the mirror.
 
 **BODY LANGUAGE AND NATURALISM**
 
@@ -301,17 +335,29 @@ Never redesign, beautify, modify, simplify or reinterpret the product.
 
 Accessories must remain natural and consistent with the visual references. Preserve any accessories explicitly shown or requested by the user. Do not invent additional accessories.
 
+**WOMEN'S MODEL — FIXED SIGNATURE JEWELRY (APPLY ONLY TO FEMALE MODELS)**:
+The female model consistently wears the following signature jewelry set:
+- Three layered gold necklaces (delicate choker close to neck base, medium chain with tiny dangling details, long chain with small oval gold medallion).
+- Two delicate gold chain bracelets (one on each wrist, with delicate dangling extender chain hanging naturally).
+- Three delicate silver-tone rings (one wider ring with central detail on free hand, one smooth thin band on phone hand, one with sparkling stones on phone hand).
+- No large earrings, chunky necklaces, thick bracelets, oversized rings or watches on female model.
+
 The model must have no tattoos.
 
 The garment must remain visually identical throughout the entire animation, even when touched, stretched or moved.
 
-**4. FACE AND CAMERA FRAMING**
+**4. FACE AND CAMERA FRAMING (STRICT CAMERA HEIGHT LOCK & ANTI-LIP PROHIBITION)**
 
-The model's face must never be visible at any moment.
+The model's face must NEVER be visible at any moment.
 
-Maintain framing from below the chin or neck down throughout the entire video.
+Maintain framing strictly from below the chin or neck down throughout the entire 10-second video.
 
 Do not show the mouth, lips, nose, eyes or any part of the face.
+
+CAMERA ANCHOR & ANTI-UPWARD TILT MANDATE:
+- The camera framing is strictly locked at chest level and must NEVER tilt upward, pan upward, or drift above the lower chin at any point, especially during the 8.5–10 second profile rotation or the end of the video.
+- Strictly forbidden: Any visible lips, swollen or puffy lips, cosmetic botox-style lip appearance, mouth, or facial features.
+- The lower edge of the chin is the absolute hard ceiling of the camera frame. The camera must never move higher than the base of the chin.
 
 The model holds a smartphone with one hand throughout the recording, maintaining a natural mirror-selfie posture.
 
@@ -350,6 +396,8 @@ She moves her free arm outward and slightly away from her body while beginning t
 **8.5–10 SECONDS:**
 
 She gradually rotates her torso and hips into a three-quarter side profile, turning approximately 70–90 degrees relative to her original frontal position.
+
+CAMERA LOCK: The camera remains strictly at mid-chest level and MUST NOT tilt upward during or after the rotation. Framing remains anchored strictly below the chin (never showing lips, mouth, or swollen lips).
 
 She maintains the smartphone mirror-selfie posture while displaying the side silhouette, waist, hips and rear fit of the garment.
 

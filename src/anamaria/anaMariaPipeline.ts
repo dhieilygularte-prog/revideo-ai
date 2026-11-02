@@ -346,7 +346,9 @@ export async function refineAnaMariaVideoPrompt(params: {
     '/api/refine-video-prompt',
     {
       currentPrompt: params.currentPrompt,
-      correctionInstruction: `MODO ANA MARIA (VÍDEO 10S VITRINE ESTÁTICA DIANTE DO ESPELHO):\n${params.correctionInstruction}\nREGRA MANDATÓRIA INVIOLÁVEL: O vídeo DEVE permanecer rigorosamente enquadrado da altura do queixo para baixo, NUNCA mostrando a boca, nariz, olhos ou rosto. Zero tatuagens.`,
+      correctionInstruction: `MODO ANA MARIA (VÍDEO 10S VITRINE ESTÁTICA DIANTE DO ESPELHO):
+${params.correctionInstruction}
+REGRA MANDATÓRIA INVIOLÁVEL: O vídeo DEVE permanecer rigorosamente enquadrado da altura do queixo para baixo, com a câmera travada em altura estável, NUNCA inclinando para cima e NUNCA mostrando a boca, lábios (terminantemente proibido lábios inchados ou aparência de botox), nariz, olhos ou rosto. Zero tatuagens.`,
       aiProfile: params.aiProfile || 'openai',
     }
   );

@@ -84,8 +84,8 @@ const AnaMariaHistoryModal = lazy(() =>
 );
 
 export default function App() {
-  // Mode Selection State ('produtos2' default por padrão no APP, opções: 'produtos2' | 'ania' | 'clone' | 'produto' | 'anamaria')
-  const [appMode, setAppMode] = useState<'produtos2' | 'ania' | 'clone' | 'produto' | 'anamaria'>('produtos2');
+  // Mode Selection State ('anamaria' default por padrão no APP ao entrar, opções: 'produtos2' | 'ania' | 'clone' | 'produto' | 'anamaria')
+  const [appMode, setAppMode] = useState<'produtos2' | 'ania' | 'clone' | 'produto' | 'anamaria'>('anamaria');
 
   // AI Profile Selection State ('openai' default no modo clonagem)
   const [aiProfile, setAiProfile] = useState<AIProfile>('openai');
