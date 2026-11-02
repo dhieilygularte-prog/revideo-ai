@@ -88,14 +88,16 @@ export function buildAnaMariaImagePrompt(
       ? 'Homem brasileiro adulto PLUS SIZE REAL (manequim 50 a 54 / XXL, porte físico grande, encorpado, forte e pesado). Pele morena-clara de subtom quente, com textura real e poros naturais. Cabelo castanho-escuro curto alinhado.'
       : 'Homem brasileiro adulto, entre 25 e 35 anos, aparência natural e cotidiana. Pele morena-clara de subtom quente, com textura real e poros naturais. Corpo masculino atlético, ombros largos, cintura alinhada e pernas definidas. Cabelo castanho-escuro curto alinhado.'
     : isPlusSize
-      ? `Mulher brasileira adulta PLUS SIZE REAL E AUTÊNTICA (manequim 48 a 52 / US 16-18, corpo plus size encorpado, voluptuoso, carnudo e curvilíneo):
-- Silhueta plus size real com volume e peso naturais, exatamente como em modelos plus size autênticas de moda feminina.
-- Coxas bem grossas, carnudas, cheias e fartas; quadris visivelmente largos, proeminentes e bem arredondados.
-- Cintura curvilínea suave proporcional a uma mulher plus size real (TERMINANTEMENTE PROIBIDO cintura fina ou estreita de modelo magra; abdômen suavemente arredondado, macio e natural, sem barriga chapada ou atlética).
-- Busto volumoso e colo farto com decote natural bem preenchido.
-- Braços cheios, carnudos e naturais (sem magreza).
+      ? `Mulher brasileira adulta PLUS SIZE REAL E AUTÊNTICA (genuine plus-size woman, manequim 48 a 52 / US 16-18 / XXL, heavy-set, full-figured and voluptuous body):
+- Silhueta plus size autêntica com volume corporal expressivo, peso real e curvas fartas (curvy plus-size model, realistic heavy body weight).
+- Coxas visivelmente grossas, carnudas, cheias e fartas (very thick heavy voluptuous thighs).
+- Quadris bem largos, proeminentes, fartos e arredondados (wide prominent curvy hips).
+- Abdômen suavemente arredondado, carnudo, macio e natural, proporcional a uma mulher plus size real (natural soft full tummy/abdomen).
+- TERMINANTEMENTE PROIBIDO cintura fina, PROIBIDO modelo magra, PROIBIDO corpo esguio ou atlético (STRICTLY FORBIDDEN: slim waist, skinny model, slender build, flat toned belly, thin legs).
+- Busto volumoso e colo farto com decote natural bem preenchido (heavy full bust).
+- Braços cheios, carnudos, macios e naturais (full soft curvy arms).
 - Pele morena-clara de subtom quente com textura real de pele, viço natural e poros visíveis, sem imperfeições pesadas. Cabelos longos castanho-escuros caindo sobre os ombros.
-- A peça de roupa assenta perfeitamente justa no corpo plus size, valorizando as curvas cheias e o volume encorpado exatamente como em modelos plus size reais.`
+- A peça de roupa assenta perfeitamente no corpo plus size, valorizando as curvas cheias e o volume encorpado exatamente como em modelos plus size reais diante do espelho.`
       : `Mulher brasileira adulta, entre 25 e 35 anos, aparência natural e cotidiana. Pele morena-clara de subtom quente, com textura real de pele e poros naturais. Corpo feminino com CURVAS HIPER-ACENTUADAS E PRONUNCIADAS (silhueta violão marcante): cintura fina, estreita e desenhada, quadris visivelmente largos, proeminentes e bem arredondados, coxas grossas, torneadas e volumosas, e bumbum empinado e curvilíneo em formato violão escultural natural. Cabelos longos castanho-escuros levemente ondulados caindo sobre os ombros e costas.`;
 
   const phoneDescription = isMale
@@ -177,7 +179,11 @@ Fotografia vertical 9:16 de espelho de corpo inteiro. Perspectiva frontal, natur
 
 ## 5. CELULAR E POSTURA
 ${phoneDescription}
-Postura em pé em frente ao espelho, peso apoiado principalmente em uma perna com leve projeção natural do quadril destacando a silhueta violão, braço livre relaxado ou tocando suavemente a lateral do corpo sem esconder a peça de roupa.
+${
+  isPlusSize
+    ? 'Postura em pé em frente ao espelho, peso apoiado principalmente em uma perna com projeção natural do quadril destacando as curvas fartas de mulher plus size real (coxas bem grossas, quadris largos e silhueta encorpada), braço livre relaxado ou tocando suavemente a lateral do corpo sem esconder a peça de roupa.'
+    : 'Postura em pé em frente ao espelho, peso apoiado principalmente em uma perna com leve projeção natural do quadril destacando a silhueta violão, braço livre relaxado ou tocando suavemente a lateral do corpo sem esconder a peça de roupa.'
+}
 
 ## 6. ACESSÓRIOS
 ${accessoriesDescription}
@@ -188,7 +194,7 @@ Detalhes: ${shoeInfo.description}
 O mesmo calçado escolhido deve aparecer posicionado corretamente nos dois pés da modelo.
 
 ## 8. FIDELIDADE ABSOLUTA À ROUPA
-A roupa da imagem de referência deve ser reproduzida exatamente 1:1: mesma cor, tonalidade, tecido, textura, costuras, decote, alças, comprimento e caimento justo moldando o corpo com curvas acentuadas.
+A roupa da imagem de referência deve ser reproduzida exatamente 1:1: mesma cor, tonalidade, tecido, textura, costuras, decote, alças, comprimento e caimento justo ${isPlusSize ? 'moldando com perfeição as curvas fartas do corpo plus size real' : 'moldando o corpo com curvas acentuadas'}.
 
 RESULTADO: ${isMale ? (isPlusSize ? 'brasileiro real plus size (manequim 50-54)' : 'brasileiro real') : (isPlusSize ? 'brasileira real autêntica plus size (manequim 48 a 52, corpo voluptuoso e encorpado)' : 'brasileira real com curvas marcantes')} em selfie no espelho, corte estrito da altura do queixo para baixo, sem tatuagens, calçado correto e iluminação destacando a roupa.`;
 

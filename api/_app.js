@@ -951,12 +951,9 @@ ${prompt}` : prompt;
 - The garment fits snugly and flatteringly over her curves.`;
         effectivePrompt = `[CRITICAL EDIT DIRECTIVE - INPAINT MODEL INTO EXACT SCENARIO - MODO ANA MARIA]:
 You are editing the base scenario photograph (Reference Image 1).
-KEEP the architectural setting from Image 1 100% UNCHANGED and INTACT:
-- Exactly the same beige marbled porcelain tile floor with realistic polished reflections and grout lines.
-- Exactly the same dark wood door on the left with silver metallic handle and dark wooden door frame.
-- Exactly the same off-white tiled wall on the right with the dual light switch and glass door frame.
-- Exactly the same hallway extending in the background.
-- DO NOT invent, generate, or redraw a new room. Place the woman standing inside this EXACT real room from Image 1 in front of the mirror taking a mirror-selfie.
+KEEP the architectural setting from Reference Image 1 100% UNCHANGED and INTACT:
+- Preserve 100% of the room, architecture, floor, walls, mirrors, lighting, colors, reflections, doors, and background exactly as shown in Reference Image 1.
+- DO NOT invent, generate, redesign or redraw a new room. Place the woman standing inside this EXACT real room from Reference Image 1 in front of the mirror taking a mirror-selfie.
 
 [PRODUCT FIDELITY MANDATE (REFERENCE IMAGE 2+)]:
 - The woman wears the EXACT garment shown in reference image 2 (and subsequent photos): 1:1 identical color, shade, fabric texture, seams, straps, neckline, cut, and fit.
@@ -3352,6 +3349,12 @@ ${body}` : body).slice(0, maxChars);
 }
 var IMAGE_REFERENCE_FIDELITY_HEADER = "REGRA CR\xCDTICA DE PRODUTO VS MODELO/CEN\xC1RIO: A imagem de refer\xEAncia anexada serve EXCLUSIVAMENTE para copiar a pe\xE7a de roupa/produto real. \xC9 EXPRESSAMENTE PROIBIDO COPIAR A MODELO, A PESSOA OU O CEN\xC1RIO DE FUNDO DA FOTO DE REFER\xCANCIA! Voc\xEA DEVE gerar uma NOVA pessoa e um NOVO cen\xE1rio seguindo rigorosamente as instru\xE7\xF5es e descri\xE7\xE3o do prompt abaixo. Copie da imagem de refer\xEAncia \xDANICA E EXCLUSIVAMENTE a pe\xE7a de roupa/produto 1:1 com fidelidade total (mesmo formato, corte, decote, al\xE7as, tecido, renda, transpar\xEAncia e cor).";
 var ANAMARIA_IMAGE_HEADER = "[REGRA CR\xCDTICA DE CEN\xC1RIO REAL FIXO E PRODUTO NO MODO ANA MARIA]:\nA Imagem de Refer\xEAncia 1 \xE9 o CEN\xC1RIO REAL FIXO OBRIGAT\xD3RIO (c\xF4modo da casa com ch\xE3o de porcelanato bege marmorizado brilhante, porta de madeira escura com frisos \xE0 esquerda, parede clara com interruptores \xE0 direita e corredor ao fundo).\nVoc\xEA DEVE MANTER ESTE EXATO CEN\xC1RIO E FUNDO como a cena onde a modelo est\xE1 posicionada diante do espelho. N\xC3O gere um cen\xE1rio diferente nem altere a arquitetura, o piso ou as portas do c\xF4modo!\nPosicione a modelo em p\xE9 EXATAMENTE neste cen\xE1rio com smartphone na m\xE3o em selfie no espelho.\nA roupa usada pela modelo deve ser uma r\xE9plica 1:1 exata das fotos de produto anexadas nas demais refer\xEAncias.\nEnquadramento estrito: somente do queixo para baixo. L\xE1bios, boca, nariz e olhos NUNCA aparecem em nenhum momento. Zero tatuagens.";
+function getAnaMariaHeader(hasCustomScenario) {
+  if (hasCustomScenario) {
+    return "[REGRA CR\xCDTICA DE PRESERVA\xC7\xC3O INTEGRAL DO CEN\xC1RIO SELECIONADO NO MODO ANA MARIA]:\nA Imagem de Refer\xEAncia 1 \xE9 a FOTO DO CEN\xC1RIO REAL SELECIONADO PELO USU\xC1RIO.\nVoc\xEA DEVE PRESERVAR 100% DO AMBIENTE, PISO, PAREDES, REFLEXOS, ESPELHO, CORES, ILUMINA\xC7\xC3O E ARQUITETURA da Imagem de Refer\xEAncia 1.\n\xC9 TERMINANTEMENTE PROIBIDO inventar outro cen\xE1rio, alterar o fundo ou redesenhar o ambiente!\nApenas insira e posicione a modelo em p\xE9 diante do espelho EXATAMENTE dentro deste cen\xE1rio da Imagem de Refer\xEAncia 1.\nA roupa usada pela modelo deve ser uma r\xE9plica 1:1 exata das fotos de produto anexadas nas demais refer\xEAncias.\nEnquadramento estrito: somente da altura do queixo para baixo. L\xE1bios, boca, nariz e olhos NUNCA aparecem em nenhum momento. Zero tatuagens.";
+  }
+  return ANAMARIA_IMAGE_HEADER;
+}
 function toDataUri(b64) {
   if (!b64 || typeof b64 !== "string") return void 0;
   const s = b64.trim();
@@ -3370,8 +3373,8 @@ async function generateImageWithKling(params) {
   }
   const englishFidelityHeader = params.imageReferenceBase64 ? "CRITICAL PRODUCT ISOLATION: Reproduce ONLY the clothing/garment 1:1 from the reference image. DO NOT copy the person, face, hair, body, tattoos, or background from the reference photo. Generate a completely NEW model and NEW setting as described below:\n" : "";
   const isPlus = params.bodyType === "plus_size" || /plus[-_\s]*size/i.test(params.prompt);
-  const plusRule = isPlus ? "[REGRA PLUS SIZE: Mulher brasileira adulta verdadeiramente PLUS SIZE (manequim 48 a 52 / US 16-18), com corpo encorpado, coxas bem grossas e carnudas, quadris largos e curvas generosas de mulher plus size real. Proibido modelo magra.]\n\n" : "";
-  const headerKling = params.isAnaMariaMode ? `${plusRule}${ANAMARIA_IMAGE_HEADER}` : `${englishFidelityHeader}${IMAGE_REFERENCE_FIDELITY_HEADER}`;
+  const plusRule = isPlus ? "[MANDATORY AUTHENTIC PLUS-SIZE RULE / REGRA PLUS SIZE OBRIGAT\xD3RIA: Mulher brasileira adulta verdadeiramente PLUS SIZE (manequim 48 a 52 / US 16-18 / XXL, authentic plus-size curvy woman, heavy-set, full-figured voluptuous body). Coxas bem grossas, cheias e fartas (very thick heavy thighs), quadris visivelmente largos e proeminentes (wide prominent curvy hips), abd\xF4men macio e natural suavemente preenchido (soft natural full belly/abdomen), busto volumoso e bra\xE7os cheios carnudos. TERMINANTEMENTE PROIBIDO gerar modelo magra, PROIBIDO cintura fina de passarela, PROIBIDO barriga chapada/seca, PROIBIDO pernas finas (STRICTLY FORBIDDEN: skinny model, slim waist, thin legs, flat athletic stomach, slender body). A modelo DEVE ser genuinamente plus size como em modelos reais plus size brasileiras.]\n\n" : "";
+  const headerKling = params.isAnaMariaMode ? `${plusRule}${getAnaMariaHeader(Boolean(params.scenarioPhotoBase64))}` : `${englishFidelityHeader}${IMAGE_REFERENCE_FIDELITY_HEADER}`;
   const klingPrompt = compactPromptToLimit(
     params.prompt,
     2200,
@@ -3380,7 +3383,7 @@ async function generateImageWithKling(params) {
   const payload = {
     model_name: "kling-v3",
     prompt: klingPrompt,
-    negative_prompt: params.isAnaMariaMode ? "face, lips, mouth, nose, eyes, tattoos on skin, deformed hands, bad anatomy, blurry, watermark" : "original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry",
+    negative_prompt: params.isAnaMariaMode ? `face, lips, mouth, nose, eyes, tattoos on skin, deformed hands, bad anatomy, blurry, watermark${isPlus ? ", skinny, slim, thin waist, flat belly, slender, underweight, thin legs" : ""}` : "original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry",
     aspect_ratio: params.aspectRatio || "9:16",
     n: 1,
     watermark_info: {
@@ -3485,8 +3488,8 @@ async function generateImageWithSeedream(params) {
   }
   const refImages = (params.referenceImages && params.referenceImages.length > 0 ? params.referenceImages : [params.imageReferenceBase64]).map((img) => toDataUri(img)).filter((img) => Boolean(img)).slice(0, 10);
   const isPlus = params.bodyType === "plus_size" || /plus[-_\s]*size/i.test(params.prompt);
-  const plusRule = isPlus ? "[REGRA PLUS SIZE: Mulher brasileira adulta verdadeiramente PLUS SIZE (manequim 48 a 52 / US 16-18), com corpo encorpado, coxas bem grossas e carnudas, quadris largos e curvas generosas de mulher plus size real. Proibido modelo magra.]\n\n" : "";
-  const headerSeedream = params.isAnaMariaMode ? `${plusRule}${ANAMARIA_IMAGE_HEADER}` : IMAGE_REFERENCE_FIDELITY_HEADER;
+  const plusRule = isPlus ? "[MANDATORY AUTHENTIC PLUS-SIZE RULE / REGRA PLUS SIZE OBRIGAT\xD3RIA: Mulher brasileira adulta verdadeiramente PLUS SIZE (manequim 48 a 52 / US 16-18 / XXL, authentic plus-size curvy woman, heavy-set, full-figured voluptuous body). Coxas bem grossas, cheias e fartas (very thick heavy thighs), quadris visivelmente largos e proeminentes (wide prominent curvy hips), abd\xF4men macio e natural suavemente preenchido (soft natural full belly/abdomen), busto volumoso e bra\xE7os cheios carnudos. TERMINANTEMENTE PROIBIDO gerar modelo magra, PROIBIDO cintura fina de passarela, PROIBIDO barriga chapada/seca, PROIBIDO pernas finas (STRICTLY FORBIDDEN: skinny model, slim waist, thin legs, flat athletic stomach, slender body). A modelo DEVE ser genuinamente plus size como em modelos reais plus size brasileiras.]\n\n" : "";
+  const headerSeedream = params.isAnaMariaMode ? `${plusRule}${getAnaMariaHeader(Boolean(params.scenarioPhotoBase64))}` : IMAGE_REFERENCE_FIDELITY_HEADER;
   const payload = {
     model: "dola-seedream-5-0-pro-260628",
     prompt: refImages.length > 0 ? `${headerSeedream}

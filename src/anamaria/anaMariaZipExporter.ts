@@ -29,13 +29,13 @@ function formatTimestampForFile(timestamp?: number): string {
 }
 
 /**
- * Garante que a imagem gerada esteja na resolução exata de 2160x3840 pixels (4K vertical 9:16)
- * com máxima nitidez e interpolação de alta qualidade.
+ * Garante que a imagem gerada esteja na resolução ideal de 1080x1920 pixels (Full HD vertical 9:16)
+ * com máxima nitidez e interpolação de alta qualidade para o Kling 3.0 Omni / TikTok.
  */
 export async function ensureHighResAnaMariaDataUrl(
   inputUrlOrBase64: string,
-  targetWidth = 2160,
-  targetHeight = 3840
+  targetWidth = 1080,
+  targetHeight = 1920
 ): Promise<string> {
   if (typeof window === 'undefined') return inputUrlOrBase64;
   return new Promise((resolve) => {
@@ -58,11 +58,11 @@ export async function ensureHighResAnaMariaDataUrl(
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
-        // Qualidade 0.93 em JPEG: Mantém resolução exata 2160x3840 pixels ultra nítida e reduz tamanho de 8MB para 3-4MB
+        // Qualidade 0.93 em JPEG: Resolução exata de 1080x1920 pixels com ~1,2MB a 2MB (ideal para Kling 3.0)
         const dataUrl = canvas.toDataURL('image/jpeg', 0.93);
         resolve(dataUrl);
       } catch (err) {
-        console.warn('Erro ao redimensionar imagem para 2160x3840 no canvas:', err);
+        console.warn('Erro ao redimensionar imagem para 1080x1920 no canvas:', err);
         resolve(inputUrlOrBase64);
       }
     };
@@ -74,12 +74,12 @@ export async function ensureHighResAnaMariaDataUrl(
 }
 
 /**
- * Converte qualquer imagem ou dataURL para Blob PNG com 2160x3840 pixels garantidos.
+ * Converte qualquer imagem ou dataURL para Blob JPEG com 1080x1920 pixels garantidos.
  */
 export async function ensureHighResAnaMariaBlob(
   inputUrlOrBase64: string,
-  targetWidth = 2160,
-  targetHeight = 3840
+  targetWidth = 1080,
+  targetHeight = 1920
 ): Promise<Blob> {
   if (typeof window === 'undefined') return new Blob([]);
   return new Promise((resolve) => {
@@ -116,7 +116,7 @@ export async function ensureHighResAnaMariaBlob(
           0.93
         );
       } catch (err) {
-        console.warn('Erro ao gerar blob 2160x3840 no canvas:', err);
+        console.warn('Erro ao gerar blob 1080x1920 no canvas:', err);
         fetch(inputUrlOrBase64)
           .then((r) => r.blob())
           .then(resolve)
@@ -134,7 +134,7 @@ export async function ensureHighResAnaMariaBlob(
 }
 
 /**
- * Baixa a imagem individual com resolução de 2160x3840 pixels
+ * Baixa a imagem individual com resolução de 1080x1920 pixels
  * Nomenclatura: "[Nome do Produto] Aurora.jpg"
  */
 export async function downloadAnaMariaSingleImage(imageUrl: string, productName: string) {
@@ -142,7 +142,7 @@ export async function downloadAnaMariaSingleImage(imageUrl: string, productName:
   const fileName = `${cleanName} Aurora.jpg`;
 
   try {
-    const blob = await ensureHighResAnaMariaBlob(imageUrl, 2160, 3840);
+    const blob = await ensureHighResAnaMariaBlob(imageUrl, 1080, 1920);
     downloadBlob(blob, fileName);
   } catch (err) {
     console.warn('Erro ao baixar imagem via blob de alta resolução:', err);
@@ -157,7 +157,7 @@ export async function downloadAnaMariaSingleImage(imageUrl: string, productName:
 
 /**
  * Exporta o pacote .zip (Item 23 e Item 8):
- * - Imagem em 2160x3840 pixels: "[Nome do Produto] Aurora.jpg"
+ * - Imagem em 1080x1920 pixels: "[Nome do Produto] Aurora.jpg"
  * - Doc 1: "Hastags e Headline - [Nome do Produto] (hora da geração).txt"
  * - Doc 2: "Prompt de Video - [Nome do Produto] (hora da geração).txt"
  * - Nome do ZIP: "Modo Ana Maria - [Nome do Produto].zip"
@@ -170,9 +170,9 @@ export async function exportAnaMariaZip(result: AnaMariaResultState): Promise<vo
   const cleanName = sanitizeCleanName(result.productName);
   const horaStr = formatTimestampForFile(result.timestamp);
 
-  // 1. Imagem Principal em 2160x3840 pixels: "[Nome do Produto] Aurora.jpg"
+  // 1. Imagem Principal em 1080x1920 pixels: "[Nome do Produto] Aurora.jpg"
   try {
-    const imgBlob = await ensureHighResAnaMariaBlob(result.imageUrl, 2160, 3840);
+    const imgBlob = await ensureHighResAnaMariaBlob(result.imageUrl, 1080, 1920);
     const imgBuffer = await imgBlob.arrayBuffer();
     zip.file(`${cleanName} Aurora.jpg`, imgBuffer);
   } catch (err) {

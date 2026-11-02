@@ -497,7 +497,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
       {/* ─── GRID PRINCIPAL: LADO ESQUERDO (FOTO + FISCALIZAÇÃO ABAIXO) / LADO DIREITO (PROMPT + BAIXAR TUDO + DETECTOR) ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* ========================================================================= */}
-        {/* COLUNA ESQUERDA: FOTO GERADA (2160x3840) + PAINEL DE FISCALIZAÇÃO ABAIXO */}
+        {/* COLUNA ESQUERDA: FOTO GERADA (1080x1920) + PAINEL DE FISCALIZAÇÃO ABAIXO */}
         {/* ========================================================================= */}
         <div className="lg:col-span-5 space-y-4">
           {/* Card da Imagem Gerada */}
@@ -508,10 +508,10 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                 : 'border-2 border-sky-500/40 bg-zinc-950'
             }`}
           >
-            {/* Header da Imagem com Resolução 2160x3840 e Badge Baixado */}
+            {/* Header da Imagem com Resolução 1080x1920 e Badge Baixado */}
             <div className="flex items-center justify-between pb-2 px-1">
               <span className="text-[11px] font-bold text-zinc-300 uppercase tracking-wide">
-                Foto Gerada 9:16 (2160x3840)
+                Foto Gerada 9:16 (1080x1920)
               </span>
               {hasDownloadedImageOnce && (
                 <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
@@ -561,7 +561,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                     ? 'bg-sky-500 hover:bg-sky-400 text-white border border-sky-300 ring-2 ring-sky-300/60'
                     : 'bg-zinc-950/85 hover:bg-sky-600 text-sky-300 hover:text-white border border-sky-500/40 backdrop-blur-md'
                 }`}
-                title="Baixar Imagem em 2160x3840 pixels"
+                title="Baixar Imagem em 1080x1920 pixels"
               >
                 <span className="w-4 h-4 rounded-full bg-white text-slate-950 font-black text-[10px] flex items-center justify-center shadow">
                   1

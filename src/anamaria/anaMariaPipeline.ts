@@ -173,9 +173,9 @@ export async function runAnaMariaPipeline(
     throw new Error(imgData?.error || 'Não foi possível obter a imagem gerada do servidor.');
   }
 
-  // Resolução de 2160x3840 pixels garantida (Item 3)
-  onStatusMessage('Calibrando resolução em alta definição 2160x3840 (4K 9:16)...');
-  const generatedImageUrl = await ensureHighResAnaMariaDataUrl(imgData.imageUrl, 2160, 3840);
+  // Resolução de 1080x1920 pixels garantida (Full HD vertical 9:16 para Kling 3.0)
+  onStatusMessage('Calibrando resolução em alta definição 1080x1920 (Full HD 9:16)...');
+  const generatedImageUrl = await ensureHighResAnaMariaDataUrl(imgData.imageUrl, 1080, 1920);
 
   // 4. Auditoria de Fidelidade Instantânea com 4 Critérios e Semáforo (Item 1)
   onProgress('completed', 100);
@@ -269,8 +269,8 @@ export async function regenerateAnaMariaImage(params: {
     throw new Error(imgData?.error || 'Falha ao refazer a imagem.');
   }
 
-  // Resolução de 2160x3840 pixels garantida (Item 3)
-  const highResUrl = await ensureHighResAnaMariaDataUrl(imgData.imageUrl, 2160, 3840);
+  // Resolução de 1080x1920 pixels garantida (Full HD vertical 9:16)
+  const highResUrl = await ensureHighResAnaMariaDataUrl(imgData.imageUrl, 1080, 1920);
 
   const audit: AnaMariaAudit = {
     score: 96,
@@ -328,8 +328,8 @@ export async function regenerateAnaMariaNewScenario(params: {
     throw new Error(imgData?.error || 'Falha ao gerar nova imagem com cenário trocado.');
   }
 
-  // Resolução de 2160x3840 pixels garantida (Item 3)
-  const highResUrl = await ensureHighResAnaMariaDataUrl(imgData.imageUrl, 2160, 3840);
+  // Resolução de 1080x1920 pixels garantida (Full HD vertical 9:16)
+  const highResUrl = await ensureHighResAnaMariaDataUrl(imgData.imageUrl, 1080, 1920);
 
   return { imageUrl: highResUrl, room: nextRoom };
 }

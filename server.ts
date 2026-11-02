@@ -1717,6 +1717,21 @@ const ANAMARIA_IMAGE_HEADER =
   'A roupa usada pela modelo deve ser uma réplica 1:1 exata das fotos de produto anexadas nas demais referências.\n' +
   'Enquadramento estrito: somente do queixo para baixo. Lábios, boca, nariz e olhos NUNCA aparecem em nenhum momento. Zero tatuagens.';
 
+function getAnaMariaHeader(hasCustomScenario: boolean): string {
+  if (hasCustomScenario) {
+    return (
+      '[REGRA CRÍTICA DE PRESERVAÇÃO INTEGRAL DO CENÁRIO SELECIONADO NO MODO ANA MARIA]:\n' +
+      'A Imagem de Referência 1 é a FOTO DO CENÁRIO REAL SELECIONADO PELO USUÁRIO.\n' +
+      'Você DEVE PRESERVAR 100% DO AMBIENTE, PISO, PAREDES, REFLEXOS, ESPELHO, CORES, ILUMINAÇÃO E ARQUITETURA da Imagem de Referência 1.\n' +
+      'É TERMINANTEMENTE PROIBIDO inventar outro cenário, alterar o fundo ou redesenhar o ambiente!\n' +
+      'Apenas insira e posicione a modelo em pé diante do espelho EXATAMENTE dentro deste cenário da Imagem de Referência 1.\n' +
+      'A roupa usada pela modelo deve ser uma réplica 1:1 exata das fotos de produto anexadas nas demais referências.\n' +
+      'Enquadramento estrito: somente da altura do queixo para baixo. Lábios, boca, nariz e olhos NUNCA aparecem em nenhum momento. Zero tatuagens.'
+    );
+  }
+  return ANAMARIA_IMAGE_HEADER;
+}
+
 function toDataUri(b64?: string): string | undefined {
   if (!b64 || typeof b64 !== 'string') return undefined;
   const s = b64.trim();
@@ -1731,6 +1746,7 @@ async function generateImageWithKling(params: {
   imageReferenceBase64?: string;
   aspectRatio?: string;
   isAnaMariaMode?: boolean;
+  bodyType?: string;
   scenarioPhotoBase64?: string;
 }): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
   const apiKey = (process.env.KLING_API_KEY || '').trim();
@@ -1746,8 +1762,8 @@ async function generateImageWithKling(params: {
     : '';
 
   const isPlus = params.bodyType === 'plus_size' || /plus[-_\s]*size/i.test(params.prompt);
-  const plusRule = isPlus ? '[REGRA PLUS SIZE: Mulher brasileira adulta verdadeiramente PLUS SIZE (manequim 48 a 52 / US 16-18), com corpo encorpado, coxas bem grossas e carnudas, quadris largos e curvas generosas de mulher plus size real. Proibido modelo magra.]\n\n' : '';
-  const headerKling = params.isAnaMariaMode ? `${plusRule}${ANAMARIA_IMAGE_HEADER}` : `${englishFidelityHeader}${IMAGE_REFERENCE_FIDELITY_HEADER}`;
+  const plusRule = isPlus ? '[MANDATORY AUTHENTIC PLUS-SIZE RULE / REGRA PLUS SIZE OBRIGATÓRIA: Mulher brasileira adulta verdadeiramente PLUS SIZE (manequim 48 a 52 / US 16-18 / XXL, authentic plus-size curvy woman, heavy-set, full-figured voluptuous body). Coxas bem grossas, cheias e fartas (very thick heavy thighs), quadris visivelmente largos e proeminentes (wide prominent curvy hips), abdômen macio e natural suavemente preenchido (soft natural full belly/abdomen), busto volumoso e braços cheios carnudos. TERMINANTEMENTE PROIBIDO gerar modelo magra, PROIBIDO cintura fina de passarela, PROIBIDO barriga chapada/seca, PROIBIDO pernas finas (STRICTLY FORBIDDEN: skinny model, slim waist, thin legs, flat athletic stomach, slender body). A modelo DEVE ser genuinamente plus size como em modelos reais plus size brasileiras.]\n\n' : '';
+  const headerKling = params.isAnaMariaMode ? `${plusRule}${getAnaMariaHeader(Boolean(params.scenarioPhotoBase64))}` : `${englishFidelityHeader}${IMAGE_REFERENCE_FIDELITY_HEADER}`;
   const klingPrompt = compactPromptToLimit(
     params.prompt,
     2200,
@@ -1758,7 +1774,7 @@ async function generateImageWithKling(params: {
     model_name: 'kling-v3',
     prompt: klingPrompt,
     negative_prompt: params.isAnaMariaMode
-      ? 'face, lips, mouth, nose, eyes, tattoos on skin, deformed hands, bad anatomy, blurry, watermark'
+      ? `face, lips, mouth, nose, eyes, tattoos on skin, deformed hands, bad anatomy, blurry, watermark${isPlus ? ', skinny, slim, thin waist, flat belly, slender, underweight, thin legs' : ''}`
       : 'original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry',
     aspect_ratio: params.aspectRatio || '9:16',
     n: 1,
@@ -1897,9 +1913,9 @@ async function generateImageWithSeedream(params: {
     .filter((img): img is string => Boolean(img))
     .slice(0, 10);
 
-  const isPlus = params.bodyType === 'plus_size' || /plus[-_\s]*size/i.test(params.prompt);
-  const plusRule = isPlus ? '[REGRA PLUS SIZE: Mulher brasileira adulta verdadeiramente PLUS SIZE (manequim 48 a 52 / US 16-18), com corpo encorpado, coxas bem grossas e carnudas, quadris largos e curvas generosas de mulher plus size real. Proibido modelo magra.]\n\n' : '';
-  const headerSeedream = params.isAnaMariaMode ? `${plusRule}${ANAMARIA_IMAGE_HEADER}` : IMAGE_REFERENCE_FIDELITY_HEADER;
+  const isPlus = (params as any).bodyType === 'plus_size' || /plus[-_\s]*size/i.test(params.prompt);
+  const plusRule = isPlus ? '[MANDATORY AUTHENTIC PLUS-SIZE RULE / REGRA PLUS SIZE OBRIGATÓRIA: Mulher brasileira adulta verdadeiramente PLUS SIZE (manequim 48 a 52 / US 16-18 / XXL, authentic plus-size curvy woman, heavy-set, full-figured voluptuous body). Coxas bem grossas, cheias e fartas (very thick heavy thighs), quadris visivelmente largos e proeminentes (wide prominent curvy hips), abdômen macio e natural suavemente preenchido (soft natural full belly/abdomen), busto volumoso e braços cheios carnudos. TERMINANTEMENTE PROIBIDO gerar modelo magra, PROIBIDO cintura fina de passarela, PROIBIDO barriga chapada/seca, PROIBIDO pernas finas (STRICTLY FORBIDDEN: skinny model, slim waist, thin legs, flat athletic stomach, slender body). A modelo DEVE ser genuinamente plus size como em modelos reais plus size brasileiras.]\n\n' : '';
+  const headerSeedream = params.isAnaMariaMode ? `${plusRule}${getAnaMariaHeader(Boolean((params as any).scenarioPhotoBase64))}` : IMAGE_REFERENCE_FIDELITY_HEADER;
   const payload: any = {
     model: 'dola-seedream-5-0-pro-260628',
     prompt: refImages.length > 0 ? `${headerSeedream}\n\n${params.prompt}` : params.prompt,

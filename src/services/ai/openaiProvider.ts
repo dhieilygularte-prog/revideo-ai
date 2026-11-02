@@ -623,12 +623,9 @@ Retorne estritamente um JSON estruturado:
 
         effectivePrompt = `[CRITICAL EDIT DIRECTIVE - INPAINT MODEL INTO EXACT SCENARIO - MODO ANA MARIA]:
 You are editing the base scenario photograph (Reference Image 1).
-KEEP the architectural setting from Image 1 100% UNCHANGED and INTACT:
-- Exactly the same beige marbled porcelain tile floor with realistic polished reflections and grout lines.
-- Exactly the same dark wood door on the left with silver metallic handle and dark wooden door frame.
-- Exactly the same off-white tiled wall on the right with the dual light switch and glass door frame.
-- Exactly the same hallway extending in the background.
-- DO NOT invent, generate, or redraw a new room. Place the woman standing inside this EXACT real room from Image 1 in front of the mirror taking a mirror-selfie.
+KEEP the architectural setting from Reference Image 1 100% UNCHANGED and INTACT:
+- Preserve 100% of the room, architecture, floor, walls, mirrors, lighting, colors, reflections, doors, and background exactly as shown in Reference Image 1.
+- DO NOT invent, generate, redesign or redraw a new room. Place the woman standing inside this EXACT real room from Reference Image 1 in front of the mirror taking a mirror-selfie.
 
 [PRODUCT FIDELITY MANDATE (REFERENCE IMAGE 2+)]:
 - The woman wears the EXACT garment shown in reference image 2 (and subsequent photos): 1:1 identical color, shade, fabric texture, seams, straps, neckline, cut, and fit.
