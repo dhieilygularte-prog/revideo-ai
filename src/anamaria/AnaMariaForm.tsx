@@ -638,69 +638,80 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         </div>
       </div>
 
-      {/* ─── CARD 8: GALERIA DE CENÁRIOS VENCEDORES (SUBMENU EXPANSÍVEL - ITEM 8) ─── */}
-      <div className="rounded-2xl border border-sky-950/60 bg-zinc-950/80 backdrop-blur-sm shadow-xl overflow-hidden transition-all">
+      {/* ─── CARD 8: TOQUE AQUI PARA ESCOLHER UM CENÁRIO (SUBMENU EXPANSÍVEL - ITEM 8) ─── */}
+      <div
+        className={`rounded-2xl transition-all duration-300 overflow-hidden shadow-2xl ${
+          form.selectedScenarioNumber
+            ? 'border-2 border-amber-400 bg-gradient-to-br from-zinc-950 via-zinc-900 to-amber-950/30 shadow-amber-950/50'
+            : 'border-2 border-orange-500/80 hover:border-orange-400 bg-gradient-to-br from-zinc-950 via-orange-950/20 to-zinc-950 shadow-orange-950/40 ring-1 ring-orange-500/30'
+        }`}
+      >
         <button
           type="button"
           onClick={() => setIsGalleryExpanded((prev) => !prev)}
-          className="w-full p-5 flex flex-wrap items-center justify-between gap-3 text-left hover:bg-zinc-900/50 transition-colors cursor-pointer"
+          className="w-full p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3 text-left hover:bg-orange-500/10 transition-colors cursor-pointer group"
         >
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
-              <ImageIcon className="w-5 h-5" />
+          <div className="flex items-center gap-3.5">
+            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 text-zinc-950 flex items-center justify-center font-black shadow-lg shadow-orange-500/40 shrink-0 group-hover:scale-105 transition-transform">
+              <ImageIcon className="w-5 h-5 text-zinc-950 stroke-[2.5]" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wide">
-                  8. Galeria de Cenários Vencedores
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-sm sm:text-base font-black text-amber-300 uppercase tracking-wide group-hover:text-amber-200 transition-colors">
+                  8. TOQUE AQUI PARA ESCOLHER UM CENÁRIO
                 </h3>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30">
-                  {SCENARIO_GALLERY_ITEMS.length} Cenários Disponíveis
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-orange-500 text-zinc-950 uppercase tracking-wider shadow-sm">
+                  OPCIONAL
+                </span>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 hidden sm:inline-block">
+                  {SCENARIO_GALLERY_ITEMS.length} Cenários Vencedores
                 </span>
               </div>
-              <p className="text-[11px] text-zinc-400 mt-0.5">
-                Opcional: selecione um cenário para posicionar a modelo nele sem recriar o fundo.
+              <p className="text-[11px] sm:text-xs text-zinc-300 mt-1">
+                Opcional: selecione um cenário para fixar. Se não escolher, o app sorteará um dos 23 cenários automaticamente ao gerar!
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2.5">
             {form.selectedScenarioNumber ? (
-              <div className="flex items-center gap-1.5 bg-sky-500/20 border border-sky-400/60 px-3 py-1.5 rounded-xl">
-                <span className="text-xs font-black text-sky-200">
+              <div className="flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-zinc-950 font-black px-3 py-1.5 rounded-xl border border-amber-300 shadow-md shadow-orange-950/40">
+                <span className="text-xs">
                   Cenário {form.selectedScenarioNumber} Selecionado ✓
                 </span>
                 <button
                   type="button"
                   onClick={handleClearScenario}
-                  className="p-1 hover:bg-rose-500/30 rounded-lg text-rose-300 transition-colors ml-1"
-                  title="Desmarcar cenário"
+                  className="p-1 hover:bg-black/20 rounded-lg text-zinc-950 transition-colors ml-1 cursor-pointer"
+                  title="Desmarcar cenário (sortear de forma randômica)"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="w-3.5 h-3.5 stroke-[3]" />
                 </button>
               </div>
             ) : (
-              <span className="text-xs text-zinc-500 hidden sm:inline">Nenhum cenário marcado</span>
+              <div className="px-3 py-1.5 rounded-xl bg-orange-500/20 border border-orange-500/60 text-orange-300 text-xs font-black flex items-center gap-1.5 group-hover:bg-orange-500 group-hover:text-zinc-950 transition-all shadow-sm">
+                <span>Abrir Galeria</span>
+              </div>
             )}
-            <div className="w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400">
-              {isGalleryExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            <div className="w-8 h-8 rounded-xl bg-orange-500/20 border border-orange-500/50 flex items-center justify-center text-orange-300 group-hover:bg-orange-500 group-hover:text-zinc-950 transition-all">
+              {isGalleryExpanded ? <ChevronUp className="w-4 h-4 stroke-[3]" /> : <ChevronDown className="w-4 h-4 stroke-[3]" />}
             </div>
           </div>
         </button>
 
         {isGalleryExpanded && (
-          <div className="p-5 pt-0 border-t border-zinc-850 space-y-4 animate-fade-in">
+          <div className="p-5 pt-0 border-t border-orange-500/30 space-y-4 animate-fade-in bg-zinc-950/60">
             <div className="flex flex-wrap items-center justify-between gap-2 pt-4">
-              <p className="text-xs text-zinc-400">
-                Toque em qualquer miniatura para escolher o cenário. Toque novamente para desmarcar.
+              <p className="text-xs text-amber-200/90 font-medium">
+                Toque em qualquer miniatura para escolher o cenário. Se não escolher, um cenário será sorteado de forma randômica.
               </p>
               {form.selectedScenarioNumber && (
                 <button
                   type="button"
                   onClick={handleClearScenario}
-                  className="text-xs text-rose-400 hover:text-rose-300 font-bold underline cursor-pointer"
+                  className="text-xs text-amber-300 hover:text-amber-200 font-black underline cursor-pointer"
                 >
-                  Remover seleção (usar cenário residencial padrão)
+                  Remover seleção (voltar ao sorteio randômico)
                 </button>
               )}
             </div>
@@ -716,8 +727,8 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                     onClick={() => handleToggleScenario(item)}
                     className={`group relative rounded-xl overflow-hidden aspect-[9/16] transition-all cursor-pointer text-left bg-zinc-900 flex flex-col justify-between ${
                       isSelected
-                        ? 'ring-3 ring-sky-400 border-2 border-sky-300 shadow-xl shadow-sky-500/30 scale-[1.02]'
-                        : 'border border-zinc-800 hover:border-sky-500/60 opacity-85 hover:opacity-100 hover:scale-[1.01]'
+                        ? 'ring-3 ring-amber-400 border-2 border-amber-300 shadow-xl shadow-orange-500/40 scale-[1.02]'
+                        : 'border border-zinc-800 hover:border-orange-500/60 opacity-85 hover:opacity-100 hover:scale-[1.01]'
                     }`}
                   >
                     {/* Imagem do Cenário (Thumbnail leve) */}
@@ -735,14 +746,14 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
 
                     {/* Selo de Selecionado no Canto Superior Direito */}
                     {isSelected && (
-                      <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-sky-500 text-white flex items-center justify-center shadow-md animate-fade-in">
+                      <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-amber-400 text-zinc-950 font-black flex items-center justify-center shadow-md animate-fade-in">
                         <Check className="w-3.5 h-3.5 stroke-[3]" />
                       </div>
                     )}
 
                     {/* Overlay inferior com o nome */}
                     <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-2 pt-6">
-                      <span className={`text-[11px] font-bold block truncate ${isSelected ? 'text-sky-300' : 'text-zinc-200'}`}>
+                      <span className={`text-[11px] font-bold block truncate ${isSelected ? 'text-amber-300' : 'text-zinc-200'}`}>
                         {item.title}
                       </span>
                     </div>

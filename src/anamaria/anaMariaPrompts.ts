@@ -139,6 +139,7 @@ Conjunto permanente da identidade visual da modelo feminina. Jamais remova, subs
 
   const hasSelectedScenario = Boolean(form.selectedScenarioId);
   const scenarioTitle = form.selectedScenarioNumber ? `Cenário ${form.selectedScenarioNumber}` : 'cenário selecionado';
+  const scenarioText = SCENARIO_DESCRIPTIONS[scenarioRoom] || SCENARIO_DESCRIPTIONS.hall_espelho;
 
   const promptIntro = hasSelectedScenario
     ? `Crie uma fotografia hiper-realista vertical 9:16 de ${

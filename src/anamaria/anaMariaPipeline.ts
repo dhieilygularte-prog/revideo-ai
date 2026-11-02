@@ -12,6 +12,7 @@ import { resolveHeadlineAndHashtags } from './anaMariaBank';
 import { AIProfile } from '../config/aiProfiles';
 import { PREFERRED_SCENARIO_BASE64 } from './assets/scenarioImage';
 import { ensureHighResAnaMariaDataUrl } from './anaMariaZipExporter';
+import { SCENARIO_GALLERY_ITEMS } from './scenarioGalleryData';
 
 export interface AnaMariaPipelineCallbacks {
   onProgress?: (stepName: string, percent: number) => void;
@@ -100,18 +101,44 @@ async function resolveScenarioBase64(form: AnaMariaFormState): Promise<string> {
 }
 
 /**
+ * Garante que um cenário esteja sempre definido.
+ * Se o usuário não tiver escolhido nenhum cenário na galeria, sorteia randomicamente
+ * um dos 23 cenários vencedores da galeria (Item opcional, sem travar o processamento).
+ */
+export function ensureAnaMariaScenario(form: AnaMariaFormState): AnaMariaFormState {
+  if (form.selectedScenarioId && (form.selectedScenarioUrl || form.selectedScenarioBase64)) {
+    return form;
+  }
+  if (!SCENARIO_GALLERY_ITEMS || SCENARIO_GALLERY_ITEMS.length === 0) {
+    return form;
+  }
+  const randomIndex = Math.floor(Math.random() * SCENARIO_GALLERY_ITEMS.length);
+  const randomScenario = SCENARIO_GALLERY_ITEMS[randomIndex] || SCENARIO_GALLERY_ITEMS[0];
+  return {
+    ...form,
+    selectedScenarioId: randomScenario.id,
+    selectedScenarioNumber: randomScenario.number,
+    selectedScenarioUrl: randomScenario.fullUrl,
+    selectedScenarioBase64: undefined,
+  };
+}
+
+/**
  * Pipeline principal do Modo Ana Maria (otimizado para alta velocidade sem perda de qualidade)
  */
 export async function runAnaMariaPipeline(
-  form: AnaMariaFormState,
+  rawForm: AnaMariaFormState,
   callbacks?: AnaMariaPipelineCallbacks,
   aiProfile: AIProfile = 'openai'
 ): Promise<AnaMariaResultState> {
   const { onProgress = () => {}, onStatusMessage = () => {} } = callbacks || {};
 
-  if (!form.referencePhotos || form.referencePhotos.length === 0) {
+  if (!rawForm.referencePhotos || rawForm.referencePhotos.length === 0) {
     throw new Error('Por favor, anexe ao menos 1 foto de referência da peça.');
   }
+
+  // Se o usuário não escolheu um cenário na galeria, sorteia um dos 23 de forma randômica
+  const form = ensureAnaMariaScenario(rawForm);
 
   // 1. Geração de Prompts & Calçado Condicional
   onProgress('prompt_building', 20);
@@ -239,7 +266,7 @@ export async function regenerateAnaMariaImage(params: {
 
   const effectiveImageModel = imageModelOverride || form.imageModel;
 
-  let effectiveForm = { ...form, imageModel: effectiveImageModel };
+  let effectiveForm = ensureAnaMariaScenario({ ...form, imageModel: effectiveImageModel });
   if (tweakPrompt && tweakPrompt.trim().length > 0) {
     effectiveForm.additionalInstructions = [form.additionalInstructions, tweakPrompt.trim()]
       .filter(Boolean)
