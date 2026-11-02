@@ -23,7 +23,7 @@ import {
   CheckCircle2,
   Plus,
 } from 'lucide-react';
-import { AnaMariaResultState, AnaMariaAuditColorStatus } from './types';
+import { AnaMariaResultState, AnaMariaAuditColorStatus, AnaMariaTheme } from './types';
 import {
   downloadAnaMariaSingleImage,
   exportAnaMariaZip,
@@ -46,6 +46,7 @@ interface AnaMariaResultsProps {
   onOpenHistory?: () => void;
   onOpenPreviewModal: (url: string, title: string) => void;
   aiProfile?: AIProfile;
+  theme?: AnaMariaTheme;
 }
 
 function getStatusClasses(status: AnaMariaAuditColorStatus) {
@@ -95,11 +96,17 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
   onOpenHistory,
   onOpenPreviewModal,
   aiProfile = 'openai',
+  theme = 'fogo',
 }) => {
-  // Classes padrão com contraste da paleta Dark Obsidian + Laranja/Âmbar
+  const isAmetista = theme === 'ametista';
+
+  // Classes padrão com contraste da paleta selecionada (Fogo vs Ametista)
   const copiedBlueSectionClass =
     'bg-gradient-to-br from-sky-900/85 via-blue-900/80 to-slate-900/95 border-2 border-sky-400 shadow-xl shadow-sky-950/60 ring-2 ring-sky-400/40';
-  const defaultSectionClass = 'bg-[#111113]/95 border border-orange-500/30 shadow-xl';
+  const defaultSectionClass = isAmetista
+    ? 'bg-[#140d21]/95 border border-purple-500/35 shadow-[0_4px_24px_rgba(124,58,237,0.14)]'
+    : 'bg-[#111113]/95 border border-orange-500/25 shadow-xl';
+  const accentIconClass = isAmetista ? 'text-[#d4ff59]' : 'text-orange-400';
 
   // Estados de destaque azul ativo ao copiar/baixar (itens 6, 7 e 14)
   const [copiedPrompt, setCopiedPrompt] = useState(false);
@@ -447,31 +454,43 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
         <button
           type="button"
           onClick={onBackToForm}
-          className="px-4 py-2.5 bg-[#111113] hover:bg-zinc-900 text-zinc-200 hover:text-white border border-orange-500/35 hover:border-orange-400 text-xs font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-md"
+          className={`px-4 py-2.5 text-zinc-200 hover:text-white border text-xs font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-md ${
+            isAmetista
+              ? 'bg-[#170f26] hover:bg-[#221638] border-purple-500/35 hover:border-purple-400'
+              : 'bg-[#111113] hover:bg-zinc-800 border-zinc-700/80 hover:border-orange-500/45'
+          }`}
         >
-          <ArrowLeft className="w-4 h-4 text-orange-400" />
+          <ArrowLeft className={`w-4 h-4 ${accentIconClass}`} />
           <span>Voltar para a página anterior</span>
         </button>
       </div>
 
       {/* ─── BOTÕES DE AÇÃO SUPERIORES (PADRÃO PRODUTOS 2.0 - ITENS 1 E 12) ─── */}
-      <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-orange-500/20">
+      <div className={`flex flex-wrap items-center justify-between gap-3 pb-2 border-b ${isAmetista ? 'border-purple-500/20' : 'border-zinc-800'}`}>
         <div className="flex flex-wrap items-center gap-2.5">
           {/* NOVO PRODUTO */}
           <button
             type="button"
             onClick={onCreateNew}
-            className="px-4 py-2 bg-[#111113] hover:bg-zinc-800 text-xs font-bold text-orange-200 hover:text-white rounded-xl flex items-center gap-2 transition-colors cursor-pointer border border-orange-500/35 hover:border-orange-400"
+            className={`px-4 py-2 text-xs font-bold text-zinc-200 hover:text-white rounded-xl flex items-center gap-2 transition-colors cursor-pointer border ${
+              isAmetista
+                ? 'bg-[#170f26] hover:bg-[#221638] border-purple-500/35 hover:border-purple-400'
+                : 'bg-[#111113] hover:bg-zinc-800 border-zinc-700/80 hover:border-orange-500/45'
+            }`}
           >
-            <RotateCcw className="w-4 h-4 text-orange-400" />
+            <RotateCcw className={`w-4 h-4 ${accentIconClass}`} />
             <span>NOVO PRODUTO</span>
           </button>
 
-          {/* + Continuar no produto: Amarelo/Dourado vibrante idêntico ao Modo Produtos 2.0 */}
+          {/* + Continuar no produto */}
           <button
             type="button"
             onClick={onContinueProduct}
-            className="px-4 py-2 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-zinc-950 font-black text-xs rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-orange-950/40"
+            className={`px-4 py-2 text-zinc-950 font-black text-xs rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-md ${
+              isAmetista
+                ? 'bg-[#d4ff59] hover:bg-[#e2ff85] shadow-lime-950/40'
+                : 'bg-amber-400 hover:bg-amber-300 shadow-amber-950/40'
+            }`}
           >
             <Plus className="w-4 h-4 text-zinc-950 stroke-[3]" />
             <span>Continuar no produto</span>
@@ -482,10 +501,14 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
             type="button"
             disabled={isSwitchingScenario || isRegeneratingImage}
             onClick={handleSwitchScenario}
-            className="px-4 py-2 bg-[#111113] hover:bg-zinc-800 border border-orange-500/45 hover:border-orange-400 text-orange-200 hover:text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-sm"
+            className={`px-4 py-2 text-zinc-200 hover:text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-sm border ${
+              isAmetista
+                ? 'bg-[#170f26] hover:bg-[#221638] border-purple-500/35 hover:border-purple-400'
+                : 'bg-[#111113] hover:bg-zinc-800 border-zinc-700/80 hover:border-orange-500/45'
+            }`}
             title="Gera novamente a mesma modelo e roupa em outro cômodo da casa com frente iluminada e fundo penumbroso"
           >
-            <Home className={`w-4 h-4 text-orange-400 ${isSwitchingScenario ? 'animate-spin' : ''}`} />
+            <Home className={`w-4 h-4 ${accentIconClass} ${isSwitchingScenario ? 'animate-spin' : ''}`} />
             <span>{isSwitchingScenario ? 'Trocando cenário...' : 'Trocar Cenário'}</span>
           </button>
         </div>
@@ -494,9 +517,13 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
           <button
             type="button"
             onClick={onOpenHistory}
-            className="px-3.5 py-2 bg-[#111113]/90 hover:bg-zinc-800 text-zinc-400 hover:text-orange-200 border border-orange-500/25 hover:border-orange-400/50 text-xs font-medium rounded-xl flex items-center gap-2 transition-colors cursor-pointer shadow-sm"
+            className={`px-3.5 py-2 text-zinc-400 hover:text-zinc-200 border text-xs font-medium rounded-xl flex items-center gap-2 transition-colors cursor-pointer shadow-sm ${
+              isAmetista
+                ? 'bg-[#170f26]/90 hover:bg-[#221638] border-purple-500/25 hover:border-purple-400/50'
+                : 'bg-[#111113]/90 hover:bg-zinc-800 border-zinc-800 hover:border-zinc-700'
+            }`}
           >
-            <History className="w-3.5 h-3.5 text-orange-400/80" />
+            <History className={`w-3.5 h-3.5 ${accentIconClass}`} />
             <span>Histórico de Gerações</span>
           </button>
         )}
@@ -513,12 +540,14 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
             className={`rounded-2xl transition-all duration-300 p-3 shadow-2xl relative group ${
               hasDownloadedImageOnce
                 ? copiedBlueSectionClass
-                : 'border-2 border-orange-500/45 bg-[#111113]'
+                : isAmetista
+                ? 'border-2 border-purple-400/50 bg-[#140d21]'
+                : 'border-2 border-orange-500/40 bg-[#111113]'
             }`}
           >
             {/* Header da Imagem com Resolução 1080x1920 e Badge Baixado */}
             <div className="flex items-center justify-between pb-2 px-1">
-              <span className="text-[11px] font-bold text-orange-200/90 uppercase tracking-wide">
+              <span className="text-[11px] font-bold text-zinc-200 uppercase tracking-wide">
                 Foto Gerada 9:16 (1080x1920)
               </span>
               {hasDownloadedImageOnce && (
@@ -545,14 +574,20 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                     `Modo Ana Maria - ${result.productName || 'Peça de Vestuário'}`
                   )
                 }
-                className="absolute top-3 right-3 p-2 rounded-xl bg-black/70 hover:bg-black/90 text-white backdrop-blur-md border border-orange-400/30 transition-all cursor-pointer shadow-lg group-hover:scale-105"
+                className="absolute top-3 right-3 p-2 rounded-xl bg-black/70 hover:bg-black/90 text-white backdrop-blur-md border border-white/20 transition-all cursor-pointer shadow-lg group-hover:scale-105"
                 title="Ampliar Imagem"
               >
-                <Eye className="w-4 h-4 text-orange-300" />
+                <Eye className={`w-4 h-4 ${accentIconClass}`} />
               </button>
 
               {/* Badge de Motor no Topo Esquerdo */}
-              <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-zinc-950/85 backdrop-blur-md border border-orange-500/45 text-[10px] font-bold text-orange-300 uppercase">
+              <div
+                className={`absolute top-3 left-3 px-2.5 py-1 rounded-lg bg-zinc-950/85 backdrop-blur-md border text-[10px] font-bold uppercase ${
+                  isAmetista
+                    ? 'border-purple-400/50 text-[#d4ff59]'
+                    : 'border-orange-500/45 text-orange-300'
+                }`}
+              >
                 {result.imageModel === 'seedream_5_0_pro'
                   ? 'SeaDream 5.0 Pro'
                   : result.imageModel === 'kling_3_0'
@@ -567,7 +602,9 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                 className={`absolute bottom-3 right-3 px-3 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-xl ${
                   hasDownloadedImageOnce || downloadedImage
                     ? 'bg-sky-500 hover:bg-sky-400 text-white border border-sky-300 ring-2 ring-sky-300/60'
-                    : 'bg-zinc-950/85 hover:bg-orange-600 text-orange-300 hover:text-white border border-orange-500/50 backdrop-blur-md'
+                    : isAmetista
+                    ? 'bg-[#170f26]/90 hover:bg-[#d4ff59] text-[#d4ff59] hover:text-zinc-950 border border-purple-400/50 backdrop-blur-md'
+                    : 'bg-zinc-950/90 hover:bg-zinc-800 text-white border border-orange-500/45 backdrop-blur-md'
                 }`}
                 title="Baixar Imagem em 1080x1920 pixels"
               >
@@ -762,10 +799,10 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
               hasCopiedPromptOnce ? copiedBlueSectionClass : defaultSectionClass
             }`}
           >
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-orange-500/20 pb-3">
+            <div className={`flex flex-wrap items-center justify-between gap-3 border-b pb-3 ${isAmetista ? 'border-purple-500/20' : 'border-zinc-800/80'}`}>
               <div>
                 <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-wide flex items-center gap-2">
-                  <Video className="w-4 h-4 text-orange-400" />
+                  <Video className={`w-4 h-4 ${accentIconClass}`} />
                   <span>
                     Prompt do Vídeo (10s -{' '}
                     {result.presentationMode === 'pov'
@@ -783,7 +820,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                 </h3>
                 <p className="text-[11px] text-zinc-400 mt-0.5">
                   Arquivo no pacote:{' '}
-                  <span className="font-mono text-orange-200">
+                  <span className="font-mono text-white">
                     {`Prompt de Video - ${safeFileName}.txt`}
                   </span>
                 </p>
@@ -798,7 +835,9 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                     ? 'bg-emerald-500 text-white ring-2 ring-emerald-300'
                     : hasCopiedPromptOnce
                     ? 'bg-sky-500 hover:bg-sky-400 text-white'
-                    : 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950'
+                    : isAmetista
+                    ? 'bg-[#d4ff59] hover:bg-[#e2ff85] text-zinc-950'
+                    : 'bg-zinc-800 hover:bg-zinc-700 border border-orange-500/45 text-white'
                 }`}
               >
                 {copiedPrompt ? (
@@ -825,24 +864,28 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                 setCopiedPrompt(false);
                 onUpdateResult({ ...result, videoPrompt: val });
               }}
-              className={`w-full p-3.5 rounded-xl text-xs font-mono leading-relaxed focus:outline-none focus:ring-2 focus:ring-orange-400 resize-y select-all ${
+              className={`w-full p-3.5 rounded-xl text-xs font-mono leading-relaxed focus:outline-none resize-y select-all ${
                 hasCopiedPromptOnce
-                  ? 'bg-slate-950/90 border border-sky-400/60 text-sky-50'
-                  : 'bg-zinc-950 border border-orange-500/25 text-zinc-200'
+                  ? 'bg-slate-950/90 border border-sky-400/60 text-sky-50 focus:ring-2 focus:ring-sky-400'
+                  : isAmetista
+                  ? 'bg-[#0e0817]/95 border border-purple-500/30 text-zinc-200 focus:border-[#d4ff59]'
+                  : 'bg-zinc-950 border border-zinc-800 text-zinc-200 focus:border-orange-500/60'
               }`}
             />
 
-            {/* Ajustar ou Corrigir este Prompt com IA com Microfone e Botão Laranja */}
+            {/* Ajustar ou Corrigir este Prompt com IA com Microfone */}
             <div
               className={`p-3.5 sm:p-4 rounded-xl space-y-2.5 transition-all ${
                 hasCopiedPromptOnce
                   ? 'bg-slate-900/90 border border-sky-400/50'
-                  : 'bg-zinc-900/95 border border-orange-500/25 shadow-inner'
+                  : isAmetista
+                  ? 'bg-[#1a102b]/95 border border-purple-500/30 shadow-inner'
+                  : 'bg-zinc-900/95 border border-zinc-800 shadow-inner'
               }`}
             >
               <div className="flex items-center justify-between">
                 <label className="text-[11px] font-bold text-zinc-200 flex items-center gap-1.5">
-                  <Wand2 className="w-3.5 h-3.5 text-orange-400" />
+                  <Wand2 className={`w-3.5 h-3.5 ${accentIconClass}`} />
                   <span>Ajustar ou Corrigir este Prompt com IA:</span>
                 </label>
                 {isPromptMicRecording && (
@@ -866,7 +909,11 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                       }
                     }}
                     placeholder='Ex: "Ajustar movimentos mais lentos", "Mude a rotação final do corpo"...'
-                    className="w-full pl-3 pr-10 py-2.5 bg-zinc-950 border border-orange-500/30 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-orange-400 transition-colors shadow-inner font-sans"
+                    className={`w-full pl-3 pr-10 py-2.5 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none transition-colors shadow-inner font-sans ${
+                      isAmetista
+                        ? 'bg-[#0e0817] border border-purple-500/30 focus:border-[#d4ff59]'
+                        : 'bg-zinc-950 border border-zinc-700 focus:border-orange-400'
+                    }`}
                   />
 
                   {/* Botão Microfone embutido */}
@@ -876,7 +923,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                     className={`absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition-all cursor-pointer ${
                       isPromptMicRecording
                         ? 'bg-rose-500/20 text-rose-400 animate-pulse ring-2 ring-rose-400'
-                        : 'text-zinc-400 hover:text-orange-300 hover:bg-zinc-800'
+                        : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
                     }`}
                     title={
                       isPromptMicRecording
@@ -892,12 +939,16 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                   </button>
                 </div>
 
-                {/* Botão Laranja: Refazer Prompt */}
+                {/* Botão Refazer Prompt */}
                 <button
                   type="button"
                   onClick={handleRefinePrompt}
                   disabled={isRefiningPrompt || !promptCorrectionText.trim()}
-                  className="px-4 py-2.5 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 disabled:opacity-40 disabled:cursor-not-allowed text-zinc-950 text-xs font-black rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md shrink-0"
+                  className={`px-4 py-2.5 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-black rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md shrink-0 ${
+                    isAmetista
+                      ? 'bg-[#d4ff59] hover:bg-[#e2ff85] text-zinc-950'
+                      : 'bg-zinc-800 hover:bg-zinc-700 border border-orange-500/45 text-white'
+                  }`}
                 >
                   {isRefiningPrompt ? (
                     <>
@@ -946,16 +997,16 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
       {/* ========================================================================= */}
       {/* SEÇÃO INFERIOR: DESCRIÇÃO DO POST + HASHTAGS E HEADLINE VIRAL             */}
       {/* ========================================================================= */}
-      <div className="space-y-4 pt-4 border-t border-orange-500/20">
+      <div className={`space-y-4 pt-4 border-t ${isAmetista ? 'border-purple-500/20' : 'border-zinc-800'}`}>
         {/* Card: Descrição do Post + Hashtags */}
         <div
           className={`p-4 sm:p-5 rounded-2xl transition-all duration-300 space-y-3 ${
             hasCopiedHashtagsOnce ? copiedBlueSectionClass : defaultSectionClass
           }`}
         >
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-orange-500/20 pb-2.5">
+          <div className={`flex flex-wrap items-center justify-between gap-2 border-b pb-2.5 ${isAmetista ? 'border-purple-500/20' : 'border-zinc-800/80'}`}>
             <div className="flex items-center gap-2">
-              <Hash className="w-4 h-4 text-orange-400" />
+              <Hash className={`w-4 h-4 ${accentIconClass}`} />
               <h3 className="text-xs font-black text-white uppercase tracking-wide flex items-center gap-2">
                 <span>Descrição do Post + Hashtags (TikTok & Reels)</span>
                 {hasCopiedHashtagsOnce && (
@@ -972,7 +1023,9 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
               className={`py-2 px-4 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-md ${
                 hasCopiedHashtagsOnce || copiedHashtags
                   ? 'bg-sky-500 hover:bg-sky-400 text-white border border-sky-300 ring-2 ring-sky-300/60'
-                  : 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950'
+                  : isAmetista
+                  ? 'bg-[#d4ff59] hover:bg-[#e2ff85] text-zinc-950'
+                  : 'bg-zinc-800 hover:bg-zinc-700 border border-orange-500/45 text-white'
               }`}
             >
               {copiedHashtags ? (
@@ -993,7 +1046,9 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
             className={`p-3.5 rounded-xl text-xs font-mono select-all transition-all leading-relaxed ${
               hasCopiedHashtagsOnce
                 ? 'bg-slate-950/90 border border-sky-400/60 text-sky-100'
-                : 'bg-zinc-900/95 border border-orange-500/25 text-orange-100'
+                : isAmetista
+                ? 'bg-[#0e0817]/95 border border-purple-500/25 text-purple-100'
+                : 'bg-zinc-900/95 border border-zinc-800 text-zinc-200'
             }`}
           >
             {result.hashtags}
@@ -1006,9 +1061,9 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
             hasCopiedHeadlineOnce ? copiedBlueSectionClass : defaultSectionClass
           }`}
         >
-          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-orange-500/20 pb-2.5">
+          <div className={`flex flex-wrap items-center justify-between gap-2 border-b pb-2.5 ${isAmetista ? 'border-purple-500/20' : 'border-zinc-800/80'}`}>
             <div className="flex items-center gap-2">
-              <Smile className="w-4 h-4 text-orange-400" />
+              <Smile className={`w-4 h-4 ${accentIconClass}`} />
               <h3 className="text-xs font-black text-white uppercase tracking-wide flex items-center gap-2">
                 <span>Headline Viral</span>
                 {hasCopiedHeadlineOnce && (
@@ -1025,7 +1080,9 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
               className={`py-2 px-4 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-md ${
                 hasCopiedHeadlineOnce || copiedHeadline
                   ? 'bg-sky-500 hover:bg-sky-400 text-white border border-sky-300 ring-2 ring-sky-300/60'
-                  : 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-zinc-950'
+                  : isAmetista
+                  ? 'bg-[#d4ff59] hover:bg-[#e2ff85] text-zinc-950'
+                  : 'bg-zinc-800 hover:bg-zinc-700 border border-orange-500/45 text-white'
               }`}
             >
               {copiedHeadline ? (
@@ -1046,7 +1103,9 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
             className={`p-3.5 rounded-xl text-sm font-semibold select-all transition-all leading-relaxed ${
               hasCopiedHeadlineOnce
                 ? 'bg-slate-950/90 border border-sky-400/60 text-white'
-                : 'bg-zinc-900/95 border border-orange-500/25 text-white'
+                : isAmetista
+                ? 'bg-[#0e0817]/95 border border-purple-500/25 text-white'
+                : 'bg-zinc-900/95 border border-zinc-800 text-white'
             }`}
           >
             {result.headline}

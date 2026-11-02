@@ -25,7 +25,7 @@ import { AniaFormState, AniaResultState } from './ania/types';
 import { ProdutoFormState, ProdutoResultState } from './produto/types';
 import { Produtos2Form } from './produtos2/Produtos2Form';
 import { Produtos2FormState, Produtos2ResultState } from './produtos2/types';
-import { AnaMariaFormState, AnaMariaResultState } from './anamaria/types';
+import { AnaMariaFormState, AnaMariaResultState, AnaMariaTheme } from './anamaria/types';
 import { AIProfile } from './config/aiProfiles';
 
 const VideoInputCard = lazy(() =>
@@ -191,6 +191,19 @@ export default function App() {
 
   // Modo Ana Maria State
   const [anaMariaPage, setAnaMariaPage] = useState<'form' | 'results'>('form');
+  const [anaMariaTheme, setAnaMariaTheme] = useState<AnaMariaTheme>(() => {
+    try {
+      const saved = localStorage.getItem('aurora_anamaria_theme');
+      if (saved === 'ametista' || saved === 'fogo') return saved;
+    } catch {}
+    return 'fogo';
+  });
+  const handleAnaMariaThemeChange = (nextTheme: AnaMariaTheme) => {
+    setAnaMariaTheme(nextTheme);
+    try {
+      localStorage.setItem('aurora_anamaria_theme', nextTheme);
+    } catch {}
+  };
   const [isProcessingAnaMaria, setIsProcessingAnaMaria] = useState(false);
   const [anaMariaProgressPercent, setAnaMariaProgressPercent] = useState(0);
   const [anaMariaStatusMessage, setAnaMariaStatusMessage] = useState('');
@@ -1907,6 +1920,8 @@ export default function App() {
     <div className={`min-h-screen text-zinc-100 flex flex-col font-sans selection:bg-purple-500/20 selection:text-purple-300 transition-colors duration-300 ${
       appMode === 'produto'
         ? 'bg-[#1c130e]'
+        : appMode === 'anamaria' && anaMariaTheme === 'ametista'
+        ? 'bg-[#0b0713]'
         : 'bg-zinc-950'
     }`}>
       <Header
@@ -1923,6 +1938,8 @@ export default function App() {
         onModeChange={handleModeChange}
         aiProfile={aiProfile}
         onAIProfileChange={setAiProfile}
+        anaMariaTheme={anaMariaTheme}
+        onAnaMariaThemeChange={handleAnaMariaThemeChange}
       />
 
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 space-y-8">
@@ -1954,6 +1971,7 @@ export default function App() {
                 onGoToResults={() => setAnaMariaPage('results')}
                 onOpenHistory={() => setIsAnaMariaHistoryOpen(true)}
                 onNavigateToProdutos2={() => setAppMode('produtos2')}
+                theme={anaMariaTheme}
               />
             ) : (
               <AnaMariaResults
@@ -1965,6 +1983,7 @@ export default function App() {
                 onOpenHistory={() => setIsAnaMariaHistoryOpen(true)}
                 onOpenPreviewModal={(url, title) => setPreviewModal({ isOpen: true, url, title })}
                 aiProfile={aiProfile}
+                theme={anaMariaTheme}
               />
             )}
           </div>

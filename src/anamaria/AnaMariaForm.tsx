@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Sparkles,
   Upload,
@@ -22,10 +22,12 @@ import {
   Smartphone,
   Hand,
   Smile,
+  RefreshCw,
 } from 'lucide-react';
 import {
   AnaMariaFormState,
   AnaMariaPresentationMode,
+  AnaMariaTheme,
 } from './types';
 import { compressAndResizeImage } from '../ania/aniaLibrary';
 import { ProgressBar } from '../components/ProgressBar';
@@ -40,6 +42,7 @@ import {
   getMasterPromptById,
   getDefaultMasterForMode,
 } from './masterPromptsData';
+import { preloadScenarioUrl } from './anaMariaPipeline';
 
 interface AnaMariaFormProps {
   form: AnaMariaFormState;
@@ -52,6 +55,7 @@ interface AnaMariaFormProps {
   onGoToResults?: () => void;
   onOpenHistory?: () => void;
   onNavigateToProdutos2?: () => void;
+  theme?: AnaMariaTheme;
 }
 
 export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
@@ -64,10 +68,15 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   hasExistingResult = false,
   onGoToResults,
   onOpenHistory,
+  theme = 'fogo',
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isIdentifyingProduct, setIsIdentifyingProduct] = useState(false);
+  const [autoIdentifiedBadge, setAutoIdentifiedBadge] = useState(false);
+  const hasUserManuallyEditedNameRef = useRef<boolean>(false);
+
   const [isRecordingMic, setIsRecordingMic] = useState(false);
   const [isGalleryExpanded, setIsGalleryExpanded] = useState(false);
   const [isPromptsGalleryExpanded, setIsPromptsGalleryExpanded] = useState(false);
@@ -75,10 +84,20 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const recognitionRef = useRef<any>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
+  const isAmetista = theme === 'ametista';
   const activeMode: AnaMariaPresentationMode = form.presentationMode || 'mirror_selfie';
   const activeMaster = getMasterPromptById(form.selectedMasterId);
   const isPovMode = activeMode === 'pov';
   const activeScenarioList = isPovMode ? POV_SCENARIO_GALLERY_ITEMS : SCENARIO_GALLERY_ITEMS;
+
+  // Pré-aquece o cache do cenário selecionado em segundo plano para geração instantânea
+  useEffect(() => {
+    if (form.selectedScenarioUrl) {
+      preloadScenarioUrl(form.selectedScenarioUrl);
+    } else if (activeScenarioList[0]?.fullUrl) {
+      preloadScenarioUrl(activeScenarioList[0].fullUrl);
+    }
+  }, [form.selectedScenarioUrl, isPovMode]);
 
   // Filtra os prompts de movimento pela aba ativa (Mirror Selfie | POV | Com Rosto)
   const filteredMasterPrompts = MASTER_PROMPTS_GALLERY.filter((item) =>
@@ -149,6 +168,43 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     }
   };
 
+  /**
+   * Identifica automaticamente o nome da peça (ex: Camisola, Camiseta, Calça, Bermuda, Conjunto)
+   * assim que o usuário adiciona a primeira foto, sem jamais sobrescrever o que o usuário digitar.
+   */
+  const autoIdentifyGarmentFromPhoto = async (photoBase64: string) => {
+    if (!photoBase64 || hasUserManuallyEditedNameRef.current) return;
+    setIsIdentifyingProduct(true);
+    try {
+      const res = await fetch('/api/detect-dominant-color', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          photoBase64,
+          mode: 'identify_garment',
+        }),
+      });
+      const data = await res.json();
+      if (data?.success && data?.garmentName && !hasUserManuallyEditedNameRef.current) {
+        onChange((prev) => {
+          // Só preenche se o usuário não tiver digitado manualmente enquanto identificava
+          if (hasUserManuallyEditedNameRef.current && prev.productName.trim().length > 0) {
+            return prev;
+          }
+          return {
+            ...prev,
+            productName: data.garmentName,
+          };
+        });
+        setAutoIdentifiedBadge(true);
+      }
+    } catch (err) {
+      console.warn('Falha silenciosa ao identificar peça automaticamente:', err);
+    } finally {
+      setIsIdentifyingProduct(false);
+    }
+  };
+
   const handleFiles = async (files: FileList | File[]) => {
     const validFiles = Array.from(files).filter((file) => file.type.startsWith('image/'));
     if (validFiles.length === 0) return;
@@ -157,6 +213,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     if (remainingSlots <= 0) return;
 
     const filesToProcess = validFiles.slice(0, remainingSlots);
+    const wasEmptyBefore = form.referencePhotos.length === 0;
     setIsUploading(true);
 
     try {
@@ -167,6 +224,11 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         ...prev,
         referencePhotos: [...prev.referencePhotos, ...newPhotos].slice(0, 10),
       }));
+
+      // Se era o primeiro anexo (ou o campo Nome da Peça ainda está vazio e não foi editado pelo usuário), identifica a peça
+      if (newPhotos[0] && (wasEmptyBefore || !form.productName.trim()) && !hasUserManuallyEditedNameRef.current) {
+        autoIdentifyGarmentFromPhoto(newPhotos[0]);
+      }
     } catch (err) {
       console.error('Erro ao processar imagens:', err);
     } finally {
@@ -175,17 +237,32 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   };
 
   const handleRemovePhoto = (index: number) => {
-    onChange((prev) => ({
-      ...prev,
-      referencePhotos: prev.referencePhotos.filter((_, i) => i !== index),
-    }));
+    onChange((prev) => {
+      const nextPhotos = prev.referencePhotos.filter((_, i) => i !== index);
+      if (nextPhotos.length === 0 && !hasUserManuallyEditedNameRef.current) {
+        setAutoIdentifiedBadge(false);
+      }
+      return {
+        ...prev,
+        referencePhotos: nextPhotos,
+      };
+    });
   };
 
   const handleClearAllPhotos = () => {
-    onChange((prev) => ({
-      ...prev,
-      referencePhotos: [],
-    }));
+    if (!hasUserManuallyEditedNameRef.current) {
+      setAutoIdentifiedBadge(false);
+      onChange((prev) => ({
+        ...prev,
+        referencePhotos: [],
+        productName: '',
+      }));
+    } else {
+      onChange((prev) => ({
+        ...prev,
+        referencePhotos: [],
+      }));
+    }
   };
 
   const handleSelectPresentationMode = (newMode: AnaMariaPresentationMode) => {
@@ -213,6 +290,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   };
 
   const handleToggleScenario = (item: AnaMariaScenarioItem) => {
+    preloadScenarioUrl(item.fullUrl);
     onChange((prev) => {
       if (prev.selectedScenarioId === item.id) {
         return {
@@ -271,11 +349,23 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     form.additionalInstructions && form.additionalInstructions.trim().length > 0
   );
 
-  // Classes padronizadas da paleta Dark Obsidian + Laranja/Âmbar com alto contraste visual
-  const activeOptionButtonClass =
-    'bg-gradient-to-r from-orange-500 to-amber-500 border-amber-300 text-zinc-950 shadow-lg shadow-orange-950/60 ring-2 ring-amber-400/40 font-black';
-  const inactiveOptionButtonClass =
-    'bg-zinc-900/85 border-zinc-800 text-zinc-300 hover:text-white hover:border-orange-500/40';
+  // ─── PALETA DE CORES POR TEMA (FOGO vs AMETISTA) ───
+  // Botões pré-selecionados (Itens 3, 4, 6, 7 e Modo de Apresentação) ficam discretos (fundo escuro com borda sutil)
+  // para não ofuscar o visual, reservando o destaque vibrante para os Itens 8 e 9.
+  const sectionCardClass = isAmetista
+    ? 'rounded-2xl border border-purple-500/35 bg-[#140d21]/95 backdrop-blur-sm shadow-[0_4px_24px_rgba(124,58,237,0.12)]'
+    : 'rounded-2xl border border-orange-500/25 bg-[#111113]/95 backdrop-blur-sm shadow-xl';
+
+  const activeOptionButtonClass = isAmetista
+    ? 'bg-[#221538] border-purple-400/60 text-white shadow-sm ring-1 ring-purple-400/25 font-bold'
+    : 'bg-zinc-800/95 border-orange-500/50 text-white shadow-sm ring-1 ring-orange-500/20 font-bold';
+
+  const inactiveOptionButtonClass = isAmetista
+    ? 'bg-[#0e0817]/90 border-purple-500/20 text-zinc-400 hover:text-zinc-200 hover:border-purple-400/40'
+    : 'bg-zinc-900/80 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700';
+
+  const checkIconColorClass = isAmetista ? 'text-[#d4ff59]' : 'text-orange-400';
+  const sectionIconColorClass = isAmetista ? 'text-[#d4ff59]' : 'text-orange-400';
 
   return (
     <div className="space-y-5 max-w-5xl mx-auto pb-12 animate-fade-in">
@@ -285,9 +375,13 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           <button
             type="button"
             onClick={onOpenHistory}
-            className="px-3.5 py-2 rounded-xl bg-zinc-900/95 hover:bg-zinc-800 border border-orange-500/35 hover:border-orange-400 text-amber-300 text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-sm"
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-sm ${
+              isAmetista
+                ? 'bg-[#170f26] hover:bg-[#221638] border border-purple-500/35 hover:border-purple-400 text-purple-200 hover:text-white'
+                : 'bg-zinc-900/95 hover:bg-zinc-800 border border-zinc-700/80 hover:border-orange-500/45 text-zinc-300 hover:text-white'
+            }`}
           >
-            <History className="w-4 h-4 text-orange-400" />
+            <History className={`w-4 h-4 ${sectionIconColorClass}`} />
             <span>Histórico de Gerações</span>
           </button>
         </div>
@@ -295,17 +389,27 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
 
       {/* ─── BOTÃO DE AVANÇAR PARA A PÁGINA DE RESULTADOS ─── */}
       {hasExistingResult && onGoToResults && (
-        <div className="flex items-center justify-between p-3.5 sm:p-4 bg-amber-500/10 border border-amber-500/40 rounded-2xl shadow-lg animate-fade-in">
+        <div
+          className={`flex items-center justify-between p-3.5 sm:p-4 rounded-2xl shadow-lg animate-fade-in border ${
+            isAmetista
+              ? 'bg-[#1e1233]/90 border-purple-400/45'
+              : 'bg-amber-500/10 border-amber-500/40'
+          }`}
+        >
           <div className="flex items-center gap-2.5">
-            <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
-            <span className="text-xs font-bold text-amber-200">
+            <Sparkles className={`w-4 h-4 shrink-0 ${isAmetista ? 'text-[#d4ff59]' : 'text-amber-400'}`} />
+            <span className={`text-xs font-bold ${isAmetista ? 'text-purple-100' : 'text-amber-200'}`}>
               Você já possui uma imagem gerada neste modo.
             </span>
           </div>
           <button
             type="button"
             onClick={onGoToResults}
-            className="px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-zinc-950 text-xs font-black flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-amber-950/40"
+            className={`px-4 py-2 rounded-xl text-zinc-950 text-xs font-black flex items-center gap-2 transition-all cursor-pointer shadow-md ${
+              isAmetista
+                ? 'bg-[#d4ff59] hover:bg-[#e2ff85] shadow-lime-950/40'
+                : 'bg-amber-400 hover:bg-amber-300 shadow-amber-950/40'
+            }`}
           >
             <span>Avançar para a página com a imagem gerada</span>
             <ArrowRight className="w-4 h-4 text-zinc-950 stroke-[3]" />
@@ -314,16 +418,16 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       )}
 
       {/* ─── CARD 1: FOTOS DE REFERÊNCIA DO PRODUTO (ATÉ 10 FOTOS) ─── */}
-      <div className="rounded-2xl border border-orange-500/25 bg-[#111113]/95 backdrop-blur-sm p-5 sm:p-6 shadow-xl space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/80 pb-3">
+      <div className={`${sectionCardClass} p-5 sm:p-6 space-y-4`}>
+        <div className={`flex flex-wrap items-center justify-between gap-2 border-b pb-3 ${isAmetista ? 'border-purple-500/20' : 'border-zinc-800/80'}`}>
           <div className="flex items-center gap-2.5">
-            <ImageIcon className="w-5 h-5 text-orange-400" />
+            <ImageIcon className={`w-5 h-5 ${sectionIconColorClass}`} />
             <div>
               <h2 className="text-sm font-bold text-white uppercase tracking-wide">
                 1. Fotos de Referência da Peça (Até 10 fotos)
               </h2>
               <p className="text-[11px] text-zinc-400">
-                Anexe fotos de frente, costas, detalhes do tecido e caimento. No modo POV você também pode anexar 2 cores da peça.
+                Anexe fotos de frente, costas, detalhes do tecido e caimento. Ao anexar a foto, o app identifica automaticamente o tipo de peça no campo 2!
               </p>
             </div>
           </div>
@@ -331,7 +435,9 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             <span
               className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${
                 form.referencePhotos.length > 0
-                  ? 'bg-orange-500/20 text-amber-300 border-orange-500/40'
+                  ? isAmetista
+                    ? 'bg-purple-500/20 text-[#d4ff59] border-purple-400/40'
+                    : 'bg-orange-500/20 text-amber-300 border-orange-500/40'
                   : 'bg-zinc-900 text-zinc-400 border-zinc-800'
               }`}
             >
@@ -378,12 +484,22 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             onClick={() => fileInputRef.current?.click()}
             className={`border-2 border-dashed rounded-xl p-6 sm:p-8 text-center cursor-pointer transition-all ${
               isDragging
-                ? 'border-amber-400 bg-orange-500/10'
+                ? isAmetista
+                  ? 'border-[#d4ff59] bg-purple-500/15'
+                  : 'border-amber-400 bg-orange-500/10'
+                : isAmetista
+                ? 'border-purple-500/30 hover:border-purple-400/60 hover:bg-[#1b112c]/60 bg-[#0e0817]/50'
                 : 'border-zinc-800 hover:border-orange-500/50 hover:bg-zinc-900/60 bg-zinc-900/30'
             }`}
           >
             <div className="flex flex-col items-center gap-2">
-              <div className="w-12 h-12 rounded-xl bg-orange-500/15 border border-orange-500/40 flex items-center justify-center text-orange-400">
+              <div
+                className={`w-12 h-12 rounded-xl flex items-center justify-center border ${
+                  isAmetista
+                    ? 'bg-purple-500/15 border-purple-400/40 text-[#d4ff59]'
+                    : 'bg-orange-500/15 border-orange-500/40 text-orange-400'
+                }`}
+              >
                 <Upload className="w-6 h-6" />
               </div>
               <p className="text-xs sm:text-sm font-bold text-zinc-200">
@@ -402,7 +518,9 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             {form.referencePhotos.map((photo, index) => (
               <div
                 key={index}
-                className="relative group rounded-xl overflow-hidden border border-orange-500/40 bg-zinc-900 aspect-[9/16] max-h-48 flex items-center justify-center"
+                className={`relative group rounded-xl overflow-hidden border bg-zinc-900 aspect-[9/16] max-h-48 flex items-center justify-center ${
+                  isAmetista ? 'border-purple-400/40' : 'border-orange-500/40'
+                }`}
               >
                 <img
                   src={photo}
@@ -411,7 +529,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-2">
                   <div className="flex justify-between items-center">
-                    <span className="px-1.5 py-0.5 rounded bg-zinc-900/90 text-amber-300 text-[10px] font-bold">
+                    <span className="px-1.5 py-0.5 rounded bg-zinc-900/90 text-white text-[10px] font-bold">
                       #{index + 1}
                     </span>
                     <button
@@ -427,7 +545,11 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                     </button>
                   </div>
                   {index === 0 && (
-                    <span className="px-1.5 py-0.5 rounded bg-orange-500 text-zinc-950 text-[9px] font-black uppercase text-center">
+                    <span
+                      className={`px-1.5 py-0.5 rounded text-zinc-950 text-[9px] font-black uppercase text-center ${
+                        isAmetista ? 'bg-[#d4ff59]' : 'bg-orange-500'
+                      }`}
+                    >
                       Foto Principal
                     </span>
                   )}
@@ -438,38 +560,79 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         )}
 
         {form.referencePhotos.length === 0 && (
-          <div className="p-3 bg-orange-500/10 border border-orange-500/30 rounded-xl text-xs text-amber-200 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-orange-400 shrink-0" />
+          <div
+            className={`p-3 rounded-xl text-xs flex items-center gap-2 border ${
+              isAmetista
+                ? 'bg-purple-500/10 border-purple-500/30 text-purple-200'
+                : 'bg-orange-500/10 border-orange-500/30 text-amber-200'
+            }`}
+          >
+            <AlertCircle className={`w-4 h-4 shrink-0 ${sectionIconColorClass}`} />
             <span>Por favor, anexe ao menos 1 foto da peça para prosseguir com a geração.</span>
           </div>
         )}
       </div>
 
-      {/* ─── CARD 2: NOME DA PEÇA / PRODUTO ─── */}
-      <div className="rounded-2xl border border-orange-500/25 bg-[#111113]/95 backdrop-blur-sm p-5 sm:p-6 shadow-xl space-y-3">
-        <div className="flex items-center gap-2 border-b border-zinc-800/80 pb-2.5">
-          <Layers className="w-4 h-4 text-orange-400" />
-          <h2 className="text-sm font-bold text-white uppercase tracking-wide">
-            2. Nome da Peça / Tipo de Roupa (Define Calçado, Headline e Hashtags)
-          </h2>
+      {/* ─── CARD 2: NOME DA PEÇA / PRODUTO (IDENTIFICAÇÃO AUTOMÁTICA + EDITÁVEL PELO USUÁRIO) ─── */}
+      <div className={`${sectionCardClass} p-5 sm:p-6 space-y-3`}>
+        <div className={`flex flex-wrap items-center justify-between gap-2 border-b pb-2.5 ${isAmetista ? 'border-purple-500/20' : 'border-zinc-800/80'}`}>
+          <div className="flex items-center gap-2">
+            <Layers className={`w-4 h-4 ${sectionIconColorClass}`} />
+            <h2 className="text-sm font-bold text-white uppercase tracking-wide">
+              2. Nome da Peça / Tipo de Roupa (Define Calçado, Headline e Hashtags)
+            </h2>
+          </div>
+
+          {isIdentifyingProduct ? (
+            <span
+              className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1.5 animate-pulse ${
+                isAmetista
+                  ? 'bg-purple-500/20 text-[#d4ff59] border border-purple-400/40'
+                  : 'bg-orange-500/20 text-amber-300 border border-orange-500/40'
+              }`}
+            >
+              <RefreshCw className="w-3 h-3 animate-spin" />
+              <span>Identificando peça pela foto...</span>
+            </span>
+          ) : autoIdentifiedBadge && form.productName.trim() ? (
+            <span
+              className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 ${
+                isAmetista
+                  ? 'bg-[#1a1128] text-[#d4ff59] border border-[#d4ff59]/40'
+                  : 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+              }`}
+            >
+              <Sparkles className="w-3 h-3" />
+              <span>Identificado automaticamente (você pode editar se preferir)</span>
+            </span>
+          ) : null}
         </div>
         <p className="text-xs text-zinc-400 leading-relaxed">
-          Informe qual é a peça (ex.: Macacão Fitness, Cinta Modeladora, Vestido, Camisa Social, Bermuda). O app usa essa informação na camada superior para definir automaticamente o calçado ideal, a headline e as hashtags.
+          Ao anexar a imagem da peça acima, o app identifica e preenche automaticamente o nome (ex.: Camisola, Camiseta, Calça, Bermuda, Conjunto). Se preferir, você pode editar livremente — o que estiver escrito aqui será sempre o nome soberano usado pelo app.
         </p>
         <input
           type="text"
           value={form.productName}
-          onChange={(e) => onChange((prev) => ({ ...prev, productName: e.target.value }))}
-          placeholder="Ex: Macacão Fitness Feminino, Cinta Modeladora Abdominal, Vestido Longo, Camisa Social..."
-          className="w-full px-4 py-2.5 rounded-xl bg-zinc-900/90 border border-zinc-700/80 text-white placeholder-zinc-500 text-sm focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+          onChange={(e) => {
+            const val = e.target.value;
+            hasUserManuallyEditedNameRef.current = val.trim().length > 0;
+            setAutoIdentifiedBadge(false);
+            onChange((prev) => ({ ...prev, productName: val }));
+          }}
+          placeholder="Ex: Camisola, Conjunto Fitness, Vestido Longo, Calça Jeans, Bermuda, Camiseta..."
+          className={`w-full px-4 py-2.5 rounded-xl text-white placeholder-zinc-500 text-sm focus:outline-none transition-colors ${
+            isAmetista
+              ? 'bg-[#0e0817]/90 border border-purple-400/30 focus:border-[#d4ff59]'
+              : 'bg-zinc-900/90 border border-zinc-700/80 focus:border-orange-500'
+          }`}
         />
       </div>
 
       {/* ─── CARD 3 & 4: INFLUENCIADOR & TIPO DE CORPO ─── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Influenciador */}
-        <div className="rounded-2xl border border-orange-500/25 bg-[#111113]/95 backdrop-blur-sm p-5 shadow-xl space-y-3">
-          <div className="border-b border-zinc-800/80 pb-2">
+        <div className={`${sectionCardClass} p-5 space-y-3`}>
+          <div className={`border-b pb-2 ${isAmetista ? 'border-purple-500/20' : 'border-zinc-800/80'}`}>
             <h3 className="text-xs font-bold text-white uppercase tracking-wide">
               3. Influenciador / Modelo
             </h3>
@@ -481,29 +644,33 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             <button
               type="button"
               onClick={() => onChange((prev) => ({ ...prev, influencer: 'Mulher' }))}
-              className={`p-3 rounded-xl border text-center transition-all cursor-pointer font-bold text-xs flex items-center justify-center gap-2 ${
+              className={`p-3 rounded-xl border text-center transition-all cursor-pointer text-xs flex items-center justify-center gap-2 ${
                 form.influencer === 'Mulher' ? activeOptionButtonClass : inactiveOptionButtonClass
               }`}
             >
-              {form.influencer === 'Mulher' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+              {form.influencer === 'Mulher' && (
+                <Check className={`w-3.5 h-3.5 stroke-[3] ${checkIconColorClass}`} />
+              )}
               <span>Mulher (Padrão)</span>
             </button>
             <button
               type="button"
               onClick={() => onChange((prev) => ({ ...prev, influencer: 'Homem' }))}
-              className={`p-3 rounded-xl border text-center transition-all cursor-pointer font-bold text-xs flex items-center justify-center gap-2 ${
+              className={`p-3 rounded-xl border text-center transition-all cursor-pointer text-xs flex items-center justify-center gap-2 ${
                 form.influencer === 'Homem' ? activeOptionButtonClass : inactiveOptionButtonClass
               }`}
             >
-              {form.influencer === 'Homem' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+              {form.influencer === 'Homem' && (
+                <Check className={`w-3.5 h-3.5 stroke-[3] ${checkIconColorClass}`} />
+              )}
               <span>Homem</span>
             </button>
           </div>
         </div>
 
         {/* Tipo de Corpo */}
-        <div className="rounded-2xl border border-orange-500/25 bg-[#111113]/95 backdrop-blur-sm p-5 shadow-xl space-y-3">
-          <div className="border-b border-zinc-800/80 pb-2">
+        <div className={`${sectionCardClass} p-5 space-y-3`}>
+          <div className={`border-b pb-2 ${isAmetista ? 'border-purple-500/20' : 'border-zinc-800/80'}`}>
             <h3 className="text-xs font-bold text-white uppercase tracking-wide">
               4. Tipo de Corpo
             </h3>
@@ -515,21 +682,25 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             <button
               type="button"
               onClick={() => onChange((prev) => ({ ...prev, bodyType: 'normal' }))}
-              className={`p-3 rounded-xl border text-center transition-all cursor-pointer font-bold text-xs flex items-center justify-center gap-2 ${
+              className={`p-3 rounded-xl border text-center transition-all cursor-pointer text-xs flex items-center justify-center gap-2 ${
                 form.bodyType === 'normal' ? activeOptionButtonClass : inactiveOptionButtonClass
               }`}
             >
-              {form.bodyType === 'normal' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+              {form.bodyType === 'normal' && (
+                <Check className={`w-3.5 h-3.5 stroke-[3] ${checkIconColorClass}`} />
+              )}
               <span>Normal (Padrão)</span>
             </button>
             <button
               type="button"
               onClick={() => onChange((prev) => ({ ...prev, bodyType: 'plus_size' }))}
-              className={`p-3 rounded-xl border text-center transition-all cursor-pointer font-bold text-xs flex items-center justify-center gap-2 ${
+              className={`p-3 rounded-xl border text-center transition-all cursor-pointer text-xs flex items-center justify-center gap-2 ${
                 form.bodyType === 'plus_size' ? activeOptionButtonClass : inactiveOptionButtonClass
               }`}
             >
-              {form.bodyType === 'plus_size' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+              {form.bodyType === 'plus_size' && (
+                <Check className={`w-3.5 h-3.5 stroke-[3] ${checkIconColorClass}`} />
+              )}
               <span>Plus Size</span>
             </button>
           </div>
@@ -540,17 +711,25 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       <div
         className={`rounded-2xl border p-5 sm:p-6 shadow-xl space-y-3 transition-all ${
           isInstructionsFilled
-            ? 'border-amber-400/70 bg-gradient-to-br from-[#16120d] to-zinc-950 shadow-orange-950/40'
+            ? isAmetista
+              ? 'border-[#d4ff59]/60 bg-gradient-to-br from-[#1d1130] to-[#120a1f]'
+              : 'border-amber-400/70 bg-gradient-to-br from-[#16120d] to-zinc-950'
+            : isAmetista
+            ? 'border-purple-500/35 bg-[#140d21]/95'
             : 'border-orange-500/25 bg-[#111113]/95'
         }`}
       >
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/80 pb-2.5">
+        <div className={`flex flex-wrap items-center justify-between gap-2 border-b pb-2.5 ${isAmetista ? 'border-purple-500/20' : 'border-zinc-800/80'}`}>
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-bold text-white uppercase tracking-wide">
               5. Instruções Adicionais (Opcional — Prioridade Máxima sobre o Prompt)
             </h2>
             {isInstructionsFilled && (
-              <span className="text-[10px] text-zinc-950 font-black bg-amber-400 px-2 py-0.5 rounded-md border border-amber-300 flex items-center gap-1">
+              <span
+                className={`text-[10px] text-zinc-950 font-black px-2 py-0.5 rounded-md flex items-center gap-1 ${
+                  isAmetista ? 'bg-[#d4ff59]' : 'bg-amber-400'
+                }`}
+              >
                 <CheckCircle2 className="w-3 h-3 text-zinc-950" /> Preenchido ✓
               </span>
             )}
@@ -568,10 +747,10 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               onChange((prev) => ({ ...prev, additionalInstructions: e.target.value }))
             }
             placeholder='Ex.: "Quero uma mulher ruiva de 45 anos segurando celular amarelo e começando mostrando a palma da mão..." (ou clique no microfone para ditar)'
-            className={`w-full p-3.5 pr-12 rounded-xl text-xs sm:text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none font-sans ${
-              isInstructionsFilled
-                ? 'bg-zinc-900/95 border border-amber-400/60'
-                : 'bg-zinc-900/80 border border-zinc-700/80'
+            className={`w-full p-3.5 pr-12 rounded-xl text-xs sm:text-sm text-white placeholder-zinc-500 focus:outline-none resize-none font-sans ${
+              isAmetista
+                ? 'bg-[#0e0817]/90 border border-purple-400/30 focus:border-[#d4ff59]'
+                : 'bg-zinc-900/80 border border-zinc-700/80 focus:border-orange-400'
             }`}
           />
           <button
@@ -580,6 +759,8 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             className={`absolute right-2.5 top-2.5 p-2 rounded-lg text-xs transition-all cursor-pointer ${
               isRecordingMic
                 ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
+                : isAmetista
+                ? 'bg-[#211536] text-[#d4ff59] hover:bg-[#2c1d47] border border-purple-400/40'
                 : 'bg-zinc-800 text-amber-300 hover:bg-zinc-700 border border-orange-500/30'
             }`}
             title={isRecordingMic ? 'Parar gravação' : 'Ditar instruções adicionais'}
@@ -603,10 +784,10 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       {/* ─── CARD 6 & 7: GERADOR DE IMAGEM & PROMPT DE VÍDEO ─── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Seletor de Gerador de Imagem */}
-        <div className="rounded-2xl border border-orange-500/25 bg-[#111113]/95 backdrop-blur-sm p-5 shadow-xl space-y-3">
-          <div className="border-b border-zinc-800/80 pb-2 flex items-center justify-between">
+        <div className={`${sectionCardClass} p-5 space-y-3`}>
+          <div className={`border-b pb-2 flex items-center justify-between ${isAmetista ? 'border-purple-500/20' : 'border-zinc-800/80'}`}>
             <div className="flex items-center gap-2">
-              <Cpu className="w-4 h-4 text-orange-400" />
+              <Cpu className={`w-4 h-4 ${sectionIconColorClass}`} />
               <h3 className="text-xs font-bold text-white uppercase tracking-wide">
                 6. Gerador de Imagem
               </h3>
@@ -618,7 +799,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             <button
               type="button"
               onClick={() => onChange((prev) => ({ ...prev, imageModel: 'seedream_5_0_pro' }))}
-              className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between text-xs font-bold ${
+              className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between text-xs ${
                 form.imageModel === 'seedream_5_0_pro'
                   ? activeOptionButtonClass
                   : inactiveOptionButtonClass
@@ -626,14 +807,14 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             >
               <span>SeaDream 5.0 Pro (Padrão)</span>
               {form.imageModel === 'seedream_5_0_pro' && (
-                <Check className="w-4 h-4 text-zinc-950 stroke-[3]" />
+                <Check className={`w-4 h-4 stroke-[3] ${checkIconColorClass}`} />
               )}
             </button>
 
             <button
               type="button"
               onClick={() => onChange((prev) => ({ ...prev, imageModel: 'kling_3_0' }))}
-              className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between text-xs font-bold ${
+              className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between text-xs ${
                 form.imageModel === 'kling_3_0'
                   ? activeOptionButtonClass
                   : inactiveOptionButtonClass
@@ -641,14 +822,14 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             >
               <span>Kling 3.0</span>
               {form.imageModel === 'kling_3_0' && (
-                <Check className="w-4 h-4 text-zinc-950 stroke-[3]" />
+                <Check className={`w-4 h-4 stroke-[3] ${checkIconColorClass}`} />
               )}
             </button>
 
             <button
               type="button"
               onClick={() => onChange((prev) => ({ ...prev, imageModel: 'openai' }))}
-              className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between text-xs font-bold ${
+              className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between text-xs ${
                 form.imageModel === 'openai'
                   ? activeOptionButtonClass
                   : inactiveOptionButtonClass
@@ -656,17 +837,17 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             >
               <span>OpenAI</span>
               {form.imageModel === 'openai' && (
-                <Check className="w-4 h-4 text-zinc-950 stroke-[3]" />
+                <Check className={`w-4 h-4 stroke-[3] ${checkIconColorClass}`} />
               )}
             </button>
           </div>
         </div>
 
         {/* Seletor de Prompt de Vídeo */}
-        <div className="rounded-2xl border border-orange-500/25 bg-[#111113]/95 backdrop-blur-sm p-5 shadow-xl space-y-3">
-          <div className="border-b border-zinc-800/80 pb-2 flex items-center justify-between">
+        <div className={`${sectionCardClass} p-5 space-y-3`}>
+          <div className={`border-b pb-2 flex items-center justify-between ${isAmetista ? 'border-purple-500/20' : 'border-zinc-800/80'}`}>
             <div className="flex items-center gap-2">
-              <Scissors className="w-4 h-4 text-orange-400" />
+              <Scissors className={`w-4 h-4 ${sectionIconColorClass}`} />
               <h3 className="text-xs font-bold text-white uppercase tracking-wide">
                 7. Tamanho do Prompt de Vídeo
               </h3>
@@ -678,7 +859,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             <button
               type="button"
               onClick={() => onChange((prev) => ({ ...prev, videoPromptLimit: 'unlimited' }))}
-              className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between text-xs font-bold ${
+              className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between text-xs ${
                 form.videoPromptLimit === 'unlimited'
                   ? activeOptionButtonClass
                   : inactiveOptionButtonClass
@@ -686,14 +867,14 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             >
               <span>Padrão (Sem Limite)</span>
               {form.videoPromptLimit === 'unlimited' && (
-                <Check className="w-4 h-4 text-zinc-950 stroke-[3]" />
+                <Check className={`w-4 h-4 stroke-[3] ${checkIconColorClass}`} />
               )}
             </button>
 
             <button
               type="button"
               onClick={() => onChange((prev) => ({ ...prev, videoPromptLimit: '5000' }))}
-              className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between text-xs font-bold ${
+              className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between text-xs ${
                 form.videoPromptLimit === '5000'
                   ? activeOptionButtonClass
                   : inactiveOptionButtonClass
@@ -701,14 +882,14 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             >
               <span>Até 5.000 Caracteres</span>
               {form.videoPromptLimit === '5000' && (
-                <Check className="w-4 h-4 text-zinc-950 stroke-[3]" />
+                <Check className={`w-4 h-4 stroke-[3] ${checkIconColorClass}`} />
               )}
             </button>
 
             <button
               type="button"
               onClick={() => onChange((prev) => ({ ...prev, videoPromptLimit: '2500' }))}
-              className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between text-xs font-bold ${
+              className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between text-xs ${
                 form.videoPromptLimit === '2500'
                   ? activeOptionButtonClass
                   : inactiveOptionButtonClass
@@ -716,26 +897,37 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             >
               <span>Até 2.500 Caracteres</span>
               {form.videoPromptLimit === '2500' && (
-                <Check className="w-4 h-4 text-zinc-950 stroke-[3]" />
+                <Check className={`w-4 h-4 stroke-[3] ${checkIconColorClass}`} />
               )}
             </button>
           </div>
         </div>
       </div>
 
-      {/* ─── SELETOR DE MODO DE APRESENTAÇÃO (MIRROR SELFIE vs MODO POV vs COM ROSTO) ─── */}
-      <div className="rounded-2xl border border-orange-500/40 bg-[#121215] p-4 sm:p-5 shadow-xl space-y-3">
+      {/* ─── SELETOR DE MODO DE APRESENTAÇÃO (MIRROR SELFIE vs MODO POV vs COM ROSTO) — BOTÕES DISCRETOS ─── */}
+      <div className={`${sectionCardClass} p-4 sm:p-5 space-y-3`}>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h3 className="text-xs sm:text-sm font-black text-amber-300 uppercase tracking-wide">
+            <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-wide">
               Modo de Apresentação (Estilo de Gravação)
             </h3>
             <p className="text-[11px] text-zinc-400">
               Por padrão fica em Mirror Selfie (sem mostrar do queixo para cima). Ao tocar em Modo POV, os cenários e prompts mudam automaticamente para POV na cama.
             </p>
           </div>
-          <span className="px-2.5 py-1 rounded-lg bg-orange-500/15 border border-orange-500/40 text-amber-300 text-[11px] font-bold">
-            Ativo: {activeMode === 'mirror_selfie' ? 'Mirror Selfie (Sem Rosto)' : activeMode === 'pov' ? 'Modo POV (Mãos na Cama)' : 'Com Rosto (UGC)'}
+          <span
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border ${
+              isAmetista
+                ? 'bg-[#1a1128] border-purple-400/40 text-[#d4ff59]'
+                : 'bg-zinc-900 border-orange-500/35 text-amber-300'
+            }`}
+          >
+            Ativo:{' '}
+            {activeMode === 'mirror_selfie'
+              ? 'Mirror Selfie (Sem Rosto)'
+              : activeMode === 'pov'
+              ? 'Modo POV (Mãos na Cama)'
+              : 'Com Rosto (UGC)'}
           </span>
         </div>
 
@@ -745,21 +937,25 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             type="button"
             onClick={() => handleSelectPresentationMode('mirror_selfie')}
             className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
-              activeMode === 'mirror_selfie'
-                ? 'bg-gradient-to-r from-orange-500 to-amber-500 border-amber-300 text-zinc-950 shadow-lg shadow-orange-950/60 ring-2 ring-amber-400/50 font-black'
-                : 'bg-zinc-900/90 border-zinc-800 text-zinc-300 hover:border-orange-500/50 hover:text-white'
+              activeMode === 'mirror_selfie' ? activeOptionButtonClass : inactiveOptionButtonClass
             }`}
           >
             <div className="flex items-center gap-2.5">
-              <Smartphone className={`w-4 h-4 shrink-0 ${activeMode === 'mirror_selfie' ? 'text-zinc-950' : 'text-purple-400'}`} />
+              <Smartphone
+                className={`w-4 h-4 shrink-0 ${
+                  activeMode === 'mirror_selfie' ? checkIconColorClass : 'text-zinc-500'
+                }`}
+              />
               <div>
-                <span className="text-xs font-black block uppercase">Mirror Selfie (Padrão)</span>
-                <span className={`text-[10px] block ${activeMode === 'mirror_selfie' ? 'text-zinc-900 font-semibold' : 'text-zinc-400'}`}>
+                <span className="text-xs font-bold block uppercase">Mirror Selfie (Padrão)</span>
+                <span className="text-[10px] block text-zinc-400">
                   No Face · Corte no queixo
                 </span>
               </div>
             </div>
-            {activeMode === 'mirror_selfie' && <Check className="w-4 h-4 text-zinc-950 stroke-[3]" />}
+            {activeMode === 'mirror_selfie' && (
+              <Check className={`w-4 h-4 stroke-[3] ${checkIconColorClass}`} />
+            )}
           </button>
 
           {/* Botão 2: Modo POV */}
@@ -767,21 +963,25 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             type="button"
             onClick={() => handleSelectPresentationMode('pov')}
             className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
-              activeMode === 'pov'
-                ? 'bg-gradient-to-r from-orange-500 to-amber-500 border-amber-300 text-zinc-950 shadow-lg shadow-orange-950/60 ring-2 ring-amber-400/50 font-black'
-                : 'bg-zinc-900/90 border-zinc-800 text-zinc-300 hover:border-orange-500/50 hover:text-white'
+              activeMode === 'pov' ? activeOptionButtonClass : inactiveOptionButtonClass
             }`}
           >
             <div className="flex items-center gap-2.5">
-              <Hand className={`w-4 h-4 shrink-0 ${activeMode === 'pov' ? 'text-zinc-950' : 'text-pink-400'}`} />
+              <Hand
+                className={`w-4 h-4 shrink-0 ${
+                  activeMode === 'pov' ? checkIconColorClass : 'text-zinc-500'
+                }`}
+              />
               <div>
-                <span className="text-xs font-black block uppercase">Modo POV</span>
-                <span className={`text-[10px] block ${activeMode === 'pov' ? 'text-zinc-900 font-semibold' : 'text-zinc-400'}`}>
+                <span className="text-xs font-bold block uppercase">Modo POV</span>
+                <span className="text-[10px] block text-zinc-400">
                   Mãos & 2 Peças na Cama
                 </span>
               </div>
             </div>
-            {activeMode === 'pov' && <Check className="w-4 h-4 text-zinc-950 stroke-[3]" />}
+            {activeMode === 'pov' && (
+              <Check className={`w-4 h-4 stroke-[3] ${checkIconColorClass}`} />
+            )}
           </button>
 
           {/* Botão 3: Com Rosto (UGC) */}
@@ -789,29 +989,37 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             type="button"
             onClick={() => handleSelectPresentationMode('com_rosto')}
             className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
-              activeMode === 'com_rosto'
-                ? 'bg-gradient-to-r from-orange-500 to-amber-500 border-amber-300 text-zinc-950 shadow-lg shadow-orange-950/60 ring-2 ring-amber-400/50 font-black'
-                : 'bg-zinc-900/90 border-zinc-800 text-zinc-300 hover:border-orange-500/50 hover:text-white'
+              activeMode === 'com_rosto' ? activeOptionButtonClass : inactiveOptionButtonClass
             }`}
           >
             <div className="flex items-center gap-2.5">
-              <Smile className={`w-4 h-4 shrink-0 ${activeMode === 'com_rosto' ? 'text-zinc-950' : 'text-amber-400'}`} />
+              <Smile
+                className={`w-4 h-4 shrink-0 ${
+                  activeMode === 'com_rosto' ? checkIconColorClass : 'text-zinc-500'
+                }`}
+              />
               <div>
-                <span className="text-xs font-black block uppercase">Com Rosto (UGC)</span>
-                <span className={`text-[10px] block ${activeMode === 'com_rosto' ? 'text-zinc-900 font-semibold' : 'text-zinc-400'}`}>
+                <span className="text-xs font-bold block uppercase">Com Rosto (UGC)</span>
+                <span className="text-[10px] block text-zinc-400">
                   Rosto visível · Estilo Catza
                 </span>
               </div>
             </div>
-            {activeMode === 'com_rosto' && <Check className="w-4 h-4 text-zinc-950 stroke-[3]" />}
+            {activeMode === 'com_rosto' && (
+              <Check className={`w-4 h-4 stroke-[3] ${checkIconColorClass}`} />
+            )}
           </button>
         </div>
       </div>
 
-      {/* ─── CARD 8: TOQUE AQUI PARA ESCOLHER UM CENÁRIO (OU CENÁRIO POV) ─── */}
+      {/* ─── CARD 8: TOQUE AQUI PARA ESCOLHER UM CENÁRIO (MANTÉM O DESTAQUE ESPECIAL QUE O USUÁRIO GOSTOU) ─── */}
       <div
         className={`rounded-2xl transition-all duration-300 overflow-hidden shadow-2xl ${
-          form.selectedScenarioNumber
+          isAmetista
+            ? form.selectedScenarioNumber
+              ? 'border-2 border-[#d4ff59] bg-gradient-to-br from-[#130b20] via-[#251238] to-[#1a2212] shadow-purple-950/60 ring-2 ring-[#d4ff59]/30'
+              : 'border-2 border-purple-400/75 bg-gradient-to-br from-[#130b20] via-[#261139] to-[#120a1e] shadow-purple-950/60 ring-2 ring-purple-500/30'
+            : form.selectedScenarioNumber
             ? 'border-2 border-amber-400 bg-gradient-to-br from-zinc-950 via-zinc-900 to-amber-950/40 shadow-amber-950/60 ring-2 ring-amber-400/30'
             : 'border-2 border-orange-500 bg-gradient-to-br from-zinc-950 via-orange-950/30 to-zinc-950 shadow-orange-950/50 ring-2 ring-orange-500/30'
         }`}
@@ -819,23 +1027,49 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         <button
           type="button"
           onClick={() => setIsGalleryExpanded((prev) => !prev)}
-          className="w-full p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3 text-left hover:bg-orange-500/10 transition-colors cursor-pointer group"
+          className={`w-full p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3 text-left transition-colors cursor-pointer group ${
+            isAmetista ? 'hover:bg-purple-500/10' : 'hover:bg-orange-500/10'
+          }`}
         >
           <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 text-zinc-950 flex items-center justify-center font-black shadow-lg shadow-orange-500/40 shrink-0 group-hover:scale-105 transition-transform">
+            <div
+              className={`w-11 h-11 rounded-xl text-zinc-950 flex items-center justify-center font-black shadow-lg shrink-0 group-hover:scale-105 transition-transform ${
+                isAmetista
+                  ? 'bg-[#d4ff59] shadow-lime-950/40'
+                  : 'bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 shadow-orange-500/40'
+              }`}
+            >
               <ImageIcon className="w-5 h-5 text-zinc-950 stroke-[2.5]" />
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-sm sm:text-base font-black text-amber-300 uppercase tracking-wide group-hover:text-amber-200 transition-colors">
+                <h3
+                  className={`text-sm sm:text-base font-black uppercase tracking-wide transition-colors ${
+                    isAmetista
+                      ? 'text-white group-hover:text-[#d4ff59]'
+                      : 'text-amber-300 group-hover:text-amber-200'
+                  }`}
+                >
                   {isPovMode
                     ? '8. TOQUE AQUI PARA ESCOLHER UM CENÁRIO POV'
                     : '8. TOQUE AQUI PARA ESCOLHER UM CENÁRIO'}
                 </h3>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-orange-500 text-zinc-950 uppercase tracking-wider shadow-sm">
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm ${
+                    isAmetista
+                      ? 'bg-[#1a1128] text-[#d4ff59] border border-[#d4ff59]/50'
+                      : 'bg-orange-500 text-zinc-950'
+                  }`}
+                >
                   OPCIONAL
                 </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 hidden sm:inline-block">
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold hidden sm:inline-block ${
+                    isAmetista
+                      ? 'bg-pink-500/15 text-pink-300 border border-pink-400/35'
+                      : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                  }`}
+                >
                   {activeScenarioList.length}{' '}
                   {isPovMode ? 'Cenários POV' : 'Cenários Vencedores'}
                 </span>
@@ -850,7 +1084,13 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
 
           <div className="flex items-center gap-2.5">
             {form.selectedScenarioNumber ? (
-              <div className="flex items-center gap-1.5 bg-gradient-to-r from-amber-400 to-orange-500 text-zinc-950 font-black px-3 py-1.5 rounded-xl border border-amber-300 shadow-md shadow-orange-950/40">
+              <div
+                className={`flex items-center gap-1.5 text-zinc-950 font-black px-3 py-1.5 rounded-xl border shadow-md ${
+                  isAmetista
+                    ? 'bg-[#d4ff59] border-lime-300 shadow-lime-950/40'
+                    : 'bg-gradient-to-r from-amber-400 to-orange-500 border-amber-300 shadow-orange-950/40'
+                }`}
+              >
                 <span className="text-xs">
                   {isPovMode
                     ? `Cenário POV ${form.selectedScenarioNumber} ✓`
@@ -866,11 +1106,23 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                 </button>
               </div>
             ) : (
-              <div className="px-3 py-1.5 rounded-xl bg-orange-500 text-zinc-950 text-xs font-black flex items-center gap-1.5 group-hover:bg-amber-400 transition-all shadow-md">
+              <div
+                className={`px-3 py-1.5 rounded-xl text-zinc-950 text-xs font-black flex items-center gap-1.5 transition-all shadow-md ${
+                  isAmetista
+                    ? 'bg-[#d4ff59] group-hover:bg-[#e3ff88]'
+                    : 'bg-orange-500 group-hover:bg-amber-400'
+                }`}
+              >
                 <span>{isPovMode ? 'Abrir Cenários POV' : 'Abrir Galeria'}</span>
               </div>
             )}
-            <div className="w-8 h-8 rounded-xl bg-orange-500/20 border border-orange-500/50 flex items-center justify-center text-orange-300 group-hover:bg-orange-500 group-hover:text-zinc-950 transition-all">
+            <div
+              className={`w-8 h-8 rounded-xl border flex items-center justify-center transition-all ${
+                isAmetista
+                  ? 'bg-purple-500/20 border-purple-400/50 text-[#d4ff59] group-hover:bg-[#d4ff59] group-hover:text-zinc-950'
+                  : 'bg-orange-500/20 border-orange-500/50 text-orange-300 group-hover:bg-orange-500 group-hover:text-zinc-950'
+              }`}
+            >
               {isGalleryExpanded ? (
                 <ChevronUp className="w-4 h-4 stroke-[3]" />
               ) : (
@@ -881,9 +1133,15 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         </button>
 
         {isGalleryExpanded && (
-          <div className="p-5 pt-0 border-t border-orange-500/30 space-y-4 animate-fade-in bg-zinc-950/80">
+          <div
+            className={`p-5 pt-0 border-t space-y-4 animate-fade-in ${
+              isAmetista
+                ? 'border-purple-500/30 bg-[#0d0816]/90'
+                : 'border-orange-500/30 bg-zinc-950/80'
+            }`}
+          >
             <div className="flex flex-wrap items-center justify-between gap-2 pt-4">
-              <p className="text-xs text-amber-200/90 font-medium">
+              <p className={`text-xs font-medium ${isAmetista ? 'text-purple-200' : 'text-amber-200/90'}`}>
                 {isPovMode
                   ? 'Toque em um dos cenários POV abaixo para definir a cama onde os 2 produtos e as mãos serão gerados:'
                   : 'Toque em qualquer miniatura para escolher o cenário independente. Se não escolher, um cenário será sorteado automaticamente:'}
@@ -892,7 +1150,9 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                 <button
                   type="button"
                   onClick={handleClearScenario}
-                  className="text-xs text-amber-300 hover:text-amber-200 font-black underline cursor-pointer"
+                  className={`text-xs font-black underline cursor-pointer ${
+                    isAmetista ? 'text-[#d4ff59] hover:text-lime-200' : 'text-amber-300 hover:text-amber-200'
+                  }`}
                 >
                   Remover seleção (voltar ao sorteio randômico)
                 </button>
@@ -915,7 +1175,11 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                     onClick={() => handleToggleScenario(item)}
                     className={`group relative rounded-xl overflow-hidden aspect-[9/16] transition-all cursor-pointer text-left bg-zinc-900 flex flex-col justify-between ${
                       isSelected
-                        ? 'ring-3 ring-amber-400 border-2 border-amber-300 shadow-xl shadow-orange-500/40 scale-[1.02]'
+                        ? isAmetista
+                          ? 'ring-3 ring-[#d4ff59] border-2 border-[#d4ff59] shadow-xl shadow-purple-500/40 scale-[1.02]'
+                          : 'ring-3 ring-amber-400 border-2 border-amber-300 shadow-xl shadow-orange-500/40 scale-[1.02]'
+                        : isAmetista
+                        ? 'border border-purple-500/30 hover:border-[#d4ff59]/60 opacity-85 hover:opacity-100 hover:scale-[1.01]'
                         : 'border border-zinc-800 hover:border-orange-500/60 opacity-85 hover:opacity-100 hover:scale-[1.01]'
                     }`}
                   >
@@ -931,7 +1195,11 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                     </div>
 
                     {isSelected && (
-                      <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-amber-400 text-zinc-950 font-black flex items-center justify-center shadow-md animate-fade-in">
+                      <div
+                        className={`absolute top-2 right-2 w-6 h-6 rounded-full text-zinc-950 font-black flex items-center justify-center shadow-md animate-fade-in ${
+                          isAmetista ? 'bg-[#d4ff59]' : 'bg-amber-400'
+                        }`}
+                      >
                         <Check className="w-3.5 h-3.5 stroke-[3]" />
                       </div>
                     )}
@@ -939,7 +1207,11 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                     <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-2 pt-6">
                       <span
                         className={`text-[11px] font-bold block truncate ${
-                          isSelected ? 'text-amber-300' : 'text-zinc-200'
+                          isSelected
+                            ? isAmetista
+                              ? 'text-[#d4ff59]'
+                              : 'text-amber-300'
+                            : 'text-zinc-200'
                         }`}
                       >
                         {item.title}
@@ -953,23 +1225,49 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         )}
       </div>
 
-      {/* ─── CARD 9: GALERIA DE PROMPTS DE MOVIMENTO (MESTRES VENCEDORES - 4 POR LINHA COM VÍDEO NO HOVER) ─── */}
-      <div className="rounded-2xl border-2 border-orange-500 bg-gradient-to-br from-[#0d0d0f] via-[#17120e] to-[#0d0d0f] shadow-2xl shadow-orange-950/50 ring-2 ring-orange-500/30 overflow-hidden transition-all duration-300">
+      {/* ─── CARD 9: GALERIA DE PROMPTS DE MOVIMENTO (MANTÉM O DESTAQUE ESPECIAL QUE O USUÁRIO GOSTOU) ─── */}
+      <div
+        className={`rounded-2xl overflow-hidden transition-all duration-300 shadow-2xl ${
+          isAmetista
+            ? 'border-2 border-purple-400/75 bg-gradient-to-br from-[#120a1f] via-[#27113b] to-[#140b22] shadow-purple-950/60 ring-2 ring-purple-500/30'
+            : 'border-2 border-orange-500 bg-gradient-to-br from-[#0d0d0f] via-[#17120e] to-[#0d0d0f] shadow-orange-950/50 ring-2 ring-orange-500/30'
+        }`}
+      >
         <button
           type="button"
           onClick={() => setIsPromptsGalleryExpanded((prev) => !prev)}
-          className="w-full p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3 text-left hover:bg-orange-500/10 transition-colors cursor-pointer group"
+          className={`w-full p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3 text-left transition-colors cursor-pointer group ${
+            isAmetista ? 'hover:bg-purple-500/10' : 'hover:bg-orange-500/10'
+          }`}
         >
           <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-orange-500 via-amber-500 to-orange-600 text-zinc-950 flex items-center justify-center font-black shadow-lg shadow-orange-500/40 shrink-0 group-hover:scale-105 transition-transform">
+            <div
+              className={`w-11 h-11 rounded-xl text-zinc-950 flex items-center justify-center font-black shadow-lg shrink-0 group-hover:scale-105 transition-transform ${
+                isAmetista
+                  ? 'bg-[#d4ff59] shadow-lime-950/40'
+                  : 'bg-gradient-to-br from-orange-500 via-amber-500 to-orange-600 shadow-orange-500/40'
+              }`}
+            >
               <Video className="w-5 h-5 text-zinc-950 stroke-[2.5]" />
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <h3 className="text-sm sm:text-base font-black text-amber-300 uppercase tracking-wide group-hover:text-amber-200 transition-colors">
+                <h3
+                  className={`text-sm sm:text-base font-black uppercase tracking-wide transition-colors ${
+                    isAmetista
+                      ? 'text-white group-hover:text-[#d4ff59]'
+                      : 'text-amber-300 group-hover:text-amber-200'
+                  }`}
+                >
                   9. TOQUE AQUI PARA ESCOLHER O PROMPT DE MOVIMENTO (GALERIA DE MESTRES)
                 </h3>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-zinc-950 uppercase tracking-wider shadow-sm">
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm ${
+                    isAmetista
+                      ? 'bg-[#1a1128] text-[#d4ff59] border border-[#d4ff59]/50'
+                      : 'bg-amber-400 text-zinc-950'
+                  }`}
+                >
                   {MASTER_PROMPTS_GALLERY.length} VÍDEOS MESTRES
                 </span>
               </div>
@@ -980,10 +1278,22 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           </div>
 
           <div className="flex items-center gap-2.5">
-            <div className="flex items-center gap-1.5 bg-gradient-to-r from-orange-500 to-amber-500 text-zinc-950 font-black px-3.5 py-1.5 rounded-xl border border-amber-300 shadow-md shadow-orange-950/40">
+            <div
+              className={`flex items-center gap-1.5 text-zinc-950 font-black px-3.5 py-1.5 rounded-xl border shadow-md ${
+                isAmetista
+                  ? 'bg-[#d4ff59] border-lime-300 shadow-lime-950/40'
+                  : 'bg-gradient-to-r from-orange-500 to-amber-500 border-amber-300 shadow-orange-950/40'
+              }`}
+            >
               <span className="text-xs">{activeMaster.shortName} ✓</span>
             </div>
-            <div className="w-8 h-8 rounded-xl bg-orange-500/20 border border-orange-500/50 flex items-center justify-center text-orange-300 group-hover:bg-orange-500 group-hover:text-zinc-950 transition-all">
+            <div
+              className={`w-8 h-8 rounded-xl border flex items-center justify-center transition-all ${
+                isAmetista
+                  ? 'bg-purple-500/20 border-purple-400/50 text-[#d4ff59] group-hover:bg-[#d4ff59] group-hover:text-zinc-950'
+                  : 'bg-orange-500/20 border-orange-500/50 text-orange-300 group-hover:bg-orange-500 group-hover:text-zinc-950'
+              }`}
+            >
               {isPromptsGalleryExpanded ? (
                 <ChevronUp className="w-4 h-4 stroke-[3]" />
               ) : (
@@ -1183,17 +1493,13 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         />
       )}
 
-      {/* ─── BOTÃO DE AÇÃO: GERAR VÍDEO (ALTO CONTRASTE) ─── */}
+      {/* ─── BOTÃO DE AÇÃO: GERAR VÍDEO (MESMA COR DO MODO PRODUTOS 2.0) ─── */}
       <div className="pt-2">
         <button
           type="button"
           disabled={!canSubmit}
           onClick={onSubmit}
-          className={`w-full py-4 px-6 rounded-2xl font-black text-sm sm:text-base uppercase tracking-wider transition-all flex items-center justify-center gap-3 cursor-pointer shadow-xl ${
-            canSubmit
-              ? 'bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 hover:from-orange-400 hover:via-amber-400 hover:to-orange-500 text-zinc-950 shadow-orange-950/60 ring-2 ring-amber-400/40 hover:scale-[1.01]'
-              : 'bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-700/50'
-          }`}
+          className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-sky-600 hover:from-emerald-500 hover:via-teal-500 hover:to-sky-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black text-sm sm:text-base shadow-xl shadow-emerald-950/50 flex items-center justify-center gap-3 transition-all cursor-pointer"
         >
           <Sparkles className={`w-5 h-5 ${isProcessing ? 'animate-spin' : ''}`} />
           <span>

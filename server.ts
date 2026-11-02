@@ -1572,7 +1572,7 @@ function simplifyToSingleColorWord(raw: string): string {
 
 app.post('/api/detect-dominant-color', async (req, res) => {
   try {
-    const { photoBase64, productName, productMode, aiProfile: _aiProfile } = req.body;
+    const { photoBase64, productName, productMode, mode, aiProfile: _aiProfile } = req.body;
     if (!photoBase64) {
       return res.status(400).json({ success: false, error: 'Foto não fornecida' });
     }
@@ -1580,6 +1580,78 @@ app.post('/api/detect-dominant-color', async (req, res) => {
     const cleanB64 = photoBase64.startsWith('data:')
       ? photoBase64
       : `data:image/jpeg;base64,${photoBase64}`;
+
+    // ─── MODO IDENTIFICAÇÃO RÁPIDA DE PEÇA DE VESTUÁRIO (MODO ANA MARIA) ───
+    if (mode === 'identify_garment') {
+      const identifyPrompt = `Analise a foto e identifique qual é a peça de roupa ou item principal de vestuário mostrado (exemplos: Camisola, Camiseta, Blusinha, Calça Jeans, Calça Alfaiataria, Bermuda, Short, Conjunto Fitness, Conjunto Feminino, Vestido Longo, Vestido Curto, Macaquinho, Macacão, Cinta Modeladora, Body, Biquíni, Maiô, Saia, Pijama, Lingerie, Jaqueta, Moletom).
+REGRAS:
+1. Ignore a pessoa, o fundo e acessórios secundários.
+2. Responda APENAS com o nome curto da peça em português (1 a 3 palavras, com iniciais maiúsculas), sem ponto final, sem aspas e sem explicações.`;
+
+      if (openAIProvider && openAIProvider.isConfigured()) {
+        const client = (openAIProvider as any).getClient();
+        for (const visionModel of ['gpt-4o-mini', 'gpt-4o']) {
+          try {
+            const completion = await client.chat.completions.create({
+              model: visionModel,
+              max_tokens: 25,
+              temperature: 0.1,
+              messages: [
+                {
+                  role: 'user',
+                  content: [
+                    { type: 'image_url', image_url: { url: cleanB64, detail: 'low' } },
+                    { type: 'text', text: identifyPrompt },
+                  ],
+                },
+              ],
+            });
+            const rawName = completion.choices[0]?.message?.content?.trim();
+            if (rawName) {
+              const cleanName = rawName
+                .replace(/^["'`]+|["'`.!?:;]+$/g, '')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .slice(0, 45);
+              if (cleanName) {
+                return res.json({ success: true, garmentName: cleanName });
+              }
+            }
+          } catch (err: any) {
+            console.warn(`Erro ao identificar peça via OpenAI (${visionModel}):`, err?.message || err);
+          }
+        }
+      }
+
+      if (process.env.GEMINI_API_KEY) {
+        try {
+          const parsed = parseInlineImage(photoBase64);
+          if (parsed) {
+            const geminiRes = await getGenAI().models.generateContent({
+              model: GEMINI_VISION_FAST_MODEL || 'gemini-2.5-flash',
+              contents: {
+                parts: [{ inlineData: parsed }, { text: identifyPrompt }],
+              },
+            });
+            const rawName = geminiRes.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+            if (rawName) {
+              const cleanName = rawName
+                .replace(/^["'`]+|["'`.!?:;]+$/g, '')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .slice(0, 45);
+              if (cleanName) {
+                return res.json({ success: true, garmentName: cleanName });
+              }
+            }
+          }
+        } catch (gemErr: any) {
+          console.warn('Erro ao identificar peça via Gemini:', gemErr?.message || gemErr);
+        }
+      }
+
+      return res.json({ success: false, error: 'Não foi possível identificar a peça automaticamente' });
+    }
 
     const promptText = `Analise a foto deste item comercial (${productName || (productMode === 'footwear' ? 'calçado / tênis' : 'roupa')}) e identifique com máxima precisão a cor predominante da PEÇA DE ROUPA / PRODUTO PRINCIPAL.
 REGRAS CRÍTICAS:
@@ -1871,6 +1943,7 @@ async function generateImageWithSeedream(params: {
   referenceImages?: (string | undefined)[];
   aspectRatio?: string;
   isAnaMariaMode?: boolean;
+  bodyType?: string;
   scenarioPhotoBase64?: string;
 }): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
   let apiKey = (
@@ -1913,9 +1986,25 @@ async function generateImageWithSeedream(params: {
     .filter((img): img is string => Boolean(img))
     .slice(0, 10);
 
-  const isPlus = (params as any).bodyType === 'plus_size' || /plus[-_\s]*size/i.test(params.prompt);
-  const plusRule = isPlus ? '[MANDATORY AUTHENTIC PLUS-SIZE RULE / REGRA PLUS SIZE OBRIGATÓRIA: Mulher brasileira adulta verdadeiramente PLUS SIZE (manequim 48 a 52 / US 16-18 / XXL, authentic plus-size curvy woman, heavy-set, full-figured voluptuous body). Coxas bem grossas, cheias e fartas (very thick heavy thighs), quadris visivelmente largos e proeminentes (wide prominent curvy hips), abdômen macio e natural suavemente preenchido (soft natural full belly/abdomen), busto volumoso e braços cheios carnudos. TERMINANTEMENTE PROIBIDO gerar modelo magra, PROIBIDO cintura fina de passarela, PROIBIDO barriga chapada/seca, PROIBIDO pernas finas (STRICTLY FORBIDDEN: skinny model, slim waist, thin legs, flat athletic stomach, slender body). A modelo DEVE ser genuinamente plus size como em modelos reais plus size brasileiras.]\n\n' : '';
-  const headerSeedream = params.isAnaMariaMode ? `${plusRule}${getAnaMariaHeader(Boolean((params as any).scenarioPhotoBase64))}` : IMAGE_REFERENCE_FIDELITY_HEADER;
+  // Quando isAnaMariaMode === true e o prompt já veio estruturado pelo buildAnaMariaImagePrompt,
+  // evita duplicar blocos longos (cenário, plus size e instruções do usuário já estão completos no prompt).
+  const alreadyStructuredAnaMaria =
+    params.isAnaMariaMode &&
+    (params.prompt.includes('PRESERVAÇÃO INTEGRAL DO CENÁRIO') ||
+      params.prompt.includes('CENÁRIO RESIDENCIAL E AMBIENTE'));
+
+  const isPlus = params.bodyType === 'plus_size' || /plus[-_\s]*size/i.test(params.prompt);
+  const plusRule =
+    isPlus && !alreadyStructuredAnaMaria
+      ? '[MANDATORY AUTHENTIC PLUS-SIZE RULE / REGRA PLUS SIZE OBRIGATÓRIA: Mulher brasileira adulta verdadeiramente PLUS SIZE (manequim 48 a 52 / US 16-18 / XXL, authentic plus-size curvy woman, heavy-set, full-figured voluptuous body). Coxas bem grossas, cheias e fartas, quadris largos, abdômen macio e natural, busto volumoso e braços cheios. PROIBIDO modelo magra ou cintura fina.]\n\n'
+      : '';
+
+  const headerSeedream = params.isAnaMariaMode
+    ? alreadyStructuredAnaMaria
+      ? '[MAPA DE IMAGENS DE REFERÊNCIA: Imagem 1 = Cenário real obrigatório (preservar 100% intacto); Demais imagens = Peça de roupa real 1:1 a ser vestida pela modelo.]'
+      : `${plusRule}${getAnaMariaHeader(Boolean(params.scenarioPhotoBase64))}`
+    : IMAGE_REFERENCE_FIDELITY_HEADER;
+
   const payload: any = {
     model: 'dola-seedream-5-0-pro-260628',
     prompt: refImages.length > 0 ? `${headerSeedream}\n\n${params.prompt}` : params.prompt,
@@ -2092,7 +2181,9 @@ app.post('/api/generate-scene-image', async (req, res) => {
       basePromptWithUser = `INSTRUÇÕES ADICIONAIS PRIORITÁRIAS DO USUÁRIO (CENÁRIO, MODELO E DETALHES):\n${userExtras}\n\n${prompt}`;
     }
 
-    const effectivePrompt = sanitizeStoryboardPromptForFidelity(basePromptWithUser, productType, req.body.productInfo);
+    const effectivePrompt = isAnaMariaMode
+      ? basePromptWithUser
+      : sanitizeStoryboardPromptForFidelity(basePromptWithUser, productType, req.body.productInfo);
 
     // ─── ROTEAMENTO POR MODELO DE IMAGEM ESPECÍFICO (KLING 3.0 / SEEDREAM 5.0 PRO) ───
     const requestedImageModel = req.body?.imageModel;

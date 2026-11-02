@@ -3239,11 +3239,70 @@ function simplifyToSingleColorWord(raw) {
 }
 app.post("/api/detect-dominant-color", async (req, res) => {
   try {
-    const { photoBase64, productName, productMode, aiProfile: _aiProfile } = req.body;
+    const { photoBase64, productName, productMode, mode, aiProfile: _aiProfile } = req.body;
     if (!photoBase64) {
       return res.status(400).json({ success: false, error: "Foto n\xE3o fornecida" });
     }
     const cleanB64 = photoBase64.startsWith("data:") ? photoBase64 : `data:image/jpeg;base64,${photoBase64}`;
+    if (mode === "identify_garment") {
+      const identifyPrompt = `Analise a foto e identifique qual \xE9 a pe\xE7a de roupa ou item principal de vestu\xE1rio mostrado (exemplos: Camisola, Camiseta, Blusinha, Cal\xE7a Jeans, Cal\xE7a Alfaiataria, Bermuda, Short, Conjunto Fitness, Conjunto Feminino, Vestido Longo, Vestido Curto, Macaquinho, Macac\xE3o, Cinta Modeladora, Body, Biqu\xEDni, Mai\xF4, Saia, Pijama, Lingerie, Jaqueta, Moletom).
+REGRAS:
+1. Ignore a pessoa, o fundo e acess\xF3rios secund\xE1rios.
+2. Responda APENAS com o nome curto da pe\xE7a em portugu\xEAs (1 a 3 palavras, com iniciais mai\xFAsculas), sem ponto final, sem aspas e sem explica\xE7\xF5es.`;
+      if (openAIProvider && openAIProvider.isConfigured()) {
+        const client = openAIProvider.getClient();
+        for (const visionModel of ["gpt-4o-mini", "gpt-4o"]) {
+          try {
+            const completion = await client.chat.completions.create({
+              model: visionModel,
+              max_tokens: 25,
+              temperature: 0.1,
+              messages: [
+                {
+                  role: "user",
+                  content: [
+                    { type: "image_url", image_url: { url: cleanB64, detail: "low" } },
+                    { type: "text", text: identifyPrompt }
+                  ]
+                }
+              ]
+            });
+            const rawName = completion.choices[0]?.message?.content?.trim();
+            if (rawName) {
+              const cleanName = rawName.replace(/^["'`]+|["'`.!?:;]+$/g, "").replace(/\s+/g, " ").trim().slice(0, 45);
+              if (cleanName) {
+                return res.json({ success: true, garmentName: cleanName });
+              }
+            }
+          } catch (err) {
+            console.warn(`Erro ao identificar pe\xE7a via OpenAI (${visionModel}):`, err?.message || err);
+          }
+        }
+      }
+      if (process.env.GEMINI_API_KEY) {
+        try {
+          const parsed = parseInlineImage(photoBase64);
+          if (parsed) {
+            const geminiRes = await getGenAI().models.generateContent({
+              model: GEMINI_VISION_FAST_MODEL || "gemini-2.5-flash",
+              contents: {
+                parts: [{ inlineData: parsed }, { text: identifyPrompt }]
+              }
+            });
+            const rawName = geminiRes.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+            if (rawName) {
+              const cleanName = rawName.replace(/^["'`]+|["'`.!?:;]+$/g, "").replace(/\s+/g, " ").trim().slice(0, 45);
+              if (cleanName) {
+                return res.json({ success: true, garmentName: cleanName });
+              }
+            }
+          }
+        } catch (gemErr) {
+          console.warn("Erro ao identificar pe\xE7a via Gemini:", gemErr?.message || gemErr);
+        }
+      }
+      return res.json({ success: false, error: "N\xE3o foi poss\xEDvel identificar a pe\xE7a automaticamente" });
+    }
     const promptText = `Analise a foto deste item comercial (${productName || (productMode === "footwear" ? "cal\xE7ado / t\xEAnis" : "roupa")}) e identifique com m\xE1xima precis\xE3o a cor predominante da PE\xC7A DE ROUPA / PRODUTO PRINCIPAL.
 REGRAS CR\xCDTICAS:
 1. Ignore completamente a pele da pessoa/modelo, cabelo, bra\xE7os, pernas, rosto ou corpo.
@@ -3487,9 +3546,10 @@ async function generateImageWithSeedream(params) {
     };
   }
   const refImages = (params.referenceImages && params.referenceImages.length > 0 ? params.referenceImages : [params.imageReferenceBase64]).map((img) => toDataUri(img)).filter((img) => Boolean(img)).slice(0, 10);
+  const alreadyStructuredAnaMaria = params.isAnaMariaMode && (params.prompt.includes("PRESERVA\xC7\xC3O INTEGRAL DO CEN\xC1RIO") || params.prompt.includes("CEN\xC1RIO RESIDENCIAL E AMBIENTE"));
   const isPlus = params.bodyType === "plus_size" || /plus[-_\s]*size/i.test(params.prompt);
-  const plusRule = isPlus ? "[MANDATORY AUTHENTIC PLUS-SIZE RULE / REGRA PLUS SIZE OBRIGAT\xD3RIA: Mulher brasileira adulta verdadeiramente PLUS SIZE (manequim 48 a 52 / US 16-18 / XXL, authentic plus-size curvy woman, heavy-set, full-figured voluptuous body). Coxas bem grossas, cheias e fartas (very thick heavy thighs), quadris visivelmente largos e proeminentes (wide prominent curvy hips), abd\xF4men macio e natural suavemente preenchido (soft natural full belly/abdomen), busto volumoso e bra\xE7os cheios carnudos. TERMINANTEMENTE PROIBIDO gerar modelo magra, PROIBIDO cintura fina de passarela, PROIBIDO barriga chapada/seca, PROIBIDO pernas finas (STRICTLY FORBIDDEN: skinny model, slim waist, thin legs, flat athletic stomach, slender body). A modelo DEVE ser genuinamente plus size como em modelos reais plus size brasileiras.]\n\n" : "";
-  const headerSeedream = params.isAnaMariaMode ? `${plusRule}${getAnaMariaHeader(Boolean(params.scenarioPhotoBase64))}` : IMAGE_REFERENCE_FIDELITY_HEADER;
+  const plusRule = isPlus && !alreadyStructuredAnaMaria ? "[MANDATORY AUTHENTIC PLUS-SIZE RULE / REGRA PLUS SIZE OBRIGAT\xD3RIA: Mulher brasileira adulta verdadeiramente PLUS SIZE (manequim 48 a 52 / US 16-18 / XXL, authentic plus-size curvy woman, heavy-set, full-figured voluptuous body). Coxas bem grossas, cheias e fartas, quadris largos, abd\xF4men macio e natural, busto volumoso e bra\xE7os cheios. PROIBIDO modelo magra ou cintura fina.]\n\n" : "";
+  const headerSeedream = params.isAnaMariaMode ? alreadyStructuredAnaMaria ? "[MAPA DE IMAGENS DE REFER\xCANCIA: Imagem 1 = Cen\xE1rio real obrigat\xF3rio (preservar 100% intacto); Demais imagens = Pe\xE7a de roupa real 1:1 a ser vestida pela modelo.]" : `${plusRule}${getAnaMariaHeader(Boolean(params.scenarioPhotoBase64))}` : IMAGE_REFERENCE_FIDELITY_HEADER;
   const payload = {
     model: "dola-seedream-5-0-pro-260628",
     prompt: refImages.length > 0 ? `${headerSeedream}
@@ -3650,7 +3710,7 @@ ${userExtras}
 
 ${prompt}`;
     }
-    const effectivePrompt = sanitizeStoryboardPromptForFidelity(basePromptWithUser, productType, req.body.productInfo);
+    const effectivePrompt = isAnaMariaMode ? basePromptWithUser : sanitizeStoryboardPromptForFidelity(basePromptWithUser, productType, req.body.productInfo);
     const requestedImageModel = req.body?.imageModel;
     if (requestedImageModel === "kling_3_0") {
       const klingResult = await generateImageWithKling({

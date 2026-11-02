@@ -6,6 +6,7 @@ export type AnaMariaImageModel = 'seedream_5_0_pro' | 'kling_3_0' | 'openai';
 export type AnaMariaVideoPromptLimit = 'unlimited' | '5000' | '2500';
 export type AnaMariaShoeCategory = 'A_CHINELO' | 'B_TENIS' | 'C_OUTRO';
 export type AnaMariaPresentationMode = 'mirror_selfie' | 'pov' | 'com_rosto';
+export type AnaMariaTheme = 'fogo' | 'ametista';
 export type AnaMariaMasterId =
   | 'mestra_ana_maria'
   | 'mestra_iara'
