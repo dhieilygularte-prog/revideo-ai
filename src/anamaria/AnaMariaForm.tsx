@@ -68,7 +68,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   hasExistingResult = false,
   onGoToResults,
   onOpenHistory,
-  theme = 'fogo',
+  theme = 'ametista',
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);

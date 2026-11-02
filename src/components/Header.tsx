@@ -21,7 +21,7 @@ export const Header: React.FC<HeaderProps> = ({
   onModeChange,
   aiProfile = 'openai',
   onAIProfileChange,
-  anaMariaTheme = 'fogo',
+  anaMariaTheme = 'ametista',
   onAnaMariaThemeChange,
 }) => {
   const [showDropdown, setShowDropdown] = useState(false);
@@ -57,22 +57,22 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-xl sticky top-0 z-40">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 sm:py-3 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2 sm:py-2.5 flex flex-wrap lg:flex-nowrap items-center justify-between gap-2.5">
+        <div className="flex items-center gap-2 shrink-0">
           <img
             src="https://media.atomicatmedia.net/u/NJqFB4SgSbf00BL6cx9ujHWo0J33/Pictures/XzEmdQ9119157.png"
             alt="Aurora Clonadora de Vídeos"
-            className="h-12 sm:h-14 md:h-16 w-auto object-contain drop-shadow-md"
+            className="h-11 sm:h-13 md:h-14 w-auto object-contain drop-shadow-md"
           />
         </div>
 
         {/* Mode Switcher Segmented Control */}
         {onModeChange && (
-          <div className="bg-zinc-900/90 p-1 rounded-xl border border-zinc-700/80 flex flex-wrap items-center gap-1 shadow-inner order-3 sm:order-2">
+          <div className="bg-zinc-900/90 p-1 rounded-xl border border-zinc-700/80 flex flex-wrap items-center gap-1 shadow-inner order-3 lg:order-2">
             <button
               type="button"
               onClick={() => onModeChange('produtos2')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 mode === 'produtos2'
                   ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md border border-emerald-400/40'
                   : 'text-zinc-400 hover:text-white'
@@ -85,7 +85,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={() => onModeChange('anamaria')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 mode === 'anamaria'
                   ? 'bg-gradient-to-r from-sky-600 to-blue-700 text-white shadow-md border border-sky-400/50 font-black ring-2 ring-sky-400/30'
                   : 'text-zinc-400 hover:text-white'
@@ -98,7 +98,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={() => onModeChange('ania')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 mode === 'ania'
                   ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md'
                   : 'text-zinc-400 hover:text-white'
@@ -111,7 +111,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={() => onModeChange('clone')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 mode === 'clone'
                   ? 'bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow-md'
                   : 'text-zinc-400 hover:text-white'
@@ -124,7 +124,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               type="button"
               onClick={() => onModeChange('produto')}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 mode === 'produto'
                   ? 'bg-gradient-to-r from-amber-700 to-amber-900 text-white shadow-md border border-amber-600/40'
                   : 'text-zinc-400 hover:text-white'
@@ -136,14 +136,14 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         )}
 
-        <div className="flex items-center gap-2.5 order-2 sm:order-3 relative" ref={dropdownRef}>
+        <div className="flex items-center justify-end gap-2 ml-auto order-2 lg:order-3 relative shrink-0" ref={dropdownRef}>
           {tokenStats && <TokenCostBadge stats={tokenStats} />}
 
           {/* Botão de Perfil de IA */}
           <button
             type="button"
             onClick={() => setShowDropdown((prev) => !prev)}
-            className={`px-3 py-1.5 rounded-lg bg-zinc-900 border text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer shadow-sm ${
+            className={`px-2.5 py-1.5 rounded-lg bg-zinc-900 border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm ${
               showDropdown
                 ? 'border-purple-500/80 text-white ring-2 ring-purple-500/20'
                 : 'border-zinc-700/80 hover:border-zinc-500 text-zinc-300 hover:text-white'
@@ -151,64 +151,44 @@ export const Header: React.FC<HeaderProps> = ({
             title="Clique para alternar o Perfil de IA e ver os modelos ativos"
           >
             <Sliders className="w-3.5 h-3.5 text-purple-400" />
-            <span className="text-zinc-400 hidden sm:inline">Modelo de IA:</span>
+            <span className="text-zinc-400 hidden xl:inline">Modelo de IA:</span>
             <span className="text-white font-bold">{activeAI.label}</span>
             <ChevronDown className={`w-3.5 h-3.5 text-zinc-400 transition-transform duration-200 ${showDropdown ? 'rotate-180 text-purple-300' : ''}`} />
           </button>
 
-          {/* Menu Dropdown Discreto de Seleção de TEMA no Canto Superior Direito */}
+          {/* Aba Discreta "TEMA" no Canto Superior Direito (toca para escolher o tema) */}
           {mode === 'anamaria' && onAnaMariaThemeChange && (
             <div className="relative" ref={themeDropdownRef}>
               <button
                 type="button"
                 onClick={() => setShowThemeDropdown((prev) => !prev)}
-                className={`px-2.5 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm ${
+                className={`px-2.5 py-1.5 rounded-lg border text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
                   showThemeDropdown
-                    ? 'border-orange-500/80 bg-zinc-800 text-white ring-2 ring-orange-500/20'
-                    : 'bg-zinc-900 border-zinc-700/80 hover:border-zinc-500 text-zinc-300 hover:text-white'
+                    ? 'border-purple-400/70 bg-zinc-900 text-white ring-1 ring-purple-500/30 opacity-100'
+                    : 'bg-zinc-900/70 border-zinc-800 hover:border-zinc-600 text-zinc-400 hover:text-zinc-200 opacity-85 hover:opacity-100'
                 }`}
-                title="Personalizar paleta de cores do Modo Ana Maria (Fogo vs Ametista)"
+                title="Escolher Tema de Cores"
               >
                 <Palette
-                  className={`w-3.5 h-3.5 ${
+                  className={`w-3 h-3 ${
                     anaMariaTheme === 'ametista' ? 'text-[#d4ff59]' : 'text-orange-400'
                   }`}
                 />
-                <span className="tracking-wide">TEMA</span>
+                <span className="tracking-wider">TEMA</span>
                 <ChevronDown
-                  className={`w-3 h-3 text-zinc-400 transition-transform duration-200 ${
-                    showThemeDropdown ? 'rotate-180 text-orange-400' : ''
+                  className={`w-3 h-3 text-zinc-500 transition-transform duration-200 ${
+                    showThemeDropdown ? 'rotate-180 text-zinc-200' : ''
                   }`}
                 />
               </button>
 
               {showThemeDropdown && (
-                <div className="absolute right-0 top-full mt-2 w-52 bg-zinc-900/98 backdrop-blur-2xl border border-zinc-700 rounded-xl p-2 text-zinc-200 shadow-2xl z-50 animate-fade-in space-y-1">
-                  <div className="px-2 py-1 text-[10px] font-black uppercase tracking-wider text-zinc-400 border-b border-zinc-800/80 mb-1">
-                    Tema Modo Ana Maria
+                <div className="absolute right-0 top-full mt-2 w-48 bg-zinc-950/98 backdrop-blur-2xl border border-zinc-700/90 rounded-xl p-1.5 text-zinc-200 shadow-2xl z-50 animate-fade-in space-y-1">
+                  <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-zinc-400 border-b border-zinc-800/80 mb-1">
+                    Escolher Tema
                   </div>
 
-                  {/* Opção 1: Tema Fogo */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onAnaMariaThemeChange('fogo');
-                      setShowThemeDropdown(false);
-                    }}
-                    className={`w-full px-2.5 py-2 rounded-lg text-xs font-bold flex items-center justify-between transition-all cursor-pointer ${
-                      anaMariaTheme === 'fogo'
-                        ? 'bg-zinc-800 text-orange-400 border border-orange-500/40 shadow-sm'
-                        : 'text-zinc-300 hover:bg-zinc-800/60 hover:text-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Flame className="w-4 h-4 text-orange-400" />
-                      <span>Tema Fogo</span>
-                    </div>
-                    {anaMariaTheme === 'fogo' && <Check className="w-3.5 h-3.5 text-orange-400 stroke-[3]" />}
-                  </button>
-
-                  {/* Opção 2: Tema Ametista */}
+                  {/* Opção 1 (Padrão): Tema Ametista */}
                   <button
                     type="button"
                     onClick={() => {
@@ -218,16 +198,36 @@ export const Header: React.FC<HeaderProps> = ({
                     className={`w-full px-2.5 py-2 rounded-lg text-xs font-bold flex items-center justify-between transition-all cursor-pointer ${
                       anaMariaTheme === 'ametista'
                         ? 'bg-[#211536] text-[#d4ff59] border border-purple-400/50 shadow-sm'
-                        : 'text-zinc-300 hover:bg-zinc-800/60 hover:text-white'
+                        : 'text-zinc-300 hover:bg-zinc-900 hover:text-white'
                     }`}
                   >
                     <div className="flex items-center gap-2">
-                      <Gem className="w-4 h-4 text-purple-400" />
-                      <span>Tema Ametista</span>
+                      <Gem className="w-3.5 h-3.5 text-purple-400" />
+                      <span>Ametista</span>
                     </div>
                     {anaMariaTheme === 'ametista' && (
                       <Check className="w-3.5 h-3.5 text-[#d4ff59] stroke-[3]" />
                     )}
+                  </button>
+
+                  {/* Opção 2: Tema Fogo */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onAnaMariaThemeChange('fogo');
+                      setShowThemeDropdown(false);
+                    }}
+                    className={`w-full px-2.5 py-2 rounded-lg text-xs font-bold flex items-center justify-between transition-all cursor-pointer ${
+                      anaMariaTheme === 'fogo'
+                        ? 'bg-zinc-800 text-orange-400 border border-orange-500/40 shadow-sm'
+                        : 'text-zinc-300 hover:bg-zinc-900 hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Flame className="w-3.5 h-3.5 text-orange-400" />
+                      <span>Fogo</span>
+                    </div>
+                    {anaMariaTheme === 'fogo' && <Check className="w-3.5 h-3.5 text-orange-400 stroke-[3]" />}
                   </button>
                 </div>
               )}

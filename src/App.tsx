@@ -189,19 +189,19 @@ export default function App() {
   const [aniaStatusMessage, setAniaStatusMessage] = useState('');
   const [aniaErrorMessage, setAniaErrorMessage] = useState<string | null>(null);
 
-  // Modo Ana Maria State
+  // Modo Ana Maria State (Padrão: Tema Ametista)
   const [anaMariaPage, setAnaMariaPage] = useState<'form' | 'results'>('form');
   const [anaMariaTheme, setAnaMariaTheme] = useState<AnaMariaTheme>(() => {
     try {
-      const saved = localStorage.getItem('aurora_anamaria_theme');
+      const saved = localStorage.getItem('aurora_anamaria_theme_v2');
       if (saved === 'ametista' || saved === 'fogo') return saved;
     } catch {}
-    return 'fogo';
+    return 'ametista';
   });
   const handleAnaMariaThemeChange = (nextTheme: AnaMariaTheme) => {
     setAnaMariaTheme(nextTheme);
     try {
-      localStorage.setItem('aurora_anamaria_theme', nextTheme);
+      localStorage.setItem('aurora_anamaria_theme_v2', nextTheme);
     } catch {}
   };
   const [isProcessingAnaMaria, setIsProcessingAnaMaria] = useState(false);

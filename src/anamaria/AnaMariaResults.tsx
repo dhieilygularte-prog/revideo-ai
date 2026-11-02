@@ -97,7 +97,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
   onOpenHistory,
   onOpenPreviewModal,
   aiProfile = 'openai',
-  theme = 'fogo',
+  theme = 'ametista',
 }) => {
   const isAmetista = theme === 'ametista';
 
