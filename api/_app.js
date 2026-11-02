@@ -867,6 +867,8 @@ Retorne estritamente um JSON estruturado:
       referenceFrameBase64,
       scenarioPhotoBase64,
       isAnaMariaMode = false,
+      presentationMode,
+      selectedMasterId,
       variationName = "Varia\xE7\xE3o 1",
       productType = "produto comercial",
       correctionPrompt,
@@ -949,6 +951,16 @@ ${prompt}` : prompt;
 - The garment fits snugly and flatteringly over her real plus-size body, exactly as seen on real plus-size fashion models.` : `[CURVACEOUS FEMALE BODY SILHOUETTE]:
 - Brazilian woman with natural hourglass curves, wide hips, defined waist, and shapely legs.
 - The garment fits snugly and flatteringly over her curves.`;
+        const allowsFace = presentationMode === "com_rosto" || selectedMasterId === "mestra_catza" || cleanPrompt && (cleanPrompt.includes("MODO COM ROSTO") || cleanPrompt.includes("ROSTO E ENQUADRAMENTO \u2014 MODO COM ROSTO") || cleanPrompt.includes("o rosto da modelo DEVE aparecer") || cleanPrompt.includes("MESTRA CATZA"));
+        const framingSection = allowsFace ? `[FRAMING & FACE DIRECTIVE \u2014 MODO COM ROSTO / UGC]:
+- The model's natural, harmonious face and expression MUST appear clearly in the mirror reflection.
+- Expressive, authentic, natural makeup, dark neat eyebrows, long hair naturally falling over shoulders.
+- Modern smartphone held naturally taking the mirror selfie with rear flash activated.
+- Zero tattoos anywhere on the skin (100% clean skin).` : `[STRICT FRAMING & FACE PROHIBITION]:
+- STRICT CHIN-DOWN FRAMING: Frame strictly from the bottom base of the chin downward.
+- ABSOLUTELY NEVER reveal lips, mouth, nose, eyes or upper face. Face MUST stay 100% OUT OF FRAME.
+- Zero tattoos anywhere on the skin (100% clean skin).
+- Modern smartphone held naturally in one hand in front of the mirror taking the mirror-selfie.`;
         effectivePrompt = `[CRITICAL EDIT DIRECTIVE - INPAINT MODEL INTO EXACT SCENARIO - MODO ANA MARIA]:
 You are editing the base scenario photograph (Reference Image 1).
 KEEP the architectural setting from Reference Image 1 100% UNCHANGED and INTACT:
@@ -960,11 +972,7 @@ KEEP the architectural setting from Reference Image 1 100% UNCHANGED and INTACT:
 
 ${bodyBlock}
 
-[STRICT FRAMING & FACE PROHIBITION]:
-- STRICT CHIN-DOWN FRAMING: Frame strictly from the bottom base of the chin downward.
-- ABSOLUTELY NEVER reveal lips, mouth, nose, eyes or upper face. Face MUST stay 100% OUT OF FRAME.
-- Zero tattoos anywhere on the skin (100% clean skin).
-- Modern smartphone held naturally in one hand in front of the mirror taking the mirror-selfie.
+${framingSection}
 
 ${cleanPrompt}`;
       }
@@ -3245,10 +3253,32 @@ app.post("/api/detect-dominant-color", async (req, res) => {
     }
     const cleanB64 = photoBase64.startsWith("data:") ? photoBase64 : `data:image/jpeg;base64,${photoBase64}`;
     if (mode === "identify_garment") {
-      const identifyPrompt = `Analise a foto e identifique qual \xE9 a pe\xE7a de roupa ou item principal de vestu\xE1rio mostrado (exemplos: Camisola, Camiseta, Blusinha, Cal\xE7a Jeans, Cal\xE7a Alfaiataria, Bermuda, Short, Conjunto Fitness, Conjunto Feminino, Vestido Longo, Vestido Curto, Macaquinho, Macac\xE3o, Cinta Modeladora, Body, Biqu\xEDni, Mai\xF4, Saia, Pijama, Lingerie, Jaqueta, Moletom).
-REGRAS:
-1. Ignore a pessoa, o fundo e acess\xF3rios secund\xE1rios.
-2. Responda APENAS com o nome curto da pe\xE7a em portugu\xEAs (1 a 3 palavras, com iniciais mai\xFAsculas), sem ponto final, sem aspas e sem explica\xE7\xF5es.`;
+      const identifyPrompt = `Analise a foto deste item de vestu\xE1rio e informe o NOME COMERCIAL ESPEC\xCDFICO da pe\xE7a em portugu\xEAs para cat\xE1logo de moda e TikTok Shop.
+
+REGRAS OBRIGAT\xD3RIAS:
+1. \xC9 TERMINANTEMENTE PROIBIDO responder com categorias gen\xE9ricas ou termos guarda-chuva como "Lingerie", "Roupa", "Moda \xCDntima", "Vestu\xE1rio", "Pe\xE7a \xCDntima", "Look" ou "Vestimenta".
+2. SEJA ESPEC\xCDFICO com a nomenclatura comercial exata usada em e-commerce:
+   - Se for roupa de dormir delicada / camisola: use "Camisola Baby Doll" ou "Camisola Rendada" ou "Baby Doll". NUNCA use apenas "Lingerie".
+   - Se for calcinha e suti\xE3: use "Conjunto de Lingerie" ou "Conjunto de Renda".
+   - Se for body: use "Body Rendado", "Body Canelado" ou "Body Modelador".
+   - Se for vestido: "Vestido Longo", "Vestido Midi", "Vestido Curto", "Vestido Canelado", "Vestido Tubinho".
+   - Se for cal\xE7a: "Cal\xE7a Jeans", "Cal\xE7a Pantalona", "Cal\xE7a Wide Leg", "Cal\xE7a Alfaiataria", "Cal\xE7a Legging".
+   - Se for short/bermuda: "Short Jeans", "Short Alfaiataria", "Short Saia", "Bermuda Jeans".
+   - Se for blusa/camisa: "Camiseta Oversized", "Cropped Canelado", "Blusa Tricot", "Camisa Social".
+   - Se for pijama: "Pijama Americano", "Pijama de Cetim", "Pijama Curto".
+   - Se for cinta: "Cinta Modeladora", "Cinta Abdominal".
+   - Se for fitness: "Conjunto Fitness", "Top Fitness".
+   - Se for praia: "Biqu\xEDni Cortininha", "Mai\xF4 Engana-Mam\xE3e".
+3. Responda APENAS o nome comercial espec\xEDfico da pe\xE7a (1 a 3 palavras, iniciais mai\xFAsculas), sem ponto final, sem aspas e sem explica\xE7\xF5es.`;
+      const sanitizeIdentifiedGarment = (raw) => {
+        let clean = raw.replace(/^["'`]+|["'`.!?:;]+$/g, "").replace(/\s+/g, " ").trim().slice(0, 45);
+        if (/^lingerie$/i.test(clean)) {
+          clean = "Camisola Baby Doll";
+        } else if (/^moda\s*íntima$/i.test(clean) || /^roupa$/i.test(clean) || /^vestuário$/i.test(clean)) {
+          clean = "Camisola Baby Doll";
+        }
+        return clean;
+      };
       if (openAIProvider && openAIProvider.isConfigured()) {
         const client = openAIProvider.getClient();
         for (const visionModel of ["gpt-4o-mini", "gpt-4o"]) {
@@ -3269,7 +3299,7 @@ REGRAS:
             });
             const rawName = completion.choices[0]?.message?.content?.trim();
             if (rawName) {
-              const cleanName = rawName.replace(/^["'`]+|["'`.!?:;]+$/g, "").replace(/\s+/g, " ").trim().slice(0, 45);
+              const cleanName = sanitizeIdentifiedGarment(rawName);
               if (cleanName) {
                 return res.json({ success: true, garmentName: cleanName });
               }
@@ -3291,7 +3321,7 @@ REGRAS:
             });
             const rawName = geminiRes.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
             if (rawName) {
-              const cleanName = rawName.replace(/^["'`]+|["'`.!?:;]+$/g, "").replace(/\s+/g, " ").trim().slice(0, 45);
+              const cleanName = sanitizeIdentifiedGarment(rawName);
               if (cleanName) {
                 return res.json({ success: true, garmentName: cleanName });
               }
@@ -3408,7 +3438,13 @@ ${body}` : body).slice(0, maxChars);
 }
 var IMAGE_REFERENCE_FIDELITY_HEADER = "REGRA CR\xCDTICA DE PRODUTO VS MODELO/CEN\xC1RIO: A imagem de refer\xEAncia anexada serve EXCLUSIVAMENTE para copiar a pe\xE7a de roupa/produto real. \xC9 EXPRESSAMENTE PROIBIDO COPIAR A MODELO, A PESSOA OU O CEN\xC1RIO DE FUNDO DA FOTO DE REFER\xCANCIA! Voc\xEA DEVE gerar uma NOVA pessoa e um NOVO cen\xE1rio seguindo rigorosamente as instru\xE7\xF5es e descri\xE7\xE3o do prompt abaixo. Copie da imagem de refer\xEAncia \xDANICA E EXCLUSIVAMENTE a pe\xE7a de roupa/produto 1:1 com fidelidade total (mesmo formato, corte, decote, al\xE7as, tecido, renda, transpar\xEAncia e cor).";
 var ANAMARIA_IMAGE_HEADER = "[REGRA CR\xCDTICA DE CEN\xC1RIO REAL FIXO E PRODUTO NO MODO ANA MARIA]:\nA Imagem de Refer\xEAncia 1 \xE9 o CEN\xC1RIO REAL FIXO OBRIGAT\xD3RIO (c\xF4modo da casa com ch\xE3o de porcelanato bege marmorizado brilhante, porta de madeira escura com frisos \xE0 esquerda, parede clara com interruptores \xE0 direita e corredor ao fundo).\nVoc\xEA DEVE MANTER ESTE EXATO CEN\xC1RIO E FUNDO como a cena onde a modelo est\xE1 posicionada diante do espelho. N\xC3O gere um cen\xE1rio diferente nem altere a arquitetura, o piso ou as portas do c\xF4modo!\nPosicione a modelo em p\xE9 EXATAMENTE neste cen\xE1rio com smartphone na m\xE3o em selfie no espelho.\nA roupa usada pela modelo deve ser uma r\xE9plica 1:1 exata das fotos de produto anexadas nas demais refer\xEAncias.\nEnquadramento estrito: somente do queixo para baixo. L\xE1bios, boca, nariz e olhos NUNCA aparecem em nenhum momento. Zero tatuagens.";
-function getAnaMariaHeader(hasCustomScenario) {
+function getAnaMariaHeader(hasCustomScenario, allowsFace = false) {
+  if (allowsFace) {
+    if (hasCustomScenario) {
+      return "[REGRA CR\xCDTICA DE PRESERVA\xC7\xC3O INTEGRAL DO CEN\xC1RIO SELECIONADO NO MODO ANA MARIA]:\nA Imagem de Refer\xEAncia 1 \xE9 a FOTO DO CEN\xC1RIO REAL SELECIONADO PELO USU\xC1RIO.\nVoc\xEA DEVE PRESERVAR 100% DO AMBIENTE, PISO, PAREDES, REFLEXOS, ESPELHO, CORES, ILUMINA\xC7\xC3O E ARQUITETURA da Imagem de Refer\xEAncia 1.\n\xC9 TERMINANTEMENTE PROIBIDO inventar outro cen\xE1rio, alterar o fundo ou redesenhar o ambiente!\nApenas insira e posicione a modelo em p\xE9 diante do espelho EXATAMENTE dentro deste cen\xE1rio da Imagem de Refer\xEAncia 1.\nA roupa usada pela modelo deve ser uma r\xE9plica 1:1 exata das fotos de produto anexadas nas demais refer\xEAncias.\nEnquadramento: selfie espont\xE2nea diante do espelho mostrando a modelo com seu rosto e express\xE3o natural harmoniosa, maquiagem delicada e corpo inteiro at\xE9 os p\xE9s. Zero tatuagens.";
+    }
+    return "[REGRA CR\xCDTICA DE CEN\xC1RIO E ENQUADRAMENTO NO MODO ANA MARIA]:\nVoc\xEA DEVE MANTER ESTE EXATO CEN\xC1RIO E FUNDO como a cena onde a modelo est\xE1 posicionada diante do espelho.\nPosicione a modelo em p\xE9 EXATAMENTE neste cen\xE1rio com smartphone na m\xE3o em selfie no espelho.\nA roupa usada pela modelo deve ser uma r\xE9plica 1:1 exata das fotos de produto anexadas nas demais refer\xEAncias.\nEnquadramento: selfie espont\xE2nea diante do espelho mostrando a modelo com seu rosto e express\xE3o natural harmoniosa, maquiagem delicada e corpo inteiro at\xE9 os p\xE9s. Zero tatuagens.";
+  }
   if (hasCustomScenario) {
     return "[REGRA CR\xCDTICA DE PRESERVA\xC7\xC3O INTEGRAL DO CEN\xC1RIO SELECIONADO NO MODO ANA MARIA]:\nA Imagem de Refer\xEAncia 1 \xE9 a FOTO DO CEN\xC1RIO REAL SELECIONADO PELO USU\xC1RIO.\nVoc\xEA DEVE PRESERVAR 100% DO AMBIENTE, PISO, PAREDES, REFLEXOS, ESPELHO, CORES, ILUMINA\xC7\xC3O E ARQUITETURA da Imagem de Refer\xEAncia 1.\n\xC9 TERMINANTEMENTE PROIBIDO inventar outro cen\xE1rio, alterar o fundo ou redesenhar o ambiente!\nApenas insira e posicione a modelo em p\xE9 diante do espelho EXATAMENTE dentro deste cen\xE1rio da Imagem de Refer\xEAncia 1.\nA roupa usada pela modelo deve ser uma r\xE9plica 1:1 exata das fotos de produto anexadas nas demais refer\xEAncias.\nEnquadramento estrito: somente da altura do queixo para baixo. L\xE1bios, boca, nariz e olhos NUNCA aparecem em nenhum momento. Zero tatuagens.";
   }
@@ -3431,9 +3467,12 @@ async function generateImageWithKling(params) {
     };
   }
   const englishFidelityHeader = params.imageReferenceBase64 ? "CRITICAL PRODUCT ISOLATION: Reproduce ONLY the clothing/garment 1:1 from the reference image. DO NOT copy the person, face, hair, body, tattoos, or background from the reference photo. Generate a completely NEW model and NEW setting as described below:\n" : "";
+  const allowsFace = params.presentationMode === "com_rosto" || params.selectedMasterId === "mestra_catza" || Boolean(
+    params.prompt && (params.prompt.includes("MODO COM ROSTO") || params.prompt.includes("ROSTO E ENQUADRAMENTO \u2014 MODO COM ROSTO") || params.prompt.includes("o rosto da modelo DEVE aparecer") || params.prompt.includes("MESTRA CATZA"))
+  );
   const isPlus = params.bodyType === "plus_size" || /plus[-_\s]*size/i.test(params.prompt);
   const plusRule = isPlus ? "[MANDATORY AUTHENTIC PLUS-SIZE RULE / REGRA PLUS SIZE OBRIGAT\xD3RIA: Mulher brasileira adulta verdadeiramente PLUS SIZE (manequim 48 a 52 / US 16-18 / XXL, authentic plus-size curvy woman, heavy-set, full-figured voluptuous body). Coxas bem grossas, cheias e fartas (very thick heavy thighs), quadris visivelmente largos e proeminentes (wide prominent curvy hips), abd\xF4men macio e natural suavemente preenchido (soft natural full belly/abdomen), busto volumoso e bra\xE7os cheios carnudos. TERMINANTEMENTE PROIBIDO gerar modelo magra, PROIBIDO cintura fina de passarela, PROIBIDO barriga chapada/seca, PROIBIDO pernas finas (STRICTLY FORBIDDEN: skinny model, slim waist, thin legs, flat athletic stomach, slender body). A modelo DEVE ser genuinamente plus size como em modelos reais plus size brasileiras.]\n\n" : "";
-  const headerKling = params.isAnaMariaMode ? `${plusRule}${getAnaMariaHeader(Boolean(params.scenarioPhotoBase64))}` : `${englishFidelityHeader}${IMAGE_REFERENCE_FIDELITY_HEADER}`;
+  const headerKling = params.isAnaMariaMode ? `${plusRule}${getAnaMariaHeader(Boolean(params.scenarioPhotoBase64), allowsFace)}` : `${englishFidelityHeader}${IMAGE_REFERENCE_FIDELITY_HEADER}`;
   const klingPrompt = compactPromptToLimit(
     params.prompt,
     2200,
@@ -3442,7 +3481,7 @@ async function generateImageWithKling(params) {
   const payload = {
     model_name: "kling-v3",
     prompt: klingPrompt,
-    negative_prompt: params.isAnaMariaMode ? `face, lips, mouth, nose, eyes, tattoos on skin, deformed hands, bad anatomy, blurry, watermark${isPlus ? ", skinny, slim, thin waist, flat belly, slender, underweight, thin legs" : ""}` : "original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry",
+    negative_prompt: params.isAnaMariaMode ? allowsFace ? `tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, deformed face, bad eyes${isPlus ? ", skinny, slim, thin waist, flat belly, slender, underweight, thin legs" : ""}` : `face, lips, mouth, nose, eyes, tattoos on skin, deformed hands, bad anatomy, blurry, watermark${isPlus ? ", skinny, slim, thin waist, flat belly, slender, underweight, thin legs" : ""}` : "original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry",
     aspect_ratio: params.aspectRatio || "9:16",
     n: 1,
     watermark_info: {
@@ -3549,7 +3588,10 @@ async function generateImageWithSeedream(params) {
   const alreadyStructuredAnaMaria = params.isAnaMariaMode && (params.prompt.includes("PRESERVA\xC7\xC3O INTEGRAL DO CEN\xC1RIO") || params.prompt.includes("CEN\xC1RIO RESIDENCIAL E AMBIENTE"));
   const isPlus = params.bodyType === "plus_size" || /plus[-_\s]*size/i.test(params.prompt);
   const plusRule = isPlus && !alreadyStructuredAnaMaria ? "[MANDATORY AUTHENTIC PLUS-SIZE RULE / REGRA PLUS SIZE OBRIGAT\xD3RIA: Mulher brasileira adulta verdadeiramente PLUS SIZE (manequim 48 a 52 / US 16-18 / XXL, authentic plus-size curvy woman, heavy-set, full-figured voluptuous body). Coxas bem grossas, cheias e fartas, quadris largos, abd\xF4men macio e natural, busto volumoso e bra\xE7os cheios. PROIBIDO modelo magra ou cintura fina.]\n\n" : "";
-  const headerSeedream = params.isAnaMariaMode ? alreadyStructuredAnaMaria ? "[MAPA DE IMAGENS DE REFER\xCANCIA: Imagem 1 = Cen\xE1rio real obrigat\xF3rio (preservar 100% intacto); Demais imagens = Pe\xE7a de roupa real 1:1 a ser vestida pela modelo.]" : `${plusRule}${getAnaMariaHeader(Boolean(params.scenarioPhotoBase64))}` : IMAGE_REFERENCE_FIDELITY_HEADER;
+  const allowsFaceSeedream = params.presentationMode === "com_rosto" || params.selectedMasterId === "mestra_catza" || Boolean(
+    params.prompt && (params.prompt.includes("MODO COM ROSTO") || params.prompt.includes("ROSTO E ENQUADRAMENTO \u2014 MODO COM ROSTO") || params.prompt.includes("o rosto da modelo DEVE aparecer") || params.prompt.includes("MESTRA CATZA"))
+  );
+  const headerSeedream = params.isAnaMariaMode ? alreadyStructuredAnaMaria ? "[MAPA DE IMAGENS DE REFER\xCANCIA: Imagem 1 = Cen\xE1rio real obrigat\xF3rio (preservar 100% intacto); Demais imagens = Pe\xE7a de roupa real 1:1 a ser vestida pela modelo.]" : `${plusRule}${getAnaMariaHeader(Boolean(params.scenarioPhotoBase64), allowsFaceSeedream)}` : IMAGE_REFERENCE_FIDELITY_HEADER;
   const payload = {
     model: "dola-seedream-5-0-pro-260628",
     prompt: refImages.length > 0 ? `${headerSeedream}
@@ -3712,12 +3754,16 @@ ${prompt}`;
     }
     const effectivePrompt = isAnaMariaMode ? basePromptWithUser : sanitizeStoryboardPromptForFidelity(basePromptWithUser, productType, req.body.productInfo);
     const requestedImageModel = req.body?.imageModel;
+    const presentationMode = req.body?.presentationMode;
+    const selectedMasterId = req.body?.selectedMasterId;
     if (requestedImageModel === "kling_3_0") {
       const klingResult = await generateImageWithKling({
         prompt: effectivePrompt,
         imageReferenceBase64: scenarioPhotoBase64 || modelReferenceBase64 || productPhotoBase64,
         aspectRatio: req.body.aspectRatio || "9:16",
         isAnaMariaMode,
+        presentationMode,
+        selectedMasterId,
         bodyType,
         scenarioPhotoBase64
       });
@@ -3737,6 +3783,8 @@ ${prompt}`;
         referenceImages: orderedRefs,
         aspectRatio: req.body.aspectRatio || "9:16",
         isAnaMariaMode,
+        presentationMode,
+        selectedMasterId,
         bodyType,
         scenarioPhotoBase64
       });
@@ -3759,6 +3807,8 @@ ${prompt}`;
           referenceFrameBase64,
           scenarioPhotoBase64,
           isAnaMariaMode,
+          presentationMode,
+          selectedMasterId,
           bodyType,
           variationName,
           productType,

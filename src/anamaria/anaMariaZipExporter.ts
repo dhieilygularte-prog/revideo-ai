@@ -1,4 +1,5 @@
 import { AnaMariaResultState } from './types';
+import { getMasterPromptById } from './masterPromptsData';
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
@@ -17,6 +18,21 @@ export function sanitizeCleanName(name: string): string {
     .replace(/\s+/g, ' ')
     .trim();
   return clean || 'Produto';
+}
+
+export function getMasterPromptFileName(result: AnaMariaResultState): string {
+  const cleanName = sanitizeCleanName(result.productName);
+  const horaStr = formatTimestampForFile(result.timestamp);
+  if (result.selectedMasterId) {
+    const master = getMasterPromptById(result.selectedMasterId);
+    // Limpa prefixo numérico ("05. ") e notas entre parênteses: "05. Mestra Catza (Flash / Com Rosto)" -> "Mestra Catza"
+    const masterCleanName = master.shortName
+      .replace(/^\d+[\.\s-]*/, '')
+      .replace(/\s*\(.*?\)/g, '')
+      .trim();
+    return `${masterCleanName} - ${cleanName} (${horaStr}).txt`;
+  }
+  return `Prompt de Video - ${cleanName} (${horaStr}).txt`;
 }
 
 function formatTimestampForFile(timestamp?: number): string {
@@ -188,11 +204,12 @@ ${result.hashtags}
 `;
   zip.file(`Hastags e Headline - ${cleanName} (${horaStr}).txt`, hashtagsAndHeadlineContent);
 
-  // 3. Doc do Prompt de Vídeo (limpo, sem cabeçalho "🎥 PROMPT DE VÍDEO...")
+  // 3. Doc do Prompt de Vídeo (limpo, nomeado como Mestra [Nome] - [Produto] (data).txt)
   const cleanVideoPrompt = result.videoPrompt
     .replace(/^🎥 PROMPT DE VÍDEO[^\n]*\n+/i, '')
     .trim();
-  zip.file(`Prompt de Video - ${cleanName} (${horaStr}).txt`, cleanVideoPrompt);
+  const videoPromptFileName = getMasterPromptFileName(result);
+  zip.file(videoPromptFileName, cleanVideoPrompt);
 
   // Gerar e baixar arquivo .zip com o nome "Modo Ana Maria - [Produto].zip"
   const zipBlob = await zip.generateAsync({

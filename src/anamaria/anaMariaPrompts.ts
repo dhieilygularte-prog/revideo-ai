@@ -365,26 +365,34 @@ export function buildAnaMariaVideoPrompt(params: {
 Adapte toda a execução para o modelo masculino da imagem de referência, preservando 85% da sequência exata de movimentos da ${master.shortName}, porém executada com postura corporal, mecânica e gestos naturais masculinos, mantendo o relógio masculino discreto e a fidelidade 1:1 à peça de roupa.\n\n` + base;
   }
 
-  // 2. Preservação da estrutura Plus Size durante toda a animação
+  // 2. Preservação da estrutura Plus Size durante toda a animação (resumo conciso para o vídeo sem sobrepor movimentos)
   if (isPlusSize && mode !== 'pov' && !master.isPov) {
-    base = `**PRESERVAÇÃO OBRIGATÓRIA DE CORPO PLUS SIZE REAL:**
-Mantenha rigorosamente em todos os frames a estrutura corporal genuinamente PLUS SIZE da imagem de referência (volume adiposo evidente, quadris largos, coxas grossas, abdômen arredondado natural e braços cheios). Jamais emagreça ou afine a silhueta durante os giros ou movimentos.\n\n` + base;
+    base = `**PRESERVAÇÃO DO CORPO PLUS SIZE:** Preservar a silhueta e proporções corporais plus size da modelo da imagem de referência durante todos os movimentos.\n\n` + base;
   }
 
-  // 3. Regra Superior de Enquadramento (Mirror Selfie = Corte estrito no queixo / Com Rosto = Rosto visível sem fala)
-  if (mode === 'mirror_selfie' && !master.isPov) {
+  // 3. Regra de Enquadramento: Com Rosto (UGC) vs Mirror Selfie (Corte no queixo)
+  const isFaceMode =
+    mode === 'com_rosto' ||
+    Boolean(master.allowsFaceByDefault) ||
+    master.primaryCategory === 'com_rosto' ||
+    master.id === 'mestra_catza';
+
+  if (isFaceMode && !master.isPov) {
+    // Remove qualquer restrição residual de "sem rosto"
+    base = base
+      .replace(/Never reveal the model's face\.[^\n]*/gi, "Preserve the model's natural face and expression as shown in the reference image.")
+      .replace(/O rosto e os lábios nunca devem aparecer\.[^\n]*/gi, 'Preservar o rosto natural e harmonioso da modelo conforme a imagem de referência.')
+      .replace(/\*\*REGRA SUPERIOR INEGOCIÁVEL DE ENQUADRAMENTO[^\n]*\*\*[\s\S]*?(?=\n\n|$)/gi, '');
+
+    const faceRule = `**MODO COM ROSTO (UGC COM ESPELHO & FLASH):**
+Demonstração comercial autêntica em selfie no espelho com flash do smartphone ligado. Preservar o rosto natural, maquiagem e expressão espontânea da imagem de referência.
+Vídeo 100% silencioso: a modelo NÃO fala e NÃO movimenta os lábios como se estivesse falando.\n\n`;
+    base = faceRule + base;
+  } else if (mode === 'mirror_selfie' && !master.isPov) {
     const strictChinLock = `**REGRA SUPERIOR INEGOCIÁVEL DE ENQUADRAMENTO (MODO MIRROR SELFIE — CORTE NO QUEIXO):**
 O enquadramento deve permanecer 100% travado da base do queixo para baixo durante todo o vídeo.
 É TERMINANTEMENTE PROIBIDO mostrar lábios (especialmente lábios inchados ou com aspecto de botox), boca, nariz, olhos ou rosto em qualquer frame, inclusive no final do vídeo ou durante giros. A câmera NUNCA deve subir ou inclinar para cima.\n\n`;
     base = strictChinLock + base;
-  } else if (mode === 'com_rosto' && !master.isPov) {
-    // Remove restrições de "sem rosto" caso o usuário use uma mestra no modo Com Rosto
-    base = base
-      .replace(/Never reveal the model's face\.[^\n]*/gi, 'Preserve the model\'s natural face and expression as shown in the reference image.')
-      .replace(/O rosto e os lábios nunca devem aparecer\.[^\n]*/gi, 'Preservar o rosto natural e harmonioso da modelo conforme a imagem de referência.');
-    const faceRule = `**MODO COM ROSTO (UGC NO ESPELHO):**
-Preserve o rosto natural, a maquiagem e a expressão espontânea da imagem de referência durante toda a demonstração. Vídeo 100% silencioso: a modelo NÃO fala e NÃO movimenta os lábios como se estivesse falando.\n\n`;
-    base = faceRule + base;
   }
 
   // 4. Prioridade Soberana das Instruções Adicionais do Usuário (sobrepõe características e movimentos específicos)

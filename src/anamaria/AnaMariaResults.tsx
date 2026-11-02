@@ -28,6 +28,7 @@ import {
   downloadAnaMariaSingleImage,
   exportAnaMariaZip,
   sanitizeCleanName,
+  getMasterPromptFileName,
 } from './anaMariaZipExporter';
 import {
   regenerateAnaMariaImage,
@@ -821,7 +822,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                 <p className="text-[11px] text-zinc-400 mt-0.5">
                   Arquivo no pacote:{' '}
                   <span className="font-mono text-white">
-                    {`Prompt de Video - ${safeFileName}.txt`}
+                    {getMasterPromptFileName(result)}
                   </span>
                 </p>
               </div>

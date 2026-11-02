@@ -511,6 +511,8 @@ Retorne estritamente um JSON estruturado:
       referenceFrameBase64,
       scenarioPhotoBase64,
       isAnaMariaMode = false,
+      presentationMode,
+      selectedMasterId,
       variationName = 'Variação 1',
       productType = 'produto comercial',
       correctionPrompt,
@@ -621,6 +623,27 @@ Retorne estritamente um JSON estruturado:
 - Brazilian woman with natural hourglass curves, wide hips, defined waist, and shapely legs.
 - The garment fits snugly and flatteringly over her curves.`;
 
+        const allowsFace =
+          presentationMode === 'com_rosto' ||
+          selectedMasterId === 'mestra_catza' ||
+          (cleanPrompt &&
+            (cleanPrompt.includes('MODO COM ROSTO') ||
+              cleanPrompt.includes('ROSTO E ENQUADRAMENTO — MODO COM ROSTO') ||
+              cleanPrompt.includes('o rosto da modelo DEVE aparecer') ||
+              cleanPrompt.includes('MESTRA CATZA')));
+
+        const framingSection = allowsFace
+          ? `[FRAMING & FACE DIRECTIVE — MODO COM ROSTO / UGC]:
+- The model's natural, harmonious face and expression MUST appear clearly in the mirror reflection.
+- Expressive, authentic, natural makeup, dark neat eyebrows, long hair naturally falling over shoulders.
+- Modern smartphone held naturally taking the mirror selfie with rear flash activated.
+- Zero tattoos anywhere on the skin (100% clean skin).`
+          : `[STRICT FRAMING & FACE PROHIBITION]:
+- STRICT CHIN-DOWN FRAMING: Frame strictly from the bottom base of the chin downward.
+- ABSOLUTELY NEVER reveal lips, mouth, nose, eyes or upper face. Face MUST stay 100% OUT OF FRAME.
+- Zero tattoos anywhere on the skin (100% clean skin).
+- Modern smartphone held naturally in one hand in front of the mirror taking the mirror-selfie.`;
+
         effectivePrompt = `[CRITICAL EDIT DIRECTIVE - INPAINT MODEL INTO EXACT SCENARIO - MODO ANA MARIA]:
 You are editing the base scenario photograph (Reference Image 1).
 KEEP the architectural setting from Reference Image 1 100% UNCHANGED and INTACT:
@@ -632,11 +655,7 @@ KEEP the architectural setting from Reference Image 1 100% UNCHANGED and INTACT:
 
 ${bodyBlock}
 
-[STRICT FRAMING & FACE PROHIBITION]:
-- STRICT CHIN-DOWN FRAMING: Frame strictly from the bottom base of the chin downward.
-- ABSOLUTELY NEVER reveal lips, mouth, nose, eyes or upper face. Face MUST stay 100% OUT OF FRAME.
-- Zero tattoos anywhere on the skin (100% clean skin).
-- Modern smartphone held naturally in one hand in front of the mirror taking the mirror-selfie.
+${framingSection}
 
 ${cleanPrompt}`;
       }

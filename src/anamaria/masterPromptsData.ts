@@ -270,7 +270,7 @@ Enquanto demonstra a peça, realizar pequenas mudanças naturais de postura:
       'Objetivo: demonstração contínua deslizando a mão da parte superior até o quadril e coxa sob iluminação clara.',
     videoUrl:
       'https://excursaomdr.s3.sa-east-1.amazonaws.com/VIDEOS+GALERIA+AURORA/VIDEO+MESTRE+NAY+VITRINE.mp4',
-    categories: ['mirror_selfie', 'com_rosto'],
+    categories: ['mirror_selfie'],
     primaryCategory: 'mirror_selfie',
     bodyStandardText: `Silhueta feminina curvilínea em formato ampulheta com forte contraste entre cintura e quadril (Padrão Mestra Nay):
 - Cintura estreita, bastante definida e visivelmente marcada.
@@ -321,7 +321,7 @@ Preservar integralmente a mesma modelo da imagem de referência (cabelo longo es
       'Objetivo: apresentação UGC no espelho com flash traseiro ligado, fundo mais escuro e foco na parte superior e cintura.',
     videoUrl:
       'https://excursaomdr.s3.sa-east-1.amazonaws.com/VIDEOS+GALERIA+AURORA/VIDEO+VITRINE+MESTRE+CATZA+COM+ROSTO.mp4',
-    categories: ['com_rosto', 'mirror_selfie'],
+    categories: ['com_rosto'],
     primaryCategory: 'com_rosto',
     preferredScenarioId: 'cenario_24',
     allowsFaceByDefault: true,

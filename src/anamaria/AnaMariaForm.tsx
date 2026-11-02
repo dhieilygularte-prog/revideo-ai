@@ -325,9 +325,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const handleSelectMasterPrompt = (item: AnaMariaMasterPromptItem) => {
     onChange((prev) => {
       const currentMode = prev.presentationMode || 'mirror_selfie';
-      const nextMode = item.categories.includes(currentMode)
-        ? currentMode
-        : item.primaryCategory;
+      const nextMode = item.primaryCategory;
       const wasPov = currentMode === 'pov';
       const willBePov = nextMode === 'pov';
       const shouldResetScenario = wasPov !== willBePov;

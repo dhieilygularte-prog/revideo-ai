@@ -200,14 +200,11 @@ async function prepareProductPhotosForPayload(photos: string[]): Promise<{
   primaryPhoto: string;
   supplementaryPhotos: string[];
 }> {
-  const topPhotos = (photos || []).filter(Boolean).slice(0, 3);
-  const compressed = await Promise.all(
-    topPhotos.map((p) => compressImageForFastTransfer(p, 1440, 0.88))
-  );
+  // Preserva 100% da nitidez e qualidade das fotos reais do produto sem recomprimir ou rebaixar microtexturas
+  const validPhotos = (photos || []).filter(Boolean).slice(0, 5);
   return {
-    primaryPhoto: compressed[0] || photos[0],
-    // Envia apenas as fotos complementares (evita duplicar a foto 1 no payload JSON)
-    supplementaryPhotos: compressed.slice(1),
+    primaryPhoto: validPhotos[0] || '',
+    supplementaryPhotos: validPhotos.slice(1),
   };
 }
 
@@ -348,6 +345,8 @@ export async function runAnaMariaPipeline(
       productPhotosBase64: supplementaryPhotos,
       scenarioPhotoBase64: activeScenarioBase64,
       isAnaMariaMode: true,
+      presentationMode: form.presentationMode,
+      selectedMasterId: form.selectedMasterId,
       aspectRatio: '9:16',
       imageModel: form.imageModel,
       bodyType: form.bodyType,
@@ -447,6 +446,8 @@ export async function regenerateAnaMariaImage(params: {
       productPhotosBase64: supplementaryPhotos,
       scenarioPhotoBase64: activeScenarioBase64,
       isAnaMariaMode: true,
+      presentationMode: form.presentationMode,
+      selectedMasterId: form.selectedMasterId,
       aspectRatio: '9:16',
       imageModel: effectiveImageModel,
       bodyType: effectiveForm.bodyType,
@@ -505,6 +506,8 @@ export async function regenerateAnaMariaNewScenario(params: {
       productPhotoBase64: primaryPhoto,
       productPhotosBase64: supplementaryPhotos,
       isAnaMariaMode: false,
+      presentationMode: form.presentationMode,
+      selectedMasterId: form.selectedMasterId,
       aspectRatio: '9:16',
       imageModel: form.imageModel,
       bodyType: form.bodyType,

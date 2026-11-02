@@ -43,6 +43,8 @@ export interface GenerateSceneImageParams {
   preserveLocation?: boolean;
   scenarioPhotoBase64?: string;
   isAnaMariaMode?: boolean;
+  presentationMode?: string;
+  selectedMasterId?: string;
   bodyType?: string;
   aspectRatio?: '9:16' | '16:9' | '1:1';
   size?: '1024x1792' | '1792x1024' | '1024x1024';
