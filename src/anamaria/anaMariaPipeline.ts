@@ -78,6 +78,27 @@ export function saveAnaMariaResult(result: AnaMariaResultState): void {
   }
 }
 
+async function resolveScenarioBase64(form: AnaMariaFormState): Promise<string> {
+  if (form.selectedScenarioBase64 && form.selectedScenarioBase64.length > 50) {
+    return form.selectedScenarioBase64;
+  }
+  if (form.selectedScenarioUrl) {
+    try {
+      const res = await fetch(form.selectedScenarioUrl);
+      const blob = await res.blob();
+      return await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (e) {
+      console.warn('Falha ao converter cenário selecionado para base64:', e);
+    }
+  }
+  return PREFERRED_SCENARIO_BASE64;
+}
+
 /**
  * Pipeline principal do Modo Ana Maria (otimizado para alta velocidade sem perda de qualidade)
  */
@@ -114,9 +135,10 @@ export async function runAnaMariaPipeline(
     influencer: form.influencer,
     limit: form.videoPromptLimit,
     additionalInstructions: form.additionalInstructions,
+    hasSelectedScenario: Boolean(form.selectedScenarioId),
   });
 
-  // 3. Geração de Imagem com Cenário Real Fixo Travado (Item 2)
+  // 3. Geração de Imagem com Cenário Selecionado ou Fixo Travado (Item 2)
   onProgress('image_generation', 50);
   const modelNameLabel =
     form.imageModel === 'seedream_5_0_pro'
@@ -124,10 +146,12 @@ export async function runAnaMariaPipeline(
       : form.imageModel === 'kling_3_0'
       ? 'Kling 3.0'
       : 'OpenAI';
-  onStatusMessage(`Gerando imagem vertical 9:16 com curvas acentuadas no ${modelNameLabel}...`);
+  const scenarioMsg = form.selectedScenarioNumber ? ` no Cenário ${form.selectedScenarioNumber}` : '';
+  onStatusMessage(`Gerando imagem vertical 9:16${scenarioMsg} no ${modelNameLabel}...`);
 
   const primaryPhoto = form.referencePhotos[0];
   const allPhotos = form.referencePhotos.slice(0, 10);
+  const activeScenarioBase64 = await resolveScenarioBase64(form);
 
   const imgData = await postJson<{ success: boolean; imageUrl: string; error?: string }>(
     '/api/generate-scene-image',
@@ -135,7 +159,7 @@ export async function runAnaMariaPipeline(
       prompt: imagePrompt,
       productPhotoBase64: primaryPhoto,
       productPhotosBase64: allPhotos,
-      scenarioPhotoBase64: PREFERRED_SCENARIO_BASE64,
+      scenarioPhotoBase64: activeScenarioBase64,
       isAnaMariaMode: true,
       aspectRatio: '9:16',
       imageModel: form.imageModel,
@@ -186,6 +210,8 @@ export async function runAnaMariaPipeline(
     additionalInstructions: form.additionalInstructions,
     imageModel: form.imageModel,
     videoPromptLimit: form.videoPromptLimit,
+    selectedScenarioId: form.selectedScenarioId,
+    selectedScenarioNumber: form.selectedScenarioNumber,
     imagePrompt,
     videoPrompt,
     headline,
@@ -221,6 +247,7 @@ export async function regenerateAnaMariaImage(params: {
   }
 
   const { prompt } = buildAnaMariaImagePrompt(effectiveForm);
+  const activeScenarioBase64 = await resolveScenarioBase64(effectiveForm);
 
   const imgData = await postJson<{ success: boolean; imageUrl: string; error?: string }>(
     '/api/generate-scene-image',
@@ -228,7 +255,7 @@ export async function regenerateAnaMariaImage(params: {
       prompt,
       productPhotoBase64: effectiveForm.referencePhotos[0],
       productPhotosBase64: effectiveForm.referencePhotos.slice(0, 10),
-      scenarioPhotoBase64: PREFERRED_SCENARIO_BASE64,
+      scenarioPhotoBase64: activeScenarioBase64,
       isAnaMariaMode: true,
       aspectRatio: '9:16',
       imageModel: effectiveImageModel,

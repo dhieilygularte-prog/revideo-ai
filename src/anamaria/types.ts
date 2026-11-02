@@ -30,8 +30,12 @@ export interface AnaMariaFormState {
   influencer: AnaMariaInfluencer; // Padrão: 'Mulher'
   bodyType: AnaMariaBodyType; // Padrão: 'normal'
   additionalInstructions: string; // Prioridade máxima
-  imageModel: AnaMariaImageModel; // Padrão: 'openai'
+  imageModel: AnaMariaImageModel; // Padrão: 'seedream_5_0_pro'
   videoPromptLimit: AnaMariaVideoPromptLimit; // Padrão: 'unlimited'
+  selectedScenarioId?: string; // ID do cenário escolhido da vitrine (ex.: 'cenario_0')
+  selectedScenarioNumber?: number; // Número do cenário escolhido (1 a 22)
+  selectedScenarioUrl?: string; // URL da imagem cheia
+  selectedScenarioBase64?: string; // Base64 da imagem cheia para inpainting
 }
 
 export interface AnaMariaResultState {
@@ -45,6 +49,8 @@ export interface AnaMariaResultState {
   additionalInstructions: string;
   imageModel: AnaMariaImageModel;
   videoPromptLimit: AnaMariaVideoPromptLimit;
+  selectedScenarioId?: string;
+  selectedScenarioNumber?: number;
   imagePrompt: string;
   videoPrompt: string;
   headline: string;

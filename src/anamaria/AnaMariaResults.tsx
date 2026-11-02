@@ -306,6 +306,8 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
           additionalInstructions: result.additionalInstructions,
           imageModel: result.imageModel,
           videoPromptLimit: result.videoPromptLimit,
+          selectedScenarioId: result.selectedScenarioId,
+          selectedScenarioNumber: result.selectedScenarioNumber,
         },
         tweakPrompt: customInstruction || imageTweakText,
         aiProfile,
@@ -372,6 +374,8 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
           additionalInstructions: result.additionalInstructions,
           imageModel: result.imageModel,
           videoPromptLimit: result.videoPromptLimit,
+          selectedScenarioId: result.selectedScenarioId,
+          selectedScenarioNumber: result.selectedScenarioNumber,
         },
         aiProfile,
       });

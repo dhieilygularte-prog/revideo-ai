@@ -12,6 +12,11 @@ import {
   Layers,
   Cpu,
   Scissors,
+  Mic,
+  Square,
+  ChevronDown,
+  ChevronUp,
+  CheckCircle2,
 } from 'lucide-react';
 import {
   AnaMariaFormState,
@@ -22,6 +27,7 @@ import {
 } from './types';
 import { compressAndResizeImage } from '../ania/aniaLibrary';
 import { ProgressBar } from '../components/ProgressBar';
+import { SCENARIO_GALLERY_ITEMS } from './scenarioGalleryData';
 
 interface AnaMariaFormProps {
   form: AnaMariaFormState;
@@ -50,42 +56,104 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isRecordingMic, setIsRecordingMic] = useState(false);
+  const [isGalleryExpanded, setIsGalleryExpanded] = useState(false);
+  const recognitionRef = useRef<any>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  const stopMicrophone = () => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {}
+      recognitionRef.current = null;
+    }
+    if (streamRef.current) {
+      try {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+      } catch {}
+      streamRef.current = null;
+    }
+    setIsRecordingMic(false);
+  };
+
+  const toggleMic = async () => {
+    if (isRecordingMic) {
+      stopMicrophone();
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+
+      const SpeechRecognition =
+        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+      if (SpeechRecognition) {
+        const rec = new SpeechRecognition();
+        recognitionRef.current = rec;
+        rec.lang = 'pt-BR';
+        rec.continuous = true;
+        rec.interimResults = false;
+
+        rec.onresult = (event: any) => {
+          let transcript = '';
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            if (event.results[i].isFinal) {
+              transcript += event.results[i][0].transcript + ' ';
+            }
+          }
+          if (transcript.trim()) {
+            onChange((prev) => ({
+              ...prev,
+              additionalInstructions: prev.additionalInstructions
+                ? `${prev.additionalInstructions.trim()} ${transcript.trim()}`
+                : transcript.trim(),
+            }));
+          }
+        };
+
+        rec.onerror = () => stopMicrophone();
+        rec.onend = () => setIsRecordingMic(false);
+
+        rec.start();
+        setIsRecordingMic(true);
+      }
+    } catch {
+      stopMicrophone();
+    }
+  };
 
   const handleFiles = async (files: FileList | File[]) => {
-    const fileArray = Array.from(files).filter((f) => f.type.startsWith('image/'));
-    if (fileArray.length === 0) return;
+    const validFiles = Array.from(files).filter((file) => file.type.startsWith('image/'));
+    if (validFiles.length === 0) return;
 
+    const remainingSlots = 10 - form.referencePhotos.length;
+    if (remainingSlots <= 0) return;
+
+    const filesToProcess = validFiles.slice(0, remainingSlots);
     setIsUploading(true);
+
     try {
-      const remainingSlots = 10 - form.referencePhotos.length;
-      const filesToProcess = fileArray.slice(0, Math.max(0, remainingSlots));
+      const b64Promises = filesToProcess.map((file) => compressAndResizeImage(file, 1440, 0.85));
+      const newPhotos = await Promise.all(b64Promises);
 
-      const newPhotos: string[] = [];
-      for (const file of filesToProcess) {
-        // Reduz para 1280px e qualidade 0.82 para upload 3x mais leve e rápido sem perda visual
-        const compressed = await compressAndResizeImage(file, 1280, 0.82);
-        if (compressed) {
-          newPhotos.push(compressed);
-        }
-      }
-
-      if (newPhotos.length > 0) {
-        onChange((prev) => ({
-          ...prev,
-          referencePhotos: [...prev.referencePhotos, ...newPhotos].slice(0, 10),
-        }));
-      }
+      onChange((prev) => ({
+        ...prev,
+        referencePhotos: [...prev.referencePhotos, ...newPhotos].slice(0, 10),
+      }));
     } catch (err) {
-      console.warn('Erro ao processar imagens anexadas:', err);
+      console.error('Erro ao processar imagens:', err);
     } finally {
       setIsUploading(false);
     }
   };
 
-  const handleRemovePhoto = (indexToRemove: number) => {
+  const handleRemovePhoto = (index: number) => {
     onChange((prev) => ({
       ...prev,
-      referencePhotos: prev.referencePhotos.filter((_, idx) => idx !== indexToRemove),
+      referencePhotos: prev.referencePhotos.filter((_, i) => i !== index),
     }));
   };
 
@@ -96,44 +164,56 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     }));
   };
 
+  const handleToggleScenario = (item: (typeof SCENARIO_GALLERY_ITEMS)[number]) => {
+    onChange((prev) => {
+      if (prev.selectedScenarioId === item.id) {
+        return {
+          ...prev,
+          selectedScenarioId: undefined,
+          selectedScenarioNumber: undefined,
+          selectedScenarioUrl: undefined,
+          selectedScenarioBase64: undefined,
+        };
+      }
+      return {
+        ...prev,
+        selectedScenarioId: item.id,
+        selectedScenarioNumber: item.number,
+        selectedScenarioUrl: item.fullUrl,
+        selectedScenarioBase64: undefined,
+      };
+    });
+  };
+
+  const handleClearScenario = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onChange((prev) => ({
+      ...prev,
+      selectedScenarioId: undefined,
+      selectedScenarioNumber: undefined,
+      selectedScenarioUrl: undefined,
+      selectedScenarioBase64: undefined,
+    }));
+  };
+
   const canSubmit = form.referencePhotos.length > 0 && !isProcessing && !isUploading;
+  const isInstructionsFilled = Boolean(form.additionalInstructions && form.additionalInstructions.trim().length > 0);
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-12 animate-fade-in">
-      {/* ─── BANNER PRINCIPAL (PALETA AZUL PRODUTOS 2.0 - ITENS 1, 2 E 3) ─── */}
-      <div className="relative overflow-hidden rounded-2xl border border-sky-500/40 bg-gradient-to-br from-sky-950/60 via-zinc-950 to-zinc-950 p-5 sm:p-7 shadow-2xl shadow-sky-950/40">
-        <div className="absolute -top-12 -right-12 w-48 h-48 bg-sky-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-sky-950/60 text-white font-black">
-              <Sparkles className="w-6 h-6 text-sky-200" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2.5">
-                <h1 className="text-xl sm:text-2xl font-black text-white tracking-wide uppercase">
-                  Modo Ana Maria
-                </h1>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-sky-500/20 text-sky-300 border border-sky-500/40">
-                  Vitrine 10s · Selfie Espelho
-                </span>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {onOpenHistory && (
-              <button
-                type="button"
-                onClick={onOpenHistory}
-                className="px-3.5 py-2 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 border border-zinc-700 text-sky-300 text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-sm hover:border-sky-500/50"
-              >
-                <History className="w-4 h-4 text-sky-400" />
-                <span>Histórico</span>
-              </button>
-            )}
-          </div>
+    <div className="space-y-5 max-w-5xl mx-auto pb-12 animate-fade-in">
+      {/* ─── TOPO COMPACTO COM BOTÃO DE HISTÓRICO NO CANTO ─── */}
+      {onOpenHistory && (
+        <div className="flex justify-end pt-1">
+          <button
+            type="button"
+            onClick={onOpenHistory}
+            className="px-3.5 py-2 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 border border-zinc-700 hover:border-sky-500/50 text-sky-300 text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-sm"
+          >
+            <History className="w-4 h-4 text-sky-400" />
+            <span>Histórico de Gerações</span>
+          </button>
         </div>
-      </div>
+      )}
 
       {/* ─── BOTÃO DE AVANÇAR PARA A PÁGINA DE RESULTADOS (AMARELO VIBRANTE - ITEM 3) ─── */}
       {hasExistingResult && onGoToResults && (
@@ -382,28 +462,71 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         </div>
       </div>
 
-      {/* ─── CARD 5: INSTRUÇÕES ADICIONAIS ─── */}
-      <div className="rounded-2xl border border-sky-950/60 bg-zinc-950/80 backdrop-blur-sm p-5 sm:p-6 shadow-xl space-y-3">
-        <div className="border-b border-zinc-800/80 pb-2">
-          <h2 className="text-sm font-bold text-white uppercase tracking-wide">
-            5. Instruções Adicionais
-          </h2>
-          <p className="text-xs text-zinc-400 leading-relaxed mt-1">
-            Espaço opcional para descrever características específicas (ex.: modelo ruiva, outro ambiente da casa, etc.).
+      {/* ─── CARD 5: INSTRUÇÕES ADICIONAIS (COM MICROFONE IGUAL PRODUTOS 2.0) ─── */}
+      <div
+        className={`rounded-2xl border p-5 sm:p-6 shadow-xl space-y-3 transition-all ${
+          isInstructionsFilled
+            ? 'border-sky-500/60 bg-slate-950/90 shadow-sky-950/40'
+            : 'border-sky-950/60 bg-zinc-950/80'
+        }`}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/80 pb-2.5">
+          <div className="flex items-center gap-2">
+            <h2 className="text-sm font-bold text-white uppercase tracking-wide">
+              5. Instruções Adicionais (Opcional — Prioridade Máxima)
+            </h2>
+            {isInstructionsFilled && (
+              <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3 text-sky-300" /> Preenchido ✓
+              </span>
+            )}
+          </div>
+          <p className="text-[11px] text-zinc-400">
+            Digite ou dite pelo microfone. Qualquer preferência aqui sobrepõe detalhes padrão.
           </p>
         </div>
-        <textarea
-          rows={3}
-          value={form.additionalInstructions}
-          onChange={(e) => onChange((prev) => ({ ...prev, additionalInstructions: e.target.value }))}
-          placeholder="Ex: Modelo ruiva; cenário em quarto com luz natural..."
-          className="w-full px-4 py-2.5 rounded-xl bg-zinc-900/95 border border-zinc-700/80 text-white placeholder-zinc-500 text-sm focus:outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500"
-        />
+
+        <div className="relative">
+          <textarea
+            rows={3}
+            value={form.additionalInstructions}
+            onChange={(e) => onChange((prev) => ({ ...prev, additionalInstructions: e.target.value }))}
+            placeholder='Ex.: "Modelo morena clara com cabelos castanhos longos. Detalhe da estampa floral bem visível..." (ou clique no microfone para ditar)'
+            className={`w-full p-3.5 pr-12 rounded-xl text-xs sm:text-sm text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-sky-400 resize-none font-sans ${
+              isInstructionsFilled
+                ? 'bg-zinc-900/90 border border-sky-400/60'
+                : 'bg-zinc-900/80 border border-zinc-700/80'
+            }`}
+          />
+          <button
+            type="button"
+            onClick={toggleMic}
+            className={`absolute right-2.5 top-2.5 p-2 rounded-lg text-xs transition-all cursor-pointer ${
+              isRecordingMic
+                ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400'
+                : 'bg-zinc-800 text-sky-300 hover:bg-zinc-700 border border-zinc-700'
+            }`}
+            title={isRecordingMic ? 'Parar gravação' : 'Ditar instruções adicionais'}
+          >
+            {isRecordingMic ? (
+              <Square className="w-4 h-4 fill-white" />
+            ) : (
+              <Mic className="w-4 h-4" />
+            )}
+          </button>
+        </div>
+
+        {isRecordingMic && (
+          <p className="text-[11px] text-rose-400 flex items-center gap-1.5 font-semibold animate-pulse">
+            <span className="w-2 h-2 rounded-full bg-rose-500" />
+            Ouvindo sua voz... fale suas instruções e clique no quadrado vermelho para parar.
+          </p>
+        )}
       </div>
 
-      {/* ─── CARD 6: CONFIGURAÇÕES DE MOTORES (VISUAL LIMPO) ─── */}
+      {/* ─── CARD 6 & 7: GERADOR DE IMAGEM & PROMPT DE VÍDEO ─── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Seletor de Gerador de Imagem */}
+        {/* Seletor de Gerador de Imagem (1º SeaDream, 2º Kling, 3º OpenAI) */}
         <div className="rounded-2xl border border-sky-950/60 bg-zinc-950/80 backdrop-blur-sm p-5 shadow-xl space-y-3">
           <div className="border-b border-zinc-800/80 pb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -412,25 +535,11 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                 6. Gerador de Imagem
               </h3>
             </div>
+            <span className="text-[10px] text-zinc-400">Padrão: SeaDream 5.0 Pro</span>
           </div>
 
           <div className="space-y-2">
-            <button
-              type="button"
-              onClick={() => onChange((prev) => ({ ...prev, imageModel: 'openai' }))}
-              className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between text-xs font-bold ${
-                form.imageModel === 'openai'
-                  ? 'bg-gradient-to-r from-sky-600 to-blue-700 border-sky-400 text-white shadow shadow-sky-950/60 ring-2 ring-sky-400/40'
-                  : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-white'
-              }`}
-            >
-              <div className="flex flex-col">
-                <span>OpenAI — Inserção no Cenário Real</span>
-                <span className="text-[10px] font-normal opacity-85">(Recomendado: edita a foto real sem recriar o fundo)</span>
-              </div>
-              {form.imageModel === 'openai' && <Check className="w-4 h-4 text-sky-200 stroke-[3]" />}
-            </button>
-
+            {/* 1º: SeaDream 5.0 Pro */}
             <button
               type="button"
               onClick={() => onChange((prev) => ({ ...prev, imageModel: 'seedream_5_0_pro' }))}
@@ -440,10 +549,11 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                   : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-white'
               }`}
             >
-              <span>SeaDream 5.0 Pro</span>
+              <span>SeaDream 5.0 Pro (Padrão)</span>
               {form.imageModel === 'seedream_5_0_pro' && <Check className="w-4 h-4 text-sky-200 stroke-[3]" />}
             </button>
 
+            {/* 2º: Kling 3.0 */}
             <button
               type="button"
               onClick={() => onChange((prev) => ({ ...prev, imageModel: 'kling_3_0' }))}
@@ -455,6 +565,20 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             >
               <span>Kling 3.0</span>
               {form.imageModel === 'kling_3_0' && <Check className="w-4 h-4 text-sky-200 stroke-[3]" />}
+            </button>
+
+            {/* 3º: OpenAI */}
+            <button
+              type="button"
+              onClick={() => onChange((prev) => ({ ...prev, imageModel: 'openai' }))}
+              className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between text-xs font-bold ${
+                form.imageModel === 'openai'
+                  ? 'bg-gradient-to-r from-sky-600 to-blue-700 border-sky-400 text-white shadow shadow-sky-950/60 ring-2 ring-sky-400/40'
+                  : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-white'
+              }`}
+            >
+              <span>OpenAI</span>
+              {form.imageModel === 'openai' && <Check className="w-4 h-4 text-sky-200 stroke-[3]" />}
             </button>
           </div>
         </div>
@@ -468,6 +592,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                 7. Prompt de Vídeo
               </h3>
             </div>
+            <span className="text-[10px] text-zinc-400">Limite de Caracteres</span>
           </div>
 
           <div className="space-y-2">
@@ -511,6 +636,122 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             </button>
           </div>
         </div>
+      </div>
+
+      {/* ─── CARD 8: GALERIA DE CENÁRIOS VENCEDORES (SUBMENU EXPANSÍVEL - ITEM 8) ─── */}
+      <div className="rounded-2xl border border-sky-950/60 bg-zinc-950/80 backdrop-blur-sm shadow-xl overflow-hidden transition-all">
+        <button
+          type="button"
+          onClick={() => setIsGalleryExpanded((prev) => !prev)}
+          className="w-full p-5 flex flex-wrap items-center justify-between gap-3 text-left hover:bg-zinc-900/50 transition-colors cursor-pointer"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-sky-500/10 border border-sky-500/30 flex items-center justify-center text-sky-400">
+              <ImageIcon className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wide">
+                  8. Galeria de Cenários Vencedores
+                </h3>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                  {SCENARIO_GALLERY_ITEMS.length} Cenários Disponíveis
+                </span>
+              </div>
+              <p className="text-[11px] text-zinc-400 mt-0.5">
+                Opcional: selecione um cenário para posicionar a modelo nele sem recriar o fundo.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            {form.selectedScenarioNumber ? (
+              <div className="flex items-center gap-1.5 bg-sky-500/20 border border-sky-400/60 px-3 py-1.5 rounded-xl">
+                <span className="text-xs font-black text-sky-200">
+                  Cenário {form.selectedScenarioNumber} Selecionado ✓
+                </span>
+                <button
+                  type="button"
+                  onClick={handleClearScenario}
+                  className="p-1 hover:bg-rose-500/30 rounded-lg text-rose-300 transition-colors ml-1"
+                  title="Desmarcar cenário"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <span className="text-xs text-zinc-500 hidden sm:inline">Nenhum cenário marcado</span>
+            )}
+            <div className="w-8 h-8 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400">
+              {isGalleryExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </div>
+          </div>
+        </button>
+
+        {isGalleryExpanded && (
+          <div className="p-5 pt-0 border-t border-zinc-850 space-y-4 animate-fade-in">
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-4">
+              <p className="text-xs text-zinc-400">
+                Toque em qualquer miniatura para escolher o cenário. Toque novamente para desmarcar.
+              </p>
+              {form.selectedScenarioNumber && (
+                <button
+                  type="button"
+                  onClick={handleClearScenario}
+                  className="text-xs text-rose-400 hover:text-rose-300 font-bold underline cursor-pointer"
+                >
+                  Remover seleção (usar cenário residencial padrão)
+                </button>
+              )}
+            </div>
+
+            {/* Grade Responsiva de Cenários: 2 colunas no celular, 4 no sm, 5 no md, 6 no lg */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-3">
+              {SCENARIO_GALLERY_ITEMS.map((item) => {
+                const isSelected = form.selectedScenarioId === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => handleToggleScenario(item)}
+                    className={`group relative rounded-xl overflow-hidden aspect-[9/16] transition-all cursor-pointer text-left bg-zinc-900 flex flex-col justify-between ${
+                      isSelected
+                        ? 'ring-3 ring-sky-400 border-2 border-sky-300 shadow-xl shadow-sky-500/30 scale-[1.02]'
+                        : 'border border-zinc-800 hover:border-sky-500/60 opacity-85 hover:opacity-100 hover:scale-[1.01]'
+                    }`}
+                  >
+                    {/* Imagem do Cenário (Thumbnail leve) */}
+                    <img
+                      src={item.thumbUrl}
+                      alt={item.title}
+                      loading="lazy"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    />
+
+                    {/* Bolinha Branca com o Número no Canto Superior Esquerdo */}
+                    <div className="absolute top-2 left-2 w-6 h-6 rounded-full bg-white text-zinc-950 font-black text-xs flex items-center justify-center shadow-md select-none border border-zinc-300">
+                      {item.number}
+                    </div>
+
+                    {/* Selo de Selecionado no Canto Superior Direito */}
+                    {isSelected && (
+                      <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-sky-500 text-white flex items-center justify-center shadow-md animate-fade-in">
+                        <Check className="w-3.5 h-3.5 stroke-[3]" />
+                      </div>
+                    )}
+
+                    {/* Overlay inferior com o nome */}
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-2 pt-6">
+                      <span className={`text-[11px] font-bold block truncate ${isSelected ? 'text-sky-300' : 'text-zinc-200'}`}>
+                        {item.title}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ─── BARRA DE PROGRESSO COM GIF IGUAL AO MODO PRODUTOS 2.0 ─── */}

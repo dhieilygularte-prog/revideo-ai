@@ -111,13 +111,31 @@ export function buildAnaMariaImagePrompt(
       ? `INSTRUÇÕES ADICIONAIS DO USUÁRIO:\n${form.additionalInstructions.trim()}\n(Qualquer preferência acima sobrepõe detalhes padrão de modelo ou cenário)\n\n`
       : '';
 
-  const scenarioText = SCENARIO_DESCRIPTIONS[scenarioRoom] || SCENARIO_DESCRIPTIONS.hall_espelho;
+  const hasSelectedScenario = Boolean(form.selectedScenarioId);
+  const scenarioTitle = form.selectedScenarioNumber ? `Cenário ${form.selectedScenarioNumber}` : 'cenário selecionado';
 
-  const prompt = `${additionalBlock}Crie uma fotografia hiper-realista vertical 9:16 de ${
-    isMale
-      ? (isPlusSize ? 'um homem brasileiro adulto PLUS SIZE (porte grande, manequim 50-54)' : 'um homem brasileiro adulto')
-      : (isPlusSize ? 'uma mulher brasileira adulta autêntica PLUS SIZE (corpo voluptuoso e encorpado, coxas grossas, quadris largos, manequim 48 a 52)' : 'uma mulher brasileira adulta com curvas acentuadas')
-  } apresentando a roupa da imagem de referência, em uma selfie diante do espelho de corpo inteiro, reproduzindo fielmente o cenário residencial.
+  const promptIntro = hasSelectedScenario
+    ? `Crie uma fotografia hiper-realista vertical 9:16 de ${
+        isMale
+          ? (isPlusSize ? 'um homem brasileiro adulto PLUS SIZE (porte grande, manequim 50-54)' : 'um homem brasileiro adulto')
+          : (isPlusSize ? 'uma mulher brasileira adulta autêntica PLUS SIZE (corpo voluptuoso e encorpado, coxas grossas, quadris largos, manequim 48 a 52)' : 'uma mulher brasileira adulta com curvas acentuadas')
+      } apresentando a roupa da imagem de referência, inserida de forma natural e integrada na fotografia do ${scenarioTitle} anexada, em uma selfie diante do espelho de corpo inteiro.`
+    : `Crie uma fotografia hiper-realista vertical 9:16 de ${
+        isMale
+          ? (isPlusSize ? 'um homem brasileiro adulto PLUS SIZE (porte grande, manequim 50-54)' : 'um homem brasileiro adulto')
+          : (isPlusSize ? 'uma mulher brasileira adulta autêntica PLUS SIZE (corpo voluptuoso e encorpado, coxas grossas, quadris largos, manequim 48 a 52)' : 'uma mulher brasileira adulta com curvas acentuadas')
+      } apresentando a roupa da imagem de referência, em uma selfie diante do espelho de corpo inteiro, reproduzindo fielmente o cenário residencial.`;
+
+  const scenarioSection = hasSelectedScenario
+    ? `## 3. PRESERVAÇÃO INTEGRAL DO CENÁRIO ANEXADO (${scenarioTitle.toUpperCase()})
+A foto de cenário anexada é a autoridade visual absoluta do ambiente.
+Preserve integralmente e sem modificações todo o cômodo da foto de referência: piso, paredes, iluminação, reflexos, portas, espelho e elementos arquitetônicos.
+NÃO redesenhe, NÃO altere e NÃO gere um ambiente diferente. Insira a modelo perfeitamente integrada e em pé diante do espelho dentro deste exato cômodo real.`
+    : `## 3. CENÁRIO REAL FIXO E ILUMINAÇÃO (BASE NA FOTO ANEXADA)
+${scenarioText}
+A parte da frente onde a modelo aparece deve ser iluminada de forma natural e clara, e o fundo do cômodo mais carente de iluminação (em penumbra suave) para que o foco visual fique integralmente na modelo e na roupa. Cenário residencial limpo e sem distrações.`;
+
+  const prompt = `${additionalBlock}${promptIntro}
 
 ## 1. MODELO E SILHUETA CORPORAL
 ${modelDescription}
@@ -128,9 +146,7 @@ Enquadrar a cabeça RIGOROSAMENTE DA ALTURA DA BASE DO QUEIXO PARA BAIXO.
 É TERMINANTEMENTE PROIBIDO MOSTRAR LÁBIOS, BOCA, NARIZ OU OLHOS EM QUALQUER MOMENTO OU PARTE DO ENQUADRAMENTO.
 Os lábios, a boca, o nariz e os olhos devem ficar 100% FORA da imagem em todas as circunstâncias. Mostrar somente a ponta inferior do queixo, o pescoço, o colo e todo o corpo para baixo. Nunca mostrar o rosto inteiro, nunca mostrar a boca e nunca mostrar o nariz. O corte deve parecer uma selfie espontânea natural tirada no espelho com corte exato no queixo.
 
-## 3. CENÁRIO REAL FIXO E ILUMINAÇÃO (BASE NA FOTO ANEXADA)
-${scenarioText}
-A parte da frente onde a modelo aparece deve ser iluminada de forma natural e clara, e o fundo do cômodo mais carente de iluminação (em penumbra suave) para que o foco visual fique integralmente na modelo e na roupa. Cenário residencial limpo e sem distrações.
+${scenarioSection}
 
 ## 4. CÂMERA E ENQUADRAMENTO
 Fotografia vertical 9:16 de espelho de corpo inteiro. Perspectiva frontal, natural, sem distorção. Enquadrar da altura do queixo até os pés, mostrando a roupa integralmente dos ombros/colo até os dois pés com o calçado correto apoiado no piso. Não cortar a roupa, pernas ou pés.
@@ -228,20 +244,177 @@ No visible face, no speech, no subtitles, no captions, no added graphics, no log
 Strict no-face rule: The camera framing is strictly from the base of the chin down. Under NO circumstances should the lips, mouth, nose, or eyes appear in any frame of the video. Reproduce the exact movement sequence and timing described above while preserving the original reference image. The woman's movements must be natural, fluid and realistic. The clothing must remain visually identical to the reference image in every frame.`;
 
 /**
+ * Prompt Mestre de Movimentos Padrão quando o usuário seleciona um cenário da vitrine
+ * Nome: "Vencedor by GPT - Cenário Selecionado"
+ */
+export const VENCEDOR_BY_GPT_SCENARIO_PROMPT = `Create a 10-second ultra-photorealistic vertical 9:16 fashion mirror-selfie video.
+
+**1. SCENARIO INSERTION**
+
+Insert the generated model into the scenario selected and provided by the user.
+
+Use the selected scenario image as the absolute reference. Preserve its original appearance and composition. Do not recreate, redesign, replace, modify or generate a different environment. Only insert the model naturally into the selected scenario, maintaining realistic scale, positioning, perspective and visual integration.
+
+**2. MODEL CREATION — DEFAULT APPEARANCE**
+
+When no alternative physical characteristics are specified by the user, create an ultra-photorealistic Brazilian woman, approximately 25–35 years old, with:
+
+- Light warm tan skin tone.
+- Naturally curvy, proportional and realistic body.
+- Long, dark brown, naturally wavy hair.
+- Realistic skin texture, natural body proportions and anatomically correct features.
+- Natural, elegant and believable physical appearance.
+- No tattoos anywhere on the body.
+- No artificial-looking skin, excessive retouching or exaggerated body proportions.
+
+The model must look like a real Brazilian woman, not a CGI character or artificial mannequin.
+
+**USER-DEFINED MODEL CHARACTERISTICS:**
+
+If the user specifies different characteristics, those instructions take priority over the default appearance described above.
+
+Respect all selected characteristics, including:
+- Gender: male or female.
+- Body type: slim, average, athletic, curvy, plus-size or any other specified type.
+- Age range, when specified.
+- Skin tone.
+- Hair color, length and hairstyle.
+- Other physical characteristics requested by the user.
+
+Never ignore or override the user's selections.
+
+**3. CLOTHING AND ACCESSORIES**
+
+The attached product image is the absolute reference for the clothing worn by the model.
+
+The model must wear the exact product provided as reference.
+
+Preserve the original garment with maximum fidelity:
+- Exact color, saturation and color temperature.
+- Exact design, cut, modeling and fit.
+- Original neckline, sleeves and length.
+- Fabric texture, thickness and appearance.
+- Seams, stitching, buttons, prints and every visible detail.
+- Original proportions and construction.
+
+Never redesign, beautify, modify, simplify or reinterpret the product.
+
+Accessories must remain natural and consistent with the visual references. Preserve any accessories explicitly shown or requested by the user. Do not invent additional accessories.
+
+The model must have no tattoos.
+
+The garment must remain visually identical throughout the entire animation, even when touched, stretched or moved.
+
+**4. FACE AND CAMERA FRAMING**
+
+The model's face must never be visible at any moment.
+
+Maintain framing from below the chin or neck down throughout the entire video.
+
+Do not show the mouth, lips, nose, eyes or any part of the face.
+
+The model holds a smartphone with one hand throughout the recording, maintaining a natural mirror-selfie posture.
+
+**5. EXACT MOVEMENT CHOREOGRAPHY**
+
+Reproduce the following sequence of movements in one continuous, uninterrupted recording.
+
+**0–1 SECOND:**
+
+The model starts standing naturally, holding the smartphone with one hand. Her free arm hangs relaxed beside her body.
+
+**1–2 SECONDS:**
+
+She slowly raises her free hand toward her chest and gently places her fingers on the upper bust area, with fingers slightly spread.
+
+**2–4 SECONDS:**
+
+She slowly slides her open palm down across the front of the garment, moving from the bust toward the abdomen and waist. Her hand continues downward toward the hip and upper thigh, following the body's natural contours.
+
+**4–5 SECONDS:**
+
+She continues the downward movement, briefly touching the lower abdomen and hip area, demonstrating how the garment fits against her body.
+
+**5–7.5 SECONDS:**
+
+She brings her free hand back toward the side of her waist, pinches a small section of the garment fabric between her fingers and gently pulls the material outward exactly TWO times.
+
+Both pulls must be subtle, short and realistic, demonstrating the fabric's elasticity and fit without deforming or changing the garment.
+
+After the second pull, she naturally releases the fabric.
+
+**7.5–8.5 SECONDS:**
+
+She moves her free arm outward and slightly away from her body while beginning to shift her weight and reposition her feet.
+
+**8.5–10 SECONDS:**
+
+She gradually rotates her torso and hips into a three-quarter side profile, turning approximately 70–90 degrees relative to her original frontal position.
+
+She maintains the smartphone mirror-selfie posture while displaying the side silhouette, waist, hips and rear fit of the garment.
+
+She must not turn completely away from the mirror.
+
+**6. BODY LANGUAGE AND NATURAL MOVEMENT**
+
+All movements must look like a real woman casually recording a fashion demonstration in front of a mirror.
+
+Maintain:
+- Realistic body mechanics.
+- Natural hand articulation and finger movements.
+- Subtle weight transfers.
+- Believable posture changes.
+- Physically accurate fabric interaction.
+- Natural coordination between the torso, arms, hips and legs.
+
+Movements must be fluid, continuous, realistic and correctly timed.
+
+Do not introduce exaggerated gestures, dancing, walking away or additional movements not specified in the choreography.
+
+**7. CAMERA MOVEMENT**
+
+Maintain a realistic smartphone mirror-selfie recording perspective.
+
+Allow subtle, natural handheld camera movement, with minimal framing adjustments accompanying the model's movements, as if she were genuinely recording herself in front of the mirror.
+
+No cinematic camera movements, no artificial zooms, no cuts, no transitions and no sudden camera changes.
+
+**8. FINAL REQUIREMENTS AND PRIORITIES**
+
+The entire sequence must happen in one uninterrupted take.
+
+No visible face, no speech, no subtitles, no captions, no added graphics, no additional people and no watermarks.
+
+Prioritize:
+
+1. Exact preservation of the selected scenario image.
+2. Maximum fidelity to the attached clothing product.
+3. Compliance with all physical characteristics selected by the user.
+4. Preservation of the model's natural appearance and accessories.
+5. Exact reproduction of the specified movement choreography.
+6. Photorealistic anatomy, natural body mechanics and fluid animation.
+
+The final result must look like an authentic fashion mirror-selfie video, with the model naturally integrated into the selected scenario, wearing the exact referenced product and performing the specified movements.`;
+
+/**
  * Constrói o Prompt de Vídeo do Modo Ana Maria
- * Prompt Padrão de Movimentos: "Vencedor by GPT"
- * Corte do queixo para baixo, sem rosto, vitrine 10s contínua
+ * Suporta dois modos:
+ * 1. Padrão (sem cenário selecionado) -> VENCEDOR_BY_GPT_PROMPT
+ * 2. Com Cenário Selecionado -> VENCEDOR_BY_GPT_SCENARIO_PROMPT
  */
 export function buildAnaMariaVideoPrompt(params: {
   productName: string;
   influencer?: AnaMariaInfluencer;
   limit?: AnaMariaVideoPromptLimit;
   additionalInstructions?: string;
+  hasSelectedScenario?: boolean;
 }): string {
   const isMale = params.influencer === 'Homem';
   const limit = params.limit || 'unlimited';
 
-  let base = VENCEDOR_BY_GPT_PROMPT;
+  let base = params.hasSelectedScenario
+    ? VENCEDOR_BY_GPT_SCENARIO_PROMPT
+    : VENCEDOR_BY_GPT_PROMPT;
 
   if (isMale) {
     base = base
