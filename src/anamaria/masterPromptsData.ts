@@ -21,8 +21,6 @@ export interface AnaMariaMasterPromptItem {
   lightingAndCameraText: string;
   // Prompt de movimentos original completo da Mestra (para geração do vídeo)
   movementPromptText: string;
-  // Coreografia enxuta focada nos movimentos essenciais da Mestra (para limite de até 600 caracteres)
-  compactMovementPromptText: string;
 }
 
 /**
@@ -34,47 +32,156 @@ export interface AnaMariaMasterPromptItem {
  * pele clara natural NÃO bronzeada e iluminação ambiente de quarto/residência real.
  * REGRA INVIOLÁVEL: TERMINANTEMENTE PROIBIDO GERAR MULHERES MAIS MAGRAS DO QUE ESTA REFERÊNCIA.
  */
-export const UNIVERSAL_PLUS_SIZE_MODULE = `## MÓDULO UNIVERSAL SOBERANO — ESTRUTURA CORPORAL PLUS SIZE REAL (MANEQUIM 50 A 54)
-[DIRETIVA OBRIGATÓRIA E INEGOCIÁVEL DE VOLUME CORPORAL PLUS SIZE]:
-A modelo DEVE ser uma mulher adulta brasileira genuinamente e autenticamente PLUS SIZE PESADA (manequim 50 a 54 / US 18 a 22 / 2XL-3XL), com massa corporal real evidente e proporções volumosas em todo o corpo.
-REGRA DO USUÁRIO: É TERMINANTEMENTE PROIBIDO gerar mulheres mais magras do que a referência fotográfica (PROIBIDO midsize, PROIBIDO curvy esbelta, PROIBIDO manequim 44 ou 46, PROIBIDO modelo magra disfarçada com cintura fina).
+export const UNIVERSAL_PLUS_SIZE_MODULE = `## PADRÃO CORPORAL PLUS SIZE — FIDELIDADE MÁXIMA À REFERÊNCIA
 
-1. COXAS HIPER-GROSSAS COM CONTATO TOTAL (ZERO THIGH GAP):
-- Coxas extremamente grossas, fartas, maciças e carnudas.
-- As duas coxas se tocam completamente na parte interna superior (zero espaço entre as pernas, contato e atrito anatômico total entre as coxas).
-- TEXTURA DE CELULITE REAL: A pele das coxas DEVE apresentar ondulações naturais e celulite visível de tecido adiposo subcutâneo (pequenas covinhas e relevo real autêntico de pele humana plus size, exatamente como em mulheres reais).
+Gerar uma mulher adulta brasileira com corpo PLUS SIZE REAL, volumoso, naturalmente curvilíneo e com distribuição de gordura corporal semelhante à referência visual apresentada.
 
-2. QUADRIS, GLÚTEOS E FLANCOS:
-- Quadris hiperlargos, maciços, arredondados e muito projetados para as laterais.
-- Volume generoso nas laterais da bacia e glúteos pesados proporcionais à estrutura corporal 50-54.
+**IMPORTANTE: O corpo deve reproduzir fielmente as proporções e características descritas abaixo. Não gerar uma mulher magra, mediana, fitness, atlética, apenas curvilínea ou com sobrepeso leve. A modelo precisa apresentar um corpo verdadeiramente plus size, com volume corporal expressivo e natural. Não reduzir medidas, não afinar membros e não suavizar artificialmente as características físicas.**
 
-3. ABDÔMEN E CINTURA MACIOS E ARREDONDADOS:
-- Abdômen naturalmente arredondado, macio e carnudo, com volume evidente no baixo ventre.
-- Pneuzinhos/dobras suaves naturais de gordura subcutânea nas laterais da cintura e flancos.
-- A cintura é larga, macia e preenchida (NUNCA cintura fina de ampulheta de passarela, NUNCA barriga chapada, NUNCA abdômen seco/musculoso).
+### 1. Estrutura corporal e proporções gerais
 
-4. BUSTO, COLO E BRAÇOS CHEIOS:
-- Busto muito volumoso, pesado e farto, preenchendo o decote de forma generosa e natural.
-- Braços visivelmente grossos, roliços, cheios e carnudos (com volume adiposo real no bíceps/tríceps e ombros largos e macios; PROIBIDO braços finos ou esguios).
+Mulher adulta com estrutura corporal larga, corpo robusto e volumoso, apresentando distribuição natural de gordura predominantemente nos seios, braços, abdômen inferior, quadris, glúteos e coxas.
 
-5. PELE REAL, NÃO BRONZEADA E ILUMINAÇÃO NATURAL DE CASA:
-- Tom de pele claro e natural autêntico (pele branca a morena-clara natural, SEM aparência de pele bronzeada de praia, SEM tom alaranjado, dourado ou artificial).
-- Iluminação ambiente comum de residência/quarto/provador (luz suave natural, SEM iluminação perfeita de estúdio glamour ou flashes artificiais estourados).
-- Textura de pele 100% fotográfica: poros visíveis, microcelulites discretas a moderadas nas coxas, dobras naturais anatômicas e pequenas marcas onde a roupa comprime a pele.
-- PROIBIDO efeito plástico, pele de cera, filtro de beleza, porcelana ou aerógrafo.`;
+O tronco apresenta largura considerável, com cintura moderadamente definida, mas sem aparência de cintura extremamente fina ou artificialmente desenhada.
 
-export const UNIVERSAL_PLUS_SIZE_ENGLISH_DIRECTIVE = `[SOVEREIGN PLUS-SIZE BODY MANDATE - MANEQUIM 50 TO 54 / US 18-22 / 2XL-3XL]:
-- The model MUST be an authentic, heavy-set PLUS-SIZE adult Brazilian woman with prominent real adipose volume and heavy body mass throughout the entire frame (manequim 50 to 54 / US 18-22 / 2XL-3XL).
-- STRICT PROHIBITION: NEVER GENERATE WOMEN SLIMMER THAN THIS REFERENCE. Absolutely NO mid-size, NO slim-waisted fashion models, NO size 44/46, NO flat-bellied curvy models.
-- THIGHS: Extremely thick, massive, heavy, voluptuous thighs that touch and press together at the upper thighs (zero thigh gap).
-- CELLULITE & SKIN TEXTURE: Natural, realistic visible cellulite dimpling and subcutaneous adipose wave texture on the thighs, authentic unretouched human skin microtexture, visible pores, and natural skin compression marks where garments rest against the flesh.
-- SKIN TONE: Natural fair to light-medium natural skin tone, NOT TANNED (NO beach tan, NO orange cast, NO artificial golden bronze spray).
-- LIGHTING: Normal everyday indoor home/bedroom/dressing room ambient lighting (natural room light, NO over-glamorized studio lighting, NO artificial glossy sheen).
-- HIPS & WAIST: Extra-wide rounded hips, fuller soft midriff with natural soft side rolls (love handles). The waist is wide and soft, NEVER wasp-waisted, NEVER artificially narrow.
-- ABDOMEN: Soft, rounded, full natural belly/tummy (NEVER flat or toned).
-- BUST: Heavy, full, voluptuous bust filling the neckline generously.
-- ARMS: Noticeably thick, fleshy, round arms with evident subcutaneous fat (NO thin or slender arms).
-- ZERO TATTOOS: 100% clean skin.`;
+A silhueta apresenta curvas naturais, com transição suave entre cintura, quadris e coxas. O quadril é largo e volumoso, proporcional à largura dos ombros e do tronco.
+
+Não criar uma silhueta de ampulheta exagerada. O corpo deve parecer naturalmente pesado, macio e volumoso, sem aparência de corpo esculpido em academia.
+
+### 2. Seios e região do colo
+
+Seios grandes, volumosos, cheios e naturalmente pesados, com bastante projeção frontal e largura considerável.
+
+Apresentam formato arredondado, com volume concentrado tanto na parte superior quanto na inferior, sendo a porção inferior naturalmente mais pesada, com queda anatômica discreta causada pelo próprio peso dos seios.
+
+Os seios não devem apresentar aparência artificial de silicone, rigidez, formato perfeitamente esférico ou sustentação excessivamente elevada.
+
+O colo apresenta volume generoso, com separação natural entre os seios e proporções compatíveis com um busto grande.
+
+A região do tórax é larga, com transição natural entre busto, axilas e braços.
+
+### 3. Braços
+
+Braços grossos, volumosos e macios, especialmente na região superior, entre os ombros e os cotovelos.
+
+A parte posterior dos braços apresenta volume de tecido adiposo subcutâneo, com aparência natural de braços de uma mulher plus size.
+
+Os braços não devem ser definidos muscularmente, nem apresentar bíceps ou tríceps aparentes.
+
+A região próxima às axilas apresenta volume corporal natural, sem criar uma transição artificialmente estreita entre braço e busto.
+
+A pele dos braços deve apresentar textura humana real, com pequenas irregularidades, poros discretamente visíveis e variações naturais de tonalidade.
+
+### 4. Abdômen e cintura
+
+Abdômen de volume moderado a acentuado, com gordura subcutânea natural.
+
+A região abdominal apresenta uma projeção suave para a frente, especialmente na porção inferior, abaixo do umbigo.
+
+A barriga não é completamente reta, não possui definição muscular e não apresenta aparência de abdômen fitness.
+
+A cintura possui uma definição moderada, sem marcação profunda ou estreitamento exagerado.
+
+A região lateral da cintura apresenta continuidade natural com os quadris, sem criar uma silhueta artificial.
+
+O umbigo é naturalmente visível, com profundidade e formato anatômico realistas.
+
+A pele abdominal apresenta pequenas dobras e vincos naturais decorrentes da postura e da distribuição de gordura corporal.
+
+### 5. Quadris e glúteos
+
+Quadris largos, arredondados e volumosos.
+
+A região lateral dos quadris apresenta bastante volume, com uma transição contínua entre cintura, quadril e coxas.
+
+Glúteos naturalmente grandes e volumosos, proporcionais à estrutura corporal, sem aparência artificialmente aumentada.
+
+A região dos quadris deve apresentar largura significativa, mantendo a proporção com o restante do corpo.
+
+Não afinar o quadril e não criar uma estrutura corporal estreita.
+
+### 6. Coxas e pernas
+
+Coxas muito grossas, volumosas e com bastante massa corporal.
+
+A região superior das coxas apresenta grande volume, com a parte interna das coxas naturalmente próxima, podendo apresentar contato entre elas.
+
+As coxas possuem formato arredondado, com volume distribuído na região frontal, lateral e interna.
+
+A parte superior das pernas é larga e apresenta transição contínua com os quadris.
+
+Os joelhos possuem volume natural, sem aparência excessivamente definidos ou ossudos.
+
+As panturrilhas também apresentam volume, mantendo proporção com as coxas e com a estrutura geral do corpo.
+
+As pernas não devem ser afinadas, alongadas artificialmente ou transformadas em pernas de modelo fitness.
+
+### 7. Textura natural da pele
+
+A pele deve apresentar realismo fotográfico extremo, sem filtros de beleza, sem efeito porcelana, sem acabamento plástico e sem suavização artificial.
+
+Tom de pele morena clara a média, com subtom quente, levemente dourado e nuances naturais.
+
+A pele deve apresentar:
+
+- Poros naturais discretamente visíveis.
+- Textura cutânea realista e irregularidades microscópicas.
+- Pequenas variações de tonalidade entre diferentes regiões do corpo.
+- Celulites naturais nas coxas, especialmente nas regiões laterais e posteriores.
+- Leve aspecto de pele ondulada em algumas áreas com maior concentração de gordura subcutânea.
+- Pequenas depressões e irregularidades naturais na superfície das coxas.
+- Discretas marcas e linhas naturais de compressão da pele.
+- Dobras suaves nas regiões de articulação e onde há contato entre partes do corpo.
+- Textura natural na região dos braços, sem aparência excessivamente lisa.
+- Pequenas irregularidades na região dos quadris e abdômen.
+
+**CELULITE: NÃO REMOVER.** A modelo deve apresentar celulite natural e visível, principalmente nas coxas, com pequenas ondulações e depressões distribuídas irregularmente. Não exagerar a ponto de parecer uma textura artificial, mas também não eliminar essas características com retoques digitais.
+
+A pele deve parecer uma pele humana real, fotografada por uma câmera, e não uma superfície digitalmente aperfeiçoada.
+
+### 8. Características de realismo anatômico
+
+Todas as partes do corpo devem apresentar consistência anatômica e proporções realistas.
+
+A gordura corporal deve apresentar comportamento natural, com volume, peso e suavidade compatíveis com um corpo plus size.
+
+Evitar:
+- Cintura extremamente fina.
+- Braços finos.
+- Coxas finas.
+- Quadris estreitos.
+- Abdômen completamente plano.
+- Seios pequenos ou excessivamente firmes.
+- Pernas musculosas e definidas.
+- Aparência fitness.
+- Pele artificialmente lisa.
+- Corpo com proporções de modelo convencional.
+- Redução automática das medidas corporais.
+
+### 9. REGRA PRINCIPAL — PRESERVAÇÃO DO PADRÃO PLUS SIZE
+
+O padrão corporal descrito deve ser tratado como uma característica fixa da modelo.
+
+Sempre que a inteligência artificial gerar uma nova imagem, deve preservar a mesma estrutura corporal, a mesma distribuição de gordura, a mesma largura dos quadris, o mesmo volume das coxas, a mesma espessura dos braços, o mesmo volume abdominal e as mesmas proporções do busto.
+
+Não interpretar a palavra PLUS SIZE de maneira genérica.
+
+Não reduzir o volume corporal para tornar a modelo mais magra, mais definida ou mais próxima dos padrões convencionais de beleza.
+
+O resultado deve ser uma mulher adulta com corpo plus size autêntico, volumoso, macio, natural e extremamente realista.`;
+
+export const UNIVERSAL_PLUS_SIZE_ENGLISH_DIRECTIVE = `[SOVEREIGN PLUS-SIZE BODY MANDATE - NATURAL BRAZILIAN PLUS SIZE]:
+- The model MUST be an authentic, full-figured PLUS-SIZE adult Brazilian woman with natural heavy body mass, voluptuous soft curves, and genuine subcutaneous adipose distribution.
+- STRICT PROHIBITION: NEVER GENERATE WOMEN SLIMMER THAN THIS REFERENCE. Absolutely NO mid-size, NO slim-waisted models, NO size 44/46, NO flat-bellied models, NO gym-sculpted or fitness bodies.
+- 1. GENERAL PROPORTIONS: Wide, robust, heavy-set frame with natural adipose volume in breasts, arms, lower belly, hips, glutes, and thighs. Soft and naturally heavy body.
+- 2. BREASTS & CHEST: Large, full, voluptuous, heavy natural breasts with realistic downward anatomical drape (no rigid silicone or unnatural high lift). Broad natural chest and ribcage.
+- 3. ARMS: Noticeably thick, fleshy, soft, rounded arms with evident subcutaneous fat (especially upper arms; no muscular definition or thin arms).
+- 4. ABDOMEN & WAIST: Full natural belly with soft subcutaneous fat and gentle outward projection below the navel (never flat, never toned). Moderate natural waist definition with soft rolls on the flanks/sides.
+- 5. HIPS & GLUTES: Extra-wide, rounded, voluptuous hips and glutes with smooth natural continuation into the thighs (never narrow hips).
+- 6. THIGHS & LEGS: Very thick, massive, heavy thighs that touch and press together at the upper thighs (zero thigh gap). Thick, soft, rounded upper legs and full calves.
+- 7. SKIN TEXTURE, TONE & CELLULITE: Light-brown to medium-brown skin with warm, subtly golden undertone. REAL photographic skin with natural pores, subtle tone variations, and natural skin folds. MANDATORY CELLULITE (DO NOT REMOVE): Visible natural cellulite dimpling and subtle wavy texture on the thighs (authentic unretouched human skin; absolutely NO airbrushed smooth plastic look, NO beauty filters).
+- 8. ANATOMICAL REALISM: Natural weight, softness, and gravity behavior of plus-size body fat.
+- 9. PERMANENT RETENTION: Maintain this exact heavy, voluptuous plus-size body proportions across every generated frame.`;
 
 export const UNIVERSAL_MALE_PLUS_SIZE_MODULE = `## MÓDULO UNIVERSAL — ESTRUTURA CORPORAL MASCULINA PLUS SIZE (PRIORIDADE SOBERANA DE CORPO)
 Gerar um homem adulto com estrutura corporal GENUINAMENTE PLUS SIZE (manequim 52 a 56 / XXL), apresentando porte físico grande, pesado e robusto, com volume adiposo evidente:
@@ -166,7 +273,6 @@ No visible face, no lips, no speech, no subtitles, no captions, no added graphic
 
 **FINAL PRIORITY:**
 Reproduce the exact movement sequence and timing described above while preserving the original reference image. The movements must be natural, fluid and realistic. The clothing must remain visually identical to the reference image in every frame.`,
-    compactMovementPromptText: `0-1s: Em pé no espelho com celular na mão, braço livre relaxado. 1-2s: Mão livre toca suavemente o busto. 2-5s: Desliza a palma aberta do busto pelo abdômen, cintura e quadril mostrando o caimento. 5-7,5s: Pinça o tecido na lateral da cintura com os dedos e puxa levemente 2-3 vezes demonstrando a elasticidade, soltando naturalmente. 7,5-10s: Gira suavemente o corpo 70-90° (perfil 3/4) exibindo silhueta lateral, cintura e quadril.`,
   },
   {
     id: 'mestra_iara',
@@ -233,7 +339,6 @@ Iniciar uma nova rotação suave do corpo para uma posição de três quartos, d
 - Não modificar o enquadramento para revelar o rosto ou lábios.
 - Manter a mão que segura o celular em sua posição durante toda a sequência.
 - Vídeo 100% silencioso (sem fala, sem locução, sem legendas ou textos na tela).`,
-    compactMovementPromptText: `0-1,5s: Mão livre vai do abdômen à lateral, puxa o tecido para fora mostrando elasticidade e solta. 1,5-3,5s: Desliza a palma do abdômen ao busto alisando a frente da peça. 3,5-5,5s: Gira gradualmente o corpo e quadril até perfil lateral com braços relaxados. 5,5-6,5s: Mantém perfil lateral transferindo peso entre as pernas. 6,5-7,5s: Retorna de frente deslizando a mão no abdômen. 7,5-9,5s: Pose frontal ajustando postura e quadril. 9,5-10s: Giro suave 3/4 com mão no abdômen.`,
   },
   {
     id: 'mestra_duda',
@@ -290,7 +395,6 @@ Enquanto demonstra a peça, realizar pequenas mudanças naturais de postura:
 **4. ÁUDIO — SEM FALA**
 - NÃO HÁ FALA, NÃO HÁ DIÁLOGOS, NÃO HÁ NARRAÇÃO E NÃO HÁ LOCUÇÃO.
 - O vídeo deve ser exclusivamente uma demonstração visual e silenciosa da peça.`,
-    compactMovementPromptText: `Mão livre explora a peça com toques delicados da palma e dedos: toca a frente, desliza suavemente na vertical e horizontal pela parte superior, central e inferior, passa pela cintura, quadril e laterais mostrando modelagem e caimento, afasta e reposiciona a mão com fluidez sem esticar a roupa. Corpo transfere o peso entre as pernas com leve movimento de quadril, faz giro suave 3/4 exibindo o caimento lateral e retorna de frente.`,
   },
   {
     id: 'mestra_nay',
@@ -342,7 +446,6 @@ Preservar integralmente a mesma modelo da imagem de referência (cabelo longo es
 - NÃO HÁ FALA, NÃO HÁ DIÁLOGOS, NÃO HÁ NARRAÇÃO E NÃO HÁ LOCUÇÃO.
 - NÃO SIMULAR CONVERSAÇÃO E NÃO MOVIMENTAR A BOCA COMO SE ESTIVESSE FALANDO.
 - O vídeo deve ser exclusivamente uma demonstração visual e silenciosa.`,
-    compactMovementPromptText: `1) Postura frontal natural no espelho com leve transferência de peso entre as pernas e movimentos discretos de quadril. 2) Eleva gradualmente a mão livre até a parte superior frontal da peça, apoiando palma e dedos no tecido. 3) Desliza a mão continuamente de cima para baixo pelo busto, abdômen, cintura, quadril e topo da coxa mostrando o caimento real sem puxar a roupa. 4) Afasta a mão mantendo orientação frontal e postura descontraída.`,
   },
   {
     id: 'mestra_catza',
@@ -403,7 +506,6 @@ Privilegiar gestos delicados com a mão livre na parte superior da peça:
 - NÃO HÁ FALA, NÃO HÁ DIÁLOGOS, NÃO HÁ NARRAÇÃO E NÃO HÁ LOCUÇÃO.
 - NÃO SIMULAR CONVERSAÇÃO E NÃO MOVIMENTAR A BOCA COMO SE ESTIVESSE FALANDO.
 - O vídeo deve ser exclusivamente uma demonstração visual e silenciosa.`,
-    compactMovementPromptText: `1) Eleva a mão livre à parte superior frontal da peça, toca suavemente com dedos e palma deslizando sobre colo, decote e ombros; alterna entre tocar o tecido e descer até a cintura. 2) Desliza a mão ao abdômen e toca delicadamente a cintura mostrando o ajuste no corpo. 3) Toques sutis no quadril/barra sem deformar a roupa. Postura frontal e diagonal suave transferindo peso entre as pernas (sem giro completo).`,
   },
   {
     id: 'pov_cinta_85k',
@@ -475,7 +577,6 @@ Centralizar o segundo produto sobre a cama, segurar delicadamente suas extremida
 **4. CÂMERA E ÁUDIO:**
 - Vertical 9:16, 10 segundos, câmera fixa em visão superior de 90 graus, sem cortes, sem zoom e sem textos na tela.
 - ÁUDIO: 100% silencioso (SEM FALA, sem diálogos, sem narração ou locução).`,
-    compactMovementPromptText: `0-1,5s: Mãos sobre a cama retiram plástico (se houver) ou seguram os 2 produtos pelas laterais. 1,5-3s: Levanta o 1º produto mostrando a frente. 3-5s: Apoia o 1º à esquerda, alisa o tecido e levanta levemente exibindo o acabamento. 5-6,5s: Levanta o 2º produto mostrando a frente. 6,5-7,5s: Posiciona os 2 lado a lado e alisa. 7,5-8,5s: Mão apoia o 1º e indicador da outra aponta detalhes do 2º. 8,5-10s: Afasta o 1º à esquerda e centraliza o 2º.`,
   },
   {
     id: 'pov_blusinhas_13k',
@@ -537,7 +638,6 @@ A primeira peça é abaixada naturalmente, deixando a segunda peça completa e v
 **4. RESTRIÇÕES DE ÁUDIO E CÂMERA:**
 - Demonstração completamente silenciosa (SEM FALA, sem diálogos, sem narração, sem locução e sem textos na tela).
 - Único take contínuo e fluido em visão POV.`,
-    compactMovementPromptText: `0-2s: Duas mãos seguram a 1ª peça aberta pelas laterais exibindo a frente. 2-4s: Abaixam a 1ª na cama e levantam a 2ª peça completa pelas laterais (sem sobras de tecido). 4-7s: Trazem a 2ª peça aberta ao 1º plano exibindo a frente. 7-9s: Retornam à 1ª peça levantando-a aberta enquanto a 2ª fica íntegra na cama. 9-11s: Uma mão sustenta a 1ª peça e a outra desliza os dedos alisando o tecido mostrando maciez. 11-12s: Abaixa a 1ª deixando as 2 visíveis.`,
   },
 ];
 

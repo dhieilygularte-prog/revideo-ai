@@ -707,7 +707,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           </div>
           {form.bodyType === 'plus_size' && (
             <p className="text-[10px] sm:text-[11px] text-zinc-400 mt-2 pl-0.5 leading-snug">
-              <span className={`font-bold ${isAmetista ? 'text-[#d4ff59]' : 'text-orange-400'}`}>✓ Plus Size Real (Manequim 50–54):</span> Coxas hiper-grossas que se tocam, textura de celulite natural visível, pele clara não bronzeada e volume corporal autêntico.
+              <span className={`font-bold ${isAmetista ? 'text-[#d4ff59]' : 'text-orange-400'}`}>✓ Plus Size Real (Fidelidade Máxima):</span> Sobrescrita corporal ativada — corpo volumoso autêntico, coxas muito grossas com celulite natural visível, seios fartos e proporções reais da referência. Preserva 100% dos acessórios, cabelo e movimentos da Mestra.
             </p>
           )}
         </div>

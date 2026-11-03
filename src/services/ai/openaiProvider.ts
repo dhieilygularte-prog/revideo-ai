@@ -612,16 +612,16 @@ Retorne estritamente um JSON estruturado:
 
       if (isAnaMariaMode && scenarioPhotoBase64) {
         const bodyBlock = isPlusSizeRequest
-          ? `[SOVEREIGN AUTHENTIC HEAVY-SET PLUS-SIZE FEMALE BODY MANDATE (MANEQUIM 50 A 54 / US 18-22 / 2XL-3XL)]:
-- The woman MUST be an authentic, genuinely HEAVY-SET PLUS-SIZE adult Brazilian woman with substantial real body mass and generous adipose volume throughout her entire physique (manequim 50 to 54 / US 18 to 22 / 2XL-3XL).
-- STRICT USER MANDATE: NEVER generate women slimmer than this photographic reference. ABSOLUTELY FORBIDDEN: mid-size, slim waist, narrow hourglass runway model, size 44 or 46, flat stomach, or thin thighs.
+          ? `[SOVEREIGN AUTHENTIC HEAVY-SET PLUS-SIZE FEMALE BODY MANDATE]:
+- The woman MUST be an authentic, genuinely PLUS-SIZE adult Brazilian woman with substantial real body mass, voluptuous soft curves, and generous adipose volume throughout her entire physique.
+- STRICT USER MANDATE: NEVER generate women slimmer than this photographic reference. ABSOLUTELY FORBIDDEN: mid-size, slim waist, narrow runway model, flat stomach, or thin thighs.
 - THIGHS & CONTACT: Extremely thick, massive, heavy voluptuous thighs with complete contact/friction at the upper thighs (zero thigh gap; the inner thighs press together completely).
-- CELLULITE & SKIN TEXTURE: The skin on the thighs MUST feature natural, realistic visible cellulite dimpling and subcutaneous adipose texture (authentic unretouched skin waves, visible pores, and natural skin compression marks where the clothing touches the flesh; absolutely NO porcelain, NO airbrushed smooth plastic look).
-- SKIN TONE: Natural fair to light-medium skin tone, NOT TANNED (NO fake beach tan, NO orange cast, NO artificial golden bronze spray).
+- CELLULITE & SKIN TEXTURE: MANDATORY VISIBLE CELLULITE (DO NOT REMOVE). The skin on the thighs MUST feature natural, realistic visible cellulite dimpling and subcutaneous adipose texture (authentic unretouched skin waves, visible pores, and natural skin compression marks; absolutely NO porcelain, NO airbrushed smooth plastic look).
+- SKIN TONE: Light-brown to medium-brown skin with warm, subtly golden undertone and natural nuances.
 - LIGHTING: Everyday natural indoor bedroom/mirror ambient lighting (natural room light, NO over-glamorized studio lighting, NO artificial shiny plastic glow).
-- HIPS & WAIST: Extra-wide rounded prominent hips; soft, full midriff with natural soft side rolls (love handles). The waist is wide and soft, NEVER artificially cinched or narrow.
-- ABDOMEN: Soft, rounded, full natural belly/tummy with lower abdomen fullness (NEVER flat, NEVER toned).
-- BUST: Heavy, full, voluptuous bust filling the garment neckline generously.
+- HIPS & GLUTES: Extra-wide rounded prominent hips; soft, full midriff with natural soft side rolls (love handles). The waist is wide and soft, NEVER artificially cinched or narrow.
+- ABDOMEN: Soft, rounded, full natural belly with natural subcutaneous fat and gentle outward projection below the navel (NEVER flat, NEVER toned).
+- BUST: Large, heavy, full, voluptuous natural breasts with realistic downward anatomical drape, filling the garment neckline generously.
 - ARMS: Distinctly thick, round, fleshy arms with evident subcutaneous fat (NO thin or slender arms).
 - The garment fits snugly and flatteringly over her real heavy plus-size body, exactly as seen on authentic Brazilian plus-size models.`
           : `[CURVACEOUS FEMALE BODY SILHOUETTE]:
