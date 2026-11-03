@@ -135,7 +135,7 @@ export function resolveModelAttributesHierarchy(params: {
 
   // 1. Detecção de atributos especificados pelo usuário (Prioridade 1)
   // A) Etnia e Cor da Pele
-  const isBlackUser = /\b(negra|negro|preta|preto|afro|afrodescendente|pele preta|pele negra|pele escura|black woman|dark skin)\b/i.test(lowerUser);
+  const isBlackUser = /\b(negra|negro|preta|preto|afro|afrodescendente|pele preta|pele negra|pele escura|retinta|modelo negra|modelo preta|mulher negra|mulher preta|mulher de pele preta|black woman|dark skin|dark-skinned black woman)\b/i.test(lowerUser);
   const isAsianUser = /\b(japonesa|japones|asiatica|asiática|oriental|coreana|chinesa|asian)\b/i.test(lowerUser);
   const isRedheadUser = /\b(ruiva|ruivo|cabelo ruivo|cabelos ruivos|redhead|ginger)\b/i.test(lowerUser);
   const isWhiteUser = /\b(branca|pele clara|caucasiana|pale skin|fair skin|branca de pele clara)\b/i.test(lowerUser);
@@ -146,9 +146,19 @@ export function resolveModelAttributesHierarchy(params: {
   let userEthnicityDirectivePt = '';
 
   if (isBlackUser) {
-    userEthnicitySummary = 'mulher negra de pele preta autêntica';
-    userEthnicityDirectivePt = 'A modelo DEVE ser uma MULHER NEGRA / AFRODESCENDENTE com pele preta/escura autêntica, tom rico e profundo de pele negra, lábios naturais proporcionais e traços negros autênticos. É TERMINANTEMENTE PROIBIDO gerar mulher branca, caucasiana, de pele clara ou apenas levemente bronzeada.';
-    userEthnicityDirectiveEnglish = '[SOVEREIGN PRIORITY 1 — ETHNICITY & SKIN COLOR MANDATE]:\nThe model MUST be an authentic BLACK WOMAN (Afro-Brazilian / dark-skinned black woman) with rich, authentic dark black skin. ABSOLUTELY FORBIDDEN: white, fair, light-skinned, caucasian, or lightly tanned models.';
+    userEthnicitySummary = 'mulher negra retinta de pele preta escura profunda (alta melanina / ébano)';
+    userEthnicityDirectivePt = `REGRA OBRIGATÓRIA DE INTERPRETAÇÃO ÉTNICA E TONALIDADE DE PELE — MULHER NEGRA/PRETA RETINTA (PRIORIDADE 1 SOBERANA):
+- CARACTERÍSTICAS OBRIGATÓRIAS DA PELE: A modelo DEVE ser uma MULHER NEGRA DE PELE ESCURA RETINTA, com tonalidade profunda e altíssima concentração de melanina natural. Tom de pele marrom muito escuro, chocolate profundo ou ébano autêntico, reproduzindo a profundidade e riqueza de cor de mulheres negras retintas.
+- TEXTURA REALISTA: Pele humana hiper-realista preservando poros visíveis, nuances naturais e reflexos suaves de luz sobre a pele negra escura, sem efeito plástico, sem cera e sem descaracterização.
+- TONALIDADES TERMINANTEMENTE PROIBIDAS: É ABSOLUTAMENTE PROIBIDO interpretar como mulher de pele morena clara, parda, bronzeada, caramelo, mel, dourada, castanha média ou marrom clara. PROIBIDO gerar qualquer tonalidade intermediária.
+- FIDELIDADE À TONALIDADE SOB ILUMINAÇÃO: A tonalidade escura profunda deve permanecer evidente em todas as condições de iluminação. NÃO clarear a pele artificialmente por causa de iluminação de estúdio, exposição, balanço de branco ou reflexos.
+- INDEPENDÊNCIA DAS CARACTERÍSTICAS: A tonalidade de pele retinta é soberana e independente do biotipo corporal (seja plus size, curvilínea ou magra).`;
+    userEthnicityDirectiveEnglish = `[SOVEREIGN PRIORITY 1 MANDATE — AUTHENTIC DARK-SKINNED RETINTA BLACK WOMAN]:
+- OBLIGATORY SKIN TONE: The model MUST be an authentic DARK-SKINNED RETINTA BLACK WOMAN (deep ebony / deep dark chocolate melanin-rich skin tone) with rich, deep, dark black skin across her entire body.
+- HUMAN TEXTURE: Natural skin pores, authentic skin highlights, real melanin depth, zero plastic wax effect.
+- STRICTLY AND ABSOLUTELY FORBIDDEN: Light-brown skin, medium-brown, tan, bronze, caramel, honey, golden, olive, mulatto, fair, white, caucasian, or any intermediate/ambiguous skin tone.
+- NO LIGHTENING UNDER LIGHTING: Under NO circumstances should room lighting, phone flash, exposure, or white balance lighten or wash out her deep dark skin tone. The deep ebony skin richness must remain strikingly dark, saturated, and authentic across the entire body (face, neck, décolletage, arms, torso, and legs).
+- BIOTYPE INDEPENDENCE: This dark skin tone is completely sovereign and must not be weakened or altered by any body shape (plus-size, hourglass, or slim).`;
   } else if (isAsianUser) {
     userEthnicitySummary = 'mulher japonesa / asiática oriental';
     userEthnicityDirectivePt = 'A modelo DEVE ser uma MULHER JAPONESA / ASIÁTICA ORIENTAL com traços faciais asiáticos naturais e pele lisa clara/natural. É TERMINANTEMENTE PROIBIDO gerar mulher caucasiana ou ocidental.';
