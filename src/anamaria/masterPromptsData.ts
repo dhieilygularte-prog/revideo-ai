@@ -21,6 +21,8 @@ export interface AnaMariaMasterPromptItem {
   lightingAndCameraText: string;
   // Prompt de movimentos original completo da Mestra (para geração do vídeo)
   movementPromptText: string;
+  // Coreografia enxuta focada nos movimentos essenciais da Mestra (para limite de até 600 caracteres)
+  compactMovementPromptText: string;
 }
 
 /**
@@ -138,6 +140,7 @@ No visible face, no lips, no speech, no subtitles, no captions, no added graphic
 
 **FINAL PRIORITY:**
 Reproduce the exact movement sequence and timing described above while preserving the original reference image. The movements must be natural, fluid and realistic. The clothing must remain visually identical to the reference image in every frame.`,
+    compactMovementPromptText: `0-1s: Em pé no espelho com celular na mão, braço livre relaxado. 1-2s: Mão livre toca suavemente o busto. 2-5s: Desliza a palma aberta do busto pelo abdômen, cintura e quadril mostrando o caimento. 5-7,5s: Pinça o tecido na lateral da cintura com os dedos e puxa levemente 2-3 vezes demonstrando a elasticidade, soltando naturalmente. 7,5-10s: Gira suavemente o corpo 70-90° (perfil 3/4) exibindo silhueta lateral, cintura e quadril.`,
   },
   {
     id: 'mestra_iara',
@@ -204,6 +207,7 @@ Iniciar uma nova rotação suave do corpo para uma posição de três quartos, d
 - Não modificar o enquadramento para revelar o rosto ou lábios.
 - Manter a mão que segura o celular em sua posição durante toda a sequência.
 - Vídeo 100% silencioso (sem fala, sem locução, sem legendas ou textos na tela).`,
+    compactMovementPromptText: `0-1,5s: Mão livre vai do abdômen à lateral, puxa o tecido para fora mostrando elasticidade e solta. 1,5-3,5s: Desliza a palma do abdômen ao busto alisando a frente da peça. 3,5-5,5s: Gira gradualmente o corpo e quadril até perfil lateral com braços relaxados. 5,5-6,5s: Mantém perfil lateral transferindo peso entre as pernas. 6,5-7,5s: Retorna de frente deslizando a mão no abdômen. 7,5-9,5s: Pose frontal ajustando postura e quadril. 9,5-10s: Giro suave 3/4 com mão no abdômen.`,
   },
   {
     id: 'mestra_duda',
@@ -260,6 +264,7 @@ Enquanto demonstra a peça, realizar pequenas mudanças naturais de postura:
 **4. ÁUDIO — SEM FALA**
 - NÃO HÁ FALA, NÃO HÁ DIÁLOGOS, NÃO HÁ NARRAÇÃO E NÃO HÁ LOCUÇÃO.
 - O vídeo deve ser exclusivamente uma demonstração visual e silenciosa da peça.`,
+    compactMovementPromptText: `Mão livre explora a peça com toques delicados da palma e dedos: toca a frente, desliza suavemente na vertical e horizontal pela parte superior, central e inferior, passa pela cintura, quadril e laterais mostrando modelagem e caimento, afasta e reposiciona a mão com fluidez sem esticar a roupa. Corpo transfere o peso entre as pernas com leve movimento de quadril, faz giro suave 3/4 exibindo o caimento lateral e retorna de frente.`,
   },
   {
     id: 'mestra_nay',
@@ -311,6 +316,7 @@ Preservar integralmente a mesma modelo da imagem de referência (cabelo longo es
 - NÃO HÁ FALA, NÃO HÁ DIÁLOGOS, NÃO HÁ NARRAÇÃO E NÃO HÁ LOCUÇÃO.
 - NÃO SIMULAR CONVERSAÇÃO E NÃO MOVIMENTAR A BOCA COMO SE ESTIVESSE FALANDO.
 - O vídeo deve ser exclusivamente uma demonstração visual e silenciosa.`,
+    compactMovementPromptText: `1) Postura frontal natural no espelho com leve transferência de peso entre as pernas e movimentos discretos de quadril. 2) Eleva gradualmente a mão livre até a parte superior frontal da peça, apoiando palma e dedos no tecido. 3) Desliza a mão continuamente de cima para baixo pelo busto, abdômen, cintura, quadril e topo da coxa mostrando o caimento real sem puxar a roupa. 4) Afasta a mão mantendo orientação frontal e postura descontraída.`,
   },
   {
     id: 'mestra_catza',
@@ -371,6 +377,7 @@ Privilegiar gestos delicados com a mão livre na parte superior da peça:
 - NÃO HÁ FALA, NÃO HÁ DIÁLOGOS, NÃO HÁ NARRAÇÃO E NÃO HÁ LOCUÇÃO.
 - NÃO SIMULAR CONVERSAÇÃO E NÃO MOVIMENTAR A BOCA COMO SE ESTIVESSE FALANDO.
 - O vídeo deve ser exclusivamente uma demonstração visual e silenciosa.`,
+    compactMovementPromptText: `1) Eleva a mão livre à parte superior frontal da peça, toca suavemente com dedos e palma deslizando sobre colo, decote e ombros; alterna entre tocar o tecido e descer até a cintura. 2) Desliza a mão ao abdômen e toca delicadamente a cintura mostrando o ajuste no corpo. 3) Toques sutis no quadril/barra sem deformar a roupa. Postura frontal e diagonal suave transferindo peso entre as pernas (sem giro completo).`,
   },
   {
     id: 'pov_cinta_85k',
@@ -442,6 +449,7 @@ Centralizar o segundo produto sobre a cama, segurar delicadamente suas extremida
 **4. CÂMERA E ÁUDIO:**
 - Vertical 9:16, 10 segundos, câmera fixa em visão superior de 90 graus, sem cortes, sem zoom e sem textos na tela.
 - ÁUDIO: 100% silencioso (SEM FALA, sem diálogos, sem narração ou locução).`,
+    compactMovementPromptText: `0-1,5s: Mãos sobre a cama retiram plástico (se houver) ou seguram os 2 produtos pelas laterais. 1,5-3s: Levanta o 1º produto mostrando a frente. 3-5s: Apoia o 1º à esquerda, alisa o tecido e levanta levemente exibindo o acabamento. 5-6,5s: Levanta o 2º produto mostrando a frente. 6,5-7,5s: Posiciona os 2 lado a lado e alisa. 7,5-8,5s: Mão apoia o 1º e indicador da outra aponta detalhes do 2º. 8,5-10s: Afasta o 1º à esquerda e centraliza o 2º.`,
   },
   {
     id: 'pov_blusinhas_13k',
@@ -503,6 +511,7 @@ A primeira peça é abaixada naturalmente, deixando a segunda peça completa e v
 **4. RESTRIÇÕES DE ÁUDIO E CÂMERA:**
 - Demonstração completamente silenciosa (SEM FALA, sem diálogos, sem narração, sem locução e sem textos na tela).
 - Único take contínuo e fluido em visão POV.`,
+    compactMovementPromptText: `0-2s: Duas mãos seguram a 1ª peça aberta pelas laterais exibindo a frente. 2-4s: Abaixam a 1ª na cama e levantam a 2ª peça completa pelas laterais (sem sobras de tecido). 4-7s: Trazem a 2ª peça aberta ao 1º plano exibindo a frente. 7-9s: Retornam à 1ª peça levantando-a aberta enquanto a 2ª fica íntegra na cama. 9-11s: Uma mão sustenta a 1ª peça e a outra desliza os dedos alisando o tecido mostrando maciez. 11-12s: Abaixa a 1ª deixando as 2 visíveis.`,
   },
 ];
 

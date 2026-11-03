@@ -42,7 +42,7 @@ import {
   getMasterPromptById,
   getDefaultMasterForMode,
 } from './masterPromptsData';
-import { preloadScenarioUrl } from './anaMariaPipeline';
+import { preloadScenarioUrl, prewarmDefaultScenarios } from './anaMariaPipeline';
 
 interface AnaMariaFormProps {
   form: AnaMariaFormState;
@@ -90,12 +90,11 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const isPovMode = activeMode === 'pov';
   const activeScenarioList = isPovMode ? POV_SCENARIO_GALLERY_ITEMS : SCENARIO_GALLERY_ITEMS;
 
-  // Pré-aquece o cache do cenário selecionado em segundo plano para geração instantânea
+  // Pré-aquece o cache do cenário selecionado (e do cenário randômico sorteado) em segundo plano para geração instantânea
   useEffect(() => {
+    prewarmDefaultScenarios();
     if (form.selectedScenarioUrl) {
       preloadScenarioUrl(form.selectedScenarioUrl);
-    } else if (activeScenarioList[0]?.fullUrl) {
-      preloadScenarioUrl(activeScenarioList[0].fullUrl);
     }
   }, [form.selectedScenarioUrl, isPovMode]);
 
@@ -217,7 +216,8 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     setIsUploading(true);
 
     try {
-      const b64Promises = filesToProcess.map((file) => compressAndResizeImage(file, 1440, 0.85));
+      // Alta definição (1536px, qualidade 0.92) nas fotos do produto para preservar 100% de rendas, costuras e microtexturas
+      const b64Promises = filesToProcess.map((file) => compressAndResizeImage(file, 1536, 0.92));
       const newPhotos = await Promise.all(b64Promises);
 
       onChange((prev) => ({
@@ -225,9 +225,12 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         referencePhotos: [...prev.referencePhotos, ...newPhotos].slice(0, 10),
       }));
 
-      // Se era o primeiro anexo (ou o campo Nome da Peça ainda está vazio e não foi editado pelo usuário), identifica a peça
-      if (newPhotos[0] && (wasEmptyBefore || !form.productName.trim()) && !hasUserManuallyEditedNameRef.current) {
-        autoIdentifyGarmentFromPhoto(newPhotos[0]);
+      // Se era o primeiro anexo (ou o campo Nome da Peça ainda está vazio e não foi editado pelo usuário),
+      // envia miniatura leve de 512px (~25 KB) apenas para identificar o nome da peça em <0.6s sem competir com a geração
+      if (filesToProcess[0] && (wasEmptyBefore || !form.productName.trim()) && !hasUserManuallyEditedNameRef.current) {
+        compressAndResizeImage(filesToProcess[0], 512, 0.75)
+          .then((thumbB64) => autoIdentifyGarmentFromPhoto(thumbB64))
+          .catch(() => autoIdentifyGarmentFromPhoto(newPhotos[0]));
       }
     } catch (err) {
       console.error('Erro ao processar imagens:', err);

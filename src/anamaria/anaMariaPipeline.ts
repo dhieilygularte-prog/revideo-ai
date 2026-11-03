@@ -107,6 +107,11 @@ export function saveAnaMariaResult(result: AnaMariaResultState): void {
 }
 
 const scenarioBase64Cache = new Map<string, string>();
+const scenarioInFlightPromises = new Map<string, Promise<string>>();
+let prewarmedRandomScenario =
+  SCENARIO_GALLERY_ITEMS && SCENARIO_GALLERY_ITEMS.length > 0
+    ? SCENARIO_GALLERY_ITEMS[Math.floor(Math.random() * SCENARIO_GALLERY_ITEMS.length)]
+    : null;
 
 /**
  * Comprime qualquer imagem (URL ou DataURL pesada em PNG) para JPEG otimizado de alta fidelidade (~140-200 KB),
@@ -166,14 +171,40 @@ export async function compressImageForFastTransfer(
 
 export function preloadScenarioUrl(url?: string): void {
   if (!url || typeof window === 'undefined') return;
-  if (scenarioBase64Cache.has(url)) return;
-  compressImageForFastTransfer(url, 1280, 0.86)
+  if (scenarioBase64Cache.has(url) || scenarioInFlightPromises.has(url)) return;
+  const p = compressImageForFastTransfer(url, 1280, 0.86)
     .then((b64) => {
       if (b64 && b64.startsWith('data:image/')) {
         scenarioBase64Cache.set(url, b64);
       }
+      scenarioInFlightPromises.delete(url);
+      return b64;
     })
-    .catch(() => {});
+    .catch(() => {
+      scenarioInFlightPromises.delete(url);
+      return url;
+    });
+  scenarioInFlightPromises.set(url, p);
+}
+
+/**
+ * Pré-aquece o cenário randômico sorteado e os cenários de Catza/POV em segundo plano
+ * enquanto o usuário preenche o formulário, garantindo 0ms de espera ao tocar em GERAR VÍDEO.
+ */
+export function prewarmDefaultScenarios(): void {
+  if (typeof window === 'undefined') return;
+  if (!prewarmedRandomScenario && SCENARIO_GALLERY_ITEMS.length > 0) {
+    prewarmedRandomScenario =
+      SCENARIO_GALLERY_ITEMS[Math.floor(Math.random() * SCENARIO_GALLERY_ITEMS.length)];
+  }
+  if (prewarmedRandomScenario?.fullUrl) {
+    preloadScenarioUrl(prewarmedRandomScenario.fullUrl);
+  }
+  const catza = SCENARIO_GALLERY_ITEMS.find((s) => s.id === 'cenario_24');
+  if (catza?.fullUrl) preloadScenarioUrl(catza.fullUrl);
+  if (POV_SCENARIO_GALLERY_ITEMS[0]?.fullUrl) {
+    preloadScenarioUrl(POV_SCENARIO_GALLERY_ITEMS[0].fullUrl);
+  }
 }
 
 async function resolveScenarioBase64(form: AnaMariaFormState): Promise<string> {
@@ -183,6 +214,11 @@ async function resolveScenarioBase64(form: AnaMariaFormState): Promise<string> {
   if (form.selectedScenarioUrl) {
     const cached = scenarioBase64Cache.get(form.selectedScenarioUrl);
     if (cached) return cached;
+    const inFlight = scenarioInFlightPromises.get(form.selectedScenarioUrl);
+    if (inFlight) {
+      const res = await inFlight;
+      if (res && res.startsWith('data:image/')) return res;
+    }
     try {
       const compressed = await compressImageForFastTransfer(form.selectedScenarioUrl, 1280, 0.86);
       if (compressed && compressed.startsWith('data:image/')) {
@@ -268,13 +304,24 @@ export function ensureAnaMariaScenario(form: AnaMariaFormState): AnaMariaFormSta
     }
   }
 
-  const randomIndex = Math.floor(Math.random() * SCENARIO_GALLERY_ITEMS.length);
-  const randomScenario = SCENARIO_GALLERY_ITEMS[randomIndex] || SCENARIO_GALLERY_ITEMS[0];
+  // Usa o cenário randômico já pré-aquecido em memória (0ms de download) e já sorteia/pré-carrega o próximo em background
+  const chosenScenario =
+    prewarmedRandomScenario ||
+    SCENARIO_GALLERY_ITEMS[Math.floor(Math.random() * SCENARIO_GALLERY_ITEMS.length)] ||
+    SCENARIO_GALLERY_ITEMS[0];
+
+  // Sorteia o próximo cenário randômico diferente para a próxima geração e já inicia seu pré-carregamento
+  const nextIndex = Math.floor(Math.random() * SCENARIO_GALLERY_ITEMS.length);
+  prewarmedRandomScenario = SCENARIO_GALLERY_ITEMS[nextIndex] || SCENARIO_GALLERY_ITEMS[0];
+  if (prewarmedRandomScenario?.fullUrl) {
+    preloadScenarioUrl(prewarmedRandomScenario.fullUrl);
+  }
+
   return {
     ...form,
-    selectedScenarioId: randomScenario.id,
-    selectedScenarioNumber: randomScenario.number,
-    selectedScenarioUrl: randomScenario.fullUrl,
+    selectedScenarioId: chosenScenario.id,
+    selectedScenarioNumber: chosenScenario.number,
+    selectedScenarioUrl: chosenScenario.fullUrl,
     selectedScenarioBase64: undefined,
   };
 }

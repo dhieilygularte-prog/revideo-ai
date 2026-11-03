@@ -295,9 +295,10 @@ Calçado obrigatório nos dois pés: **${shoeInfo.name}**.
 Especificação do calçado: ${shoeInfo.description}
 (Observação: Esta regra universal de calçado prevalece sobre qualquer menção genérica de calçado do catálogo da Mestra, salvo se o usuário pediu outro calçado específico nas Instruções Adicionais). Enquadrar o corpo inteiro mostrando os dois pés calçados apoiados naturalmente no piso do cenário.
 
-## 8. FIDELIDADE ABSOLUTA E SOBERANA AO PRODUTO ANEXADO (1:1)
-A foto da peça anexada pelo usuário é a referência soberana e inviolável da roupa.
-Reproduza a roupa 1:1 com máxima fidelidade: mesma cor exata, tonalidade, textura do tecido, modelagem, comprimento, decote, alças, mangas, costuras, botões, recortes e estampas.
+## 8. FIDELIDADE ABSOLUTA E SOBERANA AO PRODUTO ANEXADO (1:1 — ZERO INVENÇÃO DE DETALHES)
+A foto da peça anexada pelo usuário é a referência soberana e inviolável da roupa (venda real TikTok Shop).
+Reproduza a roupa 1:1 com máxima fidelidade: mesma cor exata, tonalidade, textura do tecido, modelagem, comprimento, decote, alças, mangas, barra, rendas, transparências, costuras, botões, recortes e estampas.
+É TERMINANTEMENTE PROIBIDO inventar detalhes inexistentes na peça (não adicionar rendas, babados, laços, botões, fendas, costuras ou estampas que não existam na foto real) e proibido omitir detalhes reais da peça.
 A roupa deve vestir anatomicamente o corpo ${isPlusSize ? 'genuinamente PLUS SIZE' : 'do(a) modelo'} sem jamais redesenhar ou descaracterizar o produto.`;
 
   return {
@@ -417,4 +418,101 @@ REGRA DE ADAPTAÇÃO: As instruções personalizadas acima têm PRIORIDADE ABSOL
   // Até 2.500 caracteres
   if (base.length <= 2500) return base.trim();
   return base.slice(0, 2480).trim();
+}
+
+/**
+ * Constrói o Prompt Enxuto de Vídeo (ESTRITAMENTE <= 600 CARACTERES contando com os espaços).
+ * Concentra o texto prioritariamente nos movimentos essenciais da Mestra selecionada
+ * e utiliza o espaço restante para a trava de fidelidade 1:1 da peça, enquadramento e instruções do usuário.
+ */
+export function buildAnaMariaCompactVideoPrompt(params: {
+  productName?: string;
+  influencer?: AnaMariaInfluencer;
+  bodyType?: AnaMariaBodyType;
+  presentationMode?: AnaMariaPresentationMode;
+  selectedMasterId?: AnaMariaMasterId;
+  additionalInstructions?: string;
+}): string {
+  const MAX_CHARS = 600;
+  const master = getMasterPromptById(params.selectedMasterId);
+  const mode: AnaMariaPresentationMode =
+    params.presentationMode || (master.isPov ? 'pov' : 'mirror_selfie');
+  const isMale = params.influencer === 'Homem';
+  const isPlusSize = params.bodyType === 'plus_size';
+  const isFaceMode =
+    mode === 'com_rosto' ||
+    Boolean(master.allowsFaceByDefault) ||
+    master.primaryCategory === 'com_rosto' ||
+    master.id === 'mestra_catza';
+
+  let movements = (master.compactMovementPromptText || '').replace(/\s+/g, ' ').trim();
+
+  if (isMale) {
+    movements = movements
+      .replace(/\bbusto\b/gi, 'peitoral')
+      .replace(/\bcolo\b/gi, 'peitoral')
+      .replace(/\bdecote\b/gi, 'gola');
+  }
+
+  const userExtra = (params.additionalInstructions || '').replace(/\s+/g, ' ').trim();
+  const shortUserExtra = userExtra.length > 90 ? `${userExtra.slice(0, 87).trim()}...` : userExtra;
+
+  // Bloco complementar conciso (Fidelidade 1:1 + Enquadramento + Corpo)
+  let framingAndFidelity = '';
+  if (mode === 'pov' || master.isPov) {
+    const handsNote = isMale
+      ? 'Só mãos masculinas.'
+      : master.id === 'pov_blusinhas_13k'
+      ? 'Só mãos (unhas vinho amendoadas, joias prata).'
+      : 'Só mãos (unhas vermelhas, joias douradas).';
+    framingAndFidelity = `Vídeo 9:16 10s POV na cama, sem fala. ${handsNote} Manter peças 1:1 idênticas à foto sem inventar detalhes.`;
+  } else if (isFaceMode) {
+    const bodyNote = isMale ? 'modelo homem' : isPlusSize ? 'modelo plus size real' : 'modelo';
+    framingAndFidelity = `Vídeo 9:16 10s no espelho com flash, sem falar/mexer lábios. Manter ${bodyNote} e roupa 1:1 idêntica sem alterar detalhes.`;
+  } else {
+    const bodyNote = isMale ? 'modelo homem' : isPlusSize ? 'modelo plus size real' : 'modelo';
+    framingAndFidelity = `Vídeo 9:16 10s sem fala. Corte fixo no queixo (sem rosto/lábios). Manter ${bodyNote}, cenário e roupa 1:1 sem alterar detalhes.`;
+  }
+
+  const parts: string[] = [];
+  if (shortUserExtra) {
+    parts.push(`Prioridade: ${shortUserExtra}.`);
+  }
+  parts.push(`Movimentos: ${movements}`);
+  parts.push(framingAndFidelity);
+
+  let combined = parts.join(' ').replace(/\s+/g, ' ').trim();
+
+  if (combined.length <= MAX_CHARS) {
+    return combined;
+  }
+
+  // Se ultrapassou 600 caracteres (ex: quando há instrução adicional longa), preserva 100% dos movimentos + trava curta
+  const compactFidelity =
+    mode === 'pov' || master.isPov
+      ? 'POV 9:16 10s sem fala, manter peças 1:1 fiéis.'
+      : isFaceMode
+      ? `9:16 10s com rosto/flash, sem falar, roupa 1:1 fiel${isPlusSize ? ', corpo plus size' : ''}.`
+      : `9:16 10s sem fala, corte no queixo (sem rosto/lábios), roupa 1:1 fiel${isPlusSize ? ', corpo plus size' : ''}.`;
+
+  const prefix = shortUserExtra ? `Prioridade: ${shortUserExtra}. ` : '';
+  const suffix = ` ${compactFidelity}`;
+  const availableForMovements = MAX_CHARS - prefix.length - suffix.length;
+
+  if (movements.length <= availableForMovements) {
+    combined = `${prefix}${movements}${suffix}`.replace(/\s+/g, ' ').trim();
+  } else {
+    const slicedMov = movements.slice(0, Math.max(200, availableForMovements - 1));
+    const lastSpace = slicedMov.lastIndexOf(' ');
+    const cleanMov = (lastSpace > 150 ? slicedMov.slice(0, lastSpace) : slicedMov).replace(/[,;:\s]+$/, '') + '.';
+    combined = `${prefix}${cleanMov}${suffix}`.replace(/\s+/g, ' ').trim();
+  }
+
+  if (combined.length > MAX_CHARS) {
+    const hardSlice = combined.slice(0, MAX_CHARS);
+    const lastSp = hardSlice.lastIndexOf(' ');
+    return (lastSp > 500 ? hardSlice.slice(0, lastSp) : hardSlice).trim();
+  }
+
+  return combined;
 }
