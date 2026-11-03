@@ -3626,7 +3626,7 @@ async function generateImageWithSeedream(params) {
     prompt: refImages.length > 0 ? `${headerSeedream}
 
 ${params.prompt}` : params.prompt,
-    size: "1024x1792",
+    size: isPovModeSeedream ? "768x1344" : "1024x1792",
     response_format: "url",
     watermark: false
   };
@@ -3649,7 +3649,7 @@ ${params.prompt}` : params.prompt,
           "Content-Type": "application/json"
         },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(58500)
+        signal: AbortSignal.timeout(82e3)
       });
       const text = await res.text();
       let data = null;
