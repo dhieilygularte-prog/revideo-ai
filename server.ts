@@ -516,8 +516,8 @@ app.post('/api/download-tiktok', async (req, res) => {
         headers: {
           'User-Agent': userAgent,
           'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        },
         signal: AbortSignal.timeout(10000),
+        },
       });
       if (redirectResp.url && redirectResp.url.includes('tiktok.com')) {
         canonicalUrl = redirectResp.url;
@@ -2122,7 +2122,6 @@ async function generateImageWithSeedream(params: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(110000),
       });
 
       const text = await res.text();

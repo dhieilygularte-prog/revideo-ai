@@ -2355,9 +2355,9 @@ app.post("/api/download-tiktok", async (req, res) => {
         redirect: "follow",
         headers: {
           "User-Agent": userAgent,
-          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
-        },
-        signal: AbortSignal.timeout(1e4)
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          signal: AbortSignal.timeout(1e4)
+        }
       });
       if (redirectResp.url && redirectResp.url.includes("tiktok.com")) {
         canonicalUrl = redirectResp.url;
@@ -3648,8 +3648,7 @@ ${params.prompt}` : params.prompt,
           "Authorization": `Bearer ${apiKey}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(11e4)
+        body: JSON.stringify(payload)
       });
       const text = await res.text();
       let data = null;
