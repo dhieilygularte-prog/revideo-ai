@@ -119,14 +119,14 @@ let prewarmedRandomScenario =
  */
 export async function compressImageForFastTransfer(
   srcUrlOrBase64: string,
-  maxDimension = 1440,
-  quality = 0.88
+  maxDimension = 864,
+  quality = 0.85
 ): Promise<string> {
   if (typeof window === 'undefined' || !srcUrlOrBase64) return srcUrlOrBase64;
-  // Se já for um JPEG compacto (< 260 KB em base64), retorna direto sem reprocessar
+  // Se for muito compacto (< 90 KB em base64) e já for JPEG, retorna direto
   if (
     srcUrlOrBase64.startsWith('data:image/jpeg;base64,') &&
-    srcUrlOrBase64.length < 350_000
+    srcUrlOrBase64.length < 90_000
   ) {
     return srcUrlOrBase64;
   }
@@ -172,7 +172,7 @@ export async function compressImageForFastTransfer(
 export function preloadScenarioUrl(url?: string): void {
   if (!url || typeof window === 'undefined') return;
   if (scenarioBase64Cache.has(url) || scenarioInFlightPromises.has(url)) return;
-  const p = compressImageForFastTransfer(url, 1280, 0.86)
+  const p = compressImageForFastTransfer(url, 800, 0.84)
     .then((b64) => {
       if (b64 && b64.startsWith('data:image/')) {
         scenarioBase64Cache.set(url, b64);
@@ -185,6 +185,69 @@ export function preloadScenarioUrl(url?: string): void {
       return url;
     });
   scenarioInFlightPromises.set(url, p);
+}
+
+/**
+ * Combina duas fotos de referência lado a lado em uma única folha de produto JPEG,
+ * garantindo que o modelo multimodal receba no máximo 2 imagens totais (Cenário + Produto),
+ * acelerando a geração em até 20 segundos e prevenindo timeouts de 60s da Vercel.
+ */
+export async function combineTwoPhotosSideBySide(
+  photo1: string,
+  photo2: string,
+  maxDim = 864
+): Promise<string> {
+  if (typeof window === 'undefined' || !photo1 || !photo2) return photo1 || photo2;
+  return new Promise<string>((resolve) => {
+    const img1 = new Image();
+    const img2 = new Image();
+    img1.crossOrigin = 'anonymous';
+    img2.crossOrigin = 'anonymous';
+    let loaded = 0;
+    const onBothLoaded = () => {
+      try {
+        const h1 = img1.naturalHeight || img1.height || 1000;
+        const w1 = img1.naturalWidth || img1.width || 800;
+        const h2 = img2.naturalHeight || img2.height || 1000;
+        const w2 = img2.naturalWidth || img2.width || 800;
+
+        const targetH = Math.min(h1, h2, maxDim);
+        const targetW1 = Math.round((w1 * targetH) / h1);
+        const targetW2 = Math.round((w2 * targetH) / h2);
+        let totalW = targetW1 + targetW2;
+        let totalH = targetH;
+
+        if (totalW > maxDim) {
+          const scale = maxDim / totalW;
+          totalW = maxDim;
+          totalH = Math.round(totalH * scale);
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = totalW;
+        canvas.height = totalH;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return resolve(photo1);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, totalW, totalH);
+        const drawW1 = Math.round((targetW1 * totalW) / (targetW1 + targetW2));
+        ctx.drawImage(img1, 0, 0, drawW1, totalH);
+        ctx.drawImage(img2, drawW1, 0, totalW - drawW1, totalH);
+
+        const combinedDataUrl = canvas.toDataURL('image/jpeg', 0.86);
+        resolve(combinedDataUrl);
+      } catch {
+        resolve(photo1);
+      }
+    };
+    img1.onload = () => { loaded++; if (loaded === 2) onBothLoaded(); };
+    img2.onload = () => { loaded++; if (loaded === 2) onBothLoaded(); };
+    img1.onerror = () => resolve(photo1);
+    img2.onerror = () => resolve(photo1);
+    img1.src = photo1;
+    img2.src = photo2;
+  });
 }
 
 /**
@@ -211,7 +274,7 @@ export function prewarmDefaultScenarios(): void {
 
 async function resolveScenarioBase64(form: AnaMariaFormState): Promise<string> {
   if (form.selectedScenarioBase64 && form.selectedScenarioBase64.length > 50) {
-    return compressImageForFastTransfer(form.selectedScenarioBase64, 1280, 0.86);
+    return compressImageForFastTransfer(form.selectedScenarioBase64, 800, 0.84);
   }
   if (form.selectedScenarioUrl) {
     const cached = scenarioBase64Cache.get(form.selectedScenarioUrl);
@@ -222,7 +285,7 @@ async function resolveScenarioBase64(form: AnaMariaFormState): Promise<string> {
       if (res && res.startsWith('data:image/')) return res;
     }
     try {
-      const compressed = await compressImageForFastTransfer(form.selectedScenarioUrl, 1280, 0.86);
+      const compressed = await compressImageForFastTransfer(form.selectedScenarioUrl, 800, 0.84);
       if (compressed && compressed.startsWith('data:image/')) {
         scenarioBase64Cache.set(form.selectedScenarioUrl, compressed);
         return compressed;
@@ -231,22 +294,27 @@ async function resolveScenarioBase64(form: AnaMariaFormState): Promise<string> {
       console.warn('Falha ao converter cenário selecionado para base64:', e);
     }
   }
-  return PREFERRED_SCENARIO_BASE64;
+  return compressImageForFastTransfer(PREFERRED_SCENARIO_BASE64, 800, 0.84);
 }
 
 async function prepareProductPhotosForPayload(photos: string[]): Promise<{
   primaryPhoto: string;
   supplementaryPhotos: string[];
 }> {
-  // Compacta fotos muito pesadas (>350KB) para 1280px @ 0.88 JPEG (~180-220KB cada) mantendo 100% da nitidez e texturas 1:1,
-  // evitando que o envio de 2+ fotos no modo POV ou Mirror Selfie estoure o tempo limite de 60s da Vercel.
   const validPhotos = (photos || []).filter(Boolean).slice(0, 4);
   const optimizedPhotos = await Promise.all(
-    validPhotos.map((p) => compressImageForFastTransfer(p, 1280, 0.88))
+    validPhotos.map((p) => compressImageForFastTransfer(p, 800, 0.85))
   );
+  if (optimizedPhotos.length >= 2) {
+    const combined = await combineTwoPhotosSideBySide(optimizedPhotos[0], optimizedPhotos[1], 864);
+    return {
+      primaryPhoto: combined,
+      supplementaryPhotos: [],
+    };
+  }
   return {
     primaryPhoto: optimizedPhotos[0] || '',
-    supplementaryPhotos: optimizedPhotos.slice(1, 3),
+    supplementaryPhotos: [],
   };
 }
 

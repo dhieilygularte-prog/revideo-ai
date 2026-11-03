@@ -53,14 +53,34 @@ export async function ensureHighResAnaMariaDataUrl(
   targetWidth = 1080,
   targetHeight = 1920
 ): Promise<string> {
-  if (typeof window === 'undefined') return inputUrlOrBase64;
+  if (typeof window === 'undefined' || !inputUrlOrBase64) return inputUrlOrBase64;
+
+  let resolvedSrc = inputUrlOrBase64;
+  if (resolvedSrc.startsWith('http://') || resolvedSrc.startsWith('https://')) {
+    try {
+      const proxyRes = await fetch('/api/generate-scene-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: 'proxy_image', imageUrl: resolvedSrc }),
+      });
+      if (proxyRes.ok) {
+        const proxyData = await proxyRes.json();
+        if (proxyData?.success && typeof proxyData.imageUrl === 'string' && proxyData.imageUrl.startsWith('data:image/')) {
+          resolvedSrc = proxyData.imageUrl;
+        }
+      }
+    } catch (err) {
+      console.warn('Fallback para URL direta na calibração Full HD:', err);
+    }
+  }
+
   return new Promise((resolve) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
       try {
-        if (img.width === targetWidth && img.height === targetHeight) {
-          resolve(inputUrlOrBase64);
+        if (img.width === targetWidth && img.height === targetHeight && resolvedSrc.startsWith('data:image/')) {
+          resolve(resolvedSrc);
           return;
         }
         const canvas = document.createElement('canvas');
@@ -68,7 +88,7 @@ export async function ensureHighResAnaMariaDataUrl(
         canvas.height = targetHeight;
         const ctx = canvas.getContext('2d');
         if (!ctx) {
-          resolve(inputUrlOrBase64);
+          resolve(resolvedSrc);
           return;
         }
         ctx.imageSmoothingEnabled = true;
@@ -79,13 +99,13 @@ export async function ensureHighResAnaMariaDataUrl(
         resolve(dataUrl);
       } catch (err) {
         console.warn('Erro ao redimensionar imagem para 1080x1920 no canvas:', err);
-        resolve(inputUrlOrBase64);
+        resolve(resolvedSrc);
       }
     };
     img.onerror = () => {
-      resolve(inputUrlOrBase64);
+      resolve(resolvedSrc);
     };
-    img.src = inputUrlOrBase64;
+    img.src = resolvedSrc;
   });
 }
 
@@ -98,55 +118,19 @@ export async function ensureHighResAnaMariaBlob(
   targetHeight = 1920
 ): Promise<Blob> {
   if (typeof window === 'undefined') return new Blob([]);
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      try {
-        const canvas = document.createElement('canvas');
-        canvas.width = targetWidth;
-        canvas.height = targetHeight;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          fetch(inputUrlOrBase64)
-            .then((r) => r.blob())
-            .then(resolve)
-            .catch(() => resolve(new Blob([])));
-          return;
-        }
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              resolve(blob);
-            } else {
-              fetch(inputUrlOrBase64)
-                .then((r) => r.blob())
-                .then(resolve)
-                .catch(() => resolve(new Blob([])));
-            }
-          },
-          'image/jpeg',
-          0.99
-        );
-      } catch (err) {
-        console.warn('Erro ao gerar blob 1080x1920 no canvas:', err);
-        fetch(inputUrlOrBase64)
-          .then((r) => r.blob())
-          .then(resolve)
-          .catch(() => resolve(new Blob([])));
-      }
-    };
-    img.onerror = () => {
-      fetch(inputUrlOrBase64)
-        .then((r) => r.blob())
-        .then(resolve)
-        .catch(() => resolve(new Blob([])));
-    };
-    img.src = inputUrlOrBase64;
-  });
+  try {
+    const dataUrl = await ensureHighResAnaMariaDataUrl(inputUrlOrBase64, targetWidth, targetHeight);
+    const r = await fetch(dataUrl);
+    return await r.blob();
+  } catch (err) {
+    console.warn('Fallback no ensureHighResAnaMariaBlob:', err);
+    try {
+      const direct = await fetch(inputUrlOrBase64);
+      return await direct.blob();
+    } catch {
+      return new Blob([]);
+    }
+  }
 }
 
 /**

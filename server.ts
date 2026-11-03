@@ -2085,11 +2085,11 @@ async function generateImageWithSeedream(params: {
 
   const headerSeedream = params.isAnaMariaMode
     ? isPovModeSeedream
-      ? '[MODO POV PRIMEIRA PESSOA SOBRE A CAMA — MAPA DE IMAGENS DE REFERÊNCIA: Imagem 1 = Cenário POV real da cama obrigatório (preservar colcha/cama 100% intacta); Demais imagens = Produtos reais 1:1 que devem aparecer sobre a cama manipulados EXCLUSIVAMENTE pelas duas mãos entrando pela borda inferior do quadro. PROIBIDO mostrar corpo, tronco, rosto, cabeça, pernas, espelho ou pessoa vestindo a peça!]'
+      ? '[MAPA POV: Imagem 1 = Cenário POV Cama 100% intacto; Imagem 2 = Produto 1:1 manipulado apenas pelas duas mãos na cama (proibido corpo/rosto/espelho).]'
       : alreadyStructuredAnaMaria
       ? isPlus
-        ? '[MAPA DE IMAGENS DE REFERÊNCIA E ISOLAMENTO DE CORPO PLUS SIZE: Imagem 1 = Cenário real obrigatório (preservar 100% intacto); Demais imagens = Referência EXCLUSIVA da peça de roupa 1:1. É TERMINANTEMENTE PROIBIDO copiar o corpo magro da pessoa ou manequim das fotos do produto! Gere a modelo com a EXATA ESTRUTURA CORPORAL PLUS SIZE REAL, cabelo e acessórios descritos no prompt abaixo!]'
-        : '[MAPA DE IMAGENS DE REFERÊNCIA E PRESERVAÇÃO DO CORPO DA MESTRA: Imagem 1 = Cenário real obrigatório (preservar 100% intacto); Demais imagens = Referência EXCLUSIVA da peça de roupa 1:1 (copie SOMENTE a peça de roupa, tecido, cor e corte). É TERMINANTEMENTE PROIBIDO copiar o corpo magro, cintura reta, quadris estreitos ou a pessoa das fotos do produto! Gere a modelo obedecendo 100% à ESTRUTURA CORPORAL CURVILÍNEA DA MESTRA (silhueta ampulheta/violão bem definida, cintura fina e bem marcada, quadris largos e arredondados, coxas cheias e volumosas), cabelo, pele e acessórios descritos no prompt abaixo (salvo instrução explícita em contrário do usuário)!]'
+        ? '[MAPA: Imagem 1 = Cenário 100% intacto; Imagem 2 = Peça 1:1 (proibido copiar corpo da foto do produto). Aplicar estrutura corporal Plus Size real descrita abaixo.]'
+        : '[MAPA: Imagem 1 = Cenário 100% intacto; Imagem 2 = Peça 1:1 (proibido copiar corpo da foto do produto). Aplicar curvas e proporções da Mestra descritas abaixo.]'
       : `${plusRule}${getAnaMariaHeader(Boolean(params.scenarioPhotoBase64), allowsFaceSeedream)}`
     : IMAGE_REFERENCE_FIDELITY_HEADER;
 
@@ -2111,6 +2111,7 @@ async function generateImageWithSeedream(params: {
     'https://ark.ap-southeast.bytepluses.com/api/v3/images/generations',
   ];
 
+  const startTime = Date.now();
   let lastError = '';
   for (const url of hosts) {
     try {
@@ -2121,6 +2122,7 @@ async function generateImageWithSeedream(params: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(54000),
       });
 
       const text = await res.text();
@@ -2140,8 +2142,14 @@ async function generateImageWithSeedream(params: {
 
       if (res.ok && Array.isArray(data?.data) && data.data[0]?.url) {
         const imgUrl = data.data[0].url;
+        // No Modo Ana Maria ou quando a geração ultrapassa 15s, retorna a URL diretamente
+        // para evitar que o download de 2.5MB e encode base64 estoure os 60s da função Vercel.
+        // O frontend faz a calibração 1080x1920 via proxy_image em uma requisição dedicada de 1.8s.
+        if (params.isAnaMariaMode || (Date.now() - startTime > 15000)) {
+          return { success: true, imageUrl: imgUrl };
+        }
         try {
-          const imgFetch = await fetch(imgUrl, { signal: AbortSignal.timeout(6500) });
+          const imgFetch = await fetch(imgUrl, { signal: AbortSignal.timeout(5000) });
           const arrayBuffer = await imgFetch.arrayBuffer();
           const b64 = Buffer.from(arrayBuffer).toString('base64');
           const mime = imgFetch.headers.get('content-type') || 'image/jpeg';
@@ -2233,6 +2241,31 @@ app.get('/api/test-image-providers', async (_req, res) => {
 
 app.post('/api/generate-scene-image', async (req, res) => {
   try {
+    if (req.body?.mode === 'proxy_image' && typeof req.body?.imageUrl === 'string') {
+      try {
+        const proxyFetch = await fetch(req.body.imageUrl, {
+          signal: AbortSignal.timeout(20000),
+        });
+        if (!proxyFetch.ok) {
+          return res.status(proxyFetch.status).json({
+            success: false,
+            error: `Falha ao baixar imagem remota (${proxyFetch.status})`,
+          });
+        }
+        const arrayBuf = await proxyFetch.arrayBuffer();
+        const base64 = Buffer.from(arrayBuf).toString('base64');
+        const mime = proxyFetch.headers.get('content-type') || 'image/jpeg';
+        return res.json({
+          success: true,
+          imageUrl: `data:${mime};base64,${base64}`,
+        });
+      } catch (proxyErr: any) {
+        return res.status(500).json({
+          success: false,
+          error: proxyErr?.message || 'Erro no proxy de imagem',
+        });
+      }
+    }
     const {
       prompt,
       productPhotoBase64,

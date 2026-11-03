@@ -3620,7 +3620,7 @@ async function generateImageWithSeedream(params) {
     params.prompt && (params.prompt.includes("MODO COM ROSTO") || params.prompt.includes("ROSTO E ENQUADRAMENTO \u2014 MODO COM ROSTO") || params.prompt.includes("o rosto da modelo DEVE aparecer") || params.prompt.includes("MESTRA CATZA"))
   );
   const isPovModeSeedream = params.presentationMode === "pov" || params.selectedMasterId === "pov_cinta_85k" || params.selectedMasterId === "pov_blusinhas_13k" || Boolean(params.prompt && params.prompt.includes("PRESERVA\xC7\xC3O INTEGRAL DO CEN\xC1RIO POV"));
-  const headerSeedream = params.isAnaMariaMode ? isPovModeSeedream ? "[MODO POV PRIMEIRA PESSOA SOBRE A CAMA \u2014 MAPA DE IMAGENS DE REFER\xCANCIA: Imagem 1 = Cen\xE1rio POV real da cama obrigat\xF3rio (preservar colcha/cama 100% intacta); Demais imagens = Produtos reais 1:1 que devem aparecer sobre a cama manipulados EXCLUSIVAMENTE pelas duas m\xE3os entrando pela borda inferior do quadro. PROIBIDO mostrar corpo, tronco, rosto, cabe\xE7a, pernas, espelho ou pessoa vestindo a pe\xE7a!]" : alreadyStructuredAnaMaria ? isPlus ? "[MAPA DE IMAGENS DE REFER\xCANCIA E ISOLAMENTO DE CORPO PLUS SIZE: Imagem 1 = Cen\xE1rio real obrigat\xF3rio (preservar 100% intacto); Demais imagens = Refer\xEAncia EXCLUSIVA da pe\xE7a de roupa 1:1. \xC9 TERMINANTEMENTE PROIBIDO copiar o corpo magro da pessoa ou manequim das fotos do produto! Gere a modelo com a EXATA ESTRUTURA CORPORAL PLUS SIZE REAL, cabelo e acess\xF3rios descritos no prompt abaixo!]" : "[MAPA DE IMAGENS DE REFER\xCANCIA E PRESERVA\xC7\xC3O DO CORPO DA MESTRA: Imagem 1 = Cen\xE1rio real obrigat\xF3rio (preservar 100% intacto); Demais imagens = Refer\xEAncia EXCLUSIVA da pe\xE7a de roupa 1:1 (copie SOMENTE a pe\xE7a de roupa, tecido, cor e corte). \xC9 TERMINANTEMENTE PROIBIDO copiar o corpo magro, cintura reta, quadris estreitos ou a pessoa das fotos do produto! Gere a modelo obedecendo 100% \xE0 ESTRUTURA CORPORAL CURVIL\xCDNEA DA MESTRA (silhueta ampulheta/viol\xE3o bem definida, cintura fina e bem marcada, quadris largos e arredondados, coxas cheias e volumosas), cabelo, pele e acess\xF3rios descritos no prompt abaixo (salvo instru\xE7\xE3o expl\xEDcita em contr\xE1rio do usu\xE1rio)!]" : `${plusRule}${getAnaMariaHeader(Boolean(params.scenarioPhotoBase64), allowsFaceSeedream)}` : IMAGE_REFERENCE_FIDELITY_HEADER;
+  const headerSeedream = params.isAnaMariaMode ? isPovModeSeedream ? "[MAPA POV: Imagem 1 = Cen\xE1rio POV Cama 100% intacto; Imagem 2 = Produto 1:1 manipulado apenas pelas duas m\xE3os na cama (proibido corpo/rosto/espelho).]" : alreadyStructuredAnaMaria ? isPlus ? "[MAPA: Imagem 1 = Cen\xE1rio 100% intacto; Imagem 2 = Pe\xE7a 1:1 (proibido copiar corpo da foto do produto). Aplicar estrutura corporal Plus Size real descrita abaixo.]" : "[MAPA: Imagem 1 = Cen\xE1rio 100% intacto; Imagem 2 = Pe\xE7a 1:1 (proibido copiar corpo da foto do produto). Aplicar curvas e propor\xE7\xF5es da Mestra descritas abaixo.]" : `${plusRule}${getAnaMariaHeader(Boolean(params.scenarioPhotoBase64), allowsFaceSeedream)}` : IMAGE_REFERENCE_FIDELITY_HEADER;
   const payload = {
     model: "dola-seedream-5-0-pro-260628",
     prompt: refImages.length > 0 ? `${headerSeedream}
@@ -3638,6 +3638,7 @@ ${params.prompt}` : params.prompt,
   const hosts = [
     "https://ark.ap-southeast.bytepluses.com/api/v3/images/generations"
   ];
+  const startTime = Date.now();
   let lastError = "";
   for (const url of hosts) {
     try {
@@ -3647,7 +3648,8 @@ ${params.prompt}` : params.prompt,
           "Authorization": `Bearer ${apiKey}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(54e3)
       });
       const text = await res.text();
       let data = null;
@@ -3664,8 +3666,11 @@ ${params.prompt}` : params.prompt,
       }
       if (res.ok && Array.isArray(data?.data) && data.data[0]?.url) {
         const imgUrl = data.data[0].url;
+        if (params.isAnaMariaMode || Date.now() - startTime > 15e3) {
+          return { success: true, imageUrl: imgUrl };
+        }
         try {
-          const imgFetch = await fetch(imgUrl, { signal: AbortSignal.timeout(6500) });
+          const imgFetch = await fetch(imgUrl, { signal: AbortSignal.timeout(5e3) });
           const arrayBuffer = await imgFetch.arrayBuffer();
           const b64 = Buffer.from(arrayBuffer).toString("base64");
           const mime = imgFetch.headers.get("content-type") || "image/jpeg";
@@ -3750,6 +3755,31 @@ app.get("/api/test-image-providers", async (_req, res) => {
 });
 app.post("/api/generate-scene-image", async (req, res) => {
   try {
+    if (req.body?.mode === "proxy_image" && typeof req.body?.imageUrl === "string") {
+      try {
+        const proxyFetch = await fetch(req.body.imageUrl, {
+          signal: AbortSignal.timeout(2e4)
+        });
+        if (!proxyFetch.ok) {
+          return res.status(proxyFetch.status).json({
+            success: false,
+            error: `Falha ao baixar imagem remota (${proxyFetch.status})`
+          });
+        }
+        const arrayBuf = await proxyFetch.arrayBuffer();
+        const base64 = Buffer.from(arrayBuf).toString("base64");
+        const mime = proxyFetch.headers.get("content-type") || "image/jpeg";
+        return res.json({
+          success: true,
+          imageUrl: `data:${mime};base64,${base64}`
+        });
+      } catch (proxyErr) {
+        return res.status(500).json({
+          success: false,
+          error: proxyErr?.message || "Erro no proxy de imagem"
+        });
+      }
+    }
     const {
       prompt,
       productPhotoBase64,
