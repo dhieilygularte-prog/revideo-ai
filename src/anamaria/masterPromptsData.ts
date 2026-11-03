@@ -201,22 +201,30 @@ export const MASTER_PROMPTS_GALLERY: AnaMariaMasterPromptItem[] = [
       'https://excursaomdr.s3.sa-east-1.amazonaws.com/VIDEOS+GALERIA+AURORA/PROMPT+ANA+MARIA-+BY+GPT+LEU+O+VIDEO+ORIGINAL+OTIMO.mp4',
     categories: ['mirror_selfie'],
     primaryCategory: 'mirror_selfie',
-    bodyStandardText: `Corpo feminino com silhueta ampulheta bem definida, curvas evidentes e proporções anatomicamente naturais:
-- Cintura estreita, visivelmente marcada e proporcional ao restante do corpo.
-- Quadris largos, arredondados e bem desenhados, com diferença visual perceptível entre cintura e quadril.
-- Glúteos naturalmente volumosos e arredondados.
-- Coxas cheias, volumosas e proporcionais ao quadril.
-- Busto de médio a cheio, abdômen com aparência natural (sem aspecto artificialmente chapado ou fisiculturista) e braços proporcionais.`,
-    skinAndRealismText: `Pele clara a morena-clara com subtom neutro ou levemente quente e textura fotográfica humana verdadeira:
-- Poros discretamente perceptíveis, microtexturas naturais da pele, pequenas variações de tonalidade e dobras reais nas articulações.
-- PROIBIDO pele de plástico, efeito porcelana, efeito boneca ou brilho oleoso exagerado.`,
-    hairIdentityText: `Cabelo feminino natural e fotográfico (cabelos longos castanho-escuros levemente ondulados por padrão, permitindo variações naturais conforme solicitado pelo usuário).`,
-    accessoriesIdentityText: `Acessórios femininos delicados predominantemente dourados (Identidade Mestra Ana Maria):
-- COLARES: 2 a 3 correntes douradas delicadas em camadas no colo (choker fina + corrente média com pequenos detalhes pendentes + corrente longa com pequeno pingente medalhão oval dourado).
-- PULSEIRAS: Uma pulseira de corrente dourada fina e delicada em cada pulso, com pequena correntinha extensora pendente.
-- ANÉIS: Anéis femininos delicados nos dedos (sem anéis grandes ou chamativos).
-- UNHAS: Bem cuidadas, comprimento curto a médio, esmalte nude, rosado claro ou natural.`,
-    lightingAndCameraText: `Fotografia vertical 9:16 espontânea de smartphone diante do espelho, câmera na altura do tórax, iluminação ambiente suave, difusa e realista com exposição equilibrada e sombras naturais.`,
+bodyStandardText: `PADRÃO CORPORAL SOBERANO — MESTRA ANA MARIA (CORPO VIOLÃO FITNESS / COXAS HIPER-GROSSAS):
+Mulher jovem brasileira (23 a 28 anos, aprox. 1,65m de altura e 66kg a 70kg) com silhueta ampulheta fitness extrema ("corpo violão fitness / coxuda sarada"), com forte contraste anatômico entre a cintura extremamente fina e os membros inferiores muito desenvolvidos:
+- CINTURA: Extremamente estreita, finíssima, esculpida e bem marcada ("cintura de pilão"), criando um contraste dramático com os quadris largos.
+- QUADRIS: Muito largos, volumosos e arredondados, que se projetam para as laterais com curva violão evidente e marcante.
+- GLÚTEOS: Volumosos, redondos, empinados e densos, com grande projeção lateral e posterior, preenchendo com firmeza a peça de roupa.
+- COXAS (CARACTERÍSTICA VISUAL MAIS IMPORTANTE): Coxas HIPER-GROSSAS, volumosas, musculosas e muito torneadas de treino de academia (quadríceps desenvolvidos, cheios e volumosos que preenchem completamente a peça). As coxas são maciças e robustas, muito mais largas que a cintura e os braços!
+- ABDÔMEN: Plano, reto, liso e enxuto, sem excesso de gordura e sem dobras, cintura fina e bem definida.
+- TRONCO E BUSTO: Busto de médio a cheio, proporcional, colo harmônico e firme; tronco e caixa torácica estreitos.
+- BRAÇOS E OMBROS: Braços finos, esguios e delicados, ombros simétricos proporcionais, trazendo leveza e delicadeza para a parte superior em contraste com as pernas grossas.
+- PERNAS E PANTURRILHAS: Pernas torneadas e musculosas, panturrilhas firmes e proporcionais.
+REGRA DE OURO INVIOLÁVEL: É TERMINANTEMENTE PROIBIDO gerar corpos magros, retos, sem cintura ou pernas finas de modelo de passarela (STRICTLY FORBIDDEN: skinny model, thin runway legs, stick legs, flat hips, boyish waistless torso).
+NUNCA copiar o corpo magro da modelo da foto do produto do usuário: da foto do produto, copiar rigorosamente APENAS A ROUPA e vesti-la no corpo violão de coxas grossas da Mestra Ana Maria.`,
+    skinAndRealismText: `PELE E REALISMO HUMANO — MESTRA ANA MARIA:
+- TONALIDADE: Pele clara natural (caucasiana / morena muito clara), com subtom neutro a levemente rosado/quente e aspecto saudável de quem está em casa (sem bronzeamento alaranjado artificial e sem óleo brilhoso).
+- TEXTURA: Textura fotográfica humana 100% autêntica, poros naturais discretamente visíveis, microtexturas reais da pele, sem efeito de pele de plástico, sem filtro de porcelana e sem aspecto de boneca.
+- ILUMINAÇÃO: Luz ambiente natural e suave de quarto/residência real, com exposição natural, sombras discretas e reflexos luminosos suaves e realistas.`,
+    hairIdentityText: `CABELO — MESTRA ANA MARIA: Cabelo feminino humano real longo ou médio, tonalidades naturais (castanho claro, castanho escuro ou loiro natural), fios alinhados com caimento natural sobre os ombros e costas, textura saudável e brilho natural.`,
+    accessoriesIdentityText: `ACESSÓRIOS — IDENTIDADE MESTRA ANA MARIA (EXATAMENTE COMO NA FOTO DE REFERÊNCIA):
+- COLARES NO COLO: Composição delicada de 2 a 3 correntes douradas finas em camadas no colo (gargantilha choker dourada fina justa ao pescoço + correntinha mais longa com pequenos pingentes metálicos circulares caídos).
+- PULSEIRAS: Pulseira fina dourada delicada de elos pequenos no pulso.
+- ANÉIS: Anéis dourados finos e discretos nos dedos.
+- UNHAS: Comprimento curto a médio, formato arredondado delicado com esmalte nude, rosado claro ou brilho natural, manicure limpa e bem cuidada.
+- SMARTPHONE: Smartphone moderno (iPhone com capinha rosada/nude) segurado em uma das mãos diante do espelho, enquadramento estrito do queixo para baixo.`,
+    lightingAndCameraText: `Fotografia vertical 9:16 hiper-realista capturada por smartphone diante do espelho (selfie no espelho), enquadramento do queixo para baixo exibindo com perfeição o corpo violão, a cintura finíssima, as coxas grossas e a roupa vestida. Luz ambiente suave e natural, ângulo frontal ou levemente 3/4, postura natural e confiante.`,
     movementPromptText: `Create a 10-second ultra-photorealistic vertical 9:16 mirror-selfie fashion video. Use the attached reference image as the absolute visual starting point.
 
 The animation must reproduce the following exact sequence of movements in one continuous, natural recording.
@@ -285,23 +293,28 @@ Reproduce the exact movement sequence and timing described above while preservin
       'https://excursaomdr.s3.sa-east-1.amazonaws.com/VIDEOS+GALERIA+AURORA/VIDEO+MESTRE+IARA+VITRINE.mp4',
     categories: ['mirror_selfie'],
     primaryCategory: 'mirror_selfie',
-    bodyStandardText: `Silhueta feminina curvilínea em formato ampulheta com proporções anatomicamente naturais (Padrão Mestra Iara):
-- Cintura visivelmente marcada e estreita em relação aos quadris.
-- Quadris largos, arredondados e bem definidos.
-- Glúteos naturalmente volumosos e arredondados.
-- Coxas volumosas, cheias e proporcionais ao quadril.
-- Busto de médio a cheio, abdômen natural e transição orgânica entre cintura, quadril e coxas.`,
-    skinAndRealismText: `Pele clara a morena-clara com subtom neutro ou levemente quente, textura humana realista com poros discretamente perceptíveis e dobras naturais. Proibido pele artificialmente lisa, efeito plástico ou porcelana.`,
-    hairIdentityText: `CARACTERÍSTICA FIXA DA MESTRA IARA — CABELO CACHEADO ESCURO:
-- Cabelo comprido abaixo dos ombros (até a região das costas).
-- Tonalidade castanho-escura a preta.
-- Cachos naturais e bem definidos, textura cacheada com movimento, volume natural e fios realistas.`,
-    accessoriesIdentityText: `ACESSÓRIOS EXCLUSIVOS DA MESTRA IARA (OBRIGATÓRIO):
-- COLAR ÚNICO: Exatamente UM único colar delicado de corrente fina dourada com pequeno pingente em formato de coração centralizado na região do colo (NUNCA adicionar vários colares sobrepostos).
-- PULSEIRAS: Obrigatoriamente UMA pulseira fina e delicada dourada em CADA pulso (nos dois pulsos).
-- ANÉIS (PROIBIDO): AUSÊNCIA TOTAL DE ANÉIS. Não colocar nenhum anel ou aliança nos dedos em nenhuma circunstância.
-- UNHAS: Naturais e bem cuidadas, comprimento curto a médio, esmalte nude, rosado ou natural.`,
-    lightingAndCameraText: `Fotografia vertical 9:16 espontânea feita por smartphone diante do espelho, iluminação ambiente suave, difusa e equilibrada.`,
+    bodyStandardText: `PADRÃO CORPORAL — MESTRA IARA (PRIORIDADE MÁXIMA):
+Mulher adulta jovem com silhueta feminina CURVILÍNEA E ATLÉTICA, aparência fitness natural e proporções harmoniosas (mulher que pratica atividade física, sem musculatura exagerada ou aparência de fisiculturista).
+- Cintura estreita e bem definida; abdômen relativamente plano.
+- Quadris arredondados e proporcionais.
+- Glúteos naturalmente volumosos e projetados.
+- Coxas cheias, torneadas e proporcionais; pernas com aparência atlética e volume natural.
+- Busto médio a cheio, proporcional; ombros harmoniosos; braços proporcionais com leve definição muscular.
+CARACTERÍSTICA PRINCIPAL: cintura marcada + quadris arredondados + glúteos volumosos + coxas torneadas, com curvas evidentes.
+PROIBIDO: mulher extremamente magra, quadris estreitos, pernas finas, corpo reto ou sem curvas; exagerar artificialmente os glúteos; modelo excessivamente musculosa. Preservar proporções anatômicas naturais.
+NÃO copiar o corpo da pessoa/manequim da foto do produto: da foto do produto copiar somente a roupa.`,
+    skinAndRealismText: `Pele clara a morena-clara com subtom predominantemente QUENTE, tonalidade natural e aparência levemente bronzeada e saudável.
+- Textura humana realista, poros discretamente perceptíveis, pequenas variações naturais de tonalidade, pequenas imperfeições e dobras anatômicas preservadas nos braços, pernas, colo e abdômen.
+- PROIBIDO: pele de plástico, efeito porcelana, aparência de boneca, pele artificialmente perfeita, brilho exagerado, efeito de óleo bronzeador, reflexos excessivos ou filtros que eliminem as imperfeições.
+A modelo deve parecer uma mulher real fotografada com smartphone.`,
+    hairIdentityText: `CARACTERÍSTICA FIXA DA MESTRA IARA — CABELO CACHEADO: comprido abaixo dos ombros (preferencialmente até as costas), castanho-escuro a preto, textura CACHEADA com cachos naturais e definidos, volumoso com volume equilibrado, caindo sobre os ombros e costas, fios saudáveis com brilho natural (cachos não artificiais). Proibido como padrão: cabelo curto, loiro, completamente liso ou ondas muito abertas.`,
+    faceAndMakeupText: `Quando o rosto estiver visível: aparência adulta jovem, maquiagem discreta, lábios em tons naturais, pele com textura realista, aparência saudável e expressão espontânea (sem aspecto de boneca ou maquiagem carregada).`,
+    accessoriesIdentityText: `ACESSÓRIOS EXCLUSIVOS DA MESTRA IARA (OBRIGATÓRIO — estética delicada e dourada):
+- COLAR (fixo): SEMPRE exatamente UM ÚNICO colar delicado de corrente fina dourada, com pequeno pingente ou detalhe metálico, minimalista. PROIBIDO colares em camadas, gargantilha combinada com outras correntes ou pingentes grandes.
+- PULSEIRAS (fixo): pulseiras delicadas de corrente fina dourada nos DOIS pulsos (uma ou mais discretas em cada), design minimalista, aparência de joias reais. Nunca deixar um pulso visível sem pulseira.
+- ANÉIS: PROIBIDOS — zero anéis, zero alianças, dedos sem joias.
+- UNHAS: comprimento médio, formato delicado levemente arredondado ou amendoado, esmalte nude rosado, rosa claro ou rosa leitoso, acabamento natural e discretamente brilhante, manicure profissional. Sem unhas muito compridas, pontiagudas, escuras ou decoradas.`,
+    lightingAndCameraText: `Fotografia vertical 9:16 espontânea de moda feita com smartphone (selfie no espelho), câmera aproximadamente na altura do tórax, ângulo frontal ou de três quartos (perfil lateral permitido), postura descontraída. Iluminação interna suave, natural e LEVEMENTE QUENTE, exposição equilibrada, sombras naturais, contraste moderado, tons de pele realistas e boa visibilidade dos detalhes da roupa, sem brilho artificial, sem reflexos exagerados na pele e sem iluminação dramática de estúdio.`,
     movementPromptText: `Vídeo vertical 9:16 de 10 segundos hiper-realista. Use a imagem de referência anexada como ponto de partida visual absoluto e reproduza rigorosamente a sequência de movimentos descrita abaixo, respeitando a ordem, o tempo, a continuidade e a naturalidade de cada gesto.
 
 **PRESERVAÇÃO DE IDENTIDADE E PRODUTO:**
@@ -351,20 +364,30 @@ Iniciar uma nova rotação suave do corpo para uma posição de três quartos, d
       'https://excursaomdr.s3.sa-east-1.amazonaws.com/VIDEOS+GALERIA+AURORA/VIDEO+MESTRE+DUDA+BY+5+VIDEOS.mp4',
     categories: ['mirror_selfie'],
     primaryCategory: 'mirror_selfie',
-    bodyStandardText: `Silhueta feminina curvilínea em formato ampulheta com proporções anatômicas naturais (Padrão Mestra Duda):
-- Cintura bem marcada, visivelmente mais estreita que os quadris.
-- Quadris arredondados e definidos, glúteos naturalmente volumosos e coxas cheias e proporcionais.
-- Busto de médio a cheio, braços relativamente esguios e ombros harmoniosos.`,
-    skinAndRealismText: `Pele clara a clara-média com subtom neutro ou levemente quente, textura humana realista com poros discretamente perceptíveis e variações naturais. Proibido pele plástica ou efeito porcelana.`,
-    hairIdentityText: `CARACTERÍSTICA DA MESTRA DUDA — CABELO LISO CASTANHO-CLARO A MÉDIO:
-- Cabelo comprido abaixo dos ombros (até a região das costas), textura predominantemente lisa com leve ondulação natural nas pontas.
-- Tonalidade castanho-claro a castanho-médio com reflexos/mechas discretamente mais claras.`,
-    accessoriesIdentityText: `Acessórios delicados predominantemente dourados (Identidade Mestra Duda):
-- COLAR: Um único colar delicado de corrente fina dourada com pequeno pingente centralizado (coração, medalhinha ou ponto de luz minimalista) próximo à base do pescoço.
-- PULSEIRAS: Pulseiras finas e delicadas douradas nos pulsos.
-- ANÉIS: Anéis delicados dourados/metálicos discretos nos dedos.
-- UNHAS: Bem cuidadas, comprimento curto a médio, esmalte nude, rosado ou natural.`,
-    lightingAndCameraText: `Fotografia vertical 9:16 espontânea de smartphone diante do espelho, iluminação ambiente suave, difusa e realista.`,
+    bodyStandardText: `PADRÃO CORPORAL — MESTRA DUDA (PRIORIDADE MÁXIMA):
+Mulher adulta jovem com corpo feminino ESGUIO, aparência fitness natural e curvas moderadas, silhueta proporcional e aparência saudável e naturalmente atlética.
+- Cintura estreita e bem definida.
+- Abdômen relativamente plano.
+- Quadris arredondados e proporcionais.
+- Glúteos naturalmente arredondados.
+- Coxas torneadas, com volume moderado; pernas proporcionais e visualmente alongadas.
+- Busto proporcional à estrutura corporal.
+- Braços delicados e relativamente esguios; ombros proporcionais.
+CARACTERÍSTICA PRINCIPAL: cintura definida + abdômen relativamente plano + quadris arredondados + pernas torneadas.
+PROIBIDO: modelo extremamente magra, sem curvas ou com corpo reto; modelo excessivamente musculosa; exagerar artificialmente quadris, glúteos ou coxas. NÃO usar a silhueta mais volumosa da Mestra Ana Maria. Preservar proporções anatômicas realistas.
+NÃO copiar o corpo da pessoa/manequim da foto do produto: da foto do produto copiar somente a roupa.`,
+    skinAndRealismText: `Pele clara a morena-clara com subtom neutro ou levemente quente, aparência saudável e tonalidade natural (leve aspecto bronzeado quando compatível com a iluminação).
+- Textura humana realista, poros discretamente perceptíveis, pequenas variações naturais de tonalidade, dobras anatômicas e pequenas imperfeições naturais nas pernas, braços, colo e abdômen.
+- PROIBIDO: pele de plástico, efeito porcelana, aparência de boneca, pele excessivamente lisa, brilho artificial de óleo bronzeador, reflexos exagerados ou filtros que eliminem as imperfeições.
+A modelo deve parecer uma mulher real fotografada com smartphone.`,
+    hairIdentityText: `CABELO — MESTRA DUDA: cabelo comprido abaixo dos ombros, tonalidade castanho-claro a loiro-escuro, predominantemente liso, fios alinhados, caimento natural, divisão central ou levemente lateral, aparência saudável com brilho natural dos fios. Pequenas variações de tom e posição são permitidas; não usar cabelo extremamente curto.`,
+    faceAndMakeupText: `Quando o rosto estiver visível: aparência adulta jovem, maquiagem discreta, lábios em tons rosados naturais, pele com textura realista, expressão natural e espontânea (sem maquiagem carregada).`,
+    accessoriesIdentityText: `ACESSÓRIOS — IDENTIDADE MESTRA DUDA (delicados, discretos e predominantemente dourados):
+- PULSEIRAS (obrigatório): pulseiras finas e delicadas de corrente dourada nos DOIS pulsos, design minimalista, aparência de joias reais (uma ou mais discretas em cada pulso). Sem relógios grandes ou acessórios chamativos.
+- ANÉIS: não obrigatórios; não adicionar vários anéis automaticamente.
+- COLARES: não obrigatórios (a ausência de colar é compatível); se usados, corrente fina e delicada dourada.
+- UNHAS: comprimento médio, formato quadrado suavizado ou levemente arredondado, esmalte nude rosado ou rosa muito claro, acabamento natural ou levemente brilhante, manicure delicada. Sem unhas muito compridas, pontiagudas, escuras ou decoradas.`,
+    lightingAndCameraText: `Fotografia vertical 9:16 espontânea de moda feita com smartphone (selfie no espelho), câmera aproximadamente na altura do tórax, ângulo frontal ou de três quartos, postura descontraída. Iluminação clara, suave e equilibrada (luz ambiente natural ou artificial frontal/lateral suave), exposição equilibrada, sombras discretas, cores naturais e tons de pele realistas, sem brilho artificial excessivo nem iluminação dramática de estúdio.`,
     movementPromptText: `Crie um vídeo vertical 9:16 hiper-realista de 10 segundos de demonstração da peça com movimentos naturais, espontâneos e fluidos, seguindo o estilo de demonstração comercial de moda da Mestra Duda. Use a imagem de referência anexada como ponto de partida visual absoluto.
 
 **PRESERVAÇÃO DE IDENTIDADE E PRODUTO:**
@@ -407,21 +430,28 @@ Enquanto demonstra a peça, realizar pequenas mudanças naturais de postura:
       'https://excursaomdr.s3.sa-east-1.amazonaws.com/VIDEOS+GALERIA+AURORA/VIDEO+MESTRE+NAY+VITRINE.mp4',
     categories: ['mirror_selfie'],
     primaryCategory: 'mirror_selfie',
-    bodyStandardText: `Silhueta feminina curvilínea em formato ampulheta com forte contraste entre cintura e quadril (Padrão Mestra Nay):
-- Cintura estreita, bastante definida e visivelmente marcada.
-- Quadris largos, arredondados e proporcionais, glúteos naturalmente volumosos e coxas cheias.
-- Busto de médio a cheio e braços relativamente esguios e proporcionais.`,
-    skinAndRealismText: `Pele clara a morena-clara com subtom neutro ou levemente quente, textura humana realista com poros discretamente perceptíveis e dobras anatômicas naturais. Proibido pele plástica ou porcelana.`,
-    hairIdentityText: `CARACTERÍSTICA FIXA DA MESTRA NAY — CABELO LONGO ESCURO LISO COM DIVISÃO CENTRAL:
-- Cabelo comprido abaixo dos ombros (até as costas), tonalidade castanho-escura a preta.
-- Textura predominantemente lisa, divisão central, caimento reto e alinhado com brilho natural.`,
-    accessoriesIdentityText: `Acessórios delicados e minimalistas (Identidade Mestra Nay):
-- PULSEIRAS (OBRIGATÓRIO NOS DOIS PULSOS): Pulseiras finas e delicadas de corrente dourada nos DOIS pulsos.
-- ANÉIS: Anéis finos e delicados dourados nos dedos.
-- COLARES: Sem colar obrigatório (colo limpo ou no máximo uma corrente extremamente fina e discreta quando necessário).
-- UNHAS: Comprimento médio a médio-longo, formato oval ou levemente amendoado, esmalte rosado, nude ou natural.`,
-    lightingAndCameraText: `ILUMINAÇÃO PADRÃO CLARO E NATURAL DA MESTRA NAY:
-- Iluminação ambiente interna clara, luz frontal suave e difusa, exposição equilibrada e sombras discretas, sem escurecimento artificial do fundo e sem flash estourado.`,
+    bodyStandardText: `PADRÃO CORPORAL — MESTRA NAY (PRIORIDADE MÁXIMA):
+Mulher adulta jovem com silhueta feminina AMPULHETA BASTANTE EVIDENTE, curvas naturais e proporções harmoniosas.
+- Cintura estreita e bastante definida; região abdominal relativamente estreita, cintura visivelmente menor que a largura dos quadris.
+- Quadris largos, arredondados e volumosos, com projeção lateral e posterior natural.
+- Glúteos naturalmente volumosos e projetados (projeção posterior evidente no perfil), sem aparência artificial.
+- Coxas cheias, grossas e proporcionais aos quadris, com volume consistente da parte superior até a porção média; pernas com volume natural.
+- Busto de médio a cheio, proporcional; braços relativamente delicados; ombros harmoniosos em relação aos quadris.
+CARACTERÍSTICA MAIS IMPORTANTE: contraste entre a cintura estreita e os quadris largos, com glúteos arredondados e coxas volumosas.
+PROIBIDO: modelo extremamente magra, quadris estreitos, pernas finas, silhueta reta ou sem cintura, modelo apenas levemente acima do peso sem curvas evidentes. Não exagerar artificialmente glúteos ou quadris. NÃO é plus size: é uma mulher curvilínea com cintura marcada.
+NÃO copiar o corpo da pessoa/manequim da foto do produto: da foto do produto copiar somente a roupa.`,
+    skinAndRealismText: `Pele MORENA-CLARA com aparência levemente bronzeada e subtom predominantemente quente, aparência saudável.
+- Textura humana realista, poros discretamente perceptíveis, pequenas variações naturais de tonalidade, pequenas imperfeições e dobras anatômicas preservadas nos braços, pernas, colo e abdômen.
+- PROIBIDO: pele de plástico, efeito porcelana, aparência de boneca, pele excessivamente lisa, brilho oleoso, efeito artificial de óleo bronzeador, reflexos luminosos exagerados ou filtros que eliminem as imperfeições.
+A modelo deve parecer uma mulher real fotografada com smartphone.`,
+    hairIdentityText: `CARACTERÍSTICA FIXA DA MESTRA NAY — CABELO: comprido abaixo dos ombros (preferencialmente até as costas), castanho-escuro a preto, predominantemente LISO, divisão central, fios alinhados, caimento reto e natural, brilho natural de cabelo humano real. Proibido como padrão: cabelo curto, loiro, ruivo ou cacheado.`,
+    faceAndMakeupText: `Quando o rosto estiver visível: aparência adulta jovem, maquiagem discreta, lábios em tons naturais ou rosados, pele com textura realista, expressão espontânea (sem maquiagem carregada ou aspecto de boneca).`,
+    accessoriesIdentityText: `ACESSÓRIOS — IDENTIDADE MESTRA NAY (delicados, predominantemente dourados):
+- PULSEIRAS (característica recorrente): pulseiras delicadas de corrente dourada fina nos DOIS pulsos, design minimalista, reflexos metálicos discretos, aparência de joias reais. Sem relógios grandes ou pulseiras chamativas.
+- COLARES: não obrigatórios (ausência de colar é compatível); se usados, corrente fina dourada com pequeno pingente minimalista.
+- ANÉIS: delicados, finos, preferencialmente dourados, em quantidade moderada.
+- UNHAS (característica importante): comprimento médio a médio-longo, formato AMENDOADO com pontas suavemente arredondadas, esmalte rosado, nude rosado ou rosa leitoso, acabamento delicado e levemente brilhante, manicure profissional. Sem unhas extremamente compridas, pontiagudas, escuras ou decoradas.`,
+    lightingAndCameraText: `ILUMINAÇÃO PADRÃO CLARO E NATURAL DA MESTRA NAY: fotografia vertical 9:16 espontânea feita com smartphone diante do espelho, câmera na altura do tórax, ângulo frontal ou de três quartos (perfil lateral permitido para valorizar a silhueta). Iluminação clara, suave e equilibrada, exposição equilibrada, sombras discretas, cores naturais, boa visibilidade dos detalhes da roupa, sem reflexos exagerados na pele, sem escurecer a imagem e sem iluminação dramática de estúdio.`,
     movementPromptText: `Crie um vídeo vertical 9:16 hiper-realista de 10 segundos com uma demonstração comercial da peça com movimentos naturais, delicados e contínuos, seguindo o estilo de apresentação da referência Mestra Nay. Use a imagem de referência anexada como ponto de partida visual absoluto.
 
 **PRESERVAÇÃO DE IDENTIDADE E PRODUTO:**
@@ -460,25 +490,25 @@ Preservar integralmente a mesma modelo da imagem de referência (cabelo longo es
     primaryCategory: 'com_rosto',
     preferredScenarioId: 'cenario_24',
     allowsFaceByDefault: true,
-    bodyStandardText: `Silhueta feminina esguia e curvilínea em formato ampulheta com proporções anatômicas naturais (Padrão Mestra Catza):
-- Cintura bem definida e marcada, quadris arredondados e proporcionais, glúteos naturalmente arredondados e coxas com volume proporcional.
-- Busto de médio a cheio, abdômen natural e braços relativamente finos e proporcionais.`,
-    skinAndRealismText: `Pele clara-média a morena-clara com subtom predominantemente quente, textura humana realista com poros discretamente perceptíveis. O flash deve iluminar a pele de maneira fotográfica e realista, sem aparência plástica ou oleosa.`,
-    hairIdentityText: `CARACTERÍSTICA FIXA DA MESTRA CATZA — CABELO LONGO PRETO/CASTANHO MUITO ESCURO E LISO:
-- Cabelo comprido abaixo dos ombros (até as costas), tonalidade preta ou castanho muito escuro, textura predominantemente lisa com divisão central e caimento natural ao redor dos ombros.`,
-    faceAndMakeupText: `ROSTO E MAQUIAGEM DA MESTRA CATZA (QUANDO NO MODO COM ROSTO / UGC):
-- Rosto feminino delicado, jovem e harmonioso com traços faciais proporcionais.
-- Sobrancelhas escuras e bem definidas, olhos com maquiagem marcada, cílios destacados e delineado escuro.
-- Lábios naturalmente volumosos com batom nude, marrom-rosado ou rosado de acabamento levemente brilhante (gloss discreto).`,
-    accessoriesIdentityText: `Acessórios delicados dourados (Identidade Mestra Catza):
-- COLAR: Um único colar delicado de corrente fina dourada com pequeno pingente centralizado.
-- PULSEIRAS: Pulseiras finas e delicadas douradas nos pulsos.
-- ANÉIS: Anéis delicados dourados/metálicos discretos.
-- UNHAS: Comprimento curto a médio, esmalte nude, rosado ou vermelho.`,
-    lightingAndCameraText: `ASSINATURA FOTOGRÁFICA OBRIGATÓRIA DA MESTRA CATZA — FLASH DIRETO DE SMARTPHONE E FUNDO SUBEXPOSTO:
-- Fotografia vertical 9:16 de espelho feita com smartphone utilizando o FLASH TRASEIRO ATIVADO apontado para o espelho (com reflexo luminoso realista do flash próximo à câmera do celular).
-- Luz frontal direta do flash destacando nitidamente a modelo e a roupa em primeiro plano.
-- O ambiente ao fundo deve apresentar exposição ligeiramente reduzida (fundo um pouco mais escuro com sombras ambientais mais profundas), criando contraste autêntico entre a modelo iluminada pelo flash e o cômodo ao fundo.`,
+    bodyStandardText: `PADRÃO CORPORAL — MESTRA CATZA:
+Mulher adulta jovem com silhueta feminina ESGUIA E CURVILÍNEA, proporções naturais e aparência saudável.
+- Corpo feminino proporcional, cintura definida, abdômen naturalmente definido.
+- Quadris arredondados e proporcionais.
+- Busto proporcional à estrutura corporal.
+- Braços delicados; pernas proporcionais; silhueta harmoniosa.
+PROIBIDO: modelo extremamente magra ou excessivamente musculosa; exagerar artificialmente as curvas. Preservar proporções anatômicas realistas.
+NÃO copiar o corpo da pessoa/manequim da foto do produto: da foto do produto copiar somente a roupa.`,
+    skinAndRealismText: `Pele clara a morena-clara com subtom neutro a quente, aparência natural e tonalidade levemente quente.
+- Textura humana realista, poros discretamente perceptíveis, pequenas variações de tonalidade e pequenas imperfeições preservadas no rosto, colo, braços e corpo.
+- O flash pode produzir reflexos naturais na pele, mas sem transformar a textura em superfície artificial.
+- PROIBIDO: pele de plástico, efeito porcelana, aparência de boneca, pele excessivamente lisa, brilho artificial de óleo, bronzeamento exagerado ou filtros que eliminem as imperfeições.`,
+    hairIdentityText: `CARACTERÍSTICA FIXA DA MESTRA CATZA — CABELO: comprido abaixo dos ombros (preferencialmente até as costas), preto ou castanho muito escuro, predominantemente LISO, divisão central, fios alinhados, caimento reto nas laterais do rosto, brilho natural e volume moderado, com fios individuais de cabelo humano real. Proibido como padrão: cabelo curto, loiro ou cacheado.`,
+    faceAndMakeupText: `ROSTO E MAQUIAGEM DA MESTRA CATZA (rosto visível no espelho): aparência feminina adulta jovem, rosto delicado e proporcional, maquiagem mais elaborada com acabamento glamouroso porém real — sobrancelhas escuras e bem definidas, olhos destacados, cílios alongados e volumosos, delineado discreto, sombras em tons neutros/marrons, blush suave, lábios naturalmente volumosos com batom nude rosado, malva ou rosa queimado e gloss com brilho delicado. Sem rosto artificialmente perfeito e preservando a textura natural da pele.`,
+    accessoriesIdentityText: `MÃOS E ACESSÓRIOS — IDENTIDADE MESTRA CATZA:
+- MÃOS: femininas, proporcionais, dedos relativamente compridos e delicados, pele com textura humana, gestos elegantes e espontâneos.
+- UNHAS (característica importante): comprimento médio a longo, formato AMENDOADO com pontas suavemente arredondadas, esmalte MARROM, CHOCOLATE ou NUDE ESCURO, acabamento brilhante, manicure profissional. Sem unhas pontiagudas, excessivamente compridas, decoradas ou neon.
+- ACESSÓRIOS: discretos, delicados, femininos e realistas, compatíveis com a roupa (sem quantidade obrigatória e sem grandes conjuntos de joias), sem esconder detalhes do produto.`,
+    lightingAndCameraText: `ASSINATURA FOTOGRÁFICA OBRIGATÓRIA DA MESTRA CATZA — FLASH FRONTAL INTENSO: selfie vertical 9:16 no espelho feita com smartphone com o FLASH LIGADO — luz frontal intensa, ponto luminoso evidente próximo à câmera com reflexo característico no espelho, iluminação direta sobre rosto, corpo e roupa. Ambiente relativamente MAIS ESCURO que a área iluminada pelo flash, tons quentes e amarelados, fundo discretamente escurecido, contraste entre primeiro plano iluminado e fundo, atmosfera de foto noturna/interna com pouca luz e exposição geral ligeiramente mais escura que uma foto de catálogo. Não clarear o ambiente, não substituir o flash por luz suave de estúdio, não criar foto uniformemente iluminada. Smartphone visível, ângulo frontal ou de três quartos, postura descontraída.`,
     movementPromptText: `Crie um vídeo vertical 9:16 hiper-realista de 10 segundos de demonstração comercial de moda com movimentos naturais, delicados e espontâneos, seguindo o estilo de apresentação da referência Mestra Catza. Use a imagem de referência anexada como ponto de partida visual absoluto.
 
 **PRESERVAÇÃO DE IDENTIDADE, ILUMINAÇÃO COM FLASH E PRODUTO:**
@@ -529,7 +559,7 @@ Privilegiar gestos delicados com a mão livre na parte superior da peça:
 - UNHAS (PRIORIDADE MÁXIMA): Esmalte VERMELHO VIVO intenso e brilhante, comprimento curto a médio, formato quadrado com cantos suavemente arredondados, manicure impecável.
 - PULSEIRAS DOURADAS ASSIMÉTRICAS: No pulso direito, composição de 2 a 3 pulseiras finas douradas delicadas sobrepostas com pequenos pingentes; no pulso esquerdo, 1 pulseira fina dourada minimalista.
 - ANÉIS: Anéis finos e delicados dourados em diferentes dedos.
-- TATUAGENS MINIMALISTAS: Pequenos desenhos geométricos em traço fino e discreto na região do punho/antebraço e dorso da mão esquerda.`,
+- ZERO TATUAGENS (REGRA OBRIGATÓRIA): É expressamente proibido qualquer tatuagem nas mãos, dedos, punhos ou antebraços. A pele deve ser 100% limpa, sem tatuagens, sem desenhos e sem marcas corporais.`,
     lightingAndCameraText: `Câmera posicionada diretamente acima da cama em ângulo superior POV de 90 graus (formato vertical 9:16), iluminação clara, suave e difusa com sombras naturais.`,
     movementPromptText: `Crie um vídeo vertical hiper-realista 9:16 de 10 segundos, em estilo POV (Point of View em primeira pessoa, câmera fixa a 90 graus acima da cama), reproduzindo fielmente a sequência de unboxing e demonstração manual descrita abaixo. Use a imagem inicial anexada como referência soberana.
 
@@ -543,7 +573,7 @@ Reproduzir os dois produtos sobre a cama com fidelidade absoluta às imagens ori
 Mostrar exclusivamente duas mãos femininas e antebraços entrando pela parte inferior do enquadramento:
 - Pele clara a morena-clara com textura realista.
 - Unhas com esmalte vermelho vivo e brilhante (formato quadrado arredondado).
-- Anéis finos dourados nos dedos, 2 a 3 pulseiras douradas delicadas no pulso direito e 1 pulseira fina dourada no pulso esquerdo, além de pequenas tatuagens minimalistas de traço fino próximas ao pulso/mão esquerda.
+- Anéis finos dourados nos dedos, 2 a 3 pulseiras douradas delicadas no pulso direito e 1 pulseira fina dourada no pulso esquerdo, com mãos e antebraços completamente limpos sem nenhuma tatuagem.
 
 **3. COREOGRAFIA — 10 SEGUNDOS:**
 

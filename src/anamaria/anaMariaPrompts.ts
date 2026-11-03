@@ -151,8 +151,8 @@ REGRA DE ADAPTAÇÃO COM INTERVENÇÃO MÍNIMA: As instruções do usuário acim
       : 'Cenário POV selecionado';
 
     const handsDescription = isMale
-      ? `Mostrar exclusivamente duas mãos masculinas adultas e parte dos antebraços entrando pela parte inferior do enquadramento em primeira pessoa (POV): pele realista com poros naturais, unhas curtas e limpas sem esmalte, e um relógio masculino discreto em um dos pulsos.`
-      : `${master.bodyStandardText}\n${master.skinAndRealismText}\n\n## ACESSÓRIOS E MANICURE DAS MÃOS (${master.shortName.toUpperCase()})\n${master.accessoriesIdentityText}`;
+      ? `Mostrar exclusivamente duas mãos masculinas adultas e parte dos antebraços entrando pela parte inferior do enquadramento em primeira pessoa (POV): pele realista com poros naturais, unhas curtas e limpas sem esmalte, e um relógio masculino discreto em um dos pulsos. REGRA OBRIGATÓRIA: mãos e antebraços 100% limpos, SEM NENHUMA TATUAGEM.`
+      : `${master.bodyStandardText}\n${master.skinAndRealismText}\n\n## ACESSÓRIOS E MANICURE DAS MÃOS (${master.shortName.toUpperCase()})\n${master.accessoriesIdentityText}\n- ZERO TATUAGENS (REGRA OBRIGATÓRIA): Mãos, dedos, punhos e antebraços completamente limpos, SEM NENHUMA TATUAGEM, desenho ou marca corporal.`;
 
     const povPrompt = `${priorityOverrideBlock}Crie uma fotografia comercial hiper-realista vertical 9:16 em estilo POV (Point of View em primeira pessoa, câmera posicionada diretamente acima da cama em ângulo superior de 90 graus), apresentando o produto das fotos de referência sobre a cama do ${povScenarioLabel} anexado.
 
@@ -170,6 +170,8 @@ ${
 Preservar com fidelidade absoluta (1:1) a cor exata, modelagem, corte, decote, costuras, textura do tecido, botões, rendas ou estampas do produto anexado. Nunca modificar ou redesenhar a construção da peça.
 
 ## 3. IDENTIDADE VISUAL DAS MÃOS E ACESSÓRIOS (${master.shortName.toUpperCase()})
+REGRA OBRIGATÓRIA DE ZERO TATUAGENS NO MODO POV:
+É TERMINANTEMENTE PROIBIDO qualquer tatuagem, desenho, tinta ou marca nas mãos, dedos, punhos ou antebraços. A pele deve ser 100% limpa, pura e natural.
 ${handsDescription}
 ${
   hasUserInstructions

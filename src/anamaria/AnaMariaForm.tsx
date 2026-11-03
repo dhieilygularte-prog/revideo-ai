@@ -70,6 +70,14 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   onOpenHistory,
   theme = 'ametista',
 }) => {
+  // Sincronização automática do gerador de imagem: Homem ou POV mudam automaticamente para OpenAI
+  useEffect(() => {
+    if (form.presentationMode === 'pov' || form.influencer === 'Homem') {
+      if (form.imageModel !== 'openai') {
+        onChange((prev) => ({ ...prev, imageModel: 'openai' }));
+      }
+    }
+  }, [form.presentationMode, form.influencer, form.imageModel, onChange]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -268,6 +276,32 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     }
   };
 
+  /**
+   * Seleção automática do gerador de imagem:
+   * - POV ou Homem → OpenAI
+   * - Ao sair de POV/Homem (Mulher em Mirror Selfie / Com Rosto) → SeaDream 5.0 Pro
+   * O usuário continua podendo trocar manualmente o gerador depois.
+   */
+  const resolveAutoImageModel = (
+    prev: AnaMariaFormState,
+    nextMode: AnaMariaPresentationMode | undefined,
+    nextInfluencer: AnaMariaFormState['influencer']
+  ): AnaMariaFormState['imageModel'] => {
+    const wasOpenAiCase = prev.presentationMode === 'pov' || prev.influencer === 'Homem';
+    const isOpenAiCase = nextMode === 'pov' || nextInfluencer === 'Homem';
+    if (isOpenAiCase) return 'openai';
+    if (wasOpenAiCase) return 'seedream_5_0_pro';
+    return prev.imageModel;
+  };
+
+  const handleSelectInfluencer = (nextInfluencer: AnaMariaFormState['influencer']) => {
+    onChange((prev) => ({
+      ...prev,
+      influencer: nextInfluencer,
+      imageModel: resolveAutoImageModel(prev, prev.presentationMode, nextInfluencer),
+    }));
+  };
+
   const handleSelectPresentationMode = (newMode: AnaMariaPresentationMode) => {
     if (newMode === 'pov') {
       POV_SCENARIO_GALLERY_ITEMS.forEach((s) => preloadScenarioUrl(s.fullUrl));
@@ -286,6 +320,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       return {
         ...prev,
         presentationMode: newMode,
+        imageModel: resolveAutoImageModel(prev, newMode, prev.influencer),
         selectedMasterId: nextMaster.id,
         selectedScenarioId: shouldResetScenario ? undefined : prev.selectedScenarioId,
         selectedScenarioNumber: shouldResetScenario ? undefined : prev.selectedScenarioNumber,
@@ -342,6 +377,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       return {
         ...prev,
         presentationMode: nextMode,
+        imageModel: resolveAutoImageModel(prev, nextMode, prev.influencer),
         selectedMasterId: item.id,
         selectedScenarioId: shouldResetScenario ? undefined : prev.selectedScenarioId,
         selectedScenarioNumber: shouldResetScenario ? undefined : prev.selectedScenarioNumber,
@@ -650,7 +686,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           <div className="grid grid-cols-2 gap-2.5">
             <button
               type="button"
-              onClick={() => onChange((prev) => ({ ...prev, influencer: 'Mulher' }))}
+              onClick={() => handleSelectInfluencer('Mulher')}
               className={`p-3 rounded-xl border text-center transition-all cursor-pointer text-xs flex items-center justify-center gap-2 ${
                 form.influencer === 'Mulher' ? activeOptionButtonClass : inactiveOptionButtonClass
               }`}
@@ -662,7 +698,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => onChange((prev) => ({ ...prev, influencer: 'Homem' }))}
+              onClick={() => handleSelectInfluencer('Homem')}
               className={`p-3 rounded-xl border text-center transition-all cursor-pointer text-xs flex items-center justify-center gap-2 ${
                 form.influencer === 'Homem' ? activeOptionButtonClass : inactiveOptionButtonClass
               }`}

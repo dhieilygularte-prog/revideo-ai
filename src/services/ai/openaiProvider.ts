@@ -651,14 +651,22 @@ ${cleanPrompt}`;
             : userRequestedSlimOpenAI
             ? `[USER-SPECIFIED BODY SILHOUETTE]:
 - Follow the exact body silhouette requested by the user in USER DIRECTIVE (${additionalInstructions.trim()}), while preserving the Mestra's hair, skin, and accessories.`
-            : `[SOVEREIGN MESTRA CURVACEOUS HOURGLASS BODY MANDATE — DO NOT COPY PRODUCT MODEL BODY]:
-- CRITICAL ISOLATION RULE: Reference Image 2+ is ONLY for the garment/clothing design. DO NOT copy the thin/slim body, straight waist, or narrow hips of the catalog model or mannequin in Reference Image 2+!
-- The woman MUST have the EXACT curvaceous Brazilian hourglass physique ("corpo violão / ampulheta") defined in the selected Mestra's specification below:
-  * Narrow, well-defined, sculpted waist ("cintura fina e bem marcada").
-  * Wide, rounded, prominent feminine hips ("quadris largos, arredondados e bem desenhados") creating a strong waist-to-hip curve.
-  * Full, shapely, voluminous toned thighs and legs ("coxas cheias, torneadas e volumosas").
-  * Medium-to-full proportionate natural bust and feminine posture.
-- STRICTLY FORBIDDEN: NEVER generate a skinny runway model, straight/boyish torso without waist definition, narrow flat hips, or thin stick legs.`;
+            : (selectedMasterId === 'mestra_ana_maria'
+            ? `[SOVEREIGN MESTRA ANA MARIA BRAZILIAN FITNESS HOURGLASS BODY MANDATE — DO NOT COPY SLIM PRODUCT MODEL]:
+- CRITICAL ISOLATION RULE: Reference Image 2+ is ONLY for the garment/clothing design. DO NOT copy the thin/slender body or thin legs of the catalog model/mannequin in Reference Image 2+!
+- The woman MUST have the EXACT Brazilian fitness hourglass physique ("corpo violão fitness / coxuda sarada") defined below:
+  * WAIST: Ultra-narrow, tiny cinched sculpted waist ("cintura finíssima e bem marcada") creating a dramatic contrast with the hips.
+  * HIPS: Very wide, rounded, prominent feminine hips flaring out strongly.
+  * GLUTES: Full, round, elevated, dense glutes filling and shaping the garment.
+  * THIGHS (KEY VISUAL TRAIT): EXTREMELY THICK, muscular, voluminous toned gym thighs and quadriceps that fill the shorts/garment powerfully (heavy, voluminous athletic legs, NOT skinny runway model legs).
+  * STOMACH: Flat, tight, smooth toned natural abdomen.
+  * UPPER BODY: Slender toned arms, delicate shoulders, medium natural bust.
+  * SKIN: Fair/light natural Caucasian skin tone with healthy undertone, 100% realistic unretouched texture.
+- STRICTLY FORBIDDEN: NEVER generate a skinny fashion model, straight waistless torso, narrow flat hips, or thin stick legs.`
+            : `[SOVEREIGN MESTRA BODY MANDATE — DO NOT COPY PRODUCT MODEL BODY]:
+- CRITICAL ISOLATION RULE: Reference Image 2+ is ONLY for the garment/clothing design. DO NOT copy the body shape of the catalog model or mannequin in Reference Image 2+!
+- The woman MUST have EXACTLY the body, skin tone, hair, nails and accessories defined in the selected Mestra's specification below (section "PADRÃO CORPORAL E PELE"), with realistic anatomical proportions.
+- STRICTLY FORBIDDEN: straight/boyish torso without waist definition, or any body that contradicts the Mestra's specification.`);
 
           const allowsFace =
             presentationMode === 'com_rosto' ||

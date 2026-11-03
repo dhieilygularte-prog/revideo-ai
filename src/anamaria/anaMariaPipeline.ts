@@ -481,8 +481,7 @@ export async function runAnaMariaPipeline(
     throw new Error(imgData?.error || 'Não foi possível obter a imagem gerada do servidor.');
   }
 
-  onStatusMessage('Calibrando resolução em alta definição 1080x1920 (Full HD 9:16)...');
-  const generatedImageUrl = await ensureHighResAnaMariaDataUrl(imgData.imageUrl, 1080, 1920);
+  const generatedImageUrl = imgData.imageUrl;
 
   onProgress('completed', 100);
   onStatusMessage('Geração concluída com sucesso!');
@@ -584,7 +583,7 @@ export async function regenerateAnaMariaImage(params: {
     throw new Error(imgData?.error || 'Falha ao refazer a imagem.');
   }
 
-  const highResUrl = await ensureHighResAnaMariaDataUrl(imgData.imageUrl, 1080, 1920);
+  const highResUrl = imgData.imageUrl;
 
   const audit: AnaMariaAudit = {
     score: 96,
@@ -644,7 +643,7 @@ export async function regenerateAnaMariaNewScenario(params: {
     throw new Error(imgData?.error || 'Falha ao gerar nova imagem com cenário trocado.');
   }
 
-  const highResUrl = await ensureHighResAnaMariaDataUrl(imgData.imageUrl, 1080, 1920);
+  const highResUrl = imgData.imageUrl;
 
   return { imageUrl: highResUrl, room: nextRoom };
 }
