@@ -224,8 +224,8 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     setIsUploading(true);
 
     try {
-      // Alta definição (1536px, qualidade 0.92) nas fotos do produto para preservar 100% de rendas, costuras e microtexturas
-      const b64Promises = filesToProcess.map((file) => compressAndResizeImage(file, 1536, 0.92));
+      // Otimização de alta fidelidade (1080px, qualidade 0.88) para fidelidade total de texturas sem lentidão de upload
+      const b64Promises = filesToProcess.map((file) => compressAndResizeImage(file, 1080, 0.88));
       const newPhotos = await Promise.all(b64Promises);
 
       onChange((prev) => ({

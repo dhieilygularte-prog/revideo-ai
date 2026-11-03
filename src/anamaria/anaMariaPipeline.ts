@@ -123,10 +123,10 @@ export async function compressImageForFastTransfer(
   quality = 0.85
 ): Promise<string> {
   if (typeof window === 'undefined' || !srcUrlOrBase64) return srcUrlOrBase64;
-  // Se for muito compacto (< 90 KB em base64) e já for JPEG, retorna direto
+  // Se for JPEG já otimizado (< 350 KB em base64), retorna direto para 0ms de espera
   if (
     srcUrlOrBase64.startsWith('data:image/jpeg;base64,') &&
-    srcUrlOrBase64.length < 90_000
+    srcUrlOrBase64.length < 350_000
   ) {
     return srcUrlOrBase64;
   }

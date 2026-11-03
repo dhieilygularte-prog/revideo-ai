@@ -146,17 +146,17 @@ export function resolveModelAttributesHierarchy(params: {
   let userEthnicityDirectivePt = '';
 
   if (isBlackUser) {
-    userEthnicitySummary = 'mulher negra com tom de pele chocolate escuro / marrom escuro quente e radiante';
-    userEthnicityDirectivePt = `REGRA DE INTERPRETAÇÃO ÉTNICA E TONALIDADE DE PELE — MULHER NEGRA / PELE PRETA (PRIORIDADE 1 SOBERANA):
-- TONALIDADE CALIBRADA E EQUILIBRADA (REFERÊNCIA FOTOGRÁFICA): A modelo DEVE ser uma MULHER NEGRA autêntica com tom de pele marrom escuro / chocolate escuro quente e luminoso (tonalidade rica, quente e radiante com viço saudável, cerca de 50% menos retinta que o ébano/preto carvão extremo, exatamente como o tom marrom escuro chocolate natural de uma mulher negra afro-brasileira).
-- TRAÇOS E REALISMO: Traços negros autênticos, proporções faciais e corporais harmoniosas e naturais, textura de pele humana real com poros visíveis, brilho e reflexos suaves da luz sobre a pele negra chocolate escuro hidratada, sem aspecto acinzentado, sem opacidade e sem efeito plástico.
-- LIMITES E PROIBIÇÕES: É TERMINANTEMENTE PROIBIDO gerar mulher branca, caucasiana, de pele clara ou pálida. Por outro lado, NÃO gerar preto-carvão/ébano impenetrável; a pele deve ter calor, nuances de chocolate escuro e vivacidade natural.
-- INDEPENDÊNCIA E PREVALÊNCIA: Esta tonalidade prevalece soberanamente sobre o padrão da Mestra e combina com biotipo Plus Size ou padrão preservando com precisão o tom chocolate quente.`;
-    userEthnicityDirectiveEnglish = `[SOVEREIGN PRIORITY 1 MANDATE — AUTHENTIC WARM DARK-CHOCOLATE BLACK WOMAN]:
-- BALANCED RICH SKIN TONE: The model MUST be an authentic Afro-Brazilian BLACK WOMAN with a rich, warm dark-chocolate / deep warm-brown skin tone (natural, glowing dark skin tone with warm undertones, perfectly balanced — about 50% softer than extreme jet-black ebony, exactly matching a healthy, luminous dark-brown Black woman).
-- AUTHENTIC FEATURES & TEXTURE: Authentic Black facial and bodily features, realistic skin pores, hydrated healthy glow with natural ambient highlights. Never ashy, never grayish, never artificial plastic wax.
-- STRICT EXCLUSIONS: Strictly FORBIDDEN: white, fair, light-skinned, caucasian, or pale models. Also avoid extreme pitch-black / obsidian / jet-black tint; her tone must be natural warm dark chocolate brown.
-- INDEPENDENCE: Sovereign Priority 1 instruction. Harmonizes seamlessly with any body shape (plus size or standard) while maintaining her warm dark-chocolate skin tone.`;
+    userEthnicitySummary = 'mulher negra com tom de pele bronze-chocolate quente, dourado e radiante';
+    userEthnicityDirectivePt = `REGRA DE INTERPRETAÇÃO ÉTNICA E TONALIDADE DE PELE — MULHER NEGRA / PELE PRETA (NOVA REFERÊNCIA OFICIAL):
+- TONALIDADE OFICIAL DE REFERÊNCIA (FOTO ATUALIZADA): A modelo DEVE ser uma MULHER NEGRA autêntica com tom de pele bronze-chocolate quente, dourado e luminoso (mais claro e aberto, exatamente conforme a foto de referência de mulher negra com pele bronze-aveludada e reflexos quentes/âmbar luminosos nos ombros, colo e pernas).
+- TEXTURA E ACABAMENTO: Pele negra com viço radiante natural e acabamento acetinado saudável. Textura de pele humana real com poros visíveis, sem aspecto acinzentado, sem opacidade e sem efeito plástico.
+- LIMITES E PROIBIÇÕES: É TERMINANTEMENTE PROIBIDO gerar mulher branca, caucasiana, de pele clara ou pálida. Por outro lado, PROIBIDO gerar tom preto-carvão/ébano retinto excessivamente escuro ou opaco; o tom deve ser o marrom bronze-chocolate quente, dourado e luminoso da modelo negra de referência.
+- PREVALÊNCIA SOBERANA: Esta tonalidade prevalece com autoridade máxima sobre a Mestra e combina perfeitamente com biotipo padrão ou Plus Size preservando o tom bronze-chocolate radiante.`;
+    userEthnicityDirectiveEnglish = `[SOVEREIGN PRIORITY 1 MANDATE — RADIANT WARM BRONZE-CHOCOLATE BLACK WOMAN]:
+- OFFICIAL REFERENCE SKIN TONE: The model MUST be an authentic BLACK WOMAN with a radiant, warm bronze-chocolate / golden-amber dark brown skin tone (lighter, warmer, and luminous, with glowing golden-bronze undertones, exactly matching the reference photo of a vibrant Black woman with healthy satin glow).
+- SATIN GLOW & REALISTIC TEXTURE: Hydrated, healthy skin with warm amber/bronze highlights across shoulders, décolletage, arms, and legs. Realistic skin pores, zero ashy/gray tone, zero plastic wax effect.
+- STRICT EXCLUSIONS: Strictly FORBIDDEN: white, fair, pale, or caucasian models. Also strictly avoid overly dark pitch-black / ebony / jet-black skin; her tone must be the luminous warm bronze-chocolate of the reference photo.
+- BIOTYPE HARMONY: Completely sovereign Priority 1 instruction. Applies seamlessly to both standard and plus-size bodies, preserving this radiant warm bronze-chocolate skin tone.`;
   } else if (isAsianUser) {
     userEthnicitySummary = 'mulher japonesa / asiática oriental';
     userEthnicityDirectivePt = 'A modelo DEVE ser uma MULHER JAPONESA / ASIÁTICA ORIENTAL com traços faciais asiáticos naturais e pele lisa clara/natural. É TERMINANTEMENTE PROIBIDO gerar mulher caucasiana ou ocidental.';
