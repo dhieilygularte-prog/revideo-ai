@@ -2122,7 +2122,7 @@ async function generateImageWithSeedream(params: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(54000),
+        signal: AbortSignal.timeout(58500),
       });
 
       const text = await res.text();

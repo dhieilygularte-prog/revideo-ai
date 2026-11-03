@@ -3649,7 +3649,7 @@ ${params.prompt}` : params.prompt,
           "Content-Type": "application/json"
         },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(54e3)
+        signal: AbortSignal.timeout(58500)
       });
       const text = await res.text();
       let data = null;

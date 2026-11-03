@@ -137,7 +137,9 @@ export function buildAnaMariaImagePrompt(
   const userInstructionsText = hasUserInstructions ? form.additionalInstructions.trim() : '';
 
   const priorityOverrideBlock = hasUserInstructions
-    ? `[PRIORIDADE SOBERANA DO USUÁRIO: "${userInstructionsText}" — aplique com prioridade máxima mantendo o restante da Mestra intacto.] `
+    ? `## PRIORIDADE SOBERANA ABSOLUTA — INSTRUÇÕES ADICIONAIS DO USUÁRIO
+"${userInstructionsText}"
+REGRA DE ADAPTAÇÃO COM INTERVENÇÃO MÍNIMA: As instruções do usuário acima têm PRIORIDADE MÁXIMA sobre qualquer característica padrão da Mestra (${master.shortName}). Mantenha todo o restante da identidade da Mestra 100% original e altere EXCLUSIVAMENTE os atributos que conflitarem com o que o usuário pediu acima (ex.: se o usuário pediu outra cor/estilo de cabelo, outra idade, outra etnia/tom de pele, outra cor de celular, outro acessório ou outra pose, aplique exatamente a escolha do usuário mantendo o restante da Mestra intacto).\n\n`
     : '';
 
   // ============================================================================
@@ -146,18 +148,39 @@ export function buildAnaMariaImagePrompt(
   if (mode === 'pov' || master.isPov) {
     const povScenarioLabel = form.selectedScenarioNumber
       ? `Cenário POV ${form.selectedScenarioNumber}`
-      : 'Cenário POV';
+      : 'Cenário POV selecionado';
 
     const handsDescription = isMale
-      ? `Somente duas mãos masculinas adultas e antebraços entrando pela borda inferior (unhas curtas sem esmalte e relógio masculino discreto; proibido rosto, corpo ou pernas).`
-      : `${master.bodyStandardText} ${master.accessoriesIdentityText}`;
+      ? `Mostrar exclusivamente duas mãos masculinas adultas e parte dos antebraços entrando pela parte inferior do enquadramento em primeira pessoa (POV): pele realista com poros naturais, unhas curtas e limpas sem esmalte, e um relógio masculino discreto em um dos pulsos.`
+      : `${master.bodyStandardText}\n${master.skinAndRealismText}\n\n## ACESSÓRIOS E MANICURE DAS MÃOS (${master.shortName.toUpperCase()})\n${master.accessoriesIdentityText}`;
 
-    const povLayout =
-      master.id === 'pov_blusinhas_13k'
-        ? '1ª peça aberta segura pelas mãos em primeiro plano e 2ª peça completa organizada sobre a cama logo abaixo'
-        : 'duas unidades completas do produto organizadas no centro da cama seguras pelas laterais pelas duas mãos';
+    const povPrompt = `${priorityOverrideBlock}Crie uma fotografia comercial hiper-realista vertical 9:16 em estilo POV (Point of View em primeira pessoa, câmera posicionada diretamente acima da cama em ângulo superior de 90 graus), apresentando o produto das fotos de referência sobre a cama do ${povScenarioLabel} anexado.
 
-    const povPrompt = `${priorityOverrideBlock}Fotografia realista vertical 9:16 em estilo POV (primeira pessoa, câmera a 90 graus acima da cama). PRESERVAÇÃO INTEGRAL DO CENÁRIO POV: mantenha 100% a cama, colcha, lençol e iluminação da Imagem 1 (${povScenarioLabel}). PRODUTOS 1:1 (IMAGEM 2): exiba ${povLayout}, reproduzindo a peça com fidelidade 1:1 (mesma cor, tecido, corte, costuras e detalhes). MÃOS (${master.shortName}): ${handsDescription}`;
+## 1. PRESERVAÇÃO INTEGRAL DO CENÁRIO POV ANEXADO (${povScenarioLabel.toUpperCase()})
+A imagem do cenário POV anexada (cama/superfície) é a referência visual obrigatória do ambiente.
+Reproduza fielmente a colcha, lençol, manta, texturas de tecido da cama, cores e iluminação natural do cenário POV anexado.
+
+## 2. DISPOSIÇÃO DOS PRODUTOS NA CAMA E FIDELIDADE 1:1
+Posicione EXATAMENTE DUAS unidades completas do produto anexado pelo usuário sobre a cama (se o usuário anexou duas cores/variações nas fotos de referência, exiba uma de cada cor; caso tenha anexado apenas uma cor, exiba duas unidades idênticas da peça).
+${
+  master.id === 'pov_blusinhas_13k'
+    ? 'As duas mãos seguram a primeira peça aberta pelas extremidades laterais em primeiro plano voltada para a câmera, enquanto a segunda peça completa repousa visível e organizada sobre a cama logo abaixo.'
+    : 'Os dois produtos estão dobrados/organizados no centro da cama com as duas mãos segurando delicadamente pelas extremidades laterais para iniciar a demonstração.'
+}
+Preservar com fidelidade absoluta (1:1) a cor exata, modelagem, corte, decote, costuras, textura do tecido, botões, rendas ou estampas do produto anexado. Nunca modificar ou redesenhar a construção da peça.
+
+## 3. IDENTIDADE VISUAL DAS MÃOS E ACESSÓRIOS (${master.shortName.toUpperCase()})
+${handsDescription}
+${
+  hasUserInstructions
+    ? `IMPORTANTE: Caso a instrução adicional do usuário ("${userInstructionsText}") especifique outra cor de pele para as mãos, outra cor de unha ou outro acessório, aplique a solicitação do usuário com prioridade máxima.`
+    : ''
+}
+PROIBIDO mostrar rosto, cabeça, cabelo, tronco ou pernas — enquadramento 100% POV mostrando apenas as duas mãos, punhos/antebraços interagindo com os dois produtos sobre a cama.
+
+## 4. ILUMINAÇÃO E REALISMO FOTOGRÁFICO
+${master.lightingAndCameraText}
+Qualidade fotográfica autêntica de smartphone moderno em alta definição 1080x1920 (9:16).`;
 
     return {
       prompt: povPrompt.trim(),
@@ -174,52 +197,112 @@ export function buildAnaMariaImagePrompt(
     : 'cenário selecionado';
   const scenarioText = SCENARIO_DESCRIPTIONS[scenarioRoom] || SCENARIO_DESCRIPTIONS.hall_espelho;
 
-  const userRequestedSlimBody =
-    hasUserInstructions &&
-    /\b(magra|magrinha|bem magra|corpo de modelo|modelo de passarela|corpo fino|skinny|slim)\b/i.test(
-      userInstructionsText
-    );
-
-  // Estrutura Corporal: Normal da Mestra vs Sobrescrita Corporal Plus Size vs Adaptação Masculina
+  // Estrutura Corporal: Normal da Mestra vs Módulo Universal Plus Size vs Adaptação Masculina
   let bodySectionText = '';
   if (isMale) {
     bodySectionText = isPlusSize
       ? UNIVERSAL_MALE_PLUS_SIZE_MODULE
-      : `CORPO MASCULINO: Homem brasileiro adulto (25-35 anos), ombros largos, peitoral e tronco alinhados, pernas proporcionais, pele realista e zero tatuagens.`;
+      : `## 1. ESTRUTURA CORPORAL MASCULINA (ADAPTAÇÃO MASCULINA DE ${master.shortName.toUpperCase()})
+Homem brasileiro adulto (25 a 35 anos, salvo outra idade nas instruções adicionais), aparência natural, autêntica e cotidiana.
+Corpo masculino proporcional e em forma: ombros largos, peitoral e tronco alinhados, cintura masculina natural e pernas masculinas proporcionais.
+Pele com o mesmo padrão de realismo fotográfico da Mestra selecionada (poros visíveis, textura humana verdadeira, zero efeito plástico).`;
   } else if (isPlusSize) {
-    bodySectionText = UNIVERSAL_PLUS_SIZE_ENGLISH_DIRECTIVE;
-  } else if (userRequestedSlimBody) {
-    bodySectionText = `CORPO E PELE: Mulher brasileira adulta com o biotipo solicitado pelo usuário ("${userInstructionsText}"). ${master.skinAndRealismText}`;
+    // Para Plus Size Feminino: O módulo universal soberano já define rigorosamente a anatomia pesada 50-54,
+    // as coxas com celulite natural visível, a pele clara não-bronzeada e a iluminação natural autêntica.
+    bodySectionText = `${UNIVERSAL_PLUS_SIZE_MODULE}\n\n${UNIVERSAL_PLUS_SIZE_ENGLISH_DIRECTIVE}`;
   } else {
-    bodySectionText = `CORPO OBRIGATÓRIO (${master.shortName}): ${master.bodyStandardText} ${master.skinAndRealismText}`;
+    bodySectionText = `## 1. PADRÃO CORPORAL E PELE — ${master.shortName.toUpperCase()}\n${master.bodyStandardText}\n\n### PELE E REALISMO HUMANO\n${master.skinAndRealismText}`;
   }
 
   // Cabelo: Mestra vs Homem
   const hairSectionText = isMale
-    ? `Cabelo masculino curto alinhado (${master.id === 'mestra_duda' ? 'castanho-claro' : 'castanho-escuro'}).`
+    ? `Cabelo masculino curto a médio, alinhado e natural, mantendo a mesma tonalidade base da Mestra selecionada (${
+        master.id === 'mestra_duda'
+          ? 'castanho-claro a castanho-médio'
+          : 'castanho-escuro a preto'
+      }, salvo se o usuário solicitou outro cabelo nas instruções adicionais).`
     : master.hairIdentityText;
 
   // Acessórios: Mestra vs Homem
   const accessoriesSectionText = isMale
-    ? `Relógio masculino discreto, unhas curtas limpas sem esmalte e sem joias femininas.`
+    ? `Acessórios masculinos discretos (Adaptação Masculina):
+- Relógio de pulso masculino elegante e discreto em um dos pulsos.
+- Ausência total de colares femininos, pulseiras femininas delicadas ou esmalte colorido. Unhas masculinas curtas e limpas.`
     : master.accessoriesIdentityText;
 
   // Regra de Rosto: Mirror Selfie (Corte estrito no queixo) vs Com Rosto (Rosto visível)
-  const isFaceVisible = mode === 'com_rosto' || master.id === 'mestra_catza';
+  const isFaceVisible = mode === 'com_rosto';
   const framingFaceSection = isFaceVisible
-    ? `ENQUADRAMENTO COM ROSTO: Rosto visível no espelho (${!isMale && master.faceAndMakeupText ? master.faceAndMakeupText : 'rosto brasileiro autêntico e expressivo'}), corpo inteiro até os pés.`
-    : `ENQUADRAMENTO CORTE NO QUEIXO: Corte estrito da base do queixo para baixo até os pés (PROIBIDO mostrar rosto, boca, lábios, nariz ou olhos).`;
+    ? `## 2. ROSTO E ENQUADRAMENTO — MODO COM ROSTO (UGC / ESPELHO)
+Neste modo COM ROSTO, o rosto ${isMale ? 'do modelo' : 'da modelo'} DEVE aparecer de forma natural e harmoniosa na selfie diante do espelho.
+${
+  !isMale && master.faceAndMakeupText
+    ? master.faceAndMakeupText
+    : `Rosto ${isMale ? 'masculino' : 'feminino'} brasileiro autêntico, expressivo, simpático e fotográfico, com textura de pele real e proporções anatômicas naturais.`
+}
+${isMale ? 'O modelo' : 'A modelo'} segura o smartphone naturalmente na altura do peito/ombro apontado para o espelho, permitindo ver o rosto e o corpo inteiro até os pés.`
+    : `## 2. ROSTO — CORTE OBRIGATÓRIO ESTRITO NA BASE DO QUEIXO (MODO MIRROR SELFIE SEM ROSTO)
+REGRA SOBERANA ACIMA DO PROMPT DA MESTRA: Enquadrar a cabeça RIGOROSAMENTE DA ALTURA DA BASE DO QUEIXO PARA BAIXO.
+É TERMINANTEMENTE PROIBIDO MOSTRAR LÁBIOS, BOCA, NARIZ OU OLHOS EM QUALQUER PARTE DA IMAGEM.
+Os lábios, a boca, o nariz e os olhos devem ficar 100% FORA do enquadramento em todas as circunstâncias. Mostrar somente a ponta inferior do queixo, o pescoço, o colo (com parte do comprimento dos cabelos caindo sobre os ombros/colo) e todo o corpo até os pés. O corte deve parecer uma selfie espontânea natural tirada no espelho com corte exato na base do queixo.`;
 
   const hasSelectedScenario = Boolean(form.selectedScenarioId);
   const scenarioSection = hasSelectedScenario
-    ? `PRESERVAÇÃO INTEGRAL DO CENÁRIO: Mantenha 100% intacto o cômodo da Imagem 1 (${scenarioTitle}), com ${isMale ? 'o modelo' : 'a modelo'} em pé diante do espelho.`
-    : `CENÁRIO RESIDENCIAL E AMBIENTE: ${scenarioText}`;
+    ? `## 4. PRESERVAÇÃO INTEGRAL DO CENÁRIO INDEPENDENTE (${scenarioTitle.toUpperCase()})
+A foto de cenário anexada é a autoridade visual absoluta do ambiente.
+Preserve integralmente e sem modificações todo o cômodo da foto de referência: piso, paredes, portas, cama/móveis, espelho e elementos arquitetônicos.
+NÃO redesenhe, NÃO altere e NÃO gere um ambiente diferente. Insira ${isMale ? 'o modelo' : 'a modelo'} perfeitamente integrado(a) e em pé diante do espelho dentro deste exato cômodo real.`
+    : `## 4. CENÁRIO RESIDENCIAL E AMBIENTE
+${scenarioText}`;
 
-  const prompt = `${priorityOverrideBlock}Fotografia realista vertical 9:16 de selfie de corpo inteiro no espelho. ${scenarioSection}
-ROUPA 1:1 (IMAGEM 2): Vestir exatamente a peça da Imagem 2 com fidelidade 1:1 (mesma cor, tecido, modelagem, decote, alças, costuras e detalhes, sem inventar ou alterar nada). PROIBIDO copiar o corpo magro da pessoa/manequim da Imagem 2!
+  const phonePostureSection = `## 5. SMARTPHONE, ILUMINAÇÃO E POSTURA (${master.shortName.toUpperCase()})
+${
+  isMale
+    ? 'O modelo segura um smartphone moderno com uma das mãos diante do espelho de corpo inteiro.'
+    : 'A modelo segura um smartphone moderno com uma das mãos diante do espelho de corpo inteiro (respeitando eventual cor de celular solicitada nas instruções adicionais).'
+}
+${master.lightingAndCameraText}
+${
+  isPlusSize
+    ? `Postura natural em pé diante do espelho, valorizando com autenticidade a estrutura corporal genuinamente PLUS SIZE PESADA (manequim 50-54, peso corporal evidente, coxas hiper-grossas que se tocam sem vão, celulites naturais visíveis nas coxas, quadris muito largos, abdômen arredondado macio e braços roliços carnudos), com o braço livre relaxado ou tocando levemente a lateral sem esconder detalhes da roupa.`
+    : `Postura natural em pé diante do espelho, peso apoiado de forma orgânica valorizando a silhueta e o caimento da peça, com o braço livre relaxado ou tocando suavemente a lateral sem esconder detalhes da roupa.`
+}`;
+
+  const prompt = `${priorityOverrideBlock}Crie uma fotografia hiper-realista vertical 9:16 (1080x1920) de ${
+    isMale
+      ? isPlusSize
+        ? 'um homem adulto genuinamente PLUS SIZE (porte grande e pesado, manequim 52-56)'
+        : 'um homem adulto em forma'
+      : isPlusSize
+      ? 'uma mulher adulta brasileira genuinamente PLUS SIZE PESADA (manequim 50 a 54 / US 18-22 / 2XL-3XL, peso real evidente, coxas hiper-grossas que se tocam com celulites naturais visíveis na pele, quadris muito largos, abdômen arredondado macio com volume lateral, braços grossos carnudos, pele clara natural não bronzeada e iluminação ambiente de quarto real)'
+      : `uma mulher adulta seguindo o padrão físico da ${master.shortName}`
+  } vestindo exatamente a peça de roupa da imagem de referência anexada, inserida com perfeição no ${scenarioTitle} anexado, em uma fotografia de espelho de corpo inteiro.
+
 ${bodySectionText}
+**REGRA DE PELE LIMPA: ${isMale ? 'O modelo' : 'A modelo'} não deve possuir tatuagens no corpo (salvo se solicitado nas instruções adicionais).**
+
 ${framingFaceSection}
-APARÊNCIA E JOIAS (${master.shortName}): ${hairSectionText} ${accessoriesSectionText} ${master.lightingAndCameraText} Nos dois pés: ${shoeInfo.name}.`;
+
+## 3. CABELO E APARÊNCIA (${master.shortName.toUpperCase()})
+${hairSectionText}
+
+${scenarioSection}
+
+${phonePostureSection}
+
+## 6. ACESSÓRIOS E JOIAS (${master.shortName.toUpperCase()})
+${accessoriesSectionText}
+
+## 7. REGRA UNIVERSAL DE CALÇADO (CAMADA ACIMA DO PROMPT DA MESTRA)
+Calçado obrigatório nos dois pés: **${shoeInfo.name}**.
+Especificação do calçado: ${shoeInfo.description}
+(Observação: Esta regra universal de calçado prevalece sobre qualquer menção genérica de calçado do catálogo da Mestra, salvo se o usuário pediu outro calçado específico nas Instruções Adicionais). Enquadrar o corpo inteiro mostrando os dois pés calçados apoiados naturalmente no piso do cenário.
+
+## 8. FIDELIDADE ABSOLUTA E SOBERANA AO PRODUTO ANEXADO (1:1 — ZERO INVENÇÃO DE DETALHES)
+A foto da peça anexada pelo usuário é a referência soberana e inviolável da roupa (venda real TikTok Shop).
+Reproduza a roupa 1:1 com máxima fidelidade: mesma cor exata, tonalidade, textura do tecido, modelagem, comprimento, decote, alças, mangas, barra, rendas, transparências, costuras, botões, recortes e estampas.
+É TERMINANTEMENTE PROIBIDO inventar detalhes inexistentes na peça (não adicionar rendas, babados, laços, botões, fendas, costuras ou estampas que não existam na foto real) e proibido omitir detalhes reais da peça.
+A roupa deve vestir anatomicamente o corpo ${isPlusSize ? 'genuinamente PLUS SIZE' : 'do(a) modelo'} sem jamais redesenhar ou descaracterizar o produto.`;
 
   return {
     prompt: prompt.trim(),
