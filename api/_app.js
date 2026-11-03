@@ -947,12 +947,11 @@ ${prompt}` : prompt;
       const isBlackRequested = /\b(negra|negro|preta|preto|afro|afrodescendente|pele preta|pele negra|pele escura|retinta|modelo negra|modelo preta|mulher negra|mulher preta|mulher de pele preta|black woman|dark skin|dark-skinned black woman)\b/i.test(lowerInstructions);
       const isAsianRequested = /\b(japonesa|asiatica|asiática|oriental|asian)\b/i.test(lowerInstructions);
       const isRedheadRequested = /\b(ruiva|redhead|ginger)\b/i.test(lowerInstructions);
-      const userEthnicityDirectivesOpenAI2 = isBlackRequested ? `[SOVEREIGN PRIORITY 1 MANDATE \u2014 AUTHENTIC DARK-SKINNED RETINTA BLACK WOMAN]:
-- OBLIGATORY SKIN TONE: The model MUST be an authentic DARK-SKINNED RETINTA BLACK WOMAN with deep ebony / deep dark chocolate melanin-rich skin across her entire body.
-- TEXTURE: Natural skin pores, authentic highlights on dark skin, real melanin depth, zero plastic wax effect.
-- STRICTLY AND ABSOLUTELY FORBIDDEN: Light-brown skin, medium-brown, tan, bronze, caramel, honey, golden, olive, mulatto, fair, white, caucasian, or any intermediate/ambiguous skin tone.
-- NO LIGHTENING: Do not lighten the skin with lighting, white balance, or exposure; the deep dark ebony tone must remain striking and evident across face, neck, torso, arms, and legs.
-- BIOTYPE INDEPENDENCE: This dark skin tone is completely sovereign and must not be weakened or altered by any body shape (plus-size, hourglass, or slim).` : isAsianRequested ? `[PRIORITY 1 SOBERANA \u2014 ETHNICITY & SKIN COLOR MANDATE]:
+      const userEthnicityDirectivesOpenAI2 = isBlackRequested ? `[SOVEREIGN PRIORITY 1 MANDATE \u2014 AUTHENTIC WARM DARK-CHOCOLATE BLACK WOMAN]:
+- OBLIGATORY SKIN TONE: The model MUST be an authentic Afro-Brazilian BLACK WOMAN with a rich, warm dark-chocolate / deep warm-brown skin tone (natural, glowing dark skin tone with warm undertones \u2014 balanced and authentic, about 50% softer than extreme pitch-black ebony, perfectly matching a radiant dark-brown Black woman).
+- TEXTURE & GLOW: Natural skin pores, authentic hydrated highlights on warm dark skin, real melanin warmth, zero plastic wax effect, never ashy.
+- STRICTLY FORBIDDEN: White, fair, light-skinned, pale, or caucasian models. Also do NOT generate extreme jet-black obsidian; keep the tone rich, luminous dark chocolate brown.
+- BIOTYPE INDEPENDENCE: This dark-chocolate skin tone is completely sovereign and applies perfectly whether the body is plus-size, hourglass, or slim.` : isAsianRequested ? `[PRIORITY 1 SOBERANA \u2014 ETHNICITY & SKIN COLOR MANDATE]:
 The model MUST be an authentic JAPANESE / EAST ASIAN WOMAN with natural East Asian facial features.
 STRICTLY FORBIDDEN: caucasian, black, or western features.` : isRedheadRequested ? `[PRIORITY 1 SOBERANA \u2014 ETHNICITY & HAIR MANDATE]:
 The model MUST be a natural REDHEAD WOMAN with copper-red hair and fair/pale skin with subtle natural freckles.` : "";

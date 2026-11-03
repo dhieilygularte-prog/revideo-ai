@@ -146,19 +146,17 @@ export function resolveModelAttributesHierarchy(params: {
   let userEthnicityDirectivePt = '';
 
   if (isBlackUser) {
-    userEthnicitySummary = 'mulher negra retinta de pele preta escura profunda (alta melanina / ébano)';
-    userEthnicityDirectivePt = `REGRA OBRIGATÓRIA DE INTERPRETAÇÃO ÉTNICA E TONALIDADE DE PELE — MULHER NEGRA/PRETA RETINTA (PRIORIDADE 1 SOBERANA):
-- CARACTERÍSTICAS OBRIGATÓRIAS DA PELE: A modelo DEVE ser uma MULHER NEGRA DE PELE ESCURA RETINTA, com tonalidade profunda e altíssima concentração de melanina natural. Tom de pele marrom muito escuro, chocolate profundo ou ébano autêntico, reproduzindo a profundidade e riqueza de cor de mulheres negras retintas.
-- TEXTURA REALISTA: Pele humana hiper-realista preservando poros visíveis, nuances naturais e reflexos suaves de luz sobre a pele negra escura, sem efeito plástico, sem cera e sem descaracterização.
-- TONALIDADES TERMINANTEMENTE PROIBIDAS: É ABSOLUTAMENTE PROIBIDO interpretar como mulher de pele morena clara, parda, bronzeada, caramelo, mel, dourada, castanha média ou marrom clara. PROIBIDO gerar qualquer tonalidade intermediária.
-- FIDELIDADE À TONALIDADE SOB ILUMINAÇÃO: A tonalidade escura profunda deve permanecer evidente em todas as condições de iluminação. NÃO clarear a pele artificialmente por causa de iluminação de estúdio, exposição, balanço de branco ou reflexos.
-- INDEPENDÊNCIA DAS CARACTERÍSTICAS: A tonalidade de pele retinta é soberana e independente do biotipo corporal (seja plus size, curvilínea ou magra).`;
-    userEthnicityDirectiveEnglish = `[SOVEREIGN PRIORITY 1 MANDATE — AUTHENTIC DARK-SKINNED RETINTA BLACK WOMAN]:
-- OBLIGATORY SKIN TONE: The model MUST be an authentic DARK-SKINNED RETINTA BLACK WOMAN (deep ebony / deep dark chocolate melanin-rich skin tone) with rich, deep, dark black skin across her entire body.
-- HUMAN TEXTURE: Natural skin pores, authentic skin highlights, real melanin depth, zero plastic wax effect.
-- STRICTLY AND ABSOLUTELY FORBIDDEN: Light-brown skin, medium-brown, tan, bronze, caramel, honey, golden, olive, mulatto, fair, white, caucasian, or any intermediate/ambiguous skin tone.
-- NO LIGHTENING UNDER LIGHTING: Under NO circumstances should room lighting, phone flash, exposure, or white balance lighten or wash out her deep dark skin tone. The deep ebony skin richness must remain strikingly dark, saturated, and authentic across the entire body (face, neck, décolletage, arms, torso, and legs).
-- BIOTYPE INDEPENDENCE: This dark skin tone is completely sovereign and must not be weakened or altered by any body shape (plus-size, hourglass, or slim).`;
+    userEthnicitySummary = 'mulher negra com tom de pele chocolate escuro / marrom escuro quente e radiante';
+    userEthnicityDirectivePt = `REGRA DE INTERPRETAÇÃO ÉTNICA E TONALIDADE DE PELE — MULHER NEGRA / PELE PRETA (PRIORIDADE 1 SOBERANA):
+- TONALIDADE CALIBRADA E EQUILIBRADA (REFERÊNCIA FOTOGRÁFICA): A modelo DEVE ser uma MULHER NEGRA autêntica com tom de pele marrom escuro / chocolate escuro quente e luminoso (tonalidade rica, quente e radiante com viço saudável, cerca de 50% menos retinta que o ébano/preto carvão extremo, exatamente como o tom marrom escuro chocolate natural de uma mulher negra afro-brasileira).
+- TRAÇOS E REALISMO: Traços negros autênticos, proporções faciais e corporais harmoniosas e naturais, textura de pele humana real com poros visíveis, brilho e reflexos suaves da luz sobre a pele negra chocolate escuro hidratada, sem aspecto acinzentado, sem opacidade e sem efeito plástico.
+- LIMITES E PROIBIÇÕES: É TERMINANTEMENTE PROIBIDO gerar mulher branca, caucasiana, de pele clara ou pálida. Por outro lado, NÃO gerar preto-carvão/ébano impenetrável; a pele deve ter calor, nuances de chocolate escuro e vivacidade natural.
+- INDEPENDÊNCIA E PREVALÊNCIA: Esta tonalidade prevalece soberanamente sobre o padrão da Mestra e combina com biotipo Plus Size ou padrão preservando com precisão o tom chocolate quente.`;
+    userEthnicityDirectiveEnglish = `[SOVEREIGN PRIORITY 1 MANDATE — AUTHENTIC WARM DARK-CHOCOLATE BLACK WOMAN]:
+- BALANCED RICH SKIN TONE: The model MUST be an authentic Afro-Brazilian BLACK WOMAN with a rich, warm dark-chocolate / deep warm-brown skin tone (natural, glowing dark skin tone with warm undertones, perfectly balanced — about 50% softer than extreme jet-black ebony, exactly matching a healthy, luminous dark-brown Black woman).
+- AUTHENTIC FEATURES & TEXTURE: Authentic Black facial and bodily features, realistic skin pores, hydrated healthy glow with natural ambient highlights. Never ashy, never grayish, never artificial plastic wax.
+- STRICT EXCLUSIONS: Strictly FORBIDDEN: white, fair, light-skinned, caucasian, or pale models. Also avoid extreme pitch-black / obsidian / jet-black tint; her tone must be natural warm dark chocolate brown.
+- INDEPENDENCE: Sovereign Priority 1 instruction. Harmonizes seamlessly with any body shape (plus size or standard) while maintaining her warm dark-chocolate skin tone.`;
   } else if (isAsianUser) {
     userEthnicitySummary = 'mulher japonesa / asiática oriental';
     userEthnicityDirectivePt = 'A modelo DEVE ser uma MULHER JAPONESA / ASIÁTICA ORIENTAL com traços faciais asiáticos naturais e pele lisa clara/natural. É TERMINANTEMENTE PROIBIDO gerar mulher caucasiana ou ocidental.';
