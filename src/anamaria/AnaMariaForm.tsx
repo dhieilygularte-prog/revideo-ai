@@ -387,7 +387,11 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     });
   };
 
-  const canSubmit = form.referencePhotos.length > 0 && !isProcessing && !isUploading;
+  const canSubmit =
+    form.referencePhotos.length > 0 &&
+    !isProcessing &&
+    !isUploading &&
+    !isRecordingMic;
   const isInstructionsFilled = Boolean(
     form.additionalInstructions && form.additionalInstructions.trim().length > 0
   );
@@ -1546,16 +1550,35 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         <button
           type="button"
           disabled={!canSubmit}
-          onClick={onSubmit}
+          onClick={() => {
+            if (!canSubmit || isRecordingMic) return;
+            onSubmit();
+          }}
           className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-sky-600 hover:from-emerald-500 hover:via-teal-500 hover:to-sky-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black text-sm sm:text-base shadow-xl shadow-emerald-950/50 flex items-center justify-center gap-3 transition-all cursor-pointer"
         >
-          <Sparkles className={`w-5 h-5 ${isProcessing ? 'animate-spin' : ''}`} />
-          <span>
-            {isProcessing
-              ? `Gerando com ${activeMaster.shortName}...`
-              : `Gerar Vídeo (${activeMaster.shortName})`}
-          </span>
+          {isRecordingMic ? (
+            <>
+              <Square className="w-5 h-5 fill-rose-400 text-rose-400 animate-pulse" />
+              <span>Gravação de voz ativa — Pare o microfone (⏹) para liberar o botão</span>
+            </>
+          ) : (
+            <>
+              <Sparkles className={`w-5 h-5 ${isProcessing ? 'animate-spin' : ''}`} />
+              <span>
+                {isProcessing
+                  ? `Gerando com ${activeMaster.shortName}...`
+                  : `Gerar Vídeo (${activeMaster.shortName})`}
+              </span>
+            </>
+          )}
         </button>
+
+        {isRecordingMic && (
+          <p className="text-center text-xs text-amber-300 font-semibold flex items-center justify-center gap-1.5 mt-2 animate-pulse">
+            <Mic className="w-3.5 h-3.5 animate-bounce text-rose-400" />
+            Ditado de voz ativo nas instruções adicionais. Pause a gravação no microfone para liberar a geração do vídeo.
+          </p>
+        )}
       </div>
     </div>
   );

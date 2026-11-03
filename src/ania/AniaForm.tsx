@@ -412,7 +412,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
   const hasCor1Photo = Boolean(form.colors[0]?.photoBase64);
   const isStretchSelected = form.stretch !== null;
   const areColorNamesFilled = form.colors.every((c) => !c.photoBase64 || c.name.trim().length > 0);
-  const canSubmit = form.productName.trim().length > 0 && hasCor1Photo && isStretchSelected && areColorNamesFilled && !isProcessing;
+  const canSubmit = form.productName.trim().length > 0 && hasCor1Photo && isStretchSelected && areColorNamesFilled && !isProcessing && !activeSpeechField;
 
   return (
     <div className="space-y-5">
@@ -1288,7 +1288,9 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
 
         {!canSubmit && !isProcessing && (
           <p className="text-center text-[11px] text-zinc-500 mt-2">
-            {!hasProductName
+            {activeSpeechField
+              ? '🎙️ Gravação de voz ativa. Pause o microfone para liberar o botão de gerar.'
+              : !hasProductName
               ? '⚠️ Preencha o Nome do produto'
               : !hasCor1Photo
               ? '⚠️ Anexe a foto da Cor 1 (peça/calçado)'

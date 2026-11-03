@@ -192,7 +192,7 @@ export const ProdutoForm: React.FC<ProdutoFormProps> = ({
     }));
   };
 
-  const canSubmit = Boolean(form.productName.trim() && !isProcessing);
+  const canSubmit = Boolean(form.productName.trim() && !isProcessing && !activeMic);
 
   return (
     <div className="space-y-6">
@@ -654,7 +654,11 @@ export const ProdutoForm: React.FC<ProdutoFormProps> = ({
           }`}
         >
           <Sparkles className="w-5 h-5 text-amber-200" />
-          <span>GERAR CRIATIVO • MODO PRODUTO OLD</span>
+          <span>
+            {activeMic
+              ? 'Gravando voz... Pare o microfone para liberar o botão'
+              : 'GERAR CRIATIVO • MODO PRODUTO OLD'}
+          </span>
         </button>
       </div>
     </div>
