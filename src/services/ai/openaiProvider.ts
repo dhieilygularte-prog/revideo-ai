@@ -569,6 +569,23 @@ Retorne estritamente um JSON estruturado:
 - Place the model standing directly inside this EXACT architectural setting holding the smartphone in front of the mirror. Do NOT create or invent a different room, do NOT change the walls or floor.`
       : '';
 
+    const lowerInstructions = (additionalInstructions || '').toLowerCase();
+    const isBlackRequested = /\b(negra|negro|preta|preto|afro|afrodescendente|pele preta|pele negra|pele escura|retinta|modelo negra|modelo preta|mulher negra|mulher preta|mulher de pele preta|black woman|dark skin|dark-skinned black woman)\b/i.test(lowerInstructions);
+    const isAsianRequested = /\b(japonesa|asiatica|asiática|oriental|asian)\b/i.test(lowerInstructions);
+    const isRedheadRequested = /\b(ruiva|redhead|ginger)\b/i.test(lowerInstructions);
+
+    const userEthnicityDirectivesOpenAI = isBlackRequested
+      ? `[SOVEREIGN PRIORITY 1 MANDATE — RADIANT WARM BRONZE-CHOCOLATE BLACK WOMAN]:
+- OBLIGATORY SKIN TONE: The model MUST be an authentic BLACK WOMAN with a radiant, warm bronze-chocolate / golden-amber dark brown skin tone (lighter, warmer, and luminous, with glowing golden-bronze undertones, exactly matching the reference photo of a vibrant Black woman with healthy satin glow).
+- SATIN GLOW & REALISTIC TEXTURE: Hydrated, healthy skin with warm amber/bronze highlights across shoulders, décolletage, arms, and legs. Realistic skin pores, zero ashy/gray tone, zero plastic wax effect.
+- STRICT EXCLUSIONS: Strictly FORBIDDEN: white, fair, pale, or caucasian models. Also strictly avoid overly dark pitch-black / ebony / jet-black skin; her tone must be the luminous warm bronze-chocolate of the reference photo.
+- BIOTYPE HARMONY: Completely sovereign Priority 1 instruction. Applies seamlessly to both standard and plus-size bodies, preserving this radiant warm bronze-chocolate skin tone.`
+      : isAsianRequested
+      ? `[PRIORITY 1 SOBERANA — ETHNICITY & SKIN COLOR MANDATE]:\nThe model MUST be an authentic JAPANESE / EAST ASIAN WOMAN with natural East Asian facial features.\nSTRICTLY FORBIDDEN: caucasian, black, or western features.`
+      : isRedheadRequested
+      ? `[PRIORITY 1 SOBERANA — ETHNICITY & HAIR MANDATE]:\nThe model MUST be a natural REDHEAD WOMAN with copper-red hair and fair/pale skin with subtle natural freckles.`
+      : '';
+
     // Prioriza correções de auditoria e instruções adicionais sobre o prompt universal já formatado
     const overrides = [
       userEthnicityDirectivesOpenAI,
@@ -620,22 +637,6 @@ Retorne estritamente um JSON estruturado:
           /plus[-_\s]*size|manequim\s*(?:48|50|52|54)/i.test(prompt) ||
           /plus[-_\s]*size/i.test(additionalInstructions));
 
-      const lowerInstructions = (additionalInstructions || '').toLowerCase();
-      const isBlackRequested = /\b(negra|negro|preta|preto|afro|afrodescendente|pele preta|pele negra|pele escura|retinta|modelo negra|modelo preta|mulher negra|mulher preta|mulher de pele preta|black woman|dark skin|dark-skinned black woman)\b/i.test(lowerInstructions);
-      const isAsianRequested = /\b(japonesa|asiatica|asiática|oriental|asian)\b/i.test(lowerInstructions);
-      const isRedheadRequested = /\b(ruiva|redhead|ginger)\b/i.test(lowerInstructions);
-
-      const userEthnicityDirectivesOpenAI = isBlackRequested
-        ? `[SOVEREIGN PRIORITY 1 MANDATE — RADIANT WARM BRONZE-CHOCOLATE BLACK WOMAN]:
-- OBLIGATORY SKIN TONE: The model MUST be an authentic BLACK WOMAN with a radiant, warm bronze-chocolate / golden-amber dark brown skin tone (lighter, warmer, and luminous, with glowing golden-bronze undertones, exactly matching the reference photo of a vibrant Black woman with healthy satin glow).
-- SATIN GLOW & REALISTIC TEXTURE: Hydrated, healthy skin with warm amber/bronze highlights across shoulders, décolletage, arms, and legs. Realistic skin pores, zero ashy/gray tone, zero plastic wax effect.
-- STRICT EXCLUSIONS: Strictly FORBIDDEN: white, fair, pale, or caucasian models. Also strictly avoid overly dark pitch-black / ebony / jet-black skin; her tone must be the luminous warm bronze-chocolate of the reference photo.
-- BIOTYPE HARMONY: Completely sovereign Priority 1 instruction. Applies seamlessly to both standard and plus-size bodies, preserving this radiant warm bronze-chocolate skin tone.`
-        : isAsianRequested
-        ? `[PRIORITY 1 SOBERANA — ETHNICITY & SKIN COLOR MANDATE]:\nThe model MUST be an authentic JAPANESE / EAST ASIAN WOMAN with natural East Asian facial features.\nSTRICTLY FORBIDDEN: caucasian, black, or western features.`
-        : isRedheadRequested
-        ? `[PRIORITY 1 SOBERANA — ETHNICITY & HAIR MANDATE]:\nThe model MUST be a natural REDHEAD WOMAN with copper-red hair and fair/pale skin with subtle natural freckles.`
-        : '';
 
       const userRequestedSlimOpenAI =
         /\b(?:magra|magrinha|corpo\s+de\s+modelo|modelo\s+magra|sem\s+curvas|esguia|slim|skinny|slender)\b/i.test(
