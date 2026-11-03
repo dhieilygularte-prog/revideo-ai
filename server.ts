@@ -2096,7 +2096,7 @@ async function generateImageWithSeedream(params: {
   const payload: any = {
     model: 'dola-seedream-5-0-pro-260628',
     prompt: refImages.length > 0 ? `${headerSeedream}\n\n${params.prompt}` : params.prompt,
-    size: isPovModeSeedream ? '768x1344' : '1024x1792',
+    size: '1024x1792',
     response_format: 'url',
     watermark: false,
   };
@@ -2122,7 +2122,7 @@ async function generateImageWithSeedream(params: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(82000),
+        signal: AbortSignal.timeout(110000),
       });
 
       const text = await res.text();

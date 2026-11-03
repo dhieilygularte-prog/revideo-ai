@@ -6,7 +6,7 @@ export const config = {
       sizeLimit: '50mb',
     },
   },
-  maxDuration: 90,
+  maxDuration: 120,
 };
 
 export default function handler(req, res) {
