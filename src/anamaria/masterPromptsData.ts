@@ -26,29 +26,55 @@ export interface AnaMariaMasterPromptItem {
 }
 
 /**
- * MÓDULO UNIVERSAL — ESTRUTURA CORPORAL PLUS SIZE
- * (Sobrepõe exclusivamente a estrutura corporal da Mestra selecionada quando bodyType === 'plus_size')
+ * MÓDULO UNIVERSAL SOBERANO — ESTRUTURA CORPORAL FEMININA PLUS SIZE REAL
+ * Baseado na foto oficial de referência (Manequim 50 a 54 / US 18-22 / 2XL-3XL):
+ * Mulher brasileira com peso corporal pesado evidente, coxas hiper-grossas que se tocam,
+ * celulites naturais visíveis nas coxas, braços grossos roliços, quadris muito largos,
+ * abdômen arredondado macio com volume evidente no baixo ventre e flancos laterais,
+ * pele clara natural NÃO bronzeada e iluminação ambiente de quarto/residência real.
+ * REGRA INVIOLÁVEL: TERMINANTEMENTE PROIBIDO GERAR MULHERES MAIS MAGRAS DO QUE ESTA REFERÊNCIA.
  */
-export const UNIVERSAL_PLUS_SIZE_MODULE = `## MÓDULO UNIVERSAL — ESTRUTURA CORPORAL PLUS SIZE (PRIORIDADE SOBERANA DE CORPO)
-Quando a opção PLUS SIZE está selecionada, gerar uma mulher adulta com estrutura corporal GENUINAMENTE PLUS SIZE (manequim 48 a 52 / XXL), apresentando volume adiposo evidente e curvas generosas (NUNCA apenas levemente acima do peso ou "cheinha", mas verdadeiramente plus size com peso corporal real e evidente).
+export const UNIVERSAL_PLUS_SIZE_MODULE = `## MÓDULO UNIVERSAL SOBERANO — ESTRUTURA CORPORAL PLUS SIZE REAL (MANEQUIM 50 A 54)
+[DIRETIVA OBRIGATÓRIA E INEGOCIÁVEL DE VOLUME CORPORAL PLUS SIZE]:
+A modelo DEVE ser uma mulher adulta brasileira genuinamente e autenticamente PLUS SIZE PESADA (manequim 50 a 54 / US 18 a 22 / 2XL-3XL), com massa corporal real evidente e proporções volumosas em todo o corpo.
+REGRA DO USUÁRIO: É TERMINANTEMENTE PROIBIDO gerar mulheres mais magras do que a referência fotográfica (PROIBIDO midsize, PROIBIDO curvy esbelta, PROIBIDO manequim 44 ou 46, PROIBIDO modelo magra disfarçada com cintura fina).
 
-Referência obrigatória de volume corporal:
-- Quadris largos, volumosos e arredondados.
-- Coxas grossas, cheias e volumosas.
-- Braços cheios e carnudos.
-- Busto volumoso e colo preenchido.
-- Abdômen naturalmente arredondado (NUNCA chapado) e glúteos proporcionais à estrutura corporal plus size.
-- A cintura pode apresentar definição moderada dentro da silhueta plus size, mas NUNCA deve ser artificialmente estreita ou fina. As pernas NÃO devem ser finas ou excessivamente musculosas.
-- Reproduzir a distribuição natural de gordura subcutânea, com pequenas dobras abdominais naturais, volume evidente nas laterais da cintura, ondulações naturais nas coxas e compressões da pele coerentes com a postura.
+1. COXAS HIPER-GROSSAS COM CONTATO TOTAL (ZERO THIGH GAP):
+- Coxas extremamente grossas, fartas, maciças e carnudas.
+- As duas coxas se tocam completamente na parte interna superior (zero espaço entre as pernas, contato e atrito anatômico total entre as coxas).
+- TEXTURA DE CELULITE REAL: A pele das coxas DEVE apresentar ondulações naturais e celulite visível de tecido adiposo subcutâneo (pequenas covinhas e relevo real autêntico de pele humana plus size, exatamente como em mulheres reais).
 
-TEXTURA CORPORAL REALISTA:
-- Preservar poros, microtextura cutânea, pequenas irregularidades naturais, microcelulites discretas, variações naturais de tonalidade e marcas reais de compressão da pele.
-- Não aplicar filtros de beleza, suavização artificial, efeito porcelana, pele encerada ou acabamento plástico.
+2. QUADRIS, GLÚTEOS E FLANCOS:
+- Quadris hiperlargos, maciços, arredondados e muito projetados para as laterais.
+- Volume generoso nas laterais da bacia e glúteos pesados proporcionais à estrutura corporal 50-54.
 
-INDEPENDÊNCIA DE CARACTERÍSTICAS FÍSICAS:
-- Este módulo define exclusivamente a estrutura corporal e o volume da mulher.
-- Preservar o tom/subtom de pele, cor/comprimento/textura dos cabelos e os acessórios (colares, pulseiras, anéis, unhas) determinados pela Mestra selecionada ou pelas Instruções Adicionais do usuário.
-- REGRA DE FIDELIDADE: NUNCA interpretar PLUS SIZE como apenas levemente acima do peso. O volume corporal deve ser claramente perceptível e compatível com uma modelo plus size real.`;
+3. ABDÔMEN E CINTURA MACIOS E ARREDONDADOS:
+- Abdômen naturalmente arredondado, macio e carnudo, com volume evidente no baixo ventre.
+- Pneuzinhos/dobras suaves naturais de gordura subcutânea nas laterais da cintura e flancos.
+- A cintura é larga, macia e preenchida (NUNCA cintura fina de ampulheta de passarela, NUNCA barriga chapada, NUNCA abdômen seco/musculoso).
+
+4. BUSTO, COLO E BRAÇOS CHEIOS:
+- Busto muito volumoso, pesado e farto, preenchendo o decote de forma generosa e natural.
+- Braços visivelmente grossos, roliços, cheios e carnudos (com volume adiposo real no bíceps/tríceps e ombros largos e macios; PROIBIDO braços finos ou esguios).
+
+5. PELE REAL, NÃO BRONZEADA E ILUMINAÇÃO NATURAL DE CASA:
+- Tom de pele claro e natural autêntico (pele branca a morena-clara natural, SEM aparência de pele bronzeada de praia, SEM tom alaranjado, dourado ou artificial).
+- Iluminação ambiente comum de residência/quarto/provador (luz suave natural, SEM iluminação perfeita de estúdio glamour ou flashes artificiais estourados).
+- Textura de pele 100% fotográfica: poros visíveis, microcelulites discretas a moderadas nas coxas, dobras naturais anatômicas e pequenas marcas onde a roupa comprime a pele.
+- PROIBIDO efeito plástico, pele de cera, filtro de beleza, porcelana ou aerógrafo.`;
+
+export const UNIVERSAL_PLUS_SIZE_ENGLISH_DIRECTIVE = `[SOVEREIGN PLUS-SIZE BODY MANDATE - MANEQUIM 50 TO 54 / US 18-22 / 2XL-3XL]:
+- The model MUST be an authentic, heavy-set PLUS-SIZE adult Brazilian woman with prominent real adipose volume and heavy body mass throughout the entire frame (manequim 50 to 54 / US 18-22 / 2XL-3XL).
+- STRICT PROHIBITION: NEVER GENERATE WOMEN SLIMMER THAN THIS REFERENCE. Absolutely NO mid-size, NO slim-waisted fashion models, NO size 44/46, NO flat-bellied curvy models.
+- THIGHS: Extremely thick, massive, heavy, voluptuous thighs that touch and press together at the upper thighs (zero thigh gap).
+- CELLULITE & SKIN TEXTURE: Natural, realistic visible cellulite dimpling and subcutaneous adipose wave texture on the thighs, authentic unretouched human skin microtexture, visible pores, and natural skin compression marks where garments rest against the flesh.
+- SKIN TONE: Natural fair to light-medium natural skin tone, NOT TANNED (NO beach tan, NO orange cast, NO artificial golden bronze spray).
+- LIGHTING: Normal everyday indoor home/bedroom/dressing room ambient lighting (natural room light, NO over-glamorized studio lighting, NO artificial glossy sheen).
+- HIPS & WAIST: Extra-wide rounded hips, fuller soft midriff with natural soft side rolls (love handles). The waist is wide and soft, NEVER wasp-waisted, NEVER artificially narrow.
+- ABDOMEN: Soft, rounded, full natural belly/tummy (NEVER flat or toned).
+- BUST: Heavy, full, voluptuous bust filling the neckline generously.
+- ARMS: Noticeably thick, fleshy, round arms with evident subcutaneous fat (NO thin or slender arms).
+- ZERO TATTOOS: 100% clean skin.`;
 
 export const UNIVERSAL_MALE_PLUS_SIZE_MODULE = `## MÓDULO UNIVERSAL — ESTRUTURA CORPORAL MASCULINA PLUS SIZE (PRIORIDADE SOBERANA DE CORPO)
 Gerar um homem adulto com estrutura corporal GENUINAMENTE PLUS SIZE (manequim 52 a 56 / XXL), apresentando porte físico grande, pesado e robusto, com volume adiposo evidente:

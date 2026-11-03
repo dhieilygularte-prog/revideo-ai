@@ -705,6 +705,11 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               <span>Plus Size</span>
             </button>
           </div>
+          {form.bodyType === 'plus_size' && (
+            <p className="text-[10px] sm:text-[11px] text-zinc-400 mt-2 pl-0.5 leading-snug">
+              <span className={`font-bold ${isAmetista ? 'text-[#d4ff59]' : 'text-orange-400'}`}>✓ Plus Size Real (Manequim 50–54):</span> Coxas hiper-grossas que se tocam, textura de celulite natural visível, pele clara não bronzeada e volume corporal autêntico.
+            </p>
+          )}
         </div>
       </div>
 

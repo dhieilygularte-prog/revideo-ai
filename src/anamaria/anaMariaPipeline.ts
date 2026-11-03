@@ -418,14 +418,16 @@ export async function runAnaMariaPipeline(
     label: 'Verde — Fidelidade Aprovada',
     criteria: [
       { name: 'Corte Queixo', score: 100, status: 'green' },
-      { name: 'Curvas & Silhueta', score: 96, status: 'green' },
+      { name: form.bodyType === 'plus_size' ? 'Plus Size (50-54)' : 'Curvas & Silhueta', score: 96, status: 'green' },
       { name: 'Zero Tatuagens', score: 100, status: 'green' },
       { name: 'Calçado Condicional', score: 95, status: 'green' },
     ],
     issues: [
       `Calçado condicional selecionado: ${shoeDescription}`,
       'Enquadramento rigoroso do queixo para baixo sem rosto',
-      'Corpo com curvas e silhueta acentuadas',
+      form.bodyType === 'plus_size'
+        ? 'Estrutura corporal autêntica Plus Size (manequim 50-54) com celulite natural nas coxas e pele sem bronzeado artificial'
+        : 'Corpo com curvas e silhueta acentuadas',
       'Zero tatuagens garantido',
     ],
   };

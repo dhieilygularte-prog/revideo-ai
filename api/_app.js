@@ -940,15 +940,20 @@ ${prompt}` : prompt;
       let baseImageFile = null;
       let effectivePrompt = cleanPrompt;
       const isStoryboardGrid = /grade\s+(?:3x3|2x3|2x2)|(?:\b4|\b6|\b9)\s+(?:cenas|quadros)|storyboard/i.test(prompt);
-      const isPlusSizeRequest = bodyType === "plus_size" || /plus[-_\s]*size|manequim\s*(?:48|50|52)/i.test(prompt) || /plus[-_\s]*size/i.test(additionalInstructions);
+      const isPlusSizeRequest = bodyType === "plus_size" || /plus[-_\s]*size|manequim\s*(?:48|50|52|54)/i.test(prompt) || /plus[-_\s]*size/i.test(additionalInstructions);
       if (isAnaMariaMode && scenarioPhotoBase64) {
-        const bodyBlock = isPlusSizeRequest ? `[AUTHENTIC REAL PLUS-SIZE FEMALE BODY MANDATE (MANEQUIM 48 A 52 / US 16-18)]:
-- The woman MUST be an authentic, full-figured PLUS-SIZE woman with real voluptuous curves, natural weight and generous proportions.
-- Heavy, thick, full fleshy thighs; wide, prominent rounded hips.
-- Soft, natural, fuller curvy midriff and waist proportional to a real plus-size woman (STRICTLY FORBIDDEN: skinny waist, narrow model waist, flat washboard abs, or thin athletic frame).
-- Full bust and decolletage filling the neckline naturally.
-- Naturally fuller, soft arms (no thin arms).
-- The garment fits snugly and flatteringly over her real plus-size body, exactly as seen on real plus-size fashion models.` : `[CURVACEOUS FEMALE BODY SILHOUETTE]:
+        const bodyBlock = isPlusSizeRequest ? `[SOVEREIGN AUTHENTIC HEAVY-SET PLUS-SIZE FEMALE BODY MANDATE (MANEQUIM 50 A 54 / US 18-22 / 2XL-3XL)]:
+- The woman MUST be an authentic, genuinely HEAVY-SET PLUS-SIZE adult Brazilian woman with substantial real body mass and generous adipose volume throughout her entire physique (manequim 50 to 54 / US 18 to 22 / 2XL-3XL).
+- STRICT USER MANDATE: NEVER generate women slimmer than this photographic reference. ABSOLUTELY FORBIDDEN: mid-size, slim waist, narrow hourglass runway model, size 44 or 46, flat stomach, or thin thighs.
+- THIGHS & CONTACT: Extremely thick, massive, heavy voluptuous thighs with complete contact/friction at the upper thighs (zero thigh gap; the inner thighs press together completely).
+- CELLULITE & SKIN TEXTURE: The skin on the thighs MUST feature natural, realistic visible cellulite dimpling and subcutaneous adipose texture (authentic unretouched skin waves, visible pores, and natural skin compression marks where the clothing touches the flesh; absolutely NO porcelain, NO airbrushed smooth plastic look).
+- SKIN TONE: Natural fair to light-medium skin tone, NOT TANNED (NO fake beach tan, NO orange cast, NO artificial golden bronze spray).
+- LIGHTING: Everyday natural indoor bedroom/mirror ambient lighting (natural room light, NO over-glamorized studio lighting, NO artificial shiny plastic glow).
+- HIPS & WAIST: Extra-wide rounded prominent hips; soft, full midriff with natural soft side rolls (love handles). The waist is wide and soft, NEVER artificially cinched or narrow.
+- ABDOMEN: Soft, rounded, full natural belly/tummy with lower abdomen fullness (NEVER flat, NEVER toned).
+- BUST: Heavy, full, voluptuous bust filling the garment neckline generously.
+- ARMS: Distinctly thick, round, fleshy arms with evident subcutaneous fat (NO thin or slender arms).
+- The garment fits snugly and flatteringly over her real heavy plus-size body, exactly as seen on authentic Brazilian plus-size models.` : `[CURVACEOUS FEMALE BODY SILHOUETTE]:
 - Brazilian woman with natural hourglass curves, wide hips, defined waist, and shapely legs.
 - The garment fits snugly and flatteringly over her curves.`;
         const allowsFace = presentationMode === "com_rosto" || selectedMasterId === "mestra_catza" || cleanPrompt && (cleanPrompt.includes("MODO COM ROSTO") || cleanPrompt.includes("ROSTO E ENQUADRAMENTO \u2014 MODO COM ROSTO") || cleanPrompt.includes("o rosto da modelo DEVE aparecer") || cleanPrompt.includes("MESTRA CATZA"));
@@ -3471,7 +3476,7 @@ async function generateImageWithKling(params) {
     params.prompt && (params.prompt.includes("MODO COM ROSTO") || params.prompt.includes("ROSTO E ENQUADRAMENTO \u2014 MODO COM ROSTO") || params.prompt.includes("o rosto da modelo DEVE aparecer") || params.prompt.includes("MESTRA CATZA"))
   );
   const isPlus = params.bodyType === "plus_size" || /plus[-_\s]*size/i.test(params.prompt);
-  const plusRule = isPlus ? "[MANDATORY AUTHENTIC PLUS-SIZE RULE / REGRA PLUS SIZE OBRIGAT\xD3RIA: Mulher brasileira adulta verdadeiramente PLUS SIZE (manequim 48 a 52 / US 16-18 / XXL, authentic plus-size curvy woman, heavy-set, full-figured voluptuous body). Coxas bem grossas, cheias e fartas (very thick heavy thighs), quadris visivelmente largos e proeminentes (wide prominent curvy hips), abd\xF4men macio e natural suavemente preenchido (soft natural full belly/abdomen), busto volumoso e bra\xE7os cheios carnudos. TERMINANTEMENTE PROIBIDO gerar modelo magra, PROIBIDO cintura fina de passarela, PROIBIDO barriga chapada/seca, PROIBIDO pernas finas (STRICTLY FORBIDDEN: skinny model, slim waist, thin legs, flat athletic stomach, slender body). A modelo DEVE ser genuinamente plus size como em modelos reais plus size brasileiras.]\n\n" : "";
+  const plusRule = isPlus ? "[MANDATORY AUTHENTIC PLUS-SIZE RULE / REGRA PLUS SIZE OBRIGAT\xD3RIA: Mulher brasileira adulta verdadeiramente PLUS SIZE PESADA (manequim 50 a 54 / US 18-22 / 2XL-3XL, heavy-set, full-figured voluptuous body). Coxas hiper-grossas que se tocam completamente na parte interna superior (zero thigh gap) com textura de celulite natural vis\xEDvel na pele das coxas, quadris muito largos e proeminentes, abd\xF4men arredondado macio com pneuzinhos/dobras nas laterais, busto volumoso e bra\xE7os grossos roli\xE7os carnudos. Pele clara natural N\xC3O bronzeada (sem tom alaranjado/dourado), ilumina\xE7\xE3o natural comum de quarto. TERMINANTEMENTE PROIBIDO gerar mulher mais magra do que manequim 50-54, PROIBIDO modelo magra, PROIBIDO cintura fina de passarela, PROIBIDO barriga chapada/seca, PROIBIDO pernas finas (STRICTLY FORBIDDEN: woman slimmer than manequim 50-54, skinny model, slim waist, thin legs, flat athletic stomach, slender body, midsize, tanned skin).]\n\n" : "";
   const headerKling = params.isAnaMariaMode ? `${plusRule}${getAnaMariaHeader(Boolean(params.scenarioPhotoBase64), allowsFace)}` : `${englishFidelityHeader}${IMAGE_REFERENCE_FIDELITY_HEADER}`;
   const klingPrompt = compactPromptToLimit(
     params.prompt,
@@ -3481,7 +3486,7 @@ async function generateImageWithKling(params) {
   const payload = {
     model_name: "kling-v3",
     prompt: klingPrompt,
-    negative_prompt: params.isAnaMariaMode ? allowsFace ? `tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, deformed face, bad eyes${isPlus ? ", skinny, slim, thin waist, flat belly, slender, underweight, thin legs" : ""}` : `face, lips, mouth, nose, eyes, tattoos on skin, deformed hands, bad anatomy, blurry, watermark${isPlus ? ", skinny, slim, thin waist, flat belly, slender, underweight, thin legs" : ""}` : "original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry",
+    negative_prompt: params.isAnaMariaMode ? allowsFace ? `tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, deformed face, bad eyes${isPlus ? ", skinny, slim, thin waist, flat belly, slender, underweight, thin legs, midsize, tanned skin, fake bronze, airbrushed skin" : ""}` : `face, lips, mouth, nose, eyes, tattoos on skin, deformed hands, bad anatomy, blurry, watermark${isPlus ? ", skinny, slim, thin waist, flat belly, slender, underweight, thin legs, midsize, tanned skin, fake bronze, airbrushed skin" : ""}` : "original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry",
     aspect_ratio: params.aspectRatio || "9:16",
     n: 1,
     watermark_info: {
@@ -3587,7 +3592,7 @@ async function generateImageWithSeedream(params) {
   const refImages = (params.referenceImages && params.referenceImages.length > 0 ? params.referenceImages : [params.imageReferenceBase64]).map((img) => toDataUri(img)).filter((img) => Boolean(img)).slice(0, 10);
   const alreadyStructuredAnaMaria = params.isAnaMariaMode && (params.prompt.includes("PRESERVA\xC7\xC3O INTEGRAL DO CEN\xC1RIO") || params.prompt.includes("CEN\xC1RIO RESIDENCIAL E AMBIENTE"));
   const isPlus = params.bodyType === "plus_size" || /plus[-_\s]*size/i.test(params.prompt);
-  const plusRule = isPlus && !alreadyStructuredAnaMaria ? "[MANDATORY AUTHENTIC PLUS-SIZE RULE / REGRA PLUS SIZE OBRIGAT\xD3RIA: Mulher brasileira adulta verdadeiramente PLUS SIZE (manequim 48 a 52 / US 16-18 / XXL, authentic plus-size curvy woman, heavy-set, full-figured voluptuous body). Coxas bem grossas, cheias e fartas, quadris largos, abd\xF4men macio e natural, busto volumoso e bra\xE7os cheios. PROIBIDO modelo magra ou cintura fina.]\n\n" : "";
+  const plusRule = isPlus && !alreadyStructuredAnaMaria ? "[MANDATORY AUTHENTIC PLUS-SIZE RULE / REGRA PLUS SIZE OBRIGAT\xD3RIA: Mulher brasileira adulta verdadeiramente PLUS SIZE PESADA (manequim 50 a 54 / US 18-22 / 2XL-3XL). Coxas hiper-grossas que se tocam sem v\xE3o (zero thigh gap) com celulites naturais vis\xEDveis nas coxas, quadris muito largos, abd\xF4men macio arredondado com volume lateral, bra\xE7os grossos carnudos e busto volumoso. Pele clara natural N\xC3O bronzeada, ilumina\xE7\xE3o natural de casa comum. TERMINANTEMENTE PROIBIDO gerar mulheres mais magras do que manequim 50-54 (STRICTLY FORBIDDEN: woman slimmer than manequim 50-54, slim waist, skinny, midsize, flat belly, thin legs).]\n\n" : "";
   const allowsFaceSeedream = params.presentationMode === "com_rosto" || params.selectedMasterId === "mestra_catza" || Boolean(
     params.prompt && (params.prompt.includes("MODO COM ROSTO") || params.prompt.includes("ROSTO E ENQUADRAMENTO \u2014 MODO COM ROSTO") || params.prompt.includes("o rosto da modelo DEVE aparecer") || params.prompt.includes("MESTRA CATZA"))
   );

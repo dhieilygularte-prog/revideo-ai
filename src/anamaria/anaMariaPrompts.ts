@@ -10,6 +10,7 @@ import {
 import {
   getMasterPromptById,
   UNIVERSAL_PLUS_SIZE_MODULE,
+  UNIVERSAL_PLUS_SIZE_ENGLISH_DIRECTIVE,
   UNIVERSAL_MALE_PLUS_SIZE_MODULE,
 } from './masterPromptsData';
 
@@ -206,7 +207,9 @@ Homem brasileiro adulto (25 a 35 anos, salvo outra idade nas instruções adicio
 Corpo masculino proporcional e em forma: ombros largos, peitoral e tronco alinhados, cintura masculina natural e pernas masculinas proporcionais.
 Pele com o mesmo padrão de realismo fotográfico da Mestra selecionada (poros visíveis, textura humana verdadeira, zero efeito plástico).`;
   } else if (isPlusSize) {
-    bodySectionText = `${UNIVERSAL_PLUS_SIZE_MODULE}\n\n### PELE E TEXTURA HUMANA (${master.shortName.toUpperCase()})\n${master.skinAndRealismText}`;
+    // Para Plus Size Feminino: O módulo universal soberano já define rigorosamente a anatomia pesada 50-54,
+    // as coxas com celulite natural visível, a pele clara não-bronzeada e a iluminação natural autêntica.
+    bodySectionText = `${UNIVERSAL_PLUS_SIZE_MODULE}\n\n${UNIVERSAL_PLUS_SIZE_ENGLISH_DIRECTIVE}`;
   } else {
     bodySectionText = `## 1. PADRÃO CORPORAL E PELE — ${master.shortName.toUpperCase()}\n${master.bodyStandardText}\n\n### PELE E REALISMO HUMANO\n${master.skinAndRealismText}`;
   }
@@ -261,7 +264,7 @@ ${
 ${master.lightingAndCameraText}
 ${
   isPlusSize
-    ? `Postura natural em pé diante do espelho, valorizando com autenticidade a estrutura corporal genuinamente PLUS SIZE (manequim 48-52, coxas grossas, quadris largos, abdômen arredondado natural e braços cheios), com o braço livre relaxado ou tocando levemente a lateral sem esconder detalhes da roupa.`
+    ? `Postura natural em pé diante do espelho, valorizando com autenticidade a estrutura corporal genuinamente PLUS SIZE PESADA (manequim 50-54, peso corporal evidente, coxas hiper-grossas que se tocam sem vão, celulites naturais visíveis nas coxas, quadris muito largos, abdômen arredondado macio e braços roliços carnudos), com o braço livre relaxado ou tocando levemente a lateral sem esconder detalhes da roupa.`
     : `Postura natural em pé diante do espelho, peso apoiado de forma orgânica valorizando a silhueta e o caimento da peça, com o braço livre relaxado ou tocando suavemente a lateral sem esconder detalhes da roupa.`
 }`;
 
@@ -271,7 +274,7 @@ ${
         ? 'um homem adulto genuinamente PLUS SIZE (porte grande e pesado, manequim 52-56)'
         : 'um homem adulto em forma'
       : isPlusSize
-      ? 'uma mulher adulta genuinamente PLUS SIZE (manequim 48 a 52, volume adiposo evidente, coxas grossas, quadris largos e curvas generosas)'
+      ? 'uma mulher adulta brasileira genuinamente PLUS SIZE PESADA (manequim 50 a 54 / US 18-22 / 2XL-3XL, peso real evidente, coxas hiper-grossas que se tocam com celulites naturais visíveis na pele, quadris muito largos, abdômen arredondado macio com volume lateral, braços grossos carnudos, pele clara natural não bronzeada e iluminação ambiente de quarto real)'
       : `uma mulher adulta seguindo o padrão físico da ${master.shortName}`
   } vestindo exatamente a peça de roupa da imagem de referência anexada, inserida com perfeição no ${scenarioTitle} anexado, em uma fotografia de espelho de corpo inteiro.
 
@@ -368,7 +371,7 @@ Adapte toda a execução para o modelo masculino da imagem de referência, prese
 
   // 2. Preservação da estrutura Plus Size durante toda a animação (resumo conciso para o vídeo sem sobrepor movimentos)
   if (isPlusSize && mode !== 'pov' && !master.isPov) {
-    base = `**PRESERVAÇÃO DO CORPO PLUS SIZE:** Preservar a silhueta e proporções corporais plus size da modelo da imagem de referência durante todos os movimentos.\n\n` + base;
+    base = `**PRESERVAÇÃO OBRIGATÓRIA DO CORPO PLUS SIZE REAL (MANEQUIM 50-54):** Mantenha rigorosamente em todos os frames a estrutura corporal genuinamente PLUS SIZE PESADA da imagem de referência (coxas hiper-grossas que se tocam com celulites naturais, quadris muito largos, abdômen macio arredondado com volume lateral, braços cheios e carnudos, pele clara natural não bronzeada). Jamais afinar a silhueta ou emagrecer a modelo durante os giros ou movimentos.\n\n` + base;
   }
 
   // 3. Regra de Enquadramento: Com Rosto (UGC) vs Mirror Selfie (Corte no queixo)

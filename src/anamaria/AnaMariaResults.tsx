@@ -468,7 +468,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
 
   const defaultCriteria: { name: string; score: number; status: AnaMariaAuditColorStatus; issue?: string }[] = [
     { name: 'Corte Queixo', score: 100, status: 'green' as AnaMariaAuditColorStatus },
-    { name: 'Curvas & Silhueta', score: 96, status: 'green' as AnaMariaAuditColorStatus },
+    { name: result.bodyType === 'plus_size' ? 'Plus Size (50-54)' : 'Curvas & Silhueta', score: 96, status: 'green' as AnaMariaAuditColorStatus },
     { name: 'Zero Tatuagens', score: 100, status: 'green' as AnaMariaAuditColorStatus },
     { name: 'Calçado Condicional', score: 95, status: 'green' as AnaMariaAuditColorStatus },
   ];
@@ -707,7 +707,9 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                 <span className="text-sky-300 font-bold">{result.shoeDescription}</span>
               </p>
               <p className="opacity-80 text-[10px]">
-                Enquadramento 100% do queixo para baixo, silhueta com curvas acentuadas, sem tatuagens e cenário fixo.
+                {result.bodyType === 'plus_size'
+                  ? 'Enquadramento do queixo para baixo, corpo genuinamente Plus Size (manequim 50-54 com celulite natural nas coxas), sem tatuagens e cenário fixo.'
+                  : 'Enquadramento 100% do queixo para baixo, silhueta com curvas acentuadas, sem tatuagens e cenário fixo.'}
               </p>
             </div>
 

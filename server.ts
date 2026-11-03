@@ -1887,7 +1887,7 @@ async function generateImageWithKling(params: {
     );
 
   const isPlus = params.bodyType === 'plus_size' || /plus[-_\s]*size/i.test(params.prompt);
-  const plusRule = isPlus ? '[MANDATORY AUTHENTIC PLUS-SIZE RULE / REGRA PLUS SIZE OBRIGATÓRIA: Mulher brasileira adulta verdadeiramente PLUS SIZE (manequim 48 a 52 / US 16-18 / XXL, authentic plus-size curvy woman, heavy-set, full-figured voluptuous body). Coxas bem grossas, cheias e fartas (very thick heavy thighs), quadris visivelmente largos e proeminentes (wide prominent curvy hips), abdômen macio e natural suavemente preenchido (soft natural full belly/abdomen), busto volumoso e braços cheios carnudos. TERMINANTEMENTE PROIBIDO gerar modelo magra, PROIBIDO cintura fina de passarela, PROIBIDO barriga chapada/seca, PROIBIDO pernas finas (STRICTLY FORBIDDEN: skinny model, slim waist, thin legs, flat athletic stomach, slender body). A modelo DEVE ser genuinamente plus size como em modelos reais plus size brasileiras.]\n\n' : '';
+  const plusRule = isPlus ? '[MANDATORY AUTHENTIC PLUS-SIZE RULE / REGRA PLUS SIZE OBRIGATÓRIA: Mulher brasileira adulta verdadeiramente PLUS SIZE PESADA (manequim 50 a 54 / US 18-22 / 2XL-3XL, heavy-set, full-figured voluptuous body). Coxas hiper-grossas que se tocam completamente na parte interna superior (zero thigh gap) com textura de celulite natural visível na pele das coxas, quadris muito largos e proeminentes, abdômen arredondado macio com pneuzinhos/dobras nas laterais, busto volumoso e braços grossos roliços carnudos. Pele clara natural NÃO bronzeada (sem tom alaranjado/dourado), iluminação natural comum de quarto. TERMINANTEMENTE PROIBIDO gerar mulher mais magra do que manequim 50-54, PROIBIDO modelo magra, PROIBIDO cintura fina de passarela, PROIBIDO barriga chapada/seca, PROIBIDO pernas finas (STRICTLY FORBIDDEN: woman slimmer than manequim 50-54, skinny model, slim waist, thin legs, flat athletic stomach, slender body, midsize, tanned skin).]\n\n' : '';
   const headerKling = params.isAnaMariaMode ? `${plusRule}${getAnaMariaHeader(Boolean(params.scenarioPhotoBase64), allowsFace)}` : `${englishFidelityHeader}${IMAGE_REFERENCE_FIDELITY_HEADER}`;
   const klingPrompt = compactPromptToLimit(
     params.prompt,
@@ -1900,8 +1900,8 @@ async function generateImageWithKling(params: {
     prompt: klingPrompt,
     negative_prompt: params.isAnaMariaMode
       ? (allowsFace
-          ? `tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, deformed face, bad eyes${isPlus ? ', skinny, slim, thin waist, flat belly, slender, underweight, thin legs' : ''}`
-          : `face, lips, mouth, nose, eyes, tattoos on skin, deformed hands, bad anatomy, blurry, watermark${isPlus ? ', skinny, slim, thin waist, flat belly, slender, underweight, thin legs' : ''}`)
+          ? `tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, deformed face, bad eyes${isPlus ? ', skinny, slim, thin waist, flat belly, slender, underweight, thin legs, midsize, tanned skin, fake bronze, airbrushed skin' : ''}`
+          : `face, lips, mouth, nose, eyes, tattoos on skin, deformed hands, bad anatomy, blurry, watermark${isPlus ? ', skinny, slim, thin waist, flat belly, slender, underweight, thin legs, midsize, tanned skin, fake bronze, airbrushed skin' : ''}`)
       : 'original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry',
     aspect_ratio: params.aspectRatio || '9:16',
     n: 1,
@@ -2053,7 +2053,7 @@ async function generateImageWithSeedream(params: {
   const isPlus = params.bodyType === 'plus_size' || /plus[-_\s]*size/i.test(params.prompt);
   const plusRule =
     isPlus && !alreadyStructuredAnaMaria
-      ? '[MANDATORY AUTHENTIC PLUS-SIZE RULE / REGRA PLUS SIZE OBRIGATÓRIA: Mulher brasileira adulta verdadeiramente PLUS SIZE (manequim 48 a 52 / US 16-18 / XXL, authentic plus-size curvy woman, heavy-set, full-figured voluptuous body). Coxas bem grossas, cheias e fartas, quadris largos, abdômen macio e natural, busto volumoso e braços cheios. PROIBIDO modelo magra ou cintura fina.]\n\n'
+      ? '[MANDATORY AUTHENTIC PLUS-SIZE RULE / REGRA PLUS SIZE OBRIGATÓRIA: Mulher brasileira adulta verdadeiramente PLUS SIZE PESADA (manequim 50 a 54 / US 18-22 / 2XL-3XL). Coxas hiper-grossas que se tocam sem vão (zero thigh gap) com celulites naturais visíveis nas coxas, quadris muito largos, abdômen macio arredondado com volume lateral, braços grossos carnudos e busto volumoso. Pele clara natural NÃO bronzeada, iluminação natural de casa comum. TERMINANTEMENTE PROIBIDO gerar mulheres mais magras do que manequim 50-54 (STRICTLY FORBIDDEN: woman slimmer than manequim 50-54, slim waist, skinny, midsize, flat belly, thin legs).]\n\n'
       : '';
 
   const allowsFaceSeedream =
