@@ -120,7 +120,7 @@ As pernas não devem ser afinadas, alongadas artificialmente ou transformadas em
 
 A pele deve apresentar realismo fotográfico extremo, sem filtros de beleza, sem efeito porcelana, sem acabamento plástico e sem suavização artificial.
 
-Tom de pele morena clara a média, com subtom quente, levemente dourado e nuances naturais.
+A tonalidade de pele e a etnia da modelo seguem rigorosamente a Prioridade 1 (instruções adicionais do usuário) ou Prioridade 3 (padrão da Mestra). A configuração Plus Size aplica-se estritamente ao biotipo corporal (proporções, volume adiposo, peso natural) e à textura da pele com celulite natural visível.
 
 A pele deve apresentar:
 
@@ -179,7 +179,7 @@ export const UNIVERSAL_PLUS_SIZE_ENGLISH_DIRECTIVE = `[SOVEREIGN PLUS-SIZE BODY 
 - 4. ABDOMEN & WAIST: Full natural belly with soft subcutaneous fat and gentle outward projection below the navel (never flat, never toned). Moderate natural waist definition with soft rolls on the flanks/sides.
 - 5. HIPS & GLUTES: Extra-wide, rounded, voluptuous hips and glutes with smooth natural continuation into the thighs (never narrow hips).
 - 6. THIGHS & LEGS: Very thick, massive, heavy thighs that touch and press together at the upper thighs (zero thigh gap). Thick, soft, rounded upper legs and full calves.
-- 7. SKIN TEXTURE, TONE & CELLULITE: Light-brown to medium-brown skin with warm, subtly golden undertone. REAL photographic skin with natural pores, subtle tone variations, and natural skin folds. MANDATORY CELLULITE (DO NOT REMOVE): Visible natural cellulite dimpling and subtle wavy texture on the thighs (authentic unretouched human skin; absolutely NO airbrushed smooth plastic look, NO beauty filters).
+- 7. SKIN TEXTURE & MANDATORY CELLULITE: REAL photographic unretouched skin with natural pores, subtle skin folds and MANDATORY VISIBLE CELLULITE on the heavy thighs (DO NOT REMOVE; authentic cellulite dimpling and natural skin waves). Note: Skin tone and ethnicity are governed strictly by User Directives (Priority 1) or selected Mestra (Priority 3).
 - 8. ANATOMICAL REALISM: Natural weight, softness, and gravity behavior of plus-size body fat.
 - 9. PERMANENT RETENTION: Maintain this exact heavy, voluptuous plus-size body proportions across every generated frame.`;
 

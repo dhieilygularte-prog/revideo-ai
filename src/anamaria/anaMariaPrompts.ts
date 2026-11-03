@@ -116,6 +116,169 @@ export const SCENARIO_DESCRIPTIONS: Record<AnaMariaRoomType, string> = {
  * 2º Camada Universal (Modo Mirror Selfie vs POV vs Com Rosto, Módulo Plus Size, Adaptação Masculina, Regra Universal de Calçados, Cenário Independente)
  * 3º Identidade Física e Acessórios da Mestra selecionada na Galeria de Prompts
  */
+/**
+ * Extrai e compõe os atributos físicos da modelo respeitando estritamente a hierarquia:
+ * PRIORIDADE 1: Instruções Adicionais do Usuário (Soberana)
+ * PRIORIDADE 2: Configuração Plus Size (Altera exclusivamente o biotipo corporal)
+ * PRIORIDADE 3: Características Físicas Originais da Mestra
+ */
+export function resolveModelAttributesHierarchy(params: {
+  master: ReturnType<typeof getMasterPromptById>;
+  isPlusSize: boolean;
+  isMale: boolean;
+  additionalInstructions?: string;
+  presentationMode: AnaMariaPresentationMode;
+}) {
+  const { master, isPlusSize, isMale, additionalInstructions = '' } = params;
+  const userText = additionalInstructions.trim();
+  const lowerUser = userText.toLowerCase();
+
+  // 1. Detecção de atributos especificados pelo usuário (Prioridade 1)
+  // A) Etnia e Cor da Pele
+  const isBlackUser = /\b(negra|negro|preta|preto|afro|afrodescendente|pele preta|pele negra|pele escura|black woman|dark skin)\b/i.test(lowerUser);
+  const isAsianUser = /\b(japonesa|japones|asiatica|asiática|oriental|coreana|chinesa|asian)\b/i.test(lowerUser);
+  const isRedheadUser = /\b(ruiva|ruivo|cabelo ruivo|cabelos ruivos|redhead|ginger)\b/i.test(lowerUser);
+  const isWhiteUser = /\b(branca|pele clara|caucasiana|pale skin|fair skin|branca de pele clara)\b/i.test(lowerUser);
+  const isTannedUser = /\b(morena|morena escura|morena clara|bronzeada|pele morena|parda|indigena|indígena)\b/i.test(lowerUser);
+
+  let userEthnicitySummary = '';
+  let userEthnicityDirectiveEnglish = '';
+  let userEthnicityDirectivePt = '';
+
+  if (isBlackUser) {
+    userEthnicitySummary = 'mulher negra de pele preta autêntica';
+    userEthnicityDirectivePt = 'A modelo DEVE ser uma MULHER NEGRA / AFRODESCENDENTE com pele preta/escura autêntica, tom rico e profundo de pele negra, lábios naturais proporcionais e traços negros autênticos. É TERMINANTEMENTE PROIBIDO gerar mulher branca, caucasiana, de pele clara ou apenas levemente bronzeada.';
+    userEthnicityDirectiveEnglish = '[SOVEREIGN PRIORITY 1 — ETHNICITY & SKIN COLOR MANDATE]:\nThe model MUST be an authentic BLACK WOMAN (Afro-Brazilian / dark-skinned black woman) with rich, authentic dark black skin. ABSOLUTELY FORBIDDEN: white, fair, light-skinned, caucasian, or lightly tanned models.';
+  } else if (isAsianUser) {
+    userEthnicitySummary = 'mulher japonesa / asiática oriental';
+    userEthnicityDirectivePt = 'A modelo DEVE ser uma MULHER JAPONESA / ASIÁTICA ORIENTAL com traços faciais asiáticos naturais e pele lisa clara/natural. É TERMINANTEMENTE PROIBIDO gerar mulher caucasiana ou ocidental.';
+    userEthnicityDirectiveEnglish = '[SOVEREIGN PRIORITY 1 — ETHNICITY & SKIN COLOR MANDATE]:\nThe model MUST be an authentic JAPANESE / EAST ASIAN WOMAN with natural East Asian facial features. STRICTLY FORBIDDEN: caucasian, black, or western features.';
+  } else if (isRedheadUser) {
+    userEthnicitySummary = 'mulher ruiva de pele clara';
+    userEthnicityDirectivePt = 'A modelo DEVE ser uma MULHER RUIVA com cabelos ruivos acobreados naturais e pele clara natural com leves sardas delicadas.';
+    userEthnicityDirectiveEnglish = '[SOVEREIGN PRIORITY 1 — ETHNICITY & HAIR MANDATE]:\nThe model MUST be a natural REDHEAD WOMAN with natural copper-red hair and fair/pale skin with subtle natural freckles.';
+  } else if (isWhiteUser) {
+    userEthnicitySummary = 'mulher de pele clara caucasiana';
+    userEthnicityDirectivePt = 'A modelo DEVE apresentar pele clara natural (caucasiana).';
+    userEthnicityDirectiveEnglish = '[SOVEREIGN PRIORITY 1 — SKIN COLOR MANDATE]:\nThe model MUST have fair / light natural Caucasian skin tone.';
+  } else if (isTannedUser) {
+    userEthnicitySummary = 'mulher morena';
+    userEthnicityDirectivePt = `A modelo DEVE apresentar tom de pele conforme solicitado: "${userText}".`;
+    userEthnicityDirectiveEnglish = `[SOVEREIGN PRIORITY 1 — SKIN COLOR MANDATE]:\nThe model MUST have skin tone matching the user directive: "${userText}".`;
+  } else if (userText.length > 0 && /\b(pele|etnia|cor|tom)\b/i.test(lowerUser)) {
+    userEthnicitySummary = userText;
+    userEthnicityDirectivePt = `A modelo DEVE seguir exatamente a etnia/cor de pele solicitada pelo usuário: "${userText}".`;
+    userEthnicityDirectiveEnglish = `[SOVEREIGN PRIORITY 1 — SKIN COLOR MANDATE]:\nThe model MUST follow the exact ethnicity and skin color specified by the user: "${userText}".`;
+  }
+
+  // B) Cabelo
+  const isBlondeUser = /\b(loira|loiro|cabelos loiros|cabelo loiro|blonde)\b/i.test(lowerUser);
+  const isCurlyUser = /\b(cabelo crespo|cabelos crespos|afro|black power|tranças|tranca|trança|cabelo cacheado|cachos)\b/i.test(lowerUser);
+  const isStraightUser = /\b(cabelo liso|cabelos lisos|liso longo|liso escorrido)\b/i.test(lowerUser);
+  const isShortUser = /\b(cabelo curto|cabelos curtos|chanel|pixie)\b/i.test(lowerUser);
+
+  let userHairSummary = '';
+  let userHairDirectivePt = '';
+  let userHairDirectiveEnglish = '';
+
+  if (isBlondeUser) {
+    userHairSummary = 'cabelos loiros';
+    userHairDirectivePt = 'Cabelos loiros naturais e iluminados, fios saudáveis e realistas.';
+    userHairDirectiveEnglish = '[SOVEREIGN PRIORITY 1 — HAIR MANDATE]: The model MUST have BLONDE HAIR.';
+  } else if (isRedheadUser) {
+    userHairSummary = 'cabelos ruivos';
+    userHairDirectivePt = 'Cabelos ruivos acobreados naturais e saudáveis.';
+    userHairDirectiveEnglish = '[SOVEREIGN PRIORITY 1 — HAIR MANDATE]: The model MUST have NATURAL COPPER-RED HAIR.';
+  } else if (isCurlyUser) {
+    userHairSummary = 'cabelo crespo / cacheado volumoso';
+    userHairDirectivePt = 'Cabelo crespo / afro / cacheado com curvatura natural e textura autêntica.';
+    userHairDirectiveEnglish = '[SOVEREIGN PRIORITY 1 — HAIR MANDATE]: The model MUST have natural textured afro/curly/braided hair as requested.';
+  } else if (isShortUser) {
+    userHairSummary = 'cabelo curto';
+    userHairDirectivePt = 'Cabelo curto feminino moderno e estilizado.';
+    userHairDirectiveEnglish = '[SOVEREIGN PRIORITY 1 — HAIR MANDATE]: The model MUST have SHORT HAIR.';
+  } else if (isStraightUser) {
+    userHairSummary = 'cabelo liso';
+    userHairDirectivePt = 'Cabelo liso alinhado com caimento natural.';
+    userHairDirectiveEnglish = '[SOVEREIGN PRIORITY 1 — HAIR MANDATE]: The model MUST have straight hair.';
+  }
+
+  // C) Biotipo Corporal
+  const userSpecifiedSlim = /\b(magra|magrinha|esguia|slim|skinny|corpo de modelo|sem curvas|slender)\b/i.test(lowerUser);
+  const userSpecifiedPlus = /\b(plus size|plus-size|gordinha|pesada|gorda|corpo pesado)\b/i.test(lowerUser);
+  const userSpecifiedMuscular = /\b(muito musculosa|musculosa|fisiculturista|marombada|muito forte)\b/i.test(lowerUser);
+
+  // RESOLUÇÃO DE BIOTIPO:
+  // Prioridade 1: Usuário (se especificou corpo)
+  // Prioridade 2: Plus Size ativado
+  // Prioridade 3: Padrão da Mestra
+  let resolvedBodyText = '';
+  let bodySummaryLabel = '';
+
+  if (isMale) {
+    if (isPlusSize || userSpecifiedPlus) {
+      resolvedBodyText = UNIVERSAL_MALE_PLUS_SIZE_MODULE;
+      bodySummaryLabel = 'um homem adulto genuinamente PLUS SIZE (manequim 52 a 56)';
+    } else {
+      resolvedBodyText = `## 1. ESTRUTURA CORPORAL MASCULINA (ADAPTAÇÃO MASCULINA DE ${master.shortName.toUpperCase()})\nHomem brasileiro adulto (25 a 35 anos, salvo outra idade nas instruções adicionais), aparência natural, autêntica e cotidiana.\nCorpo masculino proporcional e em forma: ombros largos, peitoral e tronco alinhados, cintura masculina natural e pernas masculinas proporcionais.`;
+      bodySummaryLabel = 'um homem adulto em forma';
+    }
+  } else if (userSpecifiedSlim) {
+    resolvedBodyText = `## 1. BIOTIPO CORPORAL — PRIORIDADE 1 DO USUÁRIO (CORPO MAGRO / ESGUIO)\nA modelo DEVE apresentar silhueta esguia, magra e elegante, com cintura estreita e pernas proporcionais, conforme solicitado soberanamente pelo usuário.`;
+    bodySummaryLabel = 'uma mulher adulta de silhueta esguia e magra';
+  } else if (userSpecifiedMuscular) {
+    resolvedBodyText = `## 1. BIOTIPO CORPORAL — PRIORIDADE 1 DO USUÁRIO (CORPO MUSCULOSO)\nA modelo DEVE apresentar musculatura densa e visível, com pernas muito musculosas, braços firmes e abdômen definido, conforme solicitado pelo usuário.`;
+    bodySummaryLabel = 'uma mulher adulta com musculatura desenvolvida';
+  } else if (isPlusSize || userSpecifiedPlus) {
+    // PRIORIDADE 2: PLUS SIZE REAL (Sem cor de pele acoplada!)
+    resolvedBodyText = `${UNIVERSAL_PLUS_SIZE_MODULE}\n\n${UNIVERSAL_PLUS_SIZE_ENGLISH_DIRECTIVE}`;
+    bodySummaryLabel = 'uma mulher adulta genuinamente PLUS SIZE PESADA (manequim 50 a 54 / 2XL-3XL, corpo volumoso, busto farto com caimento natural, abdômen arredondado macio, quadris largos e coxas muito grossas com celulite natural visível)';
+  } else {
+    // PRIORIDADE 3: MESTRA SELECIONADA
+    resolvedBodyText = `## 1. PADRÃO CORPORAL — ${master.shortName.toUpperCase()}\n${master.bodyStandardText}`;
+    bodySummaryLabel = `uma mulher adulta seguindo a silhueta da ${master.shortName}`;
+  }
+
+  // RESOLUÇÃO DE PELE E ETNIA:
+  // Prioridade 1: Usuário (se especificou etnia ou cor de pele)
+  // Prioridade 2: Plus Size NÃO altera etnia nem cor de pele! Apenas textura (celulite nas coxas)
+  // Prioridade 3: Padrão da Mestra
+  let resolvedSkinText = '';
+  if (userEthnicityDirectivePt) {
+    resolvedSkinText = `### ETNIA E COR DA PELE — PRIORIDADE 1 SOBERANA DO USUÁRIO\n${userEthnicityDirectivePt}\n${userEthnicityDirectiveEnglish}\nTextura fotográfica humana real, poros naturais visíveis, sem filtros digitais de beleza e sem efeito de cera/plástico.${isPlusSize ? ' Preservar a celulite natural visível nas coxas e pernas característica do corpo plus size.' : ''}`;
+  } else {
+    resolvedSkinText = `### PELE E REALISMO HUMANO — ${master.shortName.toUpperCase()}\n${master.skinAndRealismText}${isPlusSize ? '\n\n**CELULITE NATURAL (PLUS SIZE):** Preservar celulite natural visível nas coxas volumosas sem remover com filtros digitais.' : ''}`;
+  }
+
+  // RESOLUÇÃO DE CABELO:
+  // Prioridade 1: Usuário
+  // Prioridade 2/3: Mestra
+  let resolvedHairText = '';
+  if (userHairDirectivePt) {
+    resolvedHairText = `## CABELO — PRIORIDADE 1 SOBERANA DO USUÁRIO\n${userHairDirectivePt}\n${userHairDirectiveEnglish}\nSubstitui integralmente o cabelo padrão da Mestra selecionada. Fios com aspecto de cabelo humano real.`;
+  } else if (isMale) {
+    resolvedHairText = 'Cabelo masculino curto a médio, alinhado e natural.';
+  } else {
+    resolvedHairText = master.hairIdentityText;
+  }
+
+  // BLOCO DE PRIORIDADE SOBERANA DO USUÁRIO NO CABEÇALHO DO PROMPT
+  const priorityOverrideBlock = userText.length > 0
+    ? `## PRIORIDADE SOBERANA ABSOLUTA (PRIORIDADE 1) — INSTRUÇÕES DO USUÁRIO\n"${userText}"\nREGRA DE HIERARQUIA INEGOCIÁVEL (Prioridade 1: Usuário -> Prioridade 2: Plus Size -> Prioridade 3: Mestra):\n1. As instruções do usuário acima têm PRIORIDADE MÁXIMA e SOBERANA sobre qualquer Mestra e sobre a configuração Plus Size.\n${userEthnicityDirectivePt ? `- ETNIA/COR DA PELE: OBRIGATÓRIO seguir ${userEthnicitySummary.toUpperCase()} (${userEthnicityDirectiveEnglish}).\n` : ''}${userHairDirectivePt ? `- CABELO: OBRIGATÓRIO seguir ${userHairSummary.toUpperCase()}.\n` : ''}${userSpecifiedSlim ? '- BIOTIPO: OBRIGATÓRIO seguir SILHUETA MAGRA/ESGUIA.\n' : ''}2. Biotipo corporal: ${isPlusSize && !userSpecifiedSlim ? 'PLUS SIZE REAL (Prioridade 2 — aplicado exclusivamente ao volume do corpo, cintura, seios e pernas, sem alterar etnia/pele).' : 'Conforme definido acima.'}\n3. Características não conflitantes da Mestra (${master.shortName}): mantidas normalmente (cenário, corte no queixo, postura e acessórios).\n\n`
+    : '';
+
+  return {
+    resolvedBodyText,
+    resolvedSkinText,
+    resolvedHairText,
+    bodySummaryLabel,
+    userEthnicitySummary,
+    userHairSummary,
+    userEthnicityDirectiveEnglish,
+    priorityOverrideBlock,
+  };
+}
+
 export function buildAnaMariaImagePrompt(
   form: AnaMariaFormState,
   scenarioRoom: AnaMariaRoomType = 'hall_espelho'
@@ -194,36 +357,32 @@ Qualidade fotográfica autêntica de smartphone moderno em alta definição 1080
   // ============================================================================
   // CASO 2: MODO MIRROR SELFIE (SEM ROSTO) OU MODO COM ROSTO (UGC)
   // ============================================================================
+  const hasSelectedScenario = Boolean(form.selectedScenarioId);
   const scenarioTitle = form.selectedScenarioNumber
     ? `Cenário ${form.selectedScenarioNumber}`
     : 'cenário selecionado';
   const scenarioText = SCENARIO_DESCRIPTIONS[scenarioRoom] || SCENARIO_DESCRIPTIONS.hall_espelho;
 
-  // Estrutura Corporal: Normal da Mestra vs Módulo Universal Plus Size vs Adaptação Masculina
-  let bodySectionText = '';
-  if (isMale) {
-    bodySectionText = isPlusSize
-      ? UNIVERSAL_MALE_PLUS_SIZE_MODULE
-      : `## 1. ESTRUTURA CORPORAL MASCULINA (ADAPTAÇÃO MASCULINA DE ${master.shortName.toUpperCase()})
-Homem brasileiro adulto (25 a 35 anos, salvo outra idade nas instruções adicionais), aparência natural, autêntica e cotidiana.
-Corpo masculino proporcional e em forma: ombros largos, peitoral e tronco alinhados, cintura masculina natural e pernas masculinas proporcionais.
-Pele com o mesmo padrão de realismo fotográfico da Mestra selecionada (poros visíveis, textura humana verdadeira, zero efeito plástico).`;
-  } else if (isPlusSize) {
-    // Para Plus Size Feminino: O módulo universal soberano já define rigorosamente a anatomia pesada 50-54,
-    // as coxas com celulite natural visível, a pele clara não-bronzeada e a iluminação natural autêntica.
-    bodySectionText = `${UNIVERSAL_PLUS_SIZE_MODULE}\n\n${UNIVERSAL_PLUS_SIZE_ENGLISH_DIRECTIVE}`;
-  } else {
-    bodySectionText = `## 1. PADRÃO CORPORAL E PELE — ${master.shortName.toUpperCase()}\n${master.bodyStandardText}\n\n### PELE E REALISMO HUMANO\n${master.skinAndRealismText}`;
-  }
+  // RESOLUÇÃO DE ATRIBUTOS PELA HIERARQUIA SOBERANA:
+  // Prioridade 1: Usuário -> Prioridade 2: Plus Size (somente corpo) -> Prioridade 3: Mestra
+  const {
+    resolvedBodyText,
+    resolvedSkinText,
+    resolvedHairText,
+    bodySummaryLabel,
+    userEthnicitySummary,
+    userHairSummary,
+    priorityOverrideBlock: resolvedPriorityBlock,
+  } = resolveModelAttributesHierarchy({
+    master,
+    isPlusSize,
+    isMale,
+    additionalInstructions: form.additionalInstructions,
+    presentationMode: mode,
+  });
 
-  // Cabelo: Mestra vs Homem
-  const hairSectionText = isMale
-    ? `Cabelo masculino curto a médio, alinhado e natural, mantendo a mesma tonalidade base da Mestra selecionada (${
-        master.id === 'mestra_duda'
-          ? 'castanho-claro a castanho-médio'
-          : 'castanho-escuro a preto'
-      }, salvo se o usuário solicitou outro cabelo nas instruções adicionais).`
-    : master.hairIdentityText;
+  const bodySectionText = `${resolvedBodyText}\n\n${resolvedSkinText}`;
+  const hairSectionText = resolvedHairText;
 
   // Acessórios: Mestra vs Homem
   const accessoriesSectionText = isMale
@@ -248,7 +407,6 @@ REGRA SOBERANA ACIMA DO PROMPT DA MESTRA: Enquadrar a cabeça RIGOROSAMENTE DA A
 É TERMINANTEMENTE PROIBIDO MOSTRAR LÁBIOS, BOCA, NARIZ OU OLHOS EM QUALQUER PARTE DA IMAGEM.
 Os lábios, a boca, o nariz e os olhos devem ficar 100% FORA do enquadramento em todas as circunstâncias. Mostrar somente a ponta inferior do queixo, o pescoço, o colo (com parte do comprimento dos cabelos caindo sobre os ombros/colo) e todo o corpo até os pés. O corte deve parecer uma selfie espontânea natural tirada no espelho com corte exato na base do queixo.`;
 
-  const hasSelectedScenario = Boolean(form.selectedScenarioId);
   const scenarioSection = hasSelectedScenario
     ? `## 4. PRESERVAÇÃO INTEGRAL DO CENÁRIO INDEPENDENTE (${scenarioTitle.toUpperCase()})
 A foto de cenário anexada é a autoridade visual absoluta do ambiente.
@@ -270,15 +428,13 @@ ${
     : `Postura natural em pé diante do espelho, peso apoiado de forma orgânica valorizando a silhueta e o caimento da peça, com o braço livre relaxado ou tocando suavemente a lateral sem esconder detalhes da roupa.`
 }`;
 
-  const prompt = `${priorityOverrideBlock}Crie uma fotografia hiper-realista vertical 9:16 (1080x1920) de ${
-    isMale
-      ? isPlusSize
-        ? 'um homem adulto genuinamente PLUS SIZE (porte grande e pesado, manequim 52-56)'
-        : 'um homem adulto em forma'
-      : isPlusSize
-      ? 'uma mulher adulta brasileira genuinamente PLUS SIZE PESADA (manequim 50 a 54 / US 18-22 / 2XL-3XL, peso real evidente, coxas hiper-grossas que se tocam com celulites naturais visíveis na pele, quadris muito largos, abdômen arredondado macio com volume lateral, braços grossos carnudos, pele clara natural não bronzeada e iluminação ambiente de quarto real)'
-      : `uma mulher adulta seguindo o padrão físico da ${master.shortName}`
-  } vestindo exatamente a peça de roupa da imagem de referência anexada, inserida com perfeição no ${scenarioTitle} anexado, em uma fotografia de espelho de corpo inteiro.
+  const openingDescriptor = [
+    bodySummaryLabel,
+    userEthnicitySummary && `de etnia/pele: ${userEthnicitySummary}`,
+    userHairSummary && `com ${userHairSummary}`,
+  ].filter(Boolean).join(', ');
+
+  const prompt = `${resolvedPriorityBlock || priorityOverrideBlock}Crie uma fotografia hiper-realista vertical 9:16 (1080x1920) de ${openingDescriptor} vestindo exatamente a peça de roupa da imagem de referência anexada, inserida com perfeição no ${scenarioTitle} anexado, em uma fotografia de espelho de corpo inteiro.
 
 ${bodySectionText}
 **REGRA DE PELE LIMPA: ${isMale ? 'O modelo' : 'A modelo'} não deve possuir tatuagens no corpo (salvo se solicitado nas instruções adicionais).**

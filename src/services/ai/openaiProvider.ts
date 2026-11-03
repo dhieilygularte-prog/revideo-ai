@@ -571,6 +571,7 @@ Retorne estritamente um JSON estruturado:
 
     // Prioriza correções de auditoria e instruções adicionais sobre o prompt universal já formatado
     const overrides = [
+      userEthnicityDirectivesOpenAI,
       scenarioLockDirective,
       modelAntiViolationDirective,
       opticalClarityDirective,
@@ -619,6 +620,19 @@ Retorne estritamente um JSON estruturado:
           /plus[-_\s]*size|manequim\s*(?:48|50|52|54)/i.test(prompt) ||
           /plus[-_\s]*size/i.test(additionalInstructions));
 
+      const lowerInstructions = (additionalInstructions || '').toLowerCase();
+      const isBlackRequested = /\b(negra|preta|afro|pele preta|pele negra|black woman|dark skin)\b/i.test(lowerInstructions);
+      const isAsianRequested = /\b(japonesa|asiatica|asiática|oriental|asian)\b/i.test(lowerInstructions);
+      const isRedheadRequested = /\b(ruiva|redhead|ginger)\b/i.test(lowerInstructions);
+
+      const userEthnicityDirectivesOpenAI = isBlackRequested
+        ? `[PRIORITY 1 SOBERANA — ETHNICITY & SKIN COLOR MANDATE]:\nThe model MUST be an authentic BLACK WOMAN (Afro-Brazilian / dark-skinned black woman) with rich, authentic dark black skin.\nABSOLUTELY FORBIDDEN: white, fair, light-skinned, caucasian, or lightly tanned models.`
+        : isAsianRequested
+        ? `[PRIORITY 1 SOBERANA — ETHNICITY & SKIN COLOR MANDATE]:\nThe model MUST be an authentic JAPANESE / EAST ASIAN WOMAN with natural East Asian facial features.\nSTRICTLY FORBIDDEN: caucasian, black, or western features.`
+        : isRedheadRequested
+        ? `[PRIORITY 1 SOBERANA — ETHNICITY & HAIR MANDATE]:\nThe model MUST be a natural REDHEAD WOMAN with copper-red hair and fair/pale skin with subtle natural freckles.`
+        : '';
+
       const userRequestedSlimOpenAI =
         /\b(?:magra|magrinha|corpo\s+de\s+modelo|modelo\s+magra|sem\s+curvas|esguia|slim|skinny|slender)\b/i.test(
           additionalInstructions || ''
@@ -641,7 +655,7 @@ ${cleanPrompt}`;
 - STRICT USER MANDATE: NEVER generate women slimmer than this photographic reference. ABSOLUTELY FORBIDDEN: mid-size, slim waist, narrow runway model, flat stomach, or thin thighs.
 - THIGHS & CONTACT: Extremely thick, massive, heavy voluptuous thighs with complete contact/friction at the upper thighs (zero thigh gap; the inner thighs press together completely).
 - CELLULITE & SKIN TEXTURE: MANDATORY VISIBLE CELLULITE (DO NOT REMOVE). The skin on the thighs MUST feature natural, realistic visible cellulite dimpling and subcutaneous adipose texture (authentic unretouched skin waves, visible pores, and natural skin compression marks; absolutely NO porcelain, NO airbrushed smooth plastic look).
-- SKIN TONE: Light-brown to medium-brown skin with warm, subtly golden undertone and natural nuances.
+- ETHNICITY & SKIN TONE: STRICTLY GOVERNED BY USER DIRECTIVE (Priority 1) or Mestra specification (Priority 3). The plus-size setting applies EXCLUSIVELY to body volume, mass and natural cellulite texture, NEVER altering or overriding the user's requested ethnicity or skin color (e.g. if user requested a black woman with dark skin, she MUST be an authentic black woman with dark skin).
 - LIGHTING: Everyday natural indoor bedroom/mirror ambient lighting (natural room light, NO over-glamorized studio lighting, NO artificial shiny plastic glow).
 - HIPS & GLUTES: Extra-wide rounded prominent hips; soft, full midriff with natural soft side rolls (love handles). The waist is wide and soft, NEVER artificially cinched or narrow.
 - ABDOMEN: Soft, rounded, full natural belly with natural subcutaneous fat and gentle outward projection below the navel (NEVER flat, NEVER toned).

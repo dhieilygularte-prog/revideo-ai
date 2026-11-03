@@ -906,6 +906,7 @@ Retorne estritamente um JSON estruturado:
 - The attached scenario reference image defines the EXACT room and interior architecture.
 - Place the model standing directly inside this EXACT architectural setting holding the smartphone in front of the mirror. Do NOT create or invent a different room, do NOT change the walls or floor.` : "";
     const overrides = [
+      userEthnicityDirectivesOpenAI,
       scenarioLockDirective,
       modelAntiViolationDirective,
       opticalClarityDirective,
@@ -942,6 +943,16 @@ ${prompt}` : prompt;
       let effectivePrompt = cleanPrompt;
       const isStoryboardGrid = /grade\s+(?:3x3|2x3|2x2)|(?:\b4|\b6|\b9)\s+(?:cenas|quadros)|storyboard/i.test(prompt);
       const isPlusSizeRequest = !isPovMode && (bodyType === "plus_size" || /plus[-_\s]*size|manequim\s*(?:48|50|52|54)/i.test(prompt) || /plus[-_\s]*size/i.test(additionalInstructions));
+      const lowerInstructions = (additionalInstructions || "").toLowerCase();
+      const isBlackRequested = /\b(negra|preta|afro|pele preta|pele negra|black woman|dark skin)\b/i.test(lowerInstructions);
+      const isAsianRequested = /\b(japonesa|asiatica|asiática|oriental|asian)\b/i.test(lowerInstructions);
+      const isRedheadRequested = /\b(ruiva|redhead|ginger)\b/i.test(lowerInstructions);
+      const userEthnicityDirectivesOpenAI2 = isBlackRequested ? `[PRIORITY 1 SOBERANA \u2014 ETHNICITY & SKIN COLOR MANDATE]:
+The model MUST be an authentic BLACK WOMAN (Afro-Brazilian / dark-skinned black woman) with rich, authentic dark black skin.
+ABSOLUTELY FORBIDDEN: white, fair, light-skinned, caucasian, or lightly tanned models.` : isAsianRequested ? `[PRIORITY 1 SOBERANA \u2014 ETHNICITY & SKIN COLOR MANDATE]:
+The model MUST be an authentic JAPANESE / EAST ASIAN WOMAN with natural East Asian facial features.
+STRICTLY FORBIDDEN: caucasian, black, or western features.` : isRedheadRequested ? `[PRIORITY 1 SOBERANA \u2014 ETHNICITY & HAIR MANDATE]:
+The model MUST be a natural REDHEAD WOMAN with copper-red hair and fair/pale skin with subtle natural freckles.` : "";
       const userRequestedSlimOpenAI = /\b(?:magra|magrinha|corpo\s+de\s+modelo|modelo\s+magra|sem\s+curvas|esguia|slim|skinny|slender)\b/i.test(
         additionalInstructions || ""
       );
@@ -961,7 +972,7 @@ ${cleanPrompt}`;
 - STRICT USER MANDATE: NEVER generate women slimmer than this photographic reference. ABSOLUTELY FORBIDDEN: mid-size, slim waist, narrow runway model, flat stomach, or thin thighs.
 - THIGHS & CONTACT: Extremely thick, massive, heavy voluptuous thighs with complete contact/friction at the upper thighs (zero thigh gap; the inner thighs press together completely).
 - CELLULITE & SKIN TEXTURE: MANDATORY VISIBLE CELLULITE (DO NOT REMOVE). The skin on the thighs MUST feature natural, realistic visible cellulite dimpling and subcutaneous adipose texture (authentic unretouched skin waves, visible pores, and natural skin compression marks; absolutely NO porcelain, NO airbrushed smooth plastic look).
-- SKIN TONE: Light-brown to medium-brown skin with warm, subtly golden undertone and natural nuances.
+- ETHNICITY & SKIN TONE: STRICTLY GOVERNED BY USER DIRECTIVE (Priority 1) or Mestra specification (Priority 3). The plus-size setting applies EXCLUSIVELY to body volume, mass and natural cellulite texture, NEVER altering or overriding the user's requested ethnicity or skin color (e.g. if user requested a black woman with dark skin, she MUST be an authentic black woman with dark skin).
 - LIGHTING: Everyday natural indoor bedroom/mirror ambient lighting (natural room light, NO over-glamorized studio lighting, NO artificial shiny plastic glow).
 - HIPS & GLUTES: Extra-wide rounded prominent hips; soft, full midriff with natural soft side rolls (love handles). The waist is wide and soft, NEVER artificially cinched or narrow.
 - ABDOMEN: Soft, rounded, full natural belly with natural subcutaneous fat and gentle outward projection below the navel (NEVER flat, NEVER toned).
@@ -3505,7 +3516,7 @@ async function generateImageWithKling(params) {
   );
   const isPovModeKling = params.presentationMode === "pov" || params.selectedMasterId === "pov_cinta_85k" || params.selectedMasterId === "pov_blusinhas_13k" || Boolean(params.prompt && params.prompt.includes("PRESERVA\xC7\xC3O INTEGRAL DO CEN\xC1RIO POV"));
   const isPlus = !isPovModeKling && (params.bodyType === "plus_size" || /plus[-_\s]*size/i.test(params.prompt));
-  const plusRule = isPlus ? "[MANDATORY AUTHENTIC PLUS-SIZE RULE / REGRA PLUS SIZE OBRIGAT\xD3RIA: Mulher brasileira adulta verdadeiramente PLUS SIZE REAL (corpo robusto e volumoso, seios grandes pesados com queda natural, bra\xE7os grossos macios, abd\xF4men com proje\xE7\xE3o natural e dobras suaves, quadris muito largos e gl\xFAteos volumosos, coxas muito grossas que se tocam sem v\xE3o com celulite natural vis\xEDvel na pele, tom morena clara a m\xE9dia quente). CELULITE: N\xC3O REMOVER. TERMINANTEMENTE PROIBIDO gerar mulher mais magra do que a refer\xEAncia, PROIBIDO modelo magra, PROIBIDO cintura fina, PROIBIDO barriga chapada, PROIBIDO pernas finas (STRICTLY FORBIDDEN: woman slimmer than reference, skinny model, slim waist, thin legs, flat stomach, slender body, midsize). ]\n\n" : "";
+  const plusRule = isPlus ? "[MANDATORY AUTHENTIC PLUS-SIZE RULE / REGRA PLUS SIZE OBRIGAT\xD3RIA: Mulher brasileira adulta verdadeiramente PLUS SIZE REAL (corpo robusto e volumoso, seios grandes pesados com queda natural, bra\xE7os grossos macios, abd\xF4men com proje\xE7\xE3o natural e dobras suaves, quadris muito largos e gl\xFAteos volumosos, coxas muito grossas que se tocam sem v\xE3o com celulite natural vis\xEDvel na pele, CELULITE: N\xC3O REMOVER. TERMINANTEMENTE PROIBIDO gerar mulher mais magra do que a refer\xEAncia, PROIBIDO modelo magra, PROIBIDO cintura fina, PROIBIDO barriga chapada, PROIBIDO pernas finas. ETNIA E PELE: Seguem a Prioridade 1 das instru\xE7\xF5es do usu\xE1rio (ex.: mulher negra de pele preta, japonesa, ruiva, etc.) ou da Mestra selecionada.]\n\n" : "";
   const headerKling = params.isAnaMariaMode ? isPovModeKling ? "[MODO POV PRIMEIRA PESSOA SOBRE A CAMA \u2014 Preserve 100% do cen\xE1rio da cama e exiba os produtos reais 1:1 sobre a cama manipulados EXCLUSIVAMENTE pelas duas m\xE3os entrando pela borda inferior. PROIBIDO mostrar corpo, rosto, pernas ou espelho!]\n\n" : `${plusRule}${getAnaMariaHeader(Boolean(params.scenarioPhotoBase64), allowsFace)}` : `${englishFidelityHeader}${IMAGE_REFERENCE_FIDELITY_HEADER}`;
   const klingPrompt = compactPromptToLimit(
     params.prompt,
@@ -3621,7 +3632,7 @@ async function generateImageWithSeedream(params) {
   const refImages = (params.referenceImages && params.referenceImages.length > 0 ? params.referenceImages : [params.imageReferenceBase64]).map((img) => toDataUri(img)).filter((img) => Boolean(img)).slice(0, params.presentationMode === "pov" || params.selectedMasterId === "pov_cinta_85k" || params.selectedMasterId === "pov_blusinhas_13k" || Boolean(params.prompt && params.prompt.includes("PRESERVA\xC7\xC3O INTEGRAL DO CEN\xC1RIO POV")) ? 3 : 4);
   const alreadyStructuredAnaMaria = params.isAnaMariaMode && (params.prompt.includes("PRESERVA\xC7\xC3O INTEGRAL DO CEN\xC1RIO") || params.prompt.includes("CEN\xC1RIO RESIDENCIAL E AMBIENTE"));
   const isPlus = params.bodyType === "plus_size" || /plus[-_\s]*size/i.test(params.prompt);
-  const plusRule = isPlus && !alreadyStructuredAnaMaria ? "[MANDATORY AUTHENTIC PLUS-SIZE RULE / REGRA PLUS SIZE OBRIGAT\xD3RIA: Mulher brasileira adulta com corpo PLUS SIZE REAL (robusto, volumoso, seios grandes pesados com caimento natural, bra\xE7os roli\xE7os carnudos, abd\xF4men macio com proje\xE7\xE3o natural abaixo do umbigo, quadris largos volumosos, coxas muito grossas com celulite natural vis\xEDvel, pele morena clara a m\xE9dia quente). CELULITE: N\xC3O REMOVER. TERMINANTEMENTE PROIBIDO gerar mulher mais magra do que a refer\xEAncia (STRICTLY FORBIDDEN: woman slimmer than reference, slim waist, skinny, midsize, flat belly, thin legs).]\n\n" : "";
+  const plusRule = isPlus && !alreadyStructuredAnaMaria ? "[MANDATORY AUTHENTIC PLUS-SIZE RULE / REGRA PLUS SIZE OBRIGAT\xD3RIA: Mulher brasileira adulta com corpo PLUS SIZE REAL (robusto, volumoso, seios grandes pesados com caimento natural, bra\xE7os roli\xE7os carnudos, abd\xF4men macio com proje\xE7\xE3o natural abaixo do umbigo, quadris largos volumosos, coxas muito grossas com celulite natural vis\xEDvel, CELULITE: N\xC3O REMOVER. Etnia e cor da pele seguem estritamente a Prioridade 1 das instru\xE7\xF5es do usu\xE1rio (ex.: mulher negra de pele preta, japonesa, etc.). TERMINANTEMENTE PROIBIDO gerar mulher mais magra do que a refer\xEAncia (STRICTLY FORBIDDEN: woman slimmer than reference, slim waist, skinny, midsize, flat belly, thin legs).]\n\n" : "";
   const allowsFaceSeedream = params.presentationMode === "com_rosto" || params.selectedMasterId === "mestra_catza" || Boolean(
     params.prompt && (params.prompt.includes("MODO COM ROSTO") || params.prompt.includes("ROSTO E ENQUADRAMENTO \u2014 MODO COM ROSTO") || params.prompt.includes("o rosto da modelo DEVE aparecer") || params.prompt.includes("MESTRA CATZA"))
   );
