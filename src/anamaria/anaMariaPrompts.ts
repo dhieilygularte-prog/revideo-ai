@@ -264,9 +264,17 @@ ${
 ${master.lightingAndCameraText}
 ${
   isPlusSize
-    ? `Postura natural em pé diante do espelho, valorizando com autenticidade a estrutura corporal genuinamente PLUS SIZE PESADA (manequim 50-54, peso corporal evidente, coxas hiper-grossas que se tocam sem vão, celulites naturais visíveis nas coxas, quadris muito largos, abdômen arredondado macio e braços roliços carnudos), com o braço livre relaxado ou tocando levemente a lateral sem esconder detalhes da roupa.`
-    : `Postura natural em pé diante do espelho, peso apoiado de forma orgânica valorizando a silhueta e o caimento da peça, com o braço livre relaxado ou tocando suavemente a lateral sem esconder detalhes da roupa.`
+    ? `Postura natural em pé diante do espelho, valorizando com autenticidade a estrutura corporal genuinamente PLUS SIZE REAL (corpo robusto e volumoso, seios grandes e pesados, braços grossos e macios, abdômen com projeção natural, quadris largos e coxas muito grossas com celulite natural visível), com o braço livre relaxado ou tocando levemente a lateral sem esconder detalhes da roupa.`
+    : isMale
+    ? `Postura natural masculina em pé diante do espelho valorizando o caimento da peça, com o braço livre relaxado ao lado do corpo.`
+    : `Postura natural em pé diante do espelho, peso apoiado de forma orgânica com leve projeção natural do quadril destacando a silhueta ampulheta curvilínea da ${master.shortName} (cintura fina e bem marcada, quadris largos e arredondados, coxas cheias e volumosas), com o braço livre relaxado ou tocando suavemente a lateral sem esconder detalhes da roupa.`
 }`;
+
+  const userRequestedSlimBody =
+    hasUserInstructions &&
+    /\b(magra|magrinha|bem magra|corpo de modelo|modelo de passarela|corpo fino|skinny|slim)\b/i.test(
+      userInstructionsText
+    );
 
   const prompt = `${priorityOverrideBlock}Crie uma fotografia hiper-realista vertical 9:16 (1080x1920) de ${
     isMale
@@ -274,8 +282,10 @@ ${
         ? 'um homem adulto genuinamente PLUS SIZE (porte grande e pesado, manequim 52-56)'
         : 'um homem adulto em forma'
       : isPlusSize
-      ? 'uma mulher adulta brasileira genuinamente PLUS SIZE PESADA (manequim 50 a 54 / US 18-22 / 2XL-3XL, peso real evidente, coxas hiper-grossas que se tocam com celulites naturais visíveis na pele, quadris muito largos, abdômen arredondado macio com volume lateral, braços grossos carnudos, pele clara natural não bronzeada e iluminação ambiente de quarto real)'
-      : `uma mulher adulta seguindo o padrão físico da ${master.shortName}`
+      ? 'uma mulher adulta brasileira genuinamente PLUS SIZE REAL (corpo volumoso e naturalmente curvilíneo, seios grandes e pesados com queda anatômica natural, braços grossos e macios, abdômen com projeção suave abaixo do umbigo, quadris largos, coxas muito grossas que se tocam com celulite natural visível e pele morena clara a média com subtom quente)'
+      : userRequestedSlimBody
+      ? `uma mulher adulta seguindo as instruções personalizadas do usuário ("${userInstructionsText}") e a identidade visual da ${master.shortName}`
+      : `uma mulher adulta brasileira naturalmente curvilínea seguindo rigorosamente o padrão físico da ${master.shortName} (silhueta ampulheta/violão bem definida com curvas femininas evidentes: cintura estreita, fina e visivelmente marcada, quadris largos, arredondados e bem desenhados em forte contraste com a cintura, coxas cheias, grossas e volumosas, glúteos naturalmente volumosos e busto de médio a cheio — PROIBIDO corpo magro de modelo de passarela ou corpo reto sem cintura)`
   } vestindo exatamente a peça de roupa da imagem de referência anexada, inserida com perfeição no ${scenarioTitle} anexado, em uma fotografia de espelho de corpo inteiro.
 
 ${bodySectionText}
@@ -298,11 +308,19 @@ Calçado obrigatório nos dois pés: **${shoeInfo.name}**.
 Especificação do calçado: ${shoeInfo.description}
 (Observação: Esta regra universal de calçado prevalece sobre qualquer menção genérica de calçado do catálogo da Mestra, salvo se o usuário pediu outro calçado específico nas Instruções Adicionais). Enquadrar o corpo inteiro mostrando os dois pés calçados apoiados naturalmente no piso do cenário.
 
-## 8. FIDELIDADE ABSOLUTA E SOBERANA AO PRODUTO ANEXADO (1:1 — ZERO INVENÇÃO DE DETALHES)
-A foto da peça anexada pelo usuário é a referência soberana e inviolável da roupa (venda real TikTok Shop).
-Reproduza a roupa 1:1 com máxima fidelidade: mesma cor exata, tonalidade, textura do tecido, modelagem, comprimento, decote, alças, mangas, barra, rendas, transparências, costuras, botões, recortes e estampas.
-É TERMINANTEMENTE PROIBIDO inventar detalhes inexistentes na peça (não adicionar rendas, babados, laços, botões, fendas, costuras ou estampas que não existam na foto real) e proibido omitir detalhes reais da peça.
-A roupa deve vestir anatomicamente o corpo ${isPlusSize ? 'genuinamente PLUS SIZE' : 'do(a) modelo'} sem jamais redesenhar ou descaracterizar o produto.`;
+## 8. FIDELIDADE ABSOLUTA AO PRODUTO (1:1) E ISOLAMENTO ROUPA VS CORPO DA MODELO
+A foto da peça anexada pelo usuário é a referência soberana e inviolável EXCLUSIVAMENTE DA ROUPA (venda real TikTok Shop).
+- **ISOLAMENTO OBRIGATÓRIO DE CORPO:** É TERMINANTEMENTE PROIBIDO copiar o corpo magro, a cintura reta, os quadris estreitos ou a estrutura física da modelo/manequim que aparece na foto do produto! Da foto do produto copie ÚNICA E EXCLUSIVAMENTE a peça de roupa, vestindo-a no corpo ${
+    isPlusSize
+      ? 'genuinamente PLUS SIZE REAL descrito na Seção 1'
+      : isMale
+      ? 'masculino descrito na Seção 1'
+      : userRequestedSlimBody
+      ? 'solicitado pelo usuário'
+      : `curvilíneo em formato ampulheta (cintura fina marcada, quadris largos arredondados e coxas volumosas) da ${master.shortName} descrito na Seção 1`
+  }.
+- Reproduza a roupa 1:1 com máxima fidelidade: mesma cor exata, tonalidade, textura do tecido, modelagem, comprimento, decote, alças, mangas, barra, rendas, transparências, costuras, botões, recortes e estampas.
+- É TERMINANTEMENTE PROIBIDO inventar detalhes inexistentes na peça (não adicionar rendas, babados, laços, botões, fendas, costuras ou estampas que não existam na foto real) e proibido omitir detalhes reais da peça.`;
 
   return {
     prompt: prompt.trim(),

@@ -201,21 +201,25 @@ export const MASTER_PROMPTS_GALLERY: AnaMariaMasterPromptItem[] = [
       'https://excursaomdr.s3.sa-east-1.amazonaws.com/VIDEOS+GALERIA+AURORA/PROMPT+ANA+MARIA-+BY+GPT+LEU+O+VIDEO+ORIGINAL+OTIMO.mp4',
     categories: ['mirror_selfie'],
     primaryCategory: 'mirror_selfie',
-    bodyStandardText: `Corpo feminino com silhueta ampulheta bem definida, curvas evidentes e proporções anatomicamente naturais:
-- Cintura estreita, visivelmente marcada e proporcional ao restante do corpo.
-- Quadris largos, arredondados e bem desenhados, com diferença visual perceptível entre cintura e quadril.
-- Glúteos naturalmente volumosos e arredondados.
-- Coxas cheias, volumosas e proporcionais ao quadril.
-- Busto de médio a cheio, abdômen com aparência natural (sem aspecto artificialmente chapado ou fisiculturista) e braços proporcionais.`,
+    bodyStandardText: `PADRÃO CORPORAL OBRIGATÓRIO — MESTRA ANA MARIA (PRIORIDADE MÁXIMA):
+A modelo DEVE apresentar um corpo feminino brasileiro com silhueta ampulheta (violão) bem definida, com curvas femininas evidentes, marcantes e proporções anatomicamente naturais:
+- CINTURA: Estreita, fina, visivelmente marcada e bem desenhada, proporcional ao restante do corpo.
+- QUADRIS: Largos, arredondados, proeminentes e bem desenvolvidos, com forte diferença visual perceptível entre a circunferência estreita da cintura e a largura dos quadris.
+- GLÚTEOS: Naturalmente volumosos, arredondados e proporcionais à estrutura corporal curvilínea.
+- COXAS E PERNAS: Coxas cheias, grossas, volumosas, torneadas e proporcionais ao quadril; pernas com aparência firme, volume natural e proporções femininas.
+- BUSTO, ABDÔMEN E BRAÇOS: Busto de médio a cheio proporcional à estrutura corporal; abdômen com aparência natural (sem aspecto artificialmente chapado ou fisiculturista); braços proporcionais com volume natural.
+- PROIBIÇÃO ESTRITA DE CORPO MAGRO/RETO: A modelo NÃO deve ser extremamente magra, NÃO deve ter corpo de modelo de passarela, NÃO deve ser reta, sem quadril ou sem cintura definida (salvo se o usuário solicitar explicitamente modelo magra nas Informações Adicionais). É EXPRESSAMENTE PROIBIDO copiar o corpo magro da pessoa/manequim da foto do produto! Preservar obrigatoriamente a silhueta ampulheta com cintura marcada, quadril desenvolvido e coxas volumosas.
+[ENGLISH BODY MANDATE — MESTRA ANA MARIA: Authentic curvy Brazilian woman with a pronounced, well-defined hourglass figure (silhueta violão): narrow cinched waist, wide rounded prominent hips with strong waist-to-hip contrast, full thick shapely thighs, naturally voluminous rounded glutes, and medium-to-full bust. STRICTLY FORBIDDEN to generate a skinny runway model, straight ruler torso, flat narrow hips, or thin stick legs. DO NOT copy the slim body of the model in the product photo.]`,
     skinAndRealismText: `Pele clara a morena-clara com subtom neutro ou levemente quente e textura fotográfica humana verdadeira:
-- Poros discretamente perceptíveis, microtexturas naturais da pele, pequenas variações de tonalidade e dobras reais nas articulações.
-- PROIBIDO pele de plástico, efeito porcelana, efeito boneca ou brilho oleoso exagerado.`,
-    hairIdentityText: `Cabelo feminino natural e fotográfico (cabelos longos castanho-escuros levemente ondulados por padrão, permitindo variações naturais conforme solicitado pelo usuário).`,
-    accessoriesIdentityText: `Acessórios femininos delicados predominantemente dourados (Identidade Mestra Ana Maria):
-- COLARES: 2 a 3 correntes douradas delicadas em camadas no colo (choker fina + corrente média com pequenos detalhes pendentes + corrente longa com pequeno pingente medalhão oval dourado).
-- PULSEIRAS: Uma pulseira de corrente dourada fina e delicada em cada pulso, com pequena correntinha extensora pendente.
-- ANÉIS: Anéis femininos delicados nos dedos (sem anéis grandes ou chamativos).
-- UNHAS: Bem cuidadas, comprimento curto a médio, esmalte nude, rosado claro ou natural.`,
+- Poros discretamente perceptíveis, microtexturas naturais da pele, pequenas variações de tonalidade, marcas naturais discretas e dobras reais nas regiões de articulação e movimento.
+- Transições naturais entre luz e sombra nos braços, pernas, colo e abdômen.
+- PROIBIDO: pele de plástico, pele excessivamente lisa/artificial, efeito porcelana, efeito boneca, brilho oleoso exagerado ou bronzeamento artificial intenso.`,
+    hairIdentityText: `Cabelo feminino comprido, natural e fotográfico (cabelos longos castanho-escuros levemente ondulados caindo sobre os ombros/costas por padrão, permitindo variações naturais de cor/penteado conforme solicitado pelo usuário), com fios realistas e sem aspecto artificial.`,
+    accessoriesIdentityText: `Acessórios femininos delicados predominantemente dourados (Identidade Visual Recorrente Mestra Ana Maria):
+- COLARES: 2 a 3 correntes douradas delicadas em camadas próximas ao pescoço e colo (1ª choker fina + 2ª corrente média com pequenos detalhes/medalhinhas pendentes + 3ª corrente longa com pequeno pingente de moeda/medalhão oval dourado).
+- PULSEIRAS: Pulseiras douradas finas e delicadas nos dois pulsos, incluindo pequena correntinha extensora pendente.
+- ANÉIS: Anéis femininos delicados predominantemente dourados/metálicos discretos nos dedos (evitar anéis grandes ou chamativos).
+- UNHAS: Bem cuidadas, comprimento curto a médio, esmalte nude, rosado claro ou aparência natural discreta e elegante.`,
     lightingAndCameraText: `Fotografia vertical 9:16 espontânea de smartphone diante do espelho, câmera na altura do tórax, iluminação ambiente suave, difusa e realista com exposição equilibrada e sombras naturais.`,
     movementPromptText: `Create a 10-second ultra-photorealistic vertical 9:16 mirror-selfie fashion video. Use the attached reference image as the absolute visual starting point.
 
@@ -285,12 +289,15 @@ Reproduce the exact movement sequence and timing described above while preservin
       'https://excursaomdr.s3.sa-east-1.amazonaws.com/VIDEOS+GALERIA+AURORA/VIDEO+MESTRE+IARA+VITRINE.mp4',
     categories: ['mirror_selfie'],
     primaryCategory: 'mirror_selfie',
-    bodyStandardText: `Silhueta feminina curvilínea em formato ampulheta com proporções anatomicamente naturais (Padrão Mestra Iara):
-- Cintura visivelmente marcada e estreita em relação aos quadris.
-- Quadris largos, arredondados e bem definidos.
-- Glúteos naturalmente volumosos e arredondados.
-- Coxas volumosas, cheias e proporcionais ao quadril.
-- Busto de médio a cheio, abdômen natural e transição orgânica entre cintura, quadril e coxas.`,
+    bodyStandardText: `PADRÃO CORPORAL OBRIGATÓRIO — MESTRA IARA (PRIORIDADE MÁXIMA):
+A modelo DEVE apresentar uma silhueta feminina curvilínea em formato ampulheta (violão) com curvas evidentes e proporções anatomicamente naturais:
+- CINTURA: Visivelmente marcada, fina e estreita em relação aos quadris.
+- QUADRIS: Largos, arredondados e bem definidos, com transição natural e curvilínea entre cintura, quadril e coxas.
+- GLÚTEOS: Naturalmente volumosos e arredondados.
+- COXAS E PERNAS: Coxas volumosas, grossas, cheias e proporcionais ao quadril; pernas com volume natural e aparência feminina curvilínea.
+- BUSTO, ABDÔMEN E BRAÇOS: Busto de médio a cheio proporcional à estrutura corporal; abdômen com aparência natural; braços proporcionais ao restante do corpo.
+- PROIBIÇÃO ESTRITA DE CORPO MAGRO/RETO: A modelo deve ter aparência corporal curvilínea com cintura definida e volume perceptível nos quadris e nas coxas. NÃO gerar uma mulher excessivamente magra, com corpo reto, quadris estreitos ou ausência de cintura (salvo solicitação explícita nas Informações Adicionais). É EXPRESSAMENTE PROIBIDO copiar o corpo magro da modelo da foto do produto!
+[ENGLISH BODY MANDATE — MESTRA IARA: Curvy Brazilian woman with a defined hourglass figure: narrow cinched waist, wide rounded well-defined hips, full thick voluminous thighs, naturally rounded voluminous glutes, and medium-to-full bust. STRICTLY FORBIDDEN to generate a skinny runway model, straight waistless body, narrow hips, or thin legs. DO NOT copy the slim body from the product reference photo.]`,
     skinAndRealismText: `Pele clara a morena-clara com subtom neutro ou levemente quente, textura humana realista com poros discretamente perceptíveis e dobras naturais. Proibido pele artificialmente lisa, efeito plástico ou porcelana.`,
     hairIdentityText: `CARACTERÍSTICA FIXA DA MESTRA IARA — CABELO CACHEADO ESCURO:
 - Cabelo comprido abaixo dos ombros (até a região das costas).
@@ -351,10 +358,15 @@ Iniciar uma nova rotação suave do corpo para uma posição de três quartos, d
       'https://excursaomdr.s3.sa-east-1.amazonaws.com/VIDEOS+GALERIA+AURORA/VIDEO+MESTRE+DUDA+BY+5+VIDEOS.mp4',
     categories: ['mirror_selfie'],
     primaryCategory: 'mirror_selfie',
-    bodyStandardText: `Silhueta feminina curvilínea em formato ampulheta com proporções anatômicas naturais (Padrão Mestra Duda):
-- Cintura bem marcada, visivelmente mais estreita que os quadris.
-- Quadris arredondados e definidos, glúteos naturalmente volumosos e coxas cheias e proporcionais.
-- Busto de médio a cheio, braços relativamente esguios e ombros harmoniosos.`,
+    bodyStandardText: `PADRÃO CORPORAL OBRIGATÓRIO — MESTRA DUDA (PRIORIDADE MÁXIMA):
+A modelo DEVE apresentar uma silhueta feminina curvilínea em formato ampulheta (violão) com curvas evidentes e proporções anatômicas naturais:
+- CINTURA: Bem marcada e fina, visivelmente mais estreita que os quadris.
+- QUADRIS: Largos, arredondados e bem definidos.
+- GLÚTEOS: Naturalmente volumosos e proporcionais.
+- COXAS E PERNAS: Coxas cheias, grossas, volumosas e com aparência natural; pernas proporcionais com volume feminino evidente.
+- BUSTO, ABDÔMEN E BRAÇOS: Busto de médio a cheio proporcional ao corpo; abdômen com aparência natural; braços relativamente esguios e proporcionais; ombros harmoniosos em relação aos quadris.
+- PROIBIÇÃO ESTRITA DE CORPO MAGRO/RETO: O padrão obrigatório é uma combinação de cintura definida, quadris arredondados e coxas volumosas. NÃO gerar uma mulher extremamente magra, com corpo reto, quadris estreitos ou ausência de cintura (salvo solicitação explícita nas Informações Adicionais). É EXPRESSAMENTE PROIBIDO copiar o corpo magro da modelo da foto do produto!
+[ENGLISH BODY MANDATE — MESTRA DUDA: Naturally curvy Brazilian woman with a pronounced hourglass silhouette: narrow well-defined waist visibly narrower than the hips, wide rounded hips, full thick voluminous thighs, naturally voluminous glutes, and medium-to-full bust with slender proportionate arms. STRICTLY FORBIDDEN to generate a skinny runway model, straight body, narrow hips, or thin legs. DO NOT copy the slim body from the product photo.]`,
     skinAndRealismText: `Pele clara a clara-média com subtom neutro ou levemente quente, textura humana realista com poros discretamente perceptíveis e variações naturais. Proibido pele plástica ou efeito porcelana.`,
     hairIdentityText: `CARACTERÍSTICA DA MESTRA DUDA — CABELO LISO CASTANHO-CLARO A MÉDIO:
 - Cabelo comprido abaixo dos ombros (até a região das costas), textura predominantemente lisa com leve ondulação natural nas pontas.
@@ -407,10 +419,15 @@ Enquanto demonstra a peça, realizar pequenas mudanças naturais de postura:
       'https://excursaomdr.s3.sa-east-1.amazonaws.com/VIDEOS+GALERIA+AURORA/VIDEO+MESTRE+NAY+VITRINE.mp4',
     categories: ['mirror_selfie'],
     primaryCategory: 'mirror_selfie',
-    bodyStandardText: `Silhueta feminina curvilínea em formato ampulheta com forte contraste entre cintura e quadril (Padrão Mestra Nay):
-- Cintura estreita, bastante definida e visivelmente marcada.
-- Quadris largos, arredondados e proporcionais, glúteos naturalmente volumosos e coxas cheias.
-- Busto de médio a cheio e braços relativamente esguios e proporcionais.`,
+    bodyStandardText: `PADRÃO CORPORAL OBRIGATÓRIO — MESTRA NAY (PRIORIDADE MÁXIMA):
+A modelo DEVE apresentar uma silhueta feminina curvilínea em formato ampulheta (violão) com forte e evidente contraste entre a cintura estreita e os quadris largos:
+- CINTURA: Estreita, fina, bastante definida e visivelmente marcada.
+- QUADRIS: Largos, arredondados e bem desenhados (a principal característica corporal da Mestra Nay é o contraste marcante entre a cintura estreita e os quadris arredondados).
+- GLÚTEOS: Naturalmente arredondados e volumosos.
+- COXAS E PERNAS: Coxas cheias, grossas, volumosas e proporcionais aos quadris; pernas femininas com volume natural.
+- BUSTO, ABDÔMEN E BRAÇOS: Busto de médio a cheio proporcional à estrutura corporal; abdômen com aparência natural; braços relativamente esguios e ombros harmoniosos.
+- PROIBIÇÃO ESTRITA DE CORPO MAGRO/RETO: NÃO gerar uma mulher extremamente magra, com corpo reto, quadris estreitos ou ausência de cintura (salvo solicitação explícita nas Informações Adicionais). Preservar obrigatoriamente a silhueta ampulheta feminina com cintura bem marcada, quadris largos definidos e coxas cheias. É EXPRESSAMENTE PROIBIDO copiar o corpo magro da modelo da foto do produto!
+[ENGLISH BODY MANDATE — MESTRA NAY: Curvy Brazilian woman with an unmistakable hourglass silhouette and strong contrast between her narrow, tightly defined waist and her wide, rounded hips, accompanied by full, thick, voluminous thighs, naturally voluminous rounded glutes, and medium-to-full bust. STRICTLY FORBIDDEN to generate a skinny runway model, straight ruler torso, narrow hips, or thin legs. DO NOT copy the slim body from the product photo.]`,
     skinAndRealismText: `Pele clara a morena-clara com subtom neutro ou levemente quente, textura humana realista com poros discretamente perceptíveis e dobras anatômicas naturais. Proibido pele plástica ou porcelana.`,
     hairIdentityText: `CARACTERÍSTICA FIXA DA MESTRA NAY — CABELO LONGO ESCURO LISO COM DIVISÃO CENTRAL:
 - Cabelo comprido abaixo dos ombros (até as costas), tonalidade castanho-escura a preta.
@@ -460,9 +477,15 @@ Preservar integralmente a mesma modelo da imagem de referência (cabelo longo es
     primaryCategory: 'com_rosto',
     preferredScenarioId: 'cenario_24',
     allowsFaceByDefault: true,
-    bodyStandardText: `Silhueta feminina esguia e curvilínea em formato ampulheta com proporções anatômicas naturais (Padrão Mestra Catza):
-- Cintura bem definida e marcada, quadris arredondados e proporcionais, glúteos naturalmente arredondados e coxas com volume proporcional.
-- Busto de médio a cheio, abdômen natural e braços relativamente finos e proporcionais.`,
+    bodyStandardText: `PADRÃO CORPORAL OBRIGATÓRIO — MESTRA CATZA (PRIORIDADE MÁXIMA):
+A modelo DEVE apresentar uma silhueta feminina curvilínea em formato ampulheta com cintura bem definida e curvas femininas perceptíveis e marcantes:
+- CINTURA: Fina, bem definida e visivelmente marcada.
+- QUADRIS: Arredondados, largos e bem desenhados em contraste evidente com a cintura.
+- GLÚTEOS: Naturalmente arredondados e volumosos.
+- COXAS E PERNAS: Coxas cheias com volume natural e proporcional ao quadril; pernas femininas proporcionais e curvilíneas.
+- BUSTO, ABDÔMEN E BRAÇOS: Busto de médio a cheio; abdômen com aparência natural; braços relativamente finos e proporcionais; ombros harmoniosos.
+- PROIBIÇÃO ESTRITA DE CORPO MAGRO/RETO: A modelo deve combinar estrutura elegante com quadris arredondados definidos e cintura marcada. NÃO gerar uma mulher extremamente magra, sem curvas, sem quadril ou com corpo reto (salvo solicitação explícita nas Informações Adicionais). É EXPRESSAMENTE PROIBIDO copiar o corpo magro sem curvas da modelo da foto do produto!
+[ENGLISH BODY MANDATE — MESTRA CATZA: Curvy hourglass Brazilian woman with a narrow, well-defined waist, rounded shapely wide hips, naturally rounded glutes, full shapely feminine thighs, and medium-to-full bust. STRICTLY FORBIDDEN to generate a flat-bodied skinny model, straight waistless torso, or narrow hips. DO NOT copy the slim body from the product photo.]`,
     skinAndRealismText: `Pele clara-média a morena-clara com subtom predominantemente quente, textura humana realista com poros discretamente perceptíveis. O flash deve iluminar a pele de maneira fotográfica e realista, sem aparência plástica ou oleosa.`,
     hairIdentityText: `CARACTERÍSTICA FIXA DA MESTRA CATZA — CABELO LONGO PRETO/CASTANHO MUITO ESCURO E LISO:
 - Cabelo comprido abaixo dos ombros (até as costas), tonalidade preta ou castanho muito escuro, textura predominantemente lisa com divisão central e caimento natural ao redor dos ombros.`,

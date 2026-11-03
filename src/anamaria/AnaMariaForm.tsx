@@ -269,6 +269,9 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   };
 
   const handleSelectPresentationMode = (newMode: AnaMariaPresentationMode) => {
+    if (newMode === 'pov') {
+      POV_SCENARIO_GALLERY_ITEMS.forEach((s) => preloadScenarioUrl(s.fullUrl));
+    }
     onChange((prev) => {
       const currentMaster = getMasterPromptById(prev.selectedMasterId);
       const isMasterCompatible = currentMaster.categories.includes(newMode);
@@ -326,6 +329,9 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   };
 
   const handleSelectMasterPrompt = (item: AnaMariaMasterPromptItem) => {
+    if (item.primaryCategory === 'pov' || item.isPov) {
+      POV_SCENARIO_GALLERY_ITEMS.forEach((s) => preloadScenarioUrl(s.fullUrl));
+    }
     onChange((prev) => {
       const currentMode = prev.presentationMode || 'mirror_selfie';
       const nextMode = item.primaryCategory;

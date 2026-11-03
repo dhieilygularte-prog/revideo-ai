@@ -1886,9 +1886,19 @@ async function generateImageWithKling(params: {
           params.prompt.includes('MESTRA CATZA'))
     );
 
-  const isPlus = params.bodyType === 'plus_size' || /plus[-_\s]*size/i.test(params.prompt);
+  const isPovModeKling =
+    params.presentationMode === 'pov' ||
+    params.selectedMasterId === 'pov_cinta_85k' ||
+    params.selectedMasterId === 'pov_blusinhas_13k' ||
+    Boolean(params.prompt && params.prompt.includes('PRESERVAÇÃO INTEGRAL DO CENÁRIO POV'));
+
+  const isPlus = !isPovModeKling && (params.bodyType === 'plus_size' || /plus[-_\s]*size/i.test(params.prompt));
   const plusRule = isPlus ? '[MANDATORY AUTHENTIC PLUS-SIZE RULE / REGRA PLUS SIZE OBRIGATÓRIA: Mulher brasileira adulta verdadeiramente PLUS SIZE REAL (corpo robusto e volumoso, seios grandes pesados com queda natural, braços grossos macios, abdômen com projeção natural e dobras suaves, quadris muito largos e glúteos volumosos, coxas muito grossas que se tocam sem vão com celulite natural visível na pele, tom morena clara a média quente). CELULITE: NÃO REMOVER. TERMINANTEMENTE PROIBIDO gerar mulher mais magra do que a referência, PROIBIDO modelo magra, PROIBIDO cintura fina, PROIBIDO barriga chapada, PROIBIDO pernas finas (STRICTLY FORBIDDEN: woman slimmer than reference, skinny model, slim waist, thin legs, flat stomach, slender body, midsize). ]\n\n' : '';
-  const headerKling = params.isAnaMariaMode ? `${plusRule}${getAnaMariaHeader(Boolean(params.scenarioPhotoBase64), allowsFace)}` : `${englishFidelityHeader}${IMAGE_REFERENCE_FIDELITY_HEADER}`;
+  const headerKling = params.isAnaMariaMode
+    ? isPovModeKling
+      ? '[MODO POV PRIMEIRA PESSOA SOBRE A CAMA — Preserve 100% do cenário da cama e exiba os produtos reais 1:1 sobre a cama manipulados EXCLUSIVAMENTE pelas duas mãos entrando pela borda inferior. PROIBIDO mostrar corpo, rosto, pernas ou espelho!]\n\n'
+      : `${plusRule}${getAnaMariaHeader(Boolean(params.scenarioPhotoBase64), allowsFace)}`
+    : `${englishFidelityHeader}${IMAGE_REFERENCE_FIDELITY_HEADER}`;
   const klingPrompt = compactPromptToLimit(
     params.prompt,
     2200,
@@ -2041,7 +2051,7 @@ async function generateImageWithSeedream(params: {
   )
     .map((img) => toDataUri(img))
     .filter((img): img is string => Boolean(img))
-    .slice(0, 10);
+    .slice(0, (params.presentationMode === 'pov' || params.selectedMasterId === 'pov_cinta_85k' || params.selectedMasterId === 'pov_blusinhas_13k' || Boolean(params.prompt && params.prompt.includes('PRESERVAÇÃO INTEGRAL DO CENÁRIO POV'))) ? 3 : 4);
 
   // Quando isAnaMariaMode === true e o prompt já veio estruturado pelo buildAnaMariaImagePrompt,
   // evita duplicar blocos longos (cenário, plus size e instruções do usuário já estão completos no prompt).
@@ -2067,9 +2077,19 @@ async function generateImageWithSeedream(params: {
           params.prompt.includes('MESTRA CATZA'))
     );
 
+  const isPovModeSeedream =
+    params.presentationMode === 'pov' ||
+    params.selectedMasterId === 'pov_cinta_85k' ||
+    params.selectedMasterId === 'pov_blusinhas_13k' ||
+    Boolean(params.prompt && params.prompt.includes('PRESERVAÇÃO INTEGRAL DO CENÁRIO POV'));
+
   const headerSeedream = params.isAnaMariaMode
-    ? alreadyStructuredAnaMaria
-      ? '[MAPA DE IMAGENS DE REFERÊNCIA: Imagem 1 = Cenário real obrigatório (preservar 100% intacto); Demais imagens = Peça de roupa real 1:1 a ser vestida pela modelo.]'
+    ? isPovModeSeedream
+      ? '[MODO POV PRIMEIRA PESSOA SOBRE A CAMA — MAPA DE IMAGENS DE REFERÊNCIA: Imagem 1 = Cenário POV real da cama obrigatório (preservar colcha/cama 100% intacta); Demais imagens = Produtos reais 1:1 que devem aparecer sobre a cama manipulados EXCLUSIVAMENTE pelas duas mãos entrando pela borda inferior do quadro. PROIBIDO mostrar corpo, tronco, rosto, cabeça, pernas, espelho ou pessoa vestindo a peça!]'
+      : alreadyStructuredAnaMaria
+      ? isPlus
+        ? '[MAPA DE IMAGENS DE REFERÊNCIA E ISOLAMENTO DE CORPO PLUS SIZE: Imagem 1 = Cenário real obrigatório (preservar 100% intacto); Demais imagens = Referência EXCLUSIVA da peça de roupa 1:1. É TERMINANTEMENTE PROIBIDO copiar o corpo magro da pessoa ou manequim das fotos do produto! Gere a modelo com a EXATA ESTRUTURA CORPORAL PLUS SIZE REAL, cabelo e acessórios descritos no prompt abaixo!]'
+        : '[MAPA DE IMAGENS DE REFERÊNCIA E PRESERVAÇÃO DO CORPO DA MESTRA: Imagem 1 = Cenário real obrigatório (preservar 100% intacto); Demais imagens = Referência EXCLUSIVA da peça de roupa 1:1 (copie SOMENTE a peça de roupa, tecido, cor e corte). É TERMINANTEMENTE PROIBIDO copiar o corpo magro, cintura reta, quadris estreitos ou a pessoa das fotos do produto! Gere a modelo obedecendo 100% à ESTRUTURA CORPORAL CURVILÍNEA DA MESTRA (silhueta ampulheta/violão bem definida, cintura fina e bem marcada, quadris largos e arredondados, coxas cheias e volumosas), cabelo, pele e acessórios descritos no prompt abaixo (salvo instrução explícita em contrário do usuário)!]'
       : `${plusRule}${getAnaMariaHeader(Boolean(params.scenarioPhotoBase64), allowsFaceSeedream)}`
     : IMAGE_REFERENCE_FIDELITY_HEADER;
 
@@ -2121,7 +2141,7 @@ async function generateImageWithSeedream(params: {
       if (res.ok && Array.isArray(data?.data) && data.data[0]?.url) {
         const imgUrl = data.data[0].url;
         try {
-          const imgFetch = await fetch(imgUrl);
+          const imgFetch = await fetch(imgUrl, { signal: AbortSignal.timeout(6500) });
           const arrayBuffer = await imgFetch.arrayBuffer();
           const b64 = Buffer.from(arrayBuffer).toString('base64');
           const mime = imgFetch.headers.get('content-type') || 'image/jpeg';

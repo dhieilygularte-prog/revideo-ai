@@ -202,9 +202,11 @@ export function prewarmDefaultScenarios(): void {
   }
   const catza = SCENARIO_GALLERY_ITEMS.find((s) => s.id === 'cenario_24');
   if (catza?.fullUrl) preloadScenarioUrl(catza.fullUrl);
-  if (POV_SCENARIO_GALLERY_ITEMS[0]?.fullUrl) {
-    preloadScenarioUrl(POV_SCENARIO_GALLERY_ITEMS[0].fullUrl);
-  }
+  POV_SCENARIO_GALLERY_ITEMS.forEach((povItem) => {
+    if (povItem?.fullUrl) {
+      preloadScenarioUrl(povItem.fullUrl);
+    }
+  });
 }
 
 async function resolveScenarioBase64(form: AnaMariaFormState): Promise<string> {
@@ -236,11 +238,15 @@ async function prepareProductPhotosForPayload(photos: string[]): Promise<{
   primaryPhoto: string;
   supplementaryPhotos: string[];
 }> {
-  // Preserva 100% da nitidez e qualidade das fotos reais do produto sem recomprimir ou rebaixar microtexturas
-  const validPhotos = (photos || []).filter(Boolean).slice(0, 5);
+  // Compacta fotos muito pesadas (>350KB) para 1280px @ 0.88 JPEG (~180-220KB cada) mantendo 100% da nitidez e texturas 1:1,
+  // evitando que o envio de 2+ fotos no modo POV ou Mirror Selfie estoure o tempo limite de 60s da Vercel.
+  const validPhotos = (photos || []).filter(Boolean).slice(0, 4);
+  const optimizedPhotos = await Promise.all(
+    validPhotos.map((p) => compressImageForFastTransfer(p, 1280, 0.88))
+  );
   return {
-    primaryPhoto: validPhotos[0] || '',
-    supplementaryPhotos: validPhotos.slice(1),
+    primaryPhoto: optimizedPhotos[0] || '',
+    supplementaryPhotos: optimizedPhotos.slice(1, 3),
   };
 }
 
@@ -392,8 +398,9 @@ export async function runAnaMariaPipeline(
       productPhotosBase64: supplementaryPhotos,
       scenarioPhotoBase64: activeScenarioBase64,
       isAnaMariaMode: true,
-      presentationMode: form.presentationMode,
+      presentationMode: activeMode,
       selectedMasterId: form.selectedMasterId,
+      influencer: form.influencer,
       aspectRatio: '9:16',
       imageModel: form.imageModel,
       bodyType: form.bodyType,

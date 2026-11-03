@@ -897,13 +897,14 @@ Retorne estritamente um JSON estruturado:
 - VIVID, VIBRANT COLORS & CLEAN WHITE BALANCE: Colors must be lively, vivid, saturated with natural commercial pop, and harmonized with the environment. Maintain clean neutral white balance (pure whites, deep clean blacks, natural healthy skin tones).
 - STRICTLY PROHIBITED (ZERO YELLOWISH / ZERO OPAQUE): NO yellowish tint, NO warm tungsten/amber/sepia cast, NO dull/opaque/lifeless look, NO pale/washed-out/milky/hazy veil, and NO plastic film overlay across the lens.
 - 90%+ FIDELITY AUDITOR CALIBRATION (5 INSPECTION GROUPS + ANTI-MORPHING): Preserve 100% of the exact product model, silhouette, all physical components (body, nozzles, caps, cables, handles, buttons, seams, and all kit pieces), realistic human scale, exact surface finish (matte, glossy, metallic), and 1:1 manufacturer logo. Hands must have 5 natural fingers gripping neutral sides cleanly without fusing into the product or covering the logo/buttons.`;
-    const scenarioLockDirective = scenarioPhotoBase64 ? `CRITICAL SCENARIO AND BACKGROUND ANCHOR (EXACT ROOM REPLICATION):
+    const isPovMode = presentationMode === "pov" || selectedMasterId === "pov_cinta_85k" || selectedMasterId === "pov_blusinhas_13k" || Boolean(prompt && prompt.includes("PRESERVA\xC7\xC3O INTEGRAL DO CEN\xC1RIO POV"));
+    const scenarioLockDirective = scenarioPhotoBase64 ? isPovMode ? `CRITICAL POV BED SCENARIO ANCHOR (EXACT BED & TOP-DOWN POV REPLICATION):
+- Reference Image 1 defines the EXACT bed, bedspread/sheets, texture, and lighting for this 90-degree top-down first-person POV shot.
+- Keep 100% of the bed surface and fabric from Reference Image 1 intact.
+- Show ONLY two human hands entering from the bottom edge of the frame holding/presenting the product units on top of this exact bed.
+- STRICTLY FORBIDDEN: Do NOT show any woman standing, torso, legs, face, head, or mirror.` : `CRITICAL SCENARIO AND BACKGROUND ANCHOR (EXACT ROOM REPLICATION):
 - The attached scenario reference image defines the EXACT room and interior architecture.
-- Hallway/room with beige marbled porcelain tile flooring with realistic gloss reflection.
-- Dark wood door on the left with silver metallic door handle.
-- White tiled wall on the right with dual white light switch and glass door frame.
-- Slightly dimmed hallway corridor extending directly in the background.
-- Place the woman standing directly inside this EXACT architectural setting holding the smartphone in front of the mirror. Do NOT create or invent a different room, do NOT change the walls or floor.` : "";
+- Place the model standing directly inside this EXACT architectural setting holding the smartphone in front of the mirror. Do NOT create or invent a different room, do NOT change the walls or floor.` : "";
     const overrides = [
       scenarioLockDirective,
       modelAntiViolationDirective,
@@ -940,9 +941,22 @@ ${prompt}` : prompt;
       let baseImageFile = null;
       let effectivePrompt = cleanPrompt;
       const isStoryboardGrid = /grade\s+(?:3x3|2x3|2x2)|(?:\b4|\b6|\b9)\s+(?:cenas|quadros)|storyboard/i.test(prompt);
-      const isPlusSizeRequest = bodyType === "plus_size" || /plus[-_\s]*size|manequim\s*(?:48|50|52|54)/i.test(prompt) || /plus[-_\s]*size/i.test(additionalInstructions);
+      const isPlusSizeRequest = !isPovMode && (bodyType === "plus_size" || /plus[-_\s]*size|manequim\s*(?:48|50|52|54)/i.test(prompt) || /plus[-_\s]*size/i.test(additionalInstructions));
+      const userRequestedSlimOpenAI = /\b(?:magra|magrinha|corpo\s+de\s+modelo|modelo\s+magra|sem\s+curvas|esguia|slim|skinny|slender)\b/i.test(
+        additionalInstructions || ""
+      );
       if (isAnaMariaMode && scenarioPhotoBase64) {
-        const bodyBlock = isPlusSizeRequest ? `[SOVEREIGN AUTHENTIC HEAVY-SET PLUS-SIZE FEMALE BODY MANDATE]:
+        if (isPovMode) {
+          effectivePrompt = `[CRITICAL POV EDIT DIRECTIVE - FIRST-PERSON HANDS ON BED - MODO ANA MARIA POV]:
+You are editing the base POV bed scenario photograph (Reference Image 1).
+1. KEEP 100% of the bed, bedspread, sheets, fabric texture, and ambient lighting from Reference Image 1 UNCHANGED and INTACT.
+2. Place the EXACT garments/products shown in Reference Image 2 (and subsequent reference photos) on top of the bed (one unit laid out on the bed surface and a second unit held closer to the lens by the two hands).
+3. Show ONLY two natural human hands entering from the bottom edge of the frame manipulating/displaying the garment on the bed.
+4. STRICTLY FORBIDDEN: DO NOT generate any person standing, DO NOT show torso, waist, hips, legs, head, face, or mirror.
+
+${cleanPrompt}`;
+        } else {
+          const bodyBlock = isPlusSizeRequest ? `[SOVEREIGN AUTHENTIC HEAVY-SET PLUS-SIZE FEMALE BODY MANDATE]:
 - The woman MUST be an authentic, genuinely PLUS-SIZE adult Brazilian woman with substantial real body mass, voluptuous soft curves, and generous adipose volume throughout her entire physique.
 - STRICT USER MANDATE: NEVER generate women slimmer than this photographic reference. ABSOLUTELY FORBIDDEN: mid-size, slim waist, narrow runway model, flat stomach, or thin thighs.
 - THIGHS & CONTACT: Extremely thick, massive, heavy voluptuous thighs with complete contact/friction at the upper thighs (zero thigh gap; the inner thighs press together completely).
@@ -953,11 +967,17 @@ ${prompt}` : prompt;
 - ABDOMEN: Soft, rounded, full natural belly with natural subcutaneous fat and gentle outward projection below the navel (NEVER flat, NEVER toned).
 - BUST: Large, heavy, full, voluptuous natural breasts with realistic downward anatomical drape, filling the garment neckline generously.
 - ARMS: Distinctly thick, round, fleshy arms with evident subcutaneous fat (NO thin or slender arms).
-- The garment fits snugly and flatteringly over her real heavy plus-size body, exactly as seen on authentic Brazilian plus-size models.` : `[CURVACEOUS FEMALE BODY SILHOUETTE]:
-- Brazilian woman with natural hourglass curves, wide hips, defined waist, and shapely legs.
-- The garment fits snugly and flatteringly over her curves.`;
-        const allowsFace = presentationMode === "com_rosto" || selectedMasterId === "mestra_catza" || cleanPrompt && (cleanPrompt.includes("MODO COM ROSTO") || cleanPrompt.includes("ROSTO E ENQUADRAMENTO \u2014 MODO COM ROSTO") || cleanPrompt.includes("o rosto da modelo DEVE aparecer") || cleanPrompt.includes("MESTRA CATZA"));
-        const framingSection = allowsFace ? `[FRAMING & FACE DIRECTIVE \u2014 MODO COM ROSTO / UGC]:
+- The garment fits snugly and flatteringly over her real heavy plus-size body, exactly as seen on authentic Brazilian plus-size models.` : userRequestedSlimOpenAI ? `[USER-SPECIFIED BODY SILHOUETTE]:
+- Follow the exact body silhouette requested by the user in USER DIRECTIVE (${additionalInstructions.trim()}), while preserving the Mestra's hair, skin, and accessories.` : `[SOVEREIGN MESTRA CURVACEOUS HOURGLASS BODY MANDATE \u2014 DO NOT COPY PRODUCT MODEL BODY]:
+- CRITICAL ISOLATION RULE: Reference Image 2+ is ONLY for the garment/clothing design. DO NOT copy the thin/slim body, straight waist, or narrow hips of the catalog model or mannequin in Reference Image 2+!
+- The woman MUST have the EXACT curvaceous Brazilian hourglass physique ("corpo viol\xE3o / ampulheta") defined in the selected Mestra's specification below:
+  * Narrow, well-defined, sculpted waist ("cintura fina e bem marcada").
+  * Wide, rounded, prominent feminine hips ("quadris largos, arredondados e bem desenhados") creating a strong waist-to-hip curve.
+  * Full, shapely, voluminous toned thighs and legs ("coxas cheias, torneadas e volumosas").
+  * Medium-to-full proportionate natural bust and feminine posture.
+- STRICTLY FORBIDDEN: NEVER generate a skinny runway model, straight/boyish torso without waist definition, narrow flat hips, or thin stick legs.`;
+          const allowsFace = presentationMode === "com_rosto" || selectedMasterId === "mestra_catza" || cleanPrompt && (cleanPrompt.includes("MODO COM ROSTO") || cleanPrompt.includes("ROSTO E ENQUADRAMENTO \u2014 MODO COM ROSTO") || cleanPrompt.includes("o rosto da modelo DEVE aparecer") || cleanPrompt.includes("MESTRA CATZA"));
+          const framingSection = allowsFace ? `[FRAMING & FACE DIRECTIVE \u2014 MODO COM ROSTO / UGC]:
 - The model's natural, harmonious face and expression MUST appear clearly in the mirror reflection.
 - Expressive, authentic, natural makeup, dark neat eyebrows, long hair naturally falling over shoulders.
 - Modern smartphone held naturally taking the mirror selfie with rear flash activated.
@@ -966,20 +986,22 @@ ${prompt}` : prompt;
 - ABSOLUTELY NEVER reveal lips, mouth, nose, eyes or upper face. Face MUST stay 100% OUT OF FRAME.
 - Zero tattoos anywhere on the skin (100% clean skin).
 - Modern smartphone held naturally in one hand in front of the mirror taking the mirror-selfie.`;
-        effectivePrompt = `[CRITICAL EDIT DIRECTIVE - INPAINT MODEL INTO EXACT SCENARIO - MODO ANA MARIA]:
+          effectivePrompt = `[CRITICAL EDIT DIRECTIVE - INPAINT MODEL INTO EXACT SCENARIO - MODO ANA MARIA]:
 You are editing the base scenario photograph (Reference Image 1).
 KEEP the architectural setting from Reference Image 1 100% UNCHANGED and INTACT:
 - Preserve 100% of the room, architecture, floor, walls, mirrors, lighting, colors, reflections, doors, and background exactly as shown in Reference Image 1.
 - DO NOT invent, generate, redesign or redraw a new room. Place the woman standing inside this EXACT real room from Reference Image 1 in front of the mirror taking a mirror-selfie.
 
-[PRODUCT FIDELITY MANDATE (REFERENCE IMAGE 2+)]:
+[PRODUCT FIDELITY & BODY ISOLATION MANDATE (REFERENCE IMAGE 2+)]:
 - The woman wears the EXACT garment shown in reference image 2 (and subsequent photos): 1:1 identical color, shade, fabric texture, seams, straps, neckline, cut, and fit.
+- NEVER copy the body shape or thinness of the model/mannequin from reference image 2+.
 
 ${bodyBlock}
 
 ${framingSection}
 
 ${cleanPrompt}`;
+        }
       }
       if (modelReferenceBase64 && !isCloneMode && !isStoryboardGrid) {
         baseImageFile = toImageFile(modelReferenceBase64, "imagem_1_base");
@@ -3475,9 +3497,10 @@ async function generateImageWithKling(params) {
   const allowsFace = params.presentationMode === "com_rosto" || params.selectedMasterId === "mestra_catza" || Boolean(
     params.prompt && (params.prompt.includes("MODO COM ROSTO") || params.prompt.includes("ROSTO E ENQUADRAMENTO \u2014 MODO COM ROSTO") || params.prompt.includes("o rosto da modelo DEVE aparecer") || params.prompt.includes("MESTRA CATZA"))
   );
-  const isPlus = params.bodyType === "plus_size" || /plus[-_\s]*size/i.test(params.prompt);
+  const isPovModeKling = params.presentationMode === "pov" || params.selectedMasterId === "pov_cinta_85k" || params.selectedMasterId === "pov_blusinhas_13k" || Boolean(params.prompt && params.prompt.includes("PRESERVA\xC7\xC3O INTEGRAL DO CEN\xC1RIO POV"));
+  const isPlus = !isPovModeKling && (params.bodyType === "plus_size" || /plus[-_\s]*size/i.test(params.prompt));
   const plusRule = isPlus ? "[MANDATORY AUTHENTIC PLUS-SIZE RULE / REGRA PLUS SIZE OBRIGAT\xD3RIA: Mulher brasileira adulta verdadeiramente PLUS SIZE REAL (corpo robusto e volumoso, seios grandes pesados com queda natural, bra\xE7os grossos macios, abd\xF4men com proje\xE7\xE3o natural e dobras suaves, quadris muito largos e gl\xFAteos volumosos, coxas muito grossas que se tocam sem v\xE3o com celulite natural vis\xEDvel na pele, tom morena clara a m\xE9dia quente). CELULITE: N\xC3O REMOVER. TERMINANTEMENTE PROIBIDO gerar mulher mais magra do que a refer\xEAncia, PROIBIDO modelo magra, PROIBIDO cintura fina, PROIBIDO barriga chapada, PROIBIDO pernas finas (STRICTLY FORBIDDEN: woman slimmer than reference, skinny model, slim waist, thin legs, flat stomach, slender body, midsize). ]\n\n" : "";
-  const headerKling = params.isAnaMariaMode ? `${plusRule}${getAnaMariaHeader(Boolean(params.scenarioPhotoBase64), allowsFace)}` : `${englishFidelityHeader}${IMAGE_REFERENCE_FIDELITY_HEADER}`;
+  const headerKling = params.isAnaMariaMode ? isPovModeKling ? "[MODO POV PRIMEIRA PESSOA SOBRE A CAMA \u2014 Preserve 100% do cen\xE1rio da cama e exiba os produtos reais 1:1 sobre a cama manipulados EXCLUSIVAMENTE pelas duas m\xE3os entrando pela borda inferior. PROIBIDO mostrar corpo, rosto, pernas ou espelho!]\n\n" : `${plusRule}${getAnaMariaHeader(Boolean(params.scenarioPhotoBase64), allowsFace)}` : `${englishFidelityHeader}${IMAGE_REFERENCE_FIDELITY_HEADER}`;
   const klingPrompt = compactPromptToLimit(
     params.prompt,
     2200,
@@ -3589,14 +3612,15 @@ async function generateImageWithSeedream(params) {
       error: "Chave do Seedream (SEEDREAM_API_KEY / apiauroraseedreamvip) n\xE3o encontrada nas vari\xE1veis de ambiente da Vercel."
     };
   }
-  const refImages = (params.referenceImages && params.referenceImages.length > 0 ? params.referenceImages : [params.imageReferenceBase64]).map((img) => toDataUri(img)).filter((img) => Boolean(img)).slice(0, 10);
+  const refImages = (params.referenceImages && params.referenceImages.length > 0 ? params.referenceImages : [params.imageReferenceBase64]).map((img) => toDataUri(img)).filter((img) => Boolean(img)).slice(0, params.presentationMode === "pov" || params.selectedMasterId === "pov_cinta_85k" || params.selectedMasterId === "pov_blusinhas_13k" || Boolean(params.prompt && params.prompt.includes("PRESERVA\xC7\xC3O INTEGRAL DO CEN\xC1RIO POV")) ? 3 : 4);
   const alreadyStructuredAnaMaria = params.isAnaMariaMode && (params.prompt.includes("PRESERVA\xC7\xC3O INTEGRAL DO CEN\xC1RIO") || params.prompt.includes("CEN\xC1RIO RESIDENCIAL E AMBIENTE"));
   const isPlus = params.bodyType === "plus_size" || /plus[-_\s]*size/i.test(params.prompt);
   const plusRule = isPlus && !alreadyStructuredAnaMaria ? "[MANDATORY AUTHENTIC PLUS-SIZE RULE / REGRA PLUS SIZE OBRIGAT\xD3RIA: Mulher brasileira adulta com corpo PLUS SIZE REAL (robusto, volumoso, seios grandes pesados com caimento natural, bra\xE7os roli\xE7os carnudos, abd\xF4men macio com proje\xE7\xE3o natural abaixo do umbigo, quadris largos volumosos, coxas muito grossas com celulite natural vis\xEDvel, pele morena clara a m\xE9dia quente). CELULITE: N\xC3O REMOVER. TERMINANTEMENTE PROIBIDO gerar mulher mais magra do que a refer\xEAncia (STRICTLY FORBIDDEN: woman slimmer than reference, slim waist, skinny, midsize, flat belly, thin legs).]\n\n" : "";
   const allowsFaceSeedream = params.presentationMode === "com_rosto" || params.selectedMasterId === "mestra_catza" || Boolean(
     params.prompt && (params.prompt.includes("MODO COM ROSTO") || params.prompt.includes("ROSTO E ENQUADRAMENTO \u2014 MODO COM ROSTO") || params.prompt.includes("o rosto da modelo DEVE aparecer") || params.prompt.includes("MESTRA CATZA"))
   );
-  const headerSeedream = params.isAnaMariaMode ? alreadyStructuredAnaMaria ? "[MAPA DE IMAGENS DE REFER\xCANCIA: Imagem 1 = Cen\xE1rio real obrigat\xF3rio (preservar 100% intacto); Demais imagens = Pe\xE7a de roupa real 1:1 a ser vestida pela modelo.]" : `${plusRule}${getAnaMariaHeader(Boolean(params.scenarioPhotoBase64), allowsFaceSeedream)}` : IMAGE_REFERENCE_FIDELITY_HEADER;
+  const isPovModeSeedream = params.presentationMode === "pov" || params.selectedMasterId === "pov_cinta_85k" || params.selectedMasterId === "pov_blusinhas_13k" || Boolean(params.prompt && params.prompt.includes("PRESERVA\xC7\xC3O INTEGRAL DO CEN\xC1RIO POV"));
+  const headerSeedream = params.isAnaMariaMode ? isPovModeSeedream ? "[MODO POV PRIMEIRA PESSOA SOBRE A CAMA \u2014 MAPA DE IMAGENS DE REFER\xCANCIA: Imagem 1 = Cen\xE1rio POV real da cama obrigat\xF3rio (preservar colcha/cama 100% intacta); Demais imagens = Produtos reais 1:1 que devem aparecer sobre a cama manipulados EXCLUSIVAMENTE pelas duas m\xE3os entrando pela borda inferior do quadro. PROIBIDO mostrar corpo, tronco, rosto, cabe\xE7a, pernas, espelho ou pessoa vestindo a pe\xE7a!]" : alreadyStructuredAnaMaria ? isPlus ? "[MAPA DE IMAGENS DE REFER\xCANCIA E ISOLAMENTO DE CORPO PLUS SIZE: Imagem 1 = Cen\xE1rio real obrigat\xF3rio (preservar 100% intacto); Demais imagens = Refer\xEAncia EXCLUSIVA da pe\xE7a de roupa 1:1. \xC9 TERMINANTEMENTE PROIBIDO copiar o corpo magro da pessoa ou manequim das fotos do produto! Gere a modelo com a EXATA ESTRUTURA CORPORAL PLUS SIZE REAL, cabelo e acess\xF3rios descritos no prompt abaixo!]" : "[MAPA DE IMAGENS DE REFER\xCANCIA E PRESERVA\xC7\xC3O DO CORPO DA MESTRA: Imagem 1 = Cen\xE1rio real obrigat\xF3rio (preservar 100% intacto); Demais imagens = Refer\xEAncia EXCLUSIVA da pe\xE7a de roupa 1:1 (copie SOMENTE a pe\xE7a de roupa, tecido, cor e corte). \xC9 TERMINANTEMENTE PROIBIDO copiar o corpo magro, cintura reta, quadris estreitos ou a pessoa das fotos do produto! Gere a modelo obedecendo 100% \xE0 ESTRUTURA CORPORAL CURVIL\xCDNEA DA MESTRA (silhueta ampulheta/viol\xE3o bem definida, cintura fina e bem marcada, quadris largos e arredondados, coxas cheias e volumosas), cabelo, pele e acess\xF3rios descritos no prompt abaixo (salvo instru\xE7\xE3o expl\xEDcita em contr\xE1rio do usu\xE1rio)!]" : `${plusRule}${getAnaMariaHeader(Boolean(params.scenarioPhotoBase64), allowsFaceSeedream)}` : IMAGE_REFERENCE_FIDELITY_HEADER;
   const payload = {
     model: "dola-seedream-5-0-pro-260628",
     prompt: refImages.length > 0 ? `${headerSeedream}
@@ -3641,7 +3665,7 @@ ${params.prompt}` : params.prompt,
       if (res.ok && Array.isArray(data?.data) && data.data[0]?.url) {
         const imgUrl = data.data[0].url;
         try {
-          const imgFetch = await fetch(imgUrl);
+          const imgFetch = await fetch(imgUrl, { signal: AbortSignal.timeout(6500) });
           const arrayBuffer = await imgFetch.arrayBuffer();
           const b64 = Buffer.from(arrayBuffer).toString("base64");
           const mime = imgFetch.headers.get("content-type") || "image/jpeg";

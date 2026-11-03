@@ -551,14 +551,22 @@ Retorne estritamente um JSON estruturado:
 - STRICTLY PROHIBITED (ZERO YELLOWISH / ZERO OPAQUE): NO yellowish tint, NO warm tungsten/amber/sepia cast, NO dull/opaque/lifeless look, NO pale/washed-out/milky/hazy veil, and NO plastic film overlay across the lens.
 - 90%+ FIDELITY AUDITOR CALIBRATION (5 INSPECTION GROUPS + ANTI-MORPHING): Preserve 100% of the exact product model, silhouette, all physical components (body, nozzles, caps, cables, handles, buttons, seams, and all kit pieces), realistic human scale, exact surface finish (matte, glossy, metallic), and 1:1 manufacturer logo. Hands must have 5 natural fingers gripping neutral sides cleanly without fusing into the product or covering the logo/buttons.`;
 
+    const isPovMode =
+      presentationMode === 'pov' ||
+      selectedMasterId === 'pov_cinta_85k' ||
+      selectedMasterId === 'pov_blusinhas_13k' ||
+      Boolean(prompt && prompt.includes('PRESERVAÇÃO INTEGRAL DO CENÁRIO POV'));
+
     const scenarioLockDirective = scenarioPhotoBase64
-      ? `CRITICAL SCENARIO AND BACKGROUND ANCHOR (EXACT ROOM REPLICATION):
+      ? isPovMode
+        ? `CRITICAL POV BED SCENARIO ANCHOR (EXACT BED & TOP-DOWN POV REPLICATION):
+- Reference Image 1 defines the EXACT bed, bedspread/sheets, texture, and lighting for this 90-degree top-down first-person POV shot.
+- Keep 100% of the bed surface and fabric from Reference Image 1 intact.
+- Show ONLY two human hands entering from the bottom edge of the frame holding/presenting the product units on top of this exact bed.
+- STRICTLY FORBIDDEN: Do NOT show any woman standing, torso, legs, face, head, or mirror.`
+        : `CRITICAL SCENARIO AND BACKGROUND ANCHOR (EXACT ROOM REPLICATION):
 - The attached scenario reference image defines the EXACT room and interior architecture.
-- Hallway/room with beige marbled porcelain tile flooring with realistic gloss reflection.
-- Dark wood door on the left with silver metallic door handle.
-- White tiled wall on the right with dual white light switch and glass door frame.
-- Slightly dimmed hallway corridor extending directly in the background.
-- Place the woman standing directly inside this EXACT architectural setting holding the smartphone in front of the mirror. Do NOT create or invent a different room, do NOT change the walls or floor.`
+- Place the model standing directly inside this EXACT architectural setting holding the smartphone in front of the mirror. Do NOT create or invent a different room, do NOT change the walls or floor.`
       : '';
 
     // Prioriza correções de auditoria e instruções adicionais sobre o prompt universal já formatado
@@ -606,13 +614,29 @@ Retorne estritamente um JSON estruturado:
         /grade\s+(?:3x3|2x3|2x2)|(?:\b4|\b6|\b9)\s+(?:cenas|quadros)|storyboard/i.test(prompt);
 
       const isPlusSizeRequest =
-        bodyType === 'plus_size' ||
-        /plus[-_\s]*size|manequim\s*(?:48|50|52|54)/i.test(prompt) ||
-        /plus[-_\s]*size/i.test(additionalInstructions);
+        !isPovMode &&
+        (bodyType === 'plus_size' ||
+          /plus[-_\s]*size|manequim\s*(?:48|50|52|54)/i.test(prompt) ||
+          /plus[-_\s]*size/i.test(additionalInstructions));
+
+      const userRequestedSlimOpenAI =
+        /\b(?:magra|magrinha|corpo\s+de\s+modelo|modelo\s+magra|sem\s+curvas|esguia|slim|skinny|slender)\b/i.test(
+          additionalInstructions || ''
+        );
 
       if (isAnaMariaMode && scenarioPhotoBase64) {
-        const bodyBlock = isPlusSizeRequest
-          ? `[SOVEREIGN AUTHENTIC HEAVY-SET PLUS-SIZE FEMALE BODY MANDATE]:
+        if (isPovMode) {
+          effectivePrompt = `[CRITICAL POV EDIT DIRECTIVE - FIRST-PERSON HANDS ON BED - MODO ANA MARIA POV]:
+You are editing the base POV bed scenario photograph (Reference Image 1).
+1. KEEP 100% of the bed, bedspread, sheets, fabric texture, and ambient lighting from Reference Image 1 UNCHANGED and INTACT.
+2. Place the EXACT garments/products shown in Reference Image 2 (and subsequent reference photos) on top of the bed (one unit laid out on the bed surface and a second unit held closer to the lens by the two hands).
+3. Show ONLY two natural human hands entering from the bottom edge of the frame manipulating/displaying the garment on the bed.
+4. STRICTLY FORBIDDEN: DO NOT generate any person standing, DO NOT show torso, waist, hips, legs, head, face, or mirror.
+
+${cleanPrompt}`;
+        } else {
+          const bodyBlock = isPlusSizeRequest
+            ? `[SOVEREIGN AUTHENTIC HEAVY-SET PLUS-SIZE FEMALE BODY MANDATE]:
 - The woman MUST be an authentic, genuinely PLUS-SIZE adult Brazilian woman with substantial real body mass, voluptuous soft curves, and generous adipose volume throughout her entire physique.
 - STRICT USER MANDATE: NEVER generate women slimmer than this photographic reference. ABSOLUTELY FORBIDDEN: mid-size, slim waist, narrow runway model, flat stomach, or thin thighs.
 - THIGHS & CONTACT: Extremely thick, massive, heavy voluptuous thighs with complete contact/friction at the upper thighs (zero thigh gap; the inner thighs press together completely).
@@ -624,45 +648,55 @@ Retorne estritamente um JSON estruturado:
 - BUST: Large, heavy, full, voluptuous natural breasts with realistic downward anatomical drape, filling the garment neckline generously.
 - ARMS: Distinctly thick, round, fleshy arms with evident subcutaneous fat (NO thin or slender arms).
 - The garment fits snugly and flatteringly over her real heavy plus-size body, exactly as seen on authentic Brazilian plus-size models.`
-          : `[CURVACEOUS FEMALE BODY SILHOUETTE]:
-- Brazilian woman with natural hourglass curves, wide hips, defined waist, and shapely legs.
-- The garment fits snugly and flatteringly over her curves.`;
+            : userRequestedSlimOpenAI
+            ? `[USER-SPECIFIED BODY SILHOUETTE]:
+- Follow the exact body silhouette requested by the user in USER DIRECTIVE (${additionalInstructions.trim()}), while preserving the Mestra's hair, skin, and accessories.`
+            : `[SOVEREIGN MESTRA CURVACEOUS HOURGLASS BODY MANDATE — DO NOT COPY PRODUCT MODEL BODY]:
+- CRITICAL ISOLATION RULE: Reference Image 2+ is ONLY for the garment/clothing design. DO NOT copy the thin/slim body, straight waist, or narrow hips of the catalog model or mannequin in Reference Image 2+!
+- The woman MUST have the EXACT curvaceous Brazilian hourglass physique ("corpo violão / ampulheta") defined in the selected Mestra's specification below:
+  * Narrow, well-defined, sculpted waist ("cintura fina e bem marcada").
+  * Wide, rounded, prominent feminine hips ("quadris largos, arredondados e bem desenhados") creating a strong waist-to-hip curve.
+  * Full, shapely, voluminous toned thighs and legs ("coxas cheias, torneadas e volumosas").
+  * Medium-to-full proportionate natural bust and feminine posture.
+- STRICTLY FORBIDDEN: NEVER generate a skinny runway model, straight/boyish torso without waist definition, narrow flat hips, or thin stick legs.`;
 
-        const allowsFace =
-          presentationMode === 'com_rosto' ||
-          selectedMasterId === 'mestra_catza' ||
-          (cleanPrompt &&
-            (cleanPrompt.includes('MODO COM ROSTO') ||
-              cleanPrompt.includes('ROSTO E ENQUADRAMENTO — MODO COM ROSTO') ||
-              cleanPrompt.includes('o rosto da modelo DEVE aparecer') ||
-              cleanPrompt.includes('MESTRA CATZA')));
+          const allowsFace =
+            presentationMode === 'com_rosto' ||
+            selectedMasterId === 'mestra_catza' ||
+            (cleanPrompt &&
+              (cleanPrompt.includes('MODO COM ROSTO') ||
+                cleanPrompt.includes('ROSTO E ENQUADRAMENTO — MODO COM ROSTO') ||
+                cleanPrompt.includes('o rosto da modelo DEVE aparecer') ||
+                cleanPrompt.includes('MESTRA CATZA')));
 
-        const framingSection = allowsFace
-          ? `[FRAMING & FACE DIRECTIVE — MODO COM ROSTO / UGC]:
+          const framingSection = allowsFace
+            ? `[FRAMING & FACE DIRECTIVE — MODO COM ROSTO / UGC]:
 - The model's natural, harmonious face and expression MUST appear clearly in the mirror reflection.
 - Expressive, authentic, natural makeup, dark neat eyebrows, long hair naturally falling over shoulders.
 - Modern smartphone held naturally taking the mirror selfie with rear flash activated.
 - Zero tattoos anywhere on the skin (100% clean skin).`
-          : `[STRICT FRAMING & FACE PROHIBITION]:
+            : `[STRICT FRAMING & FACE PROHIBITION]:
 - STRICT CHIN-DOWN FRAMING: Frame strictly from the bottom base of the chin downward.
 - ABSOLUTELY NEVER reveal lips, mouth, nose, eyes or upper face. Face MUST stay 100% OUT OF FRAME.
 - Zero tattoos anywhere on the skin (100% clean skin).
 - Modern smartphone held naturally in one hand in front of the mirror taking the mirror-selfie.`;
 
-        effectivePrompt = `[CRITICAL EDIT DIRECTIVE - INPAINT MODEL INTO EXACT SCENARIO - MODO ANA MARIA]:
+          effectivePrompt = `[CRITICAL EDIT DIRECTIVE - INPAINT MODEL INTO EXACT SCENARIO - MODO ANA MARIA]:
 You are editing the base scenario photograph (Reference Image 1).
 KEEP the architectural setting from Reference Image 1 100% UNCHANGED and INTACT:
 - Preserve 100% of the room, architecture, floor, walls, mirrors, lighting, colors, reflections, doors, and background exactly as shown in Reference Image 1.
 - DO NOT invent, generate, redesign or redraw a new room. Place the woman standing inside this EXACT real room from Reference Image 1 in front of the mirror taking a mirror-selfie.
 
-[PRODUCT FIDELITY MANDATE (REFERENCE IMAGE 2+)]:
+[PRODUCT FIDELITY & BODY ISOLATION MANDATE (REFERENCE IMAGE 2+)]:
 - The woman wears the EXACT garment shown in reference image 2 (and subsequent photos): 1:1 identical color, shade, fabric texture, seams, straps, neckline, cut, and fit.
+- NEVER copy the body shape or thinness of the model/mannequin from reference image 2+.
 
 ${bodyBlock}
 
 ${framingSection}
 
 ${cleanPrompt}`;
+        }
       }
 
       // Se temos referência de modelo mestre:
