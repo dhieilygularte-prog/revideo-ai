@@ -201,30 +201,163 @@ export const MASTER_PROMPTS_GALLERY: AnaMariaMasterPromptItem[] = [
       'https://excursaomdr.s3.sa-east-1.amazonaws.com/VIDEOS+GALERIA+AURORA/PROMPT+ANA+MARIA-+BY+GPT+LEU+O+VIDEO+ORIGINAL+OTIMO.mp4',
     categories: ['mirror_selfie'],
     primaryCategory: 'mirror_selfie',
-bodyStandardText: `PADRÃO CORPORAL SOBERANO — MESTRA ANA MARIA (CORPO VIOLÃO FITNESS / COXAS HIPER-GROSSAS):
-Mulher jovem brasileira (23 a 28 anos, aprox. 1,65m de altura e 66kg a 70kg) com silhueta ampulheta fitness extrema ("corpo violão fitness / coxuda sarada"), com forte contraste anatômico entre a cintura extremamente fina e os membros inferiores muito desenvolvidos:
-- CINTURA: Extremamente estreita, finíssima, esculpida e bem marcada ("cintura de pilão"), criando um contraste dramático com os quadris largos.
-- QUADRIS: Muito largos, volumosos e arredondados, que se projetam para as laterais com curva violão evidente e marcante.
-- GLÚTEOS: Volumosos, redondos, empinados e densos, com grande projeção lateral e posterior, preenchendo com firmeza a peça de roupa.
-- COXAS (CARACTERÍSTICA VISUAL MAIS IMPORTANTE): Coxas HIPER-GROSSAS, volumosas, musculosas e muito torneadas de treino de academia (quadríceps desenvolvidos, cheios e volumosos que preenchem completamente a peça). As coxas são maciças e robustas, muito mais largas que a cintura e os braços!
-- ABDÔMEN: Plano, reto, liso e enxuto, sem excesso de gordura e sem dobras, cintura fina e bem definida.
-- TRONCO E BUSTO: Busto de médio a cheio, proporcional, colo harmônico e firme; tronco e caixa torácica estreitos.
-- BRAÇOS E OMBROS: Braços finos, esguios e delicados, ombros simétricos proporcionais, trazendo leveza e delicadeza para a parte superior em contraste com as pernas grossas.
-- PERNAS E PANTURRILHAS: Pernas torneadas e musculosas, panturrilhas firmes e proporcionais.
-REGRA DE OURO INVIOLÁVEL: É TERMINANTEMENTE PROIBIDO gerar corpos magros, retos, sem cintura ou pernas finas de modelo de passarela (STRICTLY FORBIDDEN: skinny model, thin runway legs, stick legs, flat hips, boyish waistless torso).
-NUNCA copiar o corpo magro da modelo da foto do produto do usuário: da foto do produto, copiar rigorosamente APENAS A ROUPA e vesti-la no corpo violão de coxas grossas da Mestra Ana Maria.`,
-    skinAndRealismText: `PELE E REALISMO HUMANO — MESTRA ANA MARIA:
-- TONALIDADE: Pele clara natural (caucasiana / morena muito clara), com subtom neutro a levemente rosado/quente e aspecto saudável de quem está em casa (sem bronzeamento alaranjado artificial e sem óleo brilhoso).
-- TEXTURA: Textura fotográfica humana 100% autêntica, poros naturais discretamente visíveis, microtexturas reais da pele, sem efeito de pele de plástico, sem filtro de porcelana e sem aspecto de boneca.
-- ILUMINAÇÃO: Luz ambiente natural e suave de quarto/residência real, com exposição natural, sombras discretas e reflexos luminosos suaves e realistas.`,
-    hairIdentityText: `CABELO — MESTRA ANA MARIA: Cabelo feminino humano real longo ou médio, tonalidades naturais (castanho claro, castanho escuro ou loiro natural), fios alinhados com caimento natural sobre os ombros e costas, textura saudável e brilho natural.`,
-    accessoriesIdentityText: `ACESSÓRIOS — IDENTIDADE MESTRA ANA MARIA (EXATAMENTE COMO NA FOTO DE REFERÊNCIA):
-- COLARES NO COLO: Composição delicada de 2 a 3 correntes douradas finas em camadas no colo (gargantilha choker dourada fina justa ao pescoço + correntinha mais longa com pequenos pingentes metálicos circulares caídos).
-- PULSEIRAS: Pulseira fina dourada delicada de elos pequenos no pulso.
-- ANÉIS: Anéis dourados finos e discretos nos dedos.
-- UNHAS: Comprimento curto a médio, formato arredondado delicado com esmalte nude, rosado claro ou brilho natural, manicure limpa e bem cuidada.
-- SMARTPHONE: Smartphone moderno (iPhone com capinha rosada/nude) segurado em uma das mãos diante do espelho, enquadramento estrito do queixo para baixo.`,
-    lightingAndCameraText: `Fotografia vertical 9:16 hiper-realista capturada por smartphone diante do espelho (selfie no espelho), enquadramento do queixo para baixo exibindo com perfeição o corpo violão, a cintura finíssima, as coxas grossas e a roupa vestida. Luz ambiente suave e natural, ângulo frontal ou levemente 3/4, postura natural e confiante.`,
+bodyStandardText: `## 1. APARÊNCIA GERAL E BIOTIPO — MESTRA ANA MARIA
+Gerar uma mulher adulta, de aparência jovem adulta, com características femininas delicadas, cabelos longos castanho-claros iluminados e corpo curvilíneo com silhueta ampulheta.
+A modelo possui aparência naturalmente elegante, com estrutura corporal relativamente esguia na parte superior e curvas mais pronunciadas na região dos quadris e glúteos.
+Sua aparência deve ser fotográfica e natural, sem aspecto artificial de modelo 3D.
+
+## 4. FORMATO DO CORPO — BIOTIPO AMPULHETA
+A modelo apresenta uma silhueta ampulheta curvilínea, com estrutura corporal relativamente esguia e curvas concentradas na região inferior.
+Não é uma mulher extremamente magra, nem possui estrutura plus size. Seu corpo combina uma parte superior delicada com quadris largos e glúteos volumosos.
+
+### Cintura e abdômen
+- Cintura estreita, fina e bastante marcada.
+- Abdômen relativamente plano.
+- Laterais da cintura bem definidas.
+- Tronco de comprimento médio.
+- Curvatura natural entre a cintura e os quadris.
+- Região abdominal sem definição muscular exagerada.
+
+### Quadril e glúteos
+- Quadril largo, arredondado e bastante evidente.
+- Glúteos grandes, cheios e com projeção posterior acentuada.
+- Bumbum arredondado, volumoso e naturalmente firme.
+- Projeção lateral e posterior bastante perceptível.
+- Curva acentuada entre a cintura estreita e a região mais larga dos quadris.
+- Região glútea com volume concentrado na parte posterior.
+- Transição natural entre quadril, glúteos e coxas.
+O bumbum deve ser uma característica visual importante da modelo, apresentando volume e projeção sem parecer artificial.
+
+### Coxas
+- Coxas de volume médio a generoso.
+- Parte superior das pernas arredondada e preenchida.
+- Volume proporcional ao quadril e aos glúteos.
+- Curvas naturais na região externa das coxas.
+- Não gerar pernas excessivamente finas.
+- Não aumentar exageradamente o volume das coxas a ponto de alterar a silhueta original (PROIBIDO coxas musculosas de academia ou hipertrofiadas).
+
+### Pernas
+- Pernas visualmente alongadas.
+- Comprimento médio a longo em relação ao tronco.
+- Joelhos delicados e proporcionais.
+- Panturrilhas de volume moderado.
+- Tornozelos relativamente finos.
+- Estrutura das pernas feminina e proporcional.
+
+### Tronco, busto e braços
+- Ombros de largura média, com aparência delicada.
+- Busto de volume médio a cheio, proporcional ao corpo.
+- Braços relativamente esguios.
+- Antebraços delicados.
+- Tronco relativamente estreito.
+- Parte superior visualmente mais esguia que os quadris.`,
+    skinAndRealismText: `## 2. TOM DE PELE E CARACTERÍSTICAS NATURAIS — MESTRA ANA MARIA
+- Pele clara com tonalidade bege quente.
+- Subtom levemente dourado, com aparência suavemente bronzeada.
+- Coloração natural e relativamente uniforme.
+- Pele com textura humana realista.
+- Poros discretamente visíveis.
+- Pequenas variações naturais de tonalidade nos braços, pernas, joelhos e cotovelos.
+- Leve luminosidade natural na superfície da pele.
+- Aparência saudável, sem efeito de bronzeamento artificial intenso.
+- Textura delicada, sem excesso de retoque digital.
+Não deixar a pele excessivamente lisa, plastificada ou com aparência de boneca.
+
+## 10. APARÊNCIA FOTOGRÁFICA
+A imagem deve apresentar:
+- Fotografia ultrarrealista.
+- Anatomia feminina natural.
+- Textura de pele verdadeira.
+- Cabelos com fios individualizados.
+- Reflexos naturais nos acessórios.
+- Mãos e dedos anatomicamente corretos.
+- Proporções corporais consistentes.
+- Aparência de selfie real feita com smartphone.
+- Sem efeito de ilustração, boneca ou renderização 3D.`,
+    hairIdentityText: `## 3. CABELO — COR, COMPRIMENTO E TEXTURA — MESTRA ANA MARIA
+A modelo possui cabelos longos, volumosos e levemente ondulados:
+- Base castanho-claro.
+- Mechas iluminadas em tons de loiro escuro, caramelo, mel e bege dourado.
+- Raiz ligeiramente mais escura.
+- Comprimento longo, ultrapassando a linha dos seios.
+- Ondulações largas e naturais.
+- Algumas mechas apresentam cachos suaves nas pontas.
+- Cabelo com volume moderado a abundante.
+- Fios com aparência saudável, movimento natural e brilho discreto.
+- Distribuição assimétrica, com mechas caindo sobre os dois lados do tronco.
+- Parte do cabelo acompanha a lateral das costas e dos ombros.
+O cabelo deve apresentar iluminação dimensional, com contraste natural entre a raiz e as mechas mais claras.`,
+    accessoriesIdentityText: `## 5. PESCOÇO, COLO E ACESSÓRIOS — MESTRA ANA MARIA
+- Pescoço de comprimento médio, delicado e proporcional.
+- Gargantilha fina em tom dourado ou escuro, rente à base do pescoço.
+- Colar delicado dourado com pequeno pingente.
+- Corrente fina, com acabamento metálico discreto.
+- Acessórios elegantes e minimalistas.
+### Pulseiras
+- Pulseira dourada fina em um dos pulsos.
+- Pulseira delicada com pequeno detalhe pendente.
+- Corrente metálica fina, sem peças volumosas.
+### Anéis
+- Anéis delicados nos dedos.
+- Predominância de acabamento metálico prateado.
+- Um ou mais anéis finos.
+- Aparência elegante e discreta.
+Não acrescentar brincos grandes, piercings, tatuagens ou acessórios que não estejam presentes na referência.
+
+## 6. MÃOS E UNHAS
+- Mãos delicadas e femininas.
+- Dedos compridos e proporcionais.
+- Unhas de comprimento médio.
+- Formato amendoado, levemente alongado.
+- Esmalte rosa-claro ou nude rosado.
+- Acabamento brilhante.
+- Manicure bem feita, com cutículas discretas.
+- Dedos com posicionamento natural e anatômico.
+
+## 8. CELULAR E SELFIE
+- Smartphone moderno de acabamento rosa-claro.
+- Câmeras traseiras múltiplas, visíveis.
+- Celular segurado verticalmente por uma das mãos.
+- Aparelho posicionado na altura do rosto/queixo.
+- Dedos naturalmente distribuídos nas laterais do aparelho.
+- Anéis delicados visíveis na mão que segura o celular.
+O celular deve permanecer diante da face, ocultando completamente a identidade facial.`,
+    lightingAndCameraText: `## 7. POSE CORPORAL — PERFIL LATERAL
+A pose deve reproduzir fielmente a posição corporal da referência: selfie no espelho com o corpo em posição predominantemente lateral.
+- Posicionamento do tronco: Corpo girado aproximadamente 70 a 80 graus em relação à câmera. Predominância da visão lateral do corpo. Parte superior do tronco levemente girada em direção ao espelho. Ombros naturalmente posicionados. Tronco alongado, sem inclinação exagerada. Coluna em posição natural.
+- Posicionamento da cintura e quadril: Cintura suavemente inclinada. Quadril deslocado para trás. Glúteos projetados naturalmente na direção posterior. Região lombar com curvatura anatômica natural. Contraste visual acentuado entre cintura e quadril. Silhueta lateral bastante evidente. A projeção dos glúteos deve ser produzida pela anatomia e pela posição corporal, não por deformação artificial.
+- Posicionamento dos braços: Um braço elevado, segurando o celular diante do espelho. Cotovelo flexionado. Antebraço posicionado próximo à região superior do tronco. Outro braço relaxado ao lado do corpo ou parcialmente acompanhando a lateral do quadril. Mãos com aparência natural.
+- Posicionamento das pernas: Pernas próximas uma da outra. Uma perna ligeiramente posicionada à frente. Joelhos suavemente flexionados. Peso corporal distribuído predominantemente sobre uma das pernas. Pés em posições ligeiramente diferentes. Postura descontraída e feminina.
+
+## 9. ÂNGULO, ENQUADRAMENTO E COMPOSIÇÃO
+PRIORIDADE MÁXIMA: REPRODUZIR O MESMO ENQUADRAMENTO DA REFERÊNCIA.
+- Fotografia vertical em proporção 9:16.
+- Enquadramento de corpo praticamente inteiro.
+- Corte superior na região inferior do queixo, sem mostrar o rosto.
+- Parte inferior incluindo os pés.
+- Modelo posicionada predominantemente de perfil.
+- Visão lateral de aproximadamente 70 a 80 graus.
+- Quadril e glúteos ocupando posição visual de destaque.
+- Corpo ocupando a maior parte da imagem.
+- Perspectiva natural de smartphone, sem distorção de grande-angular, sem ângulo excessivamente baixo ou alto.
+- A câmera deve registrar claramente o contorno lateral da cintura, a projeção dos glúteos, as coxas e o comprimento das pernas.
+- NÃO MOSTRAR O ROSTO: o enquadramento deve começar abaixo do queixo ou na base do pescoço. Não mostrar olhos, nariz ou boca. O celular também não deve deixar a face visível.
+
+## 11. REGRAS DE CONSISTÊNCIA E INSTRUÇÃO FINAL
+Manter permanentemente:
+1. O mesmo tom de pele bege quente.
+2. O mesmo cabelo longo castanho-claro com mechas iluminadas.
+3. A mesma estrutura corporal ampulheta.
+4. A mesma cintura estreita.
+5. O mesmo quadril largo.
+6. Os mesmos glúteos volumosos e projetados.
+7. A mesma proporção entre tronco e pernas.
+8. Os mesmos acessórios delicados.
+9. As mesmas características das mãos e unhas.
+10. A mesma posição lateral de selfie.
+11. O mesmo enquadramento sem mostrar o rosto.
+
+INSTRUÇÃO FINAL: Reproduzir a identidade visual e corporal descrita nesta referência, sem reinterpretar ou modificar suas características. A fotografia do produto anexada em cada geração deve ser utilizada exclusivamente para determinar a peça que será vestida pela modelo. Não modificar a anatomia, o cabelo, a pele, os acessórios ou a pose para adaptar o corpo ao produto. A peça deve se ajustar naturalmente à modelo, preservando integralmente suas características originais.`,
     movementPromptText: `Create a 10-second ultra-photorealistic vertical 9:16 mirror-selfie fashion video. Use the attached reference image as the absolute visual starting point.
 
 The animation must reproduce the following exact sequence of movements in one continuous, natural recording.

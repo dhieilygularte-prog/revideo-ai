@@ -981,17 +981,15 @@ ${cleanPrompt}`;
 - BUST: Large, heavy, full, voluptuous natural breasts with realistic downward anatomical drape, filling the garment neckline generously.
 - ARMS: Distinctly thick, round, fleshy arms with evident subcutaneous fat (NO thin or slender arms).
 - The garment fits snugly and flatteringly over her real heavy plus-size body, exactly as seen on authentic Brazilian plus-size models.` : userRequestedSlimOpenAI ? `[USER-SPECIFIED BODY SILHOUETTE]:
-- Follow the exact body silhouette requested by the user in USER DIRECTIVE (${additionalInstructions.trim()}), while preserving the Mestra's hair, skin, and accessories.` : selectedMasterId === "mestra_ana_maria" ? `[SOVEREIGN MESTRA ANA MARIA BRAZILIAN FITNESS HOURGLASS BODY MANDATE \u2014 DO NOT COPY SLIM PRODUCT MODEL]:
-- CRITICAL ISOLATION RULE: Reference Image 2+ is ONLY for the garment/clothing design. DO NOT copy the thin/slender body or thin legs of the catalog model/mannequin in Reference Image 2+!
-- The woman MUST have the EXACT Brazilian fitness hourglass physique ("corpo viol\xE3o fitness / coxuda sarada") defined below:
-  * WAIST: Ultra-narrow, tiny cinched sculpted waist ("cintura fin\xEDssima e bem marcada") creating a dramatic contrast with the hips.
-  * HIPS: Very wide, rounded, prominent feminine hips flaring out strongly.
-  * GLUTES: Full, round, elevated, dense glutes filling and shaping the garment.
-  * THIGHS (KEY VISUAL TRAIT): EXTREMELY THICK, muscular, voluminous toned gym thighs and quadriceps that fill the shorts/garment powerfully (heavy, voluminous athletic legs, NOT skinny runway model legs).
-  * STOMACH: Flat, tight, smooth toned natural abdomen.
-  * UPPER BODY: Slender toned arms, delicate shoulders, medium natural bust.
-  * SKIN: Fair/light natural Caucasian skin tone with healthy undertone, 100% realistic unretouched texture.
-- STRICTLY FORBIDDEN: NEVER generate a skinny fashion model, straight waistless torso, narrow flat hips, or thin stick legs.` : `[SOVEREIGN MESTRA BODY MANDATE \u2014 DO NOT COPY PRODUCT MODEL BODY]:
+- Follow the exact body silhouette requested by the user in USER DIRECTIVE (${additionalInstructions.trim()}), while preserving the Mestra's hair, skin, and accessories.` : selectedMasterId === "mestra_ana_maria" ? `[SOVEREIGN MESTRA ANA MARIA HOURGLASS SILHOUETTE MANDATE]:
+- CRITICAL ISOLATION RULE: Reference Image 2+ is ONLY for the garment/clothing design. DO NOT copy the body of the catalog model or mannequin in Reference Image 2+!
+- The woman MUST follow the natural hourglass silhouette of Mestra Ana Maria:
+  * Slender delicate upper body, delicate shoulders, slender arms and forearms, medium to full natural bust.
+  * Narrow, cinched, well-defined waist and relatively flat abdomen without excessive muscular definition.
+  * Wide rounded feminine hips and full, naturally firm, projected glutes.
+  * Thighs of medium to generous volume, feminine and proportional to hips and glutes, with natural curves (NOT bodybuilder/muscular thighs, NOT excessively thin).
+  * Fair skin with warm beige golden undertone, long wavy light-brown hair with golden/caramel highlights.
+  * Minimalist delicate gold jewelry, light pink / nude almond nails, modern light-pink smartphone concealing the face from chin down.` : `[SOVEREIGN MESTRA BODY MANDATE \u2014 DO NOT COPY PRODUCT MODEL BODY]:
 - CRITICAL ISOLATION RULE: Reference Image 2+ is ONLY for the garment/clothing design. DO NOT copy the body shape of the catalog model or mannequin in Reference Image 2+!
 - The woman MUST have EXACTLY the body, skin tone, hair, nails and accessories defined in the selected Mestra's specification below (section "PADR\xC3O CORPORAL E PELE"), with realistic anatomical proportions.
 - STRICTLY FORBIDDEN: straight/boyish torso without waist definition, or any body that contradicts the Mestra's specification.`;
@@ -3527,7 +3525,7 @@ ${params.prompt}` : params.prompt).trim();
     console.warn(`[Kling Omni] Prompt com ${klingPrompt.length} caracteres excede o limite oficial de 2.500 caracteres da API.`);
     klingPrompt = compactPromptToLimit(params.prompt, 2490, headerKling);
   }
-  const negativePrompt = params.isAnaMariaMode ? allowsFace ? `tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, deformed face, bad eyes${isPlus ? ", skinny, slim, thin waist, flat belly, slender, underweight, thin legs, midsize, tanned skin, fake bronze, airbrushed skin" : ""}` : `face, lips, mouth, nose, eyes, tattoos on skin, deformed hands, bad anatomy, blurry, watermark${params.selectedMasterId === "mestra_ana_maria" ? ", skinny model, thin legs, thin thighs, straight waist, flat hips, slender runway model, underweight" : ""}${isPlus ? ", skinny, slim, thin waist, flat belly, slender, underweight, thin legs, midsize, tanned skin, fake bronze, airbrushed skin" : ""}` : "original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry";
+  const negativePrompt = params.isAnaMariaMode ? allowsFace ? `tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, deformed face, bad eyes${isPlus ? ", skinny, slim, thin waist, flat belly, slender, underweight, thin legs, midsize, tanned skin, fake bronze, airbrushed skin" : ""}` : `face, lips, mouth, nose, eyes, tattoos on skin, deformed hands, bad anatomy, blurry, watermark${isPlus ? ", skinny, slim, thin waist, flat belly, slender, underweight, thin legs, midsize, tanned skin, fake bronze, airbrushed skin" : ""}` : "original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry";
   const payload = {
     model_name: "kling-v3-omni",
     prompt: klingPrompt,
@@ -3650,7 +3648,7 @@ async function generateImageWithSeedream(params) {
     params.prompt && (params.prompt.includes("MODO COM ROSTO") || params.prompt.includes("ROSTO E ENQUADRAMENTO \u2014 MODO COM ROSTO") || params.prompt.includes("o rosto da modelo DEVE aparecer") || params.prompt.includes("MESTRA CATZA"))
   );
   const isPovModeSeedream = params.presentationMode === "pov" || params.selectedMasterId === "pov_cinta_85k" || params.selectedMasterId === "pov_blusinhas_13k" || Boolean(params.prompt && params.prompt.includes("PRESERVA\xC7\xC3O INTEGRAL DO CEN\xC1RIO POV"));
-  const headerSeedream = params.isAnaMariaMode ? isPovModeSeedream ? "[MAPA POV: Imagem 1 = Cen\xE1rio POV Cama 100% intacto; Imagem 2 = Produto 1:1 manipulado apenas pelas duas m\xE3os na cama (proibido corpo/rosto/espelho; ZERO TATUAGENS: m\xE3os 100% limpas sem tatuagens)]." : alreadyStructuredAnaMaria ? isPlus ? "[MAPA: Imagem 1 = Cen\xE1rio 100% intacto; Imagem 2 = Pe\xE7a 1:1 (proibido copiar corpo da foto do produto). Aplicar estrutura corporal Plus Size real descrita abaixo.]" : params.selectedMasterId === "mestra_ana_maria" ? "[MAPA SOBERANO MESTRA ANA MARIA: Imagem 1 = Cen\xE1rio 100% intacto; Imagem 2 = Pe\xE7a 1:1 (PROIBIDO COPIAR CORPO MAGRO DO PRODUTO). A modelo DEVE ter CORPO VIOL\xC3O FITNESS com cintura fin\xEDssima, quadris largos e COXAS HIPER-GROSSAS musculosas de academia. TERMINANTEMENTE PROIBIDO modelo magra ou pernas finas!]" : "[MAPA: Imagem 1 = Cen\xE1rio 100% intacto; Imagem 2 = Pe\xE7a 1:1 (proibido copiar corpo da foto do produto). Aplicar curvas e propor\xE7\xF5es da Mestra descritas abaixo.]" : `${plusRule}${getAnaMariaHeader(Boolean(params.scenarioPhotoBase64), allowsFaceSeedream)}` : IMAGE_REFERENCE_FIDELITY_HEADER;
+  const headerSeedream = params.isAnaMariaMode ? isPovModeSeedream ? "[MAPA POV: Imagem 1 = Cen\xE1rio POV Cama 100% intacto; Imagem 2 = Produto 1:1 manipulado apenas pelas duas m\xE3os na cama (proibido corpo/rosto/espelho; ZERO TATUAGENS: m\xE3os 100% limpas sem tatuagens)]." : alreadyStructuredAnaMaria ? isPlus ? "[MAPA: Imagem 1 = Cen\xE1rio 100% intacto; Imagem 2 = Pe\xE7a 1:1 (proibido copiar corpo da foto do produto). Aplicar estrutura corporal Plus Size real descrita abaixo.]" : "[MAPA: Imagem 1 = Cen\xE1rio 100% intacto; Imagem 2 = Pe\xE7a 1:1 (proibido copiar corpo da foto do produto). Aplicar curvas e propor\xE7\xF5es da Mestra descritas abaixo.]" : `${plusRule}${getAnaMariaHeader(Boolean(params.scenarioPhotoBase64), allowsFaceSeedream)}` : IMAGE_REFERENCE_FIDELITY_HEADER;
   const payload = {
     model: "dola-seedream-5-0-pro-260628",
     prompt: refImages.length > 0 ? `${headerSeedream}

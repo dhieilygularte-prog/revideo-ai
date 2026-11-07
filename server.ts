@@ -1914,7 +1914,7 @@ async function generateImageWithKling(params: {
   const negativePrompt = params.isAnaMariaMode
     ? (allowsFace
         ? `tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, deformed face, bad eyes${isPlus ? ', skinny, slim, thin waist, flat belly, slender, underweight, thin legs, midsize, tanned skin, fake bronze, airbrushed skin' : ''}`
-        : `face, lips, mouth, nose, eyes, tattoos on skin, deformed hands, bad anatomy, blurry, watermark${params.selectedMasterId === 'mestra_ana_maria' ? ', skinny model, thin legs, thin thighs, straight waist, flat hips, slender runway model, underweight' : ''}${isPlus ? ', skinny, slim, thin waist, flat belly, slender, underweight, thin legs, midsize, tanned skin, fake bronze, airbrushed skin' : ''}`)
+        : `face, lips, mouth, nose, eyes, tattoos on skin, deformed hands, bad anatomy, blurry, watermark${isPlus ? ', skinny, slim, thin waist, flat belly, slender, underweight, thin legs, midsize, tanned skin, fake bronze, airbrushed skin' : ''}`)
     : 'original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry';
 
   const payload: any = {
@@ -2111,9 +2111,7 @@ async function generateImageWithSeedream(params: {
       : alreadyStructuredAnaMaria
       ? isPlus
         ? '[MAPA: Imagem 1 = Cenário 100% intacto; Imagem 2 = Peça 1:1 (proibido copiar corpo da foto do produto). Aplicar estrutura corporal Plus Size real descrita abaixo.]'
-        : (params.selectedMasterId === 'mestra_ana_maria'
-            ? '[MAPA SOBERANO MESTRA ANA MARIA: Imagem 1 = Cenário 100% intacto; Imagem 2 = Peça 1:1 (PROIBIDO COPIAR CORPO MAGRO DO PRODUTO). A modelo DEVE ter CORPO VIOLÃO FITNESS com cintura finíssima, quadris largos e COXAS HIPER-GROSSAS musculosas de academia. TERMINANTEMENTE PROIBIDO modelo magra ou pernas finas!]'
-            : '[MAPA: Imagem 1 = Cenário 100% intacto; Imagem 2 = Peça 1:1 (proibido copiar corpo da foto do produto). Aplicar curvas e proporções da Mestra descritas abaixo.]')
+        : '[MAPA: Imagem 1 = Cenário 100% intacto; Imagem 2 = Peça 1:1 (proibido copiar corpo da foto do produto). Aplicar curvas e proporções da Mestra descritas abaixo.]'
       : `${plusRule}${getAnaMariaHeader(Boolean(params.scenarioPhotoBase64), allowsFaceSeedream)}`
     : IMAGE_REFERENCE_FIDELITY_HEADER;
 
