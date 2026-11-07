@@ -252,16 +252,13 @@ O bumbum deve ser uma característica visual importante da modelo, apresentando 
 - Tronco relativamente estreito.
 - Parte superior visualmente mais esguia que os quadris.`,
     skinAndRealismText: `## 2. TOM DE PELE E CARACTERÍSTICAS NATURAIS — MESTRA ANA MARIA
-- Pele clara com tonalidade bege quente.
-- Subtom levemente dourado, com aparência suavemente bronzeada.
-- Coloração natural e relativamente uniforme.
-- Pele com textura humana realista.
-- Poros discretamente visíveis.
-- Pequenas variações naturais de tonalidade nos braços, pernas, joelhos e cotovelos.
-- Leve luminosidade natural na superfície da pele.
-- Aparência saudável, sem efeito de bronzeamento artificial intenso.
-- Textura delicada, sem excesso de retoque digital.
-Não deixar a pele excessivamente lisa, plastificada ou com aparência de boneca.
+- Pele clara natural com tonalidade bege suave, realista e fosca (matte natural).
+- NÃO DOURADA e NÃO BRONZEADA: Proibido subtom dourado artificial, proibido aspecto bronzeado de sol/praia e proibido efeito de óleo bronzeador ou pele molhada/brilhosa.
+- Textura cutânea humana autêntica e realista, com microtextura de poros reais, micro-relevo natural e imperfeições orgânicas da pele verdadeira.
+- Pequenas variações naturais de tonalidade anatômica nos cotovelos, joelhos, juntas e dobras corporais.
+- Iluminação ambiente residencial natural, suave e difusa, SEM iluminação de estúdio publicitário perfeitinha, SEM brilho oleoso e SEM reflexos estourados.
+- Aparência de fotografia cotidiana de celular sem filtros de embelezamento, sem efeito de pele de porcelana, sem plastificação e sem aspecto de boneca 3D.
+- Pele verdadeiramente humana, natural, fosca com textura real.
 
 ## 10. APARÊNCIA FOTOGRÁFICA
 A imagem deve apresentar:
@@ -345,7 +342,7 @@ PRIORIDADE MÁXIMA: REPRODUZIR O MESMO ENQUADRAMENTO DA REFERÊNCIA.
 
 ## 11. REGRAS DE CONSISTÊNCIA E INSTRUÇÃO FINAL
 Manter permanentemente:
-1. O mesmo tom de pele bege quente.
+1. O mesmo tom de pele bege natural fosco e realista (sem bronzeamento artificial).
 2. O mesmo cabelo longo castanho-claro com mechas iluminadas.
 3. A mesma estrutura corporal ampulheta.
 4. A mesma cintura estreita.

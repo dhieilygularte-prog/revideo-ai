@@ -74,7 +74,13 @@ export interface AniaFormState {
   imageModel: AniaImageModel;
 }
 
-export type AniaImageModel = 'seedream_5_0_pro' | 'kling_3_0' | 'openai';
+export type AniaImageModel =
+  | 'seedream_5_0_pro'
+  | 'seedream_4_5'
+  | 'kling_3_0'
+  | 'kling_o3_fal'
+  | 'flux_2_pro_edit'
+  | 'openai';
 
 export interface AniaPlanningResult {
   categoria: AniaCategory;

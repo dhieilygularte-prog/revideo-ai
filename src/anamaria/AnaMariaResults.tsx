@@ -591,8 +591,14 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
               >
                 {result.imageModel === 'seedream_5_0_pro'
                   ? 'SeaDream 5.0 Pro'
+                  : result.imageModel === 'seedream_4_5'
+                  ? 'Seedream 4.5'
                   : result.imageModel === 'kling_3_0'
                   ? 'Kling Image 3.0 Omni'
+                  : result.imageModel === 'kling_o3_fal'
+                  ? 'Kling O3 Omni — fal.ai'
+                  : result.imageModel === 'flux_2_pro_edit'
+                  ? 'FLUX 2 Pro Edit — fal.ai'
                   : 'OpenAI'}
               </div>
 

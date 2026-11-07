@@ -21,7 +21,7 @@ export const OPENAI_AUDIO_MODEL = 'gpt-transcribe';
  * Parâmetros de alta precisão: quality: 'high', input_fidelity: 'high', size: '1024x1792'
  */
 export const OPENAI_IMAGE_MODEL = 'gpt-image-2.5-sunburst';
-export const OPENAI_IMAGE_QUALITY = 'standard' as const;
+export const OPENAI_IMAGE_QUALITY = 'high' as const;
 export const OPENAI_IMAGE_FIDELITY = 'high' as const;
 export const OPENAI_IMAGE_SIZE = '1024x1792' as const;
 

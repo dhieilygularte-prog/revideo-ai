@@ -2,6 +2,7 @@ import {
   AnaMariaFormState,
   AnaMariaResultState,
   AnaMariaAudit,
+  AnaMariaImageModel,
 } from './types';
 import {
   buildAnaMariaImagePrompt,
@@ -446,8 +447,14 @@ export async function runAnaMariaPipeline(
   const modelNameLabel =
     form.imageModel === 'seedream_5_0_pro'
       ? 'SeaDream 5.0 Pro'
+      : form.imageModel === 'seedream_4_5'
+      ? 'Seedream 4.5'
       : form.imageModel === 'kling_3_0'
       ? 'Kling Image 3.0 Omni'
+      : form.imageModel === 'kling_o3_fal'
+      ? 'Kling O3 Omni — fal.ai'
+      : form.imageModel === 'flux_2_pro_edit'
+      ? 'FLUX 2 Pro Edit — fal.ai'
       : 'OpenAI';
   const scenarioMsg = form.selectedScenarioNumber ? ` no Cenário ${form.selectedScenarioNumber}` : '';
   onStatusMessage(`Gerando imagem vertical 9:16${scenarioMsg} no ${modelNameLabel}...`);
@@ -540,9 +547,9 @@ export async function runAnaMariaPipeline(
 export async function regenerateAnaMariaImage(params: {
   form: AnaMariaFormState;
   tweakPrompt?: string;
-  imageModelOverride?: 'seedream_5_0_pro' | 'kling_3_0' | 'openai';
+  imageModelOverride?: AnaMariaImageModel;
   aiProfile?: AIProfile;
-}): Promise<{ imageUrl: string; audit?: AnaMariaAudit; imageModel: 'seedream_5_0_pro' | 'kling_3_0' | 'openai' }> {
+}): Promise<{ imageUrl: string; audit?: AnaMariaAudit; imageModel: AnaMariaImageModel }> {
   const { form, tweakPrompt, imageModelOverride, aiProfile = 'openai' } = params;
 
   const effectiveImageModel = imageModelOverride || form.imageModel;

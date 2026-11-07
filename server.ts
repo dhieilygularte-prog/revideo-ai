@@ -7,6 +7,7 @@ import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { GoogleGenAI, Type } from '@google/genai';
+import { fal } from '@fal-ai/client';
 import {
   GEMINI_VISION_MODEL,
   GEMINI_VISION_FAST_MODEL,
@@ -71,6 +72,15 @@ if (!process.env.SEEDREAM_API_KEY || process.env.SEEDREAM_API_KEY.startsWith('ap
     process.env.BYTEPLUS_ARK_API_KEY ||
     process.env.SEEDREAM_API_KEY ||
     '';
+}
+
+if (!process.env.FAL_KEY) {
+  process.env.FAL_KEY =
+    process.env.FAL_API_KEY ||
+    process.env.APIFAL ||
+    process.env.APIFALVALIDA ||
+    process.env.fal_key ||
+    'fal_sk_3b8aaba3fd8d43e1a14108cc27e6b4ae:e4a8a5787f308a8a2cb95276e202144a';
 }
 
 const __filename = fileURLToPath(import.meta.url);
@@ -1865,6 +1875,7 @@ async function generateImageWithKling(params: {
   selectedMasterId?: string;
   bodyType?: string;
   scenarioPhotoBase64?: string;
+  modelType?: 'seedream_5_0_pro' | 'seedream_4_5';
 }): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
   const apiKey = (process.env.KLING_API_KEY || '').trim();
   if (!apiKey) {
@@ -1895,13 +1906,20 @@ async function generateImageWithKling(params: {
     params.selectedMasterId === 'pov_blusinhas_13k' ||
     Boolean(params.prompt && params.prompt.includes('PRESERVAÇÃO INTEGRAL DO CENÁRIO POV'));
 
-  const isPlus = !isPovModeKling && (params.bodyType === 'plus_size' || /plus[-_\s]*size/i.test(params.prompt));
-  const plusRule = isPlus ? '[MANDATORY AUTHENTIC PLUS-SIZE RULE / REGRA PLUS SIZE OBRIGATÓRIA: Mulher brasileira adulta verdadeiramente PLUS SIZE REAL (corpo robusto e volumoso, seios grandes pesados com queda natural, braços grossos macios, abdômen com projeção natural e dobras suaves, quadris muito largos e glúteos volumosos, coxas muito grossas que se tocam sem vão com celulite natural visível na pele, CELULITE: NÃO REMOVER. TERMINANTEMENTE PROIBIDO gerar mulher mais magra do que a referência, PROIBIDO modelo magra, PROIBIDO cintura fina, PROIBIDO barriga chapada, PROIBIDO pernas finas. ETNIA E PELE: Seguem a Prioridade 1 das instruções do usuário (ex.: mulher negra de pele preta, japonesa, ruiva, etc.) ou da Mestra selecionada.]\n\n' : '';
-  const headerKling = params.isAnaMariaMode
-    ? isPovModeKling
-      ? '[MODO POV PRIMEIRA PESSOA SOBRE A CAMA — Preserve 100% do cenário da cama e exiba os produtos reais 1:1 sobre a cama manipulados EXCLUSIVAMENTE pelas duas mãos entrando pela borda inferior. PROIBIDO mostrar corpo, rosto, pernas ou espelho!]\n\n'
-      : `${plusRule}${getAnaMariaHeader(Boolean(params.scenarioPhotoBase64), allowsFace)}`
-    : `${englishFidelityHeader}${IMAGE_REFERENCE_FIDELITY_HEADER}`;
+  // NOVO: No Kling 3.0 Omni, NENHUMA predefinição corporal rígida adicional é injetada.
+  // QUEM MANDA É O PROMPT DA MESTRA ESCOLHIDO. Removemos qualquer sobreposição externa de corpo, cintura ou quadril.
+  let headerKling = '';
+  if (params.isAnaMariaMode) {
+    if (isPovModeKling) {
+      headerKling = '[MODO POV: Preservar 100% do cenário POV da cama; produtos manipulados apenas pelas duas mãos limpas sem tatuagens. PROIBIDO mostrar corpo, rosto ou espelho!]\n\n';
+    } else if (params.scenarioPhotoBase64) {
+      headerKling = '[CENÁRIO: Preservar o ambiente real da foto anexada na Imagem 1. Modelo em pé diante do espelho vestindo a roupa das referências. Seguir fielmente a descrição da Mestra abaixo.]\n\n';
+    } else {
+      headerKling = '';
+    }
+  } else {
+    headerKling = `${englishFidelityHeader}${IMAGE_REFERENCE_FIDELITY_HEADER}`;
+  }
 
   let klingPrompt = (headerKling ? `${headerKling}\n\n${params.prompt}` : params.prompt).trim();
 
@@ -1911,10 +1929,11 @@ async function generateImageWithKling(params: {
     klingPrompt = compactPromptToLimit(params.prompt, 2490, headerKling);
   }
 
+  // Negative prompt estritamente focado em qualidade/artefatos — SEM tokens de corpo para que quem mande seja 100% o prompt da Mestra
   const negativePrompt = params.isAnaMariaMode
     ? (allowsFace
-        ? `tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, deformed face, bad eyes${isPlus ? ', skinny, slim, thin waist, flat belly, slender, underweight, thin legs, midsize, tanned skin, fake bronze, airbrushed skin' : ''}`
-        : `face, lips, mouth, nose, eyes, tattoos on skin, deformed hands, bad anatomy, blurry, watermark${isPlus ? ', skinny, slim, thin waist, flat belly, slender, underweight, thin legs, midsize, tanned skin, fake bronze, airbrushed skin' : ''}`)
+        ? 'tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, deformed face, bad eyes, low quality, 3d render, cartoon, illustration'
+        : 'face, lips, mouth, nose, eyes, tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, low quality, 3d render, cartoon, illustration')
     : 'original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry';
 
   const payload: any = {
@@ -2034,6 +2053,7 @@ async function generateImageWithSeedream(params: {
   selectedMasterId?: string;
   bodyType?: string;
   scenarioPhotoBase64?: string;
+  modelType?: 'seedream_5_0_pro' | 'seedream_4_5';
 }): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
   let apiKey = (
     process.env.apiauroraseedreamvip ||
@@ -2082,7 +2102,7 @@ async function generateImageWithSeedream(params: {
     (params.prompt.includes('PRESERVAÇÃO INTEGRAL DO CENÁRIO') ||
       params.prompt.includes('CENÁRIO RESIDENCIAL E AMBIENTE'));
 
-  const isPlus = params.bodyType === 'plus_size' || /plus[-_\s]*size/i.test(params.prompt);
+  const isPlus = params.bodyType === 'plus_size';
     const plusRule =
     isPlus && !alreadyStructuredAnaMaria
       ? '[MANDATORY AUTHENTIC PLUS-SIZE RULE / REGRA PLUS SIZE OBRIGATÓRIA: Mulher brasileira adulta com corpo PLUS SIZE REAL (robusto, volumoso, seios grandes pesados com caimento natural, braços roliços carnudos, abdômen macio com projeção natural abaixo do umbigo, quadris largos volumosos, coxas muito grossas com celulite natural visível, CELULITE: NÃO REMOVER. Etnia e cor da pele seguem estritamente a Prioridade 1 das instruções do usuário (ex.: mulher negra de pele preta, japonesa, etc.). TERMINANTEMENTE PROIBIDO gerar mulher mais magra do que a referência (STRICTLY FORBIDDEN: woman slimmer than reference, slim waist, skinny, midsize, flat belly, thin legs).]\n\n'
@@ -2116,9 +2136,10 @@ async function generateImageWithSeedream(params: {
     : IMAGE_REFERENCE_FIDELITY_HEADER;
 
   const payload: any = {
-    model: 'dola-seedream-5-0-pro-260628',
+    model: params.modelType === 'seedream_4_5' ? 'seedream-4-5-251128' : 'dola-seedream-5-0-pro-260628',
     prompt: refImages.length > 0 ? `${headerSeedream}\n\n${params.prompt}` : params.prompt,
-    size: '1024x1792',
+    size: params.modelType === 'seedream_4_5' ? '2K' : '1024x1792',
+    ...(params.modelType === 'seedream_4_5' ? { sequential_image_generation: 'disabled' } : {}),
     response_format: 'url',
     watermark: false,
   };
@@ -2191,6 +2212,165 @@ async function generateImageWithSeedream(params: {
   }
 
   return { success: false, error: lastError || 'Falha ao gerar imagem com Seedream 5.0 Pro.' };
+}
+
+async function uploadReferenceToFal(img: string): Promise<string | null> {
+  if (!img || img.length < 50) return null;
+  if (img.startsWith('http://') || img.startsWith('https://')) {
+    return img;
+  }
+  try {
+    const cleanB64 = img.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, '').trim();
+    const mimeMatch = img.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,/);
+    const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+    const ext = mimeType.includes('png') ? 'png' : mimeType.includes('webp') ? 'webp' : 'jpeg';
+    const buffer = Buffer.from(cleanB64, 'base64');
+    const file = new File([buffer], `reference_${Date.now()}.${ext}`, { type: mimeType });
+    const uploadedUrl = await fal.storage.upload(file);
+    return uploadedUrl;
+  } catch (err: any) {
+    console.warn('[Fal Storage Upload Error]:', err?.message || err);
+    return null;
+  }
+}
+
+async function prepareFalImageUrls(rawImages: (string | undefined)[]): Promise<string[]> {
+  const falKey = (process.env.FAL_KEY || '').trim();
+  if (falKey) {
+    fal.config({ credentials: falKey });
+  }
+  const validImages = rawImages.filter((img): img is string => typeof img === 'string' && img.length > 50);
+  const urls: string[] = [];
+  for (const img of validImages) {
+    const url = await uploadReferenceToFal(img);
+    if (url) urls.push(url);
+  }
+  return urls;
+}
+
+async function generateImageWithKlingO3Fal(params: {
+  prompt: string;
+  imageReferenceBase64?: string;
+  referenceImages?: (string | undefined)[];
+  aspectRatio?: string;
+  resolution?: string;
+  isAnaMariaMode?: boolean;
+}): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
+  const falKey = (process.env.FAL_KEY || '').trim();
+  if (!falKey) {
+    return {
+      success: false,
+      error: 'Chave da fal.ai (FAL_KEY) não configurada no ambiente.',
+    };
+  }
+  fal.config({ credentials: falKey });
+
+  const rawRefs = (params.referenceImages && params.referenceImages.length > 0
+    ? params.referenceImages
+    : [params.imageReferenceBase64]
+  ).filter((img): img is string => typeof img === 'string' && img.length > 50);
+
+  const imageUrls = await prepareFalImageUrls(rawRefs);
+
+  try {
+    const inputPayload: any = {
+      prompt: params.prompt,
+      resolution: params.resolution || '2K',
+      aspect_ratio: params.aspectRatio || '9:16',
+      output_format: 'png',
+      num_images: 1,
+    };
+    if (imageUrls.length > 0) {
+      inputPayload.image_urls = imageUrls;
+    }
+
+    const result: any = await fal.subscribe('fal-ai/kling-image/o3/image-to-image', {
+      input: inputPayload,
+      logs: true,
+      onQueueUpdate: (update) => {
+        if (update.status === 'IN_PROGRESS' && update.logs) {
+          update.logs.map((log: any) => log.message).forEach(console.log);
+        }
+      },
+    });
+
+    const generatedUrl = result?.data?.images?.[0]?.url;
+    if (!generatedUrl) {
+      return {
+        success: false,
+        error: 'Nenhuma imagem retornada pelo Kling O3 Omni na fal.ai.',
+      };
+    }
+
+    return { success: true, imageUrl: generatedUrl };
+  } catch (err: any) {
+    console.error('[Kling O3 fal.ai Error]:', err?.message || err);
+    return {
+      success: false,
+      error: err?.message || 'Erro durante a geração no Kling O3 Omni via fal.ai.',
+    };
+  }
+}
+
+async function generateImageWithFlux2ProEdit(params: {
+  prompt: string;
+  imageReferenceBase64?: string;
+  referenceImages?: (string | undefined)[];
+}): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
+  const falKey = (process.env.FAL_KEY || '').trim();
+  if (!falKey) {
+    return {
+      success: false,
+      error: 'Chave da fal.ai (FAL_KEY) não configurada no ambiente.',
+    };
+  }
+  fal.config({ credentials: falKey });
+
+  const rawRefs = (params.referenceImages && params.referenceImages.length > 0
+    ? params.referenceImages
+    : [params.imageReferenceBase64]
+  ).filter((img): img is string => typeof img === 'string' && img.length > 50);
+
+  const imageUrls = await prepareFalImageUrls(rawRefs);
+
+  try {
+    const inputPayload: any = {
+      prompt: params.prompt,
+      image_size: 'portrait_16_9',
+      safety_tolerance: '2',
+      enable_safety_checker: true,
+      output_format: 'png',
+    };
+    if (imageUrls.length > 0) {
+      inputPayload.image_urls = imageUrls;
+    }
+
+    const result: any = await fal.subscribe('fal-ai/flux-2-pro/edit', {
+      input: inputPayload,
+      logs: true,
+      onQueueUpdate: (update) => {
+        if (update.status === 'IN_PROGRESS' && update.logs) {
+          update.logs.map((log: any) => log.message).forEach(console.log);
+        }
+      },
+    });
+
+    const generatedUrl = result?.data?.images?.[0]?.url;
+    if (!generatedUrl) {
+      return {
+        success: false,
+        error: 'Nenhuma imagem retornada pelo FLUX 2 Pro Edit na fal.ai.',
+      };
+    }
+
+    return { success: true, imageUrl: generatedUrl };
+  } catch (err: any) {
+    console.error('[FLUX 2 Pro Edit fal.ai Error]:', err?.message || err);
+    return {
+      success: false,
+      error: err?.message || 'Erro durante a geração no FLUX 2 Pro Edit via fal.ai.',
+    };
+  }
 }
 
 app.get('/api/test-image-providers', async (_req, res) => {
@@ -2361,7 +2541,28 @@ app.post('/api/generate-scene-image', async (req, res) => {
       return res.json(klingResult);
     }
 
-    if (requestedImageModel === 'seedream_5_0_pro') {
+    if (requestedImageModel === 'kling_o3_fal') {
+      const klingO3Result = await generateImageWithKlingO3Fal({
+        prompt: effectivePrompt,
+        imageReferenceBase64: scenarioPhotoBase64 || modelReferenceBase64 || productPhotoBase64,
+        referenceImages: orderedRefs,
+        aspectRatio: req.body.aspectRatio || '9:16',
+        resolution: '2K',
+        isAnaMariaMode,
+      });
+      return res.json(klingO3Result);
+    }
+
+    if (requestedImageModel === 'flux_2_pro_edit') {
+      const fluxResult = await generateImageWithFlux2ProEdit({
+        prompt: effectivePrompt,
+        imageReferenceBase64: scenarioPhotoBase64 || modelReferenceBase64 || productPhotoBase64,
+        referenceImages: orderedRefs,
+      });
+      return res.json(fluxResult);
+    }
+
+    if (requestedImageModel === 'seedream_4_5' || requestedImageModel === 'seedream_5_0_pro') {
       // Ordem: 1ª = imagem base (Imagem 1 nas trocas de cor), depois fotos reais do produto
       const seen = new Set<string>();
       const orderedRefs = [scenarioPhotoBase64, modelReferenceBase64, productPhotoBase64, ...(Array.isArray(productPhotosBase64) ? productPhotosBase64 : [])]
@@ -2382,6 +2583,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
         selectedMasterId,
         bodyType,
         scenarioPhotoBase64,
+        modelType: requestedImageModel === 'seedream_4_5' ? 'seedream_4_5' : 'seedream_5_0_pro',
       });
       return res.json(seedreamResult);
     }
