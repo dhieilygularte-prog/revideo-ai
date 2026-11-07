@@ -74,14 +74,18 @@ if (!process.env.SEEDREAM_API_KEY || process.env.SEEDREAM_API_KEY.startsWith('ap
     '';
 }
 
-if (!process.env.FAL_KEY) {
-  process.env.FAL_KEY =
-    process.env.FAL_API_KEY ||
-    process.env.APIFAL ||
-    process.env.APIFALVALIDA ||
-    process.env.fal_key ||
-    'fal_sk_3b8aaba3fd8d43e1a14108cc27e6b4ae:e4a8a5787f308a8a2cb95276e202144a';
-}
+const rawFalKey = (
+  process.env.apifalai ||
+  process.env.APIFALAI ||
+  process.env.Apifalai ||
+  process.env.FAL_KEY ||
+  process.env.FAL_API_KEY ||
+  process.env.APIFAL ||
+  process.env.APIFALVALIDA ||
+  process.env.fal_key ||
+  'fal_sk_3b8aaba3fd8d43e1a14108cc27e6b4ae:e4a8a5787f308a8a2cb95276e202144a'
+).trim();
+process.env.FAL_KEY = rawFalKey;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1810,49 +1814,7 @@ function compactPromptToLimit(prompt: string, maxChars: number, criticalHeader: 
 const IMAGE_REFERENCE_FIDELITY_HEADER =
   'REGRA CRÍTICA DE PRODUTO VS MODELO/CENÁRIO: A imagem de referência anexada serve EXCLUSIVAMENTE para copiar a peça de roupa/produto real. É EXPRESSAMENTE PROIBIDO COPIAR A MODELO, A PESSOA OU O CENÁRIO DE FUNDO DA FOTO DE REFERÊNCIA! Você DEVE gerar uma NOVA pessoa e um NOVO cenário seguindo rigorosamente as instruções e descrição do prompt abaixo. Copie da imagem de referência ÚNICA E EXCLUSIVAMENTE a peça de roupa/produto 1:1 com fidelidade total (mesmo formato, corte, decote, alças, tecido, renda, transparência e cor).';
 
-const ANAMARIA_IMAGE_HEADER =
-  '[REGRA CRÍTICA DE CENÁRIO REAL FIXO E PRODUTO NO MODO ANA MARIA]:\n' +
-  'A Imagem de Referência 1 é o CENÁRIO REAL FIXO OBRIGATÓRIO (cômodo da casa com chão de porcelanato bege marmorizado brilhante, porta de madeira escura com frisos à esquerda, parede clara com interruptores à direita e corredor ao fundo).\n' +
-  'Você DEVE MANTER ESTE EXATO CENÁRIO E FUNDO como a cena onde a modelo está posicionada diante do espelho. NÃO gere um cenário diferente nem altere a arquitetura, o piso ou as portas do cômodo!\n' +
-  'Posicione a modelo em pé EXATAMENTE neste cenário com smartphone na mão em selfie no espelho.\n' +
-  'A roupa usada pela modelo deve ser uma réplica 1:1 exata das fotos de produto anexadas nas demais referências.\n' +
-  'Enquadramento estrito: somente do queixo para baixo. Lábios, boca, nariz e olhos NUNCA aparecem em nenhum momento. Zero tatuagens.';
-
-function getAnaMariaHeader(hasCustomScenario: boolean, allowsFace: boolean = false): string {
-  if (allowsFace) {
-    if (hasCustomScenario) {
-      return (
-        '[REGRA CRÍTICA DE PRESERVAÇÃO INTEGRAL DO CENÁRIO SELECIONADO NO MODO ANA MARIA]:\n' +
-        'A Imagem de Referência 1 é a FOTO DO CENÁRIO REAL SELECIONADO PELO USUÁRIO.\n' +
-        'Você DEVE PRESERVAR 100% DO AMBIENTE, PISO, PAREDES, REFLEXOS, ESPELHO, CORES, ILUMINAÇÃO E ARQUITETURA da Imagem de Referência 1.\n' +
-        'É TERMINANTEMENTE PROIBIDO inventar outro cenário, alterar o fundo ou redesenhar o ambiente!\n' +
-        'Apenas insira e posicione a modelo em pé diante do espelho EXATAMENTE dentro deste cenário da Imagem de Referência 1.\n' +
-        'A roupa usada pela modelo deve ser uma réplica 1:1 exata das fotos de produto anexadas nas demais referências.\n' +
-        'Enquadramento: selfie espontânea diante do espelho mostrando a modelo com seu rosto e expressão natural harmoniosa, maquiagem delicada e corpo inteiro até os pés. Zero tatuagens.'
-      );
-    }
-    return (
-      '[REGRA CRÍTICA DE CENÁRIO E ENQUADRAMENTO NO MODO ANA MARIA]:\n' +
-      'Você DEVE MANTER ESTE EXATO CENÁRIO E FUNDO como a cena onde a modelo está posicionada diante do espelho.\n' +
-      'Posicione a modelo em pé EXATAMENTE neste cenário com smartphone na mão em selfie no espelho.\n' +
-      'A roupa usada pela modelo deve ser uma réplica 1:1 exata das fotos de produto anexadas nas demais referências.\n' +
-      'Enquadramento: selfie espontânea diante do espelho mostrando a modelo com seu rosto e expressão natural harmoniosa, maquiagem delicada e corpo inteiro até os pés. Zero tatuagens.'
-    );
-  }
-
-  if (hasCustomScenario) {
-    return (
-      '[REGRA CRÍTICA DE PRESERVAÇÃO INTEGRAL DO CENÁRIO SELECIONADO NO MODO ANA MARIA]:\n' +
-      'A Imagem de Referência 1 é a FOTO DO CENÁRIO REAL SELECIONADO PELO USUÁRIO.\n' +
-      'Você DEVE PRESERVAR 100% DO AMBIENTE, PISO, PAREDES, REFLEXOS, ESPELHO, CORES, ILUMINAÇÃO E ARQUITETURA da Imagem de Referência 1.\n' +
-      'É TERMINANTEMENTE PROIBIDO inventar outro cenário, alterar o fundo ou redesenhar o ambiente!\n' +
-      'Apenas insira e posicione a modelo em pé diante do espelho EXATAMENTE dentro deste cenário da Imagem de Referência 1.\n' +
-      'A roupa usada pela modelo deve ser uma réplica 1:1 exata das fotos de produto anexadas nas demais referências.\n' +
-      'Enquadramento estrito: somente da altura do queixo para baixo. Lábios, boca, nariz e olhos NUNCA aparecem em nenhum momento. Zero tatuagens.'
-    );
-  }
-  return ANAMARIA_IMAGE_HEADER;
-}
+// (Headers legados de Ana Maria removidos - quem manda agora é 100% o prompt da Mestra selecionada)
 
 function toDataUri(b64?: string): string | undefined {
   if (!b64 || typeof b64 !== 'string') return undefined;
@@ -1933,7 +1895,7 @@ async function generateImageWithKling(params: {
   const negativePrompt = params.isAnaMariaMode
     ? (allowsFace
         ? 'tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, deformed face, bad eyes, low quality, 3d render, cartoon, illustration'
-        : 'face, lips, mouth, nose, eyes, tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, low quality, 3d render, cartoon, illustration')
+        : 'face, head, eyes, eyebrows, nose, lips, mouth, teeth, smile, chin up, portrait, headshot, selfie with face, tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, low quality, 3d render, cartoon, illustration')
     : 'original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry';
 
   const payload: any = {
@@ -2043,6 +2005,21 @@ async function generateImageWithKling(params: {
   return { success: false, error: 'Tempo limite excedido na geração do Kling Image 3.0 Omni (timeout 120s).' };
 }
 
+function getGalleryScenarioBase64(scenarioNum?: number | string): string | undefined {
+  if (scenarioNum === undefined || scenarioNum === null || scenarioNum === '') return undefined;
+  const numStr = String(scenarioNum).trim();
+  const filePath = path.join(process.cwd(), 'public', 'scenarios', 'gallery', `${numStr}.png`);
+  try {
+    if (fs.existsSync(filePath)) {
+      const buf = fs.readFileSync(filePath);
+      return `data:image/png;base64,${buf.toString('base64')}`;
+    }
+  } catch (err) {
+    console.warn('Erro ao carregar cenário da galeria no backend:', err);
+  }
+  return undefined;
+}
+
 async function generateImageWithSeedream(params: {
   prompt: string;
   imageReferenceBase64?: string;
@@ -2097,48 +2074,32 @@ async function generateImageWithSeedream(params: {
 
   // Quando isAnaMariaMode === true e o prompt já veio estruturado pelo buildAnaMariaImagePrompt,
   // evita duplicar blocos longos (cenário, plus size e instruções do usuário já estão completos no prompt).
-  const alreadyStructuredAnaMaria =
-    params.isAnaMariaMode &&
-    (params.prompt.includes('PRESERVAÇÃO INTEGRAL DO CENÁRIO') ||
-      params.prompt.includes('CENÁRIO RESIDENCIAL E AMBIENTE'));
-
-  const isPlus = params.bodyType === 'plus_size';
-    const plusRule =
-    isPlus && !alreadyStructuredAnaMaria
-      ? '[MANDATORY AUTHENTIC PLUS-SIZE RULE / REGRA PLUS SIZE OBRIGATÓRIA: Mulher brasileira adulta com corpo PLUS SIZE REAL (robusto, volumoso, seios grandes pesados com caimento natural, braços roliços carnudos, abdômen macio com projeção natural abaixo do umbigo, quadris largos volumosos, coxas muito grossas com celulite natural visível, CELULITE: NÃO REMOVER. Etnia e cor da pele seguem estritamente a Prioridade 1 das instruções do usuário (ex.: mulher negra de pele preta, japonesa, etc.). TERMINANTEMENTE PROIBIDO gerar mulher mais magra do que a referência (STRICTLY FORBIDDEN: woman slimmer than reference, slim waist, skinny, midsize, flat belly, thin legs).]\n\n'
-      : '';
-
-  const allowsFaceSeedream =
-    params.presentationMode === 'com_rosto' ||
-    params.selectedMasterId === 'mestra_catza' ||
-    Boolean(
-      params.prompt &&
-        (params.prompt.includes('MODO COM ROSTO') ||
-          params.prompt.includes('ROSTO E ENQUADRAMENTO — MODO COM ROSTO') ||
-          params.prompt.includes('o rosto da modelo DEVE aparecer') ||
-          params.prompt.includes('MESTRA CATZA'))
-    );
-
   const isPovModeSeedream =
     params.presentationMode === 'pov' ||
     params.selectedMasterId === 'pov_cinta_85k' ||
     params.selectedMasterId === 'pov_blusinhas_13k' ||
     Boolean(params.prompt && params.prompt.includes('PRESERVAÇÃO INTEGRAL DO CENÁRIO POV'));
 
-  const headerSeedream = params.isAnaMariaMode
-    ? isPovModeSeedream
-      ? '[MAPA POV: Imagem 1 = Cenário POV Cama 100% intacto; Imagem 2 = Produto 1:1 manipulado apenas pelas duas mãos na cama (proibido corpo/rosto/espelho; ZERO TATUAGENS: mãos 100% limpas sem tatuagens)].'
-      : alreadyStructuredAnaMaria
-      ? isPlus
-        ? '[MAPA: Imagem 1 = Cenário 100% intacto; Imagem 2 = Peça 1:1 (proibido copiar corpo da foto do produto). Aplicar estrutura corporal Plus Size real descrita abaixo.]'
-        : '[MAPA: Imagem 1 = Cenário 100% intacto; Imagem 2 = Peça 1:1 (proibido copiar corpo da foto do produto). Aplicar curvas e proporções da Mestra descritas abaixo.]'
-      : `${plusRule}${getAnaMariaHeader(Boolean(params.scenarioPhotoBase64), allowsFaceSeedream)}`
-    : IMAGE_REFERENCE_FIDELITY_HEADER;
+  // AUDITORIA E ISOLAMENTO SEEDREAM 5.0 PRO / SEEDREAM 4.5:
+  // O gerador Seedream NÃO introduz características corporais próprias, presets ou prompts ocultos.
+  // A descrição física e biotipo da modelo vêm 100% e exclusivamente do prompt selecionado no Item 9.
+  // O header técnico apenas mapeia as referências visuais (Imagem 1 = cenário, Imagem 2+ = produto/tecido 1:1),
+  // proibindo expressamente copiar a modelo/manequim da foto de produto na Imagem 2+.
+  let headerSeedream = '';
+  if (params.isAnaMariaMode) {
+    if (isPovModeSeedream) {
+      headerSeedream = '[MAPA POV: Imagem 1 = Cenário POV Cama intacto; Imagem 2 = Produto 1:1 manipulado apenas pelas duas mãos limpas sem tatuagens sobre a cama. PROIBIDO corpo/rosto/espelho].\n\n';
+    } else {
+      headerSeedream = '[MAPA TÉCNICO DE REFERÊNCIA: Imagem 1 = Cenário real fixo intacto; Imagem 2+ = Peça de roupa 1:1 (ESTRITO: É TERMINANTEMENTE PROIBIDO copiar o corpo da modelo ou manequim da foto de produto na Imagem 2+; o corpo, biotipo e curvas da modelo DEVEM vir 100% e exclusivamente da descrição do prompt selecionado abaixo, sem nenhuma predefinição externa)].\n\n';
+    }
+  } else {
+    headerSeedream = `${IMAGE_REFERENCE_FIDELITY_HEADER}\n\n`;
+  }
 
   const payload: any = {
     model: params.modelType === 'seedream_4_5' ? 'seedream-4-5-251128' : 'dola-seedream-5-0-pro-260628',
-    prompt: refImages.length > 0 ? `${headerSeedream}\n\n${params.prompt}` : params.prompt,
-    size: params.modelType === 'seedream_4_5' ? '2K' : '1024x1792',
+    prompt: refImages.length > 0 ? `${headerSeedream}${params.prompt}` : params.prompt,
+    size: '1024x1792',
     ...(params.modelType === 'seedream_4_5' ? { sequential_image_generation: 'disabled' } : {}),
     response_format: 'url',
     watermark: false,
@@ -2235,7 +2196,13 @@ async function uploadReferenceToFal(img: string): Promise<string | null> {
 }
 
 async function prepareFalImageUrls(rawImages: (string | undefined)[]): Promise<string[]> {
-  const falKey = (process.env.FAL_KEY || '').trim();
+  const falKey = (
+    process.env.apifalai ||
+    process.env.APIFALAI ||
+    process.env.Apifalai ||
+    process.env.FAL_KEY ||
+    ''
+  ).trim();
   if (falKey) {
     fal.config({ credentials: falKey });
   }
@@ -2243,7 +2210,12 @@ async function prepareFalImageUrls(rawImages: (string | undefined)[]): Promise<s
   const urls: string[] = [];
   for (const img of validImages) {
     const url = await uploadReferenceToFal(img);
-    if (url) urls.push(url);
+    if (url) {
+      urls.push(url);
+    } else {
+      const dataUri = toDataUri(img);
+      if (dataUri) urls.push(dataUri);
+    }
   }
   return urls;
 }
@@ -2513,9 +2485,18 @@ app.post('/api/generate-scene-image', async (req, res) => {
     const requestedImageModel = req.body?.imageModel;
     const presentationMode = req.body?.presentationMode;
     const selectedMasterId = req.body?.selectedMasterId;
+    const selectedScenarioNumber = req.body?.selectedScenarioNumber;
+
+    let effectiveScenarioPhotoBase64 = scenarioPhotoBase64;
+    if (isAnaMariaMode && selectedScenarioNumber !== undefined && selectedScenarioNumber !== null && selectedScenarioNumber !== '') {
+      const diskScenario = getGalleryScenarioBase64(selectedScenarioNumber);
+      if (diskScenario) {
+        effectiveScenarioPhotoBase64 = diskScenario;
+      }
+    }
 
     const seenRefs = new Set<string>();
-    const orderedRefs = [scenarioPhotoBase64, modelReferenceBase64, productPhotoBase64, ...(Array.isArray(productPhotosBase64) ? productPhotosBase64 : [])]
+    const orderedRefs = [effectiveScenarioPhotoBase64, modelReferenceBase64, productPhotoBase64, ...(Array.isArray(productPhotosBase64) ? productPhotosBase64 : [])]
       .filter((img: any) => typeof img === 'string' && img.length > 50)
       .filter((img: string) => {
         const key = img.slice(-120);
@@ -2527,7 +2508,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
     if (requestedImageModel === 'kling_3_0') {
       const klingResult = await generateImageWithKling({
         prompt: effectivePrompt,
-        imageReferenceBase64: scenarioPhotoBase64 || modelReferenceBase64 || productPhotoBase64,
+        imageReferenceBase64: effectiveScenarioPhotoBase64 || modelReferenceBase64 || productPhotoBase64,
         referenceImages: orderedRefs,
         aspectRatio: req.body.aspectRatio || '9:16',
         resolution: req.body.resolution || '1k',

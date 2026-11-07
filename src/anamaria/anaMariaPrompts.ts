@@ -212,7 +212,13 @@ export function resolveModelAttributesHierarchy(params: {
   }
 
   // C) Biotipo Corporal
-  const userSpecifiedSlim = /\b(magra|magrinha|esguia|slim|skinny|corpo de modelo|sem curvas|slender)\b/i.test(lowerUser);
+  const hasNegativeOrComplaintAboutSlim =
+    /(?:n[aã]o|sem|proibid[oa]|evit[ea]|menos|chega de|nada de|parar|t[aá] vindo|est[aá] vindo|recalibr|t[aá] muito|muito)\s+(?:[^\n,.;]*\s+)?(?:magr|esgui|slim|skinny|slender)/i.test(lowerUser) ||
+    /\b(?:magr|esgui|slim|skinny|slender)[^\n,.;]*(?:demais|errad[oa]|ruim|feio|esquelet|desnutr)/i.test(lowerUser);
+
+  const userSpecifiedSlim =
+    !hasNegativeOrComplaintAboutSlim &&
+    /\b(?:quero\s+(?:uma\s+)?modelo\s+magra|corpo\s+(?:bem\s+)?magro|biotipo\s+magro|silhueta\s+magra|modelo\s+esguia)\b/i.test(lowerUser);
   const userSpecifiedPlus = /\b(plus size|plus-size|gordinha|pesada|gorda|corpo pesado)\b/i.test(lowerUser);
   const userSpecifiedMuscular = /\b(muito musculosa|musculosa|fisiculturista|marombada|muito forte)\b/i.test(lowerUser);
 
