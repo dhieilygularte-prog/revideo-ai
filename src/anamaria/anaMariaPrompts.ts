@@ -96,6 +96,84 @@ export function detectShoeCategory(
   };
 }
 
+export interface ComplementaryGarmentInfo {
+  type: 'upper_only' | 'lower_only' | 'full_body' | 'lingerie';
+  directiveTextPt: string;
+  directiveTextEn: string;
+}
+
+/**
+ * REGRA UNIVERSAL DE PEÇAS COMPLEMENTARES E LOOK COMPLETO
+ * Garante que a modelo NUNCA fique nua ou desvestida na parte inferior ou superior.
+ * Se anexar blusa/top -> adiciona calça jeans/inferior que combina.
+ * Se anexar calça/short -> adiciona blusa/superior que combina.
+ */
+export function detectComplementaryGarment(
+  productName: string,
+  additionalInstructions: string = '',
+  influencer: AnaMariaInfluencer = 'Mulher'
+): ComplementaryGarmentInfo {
+  const combined = `${productName} ${additionalInstructions}`.toLowerCase();
+  const isMale = influencer === 'Homem';
+
+  const isFullBody = /\b(vestido|longo|midi|macacao|macacão|macaquinho|jumpsuit|conjunto|pijama completo|robe e pijama|terno completo)\b/i.test(combined);
+  const isLingerie = /\b(lingerie|suti[aã]|calcinha|babydoll|baby doll|camisola|corselet|cinta modeladora|body de renda)\b/i.test(combined);
+  const isUpper = /\b(blusa|camisa|camiseta|cropped|top|regata|t-shirt|tshirt|casaco|jaqueta|blazer|moletom|sueter|suéter|cardiga|cardigã|cropped rendad[oa]|blusa rendad[oa]|bata)\b/i.test(combined);
+  const isLower = /\b(calca|calça|jeans|short|shorts|bermuda|saia|minissaia|pantacourt|pantalona|legging|pant|pants)\b/i.test(combined);
+
+  if (isFullBody) {
+    return {
+      type: 'full_body',
+      directiveTextPt: 'O produto anunciado é uma peça de corpo inteiro (vestido/macacão/conjunto). A modelo veste o look completo conforme as fotos de referência.',
+      directiveTextEn: 'The advertised product is a full-body garment (dress/jumpsuit/set). The model wears the full garment according to the reference photos.',
+    };
+  }
+
+  if (isUpper && !isLower) {
+    if (isMale) {
+      return {
+        type: 'upper_only',
+        directiveTextPt: `REGRA DE LOOK COMPLETO (PROIBIDO NUDEZ / PARTE INFERIOR OBRIGATÓRIA):\nComo o produto anunciado é uma peça superior (${productName}), o modelo DEVE OBRIGATORIAMENTE VESTIR UMA PEÇA INFERIOR COMPLEMENTAR: calça jeans masculina clássica de corte reto ou calça casual escura alinhada. TERMINANTEMENTE PROIBIDO gerar o modelo nu, sem calça, de cueca ou desvestido na parte de baixo.`,
+        directiveTextEn: `[MANDATORY COMPLEMENTARY BOTTOM GARMENT - STRICTLY NO NUDITY]: The advertised product is an upper garment (${productName}). The model MUST WEAR a matching classic straight-cut dark blue denim jeans. STRICTLY FORBIDDEN: Generating the model naked, pantless, or in underwear. Full complete outfit required.`,
+      };
+    }
+    return {
+      type: 'upper_only',
+      directiveTextPt: `REGRA DE LOOK COMPLETO (PROIBIÇÃO ABSOLUTA DE NUDEZ / PARTE INFERIOR OBRIGATÓRIA):\nComo o produto anunciado na foto de referência é EXCLUSIVAMENTE uma peça superior (${productName}), a modelo DEVE OBRIGATORIAMENTE VESTIR UMA PEÇA INFERIOR COMPLEMENTAR QUE COMBINE PERFEITAMENTE:\n- Uma calça jeans feminina clássica de cintura alta em tom azul tradicional (ou jeans claro clássico), corte reto ou flare elegante, com caimento impecável que valoriza a silhueta da modelo.\n- TERMINANTEMENTE PROIBIDO GERAR A MODELO NUA, SEM CALÇA, DE CALCINHA OU DESVESTIDA NA PARTE DE BAIXO.\n- A blusa/peça anunciada é o foco principal (fidelidade 1:1), e a calça jeans completa o look comercial realista com calçado adequado nos pés.`,
+      directiveTextEn: `[MANDATORY COMPLEMENTARY BOTTOM GARMENT - ZERO NUDITY DIRECTIVE]: The advertised product in the reference photo is strictly an upper-body piece (${productName}). The model MUST OBLIGATORILY WEAR A COMPLEMENTARY BOTTOM GARMENT: a stylish classic high-waisted blue denim jeans with a flattering feminine fit. ABSOLUTELY AND STRICTLY FORBIDDEN: Generating the model pantless, naked, in panties, or undressed below the waist. The model must be fully clothed in a complete commercial mirror-selfie outfit.`,
+    };
+  }
+
+  if (isLower && !isUpper) {
+    if (isMale) {
+      return {
+        type: 'lower_only',
+        directiveTextPt: `REGRA DE LOOK COMPLETO (PROIBIDO NUDEZ / PARTE SUPERIOR OBRIGATÓRIA):\nComo o produto anunciado é uma peça inferior (${productName}), o modelo DEVE OBRIGATORIAMENTE VESTIR UMA PEÇA SUPERIOR COMPLEMENTAR: camiseta básica masculina de manga curta em tom neutro (branca ou preta) com caimento limpo. TERMINANTEMENTE PROIBIDO gerar o modelo sem camisa, topless ou nu.`,
+        directiveTextEn: `[MANDATORY COMPLEMENTARY TOP GARMENT - STRICTLY NO NUDITY]: The advertised product is a bottom garment (${productName}). The model MUST WEAR a matching clean neutral crew-neck t-shirt (white or black). STRICTLY FORBIDDEN: Topless or shirtless model.`,
+      };
+    }
+    return {
+      type: 'lower_only',
+      directiveTextPt: `REGRA DE LOOK COMPLETO (PROIBIÇÃO ABSOLUTA DE NUDEZ / PARTE SUPERIOR OBRIGATÓRIA):\nComo o produto anunciado na foto de referência é EXCLUSIVAMENTE uma peça inferior (${productName}), a modelo DEVE OBRIGATORIAMENTE VESTIR UMA PEÇA SUPERIOR COMPLEMENTAR QUE COMBINE PERFEITAMENTE:\n- Uma blusa feminina delicada de manga curta ou cropped elegante em tom neutro suave (off-white ou branco) de caimento limpo que harmonize com a peça inferior.\n- TERMINANTEMENTE PROIBIDO GERAR A MODELO TOPLESS, SEM BLUSA, DE SUTIÃ OU NUA NA PARTE SUPERIOR.\n- A peça inferior anunciada é o foco principal (fidelidade 1:1), e a blusa completa o look comercial realista.`,
+      directiveTextEn: `[MANDATORY COMPLEMENTARY TOP GARMENT - ZERO NUDITY DIRECTIVE]: The advertised product in the reference photo is strictly a bottom piece (${productName}). The model MUST OBLIGATORILY WEAR A COMPLEMENTARY TOP GARMENT: a clean, elegant neutral white or off-white feminine short-sleeve top/blouse that harmonizes with the bottom piece. ABSOLUTELY AND STRICTLY FORBIDDEN: Generating the model topless, shirtless, or in bra only. Full complete outfit required.`,
+    };
+  }
+
+  if (isLingerie) {
+    return {
+      type: 'lingerie',
+      directiveTextPt: `REGRA DE MODA ÍNTIMA COMPLETA (CONJUNTO ELEGANTE):\nA modelo deve vestir o conjunto coordenado e harmonioso de moda íntima comercial elegante de sleepwear/homewear, com acabamento refinado de renda/cetim, preservando a dignidade estética comercial sem poses explícitas.`,
+      directiveTextEn: `[COORDINATED SLEEPWEAR/LOUNGEWEAR ENSEMBLE]: The model wears a tasteful, coordinated commercial homewear/sleepwear ensemble with delicate lace/satin details, maintaining elegant commercial aesthetic.`,
+    };
+  }
+
+  return {
+    type: 'upper_only',
+    directiveTextPt: `REGRA DE LOOK COMPLETO (PROIBIÇÃO DE NUDEZ):\nSe a foto de produto anexada for de uma peça superior, a modelo deve vestir calça jeans feminina clássica de cintura alta. Se for peça inferior, veste blusa neutra elegante. É expressamente proibido gerar a modelo nua ou desvestida.`,
+    directiveTextEn: `[FULL OUTFIT MANDATE]: The model must be fully dressed with matching complementary garment (jeans or neutral top), strictly no nudity.`,
+  };
+}
+
 export type AnaMariaRoomType = 'hall_espelho' | 'quarto' | 'sala' | 'closet';
 
 export const SCENARIO_DESCRIPTIONS: Record<AnaMariaRoomType, string> = {
@@ -222,6 +300,39 @@ export function resolveModelAttributesHierarchy(params: {
   const userSpecifiedPlus = /\b(plus size|plus-size|gordinha|pesada|gorda|corpo pesado)\b/i.test(lowerUser);
   const userSpecifiedMuscular = /\b(muito musculosa|musculosa|fisiculturista|marombada|muito forte)\b/i.test(lowerUser);
 
+  // D) Idade da modelo especificada pelo usuário (sobrescreve a idade padrão da Mestra)
+  const ageMatch = lowerUser.match(/\b(?:(\d{2})\s*(?:anos|yo|years old)|mulher de (\d{2})|homem de (\d{2})|idosa|meia-idade|madura|senhora)\b/i);
+  let userAgeSummary = '';
+  let userAgeDirectivePt = '';
+  let userAgeDirectiveEnglish = '';
+  if (ageMatch) {
+    const rawAge = ageMatch[1] || ageMatch[2] || ageMatch[3];
+    const ageNum = rawAge ? parseInt(rawAge, 10) : (lowerUser.includes('idosa') || lowerUser.includes('senhora') ? 60 : 50);
+    userAgeSummary = `${isMale ? 'homem' : 'mulher'} de ${ageNum} anos de idade`;
+    userAgeDirectivePt = `A modelo DEVE ser uma ${isMale ? 'homem adulto' : 'mulher madura'} de exatamente ${ageNum} anos de idade, com fisionomia, textura de pele e maturidade corporal autênticas dessa faixa etária. Substitui a idade padrão da Mestra.`;
+    userAgeDirectiveEnglish = `[SOVEREIGN PRIORITY 1 — AGE MANDATE]: The model MUST be an adult ${isMale ? 'man' : 'woman'} aged ${ageNum} years old, with authentic mature skin texture and realistic age-appropriate physical features.`;
+  }
+
+  // E) Cor do Smartphone / Celular
+  const phoneMatch = lowerUser.match(/\b(?:celular|smartphone|iphone|telefone)\s+(?:de\s+cor\s+|cor\s+)?(vermelh[oa]|azul|pret[oa]|dourad[oa]|prat[ao]|ros[ao]|rox[oa]|verde|branc[oa]|amarel[oa]|titanium|grafite)\b/i);
+  let userPhoneDirectivePt = '';
+  let userPhoneDirectiveEnglish = '';
+  if (phoneMatch) {
+    const phoneColor = phoneMatch[1];
+    userPhoneDirectivePt = `A modelo segura um smartphone moderno na cor ${phoneColor.toUpperCase()} diante do espelho. Substitui a cor de celular padrão da Mestra.`;
+    userPhoneDirectiveEnglish = `[SOVEREIGN PRIORITY 1 — SMARTPHONE COLOR]: The modern smartphone held by the model MUST be ${phoneColor.toUpperCase()}.`;
+  }
+
+  // F) Manicure / Cor de esmalte das unhas
+  const nailMatch = lowerUser.match(/\b(?:unhas?|esmalte)\s+(?:de\s+cor\s+|cor\s+)?(vermelh[ao]s?|pret[ao]s?|branc[ao]s?|azuis?|ros[ao]s?|nudes?|francesinha|vinho|dourad[ao]s?)\b/i);
+  let userNailDirectivePt = '';
+  let userNailDirectiveEnglish = '';
+  if (nailMatch) {
+    const nailColor = nailMatch[1];
+    userNailDirectivePt = `As unhas das mãos da modelo DEVEM estar impecavelmente esmaltadas na cor ${nailColor.toUpperCase()}. Substitui a cor de unhas padrão da Mestra.`;
+    userNailDirectiveEnglish = `[SOVEREIGN PRIORITY 1 — NAILS COLOR]: The model's fingernails MUST be manicured with ${nailColor.toUpperCase()} polish.`;
+  }
+
   // RESOLUÇÃO DE BIOTIPO:
   // Prioridade 1: Usuário (se especificou corpo)
   // Prioridade 2: Plus Size ativado
@@ -278,7 +389,18 @@ export function resolveModelAttributesHierarchy(params: {
 
   // BLOCO DE PRIORIDADE SOBERANA DO USUÁRIO NO CABEÇALHO DO PROMPT
   const priorityOverrideBlock = userText.length > 0
-    ? `## PRIORIDADE SOBERANA ABSOLUTA (PRIORIDADE 1) — INSTRUÇÕES DO USUÁRIO\n"${userText}"\nREGRA DE HIERARQUIA INEGOCIÁVEL (Prioridade 1: Usuário -> Prioridade 2: Plus Size -> Prioridade 3: Mestra):\n1. As instruções do usuário acima têm PRIORIDADE MÁXIMA e SOBERANA sobre qualquer Mestra e sobre a configuração Plus Size.\n${userEthnicityDirectivePt ? `- ETNIA/COR DA PELE: OBRIGATÓRIO seguir ${userEthnicitySummary.toUpperCase()} (${userEthnicityDirectiveEnglish}).\n` : ''}${userHairDirectivePt ? `- CABELO: OBRIGATÓRIO seguir ${userHairSummary.toUpperCase()}.\n` : ''}${userSpecifiedSlim ? '- BIOTIPO: OBRIGATÓRIO seguir SILHUETA MAGRA/ESGUIA.\n' : ''}2. Biotipo corporal: ${isPlusSize && !userSpecifiedSlim ? 'PLUS SIZE REAL (Prioridade 2 — aplicado exclusivamente ao volume do corpo, cintura, seios e pernas, sem alterar etnia/pele).' : 'Conforme definido acima.'}\n3. Características não conflitantes da Mestra (${master.shortName}): mantidas normalmente (cenário, corte no queixo, postura e acessórios).\n\n`
+    ? '## PRIORIDADE SOBERANA ABSOLUTA (PRIORIDADE 1) — INSTRUÇÕES DO USUÁRIO\n' +
+      '"' + userText + '"\n' +
+      'REGRA DEFINITIVA DE HIERARQUIA:\n' +
+      '1º LUGAR (SOBERANO ABSOLUTO): As instruções do usuário acima têm PRIORIDADE MÁXIMA e sobrescrevem exclusivamente os atributos citados da Mestra (' + master.shortName + '). Todo o restante da Mestra não citado permanece intacto.\n' +
+      (userAgeDirectivePt ? '- IDADE: OBRIGATÓRIO seguir ' + userAgeSummary.toUpperCase() + ' (' + userAgeDirectiveEnglish + ').\n' : '') +
+      (userEthnicityDirectivePt ? '- ETNIA/COR DA PELE: OBRIGATÓRIO seguir ' + userEthnicitySummary.toUpperCase() + ' (' + userEthnicityDirectiveEnglish + ').\n' : '') +
+      (userHairDirectivePt ? '- CABELO: OBRIGATÓRIO seguir ' + userHairSummary.toUpperCase() + '.\n' : '') +
+      (userPhoneDirectivePt ? '- SMARTPHONE: OBRIGATÓRIO ' + userPhoneDirectivePt + ' (' + userPhoneDirectiveEnglish + ').\n' : '') +
+      (userNailDirectivePt ? '- UNHAS: OBRIGATÓRIO ' + userNailDirectivePt + ' (' + userNailDirectiveEnglish + ').\n' : '') +
+      (userSpecifiedSlim ? '- BIOTIPO: OBRIGATÓRIO seguir SILHUETA MAGRA/ESGUIA.\n' : '') +
+      '2º LUGAR: Seletor Plus Size / Homem: ' + (isPlusSize && !userSpecifiedSlim ? 'PLUS SIZE REAL (manequim 50-54, corpo volumoso e coxas grossas com celulite natural visível).' : 'Conforme definido acima.') + '\n' +
+      '3º LUGAR (BASE): Identidade e movimentos da Mestra selecionada (' + master.shortName + ') — mantém enquadramento, postura, movimentos, calçado e look comercial.\n\n'
     : '';
 
   return {
@@ -286,8 +408,11 @@ export function resolveModelAttributesHierarchy(params: {
     resolvedSkinText,
     resolvedHairText,
     bodySummaryLabel,
+    userAgeSummary,
     userEthnicitySummary,
     userHairSummary,
+    userPhoneDirectivePt,
+    userNailDirectivePt,
     userEthnicityDirectiveEnglish,
     priorityOverrideBlock,
   };
@@ -307,6 +432,7 @@ export function buildAnaMariaImagePrompt(
   const isMale = form.influencer === 'Homem';
   const isPlusSize = form.bodyType === 'plus_size';
   const shoeInfo = detectShoeCategory(form.productName, form.additionalInstructions, form.influencer);
+  const complementaryInfo = detectComplementaryGarment(form.productName, form.additionalInstructions, form.influencer);
 
   const hasUserInstructions = Boolean(
     form.additionalInstructions && form.additionalInstructions.trim().length > 0
@@ -384,8 +510,11 @@ Qualidade fotográfica autêntica de smartphone moderno em alta definição 1080
     resolvedSkinText,
     resolvedHairText,
     bodySummaryLabel,
+    userAgeSummary,
     userEthnicitySummary,
     userHairSummary,
+    userPhoneDirectivePt,
+    userNailDirectivePt,
     priorityOverrideBlock: resolvedPriorityBlock,
   } = resolveModelAttributesHierarchy({
     master,
@@ -403,7 +532,7 @@ Qualidade fotográfica autêntica de smartphone moderno em alta definição 1080
     ? `Acessórios masculinos discretos (Adaptação Masculina):
 - Relógio de pulso masculino elegante e discreto em um dos pulsos.
 - Ausência total de colares femininos, pulseiras femininas delicadas ou esmalte colorido. Unhas masculinas curtas e limpas.`
-    : master.accessoriesIdentityText;
+    : `${master.accessoriesIdentityText}${userNailDirectivePt ? `\n- ${userNailDirectivePt}` : ''}`;
 
   // Regra de Rosto: Mirror Selfie (Corte estrito no queixo) vs Com Rosto (Rosto visível)
   const isFaceVisible = mode === 'com_rosto';
@@ -433,7 +562,7 @@ ${scenarioText}`;
 ${
   isMale
     ? 'O modelo segura um smartphone moderno com uma das mãos diante do espelho de corpo inteiro.'
-    : 'A modelo segura um smartphone moderno com uma das mãos diante do espelho de corpo inteiro (respeitando eventual cor de celular solicitada nas instruções adicionais).'
+    : (userPhoneDirectivePt || 'A modelo segura um smartphone moderno com uma das mãos diante do espelho de corpo inteiro (respeitando eventual cor de celular solicitada nas instruções adicionais).')
 }
 ${master.lightingAndCameraText}
 ${
@@ -443,7 +572,7 @@ ${
 }`;
 
   const openingDescriptor = [
-    bodySummaryLabel,
+    userAgeSummary ? `${userAgeSummary} (${bodySummaryLabel})` : bodySummaryLabel,
     userEthnicitySummary && `de etnia/pele: ${userEthnicitySummary}`,
     userHairSummary && `com ${userHairSummary}`,
   ].filter(Boolean).join(', ');
@@ -469,6 +598,10 @@ ${accessoriesSectionText}
 Calçado obrigatório nos dois pés: **${shoeInfo.name}**.
 Especificação do calçado: ${shoeInfo.description}
 (Observação: Esta regra universal de calçado prevalece sobre qualquer menção genérica de calçado do catálogo da Mestra, salvo se o usuário pediu outro calçado específico nas Instruções Adicionais). Enquadrar o corpo inteiro mostrando os dois pés calçados apoiados naturalmente no piso do cenário.
+
+## 7.1. REGRA DE LOOK COMPLETO E PEÇAS COMPLEMENTARES (PROIBIÇÃO ABSOLUTA DE NUDEZ)
+${complementaryInfo.directiveTextPt}
+${complementaryInfo.directiveTextEn}
 
 ## 8. FIDELIDADE ABSOLUTA E SOBERANA AO PRODUTO ANEXADO (1:1 — ZERO INVENÇÃO DE DETALHES)
 A foto da peça anexada pelo usuário é a referência soberana e inviolável da roupa (venda real TikTok Shop).

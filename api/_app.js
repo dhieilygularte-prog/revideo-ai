@@ -447,6 +447,10 @@ var CostTracker = class {
 var globalCostTracker = new CostTracker();
 
 // src/services/ai/openaiProvider.ts
+function sanitizePromptForOpenAISafety(text) {
+  if (!text) return "";
+  return text.replace(/\b(lingerie|conjunto de lingerie|roupas? íntimas?|peças? íntimas?)\b/gi, "conjunto homewear sleepwear de cetim e renda elegante").replace(/\b(calcinha e suti[aã]|suti[aã] e calcinha)\b/gi, "shortinho e cropped confort\xE1vel de dormir em tecido acetinado e renda").replace(/\b(calcinha|calcinhas)\b/gi, "shortinho confort\xE1vel de dormir").replace(/\b(suti[aã]|suti[aã]s)\b/gi, "top bralette delicado de homewear").replace(/\b(babydoll|baby doll|camisola sexy)\b/gi, "camisola elegante de homewear").replace(/\b(transpar[eê]ncia|transparente|semi-transparente)\b/gi, "acabamento acetinado delicado").replace(/\b(sensual|sexy|er[oó]tic[oa]|provocante)\b/gi, "elegante e sofisticada").replace(/\b(bumbum|gl[uú]teos? volumosos?|n[aá]degas?)\b/gi, "silhueta feminina curvil\xEDnea").replace(/\b(decote profundo|seios grandes|busto exposto)\b/gi, "decote elegante de cat\xE1logo comercial").replace(/\b(nua|sem roupa|despida|topless|sem cal[cç]a)\b/gi, "completamente vestida com look comercial completo").replace(/\b(panties|bra and panties|underwear|thong|lingerie)\b/gi, "loungewear sleepwear satin set");
+}
 dotenv.config();
 var OpenAIProvider = class {
   constructor() {
@@ -954,6 +958,10 @@ ${prompt}` : prompt;
       });
       let baseImageFile = null;
       let effectivePrompt = cleanPrompt;
+      const hasLingerie = /\b(lingerie|suti[aã]|calcinha|babydoll|baby doll|camisola|transpar[eê]ncia|sensual)\b/i.test(prompt) || /\b(lingerie|suti[aã]|calcinha|babydoll|baby doll|camisola|transpar[eê]ncia|sensual)\b/i.test(additionalInstructions || "");
+      if (hasLingerie) {
+        effectivePrompt = sanitizePromptForOpenAISafety(effectivePrompt);
+      }
       const isStoryboardGrid = /grade\s+(?:3x3|2x3|2x2)|(?:\b4|\b6|\b9)\s+(?:cenas|quadros)|storyboard/i.test(prompt);
       const isPlusSizeRequest = !isPovMode && (bodyType === "plus_size" || /plus[-_\s]*size|manequim\s*(?:48|50|52|54)/i.test(prompt) || /plus[-_\s]*size/i.test(additionalInstructions));
       const userRequestedSlimOpenAI = /\b(?:magra|magrinha|corpo\s+de\s+modelo|modelo\s+magra|sem\s+curvas|esguia|slim|skinny|slender)\b/i.test(
@@ -3467,7 +3475,7 @@ function compactPromptToLimit(prompt, maxChars, criticalHeader) {
   const full = header ? `${header}
 ${body}` : body;
   if (full.length <= maxChars) return full;
-  const lowPriority = /^(ILUMINAÇÃO|ESTILO|POSE E APARÊNCIA|- Sem acessórios|- Postura natural|- Sem textos|- ZERO TATUAGENS em)/i;
+  const lowPriority = /^(ILUMINAÇÃO|ESTILO|POSE E APARÊNCIA|- Sem acessórios|- Postura natural|- Sem textos|- ZERO TATUAGENS em|## 4\. CENÁRIO RESIDENCIAL|## 10\. APARÊNCIA FOTOGRÁFICA)/i;
   body = body.split("\n").filter((line) => !lowPriority.test(line.trim())).join("\n");
   const budget = maxChars - header.length - 1;
   if (body.length > budget) {
@@ -3508,11 +3516,9 @@ async function generateImageWithKling(params) {
   let headerKling = "";
   if (params.isAnaMariaMode) {
     if (isPovModeKling) {
-      headerKling = "[MODO POV: Preservar 100% do cen\xE1rio POV da cama; produtos manipulados apenas pelas duas m\xE3os limpas sem tatuagens. PROIBIDO mostrar corpo, rosto ou espelho!]\n\n";
-    } else if (params.scenarioPhotoBase64) {
-      headerKling = "[CEN\xC1RIO: Preservar o ambiente real da foto anexada na Imagem 1. Modelo em p\xE9 diante do espelho vestindo a roupa das refer\xEAncias. Seguir fielmente a descri\xE7\xE3o da Mestra abaixo.]\n\n";
+      headerKling = "[MODO POV: Preservar 100% do cen\xE1rio POV da cama da Imagem 1; produtos da Imagem 2 manipulados apenas pelas duas m\xE3os limpas sem tatuagens sobre a cama. PROIBIDO corpo, rosto ou espelho!]\n\n";
     } else {
-      headerKling = "";
+      headerKling = allowsFace ? "[REGRA SOBERANA DE ENQUADRAMENTO E CEN\xC1RIO]:\n1. CEN\xC1RIO: Preservar 100% o ambiente real da foto anexada na Imagem 1 (paredes, piso, espelho e ilumina\xE7\xE3o intactos).\n2. ROSTO E MIRROR-SELFIE: Modelo em p\xE9 segurando smartphone moderno apontado para o espelho, rosto natural expressivo vis\xEDvel e corpo inteiro at\xE9 os p\xE9s.\n3. FIDELIDADE 1:1: Reproduzir a roupa das fotos de produto anexadas com m\xE1xima fidelidade. Zero tatuagens.\n\n" : "[REGRA SOBERANA ABSOLUTA \u2014 MIRROR-SELFIE COM SMARTPHONE & CORTE NO QUEIXO]:\n1. ENQUADRAMENTO E CORTE RIGOROSO DO QUEIXO PARA BAIXO: \xC9 TERMINANTEMENTE PROIBIDO MOSTRAR O ROSTO, OLHOS, NARIZ OU BOCA. O enquadramento \xE9 estritamente da ponta do queixo para baixo at\xE9 os p\xE9s no piso.\n2. SMARTPHONE OBRIGAT\xD3RIO NA M\xC3O: A modelo segura um smartphone moderno verticalmente com uma das m\xE3os na altura do peito/queixo, tirando uma foto no espelho de corpo inteiro. M\xE3os com an\xE9is finos e pulseiras douradas delicadas nos pulsos.\n3. CEN\xC1RIO INTEGRALMENTE PRESERVADO (IMAGEM 1): O c\xF4modo, piso, paredes, portas e espelho DEVEM ser id\xEAnticos ao cen\xE1rio da Imagem 1 anexada.\n4. LOOK COMPLETO (PROIBIDO NUDEZ): Se o produto for blusa/pe\xE7a superior, a modelo veste cal\xE7a jeans feminina cl\xE1ssica de cintura alta; se for pe\xE7a inferior, veste blusa combinando. Corpo com curvas femininas naturais conforme o biotipo da Mestra.\n\n";
     }
   } else {
     headerKling = `${englishFidelityHeader}${IMAGE_REFERENCE_FIDELITY_HEADER}`;
@@ -3524,7 +3530,7 @@ ${params.prompt}` : params.prompt).trim();
     console.warn(`[Kling Omni] Prompt com ${klingPrompt.length} caracteres excede o limite oficial de 2.500 caracteres da API.`);
     klingPrompt = compactPromptToLimit(params.prompt, 2490, headerKling);
   }
-  const negativePrompt = params.isAnaMariaMode ? allowsFace ? "tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, deformed face, bad eyes, low quality, 3d render, cartoon, illustration" : "face, head, eyes, eyebrows, nose, lips, mouth, teeth, smile, chin up, portrait, headshot, selfie with face, tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, low quality, 3d render, cartoon, illustration" : "original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry";
+  const negativePrompt = params.isAnaMariaMode ? allowsFace ? "tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, deformed face, bad eyes, low quality, 3d render, cartoon, illustration" : "face, head, eyes, eyebrows, nose, lips, mouth, teeth, smile, chin up, portrait, headshot, selfie with face, looking at camera, no smartphone, empty hands, without phone, naked, pantless, topless, no pants, underwear only, skinny, emaciated, boyish torso, flat hips, tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, low quality, 3d render, cartoon, illustration" : "original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry";
   const payload = {
     model_name: "kling-v3-omni",
     prompt: klingPrompt,
@@ -3633,6 +3639,16 @@ function getGalleryScenarioBase64(scenarioNum) {
   }
   return void 0;
 }
+function getEffectiveScenarioBase64(scenarioPhotoBase64, selectedScenarioNumber) {
+  if (selectedScenarioNumber !== void 0 && selectedScenarioNumber !== null && selectedScenarioNumber !== "") {
+    const diskScenario = getGalleryScenarioBase64(selectedScenarioNumber);
+    if (diskScenario) return diskScenario;
+  }
+  if (scenarioPhotoBase64 && scenarioPhotoBase64.length > 50) {
+    return scenarioPhotoBase64;
+  }
+  return getGalleryScenarioBase64(0) || getGalleryScenarioBase64(1);
+}
 async function generateImageWithSeedream(params) {
   let apiKey = (process.env.apiauroraseedreamvip || process.env.APIAURORASEEDREAMVIP || process.env.Apiauroraseedreamvip || process.env.SEEDREAM_API_KEY || process.env.APISEEDREAMVALIDA || process.env.APISEEDREAM || process.env.BYTEPLUS_ARK_API_KEY || "").trim();
   if (!apiKey || apiKey.startsWith("apikey-20261030152315-sqr2q")) {
@@ -3660,7 +3676,7 @@ async function generateImageWithSeedream(params) {
     if (isPovModeSeedream) {
       headerSeedream = "[MAPA POV: Imagem 1 = Cen\xE1rio POV Cama intacto; Imagem 2 = Produto 1:1 manipulado apenas pelas duas m\xE3os limpas sem tatuagens sobre a cama. PROIBIDO corpo/rosto/espelho].\n\n";
     } else {
-      headerSeedream = "[MAPA T\xC9CNICO DE REFER\xCANCIA: Imagem 1 = Cen\xE1rio real fixo intacto; Imagem 2+ = Pe\xE7a de roupa 1:1 (ESTRITO: \xC9 TERMINANTEMENTE PROIBIDO copiar o corpo da modelo ou manequim da foto de produto na Imagem 2+; o corpo, biotipo e curvas da modelo DEVEM vir 100% e exclusivamente da descri\xE7\xE3o do prompt selecionado abaixo, sem nenhuma predefini\xE7\xE3o externa)].\n\n";
+      headerSeedream = "[MAPA T\xC9CNICO DE REFER\xCANCIA: Imagem 1 = Cen\xE1rio real fixo intacto; Imagem 2+ = Pe\xE7a de roupa 1:1 (ESTRITO: \xC9 TERMINANTEMENTE PROIBIDO copiar o corpo da modelo ou manequim da foto de produto na Imagem 2+; o corpo, biotipo e curvas da modelo DEVEM vir 100% e exclusivamente da descri\xE7\xE3o do prompt selecionado abaixo, sem nenhuma predefini\xE7\xE3o externa)].\n[REGRA DE LOOK COMPLETO E PROIBI\xC7\xC3O DE NUDEZ: A modelo deve SEMPRE estar vestida por completo. Se o produto for pe\xE7a superior (blusa/cropped/camiseta), a modelo DEVE vestir cal\xE7a jeans feminina cl\xE1ssica de cintura alta; se for pe\xE7a inferior, veste blusa neutra combinando; se cal\xE7ados estiverem vis\xEDveis, deve cal\xE7ar o sapato especificado. ZERO NUDEZ, ZERO SEM CAL\xC7A].\n\n";
     }
   } else {
     headerSeedream = `${IMAGE_REFERENCE_FIDELITY_HEADER}
@@ -3670,7 +3686,7 @@ async function generateImageWithSeedream(params) {
   const payload = {
     model: params.modelType === "seedream_4_5" ? "seedream-4-5-251128" : "dola-seedream-5-0-pro-260628",
     prompt: refImages.length > 0 ? `${headerSeedream}${params.prompt}` : params.prompt,
-    size: "1024x1792",
+    size: params.modelType === "seedream_4_5" ? "1440x2560" : "1024x1792",
     ...params.modelType === "seedream_4_5" ? { sequential_image_generation: "disabled" } : {},
     response_format: "url",
     watermark: false
@@ -3735,11 +3751,16 @@ async function generateImageWithSeedream(params) {
   }
   return { success: false, error: lastError || "Falha ao gerar imagem com Seedream 5.0 Pro." };
 }
+function getFalKey() {
+  return (process.env.FAL_KEY || process.env.apifalai || process.env.APIFALAI || process.env.Apifalai || "fal_sk_3b8aaba3fd8d43e1a14108cc27e6b4ae:e4a8a5787f308a8a2cb95276e202144a").trim();
+}
 async function uploadReferenceToFal(img) {
   if (!img || img.length < 50) return null;
   if (img.startsWith("http://") || img.startsWith("https://")) {
     return img;
   }
+  const falKey = getFalKey();
+  if (falKey) fal.config({ credentials: falKey });
   try {
     const cleanB64 = img.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, "").trim();
     const mimeMatch = img.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,/);
@@ -3755,7 +3776,7 @@ async function uploadReferenceToFal(img) {
   }
 }
 async function prepareFalImageUrls(rawImages) {
-  const falKey = (process.env.apifalai || process.env.APIFALAI || process.env.Apifalai || process.env.FAL_KEY || "").trim();
+  const falKey = getFalKey();
   if (falKey) {
     fal.config({ credentials: falKey });
   }
@@ -3765,35 +3786,40 @@ async function prepareFalImageUrls(rawImages) {
     const url = await uploadReferenceToFal(img);
     if (url) {
       urls.push(url);
-    } else {
-      const dataUri = toDataUri(img);
-      if (dataUri) urls.push(dataUri);
     }
   }
   return urls;
 }
 async function generateImageWithKlingO3Fal(params) {
-  const falKey = (process.env.FAL_KEY || "").trim();
+  const falKey = getFalKey();
   if (!falKey) {
     return {
       success: false,
-      error: "Chave da fal.ai (FAL_KEY) n\xE3o configurada no ambiente."
+      error: "Chave da fal.ai n\xE3o configurada no ambiente."
     };
   }
   fal.config({ credentials: falKey });
   const rawRefs = (params.referenceImages && params.referenceImages.length > 0 ? params.referenceImages : [params.imageReferenceBase64]).filter((img) => typeof img === "string" && img.length > 50);
+  if (rawRefs.length === 0) {
+    const fallbackB64 = getGalleryScenarioBase64(0);
+    if (fallbackB64) rawRefs.push(fallbackB64);
+  }
   const imageUrls = await prepareFalImageUrls(rawRefs);
+  if (imageUrls.length === 0) {
+    return {
+      success: false,
+      error: "\xC9 necess\xE1rio ao menos 1 imagem de refer\xEAncia para o Kling O3 Omni na fal.ai."
+    };
+  }
   try {
     const inputPayload = {
       prompt: params.prompt,
+      image_urls: imageUrls,
       resolution: params.resolution || "2K",
       aspect_ratio: params.aspectRatio || "9:16",
       output_format: "png",
       num_images: 1
     };
-    if (imageUrls.length > 0) {
-      inputPayload.image_urls = imageUrls;
-    }
     const result = await fal.subscribe("fal-ai/kling-image/o3/image-to-image", {
       input: inputPayload,
       logs: true,
@@ -3820,27 +3846,35 @@ async function generateImageWithKlingO3Fal(params) {
   }
 }
 async function generateImageWithFlux2ProEdit(params) {
-  const falKey = (process.env.FAL_KEY || "").trim();
+  const falKey = getFalKey();
   if (!falKey) {
     return {
       success: false,
-      error: "Chave da fal.ai (FAL_KEY) n\xE3o configurada no ambiente."
+      error: "Chave da fal.ai n\xE3o configurada no ambiente."
     };
   }
   fal.config({ credentials: falKey });
   const rawRefs = (params.referenceImages && params.referenceImages.length > 0 ? params.referenceImages : [params.imageReferenceBase64]).filter((img) => typeof img === "string" && img.length > 50);
+  if (rawRefs.length === 0) {
+    const fallbackB64 = getGalleryScenarioBase64(0);
+    if (fallbackB64) rawRefs.push(fallbackB64);
+  }
   const imageUrls = await prepareFalImageUrls(rawRefs);
+  if (imageUrls.length === 0) {
+    return {
+      success: false,
+      error: "\xC9 necess\xE1rio ao menos 1 imagem de refer\xEAncia para o FLUX 2 Pro Edit na fal.ai."
+    };
+  }
   try {
     const inputPayload = {
       prompt: params.prompt,
+      image_urls: imageUrls,
       image_size: "portrait_16_9",
       safety_tolerance: "2",
       enable_safety_checker: true,
       output_format: "png"
     };
-    if (imageUrls.length > 0) {
-      inputPayload.image_urls = imageUrls;
-    }
     const result = await fal.subscribe("fal-ai/flux-2-pro/edit", {
       input: inputPayload,
       logs: true,
@@ -3993,13 +4027,7 @@ ${prompt}`;
     const presentationMode = req.body?.presentationMode;
     const selectedMasterId = req.body?.selectedMasterId;
     const selectedScenarioNumber = req.body?.selectedScenarioNumber;
-    let effectiveScenarioPhotoBase64 = scenarioPhotoBase64;
-    if (isAnaMariaMode && selectedScenarioNumber !== void 0 && selectedScenarioNumber !== null && selectedScenarioNumber !== "") {
-      const diskScenario = getGalleryScenarioBase64(selectedScenarioNumber);
-      if (diskScenario) {
-        effectiveScenarioPhotoBase64 = diskScenario;
-      }
-    }
+    const effectiveScenarioPhotoBase64 = isAnaMariaMode ? getEffectiveScenarioBase64(scenarioPhotoBase64, selectedScenarioNumber) : scenarioPhotoBase64;
     const seenRefs = /* @__PURE__ */ new Set();
     const orderedRefs = [effectiveScenarioPhotoBase64, modelReferenceBase64, productPhotoBase64, ...Array.isArray(productPhotosBase64) ? productPhotosBase64 : []].filter((img) => typeof img === "string" && img.length > 50).filter((img) => {
       const key = img.slice(-120);
@@ -4019,14 +4047,14 @@ ${prompt}`;
         presentationMode,
         selectedMasterId,
         bodyType,
-        scenarioPhotoBase64
+        scenarioPhotoBase64: effectiveScenarioPhotoBase64
       });
       return res.json(klingResult);
     }
     if (requestedImageModel === "kling_o3_fal") {
       const klingO3Result = await generateImageWithKlingO3Fal({
         prompt: effectivePrompt,
-        imageReferenceBase64: scenarioPhotoBase64 || modelReferenceBase64 || productPhotoBase64,
+        imageReferenceBase64: effectiveScenarioPhotoBase64 || modelReferenceBase64 || productPhotoBase64,
         referenceImages: orderedRefs,
         aspectRatio: req.body.aspectRatio || "9:16",
         resolution: "2K",
@@ -4037,29 +4065,22 @@ ${prompt}`;
     if (requestedImageModel === "flux_2_pro_edit") {
       const fluxResult = await generateImageWithFlux2ProEdit({
         prompt: effectivePrompt,
-        imageReferenceBase64: scenarioPhotoBase64 || modelReferenceBase64 || productPhotoBase64,
+        imageReferenceBase64: effectiveScenarioPhotoBase64 || modelReferenceBase64 || productPhotoBase64,
         referenceImages: orderedRefs
       });
       return res.json(fluxResult);
     }
     if (requestedImageModel === "seedream_4_5" || requestedImageModel === "seedream_5_0_pro") {
-      const seen = /* @__PURE__ */ new Set();
-      const orderedRefs2 = [scenarioPhotoBase64, modelReferenceBase64, productPhotoBase64, ...Array.isArray(productPhotosBase64) ? productPhotosBase64 : []].filter((img) => typeof img === "string" && img.length > 50).filter((img) => {
-        const key = img.slice(-120);
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
       const seedreamResult = await generateImageWithSeedream({
         prompt: effectivePrompt,
-        imageReferenceBase64: scenarioPhotoBase64 || modelReferenceBase64 || productPhotoBase64,
-        referenceImages: orderedRefs2,
+        imageReferenceBase64: effectiveScenarioPhotoBase64 || modelReferenceBase64 || productPhotoBase64,
+        referenceImages: orderedRefs,
         aspectRatio: req.body.aspectRatio || "9:16",
         isAnaMariaMode,
         presentationMode,
         selectedMasterId,
         bodyType,
-        scenarioPhotoBase64,
+        scenarioPhotoBase64: effectiveScenarioPhotoBase64,
         modelType: requestedImageModel === "seedream_4_5" ? "seedream_4_5" : "seedream_5_0_pro"
       });
       return res.json(seedreamResult);
@@ -4079,7 +4100,7 @@ ${prompt}`;
           productPhotosBase64,
           modelReferenceBase64,
           referenceFrameBase64,
-          scenarioPhotoBase64,
+          scenarioPhotoBase64: effectiveScenarioPhotoBase64,
           isAnaMariaMode,
           presentationMode,
           selectedMasterId,

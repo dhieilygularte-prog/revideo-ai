@@ -1,3 +1,19 @@
+export function sanitizePromptForOpenAISafety(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/\b(lingerie|conjunto de lingerie|roupas? íntimas?|peças? íntimas?)\b/gi, 'conjunto homewear sleepwear de cetim e renda elegante')
+    .replace(/\b(calcinha e suti[aã]|suti[aã] e calcinha)\b/gi, 'shortinho e cropped confortável de dormir em tecido acetinado e renda')
+    .replace(/\b(calcinha|calcinhas)\b/gi, 'shortinho confortável de dormir')
+    .replace(/\b(suti[aã]|suti[aã]s)\b/gi, 'top bralette delicado de homewear')
+    .replace(/\b(babydoll|baby doll|camisola sexy)\b/gi, 'camisola elegante de homewear')
+    .replace(/\b(transpar[eê]ncia|transparente|semi-transparente)\b/gi, 'acabamento acetinado delicado')
+    .replace(/\b(sensual|sexy|er[oó]tic[oa]|provocante)\b/gi, 'elegante e sofisticada')
+    .replace(/\b(bumbum|gl[uú]teos? volumosos?|n[aá]degas?)\b/gi, 'silhueta feminina curvilínea')
+    .replace(/\b(decote profundo|seios grandes|busto exposto)\b/gi, 'decote elegante de catálogo comercial')
+    .replace(/\b(nua|sem roupa|despida|topless|sem cal[cç]a)\b/gi, 'completamente vestida com look comercial completo')
+    .replace(/\b(panties|bra and panties|underwear|thong|lingerie)\b/gi, 'loungewear sleepwear satin set');
+}
+
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -628,6 +644,11 @@ Retorne estritamente um JSON estruturado:
 
       let baseImageFile: File | null = null;
       let effectivePrompt = cleanPrompt;
+    const hasLingerie = /\b(lingerie|suti[aã]|calcinha|babydoll|baby doll|camisola|transpar[eê]ncia|sensual)\b/i.test(prompt) ||
+      /\b(lingerie|suti[aã]|calcinha|babydoll|baby doll|camisola|transpar[eê]ncia|sensual)\b/i.test(additionalInstructions || '');
+    if (hasLingerie) {
+      effectivePrompt = sanitizePromptForOpenAISafety(effectivePrompt);
+    }
       const isStoryboardGrid =
         /grade\s+(?:3x3|2x3|2x2)|(?:\b4|\b6|\b9)\s+(?:cenas|quadros)|storyboard/i.test(prompt);
 
