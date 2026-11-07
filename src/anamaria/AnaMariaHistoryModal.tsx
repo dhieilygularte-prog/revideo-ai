@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { AnaMariaResultState } from './types';
 import { getAnaMariaHistory } from './anaMariaPipeline';
-import { downloadAnaMariaSingleImage, exportAnaMariaZip } from './anaMariaZipExporter';
+import { downloadAnaMariaSingleImage } from './anaMariaZipExporter';
 
 interface AnaMariaHistoryModalProps {
   isOpen: boolean;

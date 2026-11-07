@@ -592,7 +592,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                 {result.imageModel === 'seedream_5_0_pro'
                   ? 'SeaDream 5.0 Pro'
                   : result.imageModel === 'kling_3_0'
-                  ? 'Kling 3.0'
+                  ? 'Kling Image 3.0 Omni'
                   : 'OpenAI'}
               </div>
 

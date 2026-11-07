@@ -2372,10 +2372,10 @@ app.post("/api/download-tiktok", async (req, res) => {
       const redirectResp = await fetch(rawUrl, {
         method: "GET",
         redirect: "follow",
+        signal: AbortSignal.timeout(1e4),
         headers: {
           "User-Agent": userAgent,
-          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-          signal: AbortSignal.timeout(1e4)
+          "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
         }
       });
       if (redirectResp.url && redirectResp.url.includes("tiktok.com")) {
@@ -3520,36 +3520,44 @@ async function generateImageWithKling(params) {
   const isPlus = !isPovModeKling && (params.bodyType === "plus_size" || /plus[-_\s]*size/i.test(params.prompt));
   const plusRule = isPlus ? "[MANDATORY AUTHENTIC PLUS-SIZE RULE / REGRA PLUS SIZE OBRIGAT\xD3RIA: Mulher brasileira adulta verdadeiramente PLUS SIZE REAL (corpo robusto e volumoso, seios grandes pesados com queda natural, bra\xE7os grossos macios, abd\xF4men com proje\xE7\xE3o natural e dobras suaves, quadris muito largos e gl\xFAteos volumosos, coxas muito grossas que se tocam sem v\xE3o com celulite natural vis\xEDvel na pele, CELULITE: N\xC3O REMOVER. TERMINANTEMENTE PROIBIDO gerar mulher mais magra do que a refer\xEAncia, PROIBIDO modelo magra, PROIBIDO cintura fina, PROIBIDO barriga chapada, PROIBIDO pernas finas. ETNIA E PELE: Seguem a Prioridade 1 das instru\xE7\xF5es do usu\xE1rio (ex.: mulher negra de pele preta, japonesa, ruiva, etc.) ou da Mestra selecionada.]\n\n" : "";
   const headerKling = params.isAnaMariaMode ? isPovModeKling ? "[MODO POV PRIMEIRA PESSOA SOBRE A CAMA \u2014 Preserve 100% do cen\xE1rio da cama e exiba os produtos reais 1:1 sobre a cama manipulados EXCLUSIVAMENTE pelas duas m\xE3os entrando pela borda inferior. PROIBIDO mostrar corpo, rosto, pernas ou espelho!]\n\n" : `${plusRule}${getAnaMariaHeader(Boolean(params.scenarioPhotoBase64), allowsFace)}` : `${englishFidelityHeader}${IMAGE_REFERENCE_FIDELITY_HEADER}`;
-  const klingPrompt = compactPromptToLimit(
-    params.prompt,
-    2200,
-    headerKling
-  );
+  let klingPrompt = (headerKling ? `${headerKling}
+
+${params.prompt}` : params.prompt).trim();
+  if (klingPrompt.length > 2500) {
+    console.warn(`[Kling Omni] Prompt com ${klingPrompt.length} caracteres excede o limite oficial de 2.500 caracteres da API.`);
+    klingPrompt = compactPromptToLimit(params.prompt, 2490, headerKling);
+  }
+  const negativePrompt = params.isAnaMariaMode ? allowsFace ? `tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, deformed face, bad eyes${isPlus ? ", skinny, slim, thin waist, flat belly, slender, underweight, thin legs, midsize, tanned skin, fake bronze, airbrushed skin" : ""}` : `face, lips, mouth, nose, eyes, tattoos on skin, deformed hands, bad anatomy, blurry, watermark${params.selectedMasterId === "mestra_ana_maria" ? ", skinny model, thin legs, thin thighs, straight waist, flat hips, slender runway model, underweight" : ""}${isPlus ? ", skinny, slim, thin waist, flat belly, slender, underweight, thin legs, midsize, tanned skin, fake bronze, airbrushed skin" : ""}` : "original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry";
   const payload = {
-    model_name: "kling-v3",
+    model_name: "kling-v3-omni",
     prompt: klingPrompt,
-    negative_prompt: params.isAnaMariaMode ? allowsFace ? `tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, deformed face, bad eyes${isPlus ? ", skinny, slim, thin waist, flat belly, slender, underweight, thin legs, midsize, tanned skin, fake bronze, airbrushed skin" : ""}` : `face, lips, mouth, nose, eyes, tattoos on skin, deformed hands, bad anatomy, blurry, watermark${params.selectedMasterId === "mestra_ana_maria" ? ", skinny model, thin legs, thin thighs, straight waist, flat hips, slender runway model, underweight" : ""}${isPlus ? ", skinny, slim, thin waist, flat belly, slender, underweight, thin legs, midsize, tanned skin, fake bronze, airbrushed skin" : ""}` : "original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry",
+    negative_prompt: negativePrompt,
     aspect_ratio: params.aspectRatio || "9:16",
-    n: 1,
-    watermark_info: {
-      enabled: false
-    }
+    resolution: params.resolution || "1k",
+    result_type: "single",
+    n: Math.min(Math.max(params.n || 1, 1), 9)
   };
-  if (params.imageReferenceBase64) {
-    const rawB64 = params.imageReferenceBase64.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, "").trim();
-    if (rawB64.length > 50) {
-      payload.image = rawB64;
-      payload.image_reference = "subject";
-      payload.image_fidelity = 0.5;
-      payload.human_fidelity = 0;
+  const imageList = [];
+  const rawRefs = (params.referenceImages && params.referenceImages.length > 0 ? params.referenceImages : [params.imageReferenceBase64]).filter((img) => typeof img === "string" && (img.startsWith("http://") || img.startsWith("https://") || img.length > 50));
+  for (const img of rawRefs) {
+    if (img.startsWith("http://") || img.startsWith("https://")) {
+      imageList.push({ image: img });
+    } else {
+      const cleanB64 = img.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, "").trim();
+      if (cleanB64.length > 50) {
+        imageList.push({ image: cleanB64 });
+      }
     }
   }
-  const hosts = ["https://api.klingai.com", "https://api-singapore.klingai.com"];
+  if (imageList.length > 0) {
+    payload.image_list = imageList.slice(0, 10);
+  }
+  const hosts = ["https://api-singapore.klingai.com", "https://api.klingai.com"];
   let submitRes = null;
   let usedHost = hosts[0];
   for (const host of hosts) {
     try {
-      const res = await fetch(`${host}/v1/images/generations`, {
+      const res = await fetch(`${host}/v1/images/omni-image`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${apiKey}`,
@@ -3558,30 +3566,30 @@ async function generateImageWithKling(params) {
         body: JSON.stringify(payload)
       });
       const data = await res.json();
-      if (res.ok && data?.code === 0 && data?.data?.task_id) {
+      if (res.ok && data?.code === 0 && (data?.data?.task_id || data?.task_id)) {
         submitRes = data;
         usedHost = host;
         break;
       } else if (data?.message) {
-        console.warn(`Kling tentativa em ${host}:`, data.message);
+        console.warn(`Kling Omni tentativa em ${host}:`, data.message);
         submitRes = data;
       }
     } catch (err) {
-      console.warn(`Erro na chamada ao Kling em ${host}:`, err?.message);
+      console.warn(`Erro na chamada ao Kling Omni em ${host}:`, err?.message);
     }
   }
-  if (!submitRes?.data?.task_id) {
+  const taskId = submitRes?.data?.task_id || submitRes?.task_id;
+  if (!taskId) {
     return {
       success: false,
-      error: submitRes?.message || "Falha ao iniciar gera\xE7\xE3o de imagem no Kling 3.0."
+      error: submitRes?.message || "Falha ao iniciar gera\xE7\xE3o de imagem no Kling Image 3.0 Omni."
     };
   }
-  const taskId = submitRes.data.task_id;
   const startTime = Date.now();
-  while (Date.now() - startTime < 9e4) {
+  while (Date.now() - startTime < 12e4) {
     await new Promise((r) => setTimeout(r, 3e3));
     try {
-      const statusRes = await fetch(`${usedHost}/v1/images/generations/${taskId}`, {
+      const statusRes = await fetch(`${usedHost}/v1/images/omni-image/${taskId}`, {
         headers: { "Authorization": `Bearer ${apiKey}` }
       });
       const statusData = await statusRes.json();
@@ -3589,6 +3597,9 @@ async function generateImageWithKling(params) {
       if (taskStatus === "succeed") {
         const imgUrl = statusData?.data?.task_result?.images?.[0]?.url;
         if (imgUrl) {
+          if (params.isAnaMariaMode) {
+            return { success: true, imageUrl: imgUrl };
+          }
           try {
             const imgFetch = await fetch(imgUrl);
             const arrayBuffer = await imgFetch.arrayBuffer();
@@ -3602,14 +3613,14 @@ async function generateImageWithKling(params) {
       } else if (taskStatus === "failed") {
         return {
           success: false,
-          error: statusData?.data?.task_status_msg || "Kling 3.0 retornou falha na gera\xE7\xE3o."
+          error: statusData?.data?.task_status_msg || "Kling Image 3.0 Omni retornou falha na gera\xE7\xE3o."
         };
       }
     } catch (pollErr) {
-      console.warn("Erro no polling do Kling:", pollErr?.message);
+      console.warn("Erro no polling do Kling Omni:", pollErr?.message);
     }
   }
-  return { success: false, error: "Tempo limite excedido na gera\xE7\xE3o do Kling 3.0 (timeout 90s)." };
+  return { success: false, error: "Tempo limite excedido na gera\xE7\xE3o do Kling Image 3.0 Omni (timeout 120s)." };
 }
 async function generateImageWithSeedream(params) {
   let apiKey = (process.env.apiauroraseedreamvip || process.env.APIAURORASEEDREAMVIP || process.env.Apiauroraseedreamvip || process.env.SEEDREAM_API_KEY || process.env.APISEEDREAMVALIDA || process.env.APISEEDREAM || process.env.BYTEPLUS_ARK_API_KEY || "").trim();
@@ -3718,16 +3729,18 @@ app.get("/api/test-image-providers", async (_req, res) => {
   };
   if (klingKey) {
     try {
-      const kRes = await fetch("https://api.klingai.com/v1/images/generations", {
+      const kRes = await fetch("https://api-singapore.klingai.com/v1/images/omni-image", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${klingKey}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          model_name: "kling-v3",
+          model_name: "kling-v3-omni",
           prompt: "ping test",
           aspect_ratio: "9:16",
+          resolution: "1k",
+          result_type: "single",
           n: 1
         })
       });
@@ -3736,7 +3749,7 @@ app.get("/api/test-image-providers", async (_req, res) => {
         configured: true,
         httpStatus: kRes.status,
         code: kData?.code,
-        message: kData?.message || (kData?.code === 0 ? "Conectado com sucesso (kling-v3)" : "Erro"),
+        message: kData?.message || (kData?.code === 0 ? "Conectado com sucesso (kling-v3-omni)" : "Erro"),
         taskId: kData?.data?.task_id || null,
         ok: kData?.code === 0
       };
@@ -3833,11 +3846,21 @@ ${prompt}`;
     const requestedImageModel = req.body?.imageModel;
     const presentationMode = req.body?.presentationMode;
     const selectedMasterId = req.body?.selectedMasterId;
+    const seenRefs = /* @__PURE__ */ new Set();
+    const orderedRefs = [scenarioPhotoBase64, modelReferenceBase64, productPhotoBase64, ...Array.isArray(productPhotosBase64) ? productPhotosBase64 : []].filter((img) => typeof img === "string" && img.length > 50).filter((img) => {
+      const key = img.slice(-120);
+      if (seenRefs.has(key)) return false;
+      seenRefs.add(key);
+      return true;
+    });
     if (requestedImageModel === "kling_3_0") {
       const klingResult = await generateImageWithKling({
         prompt: effectivePrompt,
         imageReferenceBase64: scenarioPhotoBase64 || modelReferenceBase64 || productPhotoBase64,
+        referenceImages: orderedRefs,
         aspectRatio: req.body.aspectRatio || "9:16",
+        resolution: req.body.resolution || "1k",
+        n: req.body.n || 1,
         isAnaMariaMode,
         presentationMode,
         selectedMasterId,
@@ -3848,7 +3871,7 @@ ${prompt}`;
     }
     if (requestedImageModel === "seedream_5_0_pro") {
       const seen = /* @__PURE__ */ new Set();
-      const orderedRefs = [scenarioPhotoBase64, modelReferenceBase64, productPhotoBase64, ...Array.isArray(productPhotosBase64) ? productPhotosBase64 : []].filter((img) => typeof img === "string" && img.length > 50).filter((img) => {
+      const orderedRefs2 = [scenarioPhotoBase64, modelReferenceBase64, productPhotoBase64, ...Array.isArray(productPhotosBase64) ? productPhotosBase64 : []].filter((img) => typeof img === "string" && img.length > 50).filter((img) => {
         const key = img.slice(-120);
         if (seen.has(key)) return false;
         seen.add(key);
@@ -3857,7 +3880,7 @@ ${prompt}`;
       const seedreamResult = await generateImageWithSeedream({
         prompt: effectivePrompt,
         imageReferenceBase64: scenarioPhotoBase64 || modelReferenceBase64 || productPhotoBase64,
-        referenceImages: orderedRefs,
+        referenceImages: orderedRefs2,
         aspectRatio: req.body.aspectRatio || "9:16",
         isAnaMariaMode,
         presentationMode,

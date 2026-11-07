@@ -872,7 +872,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                   : inactiveOptionButtonClass
               }`}
             >
-              <span>Kling 3.0</span>
+              <span>Kling Image 3.0 Omni</span>
               {form.imageModel === 'kling_3_0' && (
                 <Check className={`w-4 h-4 stroke-[3] ${checkIconColorClass}`} />
               )}

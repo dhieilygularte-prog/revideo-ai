@@ -1246,7 +1246,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
               <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${form.imageModel === 'kling_3_0' ? 'border-white bg-white' : 'border-zinc-500'}`}>
                 {form.imageModel === 'kling_3_0' && <span className="w-1.5 h-1.5 rounded-full bg-purple-600" />}
               </span>
-              <span>KLING 3.0</span>
+              <span>KLING IMAGE 3.0 OMNI</span>
             </button>
             <button
               type="button"

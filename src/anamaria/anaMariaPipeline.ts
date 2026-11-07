@@ -11,7 +11,6 @@ import {
 import { resolveHeadlineAndHashtags } from './anaMariaBank';
 import { AIProfile } from '../config/aiProfiles';
 import { PREFERRED_SCENARIO_BASE64 } from './assets/scenarioImage';
-import { ensureHighResAnaMariaDataUrl } from './anaMariaZipExporter';
 import { SCENARIO_GALLERY_ITEMS, POV_SCENARIO_GALLERY_ITEMS } from './scenarioGalleryData';
 import { getMasterPromptById } from './masterPromptsData';
 
@@ -448,7 +447,7 @@ export async function runAnaMariaPipeline(
     form.imageModel === 'seedream_5_0_pro'
       ? 'SeaDream 5.0 Pro'
       : form.imageModel === 'kling_3_0'
-      ? 'Kling 3.0'
+      ? 'Kling Image 3.0 Omni'
       : 'OpenAI';
   const scenarioMsg = form.selectedScenarioNumber ? ` no Cenário ${form.selectedScenarioNumber}` : '';
   onStatusMessage(`Gerando imagem vertical 9:16${scenarioMsg} no ${modelNameLabel}...`);
