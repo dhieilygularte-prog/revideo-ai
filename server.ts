@@ -18,7 +18,7 @@ import {
 import { buildVeoSingleParagraphPrompt, buildUniversalSceneImagePrompt } from './src/utils/veoPromptBuilder';
 import { distributeSpeechAcrossScenes } from './src/utils/speechDistributor';
 import { selectRepresentativeKeyframes } from './src/utils/frameSampler';
-import { openAIProvider, globalCostTracker, getActiveProviderType } from './src/services/ai';
+import { openAIProvider, globalCostTracker, getActiveProviderType, sanitizePromptForOpenAISafety } from './src/services/ai';
 import {
   OPENAI_BRAIN_MODEL,
   OPENAI_AUDIO_MODEL,
@@ -1839,6 +1839,7 @@ async function generateImageWithKling(params: {
   bodyType?: string;
   scenarioPhotoBase64?: string;
   modelType?: 'seedream_5_0_pro' | 'seedream_4_5';
+  modelScenarioSource?: 'model' | 'gallery';
 }): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
   const apiKey = (process.env.KLING_API_KEY || '').trim();
   if (!apiKey) {
@@ -1888,13 +1889,23 @@ async function generateImageWithKling(params: {
         ? 'A modelo veste EXCLUSIVAMENTE o vestido de <<<image_1>>> com pernas limpas naturais. TERMINANTEMENTE PROIBIDO calça jeans, calça ou shorts sob o vestido.'
         : 'Se o produto for vestido, veste apenas o vestido; se for blusa, veste calça jeans combinando; se for calça, veste blusa combinando.';
 
-      headerKling =
-        '[REGRA SOBERANA DE COMPOSIÇÃO 3 IMAGENS KLING OMNI]:\n' +
-        '1. PRODUTO (<<<image_1>>>): Reproduzir a roupa de <<<image_1>>> na modelo com máxima fidelidade 1:1. PROIBIDO copiar a pose de lado ou o corpo de <<<image_1>>> e PROIBIDO usar a roupa de <<<image_2>>>.\n' +
-        '2. MODELO (<<<image_2>>>): A mulher gerada DEVE SER LITERALMENTE A MESMA MODELO de <<<image_2>>> (mesmo biotipo, curvas, formato de corpo, cabelos e mesma pele). POSE OBRIGATÓRIA DE FRENTE PARA O ESPELHO (front-facing). Enquadramento estritamente da base do queixo para baixo, SEM ROSTO, cabeça cortada no queixo, celular cobrindo o rosto.\n' +
-        '3. CENÁRIO (<<<image_3>>>): Preservar 100% o ambiente real de <<<image_3>>> (paredes, piso, espelho e iluminação intactos).\n' +
-        `4. LOOK: ${clothingDirectiveKling}\n` +
-        '5. PELE REALISTA & NATURAL (SEM OLEOSIDADE): Textura de pele humana real com poros visíveis, acabamento fosco suave sob iluminação difusa interior. PROIBIDO aspecto oleoso, pele plastificada ou brilho excessivo.\n\n';
+      const isModelScenarioKling = (params.modelScenarioSource || 'model') === 'model';
+      if (isModelScenarioKling) {
+        headerKling =
+          '[REGRA SOBERANA DE COMPOSIÇÃO 2 IMAGENS KLING OMNI]:\n' +
+          '1. PRODUTO (<<<image_1>>>): Extrair EXCLUSIVAMENTE a roupa e tecido de <<<image_1>>> 1:1 na modelo (PROIBIDO copiar pose de lado ou corpo de <<<image_1>>>).\n' +
+          '2. MODELO E CENÁRIO BASE (<<<image_2>>>): A modelo DEVE SER LITERALMENTE A MESMA MULHER de <<<image_2>>> (mesmo biotipo, curvas, formato de corpo, cabelos, tom de pele) NA MESMA POSE DE FRENTE E DENTRO DO MESMO CÔMODO/CENÁRIO de <<<image_2>>> (preservar 100% o fundo, piso, paredes, portas e espelho de <<<image_2>>>). Enquadramento estritamente da base do queixo para baixo, SEM ROSTO, celular cobrindo o rosto. Única alteração: trocar a roupa dela pela de <<<image_1>>>.\n' +
+          `3. LOOK: ${clothingDirectiveKling}\n` +
+          '4. PELE REALISTA & NATURAL: Textura de pele humana real com poros visíveis, acabamento fosco suave sob luz ambiente natural.\n\n';
+      } else {
+        headerKling =
+          '[REGRA SOBERANA DE COMPOSIÇÃO 3 IMAGENS KLING OMNI]:\n' +
+          '1. PRODUTO (<<<image_1>>>): Reproduzir a roupa de <<<image_1>>> na modelo com máxima fidelidade 1:1. PROIBIDO copiar a pose de lado ou o corpo de <<<image_1>>> e PROIBIDO usar a roupa de <<<image_2>>>.\n' +
+          '2. MODELO (<<<image_2>>>): A mulher gerada DEVE SER LITERALMENTE A MESMA MODELO de <<<image_2>>> (mesmo biotipo, curvas, formato de corpo, cabelos e mesma pele). POSE OBRIGATÓRIA DE FRENTE PARA O ESPELHO (front-facing). Enquadramento estritamente da base do queixo para baixo, SEM ROSTO, cabeça cortada no queixo, celular cobrindo o rosto.\n' +
+          '3. CENÁRIO (<<<image_3>>>): Preservar 100% o ambiente real de <<<image_3>>> (paredes, piso, espelho e iluminação intactos).\n' +
+          `4. LOOK: ${clothingDirectiveKling}\n` +
+          '5. PELE REALISTA & NATURAL (SEM OLEOSIDADE): Textura de pele humana real com poros visíveis, acabamento fosco suave sob iluminação difusa interior. PROIBIDO aspecto oleoso, pele plastificada ou brilho excessivo.\n\n';
+      }
     } else {
       headerKling = allowsFace
         ? '[REGRA SOBERANA DE ENQUADRAMENTO E CENÁRIO]:\n1. CENÁRIO: Preservar 100% o ambiente real da foto anexada na Imagem 1 (paredes, piso, espelho e iluminação intactos).\n2. ROSTO E MIRROR-SELFIE: Modelo em pé segurando smartphone moderno apontado para o espelho, rosto natural expressivo visível e corpo inteiro até os pés.\n3. FIDELIDADE 1:1: Reproduzir a roupa das fotos de produto anexadas com máxima fidelidade. Zero tatuagens.\n\n'
@@ -2084,6 +2095,7 @@ async function generateImageWithSeedream(params: {
   bodyType?: string;
   scenarioPhotoBase64?: string;
   modelType?: 'seedream_5_0_pro' | 'seedream_4_5';
+  modelScenarioSource?: 'model' | 'gallery';
 }): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
   let apiKey = (
     process.env.apiauroraseedreamvip ||
@@ -2176,13 +2188,23 @@ async function generateImageWithSeedream(params: {
     if (isPovModeSeedream) {
       headerSeedream = '[MAPA POV: Imagem 1 = Cenário POV Cama intacto; Imagem 2 = Produto 1:1 manipulado apenas pelas duas mãos limpas sem tatuagens sobre a cama. PROIBIDO corpo/rosto/espelho].\n\n';
     } else if (hasModelRefSeedream) {
-      headerSeedream =
-        `${faceDirectiveSeedream}${naturalSkinSeedream}${frontalPoseDirectiveSeedream}` +
-        '[MAPA TÉCNICO DE REFERÊNCIA 3 IMAGENS]:\n' +
-        '- Foto 1 (PRODUTO): É a roupa que a modelo DEVE vestir com máxima fidelidade 1:1 (PROIBIDO copiar pose de lado ou roupa da Foto 2).\n' +
-        '- Foto 2 (MODELO): É literalmente a modelo da imagem. Preserve 100% o mesmo corpo, curvas, biotipo, cabelos e mesma pose DE FRENTE diante do espelho da Foto 2. DESCONSIDERE a roupa e o cenário da Foto 2!\n' +
-        '- Foto 3 (CENÁRIO): É o cômodo real fixo intacto onde a modelo deve estar inserida diante do espelho.\n' +
-        `${clothingDirectiveSeedream}\n\n`;
+      const isModelScenarioSeedream = (params.modelScenarioSource || 'model') === 'model';
+      if (isModelScenarioSeedream) {
+        headerSeedream =
+          `${faceDirectiveSeedream}${naturalSkinSeedream}` +
+          '[MAPA TÉCNICO DE REFERÊNCIA 2 IMAGENS — PRESERVAÇÃO INTEGRAL DE MODELO E CENÁRIO]:\n' +
+          '- Foto 1 (PRODUTO): É a roupa que a modelo DEVE vestir com máxima fidelidade 1:1 (PROIBIDO copiar pose de lado ou pessoa da Foto 1).\n' +
+          '- Foto 2 (MODELO E CENÁRIO BASE ABSOLUTO): A imagem gerada DEVE SER RIGOROSAMENTE A MESMA MULHER DA FOTO 2, NA MESMA POSE DE FRENTE E DENTRO DO MESMO CÔMODO DA FOTO 2. Preserve 100% o corpo, curvas, biotipo, cabelos, pose e TODO O CENÁRIO DE FUNDO da Foto 2 (paredes, piso, espelho, portas e iluminação intactos). Única alteração: trocar a roupa dela pela roupa da Foto 1.\n' +
+          `${clothingDirectiveSeedream}\n\n`;
+      } else {
+        headerSeedream =
+          `${faceDirectiveSeedream}${naturalSkinSeedream}${frontalPoseDirectiveSeedream}` +
+          '[MAPA TÉCNICO DE REFERÊNCIA 3 IMAGENS]:\n' +
+          '- Foto 1 (PRODUTO): É a roupa que a modelo DEVE vestir com máxima fidelidade 1:1 (PROIBIDO copiar pose de lado ou roupa da Foto 2).\n' +
+          '- Foto 2 (MODELO): É literalmente a modelo da imagem. Preserve 100% o mesmo corpo, curvas, biotipo, cabelos e mesma pose DE FRENTE diante do espelho da Foto 2. DESCONSIDERE a roupa e o cenário da Foto 2!\n' +
+          '- Foto 3 (CENÁRIO): É o cômodo real fixo intacto onde a modelo deve estar inserida diante do espelho.\n' +
+          `${clothingDirectiveSeedream}\n\n`;
+      }
     } else {
       headerSeedream =
         `${faceDirectiveSeedream}${naturalSkinSeedream}${frontalPoseDirectiveSeedream}` +
@@ -2360,6 +2382,7 @@ async function generateImageWithKlingO3Fal(params: {
   aspectRatio?: string;
   resolution?: string;
   isAnaMariaMode?: boolean;
+  modelScenarioSource?: 'model' | 'gallery';
 }): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
   const falKey = getFalKey();
   if (!falKey) {
@@ -2399,12 +2422,18 @@ async function generateImageWithKlingO3Fal(params: {
     const dressRuleO3 = isDressKlingO3
       ? 'The model wears EXCLUSIVELY the dress from <<<image_1>>> (STRICTLY PROHIBITED jeans or pants under dress).'
       : 'If top, wear matching bottom; if dress, wear ONLY the dress.';
-    const headerKlingO3 =
-      '<<<image_1>>> is the PRODUCT: wear exclusively the garment from <<<image_1>>> 1:1 (PROHIBITED to copy sideways pose from <<<image_1>>>). ' +
-      '<<<image_2>>> is the MODEL: preserve 100% same woman, body, curves, hair, skin, FRONT-FACING mirror selfie pose; strict CHIN-DOWN framing (NO face, NO head). ' +
-      `<<<image_3>>> is the SCENARIO ROOM. ${dressRuleO3} Natural matte realistic skin, no oil sheen. `;
+    const isModelScenarioO3 = (params.modelScenarioSource || 'model') === 'model';
+    const headerKlingO3 = isModelScenarioO3
+      ? '<<<image_1>>> is the PRODUCT: wear exclusively the garment from <<<image_1>>> 1:1 (PROHIBITED to copy sideways pose from <<<image_1>>>). ' +
+        '<<<image_2>>> is the MODEL AND ROOM: preserve 100% same woman, body, curves, hair, skin, FRONT-FACING pose, AND 100% same room/background setting from <<<image_2>>>; strict CHIN-DOWN framing (NO face, NO head). ' +
+        `${dressRuleO3} Natural matte realistic skin, no oil sheen. `
+      : '<<<image_1>>> is the PRODUCT: wear exclusively the garment from <<<image_1>>> 1:1 (PROHIBITED to copy sideways pose from <<<image_1>>>). ' +
+        '<<<image_2>>> is the MODEL: preserve 100% same woman, body, curves, hair, skin, FRONT-FACING mirror selfie pose; strict CHIN-DOWN framing (NO face, NO head). ' +
+        `<<<image_3>>> is the SCENARIO ROOM. ${dressRuleO3} Natural matte realistic skin, no oil sheen. `;
     promptKlingO3 = `${headerKlingO3}${params.prompt}`;
   }
+
+  promptKlingO3 = sanitizePromptForOpenAISafety(promptKlingO3);
 
   // Trava estrita de tamanho de prompt: Kling O3 na fal.ai aceita no máximo 2.450 caracteres
   if (promptKlingO3.length > 2450) {
@@ -2463,6 +2492,7 @@ async function generateImageWithFlux2ProEdit(params: {
   imageReferenceBase64?: string;
   modelReferenceBase64?: string;
   referenceImages?: (string | undefined)[];
+  modelScenarioSource?: 'model' | 'gallery';
 }): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
   const falKey = getFalKey();
   if (!falKey) {
@@ -2502,12 +2532,19 @@ async function generateImageWithFlux2ProEdit(params: {
     const dressRuleFlux = isDressFlux
       ? 'The model wears EXCLUSIVELY the dress from Photo 2 (strictly NO jeans or pants under dress).'
       : 'If top, wear matching bottom; if dress, wear ONLY the dress.';
-    const headerFlux =
-      'Photo 1 is the MODEL: preserve 100% the exact same woman, body, curves, hair, skin, FRONT-FACING mirror selfie pose; chin-down crop (NO face, NO head). ' +
-      'Photo 2 is the PRODUCT: replace her clothes with the exact garment from Photo 2 1:1 (DO NOT copy sideways pose or person from Photo 2). ' +
-      `Photo 3 is the SCENARIO ROOM: place her standing in this room. ${dressRuleFlux} Photorealistic modern smartphone photo. `;
+    const isModelScenarioFlux = (params.modelScenarioSource || 'model') === 'model';
+    const headerFlux = isModelScenarioFlux
+      ? 'Photo 1 is the MODEL AND ROOM BASE: preserve 100% the exact same woman, body, curves, hair, skin, FRONT-FACING mirror selfie pose, and 100% the exact same room/background from Photo 1; chin-down crop (NO face, NO head). ' +
+        'Photo 2 is the PRODUCT: replace her clothes with the exact garment from Photo 2 1:1 (DO NOT copy sideways pose or person from Photo 2). ' +
+        `${dressRuleFlux} Photorealistic modern smartphone photo. `
+      : 'Photo 1 is the MODEL: preserve 100% the exact same woman, body, curves, hair, skin, FRONT-FACING mirror selfie pose; chin-down crop (NO face, NO head). ' +
+        'Photo 2 is the PRODUCT: replace her clothes with the exact garment from Photo 2 1:1 (DO NOT copy sideways pose or person from Photo 2). ' +
+        `Photo 3 is the SCENARIO ROOM: place her standing in this room. ${dressRuleFlux} Photorealistic modern smartphone photo. `;
     promptFlux = `${headerFlux}${params.prompt}`;
   }
+
+  // Sanitização anti-content-checker e otimização para catálogo comercial
+  promptFlux = sanitizePromptForOpenAISafety(promptFlux);
 
   if (promptFlux.length > 2450) {
     promptFlux = compactPromptToLimit(promptFlux, 2450, '');
@@ -2518,7 +2555,7 @@ async function generateImageWithFlux2ProEdit(params: {
       prompt: promptFlux,
       image_urls: imageUrls,
       image_size: 'portrait_16_9',
-      safety_tolerance: '2',
+      safety_tolerance: '5',
       enable_safety_checker: true,
       output_format: 'png',
     };
@@ -2551,6 +2588,36 @@ async function generateImageWithFlux2ProEdit(params: {
     } else if (typeof detail === 'string') {
       detailMsg = detail;
     }
+
+    const errText = `${detailMsg} ${err?.message || ''}`;
+    // Retry automático se o content checker da fal.ai disparar falso positivo
+    if (/content checker|flagged|safety/i.test(errText)) {
+      console.warn('[FLUX 2 Pro Edit] Alerta de content checker detectado. Executando retry com prompt comercial editorial sanitizado...');
+      try {
+        const isModelScenarioFlux = (params.modelScenarioSource || 'model') === 'model';
+        const fallbackPrompt = isModelScenarioFlux
+          ? 'Photo 1 is the model and room base: preserve 100% the exact same woman, body, curves, hair, front-facing mirror selfie pose, and 100% the exact same room setting from Photo 1; chin-down framing with no face. Photo 2 is the product: replace her clothes with the exact commercial apparel from Photo 2. High quality smartphone mirror selfie catalog photography, fully dressed, realistic lighting, sharp focus.'
+          : 'Photo 1 is the model: preserve 100% the exact same woman, body, curves, hair, front-facing mirror selfie pose; chin-down framing with no face. Photo 2 is the product: replace her clothes with the exact commercial apparel from Photo 2. Photo 3 is the room interior: place her in this room. High quality smartphone mirror selfie catalog photography, fully dressed, realistic lighting, sharp focus.';
+
+        const retryResult: any = await fal.subscribe('fal-ai/flux-2-pro/edit', {
+          input: {
+            prompt: fallbackPrompt,
+            image_urls: imageUrls,
+            image_size: 'portrait_16_9',
+            safety_tolerance: '5',
+            enable_safety_checker: true,
+            output_format: 'png',
+          },
+        });
+        const retryUrl = retryResult?.data?.images?.[0]?.url;
+        if (retryUrl) {
+          return { success: true, imageUrl: retryUrl };
+        }
+      } catch (retryErr: any) {
+        console.error('[FLUX 2 Pro Edit fal.ai Retry Error]:', retryErr);
+      }
+    }
+
     const errorMsg = detailMsg || err?.message || 'Erro durante a geração no FLUX 2 Pro Edit via fal.ai.';
     return {
       success: false,
@@ -2714,21 +2781,37 @@ app.post('/api/generate-scene-image', async (req, res) => {
     }
 
     const hasGalleryModel = Boolean(effectiveModelReferenceBase64 && effectiveModelReferenceBase64.length > 50);
+    const modelScenarioSource: 'model' | 'gallery' = req.body?.modelScenarioSource || 'model';
+    const isModelScenario = hasGalleryModel && modelScenarioSource === 'model';
 
     const orderedRefs: string[] = [];
     if (isAnaMariaMode && hasGalleryModel) {
-      // ORDEM CRÍTICA: Foto 1 = Produto, Foto 2 = Modelo, Foto 3 = Cenário
-      if (productPhotoBase64 && productPhotoBase64.length > 50) {
-        orderedRefs.push(productPhotoBase64);
-      }
-      if (Array.isArray(productPhotosBase64)) {
-        for (const p of productPhotosBase64) {
-          if (p && p.length > 50 && p !== productPhotoBase64) orderedRefs.push(p);
+      if (isModelScenario) {
+        // MODO 2 IMAGENS: Foto 1 = Produto, Foto 2 = Modelo com seu próprio cenário
+        if (productPhotoBase64 && productPhotoBase64.length > 50) {
+          orderedRefs.push(productPhotoBase64);
         }
-      }
-      orderedRefs.push(effectiveModelReferenceBase64!);
-      if (effectiveScenarioPhotoBase64 && effectiveScenarioPhotoBase64.length > 50) {
-        orderedRefs.push(effectiveScenarioPhotoBase64);
+        if (Array.isArray(productPhotosBase64)) {
+          for (const p of productPhotosBase64) {
+            if (p && p.length > 50 && p !== productPhotoBase64) orderedRefs.push(p);
+          }
+        }
+        orderedRefs.push(effectiveModelReferenceBase64!);
+        // Cenário NÃO entra na lista de referências quando 'model' está marcado!
+      } else {
+        // MODO 3 IMAGENS: Foto 1 = Produto, Foto 2 = Modelo, Foto 3 = Cenário da galeria
+        if (productPhotoBase64 && productPhotoBase64.length > 50) {
+          orderedRefs.push(productPhotoBase64);
+        }
+        if (Array.isArray(productPhotosBase64)) {
+          for (const p of productPhotosBase64) {
+            if (p && p.length > 50 && p !== productPhotoBase64) orderedRefs.push(p);
+          }
+        }
+        orderedRefs.push(effectiveModelReferenceBase64!);
+        if (effectiveScenarioPhotoBase64 && effectiveScenarioPhotoBase64.length > 50) {
+          orderedRefs.push(effectiveScenarioPhotoBase64);
+        }
       }
     } else {
       // Modo sem modelo da galeria (Cenário fixo + Produto):
@@ -2759,6 +2842,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
         selectedMasterId,
         bodyType,
         scenarioPhotoBase64: effectiveScenarioPhotoBase64,
+        modelScenarioSource,
       });
       return res.json(klingResult);
     }
@@ -2772,6 +2856,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
         aspectRatio: req.body.aspectRatio || '9:16',
         resolution: '2K',
         isAnaMariaMode,
+        modelScenarioSource,
       });
       return res.json(klingO3Result);
     }
@@ -2780,16 +2865,21 @@ app.post('/api/generate-scene-image', async (req, res) => {
       let fluxRefs = orderedRefs;
       if (hasGalleryModel && effectiveModelReferenceBase64) {
         // FLUX 2 Pro Edit: image_urls[0] é o canvas base que recebe as edições.
-        // Colocamos a MODELO da galeria como imagem 0 para preservar 100% sua identidade e biotipo!
+        // Colocamos a MODELO da galeria como imagem 0 para preservar 100% sua identidade, pose e cenário!
         const productRef = productPhotoBase64 || (orderedRefs[0] !== effectiveModelReferenceBase64 ? orderedRefs[0] : undefined);
-        const scenarioRef = effectiveScenarioPhotoBase64 || orderedRefs[orderedRefs.length - 1];
-        fluxRefs = [effectiveModelReferenceBase64, productRef, scenarioRef].filter((img): img is string => Boolean(img && img.length > 50));
+        if (isModelScenario) {
+          fluxRefs = [effectiveModelReferenceBase64, productRef].filter((img): img is string => Boolean(img && img.length > 50));
+        } else {
+          const scenarioRef = effectiveScenarioPhotoBase64 || orderedRefs[orderedRefs.length - 1];
+          fluxRefs = [effectiveModelReferenceBase64, productRef, scenarioRef].filter((img): img is string => Boolean(img && img.length > 50));
+        }
       }
       const fluxResult = await generateImageWithFlux2ProEdit({
         prompt: effectivePrompt,
         imageReferenceBase64: effectiveModelReferenceBase64 || productPhotoBase64 || effectiveScenarioPhotoBase64,
         modelReferenceBase64: effectiveModelReferenceBase64,
         referenceImages: fluxRefs,
+        modelScenarioSource,
       });
       return res.json(fluxResult);
     }
@@ -2807,6 +2897,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
         bodyType,
         scenarioPhotoBase64: effectiveScenarioPhotoBase64,
         modelType: requestedImageModel === 'seedream_4_5' ? 'seedream_4_5' : 'seedream_5_0_pro',
+        modelScenarioSource,
       });
       return res.json(seedreamResult);
     }
@@ -2825,9 +2916,9 @@ app.post('/api/generate-scene-image', async (req, res) => {
           prompt: effectivePrompt,
           productPhotoBase64,
           productPhotosBase64,
-          modelReferenceBase64,
+          modelReferenceBase64: effectiveModelReferenceBase64,
           referenceFrameBase64,
-          scenarioPhotoBase64: effectiveScenarioPhotoBase64,
+          scenarioPhotoBase64: isModelScenario ? undefined : effectiveScenarioPhotoBase64,
           isAnaMariaMode,
           presentationMode,
           selectedMasterId,

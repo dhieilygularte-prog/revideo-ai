@@ -133,14 +133,14 @@ export function detectComplementaryGarment(
     if (isMale) {
       return {
         type: 'upper_only',
-        directiveTextPt: `REGRA DE LOOK COMPLETO (PROIBIDO NUDEZ / PARTE INFERIOR OBRIGATÓRIA):\nComo o produto anunciado é uma peça superior (${productName}), o modelo DEVE OBRIGATORIAMENTE VESTIR UMA PEÇA INFERIOR COMPLEMENTAR: calça jeans masculina clássica de corte reto ou calça casual escura alinhada. TERMINANTEMENTE PROIBIDO gerar o modelo nu, sem calça, de cueca ou desvestido na parte de baixo.`,
-        directiveTextEn: `[MANDATORY COMPLEMENTARY BOTTOM GARMENT - STRICTLY NO NUDITY]: The advertised product is an upper garment (${productName}). The model MUST WEAR a matching classic straight-cut dark blue denim jeans. STRICTLY FORBIDDEN: Generating the model naked, pantless, or in underwear. Full complete outfit required.`,
+        directiveTextPt: `REGRA DE LOOK COMERCIAL COMPLETO (PARTE INFERIOR COMPLEMENTAR):\nComo o produto anunciado é uma peça superior (${productName}), o modelo veste obrigatoriamente calça jeans masculina clássica de corte reto ou calça casual escura alinhada para compor um look comercial elegante de catálogo.`,
+        directiveTextEn: `[MANDATORY COMPLEMENTARY BOTTOM GARMENT - COMMERCIAL LOOK]: The advertised product is an upper garment (${productName}). The model wears matching classic straight-cut dark blue denim jeans. Full complete commercial catalog outfit required.`,
       };
     }
     return {
       type: 'upper_only',
-      directiveTextPt: `REGRA DE LOOK COMPLETO (PROIBIÇÃO ABSOLUTA DE NUDEZ / PARTE INFERIOR OBRIGATÓRIA):\nComo o produto anunciado na foto de referência é EXCLUSIVAMENTE uma peça superior (${productName}), a modelo DEVE OBRIGATORIAMENTE VESTIR UMA PEÇA INFERIOR COMPLEMENTAR QUE COMBINE PERFEITAMENTE:\n- Uma calça jeans feminina clássica de cintura alta em tom azul tradicional (ou jeans claro clássico), corte reto ou flare elegante, com caimento impecável que valoriza a silhueta da modelo.\n- TERMINANTEMENTE PROIBIDO GERAR A MODELO NUA, SEM CALÇA, DE CALCINHA OU DESVESTIDA NA PARTE DE BAIXO.\n- A blusa/peça anunciada é o foco principal (fidelidade 1:1), e a calça jeans completa o look comercial realista com calçado adequado nos pés.`,
-      directiveTextEn: `[MANDATORY COMPLEMENTARY BOTTOM GARMENT - ZERO NUDITY DIRECTIVE]: The advertised product in the reference photo is strictly an upper-body piece (${productName}). The model MUST OBLIGATORILY WEAR A COMPLEMENTARY BOTTOM GARMENT: a stylish classic high-waisted blue denim jeans with a flattering feminine fit. ABSOLUTELY AND STRICTLY FORBIDDEN: Generating the model pantless, naked, in panties, or undressed below the waist. The model must be fully clothed in a complete commercial mirror-selfie outfit.`,
+      directiveTextPt: `REGRA DE LOOK COMERCIAL COMPLETO (PARTE INFERIOR COMPLEMENTAR):\nComo o produto anunciado na foto de referência é exclusivamente uma peça superior (${productName}), a modelo veste uma calça jeans feminina clássica de cintura alta em tom azul tradicional (ou jeans claro clássico), corte reto ou flare elegante, com caimento impecável que valoriza a silhueta da modelo. A blusa anunciada é o foco principal (fidelidade 1:1), e a calça jeans completa o look comercial realista com calçado adequado nos pés.`,
+      directiveTextEn: `[MANDATORY COMPLEMENTARY BOTTOM GARMENT - COMMERCIAL CATALOG DIRECTIVE]: The advertised product in the reference photo is strictly an upper-body piece (${productName}). The model wears a complementary bottom garment: stylish classic high-waisted blue denim jeans with a flattering feminine fit. The model is fully dressed in a complete commercial mirror-selfie outfit.`,
     };
   }
 
@@ -148,14 +148,14 @@ export function detectComplementaryGarment(
     if (isMale) {
       return {
         type: 'lower_only',
-        directiveTextPt: `REGRA DE LOOK COMPLETO (PROIBIDO NUDEZ / PARTE SUPERIOR OBRIGATÓRIA):\nComo o produto anunciado é uma peça inferior (${productName}), o modelo DEVE OBRIGATORIAMENTE VESTIR UMA PEÇA SUPERIOR COMPLEMENTAR: camiseta básica masculina de manga curta em tom neutro (branca ou preta) com caimento limpo. TERMINANTEMENTE PROIBIDO gerar o modelo sem camisa, topless ou nu.`,
-        directiveTextEn: `[MANDATORY COMPLEMENTARY TOP GARMENT - STRICTLY NO NUDITY]: The advertised product is a bottom garment (${productName}). The model MUST WEAR a matching clean neutral crew-neck t-shirt (white or black). STRICTLY FORBIDDEN: Topless or shirtless model.`,
+        directiveTextPt: `REGRA DE LOOK COMERCIAL COMPLETO (PARTE SUPERIOR COMPLEMENTAR):\nComo o produto anunciado é uma peça inferior (${productName}), o modelo veste camiseta básica masculina de manga curta em tom neutro (branca ou preta) com caimento limpo para compor um visual completo de catálogo comercial.`,
+        directiveTextEn: `[MANDATORY COMPLEMENTARY TOP GARMENT]: The advertised product is a bottom garment (${productName}). The model wears a matching clean neutral crew-neck t-shirt (white or black). Complete commercial outfit.`,
       };
     }
     return {
       type: 'lower_only',
-      directiveTextPt: `REGRA DE LOOK COMPLETO (PROIBIÇÃO ABSOLUTA DE NUDEZ / PARTE SUPERIOR OBRIGATÓRIA):\nComo o produto anunciado na foto de referência é EXCLUSIVAMENTE uma peça inferior (${productName}), a modelo DEVE OBRIGATORIAMENTE VESTIR UMA PEÇA SUPERIOR COMPLEMENTAR QUE COMBINE PERFEITAMENTE:\n- Uma blusa feminina delicada de manga curta ou cropped elegante em tom neutro suave (off-white ou branco) de caimento limpo que harmonize com a peça inferior.\n- TERMINANTEMENTE PROIBIDO GERAR A MODELO TOPLESS, SEM BLUSA, DE SUTIÃ OU NUA NA PARTE SUPERIOR.\n- A peça inferior anunciada é o foco principal (fidelidade 1:1), e a blusa completa o look comercial realista.`,
-      directiveTextEn: `[MANDATORY COMPLEMENTARY TOP GARMENT - ZERO NUDITY DIRECTIVE]: The advertised product in the reference photo is strictly a bottom piece (${productName}). The model MUST OBLIGATORILY WEAR A COMPLEMENTARY TOP GARMENT: a clean, elegant neutral white or off-white feminine short-sleeve top/blouse that harmonizes with the bottom piece. ABSOLUTELY AND STRICTLY FORBIDDEN: Generating the model topless, shirtless, or in bra only. Full complete outfit required.`,
+      directiveTextPt: `REGRA DE LOOK COMERCIAL COMPLETO (PARTE SUPERIOR COMPLEMENTAR):\nComo o produto anunciado na foto de referência é exclusivamente uma peça inferior (${productName}), a modelo veste uma blusa feminina delicada de manga curta ou cropped elegante em tom neutro suave (off-white ou branco) de caimento limpo que harmonize com a peça inferior. A peça inferior anunciada é o foco principal (fidelidade 1:1), e a blusa completa o look comercial realista.`,
+      directiveTextEn: `[MANDATORY COMPLEMENTARY TOP GARMENT]: The advertised product in the reference photo is strictly a bottom piece (${productName}). The model wears a complementary top garment: a clean, elegant neutral white or off-white feminine short-sleeve top/blouse that harmonizes with the bottom piece. Full complete commercial outfit required.`,
     };
   }
 
@@ -169,8 +169,8 @@ export function detectComplementaryGarment(
 
   return {
     type: 'upper_only',
-    directiveTextPt: `REGRA DE LOOK COMPLETO (PROIBIÇÃO DE NUDEZ):\nSe a foto de produto anexada for de uma peça superior, a modelo deve vestir calça jeans feminina clássica de cintura alta. Se for peça inferior, veste blusa neutra elegante. É expressamente proibido gerar a modelo nua ou desvestida.`,
-    directiveTextEn: `[FULL OUTFIT MANDATE]: The model must be fully dressed with matching complementary garment (jeans or neutral top), strictly no nudity.`,
+    directiveTextPt: `REGRA DE LOOK COMERCIAL COMPLETO:\nSe a foto de produto anexada for de uma peça superior, a modelo veste calça jeans feminina clássica de cintura alta. Se for peça inferior, veste blusa neutra elegante para compor um visual completo de moda.`,
+    directiveTextEn: `[FULL OUTFIT MANDATE]: The model is fully dressed with matching complementary garment (jeans or neutral top) for a complete commercial look.`,
   };
 }
 
@@ -574,6 +574,7 @@ ${
   const hasGalleryModel = Boolean(form.selectedModelGalleryId || form.selectedModelGalleryNumber);
 
   if (hasGalleryModel) {
+    const isModelScenario = (form.modelScenarioSource || 'model') === 'model';
     const isDressOrOnePiece = complementaryInfo.type === 'full_body';
     const isUpperOnly = complementaryInfo.type === 'upper_only';
     const isLowerOnly = complementaryInfo.type === 'lower_only';
@@ -582,12 +583,34 @@ ${
       ? '- O PRODUTO DA FOTO 1 É UM VESTIDO / PEÇA ÚNICA COMPLETA: A modelo veste EXCLUSIVAMENTE o vestido/peça única da Foto 1 com máxima fidelidade 1:1.\n' +
         '- PROIBIÇÃO ABSOLUTA DE CALÇA OU SHORTS: É TERMINANTEMENTE PROIBIDO ADICIONAR CALÇA JEANS, CALÇA, SHORTS, BERMUDA OU QUALQUER OUTRA PEÇA INFERIOR. A modelo veste APENAS o vestido da Foto 1 cobrindo o corpo por completo com pernas limpas naturais até os pés.'
       : isUpperOnly
-      ? '- O PRODUTO DA FOTO 1 É UMA PEÇA SUPERIOR: A modelo veste a peça superior da Foto 1 com máxima fidelidade 1:1, combinada com uma peça inferior que combine com harmonia (calça, saia, short ou bermuda) para look completo elegante sem nudez.'
+      ? '- O PRODUTO DA FOTO 1 É UMA PEÇA SUPERIOR: A modelo veste a peça superior da Foto 1 com máxima fidelidade 1:1, combinada com uma peça inferior que combine com harmonia (calça, saia, short ou bermuda) para compor um look comercial elegante de catálogo.'
       : isLowerOnly
-      ? '- O PRODUTO DA FOTO 1 É UMA PEÇA INFERIOR: A modelo veste a peça inferior da Foto 1 com máxima fidelidade 1:1, combinada com uma blusa neutra elegante para look completo sem nudez.'
-      : '- Se o produto for vestido ou macacão, veste EXCLUSIVAMENTE o vestido (PROIBIDO calça jeans ou shorts por baixo); se for blusa, veste peça inferior combinando; se for calça/short, veste blusa combinando.';
+      ? '- O PRODUTO DA FOTO 1 É UMA PEÇA INFERIOR: A modelo veste a peça inferior da Foto 1 com máxima fidelidade 1:1, combinada com uma blusa neutra elegante para compor um look comercial elegante de catálogo.'
+      : '- Se o produto for vestido ou macacão, veste EXCLUSIVAMENTE o vestido (sem calça jeans ou shorts por baixo); se for blusa, veste peça inferior combinando; se for calça/short, veste blusa combinando.';
 
-    const galleryModelPrompt = `${resolvedPriorityBlock || priorityOverrideBlock}FOTOGRAFIA COMERCIAL VERTICAL 9:16 (1080x1920) COMBINANDO RIGOROSAMENTE AS 3 FOTOS DE REFERÊNCIA:
+    let galleryModelPrompt = '';
+
+    if (isModelScenario) {
+      // MODO PADRÃO (2 FOTOS): Preserva 100% da Modelo E 100% do Cenário da Foto 2, trocando apenas a roupa pelo Produto (Foto 1)
+      galleryModelPrompt = `${resolvedPriorityBlock || priorityOverrideBlock}FOTOGRAFIA COMERCIAL VERTICAL 9:16 (1080x1920) COMBINANDO RIGOROSAMENTE AS 2 FOTOS DE REFERÊNCIA:
+
+1. FOTO 1 (PRODUTO — PEÇA DE ROUPA):
+- Vestir a modelo com a roupa da Foto 1 com máxima fidelidade 1:1 (mesma cor exata, tonalidade, textura do tecido, caimento, modelagem, decote, mangas e detalhes reais da peça).
+${garmentTypeInstruction}
+- Calçado nos pés: ${shoeInfo.name} (${shoeInfo.description}), mostrando os dois pés calçados apoiados no piso.
+- REGRA CRÍTICA DE POSE E ISOLAMENTO: Da Foto 1 (produto), extraia RIGOROSAMENTE apenas a peça de roupa e o tecido. É TERMINANTEMENTE PROIBIDO COPIAR A POSE, O ÂNGULO OU A POSIÇÃO CORPORAL DA PESSOA DA FOTO 1 (mesmo que na foto do produto a pessoa esteja de lado, de perfil, sentada ou de costas).
+
+2. FOTO 2 (MODELO E CENÁRIO BASE ABSOLUTO — PRESERVAÇÃO INTEGRAL 1:1):
+- A modelo gerada DEVE SER RIGOROSAMENTE A MESMA MULHER DA FOTO 2, NA MESMA POSE DIANTE DO ESPELHO E DENTRO DO MESMO CÔMODO/CENÁRIO DA FOTO 2.
+- PRESERVAÇÃO INTEGRAL DE BIOTIPO E IDENTIDADE: reproduza com fidelidade 100% o mesmo corpo, curvas, biotipo, quadris, cintura, pernas, tom de pele natural com poros reais e cabelos (mesma cor, corte e textura da foto da modelo).
+- PRESERVAÇÃO INTEGRAL DO CENÁRIO DA FOTO 2 (CENÁRIO DA MODELO): O cômodo de fundo, paredes, piso, espelho, portas, móveis e iluminação natural DEVEM ser 100% preservados e idênticos aos da Foto 2. NÃO altere nem redesenhe o ambiente da Foto 2.
+- POSE E ENQUADRAMENTO DA FOTO 2: Manter rigorosamente a mesma pose diante do espelho segurando o smartphone. Enquadramento estritamente da base do queixo para baixo até os pés. NÃO mostrar olhos, nariz, boca ou cabeça (rosto 100% fora do enquadramento / encoberto pelo smartphone conforme a foto da modelo).
+- ÚNICA MUDANÇA PERMITIDA: Substituir as roupas que a modelo veste na Foto 2 pela roupa da Foto 1 (respeitando as regras de look completo).
+
+Qualidade fotográfica autêntica de smartphone moderno, textura de pele humana real com poros visíveis, acabamento fosco suave sem brilho excessivo de óleo, sem aspecto de cera ou plástico. ZERO tatuagens.`;
+    } else {
+      // MODO CENÁRIO DA GALERIA (3 FOTOS): Modelo da Foto 2 + Cenário Independente da Foto 3
+      galleryModelPrompt = `${resolvedPriorityBlock || priorityOverrideBlock}FOTOGRAFIA COMERCIAL VERTICAL 9:16 (1080x1920) COMBINANDO RIGOROSAMENTE AS 3 FOTOS DE REFERÊNCIA:
 
 1. FOTO 1 (PRODUTO — PEÇA DE ROUPA):
 - Vestir a modelo com a roupa da Foto 1 com máxima fidelidade 1:1 (mesma cor exata, tonalidade, textura do tecido, caimento, modelagem, decote, mangas e detalhes reais da peça).
@@ -602,11 +625,12 @@ ${garmentTypeInstruction}
 - ENQUADRAMENTO DA FOTO 2 (CORTE ESTRITO NO QUEIXO): A modelo segura o smartphone na altura do peito/queixo tirando foto no espelho. Enquadramento estritamente da base do queixo para baixo até os pés. NÃO mostrar olhos, nariz, boca ou cabeça (rosto 100% fora do enquadramento / encoberto pelo smartphone conforme a foto da modelo).
 - DESCONSIDERAR A ROUPA E O CENÁRIO DA FOTO 2: É TERMINANTEMENTE PROIBIDO copiar a roupa que a modelo veste na Foto 2 e PROIBIDO usar o cenário de fundo da Foto 2.
 
-3. FOTO 3 (CENÁRIO INDEPENDENTE):
+3. FOTO 3 (CENÁRIO INDEPENDENTE DA GALERIA):
 - A modelo da Foto 2, vestindo a roupa da Foto 1 de frente para o espelho, está em pé diante do espelho dentro do cômodo da Foto 3.
 - Preserve integralmente o cenário real da Foto 3: piso, paredes, portas, espelho e iluminação natural sem alterar nem redesenhar.
 
 Qualidade fotográfica autêntica de smartphone moderno, textura de pele humana real com poros visíveis, acabamento fosco suave sem brilho excessivo de óleo, sem aspecto de cera ou plástico. ZERO tatuagens.`;
+    }
 
     return {
       prompt: galleryModelPrompt.trim(),
@@ -643,7 +667,7 @@ Calçado obrigatório nos dois pés: **${shoeInfo.name}**.
 Especificação do calçado: ${shoeInfo.description}
 (Observação: Esta regra universal de calçado prevalece sobre qualquer menção genérica de calçado do catálogo da Mestra, salvo se o usuário pediu outro calçado específico nas Instruções Adicionais). Enquadrar o corpo inteiro mostrando os dois pés calçados apoiados naturalmente no piso do cenário.
 
-## 7.1. REGRA DE LOOK COMPLETO E PEÇAS COMPLEMENTARES (PROIBIÇÃO ABSOLUTA DE NUDEZ)
+## 7.1. REGRA DE LOOK COMPLETO E PEÇAS COMPLEMENTARES (LOOK COMERCIAL COMPLETO)
 ${complementaryInfo.directiveTextPt}
 ${complementaryInfo.directiveTextEn}
 

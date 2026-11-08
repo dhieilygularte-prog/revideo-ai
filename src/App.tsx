@@ -220,6 +220,7 @@ export default function App() {
     selectedModelGalleryId: 'modelo_1_ana_maria',
     selectedModelGalleryNumber: 1,
     selectedModelGalleryUrl: '/models/gallery/1.png',
+    modelScenarioSource: 'model',
     additionalInstructions: '',
     imageModel: 'seedream_5_0_pro',
     videoPromptLimit: 'unlimited',
@@ -1300,6 +1301,7 @@ export default function App() {
       selectedModelGalleryId: 'modelo_1_ana_maria',
       selectedModelGalleryNumber: 1,
       selectedModelGalleryUrl: '/models/gallery/1.png',
+      modelScenarioSource: 'model',
       additionalInstructions: '',
       imageModel: 'seedream_5_0_pro',
       videoPromptLimit: 'unlimited',
@@ -2439,6 +2441,7 @@ export default function App() {
                 selectedModelGalleryId: item.selectedModelGalleryId,
                 selectedModelGalleryNumber: item.selectedModelGalleryNumber,
                 selectedModelGalleryUrl: item.selectedModelGalleryUrl,
+                modelScenarioSource: item.modelScenarioSource || 'model',
               });
               setAnaMariaPage('results');
               setIsAnaMariaHistoryOpen(false);

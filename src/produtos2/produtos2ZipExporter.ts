@@ -91,26 +91,42 @@ export function sanitizeProductFileName(productName: string): string {
   return clean || 'Produto';
 }
 
+export function formatTimeForFilename(timestamp?: string | number): string {
+  const d = timestamp ? new Date(timestamp) : new Date();
+  if (isNaN(d.getTime())) {
+    const now = new Date();
+    return `${String(now.getHours()).padStart(2, '0')}.${String(now.getMinutes()).padStart(2, '0')}.${String(now.getSeconds()).padStart(2, '0')}`;
+  }
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const seconds = String(d.getSeconds()).padStart(2, '0');
+  return `${hours}.${minutes}.${seconds}`;
+}
+
 export async function downloadProdutos2StoryboardImage(
   imageUrl: string,
   productName: string,
-  sceneSuffix?: string
+  sceneSuffix?: string,
+  timestamp?: string | number
 ) {
   const blob = await ensureHighResStoryboardBlob(imageUrl, 2160, 3840);
   const baseName = sanitizeProductFileName(productName);
-  downloadBlob(blob, sceneSuffix ? `${baseName} - ${sceneSuffix}.png` : `${baseName}.png`);
+  const timeStr = formatTimeForFilename(timestamp);
+  downloadBlob(blob, sceneSuffix ? `${baseName} ${timeStr} - ${sceneSuffix}.png` : `${baseName} ${timeStr}.png`);
 }
 
 /**
  * Seção 2 — Baixar tudo: arquivo .zip com a imagem e um .txt com o prompt.
- * O nome do .txt e o nome da imagem = nome do produto (ex.: Roçadeira 2000W.txt, Roçadeira 2000W.png).
+ * O nome do .txt e o nome da imagem = nome do produto (ex.: Roçadeira 2000W 11.12.56.txt, Roçadeira 2000W 11.12.56.png).
  * No modo Duas Cenas (10s cada), inclui ambos os storyboards e ambos os prompts identificados por cena.
- * O .zip também leva o nome do produto.
+ * O .zip também leva o nome do produto com horário.
  */
 export async function exportProdutos2Zip(result: Produtos2ResultState): Promise<void> {
   const { default: JSZip } = await import('jszip');
   const zip = new JSZip();
-  const baseName = sanitizeProductFileName(result.productName);
+  const rawBaseName = sanitizeProductFileName(result.productName);
+  const timeStr = formatTimeForFilename(result.timestamp);
+  const baseName = `${rawBaseName} ${timeStr}`;
   const isLeilao = result.sceneMode === 'modo_leilao' && Boolean(result.leilao);
   const isAchadinhos = result.sceneMode === 'modo_achadinhos' && Boolean(result.achadinhos);
   const isTwoScenes = result.sceneMode === '2_cenas_10s' && Boolean(result.scene2);

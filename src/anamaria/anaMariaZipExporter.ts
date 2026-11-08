@@ -20,9 +20,21 @@ export function sanitizeCleanName(name: string): string {
   return clean || 'Produto';
 }
 
+/**
+ * Formata o horário de geração no padrão "HH.mm.ss" (ex: 11.12.56)
+ * Compatível com todos os sistemas operacionais (Windows, Mac, Linux, Android, iOS)
+ */
+export function formatTimeForFilename(timestamp?: number): string {
+  const d = timestamp ? new Date(timestamp) : new Date();
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  const seconds = String(d.getSeconds()).padStart(2, '0');
+  return `${hours}.${minutes}.${seconds}`;
+}
+
 export function getMasterPromptFileName(result: AnaMariaResultState): string {
   const cleanName = sanitizeCleanName(result.productName);
-  const horaStr = formatTimestampForFile(result.timestamp);
+  const timeStr = formatTimeForFilename(result.timestamp);
   if (result.selectedMasterId) {
     const master = getMasterPromptById(result.selectedMasterId);
     // Limpa prefixo numérico ("05. ") e notas entre parênteses: "05. Mestra Catza (Flash / Com Rosto)" -> "Mestra Catza"
@@ -30,18 +42,9 @@ export function getMasterPromptFileName(result: AnaMariaResultState): string {
       .replace(/^\d+[\.\s-]*/, '')
       .replace(/\s*\(.*?\)/g, '')
       .trim();
-    return `${masterCleanName} - ${cleanName} (${horaStr}).txt`;
+    return `${masterCleanName} - ${cleanName} ${timeStr}.txt`;
   }
-  return `Prompt de Video - ${cleanName} (${horaStr}).txt`;
-}
-
-function formatTimestampForFile(timestamp?: number): string {
-  const d = timestamp ? new Date(timestamp) : new Date();
-  const day = String(d.getDate()).padStart(2, '0');
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const hours = String(d.getHours()).padStart(2, '0');
-  const minutes = String(d.getMinutes()).padStart(2, '0');
-  return `${day}.${month} as ${hours}h${minutes}`;
+  return `Prompt de Video - ${cleanName} ${timeStr}.txt`;
 }
 
 /**
@@ -135,11 +138,12 @@ export async function ensureHighResAnaMariaBlob(
 
 /**
  * Baixa a imagem individual com resolução de 1080x1920 pixels
- * Nomenclatura: "[Nome do Produto] Aurora.jpg"
+ * Nomenclatura: "[Nome da Peça] [Hora da Geração].jpg" (ex: "Vestido Curto 11.12.56.jpg")
  */
-export async function downloadAnaMariaSingleImage(imageUrl: string, productName: string) {
+export async function downloadAnaMariaSingleImage(imageUrl: string, productName: string, timestamp?: number) {
   const cleanName = sanitizeCleanName(productName);
-  const fileName = `${cleanName} Aurora.jpg`;
+  const timeStr = formatTimeForFilename(timestamp);
+  const fileName = `${cleanName} ${timeStr}.jpg`;
 
   try {
     const blob = await ensureHighResAnaMariaBlob(imageUrl, 1080, 1920);
@@ -157,10 +161,10 @@ export async function downloadAnaMariaSingleImage(imageUrl: string, productName:
 
 /**
  * Exporta o pacote .zip (Item 23 e Item 8):
- * - Imagem em 1080x1920 pixels: "[Nome do Produto] Aurora.jpg"
- * - Doc 1: "Hastags e Headline - [Nome do Produto] (hora da geração).txt"
- * - Doc 2: "Prompt de Video - [Nome do Produto] (hora da geração).txt"
- * - Nome do ZIP: "Modo Ana Maria - [Nome do Produto].zip"
+ * - Imagem em 1080x1920 pixels: "[Nome da Peça] [Hora da Geração].jpg"
+ * - Doc 1: "Hastags e Headline - [Nome da Peça] [Hora da Geração].txt"
+ * - Doc 2: "Prompt de Video - [Nome da Peça] [Hora da Geração].txt"
+ * - Nome do ZIP: "[Nome da Peça] [Hora da Geração].zip"
  * - Sem subpastas adicionais (todos os arquivos na raiz do .zip)
  */
 export async function exportAnaMariaZip(result: AnaMariaResultState): Promise<void> {
@@ -168,38 +172,38 @@ export async function exportAnaMariaZip(result: AnaMariaResultState): Promise<vo
   const zip = new JSZip();
 
   const cleanName = sanitizeCleanName(result.productName);
-  const horaStr = formatTimestampForFile(result.timestamp);
+  const timeStr = formatTimeForFilename(result.timestamp);
 
-  // 1. Imagem Principal em 1080x1920 pixels: "[Nome do Produto] Aurora.jpg"
+  // 1. Imagem Principal em 1080x1920 pixels: "[Nome da Peça] [Hora da Geração].jpg"
   try {
     const imgBlob = await ensureHighResAnaMariaBlob(result.imageUrl, 1080, 1920);
     const imgBuffer = await imgBlob.arrayBuffer();
-    zip.file(`${cleanName} Aurora.jpg`, imgBuffer);
+    zip.file(`${cleanName} ${timeStr}.jpg`, imgBuffer);
   } catch (err) {
     console.warn('Falha ao adicionar imagem de alta resolução no zip:', err);
   }
 
-  // 2. Doc de Hashtags e Headline (sem caracteres estranhos ou pastas aninhadas)
+  // 2. Doc de Hashtags e Headline: "Hastags e Headline - [Nome da Peça] [Hora da Geração].txt"
   const hashtagsAndHeadlineContent = `HEADLINE:
 ${result.headline}
 
 HASHTAGS:
 ${result.hashtags}
 `;
-  zip.file(`Hastags e Headline - ${cleanName} (${horaStr}).txt`, hashtagsAndHeadlineContent);
+  zip.file(`Hastags e Headline - ${cleanName} ${timeStr}.txt`, hashtagsAndHeadlineContent);
 
-  // 3. Doc do Prompt de Vídeo (limpo, nomeado como Mestra [Nome] - [Produto] (data).txt)
+  // 3. Doc do Prompt de Vídeo: "[Mestra/Prompt] - [Nome da Peça] [Hora da Geração].txt"
   const cleanVideoPrompt = result.videoPrompt
     .replace(/^🎥 PROMPT DE VÍDEO[^\n]*\n+/i, '')
     .trim();
   const videoPromptFileName = getMasterPromptFileName(result);
   zip.file(videoPromptFileName, cleanVideoPrompt);
 
-  // Gerar e baixar arquivo .zip com o nome "Modo Ana Maria - [Produto].zip"
+  // Gerar e baixar arquivo .zip com o nome "[Nome da Peça] [Hora da Geração].zip"
   const zipBlob = await zip.generateAsync({
     type: 'blob',
     compression: 'DEFLATE',
     compressionOptions: { level: 6 },
   });
-  downloadBlob(zipBlob, `Modo Ana Maria - ${cleanName}.zip`);
+  downloadBlob(zipBlob, `${cleanName} ${timeStr}.zip`);
 }

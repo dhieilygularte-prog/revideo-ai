@@ -278,7 +278,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
 
   const handleDownloadImage = async () => {
     try {
-      await downloadAnaMariaSingleImage(result.imageUrl, result.productName);
+      await downloadAnaMariaSingleImage(result.imageUrl, result.productName, result.timestamp);
       setDownloadedImage(true);
       setHasDownloadedImageOnce(true);
       setTimeout(() => setDownloadedImage(false), 2500);
