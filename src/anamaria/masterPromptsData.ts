@@ -365,13 +365,15 @@ Preserve exactly the same model, body shape, proportions, skin, hair, clothing, 
 
 Do not redesign, modify, replace or reinterpret any part of the clothing. The garment must remain identical throughout the entire video.
 
-**FACE AND CAMERA FRAMING (STRICT CHIN-DOWN & ANTI-UPWARD TILT LOCK)**
+**PRESERVAÇÃO DO ENQUADRAMENTO E DA FOTO DE REFERÊNCIA:**
+Manter rigorosamente o mesmo ângulo, enquadramento e perspectiva da imagem de referência inicial durante todos os 10 segundos:
+- Se na foto de referência o smartphone cobre o rosto, continue com o smartphone cobrindo o rosto durante todo o vídeo.
+- Se na foto de referência não aparece o rosto (enquadramento cortado do queixo para baixo), continue sem mostrar o rosto, mantendo a câmera estável sem subir ou inclinar para cima.
+- Se na foto de referência o rosto da modelo aparece (visível total ou parcialmente), continue com o mesmo rosto natural visível.
+Ela segura o smartphone com uma das mãos durante toda a gravação diante do espelho.
 
-Never reveal the model's face. Maintain the original framing strictly from the bottom base of the chin downward throughout all 10 seconds, exactly as shown in the reference image.
-The lips, mouth, nose, eyes and upper face MUST REMAIN 100% OUT OF FRAME throughout the entire recording.
-The camera must remain anchored at chest level and must NEVER tilt upward or drift above the base of the chin, especially during the 8.5–10s rotation.
-
-She holds the smartphone in one hand throughout the entire recording. The phone remains in front of the mirror, maintaining the original mirror-selfie composition.
+**FIDELIDADE ABSOLUTA E IMUTÁVEL DA PEÇA DE ROUPA (1:1):**
+A roupa da imagem de referência é 100% sagrada e imutável. É terminantemente proibido ao gerador de vídeo modificar a cor, tom, estampa, tecido, textura, modelagem, caimento, decote, mangas ou comprimento da peça. PROIBIDO inventar partes, botões, bolsos, zíperes ou costuras inexistentes. A peça deve se manter 100% fiel à imagem de referência em todos os frames e movimentos.
 
 **EXACT MOVEMENT CHOREOGRAPHY**
 
@@ -450,8 +452,14 @@ A modelo deve parecer uma mulher real fotografada com smartphone.`,
 **PRESERVAÇÃO DE IDENTIDADE E PRODUTO:**
 Preservar exatamente a mesma modelo da imagem de referência (incluindo seu cabelo longo escuro cacheado, colar único com pingente de coração, uma pulseira dourada em cada pulso e ausência total de anéis), o mesmo cenário e 100% da construção, cor, tecido, costuras e detalhes da roupa anexada.
 
-**REGRA ABSOLUTA DE ENQUADRAMENTO (CORTE NO QUEIXO — SEM ROSTO E SEM LÁBIOS):**
-O rosto e os lábios nunca devem aparecer. Manter permanentemente o enquadramento rigoroso da base do queixo para baixo durante todos os 10 segundos, sem revelar boca, lábios, nariz, olhos ou rosto completo. A câmera deve permanecer travada na altura do tórax e jamais inclinar para cima.
+**PRESERVAÇÃO DO ENQUADRAMENTO E DA FOTO DE REFERÊNCIA:**
+Manter rigorosamente o mesmo ângulo, enquadramento e perspectiva da imagem de referência inicial durante todos os 10 segundos:
+- Se na foto de referência o smartphone cobre o rosto, continue com o smartphone cobrindo o rosto durante todo o vídeo.
+- Se na foto de referência não aparece o rosto (enquadramento cortado do queixo para baixo), continue sem mostrar o rosto, mantendo a câmera estável sem subir ou inclinar para cima.
+- Se na foto de referência o rosto da modelo aparece (visível total ou parcialmente), continue com o mesmo rosto natural visível.
+
+**FIDELIDADE ABSOLUTA E IMUTÁVEL DA PEÇA DE ROUPA (1:1):**
+A roupa da imagem de referência é 100% sagrada e imutável. É terminantemente proibido ao gerador de vídeo modificar a cor, tom, estampa, tecido, textura, modelagem, caimento, decote, mangas ou comprimento da peça. PROIBIDO inventar partes, botões, bolsos, zíperes ou costuras inexistentes. A peça deve se manter 100% fiel à imagem de referência em todos os frames e movimentos.
 
 **SEQUÊNCIA DE MOVIMENTOS — CRONOLOGIA OBRIGATÓRIA:**
 
@@ -479,7 +487,7 @@ Iniciar uma nova rotação suave do corpo para uma posição de três quartos, d
 **REGRAS DE EXECUÇÃO:**
 - Reproduzir os movimentos na ordem e nos intervalos estabelecidos, em um único take contínuo sem cortes.
 - Todos os gestos devem ser suaves, naturais e realistas, com velocidade humana natural.
-- Não modificar o enquadramento para revelar o rosto ou lábios.
+- Preservar o mesmo enquadramento e ângulo da foto de referência original durante toda a gravação.
 - Manter a mão que segura o celular em sua posição durante toda a sequência.
 - Vídeo 100% silencioso (sem fala, sem locução, sem legendas ou textos na tela).`,
   },

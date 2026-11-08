@@ -82,6 +82,7 @@ export interface AnaMariaResultState {
   modelScenarioSource?: 'model' | 'gallery';
   imagePrompt: string;
   videoPrompt: string;
+  conciseVideoPrompt?: string;
   headline: string;
   hashtags: string;
   shoeCategory: AnaMariaShoeCategory;

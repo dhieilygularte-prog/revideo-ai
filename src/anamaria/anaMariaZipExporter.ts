@@ -255,6 +255,11 @@ ${result.hashtags}
   const videoPromptFileName = getMasterPromptFileName(result);
   zip.file(videoPromptFileName, cleanVideoPrompt);
 
+  if (result.conciseVideoPrompt && result.conciseVideoPrompt.trim() !== cleanVideoPrompt) {
+    const conciseFileName = videoPromptFileName.replace(/\.txt$/i, ' - Prompt Enxuto (2500).txt');
+    zip.file(conciseFileName, result.conciseVideoPrompt.trim());
+  }
+
   // Gerar e baixar arquivo .zip com o nome "[Nome da Peça] [Hora da Geração] [Gerador].zip"
   const zipFileName = `${cleanName} ${timeStr}${modelLabel ? ` ${modelLabel}` : ''}.zip`;
   const zipBlob = await zip.generateAsync({

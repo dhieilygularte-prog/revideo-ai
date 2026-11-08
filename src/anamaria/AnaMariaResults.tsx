@@ -36,6 +36,7 @@ import {
   refineAnaMariaVideoPrompt,
 } from './anaMariaPipeline';
 import { VideoFidelityAuditor } from '../produtos2/VideoFidelityAuditor';
+import { buildAnaMariaConciseVideoPrompt } from './anaMariaPrompts';
 import { AIProfile } from '../config/aiProfiles';
 
 interface AnaMariaResultsProps {
@@ -111,6 +112,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
 
   // Estados de destaque azul ativo ao copiar/baixar (itens 6, 7 e 14)
   const [copiedPrompt, setCopiedPrompt] = useState(false);
+  const [copiedConcisePrompt, setCopiedConcisePrompt] = useState(false);
   const [hasCopiedPromptOnce, setHasCopiedPromptOnce] = useState(false);
 
   const [copiedHashtags, setCopiedHashtags] = useState(false);
@@ -256,6 +258,27 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
       setHasCopiedPromptOnce(true);
       setTimeout(() => setCopiedPrompt(false), 2500);
     } catch {}
+  };
+
+  const handleCopyConcisePrompt = async () => {
+    try {
+      const concise =
+        result.conciseVideoPrompt ||
+        buildAnaMariaConciseVideoPrompt({
+          productName: result.productName,
+          influencer: result.influencer,
+          bodyType: result.bodyType,
+          presentationMode: result.presentationMode,
+          selectedMasterId: result.selectedMasterId,
+          additionalInstructions: result.additionalInstructions,
+          hasSelectedScenario: Boolean(result.selectedScenarioId),
+        });
+      await navigator.clipboard.writeText(concise.trim());
+      setCopiedConcisePrompt(true);
+      setTimeout(() => setCopiedConcisePrompt(false), 2500);
+    } catch (err) {
+      console.error('Erro ao copiar prompt enxuto:', err);
+    }
   };
 
   const handleCopyHashtags = async () => {
@@ -835,32 +858,50 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                 </p>
               </div>
 
-              {/* Botão Copiar Prompt */}
-              <button
-                type="button"
-                onClick={handleCopyPrompt}
-                className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer shadow-lg ${
-                  copiedPrompt
-                    ? 'bg-emerald-500 text-white ring-2 ring-emerald-300'
-                    : hasCopiedPromptOnce
-                    ? 'bg-sky-500 hover:bg-sky-400 text-white'
-                    : isAmetista
-                    ? 'bg-[#d4ff59] hover:bg-[#e2ff85] text-zinc-950'
-                    : 'bg-zinc-800 hover:bg-zinc-700 border border-orange-500/45 text-white'
-                }`}
-              >
-                {copiedPrompt ? (
-                  <>
-                    <Check className="w-4 h-4" />
-                    <span>Prompt Copiado!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-4 h-4" />
-                    <span>Copiar Prompt</span>
-                  </>
-                )}
-              </button>
+              {/* Botão Copiar Prompt e Link Discreto Copiar Prompt Enxuto */}
+              <div className="flex flex-col items-end gap-1.5">
+                <button
+                  type="button"
+                  onClick={handleCopyPrompt}
+                  className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer shadow-lg ${
+                    copiedPrompt
+                      ? 'bg-emerald-500 text-white ring-2 ring-emerald-300'
+                      : hasCopiedPromptOnce
+                      ? 'bg-sky-500 hover:bg-sky-400 text-white'
+                      : isAmetista
+                      ? 'bg-[#d4ff59] hover:bg-[#e2ff85] text-zinc-950'
+                      : 'bg-zinc-800 hover:bg-zinc-700 border border-orange-500/45 text-white'
+                  }`}
+                >
+                  {copiedPrompt ? (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>Prompt Copiado!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      <span>Copiar Prompt</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCopyConcisePrompt}
+                  className="text-xs text-sky-400 hover:text-sky-300 underline underline-offset-2 font-medium transition-colors cursor-pointer flex items-center gap-1"
+                  title="Copiar versão enxuta do prompt (até 2.500 caracteres) focada em movimentos e fidelidade 1:1 à peça"
+                >
+                  {copiedConcisePrompt ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      <span className="text-emerald-400 font-semibold">prompt enxuto copiado ✓</span>
+                    </>
+                  ) : (
+                    <span>copiar prompt enxuto</span>
+                  )}
+                </button>
+              </div>
             </div>
 
             {/* Prompt limpo sem o cabeçalho 🎥 PROMPT DE VÍDEO... */}

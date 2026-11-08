@@ -723,12 +723,200 @@ export const VENCEDOR_BY_GPT_PROMPT = getMasterPromptById('mestra_ana_maria').mo
 export const VENCEDOR_BY_GPT_SCENARIO_PROMPT = getMasterPromptById('mestra_ana_maria').movementPromptText;
 
 /**
+ * Retorna a coreografia cronológica rica e concisa de movimentos de cada Mestra
+ * Baseada 100% no documento da Mestra selecionada
+ */
+export function getConciseMovementForMaster(masterId: AnaMariaMasterId, isMale: boolean): string {
+  switch (masterId) {
+    case 'mestra_ana_maria':
+      return isMale
+        ? `**CRONOGRAMA DE MOVIMENTOS (10s CONTÍNUOS — MESTRA ANA MARIA):**
+- 0s–1s: Postura natural diante do espelho segurando o smartphone com uma das mãos, braço livre relaxado.
+- 1s–2s: Mão livre sobe suavemente ao peitoral e toca com os dedos o tecido da peça.
+- 2s–4s: Palma desliza suavemente para baixo pela frente da peça, passando pelo abdômen e cintura até a lateral do quadril.
+- 4s–5s: Toque suave na lateral, demonstrando o ajuste anatômico da roupa.
+- 5s–7.5s: Mão na lateral da cintura pinça suavemente o tecido e puxa para fora em movimentos sutis demonstrando a elasticidade, soltando naturalmente.
+- 7.5s–8.5s: Afasta o braço livre do corpo com pequeno reposicionamento dos pés.
+- 8.5s–10s: Rotação gradual do corpo em 3/4 (70° a 90°), mantendo a selfie e exibindo o caimento lateral e traseiro da peça.`
+        : `**CRONOGRAMA DE MOVIMENTOS (10s CONTÍNUOS — MESTRA ANA MARIA):**
+- 0s–1s: Postura natural diante do espelho segurando o smartphone com uma das mãos, braço livre relaxado ao lado do corpo.
+- 1s–2s: Mão livre sobe suavemente ao busto e toca delicadamente o tecido da peça.
+- 2s–4s: Palma da mão desliza suavemente para baixo pela frente da peça, passando pelo abdômen e cintura até o quadril e coxa, demonstrando o caimento natural.
+- 4s–5s: Toque suave na lateral do abdômen/quadril, demonstrando o ajuste anatômico da roupa no corpo.
+- 5s–7.5s: Mão livre vai à lateral da cintura, pinça suavemente o tecido e puxa para fora em movimentos sutis demonstrando a elasticidade da peça, soltando-o naturalmente.
+- 7.5s–8.5s: Afasta o braço livre do corpo, com transferência suave de peso entre as pernas e pequeno reposicionamento dos pés.
+- 8.5s–10s: Rotação gradual do corpo em 3/4 (70° a 90°), mantendo a selfie no espelho e exibindo o caimento lateral, cintura e traseiro da peça.`;
+
+    case 'mestra_iara':
+      return isMale
+        ? `**CRONOGRAMA DE MOVIMENTOS (10s CONTÍNUOS — MESTRA IARA):**
+- 0s–1.5s (Demonstração de elasticidade): Com a mão livre na lateral segura o tecido e puxa horizontalmente para fora demonstrando elasticidade; mantém por um instante e solta suavemente.
+- 1.5s–3.5s (Demonstração frontal): Retorna a mão ao abdômen e desliza para cima até o peitoral em alisamento natural do tecido.
+- 3.5s–5.5s (Giro lateral): Rotação gradual do corpo em 3/4 até alcançar perfil lateral com pequenos ajustes naturais dos pés.
+- 5.5s–6.5s (Apresentação lateral): Mantém perfil lateral por ~1s com discreta transferência de peso, valorizando o caimento lateral.
+- 6.5s–7.5s (Retorno frontal): Gira o corpo de volta para a posição frontal, deslizando a palma sobre a frente da peça.
+- 7.5s–9.5s (Pose frontal): Permanece de frente com pequenos ajustes de postura e toque suave na lateral do quadril.
+- 9.5s–10s (Pose final): Suave rotação em 3/4 com a mão livre no abdômen, finalizando em pose lateralizada elegante.`
+        : `**CRONOGRAMA DE MOVIMENTOS (10s CONTÍNUOS — MESTRA IARA):**
+- 0s–1.5s (Demonstração de elasticidade): Com a mão livre na lateral da peça, segura delicadamente o tecido e puxa horizontalmente para fora; mantém esticado por um instante e solta suavemente.
+- 1.5s–3.5s (Demonstração frontal): Retorna a mão à região abdominal e desliza lentamente para cima até o busto em movimento de alisamento natural do tecido.
+- 3.5s–5.5s (Giro lateral): Inicia rotação gradual do corpo em 3/4 até alcançar perfil lateral com pequenos ajustes naturais dos pés.
+- 5.5s–6.5s (Apresentação lateral): Mantém perfil lateral por ~1s com discreta transferência de peso entre as pernas, valorizando o caimento lateral da peça.
+- 6.5s–7.5s (Retorno frontal): Gira suavemente o corpo de volta para a posição frontal, deslizando a palma sobre a parte frontal da peça.
+- 7.5s–9.5s (Pose frontal): Permanece de frente, realizando pequenos ajustes naturais de postura e toque suave na lateral do quadril.
+- 9.5s–10s (Pose final): Suave rotação do corpo em 3/4 com a mão livre na região abdominal, finalizando em pose lateralizada elegante.`;
+
+    case 'mestra_duda':
+      return isMale
+        ? `**CRONOGRAMA DE MOVIMENTOS (10s CONTÍNUOS — MESTRA DUDA):**
+- 0s–3s: Demonstração da peça com a mão livre tocando a parte frontal superior e deslizando suavemente para baixo pelo tecido.
+- 3s–6s: A mão percorre cintura e quadril mostrando a modelagem e o ajuste anatômico da roupa.
+- 6s–8.5s: Pequena rotação suave do corpo em 3/4 com discreta transferência de peso entre as pernas, apresentando o caimento lateral.
+- 8.5s–10s: Retorno suave para a posição frontal com pequenos gestos naturais apresentando os detalhes da peça diante do espelho.`
+        : `**CRONOGRAMA DE MOVIMENTOS (10s CONTÍNUOS — MESTRA DUDA):**
+- 0s–3s: Demonstração da peça com a mão livre tocando delicadamente a parte frontal superior e deslizando suavemente para baixo pelo tecido.
+- 3s–6s: A mão percorre suavemente a cintura, quadril e laterais, demonstrando a modelagem justa e o caimento do tecido.
+- 6s–8.5s: Pequena rotação suave do corpo em 3/4 com discreta transferência de peso entre as pernas, apresentando o caimento lateral da roupa.
+- 8.5s–10s: Retorno suave para a posição frontal com pequenos gestos naturais apresentando os detalhes e finalizando em pose relaxada diante do espelho.`;
+
+    case 'mestra_nay':
+      return isMale
+        ? `**CRONOGRAMA DE MOVIMENTOS (10s CONTÍNUOS — MESTRA NAY):**
+- 0s–2s: Postura natural diante do espelho; a mão livre sobe até o peitoral.
+- 2s–4s: Apoia a palma sobre o tecido e inicia deslizamento contínuo para baixo em direção ao abdômen.
+- 4s–7s: Deslizamento contínuo descendente passando pelo abdômen, cintura, quadril e coxa, demonstrando caimento e ajuste.
+- 7s–10s: Afasta suavemente a mão do tecido, com pequenas transferências de peso entre as pernas e orientação predominantemente frontal.`
+        : `**CRONOGRAMA DE MOVIMENTOS (10s CONTÍNUOS — MESTRA NAY):**
+- 0s–2s: Postura natural diante do espelho; a mão livre sobe suavemente até a região superior/colo da peça.
+- 2s–4s: Apoia delicadamente a palma sobre o tecido e inicia deslizamento contínuo para baixo em direção ao abdômen.
+- 4s–7s: Deslizamento contínuo descendente passando pelo abdômen inferior, cintura, quadril e parte superior da coxa, demonstrando caimento e ajuste.
+- 7s–10s: Afasta suavemente a mão do tecido, com pequenas transferências de peso entre as pernas e orientação predominantemente frontal diante do espelho.`;
+
+    case 'mestra_catza':
+      return isMale
+        ? `**CRONOGRAMA DE MOVIMENTOS (10s CONTÍNUOS — MESTRA CATZA):**
+- 0s–3s: Mão livre sobe até a parte superior da peça, tocando peitoral, decote e acabamentos sob o flash do smartphone.
+- 3s–6s: Deslizamento suave da mão da parte superior até a cintura e abdômen, demonstrando o ajuste do tecido no corpo.
+- 6s–8s: Toques sutis no quadril e laterais com transferência suave de peso entre as pernas em pose diagonal/3/4 elegante.
+- 8s–10s: Pose final estável diante do espelho valorizando a peça, com movimentos espontâneos e naturais.`
+        : `**CRONOGRAMA DE MOVIMENTOS (10s CONTÍNUOS — MESTRA CATZA):**
+- 0s–3s: A mão livre sobe até a parte superior da peça, tocando delicadamente colo, decote e acabamentos frontais sob iluminação com flash do smartphone.
+- 3s–6s: Deslizamento suave da mão da parte superior até a cintura e abdômen, demonstrando o ajuste anatômico do tecido no corpo.
+- 6s–8s: Toques sutis no quadril e laterais com transferência suave de peso entre as pernas em pose diagonal/3/4 elegante.
+- 8s–10s: Pose final estável diante do espelho valorizando a peça, com movimentos espontâneos e naturais.`;
+
+    case 'pov_cinta_85k':
+      return `**CRONOGRAMA DE MOVIMENTOS (10s POV EM PRIMEIRA PESSOA — 85K):**
+- 0s–1.5s: Duas mãos sobre a cama retiram a embalagem plástica ou ajustam os produtos centralizados sobre a superfície.
+- 1.5s–3s: Levanta o primeiro produto pelas laterais apresentando a parte frontal à câmera com a estrutura intacta.
+- 3s–5s: Apoia o primeiro produto na cama e passa suavemente as mãos alisando o tecido sem deformar.
+- 5s–7.5s: Levanta o segundo produto com as duas mãos, apresentando-o de frente e posicionando lado a lado com o primeiro.
+- 7.5s–10s: Com o indicador de uma mão, aponta e percorre detalhes reais do produto, finalizando com o produto centralizado e íntegro na cama.`;
+
+    case 'pov_blusinhas_13k':
+      return `**CRONOGRAMA DE MOVIMENTOS (10s–12s POV EM PRIMEIRA PESSOA — 13K):**
+- 0s–3s: Duas mãos seguram a primeira peça pelas extremidades laterais, mantendo-a aberta e suspensa de frente para a câmera.
+- 3s–6s: Abaixa a primeira peça e levanta a segunda peça pelas laterais apresentando a parte frontal de forma limpa e centralizada.
+- 6s–9s: Retorna à primeira peça aproximando-a suavemente enquanto a segunda permanece íntegra na cama.
+- 9s–12s: Uma mão sustenta a peça enquanto a outra desliza os dedos sobre a superfície do tecido, demonstrando acabamento, textura e caimento real.`;
+
+    default:
+      return `**CRONOGRAMA DE MOVIMENTOS (10s CONTÍNUOS):**
+- 0s–2s: Postura natural diante do espelho segurando o smartphone, mão livre toca delicadamente a parte frontal da peça.
+- 2s–5s: Desliza a palma suavemente pela frente da roupa, passando pelo abdômen e cintura até o quadril.
+- 5s–7.5s: Demonstração da elasticidade e ajuste com toque sutil na cintura e lateral.
+- 7.5s–10s: Rotação suave do corpo em 3/4 exibindo o caimento lateral e pose final estável.`;
+  }
+}
+
+/**
+ * Constrói o Prompt de Vídeo Enxuto (até 2.500 caracteres)
+ * Completo e sem cortes, focado 100% nos movimentos da Mestra e fidelidade da peça
+ */
+export function buildAnaMariaConciseVideoPrompt(params: {
+  productName: string;
+  influencer?: AnaMariaInfluencer;
+  bodyType?: AnaMariaBodyType;
+  presentationMode?: AnaMariaPresentationMode;
+  selectedMasterId?: AnaMariaMasterId;
+  additionalInstructions?: string;
+  hasSelectedScenario?: boolean;
+}): string {
+  const master = getMasterPromptById(params.selectedMasterId);
+  const isMale = params.influencer === 'Homem';
+  const isPlusSize = params.bodyType === 'plus_size';
+  const hasUserInstructions = Boolean(
+    params.additionalInstructions && params.additionalInstructions.trim().length > 0
+  );
+  const userInstructionsText = hasUserInstructions ? params.additionalInstructions!.trim() : '';
+
+  const movementsBlock = getConciseMovementForMaster(master.id, isMale);
+
+  if (master.isPov) {
+    return `Vídeo vertical 9:16 hiper-realista de 10s em perspectiva POV (visão superior em primeira pessoa). Use a imagem inicial anexada como referência soberana.
+
+**FIDELIDADE ABSOLUTA E IMUTÁVEL DAS PEÇAS (1:1):**
+Reproduzir as peças sobre a cama com fidelidade 100% à foto de referência: mesma cor, textura, tecido, costuras e modelagem. PROIBIDO inventar botões, fechos, zíperes ou detalhes inexistentes. Não esticar ou deformar as peças.
+
+${movementsBlock}
+
+**REGRAS DE EXECUÇÃO:**
+- Take único contínuo sem cortes, zooms ou transições. Gestos suaves e humanos.
+- Demonstração 100% silenciosa: sem fala, sem diálogos e sem narração.`.trim();
+  }
+
+  const framingBlock =
+    `**PRESERVAÇÃO DO ENQUADRAMENTO E DA FOTO DE REFERÊNCIA:**\n` +
+    `Manter rigorosamente o mesmo ângulo, enquadramento e perspectiva da imagem de referência inicial durante todo o vídeo de 10s:\n` +
+    `- Se na foto original o smartphone cobre o rosto, continue com o smartphone cobrindo o rosto durante todo o vídeo.\n` +
+    `- Se na foto original não aparece o rosto (corte no queixo/pescoço), mantenha sem mostrar o rosto sem a câmera inclinar ou subir para cima.\n` +
+    `- Se na foto original o rosto da modelo aparece (visível total ou parcialmente), continue com o mesmo rosto natural visível.`;
+
+  const garmentFidelityBlock =
+    `**FIDELIDADE ABSOLUTA E IMUTÁVEL DA PEÇA DE ROUPA (1:1):**\n` +
+    `A roupa da imagem de referência é 100% sagrada e inviolável. É TERMINANTEMENTE PROIBIDO ao gerador de vídeo modificar a cor, tom, estampa, tecido, textura, modelagem, caimento, decote, mangas ou comprimento da peça. PROIBIDO inventar partes, botões, bolsos, zíperes ou costuras inexistentes. A peça deve se manter 100% fiel à imagem de referência em todos os frames e movimentos.`;
+
+  const identityBlock =
+    `**PRESERVAÇÃO DE IDENTIDADE E CENÁRIO:**\n` +
+    `Preservar exatamente ${isMale ? 'o mesmo modelo masculino' : 'a mesma modelo'} da foto de referência (${isPlusSize ? 'estrutura corporal robusta genuinamente PLUS SIZE preservada sem afinar membros' : 'mesmo corpo, curvas, biotipo'}), cabelos, tom de pele e o mesmo cômodo/cenário intacto.`;
+
+  const userBlock = hasUserInstructions
+    ? `**INSTRUÇÕES PERSONALIZADAS DO USUÁRIO:**\n"${userInstructionsText}" (priorizar rigorosamente essas instruções).`
+    : '';
+
+  const executionBlock =
+    `**REGRAS DE EXECUÇÃO E ÁUDIO:**\n` +
+    `- Take único contínuo sem cortes, zooms ou transições. Gestos suaves, naturais e com velocidade humana realista.\n` +
+    `- Demonstração 100% silenciosa: sem fala, sem voz, sem locução e sem movimentar os lábios como se estivesse falando.`;
+
+  const sections = [
+    `Vídeo vertical 9:16 de 10s hiper-realista. Use a imagem de referência anexada como ponto de partida visual absoluto.`,
+    framingBlock,
+    garmentFidelityBlock,
+    identityBlock,
+    userBlock,
+    movementsBlock,
+    executionBlock,
+  ].filter(Boolean);
+
+  let concise = sections.join('\n\n').trim();
+
+  // Garante limite absoluto de 2.500 caracteres caso as instruções do usuário sejam muito extensas
+  if (concise.length > 2500) {
+    concise = concise.slice(0, 2480).trim();
+  }
+
+  return concise;
+}
+
+/**
  * Constrói o Prompt de Vídeo de Movimentos do Modo Ana Maria
  * Baseado no Prompt da Mestra selecionada na Galeria + Camadas Superiores:
- * - Modo Mirror Selfie (trava estrita sem rosto/lábios) vs Com Rosto vs POV
- * - Adaptação Masculina (quando influencer === 'Homem', mantendo 80%+ da coreografia da Mestra com gestos masculinos)
+ * - Preservação do Enquadramento e Rosto da Foto Original (celular cobrindo, sem rosto ou com rosto)
+ * - Fidelidade Soberana da Peça de Roupa (1:1)
+ * - Adaptação Masculina (quando influencer === 'Homem')
  * - Preservação da estrutura Plus Size (quando bodyType === 'plus_size')
- * - Prioridade Soberana das Instruções Adicionais do Usuário (sobrepondo características ou movimentos específicos mantendo o restante original)
+ * - Prioridade Soberana das Instruções Adicionais do Usuário
  */
 export function buildAnaMariaVideoPrompt(params: {
   productName: string;
@@ -740,12 +928,18 @@ export function buildAnaMariaVideoPrompt(params: {
   additionalInstructions?: string;
   hasSelectedScenario?: boolean;
 }): string {
+  const limit = params.limit || 'unlimited';
+
+  // Se o usuário selecionou até 2.500 caracteres, retorna a versão enxuta inteligente completa
+  if (limit === '2500') {
+    return buildAnaMariaConciseVideoPrompt(params);
+  }
+
   const master = getMasterPromptById(params.selectedMasterId);
   const mode: AnaMariaPresentationMode =
     params.presentationMode || (master.isPov ? 'pov' : 'mirror_selfie');
   const isMale = params.influencer === 'Homem';
   const isPlusSize = params.bodyType === 'plus_size';
-  const limit = params.limit || 'unlimited';
   const hasUserInstructions = Boolean(
     params.additionalInstructions && params.additionalInstructions.trim().length > 0
   );
@@ -780,29 +974,31 @@ Adapte toda a execução para o modelo masculino da imagem de referência, prese
 Mantenha rigorosamente em todos os frames a estrutura corporal genuinamente PLUS SIZE da imagem de referência: corpo robusto e volumoso, seios grandes e pesados, braços grossos e macios, abdômen com projeção natural e dobras suaves, quadris largos e glúteos volumosos, coxas muito grossas com celulite natural visível e tom de pele morena clara a média com subtom quente. Jamais afinar a modelo, emagrecer membros ou transformar em corpo fitness durante os giros e movimentos.\n\n` + base;
   }
 
-  // 3. Regra de Enquadramento: Com Rosto (UGC) vs Mirror Selfie (Corte no queixo)
-  const isFaceMode =
-    mode === 'com_rosto' ||
-    Boolean(master.allowsFaceByDefault) ||
-    master.primaryCategory === 'com_rosto' ||
-    master.id === 'mestra_catza';
-
-  if (isFaceMode && !master.isPov) {
-    // Remove qualquer restrição residual de "sem rosto"
+  // 3. Regra de Enquadramento e Fidelidade da Imagem Original:
+  // Preserva rigorosamente o enquadramento, ângulo e rosto da imagem de referência inicial
+  if (!master.isPov) {
+    // Remove qualquer texto legado de restrição absoluta de rosto ou lábios caso venha no template base
     base = base
-      .replace(/Never reveal the model's face\.[^\n]*/gi, "Preserve the model's natural face and expression as shown in the reference image.")
-      .replace(/O rosto e os lábios nunca devem aparecer\.[^\n]*/gi, 'Preservar o rosto natural e harmonioso da modelo conforme a imagem de referência.')
-      .replace(/\*\*REGRA SUPERIOR INEGOCIÁVEL DE ENQUADRAMENTO[^\n]*\*\*[\s\S]*?(?=\n\n|$)/gi, '');
+      .replace(/\*\*REGRA SUPERIOR INEGOCIÁVEL DE ENQUADRAMENTO[^\n]*\*\*[\s\S]*?(?=\n\n|$)/gi, '')
+      .replace(/\*\*REGRA ABSOLUTA DE ENQUADRAMENTO[^\n]*\*\*[\s\S]*?(?=\n\n|$)/gi, '')
+      .replace(/\*\*FACE AND CAMERA FRAMING[^\n]*\*\*[\s\S]*?(?=\n\n|$)/gi, '')
+      .replace(/Never reveal the model's face\.[^\n]*/gi, '')
+      .replace(/The lips, mouth, nose[^\n]*/gi, '')
+      .replace(/The camera must remain anchored at chest level and must NEVER tilt upward or drift above the base of the chin[^\n]*/gi, '')
+      .replace(/O rosto e os lábios nunca devem aparecer\.[^\n]*/gi, '')
+      .replace(/Manter permanentemente o enquadramento rigoroso da base do queixo para baixo[^\n]*/gi, '')
+      .replace(/- Não modificar o enquadramento para revelar o rosto ou lábios\./gi, '');
 
-    const faceRule = `**MODO COM ROSTO (UGC COM ESPELHO & FLASH):**
-Demonstração comercial autêntica em selfie no espelho com flash do smartphone ligado. Preservar o rosto natural, maquiagem e expressão espontânea da imagem de referência.
-Vídeo 100% silencioso: a modelo NÃO fala e NÃO movimenta os lábios como se estivesse falando.\n\n`;
-    base = faceRule + base;
-  } else if (mode === 'mirror_selfie' && !master.isPov) {
-    const strictChinLock = `**REGRA SUPERIOR INEGOCIÁVEL DE ENQUADRAMENTO (MODO MIRROR SELFIE — CORTE NO QUEIXO):**
-O enquadramento deve permanecer 100% travado da base do queixo para baixo durante todo o vídeo.
-É TERMINANTEMENTE PROIBIDO mostrar lábios (especialmente lábios inchados ou com aspecto de botox), boca, nariz, olhos ou rosto em qualquer frame, inclusive no final do vídeo ou durante giros. A câmera NUNCA deve subir ou inclinar para cima.\n\n`;
-    base = strictChinLock + base;
+    const framingAndGarmentRule =
+      `**PRESERVAÇÃO DO ENQUADRAMENTO E DA FOTO ORIGINAL:**\n` +
+      `Manter rigorosamente o mesmo ângulo, enquadramento e perspectiva da foto de referência original durante toda a gravação:\n` +
+      `- Se na foto original de referência o smartphone cobre o rosto, durante o vídeo continua com o smartphone cobrindo o rosto.\n` +
+      `- Se na foto original não aparece o rosto (enquadramento cortado do queixo para baixo), durante o vídeo continua sem mostrar o rosto e a câmera NUNCA deve subir ou inclinar para cima.\n` +
+      `- Se na foto original o rosto da modelo aparece (visível total ou parcialmente), durante o vídeo continua com o rosto visível e natural da modelo da imagem.\n\n` +
+      `**FIDELIDADE ABSOLUTA E IMUTÁVEL DA PEÇA DE ROUPA (1:1):**\n` +
+      `A roupa da imagem de referência é 100% sagrada e imutável. É TERMINANTEMENTE PROIBIDO ao gerador de vídeo modificar a cor, tom, estampa, tecido, textura, modelagem, caimento, decote, mangas ou comprimento da peça. PROIBIDO inventar partes, botões, bolsos, zíperes ou costuras inexistentes. A peça deve se manter 100% fiel à imagem de referência em todos os frames e movimentos.\n\n`;
+
+    base = framingAndGarmentRule + base;
   }
 
   // 4. Prioridade Soberana das Instruções Adicionais do Usuário (sobrepõe características e movimentos específicos)
@@ -824,7 +1020,5 @@ REGRA DE ADAPTAÇÃO: As instruções personalizadas acima têm PRIORIDADE ABSOL
     return base.slice(0, 4980).trim();
   }
 
-  // Até 2.500 caracteres
-  if (base.length <= 2500) return base.trim();
-  return base.slice(0, 2480).trim();
+  return base.trim();
 }

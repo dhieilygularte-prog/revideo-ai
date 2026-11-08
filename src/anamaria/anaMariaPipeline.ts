@@ -467,6 +467,17 @@ export async function runAnaMariaPipeline(
     hasSelectedScenario: Boolean(form.selectedScenarioId),
   });
 
+  const conciseVideoPrompt = buildAnaMariaVideoPrompt({
+    productName: form.productName,
+    influencer: form.influencer,
+    bodyType: form.bodyType,
+    presentationMode: activeMode,
+    selectedMasterId: form.selectedMasterId,
+    limit: '2500',
+    additionalInstructions: form.additionalInstructions,
+    hasSelectedScenario: Boolean(form.selectedScenarioId),
+  });
+
   // 2. Preparação em paralelo do Cenário + Fotos de Referência compactadas (~300 KB total)
   onProgress('image_generation', 45);
   const modelNameLabel =
@@ -565,6 +576,7 @@ export async function runAnaMariaPipeline(
     modelScenarioSource: form.modelScenarioSource || 'model',
     imagePrompt,
     videoPrompt,
+    conciseVideoPrompt,
     headline,
     hashtags,
     shoeCategory,
