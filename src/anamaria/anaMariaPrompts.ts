@@ -574,21 +574,36 @@ ${
   const hasGalleryModel = Boolean(form.selectedModelGalleryId || form.selectedModelGalleryNumber);
 
   if (hasGalleryModel) {
+    const isDressOrOnePiece = complementaryInfo.type === 'full_body';
+    const isUpperOnly = complementaryInfo.type === 'upper_only';
+    const isLowerOnly = complementaryInfo.type === 'lower_only';
+
+    const garmentTypeInstruction = isDressOrOnePiece
+      ? '- O PRODUTO DA FOTO 1 É UM VESTIDO / PEÇA ÚNICA COMPLETA: A modelo veste EXCLUSIVAMENTE o vestido/peça única da Foto 1 com máxima fidelidade 1:1.\n' +
+        '- PROIBIÇÃO ABSOLUTA DE CALÇA OU SHORTS: É TERMINANTEMENTE PROIBIDO ADICIONAR CALÇA JEANS, CALÇA, SHORTS, BERMUDA OU QUALQUER OUTRA PEÇA INFERIOR. A modelo veste APENAS o vestido da Foto 1 cobrindo o corpo por completo com pernas limpas naturais até os pés.'
+      : isUpperOnly
+      ? '- O PRODUTO DA FOTO 1 É UMA PEÇA SUPERIOR: A modelo veste a peça superior da Foto 1 com máxima fidelidade 1:1, combinada com uma peça inferior que combine com harmonia (calça, saia, short ou bermuda) para look completo elegante sem nudez.'
+      : isLowerOnly
+      ? '- O PRODUTO DA FOTO 1 É UMA PEÇA INFERIOR: A modelo veste a peça inferior da Foto 1 com máxima fidelidade 1:1, combinada com uma blusa neutra elegante para look completo sem nudez.'
+      : '- Se o produto for vestido ou macacão, veste EXCLUSIVAMENTE o vestido (PROIBIDO calça jeans ou shorts por baixo); se for blusa, veste peça inferior combinando; se for calça/short, veste blusa combinando.';
+
     const galleryModelPrompt = `${resolvedPriorityBlock || priorityOverrideBlock}FOTOGRAFIA COMERCIAL VERTICAL 9:16 (1080x1920) COMBINANDO RIGOROSAMENTE AS 3 FOTOS DE REFERÊNCIA:
 
 1. FOTO 1 (PRODUTO — PEÇA DE ROUPA):
 - Vestir a modelo com a roupa da Foto 1 com máxima fidelidade 1:1 (mesma cor exata, tonalidade, textura do tecido, caimento, modelagem, decote, mangas e detalhes reais da peça).
-- REGRA DE LOOK COMPLETO E PROIBIÇÃO DE NUDEZ: Se a Foto 1 for uma peça superior (blusa/cropped/top/body/camiseta), a modelo DEVE vestir calça jeans feminina clássica de cintura alta combinando; se a Foto 1 for peça inferior (calça/short/bermuda/saia), a modelo DEVE vestir uma blusa neutra elegante combinando. A modelo NUNCA fica nua, topless ou sem calça.
+${garmentTypeInstruction}
 - Calçado nos pés: ${shoeInfo.name} (${shoeInfo.description}), mostrando os dois pés calçados apoiados no piso.
+- REGRA CRÍTICA DE POSE E ISOLAMENTO: Da Foto 1 (produto), extraia RIGOROSAMENTE apenas a peça de roupa e o tecido. É TERMINANTEMENTE PROIBIDO COPIAR A POSE, O ÂNGULO OU A POSIÇÃO CORPORAL DA PESSOA DA FOTO 1 (mesmo que na foto do produto a pessoa esteja de lado, de perfil, sentada ou de costas).
 
-2. FOTO 2 (MODELO — IDENTIDADE E POSE 1:1):
+2. FOTO 2 (MODELO — IDENTIDADE E POSE DE FRENTE 1:1):
 - A modelo gerada DEVE SER LITERALMENTE A MESMA MULHER DA FOTO 2.
-- PRESERVAÇÃO INTEGRAL DA MODELO DA FOTO 2: reproduza com fidelidade 100% o mesmo corpo, curvas, biotipo, quadris, cintura, pernas, tom de pele natural com poros reais, cabelos (mesma cor, corte e textura da foto da modelo) e mesma pose diante do espelho segurando o smartphone.
-- ENQUADRAMENTO DA FOTO 2: A modelo segura o smartphone na altura do peito/queixo tirando foto no espelho. Enquadramento estritamente da base do queixo para baixo até os pés. NÃO mostrar olhos, nariz ou boca (rosto coberto pelo celular / corte no queixo idêntico à foto da modelo).
+- PRESERVAÇÃO INTEGRAL DO BIOTIPO DA FOTO 2: reproduza com fidelidade 100% o mesmo corpo, curvas, biotipo, quadris, cintura, pernas, tom de pele natural com poros reais, cabelos (mesma cor, corte e textura da foto da modelo).
+- POSE OBRIGATÓRIA DE FRENTE: A modelo deve estar POSICIONADA RIGOROSAMENTE DE FRENTE PARA O ESPELHO (front-facing), mostrando a frente inteira da roupa com máxima clareza. PROIBIDO corpo de lado ou de perfil.
+- ENQUADRAMENTO DA FOTO 2 (CORTE ESTRITO NO QUEIXO): A modelo segura o smartphone na altura do peito/queixo tirando foto no espelho. Enquadramento estritamente da base do queixo para baixo até os pés. NÃO mostrar olhos, nariz, boca ou cabeça (rosto 100% fora do enquadramento / encoberto pelo smartphone conforme a foto da modelo).
 - DESCONSIDERAR A ROUPA E O CENÁRIO DA FOTO 2: É TERMINANTEMENTE PROIBIDO copiar a roupa que a modelo veste na Foto 2 e PROIBIDO usar o cenário de fundo da Foto 2.
 
 3. FOTO 3 (CENÁRIO INDEPENDENTE):
-- A modelo da Foto 2, vestindo a roupa da Foto 1, está em pé diante do espelho dentro do cômodo da Foto 3.
+- A modelo da Foto 2, vestindo a roupa da Foto 1 de frente para o espelho, está em pé diante do espelho dentro do cômodo da Foto 3.
 - Preserve integralmente o cenário real da Foto 3: piso, paredes, portas, espelho e iluminação natural sem alterar nem redesenhar.
 
 Qualidade fotográfica autêntica de smartphone moderno, textura de pele humana real com poros visíveis, acabamento fosco suave sem brilho excessivo de óleo, sem aspecto de cera ou plástico. ZERO tatuagens.`;

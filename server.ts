@@ -1878,12 +1878,22 @@ async function generateImageWithKling(params: {
     if (isPovModeKling) {
       headerKling = '[MODO POV: Preservar 100% do cenário POV da cama da Imagem 1; produtos da Imagem 2 manipulados apenas pelas duas mãos limpas sem tatuagens sobre a cama. PROIBIDO corpo, rosto ou espelho!]\n\n';
     } else if (hasModelRefKling) {
+      const isDressOrOnePieceKling = Boolean(
+        params.prompt &&
+          (/\b(vestido|vestidos|dress|dresses|macac[aã]o|macaquinho|camisola|jumpsuit)\b/i.test(params.prompt) ||
+            params.prompt.includes('PEÇA ÚNICA') ||
+            params.prompt.includes('VESTIDO'))
+      );
+      const clothingDirectiveKling = isDressOrOnePieceKling
+        ? 'A modelo veste EXCLUSIVAMENTE o vestido de <<<image_1>>> com pernas limpas naturais. TERMINANTEMENTE PROIBIDO calça jeans, calça ou shorts sob o vestido.'
+        : 'Se o produto for vestido, veste apenas o vestido; se for blusa, veste calça jeans combinando; se for calça, veste blusa combinando.';
+
       headerKling =
-        '[REGRA SOBERANA DE COMPOSIÇÃO 3 IMAGENS]:\n' +
-        '1. PRODUTO (IMAGEM 1): Reproduzir a roupa da Imagem 1 na modelo com máxima fidelidade 1:1. PROIBIDO usar a roupa da Imagem 2.\n' +
-        '2. MODELO (IMAGEM 2): A mulher gerada DEVE SER LITERALMENTE A MESMA MODELO da Imagem 2 (mesmo biotipo, curvas, formato de corpo, cabelos e mesma pose diante do espelho). Enquadramento estritamente da base do queixo para baixo, rosto coberto pelo celular.\n' +
-        '3. CENÁRIO (IMAGEM 3): Preservar 100% o ambiente real da Imagem 3 (paredes, piso, espelho e iluminação intactos).\n' +
-        '4. LOOK COMPLETO (PROIBIDO NUDEZ): Se o produto for blusa, veste calça jeans clássica cintura alta; se for calça, veste blusa neutra combinando. A modelo NUNCA fica nua.\n' +
+        '[REGRA SOBERANA DE COMPOSIÇÃO 3 IMAGENS KLING OMNI]:\n' +
+        '1. PRODUTO (<<<image_1>>>): Reproduzir a roupa de <<<image_1>>> na modelo com máxima fidelidade 1:1. PROIBIDO copiar a pose de lado ou o corpo de <<<image_1>>> e PROIBIDO usar a roupa de <<<image_2>>>.\n' +
+        '2. MODELO (<<<image_2>>>): A mulher gerada DEVE SER LITERALMENTE A MESMA MODELO de <<<image_2>>> (mesmo biotipo, curvas, formato de corpo, cabelos e mesma pele). POSE OBRIGATÓRIA DE FRENTE PARA O ESPELHO (front-facing). Enquadramento estritamente da base do queixo para baixo, SEM ROSTO, cabeça cortada no queixo, celular cobrindo o rosto.\n' +
+        '3. CENÁRIO (<<<image_3>>>): Preservar 100% o ambiente real de <<<image_3>>> (paredes, piso, espelho e iluminação intactos).\n' +
+        `4. LOOK: ${clothingDirectiveKling}\n` +
         '5. PELE REALISTA & NATURAL (SEM OLEOSIDADE): Textura de pele humana real com poros visíveis, acabamento fosco suave sob iluminação difusa interior. PROIBIDO aspecto oleoso, pele plastificada ou brilho excessivo.\n\n';
     } else {
       headerKling = allowsFace
@@ -1911,7 +1921,7 @@ async function generateImageWithKling(params: {
   const negativePrompt = params.isAnaMariaMode
     ? (allowsFace
         ? 'tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, deformed face, bad eyes, low quality, 3d render, cartoon, illustration'
-        : 'face, head, eyes, eyebrows, nose, lips, mouth, teeth, smile, chin up, portrait, headshot, selfie with face, looking at camera, no smartphone, empty hands, without phone, naked, pantless, topless, no pants, underwear only, skinny, emaciated, boyish torso, flat hips, oily skin, greasy skin, shining skin, wet skin, oil sheen, plastic skin, wax skin, wax doll, porcelain skin, fake skin, heavy airbrushing, artificial gloss, tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, low quality, 3d render, cartoon, illustration')
+        : 'face, head, eyes, eyebrows, nose, lips, mouth, teeth, smile, chin up, portrait, headshot, selfie with face, looking at camera, visible face, jeans with dress, pants under dress, jeans, sideways pose, profile angle, no smartphone, empty hands, without phone, naked, pantless, topless, no pants, underwear only, skinny, emaciated, boyish torso, flat hips, oily skin, greasy skin, shining skin, wet skin, oil sheen, plastic skin, wax skin, wax doll, porcelain skin, fake skin, heavy airbrushing, artificial gloss, tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, low quality, 3d render, cartoon, illustration')
     : 'original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry';
 
   const payload: any = {
@@ -2147,23 +2157,37 @@ async function generateImageWithSeedream(params: {
 
   const naturalSkinSeedream = '[PELE NATURAL BRASILEIRA]: Textura de pele humana real e natural, acabamento fosco suave com poros visíveis sob iluminação realista de provador/quarto, sem bronzeamento artificial alaranjado, sem pele oleosa e sem brilho excessivo.\n';
 
+  const isDressOrOnePieceSeedream = Boolean(
+    params.prompt &&
+      (/\b(vestido|vestidos|dress|dresses|macac[aã]o|macaquinho|camisola|jumpsuit)\b/i.test(params.prompt) ||
+        params.prompt.includes('PEÇA ÚNICA') ||
+        params.prompt.includes('VESTIDO'))
+  );
+
+  const clothingDirectiveSeedream = isDressOrOnePieceSeedream
+    ? '[REGRA DE VESTUÁRIO: VESTIDO / PEÇA ÚNICA]: A modelo veste EXCLUSIVAMENTE o vestido da Foto 1 cobrindo o corpo com máxima fidelidade e pernas limpas naturais até os sapatos. É TERMINANTEMENTE PROIBIDO ADICIONAR CALÇA JEANS, CALÇA, SHORTS OU BERMUDA POR BAIXO DO VESTIDO.\n'
+    : '[REGRA DE LOOK COMPLETO]: Se o produto for vestido/macacão, veste EXCLUSIVAMENTE o vestido (PROIBIDO calça jeans sob vestido); se for blusa avulsa, veste calça jeans feminina cintura alta combinando; se for peça inferior, veste blusa neutra combinando.\n';
+
+  const frontalPoseDirectiveSeedream =
+    '[POSE OBRIGATÓRIA DE FRENTE]: A modelo deve estar POSICIONADA RIGOROSAMENTE DE FRENTE PARA O ESPELHO (front-facing), de corpo inteiro de frente. Da Foto de produto (Foto 1), extraia EXCLUSIVAMENTE a roupa e o tecido; É TERMINANTEMENTE PROIBIDO copiar pose de lado, de perfil ou ângulo da pessoa da foto de produto!\n';
+
   let headerSeedream = '';
   if (params.isAnaMariaMode) {
     if (isPovModeSeedream) {
       headerSeedream = '[MAPA POV: Imagem 1 = Cenário POV Cama intacto; Imagem 2 = Produto 1:1 manipulado apenas pelas duas mãos limpas sem tatuagens sobre a cama. PROIBIDO corpo/rosto/espelho].\n\n';
     } else if (hasModelRefSeedream) {
       headerSeedream =
-        `${faceDirectiveSeedream}${naturalSkinSeedream}` +
+        `${faceDirectiveSeedream}${naturalSkinSeedream}${frontalPoseDirectiveSeedream}` +
         '[MAPA TÉCNICO DE REFERÊNCIA 3 IMAGENS]:\n' +
-        '- Foto 1 (PRODUTO): É a roupa que a modelo DEVE vestir com máxima fidelidade 1:1 (PROIBIDO copiar a roupa da Foto 2).\n' +
-        '- Foto 2 (MODELO): É literalmente a modelo da imagem. Preserve 100% o mesmo corpo, curvas, biotipo, cabelos e mesma pose diante do espelho da Foto 2. DESCONSIDERE a roupa e o cenário da Foto 2!\n' +
+        '- Foto 1 (PRODUTO): É a roupa que a modelo DEVE vestir com máxima fidelidade 1:1 (PROIBIDO copiar pose de lado ou roupa da Foto 2).\n' +
+        '- Foto 2 (MODELO): É literalmente a modelo da imagem. Preserve 100% o mesmo corpo, curvas, biotipo, cabelos e mesma pose DE FRENTE diante do espelho da Foto 2. DESCONSIDERE a roupa e o cenário da Foto 2!\n' +
         '- Foto 3 (CENÁRIO): É o cômodo real fixo intacto onde a modelo deve estar inserida diante do espelho.\n' +
-        '[LOOK COMPLETO SEM NUDEZ]: Peça superior = calça jeans cintura alta clássica; Peça inferior = blusa neutra combinando. A modelo NUNCA fica nua ou sem calça.\n\n';
+        `${clothingDirectiveSeedream}\n\n`;
     } else {
       headerSeedream =
-        `${faceDirectiveSeedream}${naturalSkinSeedream}` +
+        `${faceDirectiveSeedream}${naturalSkinSeedream}${frontalPoseDirectiveSeedream}` +
         '[MAPA TÉCNICO DE REFERÊNCIA]: Imagem 1 = Cenário real fixo intacto; Imagem 2+ = Peça de roupa 1:1 (ESTRITO: É TERMINANTEMENTE PROIBIDO copiar o corpo da modelo ou manequim da foto de produto na Imagem 2+; o corpo, biotipo e curvas da modelo DEVEM vir 100% e exclusivamente da descrição do prompt selecionado abaixo, sem nenhuma predefinição externa)].\n' +
-        '[REGRA DE LOOK COMPLETO E PROIBIÇÃO DE NUDEZ: A modelo deve SEMPRE estar vestida por completo. Se o produto for peça superior (blusa/cropped/camiseta), a modelo DEVE vestir calça jeans feminina clássica de cintura alta; se for peça inferior, veste blusa neutra combinando; se calçados estiverem visíveis, deve calçar o sapato especificado. ZERO NUDEZ, ZERO SEM CALÇA].\n\n';
+        `${clothingDirectiveSeedream}\n\n`;
     }
   } else {
     headerSeedream = `${IMAGE_REFERENCE_FIDELITY_HEADER}\n\n`;
@@ -2366,10 +2390,19 @@ async function generateImageWithKlingO3Fal(params: {
 
   let promptKlingO3 = params.prompt;
   if (params.modelReferenceBase64) {
+    const isDressKlingO3 = Boolean(
+      params.prompt &&
+        (/\b(vestido|vestidos|dress|dresses|macac[aã]o|macaquinho|camisola|jumpsuit)\b/i.test(params.prompt) ||
+          params.prompt.includes('PEÇA ÚNICA') ||
+          params.prompt.includes('VESTIDO'))
+    );
+    const dressRuleO3 = isDressKlingO3
+      ? 'The model wears EXCLUSIVELY the dress from <<<image_1>>> (STRICTLY PROHIBITED jeans or pants under dress).'
+      : 'If top, wear matching bottom; if dress, wear ONLY the dress.';
     const headerKlingO3 =
-      '[PHOTO 1 = PRODUCT (wear 1:1, do NOT copy clothes from photo 2)]. ' +
-      '[PHOTO 2 = MODEL (preserve 100% same woman, body, curves, hair, skin, pose; chin-down framing)]. ' +
-      '[PHOTO 3 = SCENARIO ROOM]. [NO NUDITY: wear complementary jeans or top]. ';
+      '<<<image_1>>> is the PRODUCT: wear exclusively the garment from <<<image_1>>> 1:1 (PROHIBITED to copy sideways pose from <<<image_1>>>). ' +
+      '<<<image_2>>> is the MODEL: preserve 100% same woman, body, curves, hair, skin, FRONT-FACING mirror selfie pose; strict CHIN-DOWN framing (NO face, NO head). ' +
+      `<<<image_3>>> is the SCENARIO ROOM. ${dressRuleO3} Natural matte realistic skin, no oil sheen. `;
     promptKlingO3 = `${headerKlingO3}${params.prompt}`;
   }
 
@@ -2382,6 +2415,7 @@ async function generateImageWithKlingO3Fal(params: {
     const inputPayload: any = {
       prompt: promptKlingO3,
       image_urls: imageUrls,
+      negative_prompt: 'face, head, eyes, eyebrows, nose, lips, mouth, teeth, smile, chin up, portrait, headshot, selfie with face, looking at camera, visible face, jeans with dress, pants under dress, jeans, sideways pose, profile angle, deformed, blurry',
       resolution: params.resolution || '2K',
       aspect_ratio: params.aspectRatio || '9:16',
       output_format: 'png',
@@ -2459,10 +2493,19 @@ async function generateImageWithFlux2ProEdit(params: {
 
   let promptFlux = params.prompt;
   if (params.modelReferenceBase64) {
+    const isDressFlux = Boolean(
+      params.prompt &&
+        (/\b(vestido|vestidos|dress|dresses|macac[aã]o|macaquinho|camisola|jumpsuit)\b/i.test(params.prompt) ||
+          params.prompt.includes('PEÇA ÚNICA') ||
+          params.prompt.includes('VESTIDO'))
+    );
+    const dressRuleFlux = isDressFlux
+      ? 'The model wears EXCLUSIVELY the dress from Photo 2 (strictly NO jeans or pants under dress).'
+      : 'If top, wear matching bottom; if dress, wear ONLY the dress.';
     const headerFlux =
-      '[PHOTO 1 = PRODUCT (wear 1:1, do NOT copy clothes from photo 2)]. ' +
-      '[PHOTO 2 = MODEL (preserve 100% same woman, body, curves, hair, skin, pose; chin-down framing)]. ' +
-      '[PHOTO 3 = SCENARIO ROOM]. [NO NUDITY: wear complementary jeans or top]. ';
+      'Photo 1 is the MODEL: preserve 100% the exact same woman, body, curves, hair, skin, FRONT-FACING mirror selfie pose; chin-down crop (NO face, NO head). ' +
+      'Photo 2 is the PRODUCT: replace her clothes with the exact garment from Photo 2 1:1 (DO NOT copy sideways pose or person from Photo 2). ' +
+      `Photo 3 is the SCENARIO ROOM: place her standing in this room. ${dressRuleFlux} Photorealistic modern smartphone photo. `;
     promptFlux = `${headerFlux}${params.prompt}`;
   }
 
@@ -2734,11 +2777,19 @@ app.post('/api/generate-scene-image', async (req, res) => {
     }
 
     if (requestedImageModel === 'flux_2_pro_edit') {
+      let fluxRefs = orderedRefs;
+      if (hasGalleryModel && effectiveModelReferenceBase64) {
+        // FLUX 2 Pro Edit: image_urls[0] é o canvas base que recebe as edições.
+        // Colocamos a MODELO da galeria como imagem 0 para preservar 100% sua identidade e biotipo!
+        const productRef = productPhotoBase64 || (orderedRefs[0] !== effectiveModelReferenceBase64 ? orderedRefs[0] : undefined);
+        const scenarioRef = effectiveScenarioPhotoBase64 || orderedRefs[orderedRefs.length - 1];
+        fluxRefs = [effectiveModelReferenceBase64, productRef, scenarioRef].filter((img): img is string => Boolean(img && img.length > 50));
+      }
       const fluxResult = await generateImageWithFlux2ProEdit({
         prompt: effectivePrompt,
-        imageReferenceBase64: productPhotoBase64 || effectiveModelReferenceBase64 || effectiveScenarioPhotoBase64,
+        imageReferenceBase64: effectiveModelReferenceBase64 || productPhotoBase64 || effectiveScenarioPhotoBase64,
         modelReferenceBase64: effectiveModelReferenceBase64,
-        referenceImages: orderedRefs,
+        referenceImages: fluxRefs,
       });
       return res.json(fluxResult);
     }
