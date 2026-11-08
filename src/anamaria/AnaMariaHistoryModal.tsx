@@ -176,7 +176,7 @@ export const AnaMariaHistoryModal: React.FC<AnaMariaHistoryModalProps> = ({
 
                   <button
                     type="button"
-                    onClick={() => downloadAnaMariaSingleImage(it.imageUrl, it.productName, it.timestamp)}
+                    onClick={() => downloadAnaMariaSingleImage(it.imageUrl, it.productName, it.timestamp, it.imageModel)}
                     className="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-all cursor-pointer"
                     title="Baixar Imagem"
                   >

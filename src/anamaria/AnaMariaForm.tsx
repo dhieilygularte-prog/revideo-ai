@@ -378,6 +378,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         selectedScenarioNumber: item.number,
         selectedScenarioUrl: item.fullUrl,
         selectedScenarioBase64: undefined,
+        modelScenarioSource: 'gallery', // Ao selecionar um cenário no Item 8, a chave do Item 10 vai para 'gallery'
       };
     });
   };
@@ -1677,41 +1678,6 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {selectedModelItem && (
-              <div
-                onClick={(e) => e.stopPropagation()}
-                className="flex items-center gap-1 p-1 rounded-xl bg-zinc-950/90 border border-zinc-700/60 shadow-inner"
-              >
-                <button
-                  type="button"
-                  onClick={() => onChange((prev) => ({ ...prev, modelScenarioSource: 'model' }))}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
-                    (form.modelScenarioSource || 'model') === 'model'
-                      ? isAmetista
-                        ? 'bg-[#d4ff59] text-zinc-950 shadow-sm'
-                        : 'bg-amber-400 text-zinc-950 shadow-sm'
-                      : 'text-zinc-400 hover:text-zinc-200'
-                  }`}
-                  title="Manter o mesmo cômodo/cenário da foto da modelo (Modo 2 Fotos)"
-                >
-                  Cenário da Modelo (Padrão)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onChange((prev) => ({ ...prev, modelScenarioSource: 'gallery' }))}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-black transition-all cursor-pointer ${
-                    form.modelScenarioSource === 'gallery'
-                      ? isAmetista
-                        ? 'bg-[#d4ff59] text-zinc-950 shadow-sm'
-                        : 'bg-amber-400 text-zinc-950 shadow-sm'
-                      : 'text-zinc-400 hover:text-zinc-200'
-                  }`}
-                  title="Usar cenário da galeria de cenários (Modo 3 Fotos)"
-                >
-                  Cenário da Galeria
-                </button>
-              </div>
-            )}
             {selectedModelItem ? (
               <div
                 className={`flex items-center gap-1.5 text-zinc-950 font-black px-3 py-1.5 rounded-xl border shadow-md ${
@@ -1756,42 +1722,39 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
 
         {isModelGalleryExpanded && (
           <div className="p-5 sm:p-6 border-t border-orange-500/30 bg-[#0b0b0c] space-y-5 animate-fade-in">
-            {/* Seletor de Cenário da Modelo vs Cenário da Galeria */}
-            <div className="p-3.5 rounded-xl bg-zinc-900/90 border border-zinc-800 flex flex-wrap items-center justify-between gap-3">
+            {/* Interruptor de Cenário da Modelo (esquerda) vs Cenário da Galeria (direita) em tom azul suave */}
+            <div className="p-3.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 flex flex-wrap items-center justify-between gap-3">
               <div>
-                <span className="text-xs font-black text-amber-300 uppercase tracking-wide flex items-center gap-1.5">
-                  <span>Cenário ao selecionar a modelo:</span>
-                </span>
-                <p className="text-[11px] text-zinc-300 mt-0.5">
+                <span className="text-xs font-semibold text-zinc-300">Cenário da Composição:</span>
+                <p className="text-[11px] text-zinc-400 mt-0.5">
                   {(form.modelScenarioSource || 'model') === 'model'
-                    ? '✓ Cenário da Modelo (Ativo / Padrão): O mesmo cenário e pose da foto da modelo permanecem 100% idênticos. O app só substitui a roupa pelo produto (Modo 2 Fotos: Produto + Modelo).'
-                    : '✓ Cenário da Galeria (Ativo): A modelo é mantida na mesma pose e corpo, mas é inserida dentro de um cenário da galeria de cenários (Modo 3 Fotos: Produto + Modelo + Cenário).'}
+                    ? 'Cenário e pose da modelo preservados 100% idênticos (Modo 2 Fotos).'
+                    : 'Modelo inserida em um cenário da galeria de cenários (Modo 3 Fotos).'}
                 </p>
               </div>
-              <div className="flex items-center gap-1 p-1 rounded-xl bg-zinc-950 border border-zinc-800 shrink-0">
+              {/* Interruptor tipo de luz */}
+              <div className="inline-flex items-center p-1 rounded-xl bg-zinc-950 border border-zinc-800/90 shadow-inner">
                 <button
                   type="button"
                   onClick={() => onChange((prev) => ({ ...prev, modelScenarioSource: 'model' }))}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
                     (form.modelScenarioSource || 'model') === 'model'
-                      ? isAmetista
-                        ? 'bg-[#d4ff59] text-zinc-950 shadow-md'
-                        : 'bg-gradient-to-r from-amber-400 to-orange-500 text-zinc-950 shadow-md'
+                      ? 'bg-blue-600 text-white shadow-sm font-semibold'
                       : 'text-zinc-400 hover:text-zinc-200'
                   }`}
+                  title="Manter o cenário da modelo (Modo 2 Fotos)"
                 >
-                  Cenário da Modelo (Padrão)
+                  Cenário da Modelo
                 </button>
                 <button
                   type="button"
                   onClick={() => onChange((prev) => ({ ...prev, modelScenarioSource: 'gallery' }))}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
                     form.modelScenarioSource === 'gallery'
-                      ? isAmetista
-                        ? 'bg-[#d4ff59] text-zinc-950 shadow-md'
-                        : 'bg-gradient-to-r from-amber-400 to-orange-500 text-zinc-950 shadow-md'
+                      ? 'bg-blue-600 text-white shadow-sm font-semibold'
                       : 'text-zinc-400 hover:text-zinc-200'
                   }`}
+                  title="Usar cenário da galeria de cenários (Modo 3 Fotos)"
                 >
                   Cenário da Galeria
                 </button>

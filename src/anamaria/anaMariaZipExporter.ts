@@ -32,6 +32,38 @@ export function formatTimeForFilename(timestamp?: number): string {
   return `${hours}.${minutes}.${seconds}`;
 }
 
+export function getImageModelLabel(imageModel?: string): string {
+  switch (imageModel) {
+    case 'seedream_5_0_pro':
+      return 'Seedream 5.0 Pro';
+    case 'seedream_4_5':
+      return 'Seedream 4.5';
+    case 'kling_3_0':
+      return 'Kling 3.0 Omni';
+    case 'kling_o3_fal':
+      return 'Kling O3 Omni Fal.ai';
+    case 'flux_2_pro_edit':
+      return 'FLUX 2 Pro';
+    case 'openai':
+      return 'OpenAI';
+    default:
+      return imageModel ? imageModel.replace(/_/g, ' ') : '';
+  }
+}
+
+export function buildImageFileName(
+  productName: string,
+  timestamp?: number,
+  imageModel?: string,
+  ext = 'jpg'
+): string {
+  const cleanName = sanitizeCleanName(productName);
+  const timeStr = formatTimeForFilename(timestamp);
+  const modelLabel = getImageModelLabel(imageModel);
+  const suffix = modelLabel ? ` ${modelLabel}` : '';
+  return `${cleanName} ${timeStr}${suffix}.${ext}`;
+}
+
 export function getMasterPromptFileName(result: AnaMariaResultState): string {
   const cleanName = sanitizeCleanName(result.productName);
   const timeStr = formatTimeForFilename(result.timestamp);
@@ -48,8 +80,9 @@ export function getMasterPromptFileName(result: AnaMariaResultState): string {
 }
 
 /**
- * Garante que a imagem gerada esteja na resolução ideal de 1080x1920 pixels (Full HD vertical 9:16)
- * com máxima nitidez e interpolação de alta qualidade para o Kling 3.0 Omni / TikTok.
+ * Garante que a imagem gerada esteja em alta resolução vertical 9:16 preservando 100% da nitidez óptica.
+ * Se a imagem já for nativa de alta resolução (altura >= 1600 e largura >= 900), preserva os bytes originais intactos,
+ * evitando a perda de nitidez e o efeito embaçado da reamostragem bilinear de canvas.
  */
 export async function ensureHighResAnaMariaDataUrl(
   inputUrlOrBase64: string,
@@ -82,10 +115,24 @@ export async function ensureHighResAnaMariaDataUrl(
     img.crossOrigin = 'anonymous';
     img.onload = () => {
       try {
+        // Se a imagem já é de alta resolução nativa (ex: 1024x1792 da OpenAI, 1440x2560 do Seedream, 2K do Kling),
+        // PRESERVE A IMAGEM ORIGINAL 100% INTACTA!
+        // Redesenhar no canvas com drawImage aplica interpolação que borra e tira a nitidez original da IA.
+        const currentRatio = img.width / img.height;
+        const targetRatio = targetWidth / targetHeight; // 1080 / 1920 = 0.5625
+        const isAlreadyHighRes = img.height >= 1600 && img.width >= 900 && Math.abs(currentRatio - targetRatio) < 0.08;
+
+        if (isAlreadyHighRes) {
+          resolve(resolvedSrc);
+          return;
+        }
+
         if (img.width === targetWidth && img.height === targetHeight && resolvedSrc.startsWith('data:image/')) {
           resolve(resolvedSrc);
           return;
         }
+
+        // Apenas para imagens de menor resolução fazemos o upscaling no canvas
         const canvas = document.createElement('canvas');
         canvas.width = targetWidth;
         canvas.height = targetHeight;
@@ -97,7 +144,6 @@ export async function ensureHighResAnaMariaDataUrl(
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
         ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
-        // Qualidade 0.99 em JPEG: Máxima pureza visual e preservação total de microtexturas para Kling 3.0
         const dataUrl = canvas.toDataURL('image/jpeg', 0.99);
         resolve(dataUrl);
       } catch (err) {
@@ -113,7 +159,7 @@ export async function ensureHighResAnaMariaDataUrl(
 }
 
 /**
- * Converte qualquer imagem ou dataURL para Blob JPEG com 1080x1920 pixels garantidos.
+ * Converte qualquer imagem ou dataURL para Blob com resolução de alta definição preservada.
  */
 export async function ensureHighResAnaMariaBlob(
   inputUrlOrBase64: string,
@@ -137,13 +183,19 @@ export async function ensureHighResAnaMariaBlob(
 }
 
 /**
- * Baixa a imagem individual com resolução de 1080x1920 pixels
- * Nomenclatura: "[Nome da Peça] [Hora da Geração].jpg" (ex: "Vestido Curto 11.12.56.jpg")
+ * Baixa a imagem individual com resolução de alta fidelidade
+ * Nomenclatura: "[Nome da Peça] [Hora da Geração] [Gerador].[ext]"
+ * Exemplo: "Vestido Tubinho 14.10.05 Seedream 5.0 Pro.jpg"
  */
-export async function downloadAnaMariaSingleImage(imageUrl: string, productName: string, timestamp?: number) {
-  const cleanName = sanitizeCleanName(productName);
-  const timeStr = formatTimeForFilename(timestamp);
-  const fileName = `${cleanName} ${timeStr}.jpg`;
+export async function downloadAnaMariaSingleImage(
+  imageUrl: string,
+  productName: string,
+  timestamp?: number,
+  imageModel?: string
+) {
+  const isPng = imageUrl.startsWith('data:image/png');
+  const ext = isPng ? 'png' : 'jpg';
+  const fileName = buildImageFileName(productName, timestamp, imageModel, ext);
 
   try {
     const blob = await ensureHighResAnaMariaBlob(imageUrl, 1080, 1920);
@@ -161,10 +213,10 @@ export async function downloadAnaMariaSingleImage(imageUrl: string, productName:
 
 /**
  * Exporta o pacote .zip (Item 23 e Item 8):
- * - Imagem em 1080x1920 pixels: "[Nome da Peça] [Hora da Geração].jpg"
+ * - Imagem: "[Nome da Peça] [Hora da Geração] [Gerador].[ext]"
  * - Doc 1: "Hastags e Headline - [Nome da Peça] [Hora da Geração].txt"
  * - Doc 2: "Prompt de Video - [Nome da Peça] [Hora da Geração].txt"
- * - Nome do ZIP: "[Nome da Peça] [Hora da Geração].zip"
+ * - Nome do ZIP: "[Nome da Peça] [Hora da Geração] [Gerador].zip"
  * - Sem subpastas adicionais (todos os arquivos na raiz do .zip)
  */
 export async function exportAnaMariaZip(result: AnaMariaResultState): Promise<void> {
@@ -173,12 +225,16 @@ export async function exportAnaMariaZip(result: AnaMariaResultState): Promise<vo
 
   const cleanName = sanitizeCleanName(result.productName);
   const timeStr = formatTimeForFilename(result.timestamp);
+  const modelLabel = getImageModelLabel(result.imageModel);
+  const isPng = result.imageUrl.startsWith('data:image/png');
+  const ext = isPng ? 'png' : 'jpg';
 
-  // 1. Imagem Principal em 1080x1920 pixels: "[Nome da Peça] [Hora da Geração].jpg"
+  // 1. Imagem Principal: "[Nome da Peça] [Hora da Geração] [Gerador].[ext]"
+  const imageFileName = buildImageFileName(result.productName, result.timestamp, result.imageModel, ext);
   try {
     const imgBlob = await ensureHighResAnaMariaBlob(result.imageUrl, 1080, 1920);
     const imgBuffer = await imgBlob.arrayBuffer();
-    zip.file(`${cleanName} ${timeStr}.jpg`, imgBuffer);
+    zip.file(imageFileName, imgBuffer);
   } catch (err) {
     console.warn('Falha ao adicionar imagem de alta resolução no zip:', err);
   }
@@ -199,11 +255,12 @@ ${result.hashtags}
   const videoPromptFileName = getMasterPromptFileName(result);
   zip.file(videoPromptFileName, cleanVideoPrompt);
 
-  // Gerar e baixar arquivo .zip com o nome "[Nome da Peça] [Hora da Geração].zip"
+  // Gerar e baixar arquivo .zip com o nome "[Nome da Peça] [Hora da Geração] [Gerador].zip"
+  const zipFileName = `${cleanName} ${timeStr}${modelLabel ? ` ${modelLabel}` : ''}.zip`;
   const zipBlob = await zip.generateAsync({
     type: 'blob',
     compression: 'DEFLATE',
     compressionOptions: { level: 6 },
   });
-  downloadBlob(zipBlob, `${cleanName} ${timeStr}.zip`);
+  downloadBlob(zipBlob, zipFileName);
 }

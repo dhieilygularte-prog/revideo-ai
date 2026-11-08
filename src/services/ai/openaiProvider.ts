@@ -797,6 +797,10 @@ ALTERAÇÃO SOLICITADA:
 1. Substitua a roupa/produto (${productType}) que ela veste por uma peça com exatamente estas características${variationName ? ` (variante "${variationName}")` : ''}: ${garmentSpec || productType}.
 2. CALÇADO: ${shoeEditInstruction}
 3. Se for vestido ou macacão, ela veste EXCLUSIVAMENTE o vestido com pernas limpas naturais (proibido calça jeans ou shorts sob o vestido); se for blusa, veste calça jeans combinando; se for calça, veste blusa combinando.
+4. MÁXIMA NITIDEZ, FOCO ÓPTICO CRISTALINO E ALTA RESOLUÇÃO:
+- Preserve a imagem com nitidez fotográfica impecável e foco cristalino, sem nenhum borrão, névoa ou perda de textura.
+- Pele humana realista e natural com microtextura e poros visíveis, olhos vívidos e nítidos, e textura detalhada do tecido com iluminação de câmera moderna topo de linha (iPhone 16 Pro).
+- ZERO borrão (NO BLUR), ZERO efeito embaçado, foco cravado em toda a modelo e no produto.
 Preserve fielmente qualquer logomarca, estampa ou acabamento original da peça. Tudo que não for a peça e o calçado permanece pixel a pixel igual à imagem enviada. Proibido adicionar textos flutuantes, logos de redes sociais ou marcas d'água externas.`;
       } else if (referenceFrameBase64) {
         try {
