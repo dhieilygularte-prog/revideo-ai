@@ -3513,10 +3513,13 @@ async function generateImageWithKling(params) {
     params.prompt && (params.prompt.includes("MODO COM ROSTO") || params.prompt.includes("ROSTO E ENQUADRAMENTO \u2014 MODO COM ROSTO") || params.prompt.includes("o rosto da modelo DEVE aparecer") || params.prompt.includes("MESTRA CATZA"))
   );
   const isPovModeKling = params.presentationMode === "pov" || params.selectedMasterId === "pov_cinta_85k" || params.selectedMasterId === "pov_blusinhas_13k" || Boolean(params.prompt && params.prompt.includes("PRESERVA\xC7\xC3O INTEGRAL DO CEN\xC1RIO POV"));
+  const hasModelRefKling = Boolean(params.modelReferenceBase64 && params.modelReferenceBase64.length > 50);
   let headerKling = "";
   if (params.isAnaMariaMode) {
     if (isPovModeKling) {
       headerKling = "[MODO POV: Preservar 100% do cen\xE1rio POV da cama da Imagem 1; produtos da Imagem 2 manipulados apenas pelas duas m\xE3os limpas sem tatuagens sobre a cama. PROIBIDO corpo, rosto ou espelho!]\n\n";
+    } else if (hasModelRefKling) {
+      headerKling = "[REGRA SOBERANA DE COMPOSI\xC7\xC3O 3 IMAGENS]:\n1. PRODUTO (IMAGEM 1): Reproduzir a roupa da Imagem 1 na modelo com m\xE1xima fidelidade 1:1. PROIBIDO usar a roupa da Imagem 2.\n2. MODELO (IMAGEM 2): A mulher gerada DEVE SER LITERALMENTE A MESMA MODELO da Imagem 2 (mesmo biotipo, curvas, formato de corpo, cabelos e mesma pose diante do espelho). Enquadramento estritamente da base do queixo para baixo, rosto coberto pelo celular.\n3. CEN\xC1RIO (IMAGEM 3): Preservar 100% o ambiente real da Imagem 3 (paredes, piso, espelho e ilumina\xE7\xE3o intactos).\n4. LOOK COMPLETO (PROIBIDO NUDEZ): Se o produto for blusa, veste cal\xE7a jeans cl\xE1ssica cintura alta; se for cal\xE7a, veste blusa neutra combinando. A modelo NUNCA fica nua.\n5. PELE REALISTA & NATURAL (SEM OLEOSIDADE): Textura de pele humana real com poros vis\xEDveis, acabamento fosco suave sob ilumina\xE7\xE3o difusa interior. PROIBIDO aspecto oleoso, pele plastificada ou brilho excessivo.\n\n";
     } else {
       headerKling = allowsFace ? "[REGRA SOBERANA DE ENQUADRAMENTO E CEN\xC1RIO]:\n1. CEN\xC1RIO: Preservar 100% o ambiente real da foto anexada na Imagem 1 (paredes, piso, espelho e ilumina\xE7\xE3o intactos).\n2. ROSTO E MIRROR-SELFIE: Modelo em p\xE9 segurando smartphone moderno apontado para o espelho, rosto natural expressivo vis\xEDvel e corpo inteiro at\xE9 os p\xE9s.\n3. FIDELIDADE 1:1: Reproduzir a roupa das fotos de produto anexadas com m\xE1xima fidelidade. Zero tatuagens.\n\n" : "[REGRA SOBERANA ABSOLUTA \u2014 MIRROR-SELFIE COM SMARTPHONE & CORTE NO QUEIXO]:\n1. ENQUADRAMENTO E CORTE RIGOROSO DO QUEIXO PARA BAIXO: \xC9 TERMINANTEMENTE PROIBIDO MOSTRAR O ROSTO, OLHOS, NARIZ OU BOCA. O enquadramento \xE9 estritamente da ponta do queixo para baixo at\xE9 os p\xE9s no piso.\n2. SMARTPHONE OBRIGAT\xD3RIO NA M\xC3O: A modelo segura um smartphone moderno verticalmente com uma das m\xE3os na altura do peito/queixo, tirando uma foto no espelho de corpo inteiro. M\xE3os com an\xE9is finos e pulseiras douradas delicadas nos pulsos.\n3. CEN\xC1RIO INTEGRALMENTE PRESERVADO (IMAGEM 1): O c\xF4modo, piso, paredes, portas e espelho DEVEM ser id\xEAnticos ao cen\xE1rio da Imagem 1 anexada.\n4. LOOK COMPLETO (PROIBIDO NUDEZ): Se o produto for blusa/pe\xE7a superior, a modelo veste cal\xE7a jeans feminina cl\xE1ssica de cintura alta; se for pe\xE7a inferior, veste blusa combinando. Corpo com curvas femininas naturais conforme o biotipo da Mestra.\n5. PELE REALISTA & NATURAL (SEM OLEOSIDADE): Textura de pele humana real com poros vis\xEDveis, acabamento fosco suave sob ilumina\xE7\xE3o difusa interior. PROIBIDO aspecto oleoso, pele plastificada, pele encerada, brilho excessivo de \xF3leo, pele de boneca de cera ou porcelana artificial.\n\n";
     }
@@ -3685,12 +3688,29 @@ async function generateImageWithSeedream(params) {
   }
   const refImages = (params.referenceImages && params.referenceImages.length > 0 ? params.referenceImages : [params.imageReferenceBase64]).map((img) => toDataUri(img)).filter((img) => Boolean(img)).slice(0, params.presentationMode === "pov" || params.selectedMasterId === "pov_cinta_85k" || params.selectedMasterId === "pov_blusinhas_13k" || Boolean(params.prompt && params.prompt.includes("PRESERVA\xC7\xC3O INTEGRAL DO CEN\xC1RIO POV")) ? 3 : 4);
   const isPovModeSeedream = params.presentationMode === "pov" || params.selectedMasterId === "pov_cinta_85k" || params.selectedMasterId === "pov_blusinhas_13k" || Boolean(params.prompt && params.prompt.includes("PRESERVA\xC7\xC3O INTEGRAL DO CEN\xC1RIO POV"));
+  const hasModelRefSeedream = Boolean(params.modelReferenceBase64 && params.modelReferenceBase64.length > 50);
+  const allowsFaceSeedream = params.presentationMode === "com_rosto" || params.selectedMasterId === "mestra_catza" || Boolean(
+    params.prompt && (params.prompt.includes("MODO COM ROSTO") || params.prompt.includes("ROSTO E ENQUADRAMENTO \u2014 MODO COM ROSTO") || params.prompt.includes("o rosto da modelo DEVE aparecer") || params.prompt.includes("MESTRA CATZA"))
+  );
+  const faceDirectiveSeedream = allowsFaceSeedream ? "[ENQUADRAMENTO: Rosto expressivo vis\xEDvel naturalmente no espelho diante da c\xE2mera].\n" : "[CORTE OBRIGAT\xD3RIO NA BASE DO QUEIXO \u2014 ZERO ROSTO]: CORTAR RIGOROSAMENTE DA BASE DO QUEIXO PARA BAIXO. \xC9 TERMINANTEMENTE PROIBIDO MOSTRAR OLHOS, NARIZ, BOCA, L\xC1BIOS, DENTES OU CABE\xC7A. O smartphone moderno fica posicionado na altura do queixo e o rosto fica 100% FORA do enquadramento. Exibir apenas a ponta inferior do queixo, pesco\xE7o, colo e corpo inteiro at\xE9 os p\xE9s no piso.\n";
+  const naturalSkinSeedream = "[PELE NATURAL BRASILEIRA]: Textura de pele humana real e natural, acabamento fosco suave com poros vis\xEDveis sob ilumina\xE7\xE3o realista de provador/quarto, sem bronzeamento artificial alaranjado, sem pele oleosa e sem brilho excessivo.\n";
   let headerSeedream = "";
   if (params.isAnaMariaMode) {
     if (isPovModeSeedream) {
       headerSeedream = "[MAPA POV: Imagem 1 = Cen\xE1rio POV Cama intacto; Imagem 2 = Produto 1:1 manipulado apenas pelas duas m\xE3os limpas sem tatuagens sobre a cama. PROIBIDO corpo/rosto/espelho].\n\n";
+    } else if (hasModelRefSeedream) {
+      headerSeedream = `${faceDirectiveSeedream}${naturalSkinSeedream}[MAPA T\xC9CNICO DE REFER\xCANCIA 3 IMAGENS]:
+- Foto 1 (PRODUTO): \xC9 a roupa que a modelo DEVE vestir com m\xE1xima fidelidade 1:1 (PROIBIDO copiar a roupa da Foto 2).
+- Foto 2 (MODELO): \xC9 literalmente a modelo da imagem. Preserve 100% o mesmo corpo, curvas, biotipo, cabelos e mesma pose diante do espelho da Foto 2. DESCONSIDERE a roupa e o cen\xE1rio da Foto 2!
+- Foto 3 (CEN\xC1RIO): \xC9 o c\xF4modo real fixo intacto onde a modelo deve estar inserida diante do espelho.
+[LOOK COMPLETO SEM NUDEZ]: Pe\xE7a superior = cal\xE7a jeans cintura alta cl\xE1ssica; Pe\xE7a inferior = blusa neutra combinando. A modelo NUNCA fica nua ou sem cal\xE7a.
+
+`;
     } else {
-      headerSeedream = "[MAPA T\xC9CNICO DE REFER\xCANCIA: Imagem 1 = Cen\xE1rio real fixo intacto; Imagem 2+ = Pe\xE7a de roupa 1:1 (ESTRITO: \xC9 TERMINANTEMENTE PROIBIDO copiar o corpo da modelo ou manequim da foto de produto na Imagem 2+; o corpo, biotipo e curvas da modelo DEVEM vir 100% e exclusivamente da descri\xE7\xE3o do prompt selecionado abaixo, sem nenhuma predefini\xE7\xE3o externa)].\n[REGRA DE LOOK COMPLETO E PROIBI\xC7\xC3O DE NUDEZ: A modelo deve SEMPRE estar vestida por completo. Se o produto for pe\xE7a superior (blusa/cropped/camiseta), a modelo DEVE vestir cal\xE7a jeans feminina cl\xE1ssica de cintura alta; se for pe\xE7a inferior, veste blusa neutra combinando; se cal\xE7ados estiverem vis\xEDveis, deve cal\xE7ar o sapato especificado. ZERO NUDEZ, ZERO SEM CAL\xC7A].\n\n";
+      headerSeedream = `${faceDirectiveSeedream}${naturalSkinSeedream}[MAPA T\xC9CNICO DE REFER\xCANCIA]: Imagem 1 = Cen\xE1rio real fixo intacto; Imagem 2+ = Pe\xE7a de roupa 1:1 (ESTRITO: \xC9 TERMINANTEMENTE PROIBIDO copiar o corpo da modelo ou manequim da foto de produto na Imagem 2+; o corpo, biotipo e curvas da modelo DEVEM vir 100% e exclusivamente da descri\xE7\xE3o do prompt selecionado abaixo, sem nenhuma predefini\xE7\xE3o externa)].
+[REGRA DE LOOK COMPLETO E PROIBI\xC7\xC3O DE NUDEZ: A modelo deve SEMPRE estar vestida por completo. Se o produto for pe\xE7a superior (blusa/cropped/camiseta), a modelo DEVE vestir cal\xE7a jeans feminina cl\xE1ssica de cintura alta; se for pe\xE7a inferior, veste blusa neutra combinando; se cal\xE7ados estiverem vis\xEDveis, deve cal\xE7ar o sapato especificado. ZERO NUDEZ, ZERO SEM CAL\xC7A].
+
+`;
     }
   } else {
     headerSeedream = `${IMAGE_REFERENCE_FIDELITY_HEADER}
@@ -3777,14 +3797,29 @@ function getFalKey() {
   return "fal_sk_3b8aaba3fd8d43e1a14108cc27e6b4ae:e4a8a5787f308a8a2cb95276e202144a";
 }
 async function uploadReferenceToFal(img) {
-  if (!img || img.length < 50) return null;
+  if (!img || img.length < 10) return null;
   if (img.startsWith("http://") || img.startsWith("https://")) {
     return img;
   }
   const falKey = getFalKey();
   if (falKey) fal.config({ credentials: falKey });
+  if (img.startsWith("/")) {
+    const diskPath = path.join(process.cwd(), "public", img.replace(/^\//, ""));
+    if (fs.existsSync(diskPath)) {
+      const buf = fs.readFileSync(diskPath);
+      const ext = img.endsWith(".png") ? "png" : "jpeg";
+      const mime = ext === "png" ? "image/png" : "image/jpeg";
+      img = `data:${mime};base64,${buf.toString("base64")}`;
+    } else {
+      return `https://www.auroratopcreator.online${img}`;
+    }
+  }
   try {
     const cleanB64 = img.replace(/^data:image\/[a-zA-Z0-9.+-]+;base64,/, "").trim();
+    if (cleanB64.length < 500) {
+      console.warn("[uploadReferenceToFal] Imagem muito pequena ou inv\xE1lida (< 500 bytes)");
+      return null;
+    }
     const mimeMatch = img.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,/);
     const mimeType = mimeMatch ? mimeMatch[1] : "image/jpeg";
     const ext = mimeType.includes("png") ? "png" : mimeType.includes("webp") ? "webp" : "jpeg";
@@ -3833,9 +3868,17 @@ async function generateImageWithKlingO3Fal(params) {
       error: "\xC9 necess\xE1rio ao menos 1 imagem de refer\xEAncia para o Kling O3 Omni na fal.ai."
     };
   }
+  let promptKlingO3 = params.prompt;
+  if (params.modelReferenceBase64) {
+    const headerKlingO3 = "[PHOTO 1 = PRODUCT (wear 1:1, do NOT copy clothes from photo 2)]. [PHOTO 2 = MODEL (preserve 100% same woman, body, curves, hair, skin, pose; chin-down framing)]. [PHOTO 3 = SCENARIO ROOM]. [NO NUDITY: wear complementary jeans or top]. ";
+    promptKlingO3 = `${headerKlingO3}${params.prompt}`;
+  }
+  if (promptKlingO3.length > 2450) {
+    promptKlingO3 = compactPromptToLimit(promptKlingO3, 2450, "");
+  }
   try {
     const inputPayload = {
-      prompt: params.prompt,
+      prompt: promptKlingO3,
       image_urls: imageUrls,
       resolution: params.resolution || "2K",
       aspect_ratio: params.aspectRatio || "9:16",
@@ -3860,10 +3903,18 @@ async function generateImageWithKlingO3Fal(params) {
     }
     return { success: true, imageUrl: generatedUrl };
   } catch (err) {
-    console.error("[Kling O3 fal.ai Error]:", err?.message || err);
+    console.error("[Kling O3 fal.ai Error]:", err);
+    const detail = err?.body?.detail || err?.data?.detail;
+    let detailMsg = "";
+    if (Array.isArray(detail)) {
+      detailMsg = detail.map((d) => `${d.loc ? d.loc.join(".") + ": " : ""}${d.msg || JSON.stringify(d)}`).join("; ");
+    } else if (typeof detail === "string") {
+      detailMsg = detail;
+    }
+    const errorMsg = detailMsg || err?.message || "Erro durante a gera\xE7\xE3o no Kling O3 Omni via fal.ai.";
     return {
       success: false,
-      error: err?.message || "Erro durante a gera\xE7\xE3o no Kling O3 Omni via fal.ai."
+      error: errorMsg
     };
   }
 }
@@ -3888,9 +3939,17 @@ async function generateImageWithFlux2ProEdit(params) {
       error: "\xC9 necess\xE1rio ao menos 1 imagem de refer\xEAncia para o FLUX 2 Pro Edit na fal.ai."
     };
   }
+  let promptFlux = params.prompt;
+  if (params.modelReferenceBase64) {
+    const headerFlux = "[PHOTO 1 = PRODUCT (wear 1:1, do NOT copy clothes from photo 2)]. [PHOTO 2 = MODEL (preserve 100% same woman, body, curves, hair, skin, pose; chin-down framing)]. [PHOTO 3 = SCENARIO ROOM]. [NO NUDITY: wear complementary jeans or top]. ";
+    promptFlux = `${headerFlux}${params.prompt}`;
+  }
+  if (promptFlux.length > 2450) {
+    promptFlux = compactPromptToLimit(promptFlux, 2450, "");
+  }
   try {
     const inputPayload = {
-      prompt: params.prompt,
+      prompt: promptFlux,
       image_urls: imageUrls,
       image_size: "portrait_16_9",
       safety_tolerance: "2",
@@ -3915,10 +3974,18 @@ async function generateImageWithFlux2ProEdit(params) {
     }
     return { success: true, imageUrl: generatedUrl };
   } catch (err) {
-    console.error("[FLUX 2 Pro Edit fal.ai Error]:", err?.message || err);
+    console.error("[FLUX 2 Pro Edit fal.ai Error]:", err);
+    const detail = err?.body?.detail || err?.data?.detail;
+    let detailMsg = "";
+    if (Array.isArray(detail)) {
+      detailMsg = detail.map((d) => `${d.loc ? d.loc.join(".") + ": " : ""}${d.msg || JSON.stringify(d)}`).join("; ");
+    } else if (typeof detail === "string") {
+      detailMsg = detail;
+    }
+    const errorMsg = detailMsg || err?.message || "Erro durante a gera\xE7\xE3o no FLUX 2 Pro Edit via fal.ai.";
     return {
       success: false,
-      error: err?.message || "Erro durante a gera\xE7\xE3o no FLUX 2 Pro Edit via fal.ai."
+      error: errorMsg
     };
   }
 }
@@ -4057,17 +4124,39 @@ ${prompt}`;
         effectiveModelReferenceBase64 = getGalleryModelBase64(selectedModelGalleryNumber);
       }
     }
-    const seenRefs = /* @__PURE__ */ new Set();
-    const orderedRefs = [effectiveScenarioPhotoBase64, effectiveModelReferenceBase64, productPhotoBase64, ...Array.isArray(productPhotosBase64) ? productPhotosBase64 : []].filter((img) => typeof img === "string" && img.length > 50).filter((img) => {
-      const key = img.slice(-120);
-      if (seenRefs.has(key)) return false;
-      seenRefs.add(key);
-      return true;
-    });
+    const hasGalleryModel = Boolean(effectiveModelReferenceBase64 && effectiveModelReferenceBase64.length > 50);
+    const orderedRefs = [];
+    if (isAnaMariaMode && hasGalleryModel) {
+      if (productPhotoBase64 && productPhotoBase64.length > 50) {
+        orderedRefs.push(productPhotoBase64);
+      }
+      if (Array.isArray(productPhotosBase64)) {
+        for (const p of productPhotosBase64) {
+          if (p && p.length > 50 && p !== productPhotoBase64) orderedRefs.push(p);
+        }
+      }
+      orderedRefs.push(effectiveModelReferenceBase64);
+      if (effectiveScenarioPhotoBase64 && effectiveScenarioPhotoBase64.length > 50) {
+        orderedRefs.push(effectiveScenarioPhotoBase64);
+      }
+    } else {
+      if (effectiveScenarioPhotoBase64 && effectiveScenarioPhotoBase64.length > 50) {
+        orderedRefs.push(effectiveScenarioPhotoBase64);
+      }
+      if (productPhotoBase64 && productPhotoBase64.length > 50) {
+        orderedRefs.push(productPhotoBase64);
+      }
+      if (Array.isArray(productPhotosBase64)) {
+        for (const p of productPhotosBase64) {
+          if (p && p.length > 50 && p !== productPhotoBase64) orderedRefs.push(p);
+        }
+      }
+    }
     if (requestedImageModel === "kling_3_0") {
       const klingResult = await generateImageWithKling({
         prompt: effectivePrompt,
-        imageReferenceBase64: effectiveScenarioPhotoBase64 || modelReferenceBase64 || productPhotoBase64,
+        imageReferenceBase64: productPhotoBase64 || effectiveModelReferenceBase64 || effectiveScenarioPhotoBase64,
+        modelReferenceBase64: effectiveModelReferenceBase64,
         referenceImages: orderedRefs,
         aspectRatio: req.body.aspectRatio || "9:16",
         resolution: req.body.resolution || "1k",
@@ -4083,7 +4172,8 @@ ${prompt}`;
     if (requestedImageModel === "kling_o3_fal") {
       const klingO3Result = await generateImageWithKlingO3Fal({
         prompt: effectivePrompt,
-        imageReferenceBase64: effectiveScenarioPhotoBase64 || modelReferenceBase64 || productPhotoBase64,
+        imageReferenceBase64: productPhotoBase64 || effectiveModelReferenceBase64 || effectiveScenarioPhotoBase64,
+        modelReferenceBase64: effectiveModelReferenceBase64,
         referenceImages: orderedRefs,
         aspectRatio: req.body.aspectRatio || "9:16",
         resolution: "2K",
@@ -4094,7 +4184,8 @@ ${prompt}`;
     if (requestedImageModel === "flux_2_pro_edit") {
       const fluxResult = await generateImageWithFlux2ProEdit({
         prompt: effectivePrompt,
-        imageReferenceBase64: effectiveScenarioPhotoBase64 || modelReferenceBase64 || productPhotoBase64,
+        imageReferenceBase64: productPhotoBase64 || effectiveModelReferenceBase64 || effectiveScenarioPhotoBase64,
+        modelReferenceBase64: effectiveModelReferenceBase64,
         referenceImages: orderedRefs
       });
       return res.json(fluxResult);
@@ -4102,7 +4193,8 @@ ${prompt}`;
     if (requestedImageModel === "seedream_4_5" || requestedImageModel === "seedream_5_0_pro") {
       const seedreamResult = await generateImageWithSeedream({
         prompt: effectivePrompt,
-        imageReferenceBase64: effectiveScenarioPhotoBase64 || modelReferenceBase64 || productPhotoBase64,
+        imageReferenceBase64: productPhotoBase64 || effectiveModelReferenceBase64 || effectiveScenarioPhotoBase64,
+        modelReferenceBase64: effectiveModelReferenceBase64,
         referenceImages: orderedRefs,
         aspectRatio: req.body.aspectRatio || "9:16",
         isAnaMariaMode,

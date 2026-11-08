@@ -572,15 +572,33 @@ ${
 }`;
 
   const hasGalleryModel = Boolean(form.selectedModelGalleryId || form.selectedModelGalleryNumber);
-  const galleryModelDirective = hasGalleryModel
-    ? `## 0. REFERÊNCIA FOTOGRÁFICA DA MODELO (ITEM 10 — PRESERVAÇÃO 100% DA MODELO ANEXADA)\n` +
-      `A fotografia da modelo anexada é a autoridade máxima e absoluta para o biotipo, corpo e fisionomia da modelo:\n` +
-      `- IDENTIDADE E BIOTIPO 100% IDÊNTICOS: Mantenha com fidelidade absoluta o mesmo corpo, formato físico, curvas, quadris, cintura, busto, tom de pele natural, cabelos (cor, comprimento e textura) e formato do queixo da modelo da foto de referência.\n` +
-      `- MESMA POSE E ÂNGULO: Mantenha rigorosamente a mesma pose corporal, inclinação e ângulo de foto diante do espelho apresentados na foto da modelo.\n` +
-      `- DESCONSIDERAR COMPLETAMENTE A ROUPA E O CENÁRIO DA FOTO DA MODELO: É TERMINANTEMENTE PROIBIDO copiar a roupa que a modelo veste na foto da galeria e PROIBIDO usar o cenário de fundo da foto da galeria.\n` +
-      `- ROUPA A VESTIR: A modelo deve vestir EXCLUSIVAMENTE a peça de roupa do produto anexado no Item 1 com 100% de fidelidade, complementada com a peça de baixo ou cima conforme regra de look completo para evitar qualquer nudez.\n` +
-      `- CENÁRIO: A modelo deve ser posicionada dentro do cenário selecionado no Item 8.\n\n`
-    : "";
+
+  if (hasGalleryModel) {
+    const galleryModelPrompt = `${resolvedPriorityBlock || priorityOverrideBlock}FOTOGRAFIA COMERCIAL VERTICAL 9:16 (1080x1920) COMBINANDO RIGOROSAMENTE AS 3 FOTOS DE REFERÊNCIA:
+
+1. FOTO 1 (PRODUTO — PEÇA DE ROUPA):
+- Vestir a modelo com a roupa da Foto 1 com máxima fidelidade 1:1 (mesma cor exata, tonalidade, textura do tecido, caimento, modelagem, decote, mangas e detalhes reais da peça).
+- REGRA DE LOOK COMPLETO E PROIBIÇÃO DE NUDEZ: Se a Foto 1 for uma peça superior (blusa/cropped/top/body/camiseta), a modelo DEVE vestir calça jeans feminina clássica de cintura alta combinando; se a Foto 1 for peça inferior (calça/short/bermuda/saia), a modelo DEVE vestir uma blusa neutra elegante combinando. A modelo NUNCA fica nua, topless ou sem calça.
+- Calçado nos pés: ${shoeInfo.name} (${shoeInfo.description}), mostrando os dois pés calçados apoiados no piso.
+
+2. FOTO 2 (MODELO — IDENTIDADE E POSE 1:1):
+- A modelo gerada DEVE SER LITERALMENTE A MESMA MULHER DA FOTO 2.
+- PRESERVAÇÃO INTEGRAL DA MODELO DA FOTO 2: reproduza com fidelidade 100% o mesmo corpo, curvas, biotipo, quadris, cintura, pernas, tom de pele natural com poros reais, cabelos (mesma cor, corte e textura da foto da modelo) e mesma pose diante do espelho segurando o smartphone.
+- ENQUADRAMENTO DA FOTO 2: A modelo segura o smartphone na altura do peito/queixo tirando foto no espelho. Enquadramento estritamente da base do queixo para baixo até os pés. NÃO mostrar olhos, nariz ou boca (rosto coberto pelo celular / corte no queixo idêntico à foto da modelo).
+- DESCONSIDERAR A ROUPA E O CENÁRIO DA FOTO 2: É TERMINANTEMENTE PROIBIDO copiar a roupa que a modelo veste na Foto 2 e PROIBIDO usar o cenário de fundo da Foto 2.
+
+3. FOTO 3 (CENÁRIO INDEPENDENTE):
+- A modelo da Foto 2, vestindo a roupa da Foto 1, está em pé diante do espelho dentro do cômodo da Foto 3.
+- Preserve integralmente o cenário real da Foto 3: piso, paredes, portas, espelho e iluminação natural sem alterar nem redesenhar.
+
+Qualidade fotográfica autêntica de smartphone moderno, textura de pele humana real com poros visíveis, acabamento fosco suave sem brilho excessivo de óleo, sem aspecto de cera ou plástico. ZERO tatuagens.`;
+
+    return {
+      prompt: galleryModelPrompt.trim(),
+      shoeCategory: shoeInfo.category,
+      shoeDescription: shoeInfo.name,
+    };
+  }
 
   const openingDescriptor = [
     userAgeSummary ? `${userAgeSummary} (${bodySummaryLabel})` : bodySummaryLabel,
@@ -588,7 +606,7 @@ ${
     userHairSummary && `com ${userHairSummary}`,
   ].filter(Boolean).join(', ');
 
-  const prompt = `${resolvedPriorityBlock || priorityOverrideBlock}${galleryModelDirective}Crie uma fotografia hiper-realista vertical 9:16 (1080x1920) de ${openingDescriptor} vestindo exatamente a peça de roupa da imagem de referência anexada, inserida com perfeição no ${scenarioTitle} anexado, em uma fotografia de espelho de corpo inteiro.
+  const prompt = `${resolvedPriorityBlock || priorityOverrideBlock}Crie uma fotografia hiper-realista vertical 9:16 (1080x1920) de ${openingDescriptor} vestindo exatamente a peça de roupa da imagem de referência anexada, inserida com perfeição no ${scenarioTitle} anexado, em uma fotografia de espelho de corpo inteiro.
 
 ${bodySectionText}
 **REGRA DE PELE LIMPA: ${isMale ? 'O modelo' : 'A modelo'} não deve possuir tatuagens no corpo (salvo se solicitado nas instruções adicionais).**
