@@ -217,6 +217,9 @@ export default function App() {
     bodyType: 'normal',
     presentationMode: 'mirror_selfie',
     selectedMasterId: 'mestra_ana_maria',
+    selectedModelGalleryId: 'modelo_1_ana_maria',
+    selectedModelGalleryNumber: 1,
+    selectedModelGalleryUrl: '/models/gallery/1.png',
     additionalInstructions: '',
     imageModel: 'seedream_5_0_pro',
     videoPromptLimit: 'unlimited',
@@ -1294,6 +1297,9 @@ export default function App() {
       bodyType: 'normal',
       presentationMode: 'mirror_selfie',
       selectedMasterId: 'mestra_ana_maria',
+      selectedModelGalleryId: 'modelo_1_ana_maria',
+      selectedModelGalleryNumber: 1,
+      selectedModelGalleryUrl: '/models/gallery/1.png',
       additionalInstructions: '',
       imageModel: 'seedream_5_0_pro',
       videoPromptLimit: 'unlimited',
@@ -2430,6 +2436,9 @@ export default function App() {
                 videoPromptLimit: item.videoPromptLimit,
                 selectedScenarioId: item.selectedScenarioId,
                 selectedScenarioNumber: item.selectedScenarioNumber,
+                selectedModelGalleryId: item.selectedModelGalleryId,
+                selectedModelGalleryNumber: item.selectedModelGalleryNumber,
+                selectedModelGalleryUrl: item.selectedModelGalleryUrl,
               });
               setAnaMariaPage('results');
               setIsAnaMariaHistoryOpen(false);

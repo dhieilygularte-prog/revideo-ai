@@ -1881,7 +1881,8 @@ async function generateImageWithKling(params: {
           '1. ENQUADRAMENTO E CORTE RIGOROSO DO QUEIXO PARA BAIXO: É TERMINANTEMENTE PROIBIDO MOSTRAR O ROSTO, OLHOS, NARIZ OU BOCA. O enquadramento é estritamente da ponta do queixo para baixo até os pés no piso.\n' +
           '2. SMARTPHONE OBRIGATÓRIO NA MÃO: A modelo segura um smartphone moderno verticalmente com uma das mãos na altura do peito/queixo, tirando uma foto no espelho de corpo inteiro. Mãos com anéis finos e pulseiras douradas delicadas nos pulsos.\n' +
           '3. CENÁRIO INTEGRALMENTE PRESERVADO (IMAGEM 1): O cômodo, piso, paredes, portas e espelho DEVEM ser idênticos ao cenário da Imagem 1 anexada.\n' +
-          '4. LOOK COMPLETO (PROIBIDO NUDEZ): Se o produto for blusa/peça superior, a modelo veste calça jeans feminina clássica de cintura alta; se for peça inferior, veste blusa combinando. Corpo com curvas femininas naturais conforme o biotipo da Mestra.\n\n';
+          '4. LOOK COMPLETO (PROIBIDO NUDEZ): Se o produto for blusa/peça superior, a modelo veste calça jeans feminina clássica de cintura alta; se for peça inferior, veste blusa combinando. Corpo com curvas femininas naturais conforme o biotipo da Mestra.\n' +
+          '5. PELE REALISTA & NATURAL (SEM OLEOSIDADE): Textura de pele humana real com poros visíveis, acabamento fosco suave sob iluminação difusa interior. PROIBIDO aspecto oleoso, pele plastificada, pele encerada, brilho excessivo de óleo, pele de boneca de cera ou porcelana artificial.\n\n';
     }
   } else {
     headerKling = `${englishFidelityHeader}${IMAGE_REFERENCE_FIDELITY_HEADER}`;
@@ -1899,7 +1900,7 @@ async function generateImageWithKling(params: {
   const negativePrompt = params.isAnaMariaMode
     ? (allowsFace
         ? 'tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, deformed face, bad eyes, low quality, 3d render, cartoon, illustration'
-        : 'face, head, eyes, eyebrows, nose, lips, mouth, teeth, smile, chin up, portrait, headshot, selfie with face, looking at camera, no smartphone, empty hands, without phone, naked, pantless, topless, no pants, underwear only, skinny, emaciated, boyish torso, flat hips, tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, low quality, 3d render, cartoon, illustration')
+        : 'face, head, eyes, eyebrows, nose, lips, mouth, teeth, smile, chin up, portrait, headshot, selfie with face, looking at camera, no smartphone, empty hands, without phone, naked, pantless, topless, no pants, underwear only, skinny, emaciated, boyish torso, flat hips, oily skin, greasy skin, shining skin, wet skin, oil sheen, plastic skin, wax skin, wax doll, porcelain skin, fake skin, heavy airbrushing, artificial gloss, tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, low quality, 3d render, cartoon, illustration')
     : 'original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry';
 
   const payload: any = {
@@ -2007,6 +2008,21 @@ async function generateImageWithKling(params: {
   }
 
   return { success: false, error: 'Tempo limite excedido na geração do Kling Image 3.0 Omni (timeout 120s).' };
+}
+
+function getGalleryModelBase64(modelNum?: number | string): string | undefined {
+  if (modelNum === undefined || modelNum === null || modelNum === '') return undefined;
+  const numStr = String(modelNum).trim();
+  const filePath = path.join(process.cwd(), 'public', 'models', 'gallery', `${numStr}.png`);
+  try {
+    if (fs.existsSync(filePath)) {
+      const buf = fs.readFileSync(filePath);
+      return `data:image/png;base64,${buf.toString('base64')}`;
+    }
+  } catch (err) {
+    console.warn('Erro ao carregar modelo da galeria no backend:', err);
+  }
+  return undefined;
 }
 
 function getGalleryScenarioBase64(scenarioNum?: number | string): string | undefined {
@@ -2192,13 +2208,25 @@ async function generateImageWithSeedream(params: {
 }
 
 function getFalKey(): string {
-  return (
+  const direct = (
     process.env.FAL_KEY ||
+    process.env.FALAI_API_KEY ||
+    process.env.FAL_API_KEY ||
     process.env.apifalai ||
     process.env.APIFALAI ||
     process.env.Apifalai ||
-    'fal_sk_3b8aaba3fd8d43e1a14108cc27e6b4ae:e4a8a5787f308a8a2cb95276e202144a'
+    process.env.apifal ||
+    process.env.APIFAL ||
+    ''
   ).trim();
+  if (direct) return direct;
+  for (const k of Object.keys(process.env)) {
+    if (k.toLowerCase().includes('fal')) {
+      const v = (process.env[k] || '').trim();
+      if (v && v.length > 10) return v;
+    }
+  }
+  return 'fal_sk_3b8aaba3fd8d43e1a14108cc27e6b4ae:e4a8a5787f308a8a2cb95276e202144a';
 }
 
 async function uploadReferenceToFal(img: string): Promise<string | null> {
@@ -2214,8 +2242,10 @@ async function uploadReferenceToFal(img: string): Promise<string | null> {
     const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
     const ext = mimeType.includes('png') ? 'png' : mimeType.includes('webp') ? 'webp' : 'jpeg';
     const buffer = Buffer.from(cleanB64, 'base64');
-    const file = new File([buffer], `reference_${Date.now()}.${ext}`, { type: mimeType });
-    const uploadedUrl = await fal.storage.upload(file);
+    const blob = typeof File !== 'undefined'
+      ? new File([buffer], `reference_${Date.now()}.${ext}`, { type: mimeType })
+      : new Blob([buffer], { type: mimeType });
+    const uploadedUrl = await fal.storage.upload(blob as any);
     return uploadedUrl;
   } catch (err: any) {
     console.warn('[Fal Storage Upload Error]:', err?.message || err);
@@ -2523,13 +2553,21 @@ app.post('/api/generate-scene-image', async (req, res) => {
     const presentationMode = req.body?.presentationMode;
     const selectedMasterId = req.body?.selectedMasterId;
     const selectedScenarioNumber = req.body?.selectedScenarioNumber;
+    const selectedModelGalleryNumber = req.body?.selectedModelGalleryNumber;
 
     const effectiveScenarioPhotoBase64 = isAnaMariaMode
       ? getEffectiveScenarioBase64(scenarioPhotoBase64, selectedScenarioNumber)
       : scenarioPhotoBase64;
 
+    let effectiveModelReferenceBase64 = modelReferenceBase64;
+    if (isAnaMariaMode && (!effectiveModelReferenceBase64 || effectiveModelReferenceBase64.length < 50)) {
+      if (selectedModelGalleryNumber) {
+        effectiveModelReferenceBase64 = getGalleryModelBase64(selectedModelGalleryNumber);
+      }
+    }
+
     const seenRefs = new Set<string>();
-    const orderedRefs = [effectiveScenarioPhotoBase64, modelReferenceBase64, productPhotoBase64, ...(Array.isArray(productPhotosBase64) ? productPhotosBase64 : [])]
+    const orderedRefs = [effectiveScenarioPhotoBase64, effectiveModelReferenceBase64, productPhotoBase64, ...(Array.isArray(productPhotosBase64) ? productPhotosBase64 : [])]
       .filter((img: any) => typeof img === 'string' && img.length > 50)
       .filter((img: string) => {
         const key = img.slice(-120);

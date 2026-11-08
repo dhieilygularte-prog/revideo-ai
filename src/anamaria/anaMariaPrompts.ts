@@ -571,13 +571,24 @@ ${
     : `Postura natural em pé diante do espelho, peso apoiado de forma orgânica valorizando a silhueta e o caimento da peça, com o braço livre relaxado ou tocando suavemente a lateral sem esconder detalhes da roupa.`
 }`;
 
+  const hasGalleryModel = Boolean(form.selectedModelGalleryId || form.selectedModelGalleryNumber);
+  const galleryModelDirective = hasGalleryModel
+    ? `## 0. REFERÊNCIA FOTOGRÁFICA DA MODELO (ITEM 10 — PRESERVAÇÃO 100% DA MODELO ANEXADA)\n` +
+      `A fotografia da modelo anexada é a autoridade máxima e absoluta para o biotipo, corpo e fisionomia da modelo:\n` +
+      `- IDENTIDADE E BIOTIPO 100% IDÊNTICOS: Mantenha com fidelidade absoluta o mesmo corpo, formato físico, curvas, quadris, cintura, busto, tom de pele natural, cabelos (cor, comprimento e textura) e formato do queixo da modelo da foto de referência.\n` +
+      `- MESMA POSE E ÂNGULO: Mantenha rigorosamente a mesma pose corporal, inclinação e ângulo de foto diante do espelho apresentados na foto da modelo.\n` +
+      `- DESCONSIDERAR COMPLETAMENTE A ROUPA E O CENÁRIO DA FOTO DA MODELO: É TERMINANTEMENTE PROIBIDO copiar a roupa que a modelo veste na foto da galeria e PROIBIDO usar o cenário de fundo da foto da galeria.\n` +
+      `- ROUPA A VESTIR: A modelo deve vestir EXCLUSIVAMENTE a peça de roupa do produto anexado no Item 1 com 100% de fidelidade, complementada com a peça de baixo ou cima conforme regra de look completo para evitar qualquer nudez.\n` +
+      `- CENÁRIO: A modelo deve ser posicionada dentro do cenário selecionado no Item 8.\n\n`
+    : "";
+
   const openingDescriptor = [
     userAgeSummary ? `${userAgeSummary} (${bodySummaryLabel})` : bodySummaryLabel,
     userEthnicitySummary && `de etnia/pele: ${userEthnicitySummary}`,
     userHairSummary && `com ${userHairSummary}`,
   ].filter(Boolean).join(', ');
 
-  const prompt = `${resolvedPriorityBlock || priorityOverrideBlock}Crie uma fotografia hiper-realista vertical 9:16 (1080x1920) de ${openingDescriptor} vestindo exatamente a peça de roupa da imagem de referência anexada, inserida com perfeição no ${scenarioTitle} anexado, em uma fotografia de espelho de corpo inteiro.
+  const prompt = `${resolvedPriorityBlock || priorityOverrideBlock}${galleryModelDirective}Crie uma fotografia hiper-realista vertical 9:16 (1080x1920) de ${openingDescriptor} vestindo exatamente a peça de roupa da imagem de referência anexada, inserida com perfeição no ${scenarioTitle} anexado, em uma fotografia de espelho de corpo inteiro.
 
 ${bodySectionText}
 **REGRA DE PELE LIMPA: ${isMale ? 'O modelo' : 'A modelo'} não deve possuir tatuagens no corpo (salvo se solicitado nas instruções adicionais).**

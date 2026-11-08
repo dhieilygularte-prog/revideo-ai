@@ -54,6 +54,10 @@ export interface AnaMariaFormState {
   selectedScenarioNumber?: number; // Número do cenário escolhido (1 a 24)
   selectedScenarioUrl?: string; // URL da imagem cheia
   selectedScenarioBase64?: string; // Base64 da imagem cheia para inpainting
+  selectedModelGalleryId?: string; // ID da modelo escolhida no Item 10 (ex.: 'modelo_1_ana_maria')
+  selectedModelGalleryNumber?: number; // Número da modelo (1 a 5)
+  selectedModelGalleryUrl?: string; // URL da imagem da modelo
+  selectedModelGalleryBase64?: string; // Base64 da imagem da modelo
 }
 
 export interface AnaMariaResultState {
@@ -71,6 +75,9 @@ export interface AnaMariaResultState {
   selectedMasterId?: AnaMariaMasterId;
   selectedScenarioId?: string;
   selectedScenarioNumber?: number;
+  selectedModelGalleryId?: string;
+  selectedModelGalleryNumber?: number;
+  selectedModelGalleryUrl?: string;
   imagePrompt: string;
   videoPrompt: string;
   headline: string;

@@ -297,6 +297,31 @@ async function resolveScenarioBase64(form: AnaMariaFormState): Promise<string> {
   return compressImageForFastTransfer(PREFERRED_SCENARIO_BASE64, 800, 0.84);
 }
 
+const modelBase64Cache = new Map<string, string>();
+
+export async function resolveModelBase64(form: AnaMariaFormState): Promise<string | undefined> {
+  if (form.selectedModelGalleryBase64 && form.selectedModelGalleryBase64.length > 50) {
+    return compressImageForFastTransfer(form.selectedModelGalleryBase64, 800, 0.84);
+  }
+  const url =
+    form.selectedModelGalleryUrl ||
+    (form.selectedModelGalleryNumber ? `/models/gallery/${form.selectedModelGalleryNumber}.png` : undefined);
+  if (url) {
+    const cached = modelBase64Cache.get(url);
+    if (cached) return cached;
+    try {
+      const compressed = await compressImageForFastTransfer(url, 800, 0.84);
+      if (compressed && compressed.startsWith('data:image/')) {
+        modelBase64Cache.set(url, compressed);
+        return compressed;
+      }
+    } catch (e) {
+      console.warn('Falha ao converter modelo selecionada para base64:', e);
+    }
+  }
+  return undefined;
+}
+
 async function prepareProductPhotosForPayload(photos: string[]): Promise<{
   primaryPhoto: string;
   supplementaryPhotos: string[];
@@ -459,8 +484,9 @@ export async function runAnaMariaPipeline(
   const scenarioMsg = form.selectedScenarioNumber ? ` no Cenário ${form.selectedScenarioNumber}` : '';
   onStatusMessage(`Gerando imagem vertical 9:16${scenarioMsg} no ${modelNameLabel}...`);
 
-  const [activeScenarioBase64, { primaryPhoto, supplementaryPhotos }] = await Promise.all([
+  const [activeScenarioBase64, activeModelBase64, { primaryPhoto, supplementaryPhotos }] = await Promise.all([
     resolveScenarioBase64(form),
+    resolveModelBase64(form),
     prepareProductPhotosForPayload(form.referencePhotos),
   ]);
 
@@ -471,6 +497,9 @@ export async function runAnaMariaPipeline(
       productPhotoBase64: primaryPhoto,
       productPhotosBase64: supplementaryPhotos,
       scenarioPhotoBase64: activeScenarioBase64,
+      modelReferenceBase64: activeModelBase64,
+      selectedModelGalleryId: form.selectedModelGalleryId,
+      selectedModelGalleryNumber: form.selectedModelGalleryNumber,
       isAnaMariaMode: true,
       presentationMode: activeMode,
       selectedMasterId: form.selectedMasterId,
@@ -529,6 +558,9 @@ export async function runAnaMariaPipeline(
     selectedMasterId: form.selectedMasterId || 'mestra_ana_maria',
     selectedScenarioId: form.selectedScenarioId,
     selectedScenarioNumber: form.selectedScenarioNumber,
+    selectedModelGalleryId: form.selectedModelGalleryId,
+    selectedModelGalleryNumber: form.selectedModelGalleryNumber,
+    selectedModelGalleryUrl: form.selectedModelGalleryUrl,
     imagePrompt,
     videoPrompt,
     headline,
@@ -564,8 +596,9 @@ export async function regenerateAnaMariaImage(params: {
   }
 
   const { prompt } = buildAnaMariaImagePrompt(effectiveForm);
-  const [activeScenarioBase64, { primaryPhoto, supplementaryPhotos }] = await Promise.all([
+  const [activeScenarioBase64, activeModelBase64, { primaryPhoto, supplementaryPhotos }] = await Promise.all([
     resolveScenarioBase64(effectiveForm),
+    resolveModelBase64(effectiveForm),
     prepareProductPhotosForPayload(effectiveForm.referencePhotos),
   ]);
 
@@ -576,8 +609,11 @@ export async function regenerateAnaMariaImage(params: {
       productPhotoBase64: primaryPhoto,
       productPhotosBase64: supplementaryPhotos,
       scenarioPhotoBase64: activeScenarioBase64,
+      modelReferenceBase64: activeModelBase64,
+      selectedModelGalleryId: effectiveForm.selectedModelGalleryId,
+      selectedModelGalleryNumber: effectiveForm.selectedModelGalleryNumber,
       isAnaMariaMode: true,
-      presentationMode: form.presentationMode,
+      presentationMode: form.presentationMode,de: form.presentationMode,
       selectedMasterId: form.selectedMasterId,
       selectedScenarioNumber: effectiveForm.selectedScenarioNumber,
       selectedScenarioId: effectiveForm.selectedScenarioId,

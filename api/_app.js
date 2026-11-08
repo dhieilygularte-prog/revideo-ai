@@ -3518,7 +3518,7 @@ async function generateImageWithKling(params) {
     if (isPovModeKling) {
       headerKling = "[MODO POV: Preservar 100% do cen\xE1rio POV da cama da Imagem 1; produtos da Imagem 2 manipulados apenas pelas duas m\xE3os limpas sem tatuagens sobre a cama. PROIBIDO corpo, rosto ou espelho!]\n\n";
     } else {
-      headerKling = allowsFace ? "[REGRA SOBERANA DE ENQUADRAMENTO E CEN\xC1RIO]:\n1. CEN\xC1RIO: Preservar 100% o ambiente real da foto anexada na Imagem 1 (paredes, piso, espelho e ilumina\xE7\xE3o intactos).\n2. ROSTO E MIRROR-SELFIE: Modelo em p\xE9 segurando smartphone moderno apontado para o espelho, rosto natural expressivo vis\xEDvel e corpo inteiro at\xE9 os p\xE9s.\n3. FIDELIDADE 1:1: Reproduzir a roupa das fotos de produto anexadas com m\xE1xima fidelidade. Zero tatuagens.\n\n" : "[REGRA SOBERANA ABSOLUTA \u2014 MIRROR-SELFIE COM SMARTPHONE & CORTE NO QUEIXO]:\n1. ENQUADRAMENTO E CORTE RIGOROSO DO QUEIXO PARA BAIXO: \xC9 TERMINANTEMENTE PROIBIDO MOSTRAR O ROSTO, OLHOS, NARIZ OU BOCA. O enquadramento \xE9 estritamente da ponta do queixo para baixo at\xE9 os p\xE9s no piso.\n2. SMARTPHONE OBRIGAT\xD3RIO NA M\xC3O: A modelo segura um smartphone moderno verticalmente com uma das m\xE3os na altura do peito/queixo, tirando uma foto no espelho de corpo inteiro. M\xE3os com an\xE9is finos e pulseiras douradas delicadas nos pulsos.\n3. CEN\xC1RIO INTEGRALMENTE PRESERVADO (IMAGEM 1): O c\xF4modo, piso, paredes, portas e espelho DEVEM ser id\xEAnticos ao cen\xE1rio da Imagem 1 anexada.\n4. LOOK COMPLETO (PROIBIDO NUDEZ): Se o produto for blusa/pe\xE7a superior, a modelo veste cal\xE7a jeans feminina cl\xE1ssica de cintura alta; se for pe\xE7a inferior, veste blusa combinando. Corpo com curvas femininas naturais conforme o biotipo da Mestra.\n\n";
+      headerKling = allowsFace ? "[REGRA SOBERANA DE ENQUADRAMENTO E CEN\xC1RIO]:\n1. CEN\xC1RIO: Preservar 100% o ambiente real da foto anexada na Imagem 1 (paredes, piso, espelho e ilumina\xE7\xE3o intactos).\n2. ROSTO E MIRROR-SELFIE: Modelo em p\xE9 segurando smartphone moderno apontado para o espelho, rosto natural expressivo vis\xEDvel e corpo inteiro at\xE9 os p\xE9s.\n3. FIDELIDADE 1:1: Reproduzir a roupa das fotos de produto anexadas com m\xE1xima fidelidade. Zero tatuagens.\n\n" : "[REGRA SOBERANA ABSOLUTA \u2014 MIRROR-SELFIE COM SMARTPHONE & CORTE NO QUEIXO]:\n1. ENQUADRAMENTO E CORTE RIGOROSO DO QUEIXO PARA BAIXO: \xC9 TERMINANTEMENTE PROIBIDO MOSTRAR O ROSTO, OLHOS, NARIZ OU BOCA. O enquadramento \xE9 estritamente da ponta do queixo para baixo at\xE9 os p\xE9s no piso.\n2. SMARTPHONE OBRIGAT\xD3RIO NA M\xC3O: A modelo segura um smartphone moderno verticalmente com uma das m\xE3os na altura do peito/queixo, tirando uma foto no espelho de corpo inteiro. M\xE3os com an\xE9is finos e pulseiras douradas delicadas nos pulsos.\n3. CEN\xC1RIO INTEGRALMENTE PRESERVADO (IMAGEM 1): O c\xF4modo, piso, paredes, portas e espelho DEVEM ser id\xEAnticos ao cen\xE1rio da Imagem 1 anexada.\n4. LOOK COMPLETO (PROIBIDO NUDEZ): Se o produto for blusa/pe\xE7a superior, a modelo veste cal\xE7a jeans feminina cl\xE1ssica de cintura alta; se for pe\xE7a inferior, veste blusa combinando. Corpo com curvas femininas naturais conforme o biotipo da Mestra.\n5. PELE REALISTA & NATURAL (SEM OLEOSIDADE): Textura de pele humana real com poros vis\xEDveis, acabamento fosco suave sob ilumina\xE7\xE3o difusa interior. PROIBIDO aspecto oleoso, pele plastificada, pele encerada, brilho excessivo de \xF3leo, pele de boneca de cera ou porcelana artificial.\n\n";
     }
   } else {
     headerKling = `${englishFidelityHeader}${IMAGE_REFERENCE_FIDELITY_HEADER}`;
@@ -3530,7 +3530,7 @@ ${params.prompt}` : params.prompt).trim();
     console.warn(`[Kling Omni] Prompt com ${klingPrompt.length} caracteres excede o limite oficial de 2.500 caracteres da API.`);
     klingPrompt = compactPromptToLimit(params.prompt, 2490, headerKling);
   }
-  const negativePrompt = params.isAnaMariaMode ? allowsFace ? "tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, deformed face, bad eyes, low quality, 3d render, cartoon, illustration" : "face, head, eyes, eyebrows, nose, lips, mouth, teeth, smile, chin up, portrait, headshot, selfie with face, looking at camera, no smartphone, empty hands, without phone, naked, pantless, topless, no pants, underwear only, skinny, emaciated, boyish torso, flat hips, tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, low quality, 3d render, cartoon, illustration" : "original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry";
+  const negativePrompt = params.isAnaMariaMode ? allowsFace ? "tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, deformed face, bad eyes, low quality, 3d render, cartoon, illustration" : "face, head, eyes, eyebrows, nose, lips, mouth, teeth, smile, chin up, portrait, headshot, selfie with face, looking at camera, no smartphone, empty hands, without phone, naked, pantless, topless, no pants, underwear only, skinny, emaciated, boyish torso, flat hips, oily skin, greasy skin, shining skin, wet skin, oil sheen, plastic skin, wax skin, wax doll, porcelain skin, fake skin, heavy airbrushing, artificial gloss, tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, low quality, 3d render, cartoon, illustration" : "original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry";
   const payload = {
     model_name: "kling-v3-omni",
     prompt: klingPrompt,
@@ -3624,6 +3624,20 @@ ${params.prompt}` : params.prompt).trim();
     }
   }
   return { success: false, error: "Tempo limite excedido na gera\xE7\xE3o do Kling Image 3.0 Omni (timeout 120s)." };
+}
+function getGalleryModelBase64(modelNum) {
+  if (modelNum === void 0 || modelNum === null || modelNum === "") return void 0;
+  const numStr = String(modelNum).trim();
+  const filePath = path.join(process.cwd(), "public", "models", "gallery", `${numStr}.png`);
+  try {
+    if (fs.existsSync(filePath)) {
+      const buf = fs.readFileSync(filePath);
+      return `data:image/png;base64,${buf.toString("base64")}`;
+    }
+  } catch (err) {
+    console.warn("Erro ao carregar modelo da galeria no backend:", err);
+  }
+  return void 0;
 }
 function getGalleryScenarioBase64(scenarioNum) {
   if (scenarioNum === void 0 || scenarioNum === null || scenarioNum === "") return void 0;
@@ -3752,7 +3766,15 @@ async function generateImageWithSeedream(params) {
   return { success: false, error: lastError || "Falha ao gerar imagem com Seedream 5.0 Pro." };
 }
 function getFalKey() {
-  return (process.env.FAL_KEY || process.env.apifalai || process.env.APIFALAI || process.env.Apifalai || "fal_sk_3b8aaba3fd8d43e1a14108cc27e6b4ae:e4a8a5787f308a8a2cb95276e202144a").trim();
+  const direct = (process.env.FAL_KEY || process.env.FALAI_API_KEY || process.env.FAL_API_KEY || process.env.apifalai || process.env.APIFALAI || process.env.Apifalai || process.env.apifal || process.env.APIFAL || "").trim();
+  if (direct) return direct;
+  for (const k of Object.keys(process.env)) {
+    if (k.toLowerCase().includes("fal")) {
+      const v = (process.env[k] || "").trim();
+      if (v && v.length > 10) return v;
+    }
+  }
+  return "fal_sk_3b8aaba3fd8d43e1a14108cc27e6b4ae:e4a8a5787f308a8a2cb95276e202144a";
 }
 async function uploadReferenceToFal(img) {
   if (!img || img.length < 50) return null;
@@ -3767,8 +3789,8 @@ async function uploadReferenceToFal(img) {
     const mimeType = mimeMatch ? mimeMatch[1] : "image/jpeg";
     const ext = mimeType.includes("png") ? "png" : mimeType.includes("webp") ? "webp" : "jpeg";
     const buffer = Buffer.from(cleanB64, "base64");
-    const file = new File([buffer], `reference_${Date.now()}.${ext}`, { type: mimeType });
-    const uploadedUrl = await fal.storage.upload(file);
+    const blob = typeof File !== "undefined" ? new File([buffer], `reference_${Date.now()}.${ext}`, { type: mimeType }) : new Blob([buffer], { type: mimeType });
+    const uploadedUrl = await fal.storage.upload(blob);
     return uploadedUrl;
   } catch (err) {
     console.warn("[Fal Storage Upload Error]:", err?.message || err);
@@ -4027,9 +4049,16 @@ ${prompt}`;
     const presentationMode = req.body?.presentationMode;
     const selectedMasterId = req.body?.selectedMasterId;
     const selectedScenarioNumber = req.body?.selectedScenarioNumber;
+    const selectedModelGalleryNumber = req.body?.selectedModelGalleryNumber;
     const effectiveScenarioPhotoBase64 = isAnaMariaMode ? getEffectiveScenarioBase64(scenarioPhotoBase64, selectedScenarioNumber) : scenarioPhotoBase64;
+    let effectiveModelReferenceBase64 = modelReferenceBase64;
+    if (isAnaMariaMode && (!effectiveModelReferenceBase64 || effectiveModelReferenceBase64.length < 50)) {
+      if (selectedModelGalleryNumber) {
+        effectiveModelReferenceBase64 = getGalleryModelBase64(selectedModelGalleryNumber);
+      }
+    }
     const seenRefs = /* @__PURE__ */ new Set();
-    const orderedRefs = [effectiveScenarioPhotoBase64, modelReferenceBase64, productPhotoBase64, ...Array.isArray(productPhotosBase64) ? productPhotosBase64 : []].filter((img) => typeof img === "string" && img.length > 50).filter((img) => {
+    const orderedRefs = [effectiveScenarioPhotoBase64, effectiveModelReferenceBase64, productPhotoBase64, ...Array.isArray(productPhotosBase64) ? productPhotosBase64 : []].filter((img) => typeof img === "string" && img.length > 50).filter((img) => {
       const key = img.slice(-120);
       if (seenRefs.has(key)) return false;
       seenRefs.add(key);

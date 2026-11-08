@@ -43,6 +43,11 @@ import {
   getDefaultMasterForMode,
 } from './masterPromptsData';
 import { preloadScenarioUrl, prewarmDefaultScenarios } from './anaMariaPipeline';
+import {
+  MODEL_GALLERY_ITEMS,
+  AnaMariaModelItem,
+} from './modelGalleryData';
+import { UserCheck } from 'lucide-react';
 
 interface AnaMariaFormProps {
   form: AnaMariaFormState;
@@ -88,6 +93,30 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const [isRecordingMic, setIsRecordingMic] = useState(false);
   const [isGalleryExpanded, setIsGalleryExpanded] = useState(false);
   const [isPromptsGalleryExpanded, setIsPromptsGalleryExpanded] = useState(false);
+  const [isModelGalleryExpanded, setIsModelGalleryExpanded] = useState(false);
+
+  const selectedModelItem = MODEL_GALLERY_ITEMS.find(
+    (m) => m.id === form.selectedModelGalleryId || m.number === form.selectedModelGalleryNumber
+  );
+
+  const handleSelectModel = (item: AnaMariaModelItem) => {
+    onChange((prev) => ({
+      ...prev,
+      selectedModelGalleryId: item.id,
+      selectedModelGalleryNumber: item.number,
+      selectedModelGalleryUrl: item.fullUrl,
+    }));
+  };
+
+  const handleClearModel = () => {
+    onChange((prev) => ({
+      ...prev,
+      selectedModelGalleryId: undefined,
+      selectedModelGalleryNumber: undefined,
+      selectedModelGalleryUrl: undefined,
+      selectedModelGalleryBase64: undefined,
+    }));
+  };
   const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
   const recognitionRef = useRef<any>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -1571,6 +1600,203 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                         ) : (
                           <span>USAR ESTE PROMPT</span>
                         )}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ─── CARD 10: TOQUE AQUI PARA ESCOLHER SUA MODELO (GALERIA DE MODELOS) ─── */}
+      <div
+        className={`rounded-2xl transition-all duration-300 overflow-hidden shadow-2xl ${
+          isAmetista
+            ? selectedModelItem
+              ? 'border-2 border-[#d4ff59] bg-gradient-to-br from-[#130b20] via-[#251238] to-[#1a2212] shadow-purple-950/60 ring-2 ring-[#d4ff59]/30'
+              : 'border-2 border-purple-400/75 bg-gradient-to-br from-[#130b20] via-[#261139] to-[#120a1e] shadow-purple-950/60 ring-2 ring-purple-500/30'
+            : selectedModelItem
+            ? 'border-2 border-amber-400 bg-gradient-to-br from-zinc-950 via-zinc-900 to-amber-950/40 shadow-amber-950/60 ring-2 ring-amber-400/30'
+            : 'border-2 border-orange-500 bg-gradient-to-br from-zinc-950 via-orange-950/30 to-zinc-950 shadow-orange-950/50 ring-2 ring-orange-500/30'
+        }`}
+      >
+        <button
+          type="button"
+          onClick={() => setIsModelGalleryExpanded((prev) => !prev)}
+          className={`w-full p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3 text-left transition-colors cursor-pointer group ${
+            isAmetista ? 'hover:bg-purple-500/10' : 'hover:bg-orange-500/10'
+          }`}
+        >
+          <div className="flex items-center gap-3.5">
+            <div
+              className={`w-11 h-11 rounded-xl text-zinc-950 flex items-center justify-center font-black shadow-lg shrink-0 group-hover:scale-105 transition-transform ${
+                isAmetista
+                  ? 'bg-[#d4ff59] shadow-lime-950/40'
+                  : 'bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 shadow-orange-500/40'
+              }`}
+            >
+              <UserCheck className="w-5 h-5 text-zinc-950 stroke-[2.5]" />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h3
+                  className={`text-sm sm:text-base font-black uppercase tracking-wide transition-colors ${
+                    isAmetista
+                      ? 'text-white group-hover:text-[#d4ff59]'
+                      : 'text-amber-300 group-hover:text-amber-200'
+                  }`}
+                >
+                  10. TOQUE AQUI PARA ESCOLHER SUA MODELO (GALERIA DE MODELOS)
+                </h3>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider shadow-sm ${
+                    isAmetista
+                      ? 'bg-[#1a1128] text-[#d4ff59] border border-[#d4ff59]/50'
+                      : 'bg-amber-400 text-zinc-950'
+                  }`}
+                >
+                  {MODEL_GALLERY_ITEMS.length} MODELOS
+                </span>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold hidden sm:inline-block ${
+                    isAmetista
+                      ? 'bg-pink-500/15 text-pink-300 border border-pink-400/35'
+                      : 'bg-orange-500/20 text-orange-300 border border-orange-500/40'
+                  }`}
+                >
+                  {selectedModelItem ? `Padrão: ${selectedModelItem.name}` : 'Dinâmico via Prompt'}
+                </span>
+              </div>
+              <p className="text-[11px] sm:text-xs text-zinc-300 mt-1">
+                A modelo escolhida define 100% o biotipo, curvas, tom de pele, cabelos, pose e ângulo da foto. O app troca apenas a roupa pelo produto (Item 1) + peça complementar e coloca no cenário escolhido (Item 8)!
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            {selectedModelItem ? (
+              <div
+                className={`flex items-center gap-1.5 text-zinc-950 font-black px-3 py-1.5 rounded-xl border shadow-md ${
+                  isAmetista
+                    ? 'bg-[#d4ff59] border-lime-300 shadow-lime-950/40'
+                    : 'bg-gradient-to-r from-amber-400 to-orange-500 border-amber-300 shadow-orange-950/40'
+                }`}
+              >
+                <span className="text-xs">{selectedModelItem.name} ✓</span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleClearModel();
+                  }}
+                  className="hover:opacity-75 transition-opacity ml-1 p-0.5 cursor-pointer"
+                  title="Desmarcar modelo (gerar dinamicamente)"
+                >
+                  <X className="w-3.5 h-3.5 stroke-[3]" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1.5 text-zinc-400 font-bold px-3 py-1.5 rounded-xl border border-zinc-800 bg-zinc-900/80 text-xs">
+                <span>Dinâmico via Prompt</span>
+              </div>
+            )}
+            <div
+              className={`w-8 h-8 rounded-xl border flex items-center justify-center transition-all ${
+                isAmetista
+                  ? 'bg-purple-500/20 border-purple-400/50 text-[#d4ff59] group-hover:bg-[#d4ff59] group-hover:text-zinc-950'
+                  : 'bg-orange-500/20 border-orange-500/50 text-orange-300 group-hover:bg-orange-500 group-hover:text-zinc-950'
+              }`}
+            >
+              {isModelGalleryExpanded ? (
+                <ChevronUp className="w-4 h-4 stroke-[3]" />
+              ) : (
+                <ChevronDown className="w-4 h-4 stroke-[3]" />
+              )}
+            </div>
+          </div>
+        </button>
+
+        {isModelGalleryExpanded && (
+          <div className="p-5 sm:p-6 border-t border-orange-500/30 bg-[#0b0b0c] space-y-5 animate-fade-in">
+            <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-zinc-800">
+              <div>
+                <span className="text-xs font-bold text-zinc-300 uppercase tracking-wider">
+                  Selecione uma modelo da galeria (5 opções)
+                </span>
+                <p className="text-[11px] text-zinc-400 mt-0.5">
+                  Ao selecionar, a modelo é preservada 100% idêntica à foto. O app troca apenas a roupa pelo seu produto e o cenário pelo escolhido.
+                </p>
+              </div>
+              {selectedModelItem && (
+                <button
+                  type="button"
+                  onClick={handleClearModel}
+                  className="px-3 py-1.5 rounded-lg text-xs font-bold bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-700 transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <RefreshCw className="w-3 h-3" />
+                  <span>Desmarcar Modelo (Gerar via Prompt)</span>
+                </button>
+              )}
+            </div>
+
+            {/* Grid com as 5 modelos */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3.5">
+              {MODEL_GALLERY_ITEMS.map((item) => {
+                const isSelected = selectedModelItem?.id === item.id;
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => handleSelectModel(item)}
+                    className={`relative rounded-xl overflow-hidden cursor-pointer transition-all duration-200 group border flex flex-col ${
+                      isSelected
+                        ? isAmetista
+                          ? 'border-[#d4ff59] ring-2 ring-[#d4ff59] shadow-lg shadow-purple-950/80 bg-zinc-900'
+                          : 'border-amber-400 ring-2 ring-amber-400 shadow-lg shadow-orange-950/80 bg-zinc-900'
+                        : 'border-zinc-800 hover:border-zinc-600 bg-zinc-950'
+                    }`}
+                  >
+                    <div className="relative aspect-[9/16] bg-zinc-900 overflow-hidden">
+                      <img
+                        src={item.fullUrl}
+                        alt={item.name}
+                        className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300"
+                        loading="lazy"
+                      />
+                      <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-black/80 backdrop-blur-sm text-[10px] font-black text-amber-300 border border-amber-400/30">
+                        #{String(item.number).padStart(2, '0')}
+                      </div>
+                      {isSelected && (
+                        <div className="absolute top-2 right-2 p-1 rounded-full bg-emerald-500 text-black shadow-md">
+                          <Check className="w-3 h-3 stroke-[3]" />
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="p-2.5 flex-1 flex flex-col justify-between">
+                      <div>
+                        <h4 className="text-xs font-black text-white group-hover:text-amber-300 transition-colors line-clamp-1">
+                          {item.name}
+                        </h4>
+                        <p className="text-[10px] text-zinc-400 mt-1 line-clamp-2">
+                          {item.description}
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSelectModel(item);
+                        }}
+                        className={`w-full mt-2.5 py-1.5 px-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-zinc-950 border border-amber-300 shadow-sm'
+                            : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700'
+                        }`}
+                      >
+                        {isSelected ? 'SELECIONADA ✓' : 'ESCOLHER'}
                       </button>
                     </div>
                   </div>
