@@ -77,22 +77,54 @@ export function detectShoeCategory(
   }
 
   // REGRAS PARA MULHER (CAMADA UNIVERSAL ACIMA DOS MESTRES):
-  // 1. Quando a mulher estiver de calça, macacão fitness ou qualquer roupa de academia -> Tênis Branco Esportivo
-  if (isFitness || (isPants && !/\b(pijama|dormir|casa)\b/i.test(combined))) {
+  // 1. Vestidos e peças elegantes femininas -> Sandália feminina elegante ou salto harmonioso que combine com o vestido
+  const isDress = /\b(vestido|vestidos|dress|dresses|longo|midi|festa|gala|chemise|tubinho)\b/i.test(combined);
+  if (isDress) {
+    return {
+      category: 'C_OUTRO',
+      name: 'Sandália Feminina Elegante que Combina com o Vestido',
+      description:
+        'Sandália feminina elegante de tiras delicadas ou salto bloco/fino discreto que harmonize perfeitamente com a cor, comprimento e estilo do vestido, com acabamento refinado e pés delicados e bem cuidados.',
+    };
+  }
+
+  // 2. Quando a mulher estiver de calça fitness, macacão fitness ou qualquer roupa de academia -> Tênis Branco Esportivo
+  if (isFitness) {
     return {
       category: 'B_TENIS',
       name: 'Tênis Branco Esportivo Casual Feminino',
       description:
-        'Tênis feminino esportivo casual de cano baixo, inteiramente branco e com design robusto. Cabedal com painéis sobrepostos, costuras delicadas, biqueira arredondada com pequenas perfurações, cadarços brancos tradicionais, meia branca cano médio, língua acolchoada e colarinho estofado. Solado branco espesso, levemente elevado, com laterais em camadas e acabamento texturizado. Sem detalhes coloridos.',
+        'Tênis feminino esportivo casual de cano baixo, inteiramente branco e com design moderno. Cabedal com acabamento impecável, cadarços brancos e solado esportivo anatômico.',
     };
   }
 
-  // 2. Qualquer roupa de ficar em casa, cinta modeladora, corselet, vestido (inclusive vestido de festa), macaquinho/macacão casual, pijama, camisola, lingerie, blusa, saia -> Chinelo Branco com detalhezinhos metálicos
+  // 3. Calças casuais / jeans -> Tênis casual ou calçado elegante que combine com a calça
+  if (isPants && !/\b(pijama|dormir|casa)\b/i.test(combined)) {
+    return {
+      category: 'B_TENIS',
+      name: 'Tênis Casual Feminino ou Calçado Harmonioso',
+      description:
+        'Calçado feminino moderno e alinhado (tênis casual limpo ou calçado moderno) que combine perfeitamente com a calça e componha um look comercial elegante.',
+    };
+  }
+
+  // 4. Roupas de dormir, pijama, camisola, lingerie ou homewear -> Chinelo Branco ou Slide Delicado
+  const isSleepwear = /\b(pijama|dormir|camisola|sleepwear|homewear|lingerie)\b/i.test(combined);
+  if (isSleepwear) {
+    return {
+      category: 'A_CHINELO',
+      name: 'Chinelo Branco Feminino Delicado ou Slide Homewear',
+      description:
+        'Calçado leve e delicado de homewear ou chinelo feminino tradicional de dedo em tom branco/neutro, com acabamento delicado e visual cotidiano autêntico de quem está em casa.',
+    };
+  }
+
+  // 5. Demais roupas femininas -> Calçado harmonioso que combine com a peça anunciada
   return {
-    category: 'A_CHINELO',
-    name: 'Chinelo Branco Feminino Delicado com Detalhes Metálicos',
+    category: 'C_OUTRO',
+    name: 'Calçado Harmonioso que Combina com a Peça',
     description:
-      'Chinelo feminino tradicional de dedo, branco, com duas tiras finas em Y, acabamento levemente brilhante e pequenos detalhes metálicos dourados próximos à junção das tiras. Palmilha branca anatômica e levemente contornada. Solado baixo, plano, levemente espesso e com bordas arredondadas.',
+      'Calçado feminino harmonioso e elegante (sandália delicada, mule ou salto discreto) que combine perfeitamente em estilo, cor e proposta com a peça de roupa anunciada.',
   };
 }
 
@@ -597,15 +629,15 @@ ${
 1. FOTO 1 (PRODUTO — PEÇA DE ROUPA):
 - Vestir a modelo com a roupa da Foto 1 com máxima fidelidade 1:1 (mesma cor exata, tonalidade, textura do tecido, caimento, modelagem, decote, mangas e detalhes reais da peça).
 ${garmentTypeInstruction}
-- Calçado nos pés: ${shoeInfo.name} (${shoeInfo.description}), mostrando os dois pés calçados apoiados no piso.
-- REGRA CRÍTICA DE POSE E ISOLAMENTO: Da Foto 1 (produto), extraia RIGOROSAMENTE apenas a peça de roupa e o tecido. É TERMINANTEMENTE PROIBIDO COPIAR A POSE, O ÂNGULO OU A POSIÇÃO CORPORAL DA PESSOA DA FOTO 1 (mesmo que na foto do produto a pessoa esteja de lado, de perfil, sentada ou de costas).
+- Calçado nos pés: ${shoeInfo.name} (${shoeInfo.description}), compondo um visual harmonioso e elegante com a peça.
+- REGRA CRÍTICA DE ISOLAMENTO TOTAL DA FOTO 1: Da Foto 1 (produto), extraia RIGOROSAMENTE apenas a peça de roupa e tecido. É TERMINANTEMENTE PROIBIDO copiar, mesclar ou misturar o rosto, a cabeça, o cabelo, a pele ou a pose da pessoa da Foto 1! Ignore 100% a pessoa da Foto 1 (ZERO mistura com o rosto da Foto 1).
 
 2. FOTO 2 (MODELO E CENÁRIO BASE ABSOLUTO — PRESERVAÇÃO INTEGRAL 1:1):
 - A modelo gerada DEVE SER RIGOROSAMENTE A MESMA MULHER DA FOTO 2, NA MESMA POSE DIANTE DO ESPELHO E DENTRO DO MESMO CÔMODO/CENÁRIO DA FOTO 2.
 - PRESERVAÇÃO INTEGRAL DE BIOTIPO E IDENTIDADE: reproduza com fidelidade 100% o mesmo corpo, curvas, biotipo, quadris, cintura, pernas, tom de pele natural com poros reais e cabelos (mesma cor, corte e textura da foto da modelo).
 - PRESERVAÇÃO INTEGRAL DO CENÁRIO DA FOTO 2 (CENÁRIO DA MODELO): O cômodo de fundo, paredes, piso, espelho, portas, móveis e iluminação natural DEVEM ser 100% preservados e idênticos aos da Foto 2. NÃO altere nem redesenhe o ambiente da Foto 2.
-- POSE E ENQUADRAMENTO DA FOTO 2: Manter rigorosamente a mesma pose diante do espelho segurando o smartphone. Enquadramento estritamente da base do queixo para baixo até os pés. NÃO mostrar olhos, nariz, boca ou cabeça (rosto 100% fora do enquadramento / encoberto pelo smartphone conforme a foto da modelo).
-- ÚNICA MUDANÇA PERMITIDA: Substituir as roupas que a modelo veste na Foto 2 pela roupa da Foto 1 (respeitando as regras de look completo).
+- PRESERVAÇÃO INTEGRAL DE ROSTO, POSE E ENQUADRAMENTO DA FOTO 2: Mantenha RIGOROSAMENTE o mesmo enquadramento, mesmo ângulo, mesma pose e mesma cabeça/rosto da Foto 2. Se na Foto 2 o rosto da modelo aparece (total ou parcialmente), o rosto DEVE APARECER IDENTICAMENTE, com a mesma face, olhos, nariz, boca, cabelo e expressão da mulher da Foto 2 (PROIBIDO cortar a cabeça ou o queixo se o rosto aparece na Foto 2!). Se na Foto 2 o rosto estiver encoberto pelo celular ou cortado no enquadramento, mantenha o mesmo corte original da Foto 2.
+- ÚNICA MUDANÇA PERMITIDA: Substituir as roupas que a modelo veste na Foto 2 pela roupa da Foto 1 (respeitando as regras de look completo e calçado harmonioso).
 
 Qualidade fotográfica autêntica de smartphone moderno, textura de pele humana real com poros visíveis, acabamento fosco suave sem brilho excessivo de óleo, sem aspecto de cera ou plástico. ZERO tatuagens.`;
     } else {
@@ -615,14 +647,14 @@ Qualidade fotográfica autêntica de smartphone moderno, textura de pele humana 
 1. FOTO 1 (PRODUTO — PEÇA DE ROUPA):
 - Vestir a modelo com a roupa da Foto 1 com máxima fidelidade 1:1 (mesma cor exata, tonalidade, textura do tecido, caimento, modelagem, decote, mangas e detalhes reais da peça).
 ${garmentTypeInstruction}
-- Calçado nos pés: ${shoeInfo.name} (${shoeInfo.description}), mostrando os dois pés calçados apoiados no piso.
-- REGRA CRÍTICA DE POSE E ISOLAMENTO: Da Foto 1 (produto), extraia RIGOROSAMENTE apenas a peça de roupa e o tecido. É TERMINANTEMENTE PROIBIDO COPIAR A POSE, O ÂNGULO OU A POSIÇÃO CORPORAL DA PESSOA DA FOTO 1 (mesmo que na foto do produto a pessoa esteja de lado, de perfil, sentada ou de costas).
+- Calçado nos pés: ${shoeInfo.name} (${shoeInfo.description}), compondo um visual harmonioso e elegante com a peça.
+- REGRA CRÍTICA DE ISOLAMENTO TOTAL DA FOTO 1: Da Foto 1 (produto), extraia RIGOROSAMENTE apenas a peça de roupa e tecido. É TERMINANTEMENTE PROIBIDO copiar, mesclar ou misturar o rosto, a cabeça, o cabelo, a pele ou a pose da pessoa da Foto 1! Ignore 100% a pessoa da Foto 1 (ZERO mistura com o rosto da Foto 1).
 
-2. FOTO 2 (MODELO — IDENTIDADE E POSE DE FRENTE 1:1):
+2. FOTO 2 (MODELO — IDENTIDADE, ROSTO E POSE 1:1):
 - A modelo gerada DEVE SER LITERALMENTE A MESMA MULHER DA FOTO 2.
 - PRESERVAÇÃO INTEGRAL DO BIOTIPO DA FOTO 2: reproduza com fidelidade 100% o mesmo corpo, curvas, biotipo, quadris, cintura, pernas, tom de pele natural com poros reais, cabelos (mesma cor, corte e textura da foto da modelo).
-- POSE OBRIGATÓRIA DE FRENTE: A modelo deve estar POSICIONADA RIGOROSAMENTE DE FRENTE PARA O ESPELHO (front-facing), mostrando a frente inteira da roupa com máxima clareza. PROIBIDO corpo de lado ou de perfil.
-- ENQUADRAMENTO DA FOTO 2 (CORTE ESTRITO NO QUEIXO): A modelo segura o smartphone na altura do peito/queixo tirando foto no espelho. Enquadramento estritamente da base do queixo para baixo até os pés. NÃO mostrar olhos, nariz, boca ou cabeça (rosto 100% fora do enquadramento / encoberto pelo smartphone conforme a foto da modelo).
+- PRESERVAÇÃO INTEGRAL DE ROSTO E ENQUADRAMENTO DA FOTO 2: Se na Foto 2 o rosto da modelo aparece, o rosto DEVE APARECER IDENTICAMENTE ao da Foto 2, com os mesmos traços, olhos, boca e expressão. Se na Foto 2 o rosto estiver encoberto ou fora do quadro, mantenha exatamente o mesmo corte original da Foto 2.
+- POSE OBRIGATÓRIA DA FOTO 2: A modelo mantém a mesma pose e mesma atitude diante do espelho da Foto 2.
 - DESCONSIDERAR A ROUPA E O CENÁRIO DA FOTO 2: É TERMINANTEMENTE PROIBIDO copiar a roupa que a modelo veste na Foto 2 e PROIBIDO usar o cenário de fundo da Foto 2.
 
 3. FOTO 3 (CENÁRIO INDEPENDENTE DA GALERIA):

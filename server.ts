@@ -1893,18 +1893,18 @@ async function generateImageWithKling(params: {
       if (isModelScenarioKling) {
         headerKling =
           '[REGRA SOBERANA DE COMPOSIÇÃO 2 IMAGENS KLING OMNI]:\n' +
-          '1. PRODUTO (<<<image_1>>>): Extrair EXCLUSIVAMENTE a roupa e tecido de <<<image_1>>> 1:1 na modelo (PROIBIDO copiar pose de lado ou corpo de <<<image_1>>>).\n' +
-          '2. MODELO E CENÁRIO BASE (<<<image_2>>>): A modelo DEVE SER LITERALMENTE A MESMA MULHER de <<<image_2>>> (mesmo biotipo, curvas, formato de corpo, cabelos, tom de pele) NA MESMA POSE DE FRENTE E DENTRO DO MESMO CÔMODO/CENÁRIO de <<<image_2>>> (preservar 100% o fundo, piso, paredes, portas e espelho de <<<image_2>>>). Enquadramento estritamente da base do queixo para baixo, SEM ROSTO, celular cobrindo o rosto. Única alteração: trocar a roupa dela pela de <<<image_1>>>.\n' +
-          `3. LOOK: ${clothingDirectiveKling}\n` +
-          '4. PELE REALISTA & NATURAL: Textura de pele humana real com poros visíveis, acabamento fosco suave sob luz ambiente natural.\n\n';
+          '1. PRODUTO (<<<image_1>>>): Extrair EXCLUSIVAMENTE a roupa e tecido de <<<image_1>>> 1:1 na modelo. É TERMINANTEMENTE PROIBIDO copiar, misturar ou fundir o rosto, a cabeça, o cabelo ou a pose da pessoa da <<<image_1>>>! Ignore 100% a pessoa da <<<image_1>>> (ZERO mistura com o rosto de <<<image_1>>>).\n' +
+          '2. MODELO E CENÁRIO BASE (<<<image_2>>>): A modelo gerada DEVE SER LITERALMENTE A MESMA MULHER de <<<image_2>>> (mesmo biotipo, curvas, formato de corpo, cabelos, tom de pele) NA MESMA POSE E DENTRO DO MESMO CÔMODO de <<<image_2>>> (preservar 100% o fundo, piso, paredes, portas e espelho de <<<image_2>>>). Se em <<<image_2>>> o rosto da modelo aparece (visível total ou parcialmente), PRESERVE O MESMO ROSTO, olhos, boca e expressão de <<<image_2>>> (PROIBIDO cortar ou esconder a cabeça se o rosto aparece em <<<image_2>>>!). Se o rosto estiver coberto pelo celular ou fora do enquadramento em <<<image_2>>>, mantenha exatamente o mesmo corte original da imagem. Única alteração: trocar a roupa dela pela de <<<image_1>>>.\n' +
+          `3. LOOK: ${clothingDirectiveKling} Calçado harmonioso que combine com a peça (se vestido, sandália feminina elegante que harmonize com a cor e proposta do vestido; se fitness, tênis esportivo).\n` +
+          '4. PELE REALISTA & NATURAL: Textura de pele humana real com poros visíveis, acabamento fosco suave sob luz ambiente natural sem oleosidade excessiva.\n\n';
       } else {
         headerKling =
           '[REGRA SOBERANA DE COMPOSIÇÃO 3 IMAGENS KLING OMNI]:\n' +
-          '1. PRODUTO (<<<image_1>>>): Reproduzir a roupa de <<<image_1>>> na modelo com máxima fidelidade 1:1. PROIBIDO copiar a pose de lado ou o corpo de <<<image_1>>> e PROIBIDO usar a roupa de <<<image_2>>>.\n' +
-          '2. MODELO (<<<image_2>>>): A mulher gerada DEVE SER LITERALMENTE A MESMA MODELO de <<<image_2>>> (mesmo biotipo, curvas, formato de corpo, cabelos e mesma pele). POSE OBRIGATÓRIA DE FRENTE PARA O ESPELHO (front-facing). Enquadramento estritamente da base do queixo para baixo, SEM ROSTO, cabeça cortada no queixo, celular cobrindo o rosto.\n' +
+          '1. PRODUTO (<<<image_1>>>): Extrair EXCLUSIVAMENTE a roupa e tecido de <<<image_1>>>. É TERMINANTEMENTE PROIBIDO copiar ou mesclar o rosto, cabeça ou pessoa de <<<image_1>>>!\n' +
+          '2. MODELO (<<<image_2>>>): A mulher gerada DEVE SER LITERALMENTE A MESMA MODELO de <<<image_2>>> (mesmo biotipo, curvas, formato de corpo, cabelos e mesma pele). Se em <<<image_2>>> o rosto da modelo aparece, PRESERVE O MESMO ROSTO, olhos, boca e expressão de <<<image_2>>>. Se o rosto estiver coberto ou fora do quadro, mantenha exatamente o mesmo corte. Mesma pose e ângulo de <<<image_2>>>.\n' +
           '3. CENÁRIO (<<<image_3>>>): Preservar 100% o ambiente real de <<<image_3>>> (paredes, piso, espelho e iluminação intactos).\n' +
-          `4. LOOK: ${clothingDirectiveKling}\n` +
-          '5. PELE REALISTA & NATURAL (SEM OLEOSIDADE): Textura de pele humana real com poros visíveis, acabamento fosco suave sob iluminação difusa interior. PROIBIDO aspecto oleoso, pele plastificada ou brilho excessivo.\n\n';
+          `4. LOOK: ${clothingDirectiveKling} Calçado harmonioso que combine com a peça.\n` +
+          '5. PELE REALISTA & NATURAL (SEM OLEOSIDADE): Textura de pele humana real com poros visíveis, acabamento fosco suave sob iluminação difusa interior. PROIBIDO aspecto oleoso ou brilho excessivo.\n\n';
       }
     } else {
       headerKling = allowsFace
@@ -1930,9 +1930,11 @@ async function generateImageWithKling(params: {
 
   // Negative prompt estritamente focado em qualidade/artefatos — SEM tokens de corpo para que quem mande seja 100% o prompt da Mestra
   const negativePrompt = params.isAnaMariaMode
-    ? (allowsFace
-        ? 'tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, deformed face, bad eyes, low quality, 3d render, cartoon, illustration'
-        : 'face, head, eyes, eyebrows, nose, lips, mouth, teeth, smile, chin up, portrait, headshot, selfie with face, looking at camera, visible face, jeans with dress, pants under dress, jeans, sideways pose, profile angle, no smartphone, empty hands, without phone, naked, pantless, topless, no pants, underwear only, skinny, emaciated, boyish torso, flat hips, oily skin, greasy skin, shining skin, wet skin, oil sheen, plastic skin, wax skin, wax doll, porcelain skin, fake skin, heavy airbrushing, artificial gloss, tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, low quality, 3d render, cartoon, illustration')
+    ? (hasModelRefKling
+        ? 'copying face from image 1, blending person from image 1, mixing face of product photo, deformed hands, extra fingers, bad anatomy, blurry, watermark, low quality, 3d render, cartoon, illustration, jeans with dress, pants under dress, oily skin, greasy skin, shining skin, wet skin, oil sheen, plastic skin, wax skin, wax doll, porcelain skin, fake skin, heavy airbrushing, artificial gloss, tattoos on skin'
+        : (allowsFace
+            ? 'tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, deformed face, bad eyes, low quality, 3d render, cartoon, illustration'
+            : 'face, head, eyes, eyebrows, nose, lips, mouth, teeth, smile, chin up, portrait, headshot, selfie with face, looking at camera, visible face, jeans with dress, pants under dress, jeans, sideways pose, profile angle, no smartphone, empty hands, without phone, naked, pantless, topless, no pants, underwear only, skinny, emaciated, boyish torso, flat hips, oily skin, greasy skin, shining skin, wet skin, oil sheen, plastic skin, wax skin, wax doll, porcelain skin, fake skin, heavy airbrushing, artificial gloss, tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, low quality, 3d render, cartoon, illustration'))
     : 'original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry';
 
   const payload: any = {
@@ -2189,19 +2191,26 @@ async function generateImageWithSeedream(params: {
       headerSeedream = '[MAPA POV: Imagem 1 = Cenário POV Cama intacto; Imagem 2 = Produto 1:1 manipulado apenas pelas duas mãos limpas sem tatuagens sobre a cama. PROIBIDO corpo/rosto/espelho].\n\n';
     } else if (hasModelRefSeedream) {
       const isModelScenarioSeedream = (params.modelScenarioSource || 'model') === 'model';
+      const modelPreserveDirectiveSeedream =
+        '[PRESERVAÇÃO INTEGRAL DE ROSTO, POSE E ENQUADRAMENTO DA FOTO 2 (MODELO 1:1)]:\n' +
+        '- A modelo gerada DEVE SER A MESMA MULHER DA FOTO 2. Se a Foto 2 mostra o rosto da modelo (visível total ou parcialmente), o rosto DEVE APARECER IDENTICAMENTE, reproduzindo 100% a mesma face, olhos, nariz, boca e cabelos da mulher da Foto 2 (PROIBIDO cortar o rosto ou a cabeça se ela aparece na Foto 2!). Se o rosto estiver coberto pelo celular ou cortado no enquadramento da Foto 2, mantenha exatamente o mesmo corte original da Foto 2.\n' +
+        '- POSE E ENQUADRAMENTO: Manter rigorosamente a mesma pose diante do espelho, mesmos braços e mesmo ângulo da Foto 2.\n' +
+        '- ISOLAMENTO DA FOTO 1 (PRODUTO): Extrair EXCLUSIVAMENTE a roupa e tecido da Foto 1; é TERMINANTEMENTE PROIBIDO copiar, mesclar ou misturar o rosto ou a pessoa da Foto 1! ZERO mistura com a pessoa da Foto 1.\n' +
+        '- CALÇADO: Calçado harmonioso que combine com a peça (se vestido, sandália feminina elegante que harmonize com a cor e proposta do vestido; se fitness, tênis esportivo).\n';
+
       if (isModelScenarioSeedream) {
         headerSeedream =
-          `${faceDirectiveSeedream}${naturalSkinSeedream}` +
+          `${modelPreserveDirectiveSeedream}${naturalSkinSeedream}` +
           '[MAPA TÉCNICO DE REFERÊNCIA 2 IMAGENS — PRESERVAÇÃO INTEGRAL DE MODELO E CENÁRIO]:\n' +
-          '- Foto 1 (PRODUTO): É a roupa que a modelo DEVE vestir com máxima fidelidade 1:1 (PROIBIDO copiar pose de lado ou pessoa da Foto 1).\n' +
-          '- Foto 2 (MODELO E CENÁRIO BASE ABSOLUTO): A imagem gerada DEVE SER RIGOROSAMENTE A MESMA MULHER DA FOTO 2, NA MESMA POSE DE FRENTE E DENTRO DO MESMO CÔMODO DA FOTO 2. Preserve 100% o corpo, curvas, biotipo, cabelos, pose e TODO O CENÁRIO DE FUNDO da Foto 2 (paredes, piso, espelho, portas e iluminação intactos). Única alteração: trocar a roupa dela pela roupa da Foto 1.\n' +
+          '- Foto 1 (PRODUTO): É a roupa que a modelo DEVE vestir com máxima fidelidade 1:1 (PROIBIDO copiar rosto, pessoa ou pose da Foto 1).\n' +
+          '- Foto 2 (MODELO E CENÁRIO BASE ABSOLUTO): A imagem gerada DEVE SER RIGOROSAMENTE A MESMA MULHER DA FOTO 2, NA MESMA POSE E DENTRO DO MESMO CÔMODO DA FOTO 2. Preserve 100% o rosto (se visível na Foto 2), corpo, curvas, biotipo, cabelos, pose e TODO O CENÁRIO DE FUNDO da Foto 2 (paredes, piso, espelho, portas e iluminação intactos). Única alteração: trocar a roupa dela pela roupa da Foto 1 (e calçado que combine harmoniosamente).\n' +
           `${clothingDirectiveSeedream}\n\n`;
       } else {
         headerSeedream =
-          `${faceDirectiveSeedream}${naturalSkinSeedream}${frontalPoseDirectiveSeedream}` +
+          `${modelPreserveDirectiveSeedream}${naturalSkinSeedream}` +
           '[MAPA TÉCNICO DE REFERÊNCIA 3 IMAGENS]:\n' +
-          '- Foto 1 (PRODUTO): É a roupa que a modelo DEVE vestir com máxima fidelidade 1:1 (PROIBIDO copiar pose de lado ou roupa da Foto 2).\n' +
-          '- Foto 2 (MODELO): É literalmente a modelo da imagem. Preserve 100% o mesmo corpo, curvas, biotipo, cabelos e mesma pose DE FRENTE diante do espelho da Foto 2. DESCONSIDERE a roupa e o cenário da Foto 2!\n' +
+          '- Foto 1 (PRODUTO): É a roupa que a modelo DEVE vestir com máxima fidelidade 1:1 (PROIBIDO copiar rosto, pessoa ou pose da Foto 1).\n' +
+          '- Foto 2 (MODELO): É literalmente a modelo da imagem. Preserve 100% o mesmo rosto (se visível na Foto 2), corpo, curvas, biotipo, cabelos e mesma pose diante do espelho da Foto 2. DESCONSIDERE a roupa e o cenário da Foto 2!\n' +
           '- Foto 3 (CENÁRIO): É o cômodo real fixo intacto onde a modelo deve estar inserida diante do espelho.\n' +
           `${clothingDirectiveSeedream}\n\n`;
       }
@@ -2424,12 +2433,12 @@ async function generateImageWithKlingO3Fal(params: {
       : 'If top, wear matching bottom; if dress, wear ONLY the dress.';
     const isModelScenarioO3 = (params.modelScenarioSource || 'model') === 'model';
     const headerKlingO3 = isModelScenarioO3
-      ? '<<<image_1>>> is the PRODUCT: wear exclusively the garment from <<<image_1>>> 1:1 (PROHIBITED to copy sideways pose from <<<image_1>>>). ' +
-        '<<<image_2>>> is the MODEL AND ROOM: preserve 100% same woman, body, curves, hair, skin, FRONT-FACING pose, AND 100% same room/background setting from <<<image_2>>>; strict CHIN-DOWN framing (NO face, NO head). ' +
-        `${dressRuleO3} Natural matte realistic skin, no oil sheen. `
-      : '<<<image_1>>> is the PRODUCT: wear exclusively the garment from <<<image_1>>> 1:1 (PROHIBITED to copy sideways pose from <<<image_1>>>). ' +
-        '<<<image_2>>> is the MODEL: preserve 100% same woman, body, curves, hair, skin, FRONT-FACING mirror selfie pose; strict CHIN-DOWN framing (NO face, NO head). ' +
-        `<<<image_3>>> is the SCENARIO ROOM. ${dressRuleO3} Natural matte realistic skin, no oil sheen. `;
+      ? '<<<image_1>>> is STRICTLY the PRODUCT GARMENT: wear exclusively the garment from <<<image_1>>> 1:1. 100% DISREGARD the person, head, face, skin, and pose in <<<image_1>>>; NEVER blend or copy the face or person from <<<image_1>>>! ' +
+        '<<<image_2>>> is the MODEL AND ROOM BASE: preserve 100% the exact same woman, same body, curves, hair, skin, exact same pose and framing from <<<image_2>>>. If <<<image_2>>> shows her face, KEEP HER EXACT SAME FACE, eyes, lips, and facial features from <<<image_2>>>; do NOT crop her head or face if shown in <<<image_2>>>! Preserve 100% the exact same room/background setting from <<<image_2>>>. ' +
+        `${dressRuleO3} Footwear harmonizes with outfit (if dress, elegant sandals). Natural matte realistic skin, no oil sheen. `
+      : '<<<image_1>>> is STRICTLY the PRODUCT GARMENT: wear exclusively the garment from <<<image_1>>> 1:1. 100% DISREGARD the person, head, face, skin, and pose in <<<image_1>>>; NEVER blend or copy the face or person from <<<image_1>>>! ' +
+        '<<<image_2>>> is the MODEL: preserve 100% the exact same woman, same body, curves, hair, skin, exact same pose and framing from <<<image_2>>>. If <<<image_2>>> shows her face, KEEP HER EXACT SAME FACE, eyes, lips, and facial features from <<<image_2>>>. ' +
+        `<<<image_3>>> is the SCENARIO ROOM. ${dressRuleO3} Footwear harmonizes with outfit. Natural matte realistic skin, no oil sheen. `;
     promptKlingO3 = `${headerKlingO3}${params.prompt}`;
   }
 
@@ -2444,7 +2453,9 @@ async function generateImageWithKlingO3Fal(params: {
     const inputPayload: any = {
       prompt: promptKlingO3,
       image_urls: imageUrls,
-      negative_prompt: 'face, head, eyes, eyebrows, nose, lips, mouth, teeth, smile, chin up, portrait, headshot, selfie with face, looking at camera, visible face, jeans with dress, pants under dress, jeans, sideways pose, profile angle, deformed, blurry',
+      negative_prompt: params.modelReferenceBase64
+        ? 'copying face from image 1, blending person from image 1, mixing face of product photo, deformed hands, extra fingers, bad anatomy, blurry, watermark, low quality, 3d render, cartoon, illustration, jeans with dress, pants under dress, oily skin, greasy skin, shining skin, wet skin, oil sheen, plastic skin, wax skin, wax doll'
+        : 'face, head, eyes, eyebrows, nose, lips, mouth, teeth, smile, chin up, portrait, headshot, selfie with face, looking at camera, visible face, jeans with dress, pants under dress, jeans, sideways pose, profile angle, deformed, blurry',
       resolution: params.resolution || '2K',
       aspect_ratio: params.aspectRatio || '9:16',
       output_format: 'png',
@@ -2534,12 +2545,12 @@ async function generateImageWithFlux2ProEdit(params: {
       : 'If top, wear matching bottom; if dress, wear ONLY the dress.';
     const isModelScenarioFlux = (params.modelScenarioSource || 'model') === 'model';
     const headerFlux = isModelScenarioFlux
-      ? 'Photo 1 is the MODEL AND ROOM BASE: preserve 100% the exact same woman, body, curves, hair, skin, FRONT-FACING mirror selfie pose, and 100% the exact same room/background from Photo 1; chin-down crop (NO face, NO head). ' +
-        'Photo 2 is the PRODUCT: replace her clothes with the exact garment from Photo 2 1:1 (DO NOT copy sideways pose or person from Photo 2). ' +
-        `${dressRuleFlux} Photorealistic modern smartphone photo. `
-      : 'Photo 1 is the MODEL: preserve 100% the exact same woman, body, curves, hair, skin, FRONT-FACING mirror selfie pose; chin-down crop (NO face, NO head). ' +
-        'Photo 2 is the PRODUCT: replace her clothes with the exact garment from Photo 2 1:1 (DO NOT copy sideways pose or person from Photo 2). ' +
-        `Photo 3 is the SCENARIO ROOM: place her standing in this room. ${dressRuleFlux} Photorealistic modern smartphone photo. `;
+      ? 'Photo 1 is the MODEL AND ROOM BASE: preserve 100% the exact same woman, same body, curves, hair, skin, exact same pose and framing from Photo 1. If Photo 1 shows her face, KEEP HER EXACT SAME FACE, eyes, lips, and facial expression from Photo 1; do NOT crop or cut her face if shown in Photo 1! Preserve 100% the exact same room/background setting from Photo 1. ' +
+        'Photo 2 is the PRODUCT: replace her clothes with the exact garment from Photo 2 1:1. 100% ignore the person and face in Photo 2; DO NOT blend or copy the face from Photo 2. ' +
+        `${dressRuleFlux} Footwear harmonizes with outfit (if dress, elegant sandals). Photorealistic modern smartphone photo. `
+      : 'Photo 1 is the MODEL: preserve 100% the exact same woman, same body, curves, hair, skin, exact same pose and framing from Photo 1. If Photo 1 shows her face, KEEP HER EXACT SAME FACE, eyes, lips, and facial expression from Photo 1. ' +
+        'Photo 2 is the PRODUCT: replace her clothes with the exact garment from Photo 2 1:1. 100% ignore the person and face in Photo 2; DO NOT blend or copy the face from Photo 2. ' +
+        `Photo 3 is the SCENARIO ROOM: place her standing in this room. ${dressRuleFlux} Footwear harmonizes with outfit. Photorealistic modern smartphone photo. `;
     promptFlux = `${headerFlux}${params.prompt}`;
   }
 
@@ -2596,8 +2607,8 @@ async function generateImageWithFlux2ProEdit(params: {
       try {
         const isModelScenarioFlux = (params.modelScenarioSource || 'model') === 'model';
         const fallbackPrompt = isModelScenarioFlux
-          ? 'Photo 1 is the model and room base: preserve 100% the exact same woman, body, curves, hair, front-facing mirror selfie pose, and 100% the exact same room setting from Photo 1; chin-down framing with no face. Photo 2 is the product: replace her clothes with the exact commercial apparel from Photo 2. High quality smartphone mirror selfie catalog photography, fully dressed, realistic lighting, sharp focus.'
-          : 'Photo 1 is the model: preserve 100% the exact same woman, body, curves, hair, front-facing mirror selfie pose; chin-down framing with no face. Photo 2 is the product: replace her clothes with the exact commercial apparel from Photo 2. Photo 3 is the room interior: place her in this room. High quality smartphone mirror selfie catalog photography, fully dressed, realistic lighting, sharp focus.';
+          ? 'Photo 1 is the model and room base: preserve 100% the exact same woman, same face (if shown in Photo 1, preserve the same face from Photo 1), body, curves, hair, exact same pose, framing, and 100% the exact same room setting from Photo 1. Photo 2 is the product: replace her clothes with the exact commercial apparel from Photo 2. 100% ignore the person in Photo 2. High quality smartphone mirror selfie catalog photography, fully dressed, footwear matching outfit, realistic lighting, sharp focus.'
+          : 'Photo 1 is the model: preserve 100% the exact same woman, same face (if shown in Photo 1, preserve the same face from Photo 1), body, curves, hair, exact same pose and framing from Photo 1. Photo 2 is the product: replace her clothes with the exact commercial apparel from Photo 2. 100% ignore the person in Photo 2. Photo 3 is the room interior: place her in this room. High quality smartphone mirror selfie catalog photography, fully dressed, footwear matching outfit, realistic lighting, sharp focus.';
 
         const retryResult: any = await fal.subscribe('fal-ai/flux-2-pro/edit', {
           input: {

@@ -783,10 +783,21 @@ ${cleanPrompt}`;
           }
         }
 
+        const isDressGarment = Boolean(
+          (productType && /\b(vestido|vestidos|dress|dresses|longo|midi|festa|chemise)\b/i.test(productType)) ||
+          (cleanPrompt && /\b(vestido|vestidos|dress|dresses|longo|midi|festa|chemise)\b/i.test(cleanPrompt))
+        );
+        const shoeEditInstruction = isDressGarment
+          ? 'Substitua também o calçado da modelo por uma sandália feminina elegante de tiras delicadas ou salto harmonioso que combine perfeitamente em estilo, cor e elegância com o vestido.'
+          : 'Substitua o calçado da modelo por um calçado harmonioso e elegante que combine perfeitamente com a peça anunciada.';
+
         effectivePrompt = `Esta é uma EDIÇÃO LOCALIZADA da imagem enviada. A imagem enviada é a base absoluta e deve permanecer IDÊNTICA: mesma mulher (rosto, cabelo, pele, corpo), mesma pose, mesmos braços e mãos, mesmo quarto/cenário, mesma iluminação, mesmo ângulo, mesmo enquadramento e mesma composição. NÃO recrie a cena, NÃO gere outra pessoa, NÃO mude o fundo. Zero tatuagens.
 
-ÚNICA ALTERAÇÃO: substitua a roupa/produto (${productType}) que ela veste por uma peça com exatamente estas características (variante "${variationName}"): ${garmentSpec || `cor ${variationName}`}.
-Mantenha o mesmo modelo/corte e caimento da peça atual; troque somente cores (peça principal, debruns/acabamentos, botões) e detalhes conforme descrito, preservando fielmente qualquer logomarca ou estampa original do fabricante presente na peça. Tudo que não for a peça permanece pixel a pixel igual à imagem enviada. Proibido adicionar textos flutuantes, logos de redes sociais (TikTok/@) ou marcas d'água externas.`;
+ALTERAÇÃO SOLICITADA:
+1. Substitua a roupa/produto (${productType}) que ela veste por uma peça com exatamente estas características${variationName ? ` (variante "${variationName}")` : ''}: ${garmentSpec || productType}.
+2. CALÇADO: ${shoeEditInstruction}
+3. Se for vestido ou macacão, ela veste EXCLUSIVAMENTE o vestido com pernas limpas naturais (proibido calça jeans ou shorts sob o vestido); se for blusa, veste calça jeans combinando; se for calça, veste blusa combinando.
+Preserve fielmente qualquer logomarca, estampa ou acabamento original da peça. Tudo que não for a peça e o calçado permanece pixel a pixel igual à imagem enviada. Proibido adicionar textos flutuantes, logos de redes sociais ou marcas d'água externas.`;
       } else if (referenceFrameBase64) {
         try {
           baseImageFile = toImageFile(referenceFrameBase64, 'previous_storyboard');
