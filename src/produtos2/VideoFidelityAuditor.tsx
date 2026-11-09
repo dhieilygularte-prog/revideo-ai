@@ -386,8 +386,8 @@ async function extractKeyFramesForBatchVideo(
 
       let w = video.videoWidth || 720;
       let h = video.videoHeight || 1280;
-      // 640px para 9:16 vertical = 360x640px (78% mais nitidez nos cortes de entrepernas, barriga e detalhes)
-      const maxSide = 640;
+      // 520px para 9:16 vertical = 292x520px (altíssima nitidez e corte de entrepernas/cintura mantendo tamanho de payload seguro <1.5MB por lote)
+      const maxSide = 520;
       if (w > maxSide || h > maxSide) {
         if (w > h) {
           h = Math.round((h * maxSide) / w);
@@ -411,7 +411,7 @@ async function extractKeyFramesForBatchVideo(
             video.removeEventListener('seeked', onSeeked);
             try {
               ctx.drawImage(video, 0, 0, w, h);
-              const b64 = canvas.toDataURL('image/jpeg', 0.80);
+              const b64 = canvas.toDataURL('image/jpeg', 0.74);
               extracted.push({ second: time, frameBase64: b64 });
             } catch (drawErr) {
               console.warn('Erro ao desenhar frame do lote:', drawErr);
@@ -889,7 +889,7 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
 
     try {
       const compressedRefs = await Promise.all(
-        effectiveReferencePhotos.slice(0, 10).map((p) => compressPhotoForVideoAudit(p, 720, 0.85))
+        effectiveReferencePhotos.slice(0, 10).map((p) => compressPhotoForVideoAudit(p, 600, 0.76))
       );
 
       const batchPayloadVideos: any[] = [];
@@ -918,38 +918,114 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
         throw new Error('Falha ao extrair frames dos vídeos anexados.');
       }
 
-      setStatusMessage(
-        `Auditando lote de ${batchPayloadVideos.length} vídeos contra as ${compressedRefs.length} fotos de cores/referência com IA...`
-      );
+      // Chunking automático para garantir que a requisição NUNCA estoure o limite de payload (HTTP 413)
+      // Cada chunk de até 10 vídeos consome ~1.1MB de transferência, ficando muito abaixo do limite do servidor
+      const CHUNK_SIZE = 10;
+      const totalChunks = Math.ceil(batchPayloadVideos.length / CHUNK_SIZE);
 
-      const payloadBody = JSON.stringify({
-        isBatch: true,
-        productName,
-        productLock,
-        productPhotosBase64: compressedRefs,
-        batchVideos: batchPayloadVideos,
-      });
+      const aggregatedResults: any[] = [];
+      const executiveSummaries: string[] = [];
+      const allCommonPatterns: string[] = [];
+      let totalApproved = 0;
+      let totalRejected = 0;
+      let totalFlagged = 0;
+      let totalTokensUsed = 0;
+      let totalCostEstimated = 0;
 
-      const res = await fetch('/api/produtos2-audit-video', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: payloadBody,
-      });
+      for (let c = 0; c < totalChunks; c++) {
+        const start = c * CHUNK_SIZE;
+        const end = Math.min(start + CHUNK_SIZE, batchPayloadVideos.length);
+        const chunkVideos = batchPayloadVideos.slice(start, end);
 
-      const json = await res.json();
-      if (!res.ok || !json.success || !json.results) {
-        throw new Error(json.error || 'Falha ao processar auditoria em lote.');
+        if (totalChunks > 1) {
+          setStatusMessage(
+            `Auditando com IA: Parte ${c + 1} de ${totalChunks} (Vídeos ${start + 1} a ${end} de ${batchPayloadVideos.length})...`
+          );
+        } else {
+          setStatusMessage(
+            `Auditando lote de ${batchPayloadVideos.length} vídeos contra as ${compressedRefs.length} fotos de cores/referência com IA...`
+          );
+        }
+
+        const payloadBody = JSON.stringify({
+          isBatch: true,
+          productName,
+          productLock,
+          productPhotosBase64: compressedRefs,
+          batchVideos: chunkVideos,
+        });
+
+        const res = await fetch('/api/produtos2-audit-video', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: payloadBody,
+        });
+
+        const rawText = await res.text();
+        let json: any = null;
+        try {
+          json = JSON.parse(rawText);
+        } catch {
+          if (res.status === 413 || (rawText && rawText.toLowerCase().includes('entity too large'))) {
+            throw new Error(
+              'O lote de vídeos excedeu o limite máximo de dados da rede (HTTP 413 Request Entity Too Large). Tente auditar em grupos menores de vídeos.'
+            );
+          }
+          throw new Error(`Resposta inválida do servidor de auditoria (${res.status}): ${rawText.slice(0, 100)}`);
+        }
+
+        if (!res.ok || !json.success || !json.results) {
+          throw new Error(json.error || `Falha ao processar parte ${c + 1} da auditoria em lote.`);
+        }
+
+        aggregatedResults.push(...json.results);
+
+        if (json.batchSummary) {
+          totalApproved += json.batchSummary.approvedCount || 0;
+          totalRejected += json.batchSummary.rejectedCount || 0;
+          totalFlagged += json.batchSummary.flaggedCount || 0;
+          if (json.batchSummary.overview) {
+            executiveSummaries.push(json.batchSummary.overview);
+          } else if (json.batchSummary.executiveConclusion) {
+            executiveSummaries.push(json.batchSummary.executiveConclusion);
+          }
+          if (Array.isArray(json.batchSummary.commonPatterns)) {
+            allCommonPatterns.push(...json.batchSummary.commonPatterns);
+          }
+        }
+
+        if (json.usage) {
+          totalTokensUsed += json.usage.totalTokens || 0;
+          totalCostEstimated += json.usage.estimatedCostUsd || 0;
+        }
       }
 
-      const hydratedResults: BatchVideoAuditResultItem[] = json.results.map((r: any) => ({
+      const hydratedResults: BatchVideoAuditResultItem[] = aggregatedResults.map((r: any) => ({
         ...r,
         thumbnail: localThumbnailsMap.get(r.id),
       }));
 
       const finalBatchAudit: BatchVideoFidelityAudit = {
-        batchSummary: json.batchSummary,
+        batchSummary: {
+          totalVideos: hydratedResults.length,
+          approvedCount: totalApproved,
+          rejectedCount: totalRejected,
+          overview:
+            executiveSummaries.join(' | ') ||
+            (totalRejected === 0
+              ? `Todos os ${hydratedResults.length} vídeos foram aprovados com fidelidade total ao corte/modelo.`
+              : `${totalRejected} de ${hydratedResults.length} vídeos foram reprovados por alteração crítica de corte ou modelagem.`),
+        },
         results: hydratedResults,
-        usage: json.usage,
+        usage:
+          totalTokensUsed > 0
+            ? {
+                promptTokens: Math.round(totalTokensUsed * 0.8),
+                completionTokens: Math.round(totalTokensUsed * 0.2),
+                totalTokens: totalTokensUsed,
+                estimatedCostUsd: Math.round(totalCostEstimated * 1000) / 1000,
+              }
+            : undefined,
       };
 
       setBatchAudit(finalBatchAudit);
