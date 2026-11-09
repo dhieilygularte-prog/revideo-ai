@@ -23,6 +23,7 @@ import {
   Hand,
   Smile,
   RefreshCw,
+  Wand2,
 } from 'lucide-react';
 import {
   AnaMariaFormState,
@@ -225,8 +226,9 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
    * Identifica automaticamente o nome da peça (ex: Camisola, Camiseta, Calça, Bermuda, Conjunto)
    * assim que o usuário adiciona a primeira foto, sem jamais sobrescrever o que o usuário digitar.
    */
-  const autoIdentifyGarmentFromPhoto = async (photoBase64: string) => {
-    if (!photoBase64 || hasUserManuallyEditedNameRef.current) return;
+  const autoIdentifyGarmentFromPhoto = async (photoBase64: string, force = false) => {
+    if (!photoBase64) return;
+    if (!force && hasUserManuallyEditedNameRef.current && form.productName.trim().length > 0) return;
     setIsIdentifyingProduct(true);
     try {
       const res = await fetch('/api/detect-dominant-color', {
@@ -238,10 +240,10 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         }),
       });
       const data = await res.json();
-      if (data?.success && data?.garmentName && !hasUserManuallyEditedNameRef.current) {
+      if (data?.success && data?.garmentName) {
         onChange((prev) => {
-          // Só preenche se o usuário não tiver digitado manualmente enquanto identificava
-          if (hasUserManuallyEditedNameRef.current && prev.productName.trim().length > 0) {
+          // Só preenche se não foi digitado manualmente enquanto identificava (ou se foi forçado pelo botão)
+          if (!force && hasUserManuallyEditedNameRef.current && prev.productName.trim().length > 0) {
             return prev;
           }
           return {
@@ -279,12 +281,12 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         referencePhotos: [...prev.referencePhotos, ...newPhotos].slice(0, 10),
       }));
 
-      // Se era o primeiro anexo (ou o campo Nome da Peça ainda está vazio e não foi editado pelo usuário),
-      // envia miniatura leve de 512px (~25 KB) apenas para identificar o nome da peça em <0.6s sem competir com a geração
-      if (filesToProcess[0] && (wasEmptyBefore || !form.productName.trim()) && !hasUserManuallyEditedNameRef.current) {
+      // Identifica automaticamente a peça da foto caso o campo esteja vazio,
+      // se tinha sido auto-identificado anteriormente ou se for o primeiro anexo
+      if (filesToProcess[0] && (wasEmptyBefore || !form.productName.trim() || autoIdentifiedBadge || !hasUserManuallyEditedNameRef.current)) {
         compressAndResizeImage(filesToProcess[0], 512, 0.75)
-          .then((thumbB64) => autoIdentifyGarmentFromPhoto(thumbB64))
-          .catch(() => autoIdentifyGarmentFromPhoto(newPhotos[0]));
+          .then((thumbB64) => autoIdentifyGarmentFromPhoto(thumbB64, true))
+          .catch(() => autoIdentifyGarmentFromPhoto(newPhotos[0], true));
       }
     } catch (err) {
       console.error('Erro ao processar imagens:', err);
@@ -296,7 +298,8 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const handleRemovePhoto = (index: number) => {
     onChange((prev) => {
       const nextPhotos = prev.referencePhotos.filter((_, i) => i !== index);
-      if (nextPhotos.length === 0 && !hasUserManuallyEditedNameRef.current) {
+      if (nextPhotos.length === 0) {
+        hasUserManuallyEditedNameRef.current = false;
         setAutoIdentifiedBadge(false);
       }
       return {
@@ -307,19 +310,13 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   };
 
   const handleClearAllPhotos = () => {
-    if (!hasUserManuallyEditedNameRef.current) {
-      setAutoIdentifiedBadge(false);
-      onChange((prev) => ({
-        ...prev,
-        referencePhotos: [],
-        productName: '',
-      }));
-    } else {
-      onChange((prev) => ({
-        ...prev,
-        referencePhotos: [],
-      }));
-    }
+    hasUserManuallyEditedNameRef.current = false;
+    setAutoIdentifiedBadge(false);
+    onChange((prev) => ({
+      ...prev,
+      referencePhotos: [],
+      productName: '',
+    }));
   };
 
   /**
@@ -677,29 +674,52 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             </h2>
           </div>
 
-          {isIdentifyingProduct ? (
-            <span
-              className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1.5 animate-pulse ${
-                isAmetista
-                  ? 'bg-purple-500/20 text-[#d4ff59] border border-purple-400/40'
-                  : 'bg-orange-500/20 text-amber-300 border border-orange-500/40'
-              }`}
-            >
-              <RefreshCw className="w-3 h-3 animate-spin" />
-              <span>Identificando peça pela foto...</span>
-            </span>
-          ) : autoIdentifiedBadge && form.productName.trim() ? (
-            <span
-              className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 ${
-                isAmetista
-                  ? 'bg-[#1a1128] text-[#d4ff59] border border-[#d4ff59]/40'
-                  : 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
-              }`}
-            >
-              <Sparkles className="w-3 h-3" />
-              <span>Identificado automaticamente (você pode editar se preferir)</span>
-            </span>
-          ) : null}
+          <div className="flex items-center gap-2">
+            {form.referencePhotos.length > 0 && (
+              <button
+                type="button"
+                disabled={isIdentifyingProduct}
+                onClick={() => {
+                  if (form.referencePhotos[0]) {
+                    autoIdentifyGarmentFromPhoto(form.referencePhotos[0], true);
+                  }
+                }}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                  isAmetista
+                    ? 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-400/30'
+                    : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700'
+                }`}
+                title="Identificar automaticamente o nome da peça a partir da foto"
+              >
+                <Wand2 className="w-3 h-3 text-amber-300" />
+                <span>Identificar da foto</span>
+              </button>
+            )}
+
+            {isIdentifyingProduct ? (
+              <span
+                className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1.5 animate-pulse ${
+                  isAmetista
+                    ? 'bg-purple-500/20 text-[#d4ff59] border border-purple-400/40'
+                    : 'bg-orange-500/20 text-amber-300 border border-orange-500/40'
+                }`}
+              >
+                <RefreshCw className="w-3 h-3 animate-spin" />
+                <span>Identificando peça pela foto...</span>
+              </span>
+            ) : autoIdentifiedBadge && form.productName.trim() ? (
+              <span
+                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 ${
+                  isAmetista
+                    ? 'bg-[#1a1128] text-[#d4ff59] border border-[#d4ff59]/40'
+                    : 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                }`}
+              >
+                <Sparkles className="w-3 h-3" />
+                <span>Identificado automaticamente</span>
+              </span>
+            ) : null}
+          </div>
         </div>
         <p className="text-xs text-zinc-400 leading-relaxed">
           Ao anexar a imagem da peça acima, o app identifica e preenche automaticamente o nome (ex.: Camisola, Camiseta, Calça, Bermuda, Conjunto). Se preferir, você pode editar livremente — o que estiver escrito aqui será sempre o nome soberano usado pelo app.
@@ -709,8 +729,13 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           value={form.productName}
           onChange={(e) => {
             const val = e.target.value;
-            hasUserManuallyEditedNameRef.current = val.trim().length > 0;
-            setAutoIdentifiedBadge(false);
+            if (!val.trim()) {
+              hasUserManuallyEditedNameRef.current = false;
+              setAutoIdentifiedBadge(false);
+            } else {
+              hasUserManuallyEditedNameRef.current = true;
+              setAutoIdentifiedBadge(false);
+            }
             onChange((prev) => ({ ...prev, productName: val }));
           }}
           placeholder="Ex: Camisola, Conjunto Fitness, Vestido Longo, Calça Jeans, Bermuda, Camiseta..."

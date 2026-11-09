@@ -3350,21 +3350,29 @@ app.post("/api/detect-dominant-color", async (req, res) => {
     if (mode === "identify_garment") {
       const identifyPrompt = `Analise a foto deste item de vestu\xE1rio e informe o NOME COMERCIAL ESPEC\xCDFICO da pe\xE7a em portugu\xEAs para cat\xE1logo de moda e TikTok Shop.
 
-REGRAS OBRIGAT\xD3RIAS:
-1. \xC9 TERMINANTEMENTE PROIBIDO responder com categorias gen\xE9ricas ou termos guarda-chuva como "Lingerie", "Roupa", "Moda \xCDntima", "Vestu\xE1rio", "Pe\xE7a \xCDntima", "Look" ou "Vestimenta".
-2. SEJA ESPEC\xCDFICO com a nomenclatura comercial exata usada em e-commerce:
-   - Se for roupa de dormir delicada / camisola: use "Camisola Baby Doll" ou "Camisola Rendada" ou "Baby Doll". NUNCA use apenas "Lingerie".
-   - Se for calcinha e suti\xE3: use "Conjunto de Lingerie" ou "Conjunto de Renda".
-   - Se for body: use "Body Rendado", "Body Canelado" ou "Body Modelador".
-   - Se for vestido: "Vestido Longo", "Vestido Midi", "Vestido Curto", "Vestido Canelado", "Vestido Tubinho".
-   - Se for cal\xE7a: "Cal\xE7a Jeans", "Cal\xE7a Pantalona", "Cal\xE7a Wide Leg", "Cal\xE7a Alfaiataria", "Cal\xE7a Legging".
-   - Se for short/bermuda: "Short Jeans", "Short Alfaiataria", "Short Saia", "Bermuda Jeans".
-   - Se for blusa/camisa: "Camiseta Oversized", "Cropped Canelado", "Blusa Tricot", "Camisa Social".
-   - Se for pijama: "Pijama Americano", "Pijama de Cetim", "Pijama Curto".
-   - Se for cinta: "Cinta Modeladora", "Cinta Abdominal".
-   - Se for fitness: "Conjunto Fitness", "Top Fitness".
-   - Se for praia: "Biqu\xEDni Cortininha", "Mai\xF4 Engana-Mam\xE3e".
-3. Responda APENAS o nome comercial espec\xEDfico da pe\xE7a (1 a 3 palavras, iniciais mai\xFAsculas), sem ponto final, sem aspas e sem explica\xE7\xF5es.`;
+DISTIN\xC7\xC3O CR\xCDTICA ENTRE CONJUNTO E MACAC\xC3O / MACAQUINHO (LEI INEGOCI\xC1VEL):
+- CONJUNTO (2 Pe\xE7as Independentes):
+  Se o visual for composto por DUAS pe\xE7as (uma parte de cima independente como blusa, cropped, top ou camisa + uma parte de baixo independente como shorts, bermuda, cal\xE7a ou saia), \xC9 OBRIGATORIAMENTE UM "CONJUNTO" (ex: "Conjunto Alfaiataria", "Conjunto Feminino", "Conjunto Cropped e Shorts", "Conjunto Blusa e Bermuda", "Conjunto Pantalona").
+  * Mesmo que sejam da mesma cor e mesmo tecido: se a blusa sobrep\xF5e o c\xF3s do shorts/cal\xE7a, ou se o shorts/cal\xE7a possui c\xF3s estruturado pr\xF3prio (passantes, z\xEDper frontal ou bolsos faca), CLASSIFIQUE RIGOROSAMENTE COMO "CONJUNTO" (ex: "Conjunto Alfaiataria"), NUNCA como macac\xE3o!
+- MACAC\xC3O / MACAQUINHO (Pe\xE7a \xDAnica Inteiri\xE7a):
+  \xC9 uma pe\xE7a \xDANICA e cont\xEDnua, onde o topo e a parte inferior s\xE3o costurados juntos em uma s\xF3 pe\xE7a sem separa\xE7\xE3o:
+  * Se for curto com shorts inteiri\xE7o: "Macaquinho Alfaiataria", "Macaquinho Feminino" ou "Macaquinho Fitness".
+  * Se for longo com cal\xE7a inteiri\xE7a: "Macac\xE3o Longo", "Macac\xE3o Flare" ou "Macac\xE3o Pantalona".
+  * S\xF3 use Macac\xE3o/Macaquinho se voc\xEA tiver certeza absoluta de que N\xC3O h\xE1 blusa separada! Na d\xFAvida entre Conjunto e Macaquinho, prefira "Conjunto Alfaiataria" ou "Conjunto Feminino".
+
+DEMAIS CATEGORIAS DE MODA:
+- Vestido: "Vestido Longo", "Vestido Midi", "Vestido Curto", "Vestido Tubinho", "Vestido Canelado", "Vestido Acetinado".
+- Cal\xE7a: "Cal\xE7a Linho", "Cal\xE7a Jeans", "Cal\xE7a Pantalona", "Cal\xE7a Wide Leg", "Cal\xE7a Alfaiataria".
+- Short/Bermuda: "Bermuda Alfaiataria", "Short Jeans", "Short Alfaiataria", "Short Saia", "Bermuda Linho".
+- Blusa/Camisa: "Camiseta Oversized", "Cropped Canelado", "Blusa Tricot", "Camisa Social".
+- Baby Doll / Pijama: "Camisola Baby Doll", "Baby Doll Rendado", "Pijama Americano", "Pijama de Cetim".
+- Body / Lingerie: "Body Poliamida", "Body Rendado", "Conjunto de Lingerie".
+- Praia: "Biqu\xEDni Cortininha", "Sa\xEDda de Praia", "Mai\xF4 Engana-Mam\xE3e".
+- Cinta: "Cinta Modeladora", "Cinta Abdominal".
+- Fitness: "Conjunto Fitness", "Top Fitness", "Macaquinho Fitness".
+
+REGRAS FINAIS:
+1. Responda APENAS o nome comercial espec\xEDfico da pe\xE7a (1 a 3 palavras, iniciais mai\xFAsculas), sem ponto final, sem aspas e sem explica\xE7\xF5es.`;
       const sanitizeIdentifiedGarment = (raw) => {
         let clean = raw.replace(/^["'`]+|["'`.!?:;]+$/g, "").replace(/\s+/g, " ").trim().slice(0, 45);
         if (/^lingerie$/i.test(clean)) {
@@ -3380,13 +3388,13 @@ REGRAS OBRIGAT\xD3RIAS:
           try {
             const completion = await client.chat.completions.create({
               model: visionModel,
-              max_tokens: 25,
+              max_tokens: 30,
               temperature: 0.1,
               messages: [
                 {
                   role: "user",
                   content: [
-                    { type: "image_url", image_url: { url: cleanB64, detail: "low" } },
+                    { type: "image_url", image_url: { url: cleanB64, detail: "high" } },
                     { type: "text", text: identifyPrompt }
                   ]
                 }
@@ -3405,25 +3413,28 @@ REGRAS OBRIGAT\xD3RIAS:
         }
       }
       if (process.env.GEMINI_API_KEY) {
-        try {
-          const parsed = parseInlineImage(photoBase64);
-          if (parsed) {
-            const geminiRes = await getGenAI().models.generateContent({
-              model: GEMINI_VISION_FAST_MODEL || "gemini-2.5-flash",
-              contents: {
-                parts: [{ inlineData: parsed }, { text: identifyPrompt }]
-              }
-            });
-            const rawName = geminiRes.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-            if (rawName) {
-              const cleanName = sanitizeIdentifiedGarment(rawName);
-              if (cleanName) {
-                return res.json({ success: true, garmentName: cleanName });
+        const geminiModels = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.0-flash"];
+        for (const gModel of geminiModels) {
+          try {
+            const parsed = parseInlineImage(photoBase64);
+            if (parsed) {
+              const geminiRes = await getGenAI().models.generateContent({
+                model: gModel,
+                contents: {
+                  parts: [{ inlineData: parsed }, { text: identifyPrompt }]
+                }
+              });
+              const rawName = geminiRes.text?.trim() || geminiRes.candidates?.[0]?.content?.parts?.find((p) => p.text)?.text?.trim() || geminiRes.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+              if (rawName) {
+                const cleanName = sanitizeIdentifiedGarment(rawName);
+                if (cleanName) {
+                  return res.json({ success: true, garmentName: cleanName });
+                }
               }
             }
+          } catch (gemErr) {
+            console.warn(`Erro ao identificar pe\xE7a via Gemini (${gModel}):`, gemErr?.message || gemErr);
           }
-        } catch (gemErr) {
-          console.warn("Erro ao identificar pe\xE7a via Gemini:", gemErr?.message || gemErr);
         }
       }
       return res.json({ success: false, error: "N\xE3o foi poss\xEDvel identificar a pe\xE7a automaticamente" });
@@ -6786,15 +6797,25 @@ DIRETRIZ DE SEVERIDADE DO TIKTOK SHOP (LEI INEGOCI\xC1VEL):
 No TikTok Shop, o produto entregue ao cliente deve ter EXATAMENTE o mesmo corte e silhueta do v\xEDdeo exibido no an\xFAncio. Mudar o formato causa strike imediato por "Produto n\xE3o condizente com o an\xFAncio" ou suspens\xE3o da conta comercial.
 Voc\xEA DEVE auditar com rigor pericial 4 pilares estruturais da roupa em CADA V\xCDDEO:
 
-A) PE\xC7A INFERIOR \u2014 SHORTS/BERMUDA vs SAIA (CRIT\xC9RIO ZERO TOLER\xC2NCIA):
-- Se a refer\xEAncia for Shorts, Bermuda ou Cal\xE7a: O v\xEDdeo DEVE OBRIGATORIAMENTE exibir a estrutura de DUAS PERNAS SEPARADAS (com abertura entrepernas/gancho/cavalo n\xEDtido e barras separadas em cada perna).
-- Se no v\xEDdeo a pe\xE7a apresentar formato de saia curta/minissaia, com caimento cont\xEDnuo de tecido em sino ou tubo ao redor das coxas, sem a divis\xE3o n\xEDtida de duas pernas: REPROVA\xC7\xC3O IMEDIATA (score <= 45, approved: false, status: "red")!
-- Da mesma forma, se a refer\xEAncia for saia/vestido, n\xE3o pode virar shorts.
+A) PE\xC7A INFERIOR \u2014 SHORTS/BERMUDA vs SAIA (ZERO FALSAS REPROVA\xC7\xD5ES):
+- Se a refer\xEAncia for Shorts, Bermuda ou Cal\xE7a:
+  * ATEN\xC7\xC3O CR\xCDTICA COM POSES DE PERNAS JUNTAS / COXAS ENCOSTADAS (N\xC3O \xC9 SAIA!):
+    Em poses e v\xEDdeos de espelho (mirror-selfie), \xE9 comum a modelo posar com as pernas juntas, p\xE9s alinhados ou coxas encostadas uma na outra. Quando as coxas se tocam, N\xC3O HAVER\xC1 luz ou v\xE3o de ar passando entre as pernas! Isso N\xC3O significa que a pe\xE7a virou saia!
+    Para confirmar que \xC9 SHORTS/BERMUDA, procure qualquer um destes sinais definitivos:
+    1) COSTURA VERTICAL FRONTAL CENTRAL (costura do cavalo / gancho / braguilha / vista frontal descendo no meio da pe\xE7a at\xE9 o entrepernas);
+    2) BARRAS SEPARADAS: cada perna possui sua pr\xF3pria barra contornando a coxa (com dobra/bainha individual e um entalhe/jun\xE7\xE3o central no meio onde as duas bocas de perna se encontram);
+    3) BOLSOS LATERAIS tipo faca e c\xF3s de shorts.
+    Se voc\xEA observar costura central frontal, barras individuais contornando as pernas ou estrutura de c\xF3s de shorts, \xC9 SHORTS/BERMUDA V\xC1LIDO E CORRETO! \xC9 PROIBIDO REPROVAR COMO SAIA!
+  * CRIT\xC9RIO PARA REPROVA\xC7\xC3O COMO SAIA REAL:
+    S\xF3 reprove como saia se a pe\xE7a inferior for comprovadamente uma saia genu\xEDna (um tubo ou sino de tecido cont\xEDnuo sem costura central divis\xF3ria de pernas e sem barras individuais).
+  * Da mesma forma, se a refer\xEAncia for saia/vestido, n\xE3o pode virar shorts.
 
-B) COMPRIMENTO E COBERTURA CORPORAL \u2014 BLUSA COBRINDO BARRIGA vs CROPPED / PELE EXPOSTA:
-- Observe o comprimento exato da blusa/topo na foto de refer\xEAncia.
-- Se na refer\xEAncia a blusa cobre o abd\xF4men, cintura e umbigo com caimento frontal fechado: Se no v\xEDdeo a blusa estiver mais curta (cropped), subida, ou com aberturas laterais/frontais que deixem a barriga, umbigo ou cintura exposta: REPROVA\xC7\xC3O IMEDIATA (score <= 45, approved: false, status: "red")!
-- O comprimento de saias e vestidos tamb\xE9m deve ser fiel (vestido midi n\xE3o pode virar mini curto).
+B) COMPRIMENTO E COBERTURA DO ABD\xD4MEN/CINTURA (REGRA DA BARRIGA ZERO):
+- ATEN\xC7\xC3O FORENSE MILIM\xC9TRICA NA FAIXA ENTRE A BLUSA E A PE\xC7A INFERIOR:
+  * Observe a foto de refer\xEAncia original: a blusa desce cobrindo o abd\xF4men, umbigo e cintura at\xE9 o c\xF3s da pe\xE7a inferior (100% coberto por tecido, zero pele \xE0 mostra).
+  * No v\xEDdeo gerado: se a blusa estiver mais curta (estilo cropped), se houver qualquer corte diagonal ou triangular na cintura, fenda lateral, abertura ou cent\xEDmetro de PELE EXPOSTA (barriga, flanco, cintura lateral ou umbigo) vis\xEDvel entre o topo e a pe\xE7a inferior: REPROVA\xC7\xC3O IMEDIATA (score <= 42, approved: false, status: "red")!
+  * No TikTok Shop, vender um conjunto que originalmente cobre a barriga e entregar no v\xEDdeo uma blusa cropped com a barriga \xE0 mostra causa suspens\xE3o comercial imediata por inconsist\xEAncia grave do produto.
+  * O comprimento de saias e vestidos tamb\xE9m deve ser fiel (vestido midi n\xE3o pode virar mini curto).
 
 C) ESTRUTURA DE OMBROS, DECOTES, MANGAS E ACABAMENTOS:
 - Se na refer\xEAncia o ombro possui amarra\xE7\xE3o com faixa de tecido/n\xF3 simples: Se no v\xEDdeo surgir um volume adicional inventado de tecido com apar\xEAncia de babado, sobreposi\xE7\xE3o, volante ou manga bufante: REPROVA\xC7\xC3O IMEDIATA (score <= 45, approved: false, status: "red")!
@@ -6831,12 +6852,10 @@ O que observei:
 Exemplo 2 (Blusa encurtada / Barriga exposta / Ombro com babado):
 "\u{1F534} Reprovado \u2014 Formato e Acabamento Incorreto:
 O que mudou:
-- Na refer\xEAncia, a blusa apresenta caimento frontal mais fechado, cobrindo a regi\xE3o da cintura.
-- No v\xEDdeo, aparece uma abertura lateral que deixa parte da barriga exposta.
+- Na refer\xEAncia oficial, a blusa apresenta caimento longo e fechado, cobrindo 100% da regi\xE3o da cintura, abd\xF4men e umbigo.
+- No v\xEDdeo, aparece uma abertura lateral / recorte que deixa parte da barriga exposta.
 O que observei:
-- Na refer\xEAncia, o ombro apresenta uma amarra\xE7\xE3o com uma faixa de tecido.
-- No v\xEDdeo, aparece um volume adicional de tecido, com apar\xEAncia de babado ou sobreposi\xE7\xE3o sobre o ombro.
-- O acabamento parece diferente do apresentado na foto original."
+- Faixa evidente de pele nua vis\xEDvel entre a blusa e o c\xF3s do shorts na regi\xE3o da cintura/abd\xF4men."
 
 Quando o v\xEDdeo for APROVADO (approved: true):
 "\u{1F7E2} Aprovado: Produto 100% fiel \xE0 refer\xEAncia oficial da cor [Cor]. Corte, caimento, comprimento fechado na cintura e divis\xE3o de pernas preservados perfeitamente."
@@ -6854,7 +6873,10 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
       "id": "id_do_video",
       "videoFileName": "nome_do_arquivo.mp4",
       "detectedColor": "Nome da cor identificada",
-      "score": number, // 92 a 100 se aprovado; <= 45 se reprovado
+      "lowerPiece": "shorts" | "bermuda" | "calca" | "saia",
+      "isGenuineSkirt": boolean, // true APENAS se for saia tubular/sino cont\xEDnua sem costura central; false se for shorts/bermuda mesmo com coxas encostadas
+      "bellySkinExposedInVideo": boolean, // true se no v\xEDdeo houver qualquer peda\xE7o de pele/barriga/cintura exposta entre blusa e shorts
+      "score": number, // 92 a 100 se aprovado; <= 42 se reprovado
       "status": "green" | "red",
       "approved": boolean,
       "issue": "Texto estruturado conforme instru\xE7\xE3o acima",
@@ -6863,7 +6885,7 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
   ]
 }`;
     let parsed = null;
-    let usedModel = "gpt-4o-mini";
+    let usedModel = "gpt-4o";
     let promptTok = 0;
     let compTok = 0;
     if (openAIProvider.isConfigured()) {
@@ -6892,8 +6914,8 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
             text: `
 === [V\xCDDEO DO LOTE #${vIdx + 1} \u2014 "${vName}" (ID: ${vId}, DURA\xC7\xC3O: ${vItem.videoDurationSeconds || 10}s)] ===
 Execute a auditoria estrutural forense destas ${frames.length} capturas contra as fotos de refer\xEAncia:
-1. Pe\xE7a inferior: \xC9 shorts/bermuda com 2 pernas separadas e entrepernas n\xEDtido, ou virou saia cont\xEDnua sem divis\xE3o de pernas?
-2. Comprimento e cintura: A blusa cobre a cintura e o abd\xF4men como a refer\xEAncia, ou subiu/encurtou virando cropped e expondo a barriga/umbigo?
+1. Pe\xE7a inferior (Shorts vs Saia): CUIDADO com falsas reprova\xE7\xF5es! Se a modelo estiver com as coxas encostadas ou pernas juntas, procure a costura central frontal (gancho/cavalo) e as barras individuais em cada perna. Se tiver costura central ou barras individuais, \xC9 SHORTS (lowerPiece: 'shorts', isGenuineSkirt: false). S\xF3 reprove como saia se for tubo/sino cont\xEDnuo sem costura central!
+2. Comprimento e cintura (Barriga Zero): A blusa cobre 100% da cintura/abd\xF4men como a refer\xEAncia, ou subiu/encurtou virando cropped com abertura lateral e BARRIGA EXPOSTA? Se houver qualquer pele da barriga/cintura exposta, marque bellySkinExposedInVideo: true e REPROVE IMEDIATAMENTE!
 3. Ombros e acabamentos: A amarra\xE7\xE3o de faixa de tecido foi mantida, ou surgiu volume/babado/volante inventado?
 4. Cor (Toler\xE2ncia alta): Pertence \xE0 mesma fam\xEDlia crom\xE1tica de alguma refer\xEAncia? Se sim, aprove (ignore varia\xE7\xF5es de sombra e ilumina\xE7\xE3o de espelho).`
           });
@@ -6918,7 +6940,7 @@ Execute a auditoria estrutural forense destas ${frames.length} capturas contra a
           text: `Analise todos os ${batchVideos.length} v\xEDdeos acima contra as ${photosList.length} fotos de cores/refer\xEAncia e retorne o JSON estritamente no schema solicitado.${lockContext ? `
 Trava do produto: ${lockContext}` : ""}`
         });
-        const modelsToTry = ["gpt-4o-mini", "gpt-4o"];
+        const modelsToTry = ["gpt-4o", "gpt-4o-mini"];
         for (const modelCandidate of modelsToTry) {
           try {
             const completion = await client.chat.completions.create({
@@ -6962,8 +6984,8 @@ Trava do produto: ${lockContext}` : ""}`
             text: `
 === [V\xCDDEO DO LOTE #${vIdx + 1} \u2014 "${vName}" (ID: ${vId})] ===:
 Execute a auditoria estrutural forense destas ${frames.length} capturas contra as fotos de refer\xEAncia:
-1. Pe\xE7a inferior: \xC9 shorts com 2 pernas separadas, ou virou saia cont\xEDnua?
-2. Comprimento e cintura: Cobre a cintura/abd\xF4men, ou virou cropped expondo a barriga?
+1. Pe\xE7a inferior (Shorts vs Saia): CUIDADO com falsas reprova\xE7\xF5es! Se a modelo estiver com coxas encostadas ou pernas juntas, verifique a costura central frontal (gancho) e as barras individuais. Se tiver costura central ou barras individuais, \xC9 SHORTS (lowerPiece: 'shorts', isGenuineSkirt: false). S\xF3 reprove como saia se for tubo cont\xEDnuo sem costura central!
+2. Comprimento e cintura (Barriga Zero): A blusa cobre 100% da cintura/abd\xF4men como a refer\xEAncia, ou subiu/encurtou virando cropped com abertura lateral e BARRIGA EXPOSTA? Se houver qualquer pele da barriga/cintura exposta, marque bellySkinExposedInVideo: true e REPROVE IMEDIATAMENTE!
 3. Ombros e acabamentos: Amarra\xE7\xE3o de faixa preservada, ou virou babado/volante?
 4. Cor: Pertence \xE0 mesma fam\xEDlia de cores? Se sim, aprove (ignore sombras).`
           });
@@ -6982,15 +7004,26 @@ Execute a auditoria estrutural forense destas ${frames.length} capturas contra a
 
 Analise os ${batchVideos.length} v\xEDdeos acima contra as ${photosList.length} refer\xEAncias e retorne o JSON estritamente conforme o schema solicitado.`
         });
-        const auditRes = await getGenAI().models.generateContent({
-          model: "gemini-2.5-flash",
-          contents: parts,
-          config: { responseMimeType: "application/json" }
-        });
-        parsed = JSON.parse(auditRes.text || "{}");
-        usedModel = "gemini-2.5-flash";
-        promptTok = auditRes.usageMetadata?.promptTokenCount || 0;
-        compTok = auditRes.usageMetadata?.candidatesTokenCount || 0;
+        const geminiAuditModels = ["gemini-2.5-flash", "gemini-1.5-flash"];
+        for (const gAuditModel of geminiAuditModels) {
+          try {
+            const auditRes = await getGenAI().models.generateContent({
+              model: gAuditModel,
+              contents: parts,
+              config: { responseMimeType: "application/json" }
+            });
+            const textResponse = auditRes.text?.trim() || auditRes.candidates?.[0]?.content?.parts?.find((p) => p.text)?.text?.trim() || auditRes.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+            if (textResponse) {
+              parsed = JSON.parse(textResponse);
+              usedModel = gAuditModel;
+              promptTok = auditRes.usageMetadata?.promptTokenCount || 0;
+              compTok = auditRes.usageMetadata?.candidatesTokenCount || 0;
+              break;
+            }
+          } catch (gErr) {
+            console.warn(`Erro Gemini em batch audit (${gAuditModel}):`, gErr?.message || gErr);
+          }
+        }
       } catch (gemErr) {
         console.warn("Erro Gemini em batch audit:", gemErr?.message || gemErr);
       }
@@ -7005,19 +7038,48 @@ Analise os ${batchVideos.length} v\xEDdeos acima contra as ${photosList.length} 
       let score = !isNaN(rawScore) ? Math.max(0, Math.min(100, Math.round(rawScore))) : approved ? 95 : 45;
       const issueText = String(match.issue || "").trim();
       const issueLower = issueText.toLowerCase();
-      if (issueLower.includes("reprovad") || issueLower.includes("mudou") || issueLower.includes("saia") && issueLower.includes("shorts") || issueLower.includes("barriga") || issueLower.includes("cropped") || issueLower.includes("babado") || score < 70) {
+      const bellyDefect = match.bellySkinExposedInVideo === true || issueLower.includes("barriga") || issueLower.includes("cropped") || issueLower.includes("cintura exposta") || issueLower.includes("abertura lateral") || issueLower.includes("abd\xF4men exposto") || issueLower.includes("abdomen exposto");
+      if (bellyDefect) {
+        approved = false;
+        score = Math.min(score, 42);
+      }
+      const isActuallyShorts = match.lowerPiece === "shorts" || match.lowerPiece === "bermuda" || match.isGenuineSkirt === false || issueLower.includes("pernas juntas") || issueLower.includes("coxas encostadas") || issueLower.includes("gancho") || issueLower.includes("cavalo");
+      let finalIssue = issueText;
+      if (isActuallyShorts && (issueLower.includes("saia") || match.isGenuineSkirt === false)) {
+        if (!bellyDefect) {
+          approved = true;
+          score = Math.max(score, 94);
+          finalIssue = `\u{1F7E2} Aprovado: Produto 100% fiel \xE0 refer\xEAncia oficial da cor ${match.detectedColor || "Padr\xE3o"}. Shorts com costura frontal e barras individuais preservadas, caimento fechado na cintura e propor\xE7\xF5es exatas.`;
+        } else {
+          finalIssue = `\u{1F534} Reprovado \u2014 Comprimento e Cobertura Incorreto:
+O que mudou:
+- Na refer\xEAncia oficial, a blusa apresenta caimento longo e fechado, cobrindo 100% da regi\xE3o da cintura, abd\xF4men e umbigo.
+- No v\xEDdeo, a blusa apresenta abertura/recorte que deixa parte da barriga exposta.
+O que observei:
+- Faixa evidente de pele nua vis\xEDvel entre a blusa e o shorts na regi\xE3o da cintura/abd\xF4men.`;
+        }
+      } else if (bellyDefect) {
+        if (!finalIssue.toLowerCase().includes("barriga") && !finalIssue.toLowerCase().includes("cropped")) {
+          finalIssue = `\u{1F534} Reprovado \u2014 Comprimento e Cobertura Incorreto:
+O que mudou:
+- Na refer\xEAncia oficial, a blusa apresenta caimento longo e fechado, cobrindo 100% da regi\xE3o da cintura, abd\xF4men e umbigo.
+- No v\xEDdeo, a pe\xE7a foi encurtada virando cropped/assim\xE9trica com pele da barriga exposta.
+O que observei:
+- Faixa evidente de pele nua vis\xEDvel entre a blusa e o c\xF3s do shorts na regi\xE3o da cintura/abd\xF4men.`;
+        }
+      }
+      if (!bellyDefect && (issueLower.includes("reprovad") || issueLower.includes("mudou") || issueLower.includes("babado") || score < 70)) {
         if (!issueLower.includes("aprovado") || score < 70) {
           approved = false;
         }
       }
       if (!approved) {
-        score = Math.min(score, 48);
+        score = Math.min(score, 45);
       } else {
         score = Math.max(score, 92);
       }
       const status = approved ? "green" : "red";
       const detectedColor = String(match.detectedColor || "Padr\xE3o / Conforme Refer\xEAncia").trim();
-      let finalIssue = issueText;
       if (approved && (!finalIssue || !finalIssue.includes("Aprovado"))) {
         finalIssue = `\u{1F7E2} Aprovado: Produto 100% fiel \xE0 refer\xEAncia oficial da cor ${detectedColor}. Corte, modelagem, caimento fechado na cintura e estrutura de pernas preservados perfeitamente.`;
       } else if (!approved && !finalIssue) {

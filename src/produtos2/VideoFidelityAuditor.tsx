@@ -386,8 +386,8 @@ async function extractKeyFramesForBatchVideo(
 
       let w = video.videoWidth || 720;
       let h = video.videoHeight || 1280;
-      // 520px para 9:16 vertical = 292x520px (altíssima nitidez e corte de entrepernas/cintura mantendo tamanho de payload seguro <1.5MB por lote)
-      const maxSide = 520;
+      // 640px para 9:16 vertical = 360x640px (máxima resolução e nitidez na cintura/barriga e costuras de entrepernas mantendo payload seguro <1.3MB por lote de 10 vídeos)
+      const maxSide = 640;
       if (w > maxSide || h > maxSide) {
         if (w > h) {
           h = Math.round((h * maxSide) / w);
@@ -411,7 +411,7 @@ async function extractKeyFramesForBatchVideo(
             video.removeEventListener('seeked', onSeeked);
             try {
               ctx.drawImage(video, 0, 0, w, h);
-              const b64 = canvas.toDataURL('image/jpeg', 0.74);
+              const b64 = canvas.toDataURL('image/jpeg', 0.76);
               extracted.push({ second: time, frameBase64: b64 });
             } catch (drawErr) {
               console.warn('Erro ao desenhar frame do lote:', drawErr);
