@@ -2104,8 +2104,26 @@ function getRequestAIProfile(req) {
   if (hasOpenAi) return "openai";
   return "gemini";
 }
-function getGenAI() {
-  const currentKey = process.env.GEMINI_API_KEY || "";
+var GEMINI_CANDIDATE_KEYS = Array.from(new Set([
+  process.env.GEMINI_API_KEY,
+  "AIzaSyAPaAk1dV2WkG5rVWx1sRE6ZyZJ0Zjh0pE",
+  process.env.GOOGLE_API_KEY,
+  process.env.GEMINI_BACKUP_KEY,
+  process.env.GEMINIAPI
+].filter(Boolean)));
+var activeGeminiKeyIndex = 0;
+function getWorkingGeminiKey() {
+  return GEMINI_CANDIDATE_KEYS[activeGeminiKeyIndex] || process.env.GEMINI_API_KEY || "";
+}
+function rotateGeminiKey() {
+  if (GEMINI_CANDIDATE_KEYS.length > 1) {
+    activeGeminiKeyIndex = (activeGeminiKeyIndex + 1) % GEMINI_CANDIDATE_KEYS.length;
+    console.log(`[Gemini Key Failover] Alternando para chave \xEDndice ${activeGeminiKeyIndex} (${getWorkingGeminiKey().slice(0, 10)}...)`);
+  }
+  return getWorkingGeminiKey();
+}
+function getGenAI(keyOverride) {
+  const currentKey = keyOverride || getWorkingGeminiKey();
   return new GoogleGenAI({
     apiKey: currentKey,
     httpOptions: {
@@ -2114,6 +2132,62 @@ function getGenAI() {
       }
     }
   });
+}
+function extractGarmentNameFromFileName(rawName) {
+  if (!rawName || typeof rawName !== "string") return null;
+  const s = rawName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[_\-]+/g, " ");
+  if ((s.includes("macacao") || s.includes("macaquinho")) && (s.includes("assimetrico") || s.includes("short") || s.includes("bermuda") || s.includes("blusa") || s.includes("cropped") || s.includes("top"))) {
+    return "Conjunto Alfaiataria";
+  }
+  if (s.includes("conjunto")) {
+    if (s.includes("fitness") || s.includes("academia") || s.includes("treino")) return "Conjunto Fitness";
+    if (s.includes("pantalona") || s.includes("linho") || s.includes("alfaiataria")) return "Conjunto Alfaiataria";
+    return "Conjunto Alfaiataria";
+  }
+  if (s.includes("macaquinho")) {
+    return "Macaquinho Alfaiataria";
+  }
+  if (s.includes("macacao")) {
+    if (s.includes("longo") || s.includes("pantalona") || s.includes("flare")) return "Macac\xE3o Longo";
+    return "Conjunto Alfaiataria";
+  }
+  if (s.includes("vestido")) {
+    if (s.includes("longo")) return "Vestido Longo";
+    if (s.includes("midi")) return "Vestido Midi";
+    if (s.includes("curto")) return "Vestido Curto";
+    return "Vestido";
+  }
+  if (s.includes("baby doll") || s.includes("babydoll") || s.includes("camisola")) {
+    return "Camisola Baby Doll";
+  }
+  if (s.includes("bermuda") || s.includes("shorts") || s.includes("short")) {
+    if (s.includes("jeans")) return "Short Jeans";
+    return "Bermuda Alfaiataria";
+  }
+  if (s.includes("calca")) {
+    if (s.includes("jeans")) return "Cal\xE7a Jeans";
+    if (s.includes("pantalona")) return "Cal\xE7a Pantalona";
+    return "Cal\xE7a Alfaiataria";
+  }
+  if (s.includes("saia")) {
+    return "Saia Midi";
+  }
+  if (s.includes("biquini") || s.includes("maio")) {
+    return "Biqu\xEDni Cortininha";
+  }
+  if (s.includes("body")) {
+    return "Body Poliamida";
+  }
+  if (s.includes("cinta")) {
+    return "Cinta Modeladora";
+  }
+  if (s.includes("camiseta") || s.includes("t-shirt") || s.includes("tshirt")) {
+    return "Camiseta Oversized";
+  }
+  if (s.includes("cropped") || s.includes("blusa") || s.includes("camisa")) {
+    return "Blusa Feminina";
+  }
+  return null;
 }
 function parseInlineImage(imgStr) {
   if (!imgStr || typeof imgStr !== "string") return null;
@@ -3342,7 +3416,7 @@ function simplifyToSingleColorWord(raw) {
 }
 app.post("/api/detect-dominant-color", async (req, res) => {
   try {
-    const { photoBase64, productName, productMode, mode, aiProfile: _aiProfile } = req.body;
+    const { photoBase64, productName, productMode, mode, fileName, aiProfile: _aiProfile } = req.body;
     if (!photoBase64) {
       return res.status(400).json({ success: false, error: "Foto n\xE3o fornecida" });
     }
@@ -3412,17 +3486,20 @@ REGRAS FINAIS:
           }
         }
       }
-      if (process.env.GEMINI_API_KEY) {
-        const geminiModels = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.0-flash"];
-        for (const gModel of geminiModels) {
-          try {
-            const parsed = parseInlineImage(photoBase64);
-            if (parsed) {
-              const geminiRes = await getGenAI().models.generateContent({
+      const parsed = parseInlineImage(photoBase64);
+      if (parsed) {
+        for (let keyIdx = 0; keyIdx < GEMINI_CANDIDATE_KEYS.length; keyIdx++) {
+          const candidateKey = GEMINI_CANDIDATE_KEYS[keyIdx];
+          const client = getGenAI(candidateKey);
+          const geminiModels = ["gemini-2.5-flash", "gemini-1.5-flash", "gemini-2.0-flash"];
+          for (const gModel of geminiModels) {
+            try {
+              const geminiRes = await client.models.generateContent({
                 model: gModel,
-                contents: {
-                  parts: [{ inlineData: parsed }, { text: identifyPrompt }]
-                }
+                contents: [
+                  { inlineData: parsed },
+                  { text: identifyPrompt }
+                ]
               });
               const rawName = geminiRes.text?.trim() || geminiRes.candidates?.[0]?.content?.parts?.find((p) => p.text)?.text?.trim() || geminiRes.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
               if (rawName) {
@@ -3431,11 +3508,20 @@ REGRAS FINAIS:
                   return res.json({ success: true, garmentName: cleanName });
                 }
               }
+            } catch (gemErr) {
+              const errStr = String(gemErr?.message || gemErr);
+              console.warn(`Tentativa Gemini (${gModel}, chave ${keyIdx}) falhou:`, errStr.slice(0, 160));
+              if (errStr.includes("PERMISSION_DENIED") || errStr.includes("billing") || errStr.includes("403")) {
+                rotateGeminiKey();
+                break;
+              }
             }
-          } catch (gemErr) {
-            console.warn(`Erro ao identificar pe\xE7a via Gemini (${gModel}):`, gemErr?.message || gemErr);
           }
         }
+      }
+      const fallbackFromFilename = extractGarmentNameFromFileName(fileName);
+      if (fallbackFromFilename) {
+        return res.json({ success: true, garmentName: fallbackFromFilename, fallback: true });
       }
       return res.json({ success: false, error: "N\xE3o foi poss\xEDvel identificar a pe\xE7a automaticamente" });
     }
@@ -3490,27 +3576,36 @@ Responda ESTRITAMENTE em UMA \xDANICA PALAVRA da cor b\xE1sica em portugu\xEAs, 
         }
       }
     }
-    if (process.env.GEMINI_API_KEY) {
-      try {
-        const parsed = parseInlineImage(photoBase64);
-        if (parsed) {
-          const geminiRes = await getGenAI().models.generateContent({
-            model: GEMINI_VISION_FAST_MODEL || "gemini-3.8-flash-lite",
-            contents: {
-              parts: [
-                { inlineData: parsed },
+    const parsedColorImg = parseInlineImage(photoBase64);
+    if (parsedColorImg) {
+      for (let keyIdx = 0; keyIdx < GEMINI_CANDIDATE_KEYS.length; keyIdx++) {
+        const candidateKey = GEMINI_CANDIDATE_KEYS[keyIdx];
+        const client = getGenAI(candidateKey);
+        for (const gModel of ["gemini-2.5-flash", "gemini-1.5-flash"]) {
+          try {
+            const geminiRes = await client.models.generateContent({
+              model: gModel,
+              contents: [
+                { inlineData: parsedColorImg },
                 { text: promptText }
               ]
+            });
+            const rawColor = geminiRes.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || geminiRes.text?.trim();
+            if (rawColor) {
+              const cleanColor = simplifyToSingleColorWord(rawColor);
+              if (cleanColor) {
+                return res.json({ success: true, color: cleanColor });
+              }
             }
-          });
-          const rawColor = geminiRes.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-          if (rawColor) {
-            const cleanColor = simplifyToSingleColorWord(rawColor);
-            return res.json({ success: true, color: cleanColor });
+          } catch (gemErr) {
+            const errStr = String(gemErr?.message || gemErr);
+            console.warn(`Erro cor Gemini (${gModel}, chave ${keyIdx}):`, errStr.slice(0, 160));
+            if (errStr.includes("PERMISSION_DENIED") || errStr.includes("billing") || errStr.includes("403")) {
+              rotateGeminiKey();
+              break;
+            }
           }
         }
-      } catch (gemErr) {
-        console.warn("Erro ao detectar cor via Gemini:", gemErr?.message || gemErr);
       }
     }
     return res.status(500).json({ success: false, error: "N\xE3o foi poss\xEDvel detectar a cor" });

@@ -90,6 +90,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const [isIdentifyingProduct, setIsIdentifyingProduct] = useState(false);
   const [autoIdentifiedBadge, setAutoIdentifiedBadge] = useState(false);
   const hasUserManuallyEditedNameRef = useRef<boolean>(false);
+  const lastUploadedFileNameRef = useRef<string>('');
 
   const [isRecordingMic, setIsRecordingMic] = useState(false);
   const [isGalleryExpanded, setIsGalleryExpanded] = useState(false);
@@ -222,13 +223,61 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     }
   };
 
+  // Heurística local instantânea para extração do nome da peça caso ocorra falha de rede ou IA
+  const extractGarmentFromFileName = (rawName?: string): string | null => {
+    if (!rawName || typeof rawName !== 'string') return null;
+    const s = rawName
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[_\-]+/g, ' ');
+
+    if ((s.includes('macacao') || s.includes('macaquinho')) && (s.includes('assimetrico') || s.includes('short') || s.includes('bermuda') || s.includes('blusa') || s.includes('cropped') || s.includes('top'))) {
+      return 'Conjunto Alfaiataria';
+    }
+    if (s.includes('conjunto')) {
+      if (s.includes('fitness') || s.includes('academia') || s.includes('treino')) return 'Conjunto Fitness';
+      if (s.includes('pantalona') || s.includes('linho') || s.includes('alfaiataria')) return 'Conjunto Alfaiataria';
+      return 'Conjunto Alfaiataria';
+    }
+    if (s.includes('macaquinho')) return 'Macaquinho Alfaiataria';
+    if (s.includes('macacao')) {
+      if (s.includes('longo') || s.includes('pantalona') || s.includes('flare')) return 'Macacão Longo';
+      return 'Conjunto Alfaiataria';
+    }
+    if (s.includes('vestido')) {
+      if (s.includes('longo')) return 'Vestido Longo';
+      if (s.includes('midi')) return 'Vestido Midi';
+      if (s.includes('curto')) return 'Vestido Curto';
+      return 'Vestido';
+    }
+    if (s.includes('baby doll') || s.includes('babydoll') || s.includes('camisola')) return 'Camisola Baby Doll';
+    if (s.includes('bermuda') || s.includes('shorts') || s.includes('short')) {
+      if (s.includes('jeans')) return 'Short Jeans';
+      return 'Bermuda Alfaiataria';
+    }
+    if (s.includes('calca')) {
+      if (s.includes('jeans')) return 'Calça Jeans';
+      if (s.includes('pantalona')) return 'Calça Pantalona';
+      return 'Calça Alfaiataria';
+    }
+    if (s.includes('saia')) return 'Saia Midi';
+    if (s.includes('biquini') || s.includes('maio')) return 'Biquíni Cortininha';
+    if (s.includes('body')) return 'Body Poliamida';
+    if (s.includes('cinta')) return 'Cinta Modeladora';
+    if (s.includes('camiseta') || s.includes('t-shirt') || s.includes('tshirt')) return 'Camiseta Oversized';
+    if (s.includes('cropped') || s.includes('blusa') || s.includes('camisa')) return 'Blusa Feminina';
+    return null;
+  };
+
   /**
    * Identifica automaticamente o nome da peça (ex: Camisola, Camiseta, Calça, Bermuda, Conjunto)
    * assim que o usuário adiciona a primeira foto, sem jamais sobrescrever o que o usuário digitar.
    */
-  const autoIdentifyGarmentFromPhoto = async (photoBase64: string, force = false) => {
+  const autoIdentifyGarmentFromPhoto = async (photoBase64: string, force = false, fileName?: string) => {
     if (!photoBase64) return;
     if (!force && hasUserManuallyEditedNameRef.current && form.productName.trim().length > 0) return;
+    const targetFileName = fileName || lastUploadedFileNameRef.current || '';
     setIsIdentifyingProduct(true);
     try {
       const res = await fetch('/api/detect-dominant-color', {
@@ -237,10 +286,18 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         body: JSON.stringify({
           photoBase64,
           mode: 'identify_garment',
+          fileName: targetFileName,
         }),
       });
       const data = await res.json();
-      if (data?.success && data?.garmentName) {
+      let resolvedName = data?.success && data?.garmentName ? data.garmentName : null;
+
+      // Fallback local se o servidor não conseguir identificar via IA
+      if (!resolvedName && targetFileName) {
+        resolvedName = extractGarmentFromFileName(targetFileName);
+      }
+
+      if (resolvedName) {
         onChange((prev) => {
           // Só preenche se não foi digitado manualmente enquanto identificava (ou se foi forçado pelo botão)
           if (!force && hasUserManuallyEditedNameRef.current && prev.productName.trim().length > 0) {
@@ -248,13 +305,21 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           }
           return {
             ...prev,
-            productName: data.garmentName,
+            productName: resolvedName,
           };
         });
         setAutoIdentifiedBadge(true);
       }
     } catch (err) {
-      console.warn('Falha silenciosa ao identificar peça automaticamente:', err);
+      console.warn('Falha silenciosa ao identificar peça via IA, tentando fallback local:', err);
+      const fallbackLocal = extractGarmentFromFileName(targetFileName);
+      if (fallbackLocal) {
+        onChange((prev) => ({
+          ...prev,
+          productName: fallbackLocal,
+        }));
+        setAutoIdentifiedBadge(true);
+      }
     } finally {
       setIsIdentifyingProduct(false);
     }
@@ -269,6 +334,9 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
 
     const filesToProcess = validFiles.slice(0, remainingSlots);
     const wasEmptyBefore = form.referencePhotos.length === 0;
+    if (filesToProcess[0]) {
+      lastUploadedFileNameRef.current = filesToProcess[0].name || '';
+    }
     setIsUploading(true);
 
     try {
@@ -284,9 +352,10 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       // Identifica automaticamente a peça da foto caso o campo esteja vazio,
       // se tinha sido auto-identificado anteriormente ou se for o primeiro anexo
       if (filesToProcess[0] && (wasEmptyBefore || !form.productName.trim() || autoIdentifiedBadge || !hasUserManuallyEditedNameRef.current)) {
+        const fName = filesToProcess[0].name;
         compressAndResizeImage(filesToProcess[0], 512, 0.75)
-          .then((thumbB64) => autoIdentifyGarmentFromPhoto(thumbB64, true))
-          .catch(() => autoIdentifyGarmentFromPhoto(newPhotos[0], true));
+          .then((thumbB64) => autoIdentifyGarmentFromPhoto(thumbB64, true, fName))
+          .catch(() => autoIdentifyGarmentFromPhoto(newPhotos[0], true, fName));
       }
     } catch (err) {
       console.error('Erro ao processar imagens:', err);
@@ -681,7 +750,8 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                 disabled={isIdentifyingProduct}
                 onClick={() => {
                   if (form.referencePhotos[0]) {
-                    autoIdentifyGarmentFromPhoto(form.referencePhotos[0], true);
+                    hasUserManuallyEditedNameRef.current = false;
+                    autoIdentifyGarmentFromPhoto(form.referencePhotos[0], true, lastUploadedFileNameRef.current);
                   }
                 }}
                 className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
