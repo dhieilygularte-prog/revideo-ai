@@ -194,7 +194,7 @@ export const MASTER_PROMPTS_GALLERY: AnaMariaMasterPromptItem[] = [
     id: 'mestra_ana_maria',
     number: 1,
     shortName: '01. Mestra Ana Maria',
-    cardTitle: '01. MESTRA ANA MARIA — FRENTE + ELASTICIDADE + GIRO 3/4',
+    cardTitle: '01. MESTRA ANA MARIA — VITRINE DE MODA + GIRO 3/4',
     objective:
       'Objetivo: mostrar o produto inteiro de frente, demonstrar a elasticidade na cintura e girar 3/4 exibindo a silhueta.',
     videoUrl:
@@ -355,64 +355,21 @@ Manter permanentemente:
 11. O mesmo enquadramento sem mostrar o rosto.
 
 INSTRUÇÃO FINAL: Reproduzir a identidade visual e corporal descrita nesta referência, sem reinterpretar ou modificar suas características. A fotografia do produto anexada em cada geração deve ser utilizada exclusivamente para determinar a peça que será vestida pela modelo. Não modificar a anatomia, o cabelo, a pele, os acessórios ou a pose para adaptar o corpo ao produto. A peça deve se ajustar naturalmente à modelo, preservando integralmente suas características originais.`,
-    movementPromptText: `Create a 10-second ultra-photorealistic vertical 9:16 mirror-selfie fashion video. Use the attached reference image as the absolute visual starting point.
+    movementPromptText: `Animate the model in a realistic mirror-selfie fashion showcase, following the exact movement sequence of the reference video.
 
-The animation must reproduce the following exact sequence of movements in one continuous, natural recording.
+The model holds her smartphone steadily in one hand throughout the video. She begins facing the mirror in a relaxed pose. With her free hand, she gently touches the upper front area of the garment, then slowly moves her hand across the front, naturally highlighting its appearance and details. She gradually slides her hand down over the abdomen toward the waist. Next, she gently touches the lower section of the garment, making a subtle gesture to showcase its fit and details.
 
-**IDENTITY AND PRODUCT PRESERVATION**
+She briefly holds this pose, then moves her free arm slightly outward and slowly rotates her body into a three-quarter side pose, showcasing the garment's side silhouette and fit. Finish in a natural side-facing pose.
 
-Preserve exactly the same model, body shape, proportions, skin, hair, clothing, garment color, neckline, fabric, seams, texture, accessories, smartphone, mirror, room and lighting from the reference image.
+Keep movements smooth, feminine, delicate and realistic, matching the timing and rhythm of the reference video.
 
-Do not redesign, modify, replace or reinterpret any part of the clothing. The garment must remain identical throughout the entire video.
+**STRICT OUTFIT LOCK:** Preserve the exact garment shown in the attached image, including its original design, color, fabric, texture, construction, seams, proportions and fit. Do not redesign, add, remove or invent any garment details. All hand movements must adapt to the actual clothing shown.
 
-**PRESERVAÇÃO DO ENQUADRAMENTO E DA FOTO DE REFERÊNCIA:**
-Manter rigorosamente o mesmo ângulo, enquadramento e perspectiva da imagem de referência inicial durante todos os 10 segundos:
-- Se na foto de referência o smartphone cobre o rosto, continue com o smartphone cobrindo o rosto durante todo o vídeo.
-- Se na foto de referência não aparece o rosto (enquadramento cortado do queixo para baixo), continue sem mostrar o rosto, mantendo a câmera estável sem subir ou inclinar para cima.
-- Se na foto de referência o rosto da modelo aparece (visível total ou parcialmente), continue com o mesmo rosto natural visível.
-Ela segura o smartphone com uma das mãos durante toda a gravação diante do espelho.
+**STRICT CAMERA LOCK:** Preserve the original framing, camera angle, distance, perspective, lighting and environment. No zoom or reframing.
 
-**FIDELIDADE ABSOLUTA E IMUTÁVEL DA PEÇA DE ROUPA (1:1):**
-A roupa da imagem de referência é 100% sagrada e imutável. É terminantemente proibido ao gerador de vídeo modificar a cor, tom, estampa, tecido, textura, modelagem, caimento, decote, mangas ou comprimento da peça. PROIBIDO inventar partes, botões, bolsos, zíperes ou costuras inexistentes. A peça deve se manter 100% fiel à imagem de referência em todos os frames e movimentos.
+Preserve the original body proportions, hairstyle, accessories and mirror-selfie style. Maintain natural anatomy and realistic fabric movement.
 
-**EXACT MOVEMENT CHOREOGRAPHY**
-
-0–1 SECOND:
-The woman starts standing naturally in front of the mirror, holding her phone with one hand. Her free arm hangs relaxed beside her body.
-
-1–2 SECONDS:
-She slowly raises her free hand toward her chest and gently places her fingers on the upper bust area, making natural contact with the fabric.
-
-2–4 SECONDS:
-She slowly slides her open palm down across the front of the garment, moving from the bust toward the abdomen and waist. Her hand continues downward toward the hip and upper thigh, following the body's natural contours.
-
-4–5 SECONDS:
-She continues the gentle downward movement, briefly touching the lower abdomen and hip area, demonstrating how the garment fits against the body.
-
-5–7.5 SECONDS:
-She brings her free hand back toward the side of her waist, pinches a small section of the garment fabric between her fingers and gently pulls the material outward several times in short, subtle movements, demonstrating the fabric's elasticity and fitted construction. She releases the fabric naturally.
-
-7.5–8.5 SECONDS:
-She moves her free arm outward and slightly away from her body while beginning to shift her weight and reposition her feet.
-
-8.5–10 SECONDS:
-She gradually rotates her torso and hips into a three-quarter side profile, turning approximately 70–90 degrees relative to her original frontal position. She keeps holding the smartphone and maintains the mirror-selfie posture. Her final position clearly displays the side silhouette, waist, hips and rear fit of the garment. She does not turn completely away from the mirror.
-
-**BODY LANGUAGE AND NATURALISM**
-
-All movements must look like a real woman casually recording a fashion demonstration in front of a mirror.
-Maintain realistic body mechanics, natural hand articulation, subtle weight transfers and believable fabric movement.
-The woman must not make exaggerated gestures, dance, walk away, or perform additional movements not specified in the choreography.
-
-**CAMERA AND VISUAL STYLE**
-
-Maintain a realistic smartphone mirror recording, with stable framing and only very subtle natural handheld movement.
-No cinematic camera movements, no zooms, no cuts, no transitions and no changes in the environment.
-The entire sequence must happen in one uninterrupted take.
-No visible face, no lips, no speech, no subtitles, no captions, no added graphics, no logos or watermarks.
-
-**FINAL PRIORITY:**
-Reproduce the exact movement sequence and timing described above while preserving the original reference image. The movements must be natural, fluid and realistic. The clothing must remain visually identical to the reference image in every frame.`,
+**NEGATIVE PROMPT:** Exaggerated gestures, fast movements, aggressive fabric pulling, lifting garments, full rotation, walking away, invented clothing details, altered garment design, clothing changes, body deformation, distorted hands, extra fingers, camera movement, zoom, flickering, background changes or blur.`,
   },
   {
     id: 'mestra_iara',

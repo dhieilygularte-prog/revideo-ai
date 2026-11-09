@@ -795,21 +795,17 @@ export function getConciseMovementForMaster(masterId: AnaMariaMasterId, isMale: 
     case 'mestra_ana_maria':
       return isMale
         ? `**CRONOGRAMA DE MOVIMENTOS (10s CONTÍNUOS — MESTRA ANA MARIA):**
-- 0s–1s: Postura natural diante do espelho segurando o smartphone com uma das mãos, braço livre relaxado.
-- 1s–2s: Mão livre sobe suavemente ao peitoral e toca com os dedos o tecido da peça.
-- 2s–4s: Palma desliza suavemente para baixo pela frente da peça, passando pelo abdômen e cintura até a lateral do quadril.
-- 4s–5s: Toque suave na lateral, demonstrando o ajuste anatômico da roupa.
-- 5s–7.5s: Mão na lateral da cintura pinça suavemente o tecido e puxa para fora em movimentos sutis demonstrando a elasticidade, soltando naturalmente.
-- 7.5s–8.5s: Afasta o braço livre do corpo com pequeno reposicionamento dos pés.
-- 8.5s–10s: Rotação gradual do corpo em 3/4 (70° a 90°), mantendo a selfie e exibindo o caimento lateral e traseiro da peça.`
+- 0s–1.5s: Postura relaxada diante do espelho segurando o smartphone firmemente com uma das mãos, iniciando de frente.
+- 1.5s–4s: Com a mão livre, toca suavemente a parte superior frontal da peça e desliza devagar pela frente, destacando a aparência e os detalhes.
+- 4s–6s: Desliza a mão para baixo sobre o abdômen em direção à cintura e toca suavemente a parte inferior da peça com gesto sutil para demonstrar o caimento e os detalhes.
+- 6s–7.5s: Sustenta a pose brevemente e afasta o braço livre ligeiramente para fora.
+- 7.5s–10s: Rotação gradual do corpo em pose 3/4 lateral, exibindo a silhueta lateral e o caimento da peça, finalizando em pose lateralizada natural.`
         : `**CRONOGRAMA DE MOVIMENTOS (10s CONTÍNUOS — MESTRA ANA MARIA):**
-- 0s–1s: Postura natural diante do espelho segurando o smartphone com uma das mãos, braço livre relaxado ao lado do corpo.
-- 1s–2s: Mão livre sobe suavemente ao busto e toca delicadamente o tecido da peça.
-- 2s–4s: Palma da mão desliza suavemente para baixo pela frente da peça, passando pelo abdômen e cintura até o quadril e coxa, demonstrando o caimento natural.
-- 4s–5s: Toque suave na lateral do abdômen/quadril, demonstrando o ajuste anatômico da roupa no corpo.
-- 5s–7.5s: Mão livre vai à lateral da cintura, pinça suavemente o tecido e puxa para fora em movimentos sutis demonstrando a elasticidade da peça, soltando-o naturalmente.
-- 7.5s–8.5s: Afasta o braço livre do corpo, com transferência suave de peso entre as pernas e pequeno reposicionamento dos pés.
-- 8.5s–10s: Rotação gradual do corpo em 3/4 (70° a 90°), mantendo a selfie no espelho e exibindo o caimento lateral, cintura e traseiro da peça.`;
+- 0s–1.5s: Postura relaxada diante do espelho segurando o smartphone firmemente com uma das mãos, iniciando de frente.
+- 1.5s–4s: Com a mão livre, toca suavemente a parte superior frontal da peça e desliza devagar pela frente, destacando a aparência e os detalhes.
+- 4s–6s: Desliza a mão para baixo sobre o abdômen em direção à cintura e toca suavemente a parte inferior da peça com gesto sutil para demonstrar o caimento e os detalhes.
+- 6s–7.5s: Sustenta a pose brevemente e afasta o braço livre ligeiramente para fora.
+- 7.5s–10s: Rotação gradual do corpo em pose 3/4 lateral, exibindo a silhueta lateral e o caimento da peça, finalizando em pose lateralizada natural.`;
 
     case 'mestra_iara':
       return isMale
@@ -1039,13 +1035,22 @@ Adapte toda a execução para o modelo masculino da imagem de referência, prese
 
   // 2. Preservação da estrutura Plus Size durante toda a animação (sobrescrita exclusivamente corporal)
   if (isPlusSize && mode !== 'pov' && !master.isPov) {
-    base = `**PRESERVAÇÃO OBRIGATÓRIA DO CORPO PLUS SIZE REAL:**
-Mantenha rigorosamente em todos os frames a estrutura corporal genuinamente PLUS SIZE da imagem de referência: corpo robusto e volumoso, seios grandes e pesados, braços grossos e macios, abdômen com projeção natural e dobras suaves, quadris largos e glúteos volumosos, coxas muito grossas com celulite natural visível e tom de pele morena clara a média com subtom quente. Jamais afinar a modelo, emagrecer membros ou transformar em corpo fitness durante os giros e movimentos.\n\n` + base;
+    if (master.id === 'mestra_ana_maria') {
+      base =
+        `**MANDATORY REAL PLUS SIZE BODY PRESERVATION:**\n` +
+        `Preserve the authentic PLUS SIZE body from the reference image in all frames: voluminous, heavy bust, full curvy hips and thighs, soft abdomen, and realistic proportions. NEVER slim down the model, thin limbs, or transform into a fitness/skinny physique during the rotation.\n\n` +
+        base;
+    } else {
+      base =
+        `**PRESERVAÇÃO OBRIGATÓRIA DO CORPO PLUS SIZE REAL:**\n` +
+        `Mantenha rigorosamente em todos os frames a estrutura corporal genuinamente PLUS SIZE da imagem de referência: corpo robusto e volumoso, seios grandes e pesados, braços grossos e macios, abdômen com projeção natural e dobras suaves, quadris largos e glúteos volumosos, coxas muito grossas com celulite natural visível e tom de pele morena clara a média com subtom quente. Jamais afinar a modelo, emagrecer membros ou transformar em corpo fitness durante os giros e movimentos.\n\n` +
+        base;
+    }
   }
 
   // 3. Regra de Enquadramento e Fidelidade da Imagem Original:
   // Preserva rigorosamente o enquadramento, ângulo e rosto da imagem de referência inicial
-  if (!master.isPov) {
+  if (!master.isPov && master.id !== 'mestra_ana_maria') {
     // Remove qualquer texto legado de restrição absoluta de rosto ou lábios caso venha no template base
     base = base
       .replace(/\*\*REGRA SUPERIOR INEGOCIÁVEL DE ENQUADRAMENTO[^\n]*\*\*[\s\S]*?(?=\n\n|$)/gi, '')
@@ -1072,12 +1077,19 @@ Mantenha rigorosamente em todos os frames a estrutura corporal genuinamente PLUS
 
   // 4. Prioridade Soberana das Instruções Adicionais do Usuário (sobrepõe características e movimentos específicos)
   if (hasUserInstructions) {
-    const sovereignHeader = `**PRIORIDADE SOBERANA — INSTRUÇÕES PERSONALIZADAS DO USUÁRIO:**
+    if (master.id === 'mestra_ana_maria') {
+      base +=
+        `\n\n**ADDITIONAL USER INSTRUCTIONS (HIGH PRIORITY):**\n` +
+        `"${userInstructionsText}"\n` +
+        `Execute the above custom instructions with maximum priority while keeping the choreography, outfit lock and styling faithful.`;
+    } else {
+      const sovereignHeader = `**PRIORIDADE SOBERANA — INSTRUÇÕES PERSONALIZADAS DO USUÁRIO:**
 "${userInstructionsText}"
 REGRA DE ADAPTAÇÃO: As instruções personalizadas acima têm PRIORIDADE ABSOLUTA sobre o prompt base da ${master.shortName}.
 - Se o usuário especificou características físicas, idade, etnia, cabelo, cor de celular ou acessórios diferentes, substitua apenas esses elementos mantendo todo o restante idêntico.
 - Se o usuário especificou algum movimento adicional ou mudança de movimento (ex.: como começar o vídeo ou um gesto específico), integre e priorize esse movimento exatamente no momento indicado pelo usuário, mantendo o restante da coreografia da ${master.shortName} o mais original e fiel possível.\n\n`;
-    base = sovereignHeader + base + `\n\n**LEMBRETE FINAL DE PRIORIDADE DO USUÁRIO:** Cumprir rigorosamente: ${userInstructionsText}`;
+      base = sovereignHeader + base + `\n\n**LEMBRETE FINAL DE PRIORIDADE DO USUÁRIO:** Cumprir rigorosamente: ${userInstructionsText}`;
+    }
   }
 
   if (limit === 'unlimited') {
