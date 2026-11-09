@@ -2,6 +2,11 @@ import React, { useState, useRef } from 'react';
 import {
   Video,
   Upload,
+  Layers,
+  Filter,
+  Copy,
+  Check,
+  Sparkles,
   RefreshCw,
   CheckCircle2,
   AlertTriangle,
@@ -19,6 +24,8 @@ import {
   VideoFidelityAudit,
   VideoAuditFinding,
   Produtos2AuditColorStatus,
+  BatchVideoFidelityAudit,
+  BatchVideoAuditResultItem,
 } from './types';
 
 interface VideoFidelityAuditorProps {
@@ -333,6 +340,108 @@ async function buildVisualComparisonBanner(params: {
   }
 }
 
+
+/**
+ * Extrai 5 frames-chave representativos de cada vídeo do lote (0s, 2s, 4s, 7s, 9s)
+ * em resolução compacta e nítida (480px, JPEG 0.78), otimizando a transmissão
+ * para permitir até 25 vídeos por requisição com velocidade máxima e custo mínimo de tokens.
+ */
+async function extractKeyFramesForBatchVideo(
+  videoFile: File,
+  frameCount = 5
+): Promise<{
+  frames: { second: number; frameBase64: string }[];
+  durationSeconds: number;
+  thumbnail: string;
+}> {
+  return new Promise((resolve, reject) => {
+    const video = document.createElement('video');
+    video.preload = 'auto';
+    video.muted = true;
+    video.playsInline = true;
+    video.crossOrigin = 'anonymous';
+
+    const fileUrl = URL.createObjectURL(videoFile);
+    video.src = fileUrl;
+
+    video.onloadedmetadata = async () => {
+      const rawDuration = video.duration || 10;
+      const durationSeconds = Math.round(rawDuration * 10) / 10;
+
+      const targetTimes: number[] = [];
+      const interval = Math.max(1, (durationSeconds - 0.4) / (frameCount - 1));
+      for (let i = 0; i < frameCount; i++) {
+        const t = Math.min(durationSeconds - 0.1, Math.max(0.08, i * interval));
+        targetTimes.push(Math.round(t * 10) / 10);
+      }
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        URL.revokeObjectURL(fileUrl);
+        reject(new Error('Canvas indisponível.'));
+        return;
+      }
+
+      let w = video.videoWidth || 720;
+      let h = video.videoHeight || 1280;
+      const maxSide = 480;
+      if (w > maxSide || h > maxSide) {
+        if (w > h) {
+          h = Math.round((h * maxSide) / w);
+          w = maxSide;
+        } else {
+          w = Math.round((w * maxSide) / h);
+          h = maxSide;
+        }
+      }
+      canvas.width = w;
+      canvas.height = h;
+
+      const extracted: { second: number; frameBase64: string }[] = [];
+
+      for (const time of targetTimes) {
+        await new Promise<void>((res) => {
+          let isDone = false;
+          const onSeeked = () => {
+            if (isDone) return;
+            isDone = true;
+            video.removeEventListener('seeked', onSeeked);
+            try {
+              ctx.drawImage(video, 0, 0, w, h);
+              const b64 = canvas.toDataURL('image/jpeg', 0.78);
+              extracted.push({ second: time, frameBase64: b64 });
+            } catch (drawErr) {
+              console.warn('Erro ao desenhar frame do lote:', drawErr);
+            }
+            res();
+          };
+
+          video.addEventListener('seeked', onSeeked);
+          video.currentTime = Math.max(0.08, time);
+
+          setTimeout(() => {
+            if (!isDone) {
+              isDone = true;
+              video.removeEventListener('seeked', onSeeked);
+              res();
+            }
+          }, 2000);
+        });
+      }
+
+      URL.revokeObjectURL(fileUrl);
+      const thumbnail = extracted[0]?.frameBase64 || '';
+      resolve({ frames: extracted, durationSeconds, thumbnail });
+    };
+
+    video.onerror = () => {
+      URL.revokeObjectURL(fileUrl);
+      reject(new Error(`Erro ao carregar o vídeo ${videoFile.name}.`));
+    };
+  });
+}
+
 /**
  * Mantém as fotos de referência em ALTA DEFINIÇÃO (até 1024px JPEG 0.90)
  * para preservar cada detalhe das lentes, botões, texturas e logotipos.
@@ -407,6 +516,14 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const refPhotosInputRef = useRef<HTMLInputElement>(null);
+  const batchFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Estados do Modo em Lote (Até 25 Vídeos)
+  const [auditMode, setAuditMode] = useState<'single' | 'batch'>('single');
+  const [batchFiles, setBatchFiles] = useState<File[]>([]);
+  const [batchAudit, setBatchAudit] = useState<BatchVideoFidelityAudit | null>(null);
+  const [batchFilter, setBatchFilter] = useState<'all' | 'approved' | 'rejected'>('all');
+  const [copiedBatchApproved, setCopiedBatchApproved] = useState(false);
 
   // Se o usuário anexou imagens neste campo, usa ELAS como referência; caso contrário, usa as da página anterior
   const effectiveReferencePhotos =
@@ -716,6 +833,170 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
     }
   };
 
+  const handleSelectBatchFiles = (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    setErrorMessage(null);
+    const newFiles = Array.from(files).filter((f) =>
+      /\.(mp4|webm|mov|quicktime)$/i.test(f.name) || f.type.startsWith('video/')
+    );
+    if (newFiles.length === 0) {
+      setErrorMessage('Nenhum formato de vídeo válido detectado (.mp4, .webm ou .mov).');
+      return;
+    }
+    setBatchFiles((prev) => {
+      const combined = [...prev, ...newFiles];
+      if (combined.length > 25) {
+        setErrorMessage('Limite máximo de 25 vídeos atingido. Foram mantidos os 25 primeiros.');
+        return combined.slice(0, 25);
+      }
+      return combined;
+    });
+    if (batchFileInputRef.current) {
+      batchFileInputRef.current.value = '';
+    }
+  };
+
+  const handleRemoveBatchFile = (index: number) => {
+    setBatchFiles((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
+  const handleClearBatchFiles = () => {
+    setBatchFiles([]);
+    setBatchAudit(null);
+    setErrorMessage(null);
+    if (batchFileInputRef.current) {
+      batchFileInputRef.current.value = '';
+    }
+  };
+
+  const handleAuditBatch = async () => {
+    if (batchFiles.length === 0) {
+      setErrorMessage('Selecione de 1 a 25 vídeos para realizar a auditoria em lote.');
+      return;
+    }
+    if (!effectiveReferencePhotos || effectiveReferencePhotos.length === 0) {
+      setErrorMessage(
+        'Nenhuma foto de referência de cores foi encontrada. Anexe fotos das cores do produto no campo de referência.'
+      );
+      return;
+    }
+
+    setIsProcessing(true);
+    setErrorMessage(null);
+    setBatchAudit(null);
+
+    try {
+      const compressedRefs = await Promise.all(
+        effectiveReferencePhotos.slice(0, 10).map((p) => compressPhotoForVideoAudit(p, 720, 0.85))
+      );
+
+      const batchPayloadVideos: any[] = [];
+      const localThumbnailsMap = new Map<string, string>();
+
+      for (let i = 0; i < batchFiles.length; i++) {
+        const file = batchFiles[i];
+        const vId = `vid_${i + 1}_${file.name.replace(/[^a-z0-9]/gi, '_')}`;
+        setStatusMessage(`Extraindo frames: Vídeo ${i + 1} de ${batchFiles.length} (${file.name})...`);
+
+        try {
+          const { frames, durationSeconds, thumbnail } = await extractKeyFramesForBatchVideo(file, 5);
+          localThumbnailsMap.set(vId, thumbnail);
+          batchPayloadVideos.push({
+            id: vId,
+            videoFileName: file.name,
+            videoDurationSeconds: durationSeconds,
+            frames,
+          });
+        } catch (vidErr) {
+          console.warn(`Erro ao extrair frames de ${file.name}:`, vidErr);
+        }
+      }
+
+      if (batchPayloadVideos.length === 0) {
+        throw new Error('Falha ao extrair frames dos vídeos anexados.');
+      }
+
+      setStatusMessage(
+        `Auditando lote de ${batchPayloadVideos.length} vídeos contra as ${compressedRefs.length} fotos de cores/referência com IA...`
+      );
+
+      const payloadBody = JSON.stringify({
+        isBatch: true,
+        productName,
+        productLock,
+        productPhotosBase64: compressedRefs,
+        batchVideos: batchPayloadVideos,
+      });
+
+      const res = await fetch('/api/produtos2-audit-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: payloadBody,
+      });
+
+      const json = await res.json();
+      if (!res.ok || !json.success || !json.results) {
+        throw new Error(json.error || 'Falha ao processar auditoria em lote.');
+      }
+
+      const hydratedResults: BatchVideoAuditResultItem[] = json.results.map((r: any) => ({
+        ...r,
+        thumbnail: localThumbnailsMap.get(r.id),
+      }));
+
+      const finalBatchAudit: BatchVideoFidelityAudit = {
+        batchSummary: json.batchSummary,
+        results: hydratedResults,
+        usage: json.usage,
+      };
+
+      setBatchAudit(finalBatchAudit);
+    } catch (err: any) {
+      console.error('Erro na auditoria em lote:', err);
+      setErrorMessage(err?.message || 'Erro durante a auditoria em lote.');
+    } finally {
+      setIsProcessing(false);
+      setStatusMessage('');
+    }
+  };
+
+  const handleCopyApprovedBatch = async () => {
+    if (!batchAudit) return;
+    const approved = batchAudit.results.filter((r) => r.approved);
+    const text = approved.map((r) => r.videoFileName).join('\n');
+    await navigator.clipboard.writeText(text);
+    setCopiedBatchApproved(true);
+    setTimeout(() => setCopiedBatchApproved(false), 2500);
+  };
+
+  const handleDownloadBatchReport = () => {
+    if (!batchAudit) return;
+    const lines = [
+      `RELATÓRIO DE AUDITORIA EM LOTE — ${productName.toUpperCase()}`,
+      `Data: ${new Date().toLocaleString('pt-BR')}`,
+      `Total de Vídeos: ${batchAudit.batchSummary.totalVideos}`,
+      `Aprovados para TikTok Shop: ${batchAudit.batchSummary.approvedCount}`,
+      `Reprovados / Atenção: ${batchAudit.batchSummary.rejectedCount}`,
+      `------------------------------------------------------------`,
+      `VISÃO GERAL:`,
+      batchAudit.batchSummary.overview,
+      `------------------------------------------------------------`,
+      `DETALHAMENTO DOS VÍDEOS:`,
+      ...batchAudit.results.map(
+        (r, idx) =>
+          `#${idx + 1} [${r.approved ? 'APROVADO' : 'REPROVADO'}] ${r.videoFileName} — Cor: ${r.detectedColor || 'N/A'} — Score: ${r.score}%\nParecer: ${r.issue}${r.defectSecond ? ` (Defeito aos ${r.defectSecond}s)` : ''}\n`
+      ),
+    ];
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `relatorio-lote-${productName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+
   const boxStyles = audit ? getAuditBoxClasses(audit.overallStatus) : null;
   const activeVideoName = videoFile?.name || audit?.videoFileName || 'vídeo enviado';
   const activeDuration = videoDuration || audit?.videoDurationSeconds || 10;
@@ -744,11 +1025,65 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
               )}
             </h3>
             <p className="text-[11px] text-zinc-400">
-              Inspeção pericial em alta definição (Storyboard de 1 em 1 segundo + Comparação Visual Real lado a lado com as fotos de referência).
+              Inspeção pericial em alta definição com suporte a análise individual e auditoria em lote de até 25 vídeos de uma vez.
             </p>
           </div>
         </div>
       </div>
+
+      {/* SELETOR DE MODO: VÍDEO INDIVIDUAL vs LOTE DE ATÉ 25 VÍDEOS */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 pb-2 border-b border-white/10">
+        <div className="flex items-center gap-1.5 p-1 bg-zinc-950/80 rounded-xl border border-zinc-800">
+          <button
+            type="button"
+            onClick={() => setAuditMode('single')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              auditMode === 'single'
+                ? 'bg-sky-600 text-white shadow'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            <Video className="w-3.5 h-3.5" />
+            <span>Vídeo Individual</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setAuditMode('batch')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+              auditMode === 'batch'
+                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5 text-emerald-300" />
+            <span>Auditoria em Lote (Até 25 Vídeos)</span>
+            <span className="text-[9px] bg-emerald-400/20 text-emerald-300 px-1.5 py-0.5 rounded font-black border border-emerald-400/40">
+              ATÉ 25
+            </span>
+          </button>
+        </div>
+
+        {auditMode === 'batch' ? (
+          <div className="text-[11px] text-zinc-400 flex items-center gap-1.5 font-medium">
+            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Reutiliza fotos de cores para economizar até 70% de tokens</span>
+          </div>
+        ) : (
+          <div className="text-[11px] text-zinc-400">
+            Perícia segundo a segundo com recortes lado a lado
+          </div>
+        )}
+      </div>
+
+      <input
+        ref={batchFileInputRef}
+        type="file"
+        accept="video/mp4,video/webm,video/quicktime,video/mov"
+        multiple
+        className="hidden"
+        onChange={(e) => handleSelectBatchFiles(e.target.files)}
+      />
 
       {/* Inputs de Arquivo Ocultos */}
       <input
@@ -778,7 +1113,405 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
         </div>
       )}
 
-      {/* LINHA LADO A LADO: CAMPO DE ANEXAR VÍDEO + CAMPO DISCRETO DE FOTOS DE REFERÊNCIA (OPCIONAL) */}
+      
+      {/* ========================================================================= */}
+      {/* MODO AUDITORIA EM LOTE (ATÉ 25 VÍDEOS COM DETECÇÃO DE CORES)              */}
+      {/* ========================================================================= */}
+      {auditMode === 'batch' && (
+        <div className="space-y-4">
+          {/* Linha de Upload do Lote + Fotos de Cores */}
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-stretch">
+            {/* Coluna Esquerda: Anexar até 25 vídeos */}
+            <div className="sm:col-span-7 flex flex-col">
+              <div
+                onClick={() => batchFileInputRef.current?.click()}
+                className="flex-1 p-5 border-2 border-dashed border-emerald-500/40 hover:border-emerald-400 rounded-2xl bg-zinc-950/70 hover:bg-zinc-900/60 flex flex-col items-center justify-center text-center gap-2 cursor-pointer transition-all group shadow-inner"
+              >
+                <div className="p-2.5 rounded-2xl bg-emerald-500/10 group-hover:bg-emerald-500/20 text-emerald-400 transition-colors">
+                  <Upload className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-zinc-100 group-hover:text-emerald-300 transition-colors">
+                    Clique aqui para selecionar até 25 vídeos (.mp4 ou .mov)
+                  </p>
+                  <p className="text-[10px] text-zinc-400 mt-0.5">
+                    Selecione todos os vídeos gerados do produto de uma só vez para validação em massa
+                  </p>
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-300 bg-emerald-950/60 border border-emerald-500/40 px-2.5 py-1 rounded-lg">
+                  Suporta de 1 até 25 vídeos
+                </span>
+              </div>
+            </div>
+
+            {/* Coluna Direita: Fotos de Cores do Produto */}
+            <div className="sm:col-span-5 p-3 rounded-2xl bg-zinc-950/80 border border-white/10 flex flex-col justify-between gap-2.5">
+              <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
+                <span className="text-xs font-bold text-zinc-200 flex items-center gap-1.5">
+                  <ImagePlus className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Fotos de Cores ({effectiveReferencePhotos.length})</span>
+                </span>
+                {customReferencePhotos.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearCustomPhotos}
+                    className="text-[10px] text-zinc-400 hover:text-rose-400 transition-colors cursor-pointer"
+                  >
+                    Restaurar Padrão
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-1.5 overflow-x-auto py-1 scrollbar-thin">
+                {effectiveReferencePhotos.slice(0, 10).map((photo, idx) => (
+                  <div
+                    key={idx}
+                    className="relative w-12 h-16 rounded-lg overflow-hidden bg-zinc-900 border border-white/15 shrink-0 group"
+                  >
+                    <img src={photo} alt={`Cor ${idx + 1}`} className="w-full h-full object-cover" />
+                    <span className="absolute bottom-0 inset-x-0 bg-black/70 text-[8px] text-center text-zinc-300 font-mono py-0.5">
+                      #{idx + 1}
+                    </span>
+                    {customReferencePhotos.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveCustomPhoto(idx);
+                        }}
+                        className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/80 hover:bg-rose-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+
+                <button
+                  type="button"
+                  onClick={() => refPhotosInputRef.current?.click()}
+                  className="w-12 h-16 rounded-lg border-2 border-dashed border-zinc-700 hover:border-emerald-500/70 bg-zinc-900/60 hover:bg-zinc-800 flex flex-col items-center justify-center gap-1 text-zinc-400 hover:text-emerald-300 transition-all shrink-0 cursor-pointer"
+                  title="Adicionar fotos das cores disponíveis"
+                >
+                  <ImagePlus className="w-4 h-4" />
+                  <span className="text-[8px] font-bold">+ Cor</span>
+                </button>
+              </div>
+
+              <p className="text-[10px] text-zinc-400 leading-tight">
+                Anexe as fotos de cada uma das cores disponíveis (até 9-10 cores). A IA cruzará automaticamente cada vídeo com a cor correspondente.
+              </p>
+            </div>
+          </div>
+
+          {/* Lista de Vídeos Selecionados e Botão de Disparo */}
+          {batchFiles.length > 0 && (
+            <div className="p-3.5 rounded-2xl bg-zinc-950/90 border border-emerald-500/30 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-1.5">
+                    <FileVideo className="w-4 h-4 text-emerald-400" />
+                    <span>Lote Carregado: {batchFiles.length} de 25 Vídeos</span>
+                  </span>
+                  <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-bold px-2 py-0.5 rounded border border-emerald-500/40">
+                    Pronto para análise
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {batchFiles.length < 25 && (
+                    <button
+                      type="button"
+                      onClick={() => batchFileInputRef.current?.click()}
+                      className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-[10px] font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>+ Adicionar Vídeos</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleClearBatchFiles}
+                    className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-rose-950/60 text-zinc-400 hover:text-rose-300 text-[10px] font-bold flex items-center gap-1 cursor-pointer"
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>Limpar Lote</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Badges dos Arquivos do Lote */}
+              <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pr-1">
+                {batchFiles.map((f, idx) => (
+                  <span
+                    key={idx}
+                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-zinc-900 border border-zinc-700 text-[10px] text-zinc-300 font-mono"
+                  >
+                    <span className="text-emerald-400 font-bold">#{idx + 1}</span>
+                    <span className="truncate max-w-[160px]">{f.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveBatchFile(idx)}
+                      className="hover:text-rose-400 cursor-pointer"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+
+              {/* Botão de Disparo da Auditoria em Lote */}
+              <button
+                type="button"
+                onClick={handleAuditBatch}
+                disabled={isProcessing}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-sky-600 hover:from-emerald-500 hover:to-sky-500 disabled:opacity-50 text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50 transition-all cursor-pointer"
+              >
+                {isProcessing ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin text-white" />
+                    <span>Processando Lote...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 text-emerald-200" />
+                    <span>🚀 Iniciar Auditoria em Lote de {batchFiles.length} Vídeos (Ultra Econômico)</span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* DASHBOARD EXECUTIVO DO LOTE (QUANDO PRONTO) */}
+          {batchAudit && !isProcessing && (
+            <div className="space-y-4 pt-2">
+              {/* Placar de Resumo */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="p-3.5 rounded-2xl bg-zinc-950/80 border border-zinc-800 flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-zinc-400 block">Total Auditado</span>
+                    <span className="text-2xl font-black text-white font-mono">
+                      {batchAudit.batchSummary.totalVideos} vídeos
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-zinc-800/80 text-zinc-300">
+                    <Layers className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-emerald-950/30 border border-emerald-500/40 flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-emerald-400 block">Aprovados TikTok</span>
+                    <span className="text-2xl font-black text-emerald-300 font-mono">
+                      {batchAudit.batchSummary.approvedCount} liberados
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-rose-950/30 border border-rose-500/40 flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-rose-400 block">Com Inconsistência</span>
+                    <span className="text-2xl font-black text-rose-300 font-mono">
+                      {batchAudit.batchSummary.rejectedCount} com erro
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                    <AlertTriangle className="w-5 h-5" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Visão Geral da IA */}
+              <div className="p-3 rounded-xl bg-zinc-950/90 border border-zinc-800 text-xs text-zinc-300 space-y-1">
+                <span className="text-[10px] uppercase font-black text-emerald-400 tracking-wider block">
+                  Visão Geral do Perito Visual:
+                </span>
+                <p className="leading-relaxed">{batchAudit.batchSummary.overview}</p>
+                {batchAudit.usage && (
+                  <p className="text-[10px] text-zinc-500 pt-1 border-t border-white/5">
+                    Consumo: {batchAudit.usage.totalTokens?.toLocaleString()} tokens • Custo estimado: R$ {batchAudit.usage.costBRL} ({batchAudit.usage.model})
+                  </p>
+                )}
+              </div>
+
+              {/* Barra de Filtro e Exportação */}
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-2.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-bold text-zinc-400 flex items-center gap-1">
+                    <Filter className="w-3.5 h-3.5 text-zinc-500" /> Filtro:
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setBatchFilter('all')}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer transition-all ${
+                      batchFilter === 'all'
+                        ? 'bg-zinc-700 text-white'
+                        : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >
+                    Todos ({batchAudit.results.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBatchFilter('approved')}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer transition-all ${
+                      batchFilter === 'approved'
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-emerald-950/40 text-emerald-300 hover:bg-emerald-900/60'
+                    }`}
+                  >
+                    🟢 Aprovados ({batchAudit.batchSummary.approvedCount})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBatchFilter('rejected')}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer transition-all ${
+                      batchFilter === 'rejected'
+                        ? 'bg-rose-600 text-white'
+                        : 'bg-rose-950/40 text-rose-300 hover:bg-rose-900/60'
+                    }`}
+                  >
+                    🔴 Com Erro ({batchAudit.batchSummary.rejectedCount})
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleCopyApprovedBatch}
+                    className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-[11px] font-bold text-zinc-200 flex items-center gap-1.5 transition-all cursor-pointer"
+                  >
+                    {copiedBatchApproved ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-emerald-400">Nomes Copiados ✓</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5 text-zinc-400" />
+                        <span>Copiar Aprovados</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleDownloadBatchReport}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-[11px] font-bold text-white flex items-center gap-1.5 transition-all cursor-pointer shadow"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Baixar Relatório (.txt)</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Grid dos Cards de Vídeo do Lote */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {batchAudit.results
+                  .filter((r) =>
+                    batchFilter === 'all'
+                      ? true
+                      : batchFilter === 'approved'
+                      ? r.approved
+                      : !r.approved
+                  )
+                  .map((item, idx) => {
+                    const itemStyles = getAuditBoxClasses(item.status);
+                    return (
+                      <div
+                        key={item.id || idx}
+                        className={`p-2.5 rounded-2xl border flex flex-col justify-between gap-2 transition-all shadow-md ${itemStyles.card}`}
+                      >
+                        <div className="space-y-2">
+                          {/* Miniatura do Vídeo */}
+                          <div className="relative aspect-[9/16] rounded-xl overflow-hidden bg-black/60 border border-white/10 group">
+                            {item.thumbnail ? (
+                              <img
+                                src={item.thumbnail}
+                                alt={item.videoFileName}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-zinc-600 text-xs">
+                                Sem thumbnail
+                              </div>
+                            )}
+
+                            {/* Badge de Status no topo da miniatura */}
+                            <div className="absolute top-2 inset-x-2 flex items-center justify-between gap-1 pointer-events-none">
+                              <span
+                                className={`text-[9px] font-mono font-black px-1.5 py-0.5 rounded shadow border ${itemStyles.badge}`}
+                              >
+                                {item.score}%
+                              </span>
+                              <span
+                                className={`text-[9px] font-black uppercase px-2 py-0.5 rounded shadow ${
+                                  item.approved
+                                    ? 'bg-emerald-500 text-white'
+                                    : 'bg-rose-600 text-white'
+                                }`}
+                              >
+                                {item.approved ? 'Aprovado' : 'Reprovado'}
+                              </span>
+                            </div>
+
+                            {/* Botão de Ampliar no hover */}
+                            {item.thumbnail && onOpenPreview && (
+                              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    onOpenPreview(
+                                      item.thumbnail!,
+                                      `${item.videoFileName} • ${item.detectedColor || 'Produto'}`
+                                    )
+                                  }
+                                  className="p-2 rounded-xl bg-black/80 hover:bg-sky-600 text-white cursor-pointer transition-colors"
+                                  title="Ampliar captura do vídeo"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Dados do Vídeo */}
+                          <div>
+                            <p className="text-xs font-bold text-white truncate" title={item.videoFileName}>
+                              {item.videoFileName}
+                            </p>
+                            <span className="inline-block mt-0.5 text-[10px] font-bold text-sky-300 bg-sky-950/60 border border-sky-500/30 px-2 py-0.5 rounded">
+                              🎨 Cor: {item.detectedColor || 'Padrão'}
+                            </span>
+                          </div>
+
+                          <p className="text-[11px] text-zinc-300 line-clamp-3 leading-snug">
+                            {item.issue}
+                          </p>
+
+                          {item.defectSecond !== null && item.defectSecond !== undefined && (
+                            <span className="inline-block text-[10px] font-black text-rose-300 bg-rose-950/60 border border-rose-500/40 px-2 py-0.5 rounded">
+                              ⚠️ Divergência aos {item.defectSecond}s
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODO VÍDEO INDIVIDUAL (ORIGINAL DETALHADO 1 A 1 SEGUNDO)                   */}
+      {/* ========================================================================= */}
+      {auditMode === 'single' && (
+        <div className="space-y-4">
+{/* LINHA LADO A LADO: CAMPO DE ANEXAR VÍDEO + CAMPO DISCRETO DE FOTOS DE REFERÊNCIA (OPCIONAL) */}
       <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-stretch">
         {/* Coluna Esquerda (7 cols): Anexar Vídeo ou Detalhes do Vídeo Anexado */}
         <div className="sm:col-span-7 flex flex-col">
@@ -1280,6 +2013,8 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
             </span>
           </div>
         </div>
+      )}
+      </div>
       )}
     </div>
   );

@@ -6758,7 +6758,240 @@ Analise cada um dos ${quadrantCount} quadrantes (Cena 1 a Cena ${quadrantCount})
     });
   }
 });
+async function handleProdutos2AuditVideoBatch(req, res) {
+  try {
+    const {
+      batchVideos = [],
+      productPhotosBase64 = [],
+      productName = "Produto",
+      productLock = []
+    } = req.body;
+    if (!Array.isArray(batchVideos) || batchVideos.length === 0) {
+      return res.status(400).json({ success: false, error: "Nenhum v\xEDdeo fornecido no lote para an\xE1lise." });
+    }
+    const photosList = Array.isArray(productPhotosBase64) ? productPhotosBase64.filter(Boolean) : [];
+    if (photosList.length === 0) {
+      return res.status(400).json({ success: false, error: "Nenhuma foto de refer\xEAncia de cores/produto fornecida." });
+    }
+    const lockContext = Array.isArray(productLock) ? productLock.join("; ") : "";
+    const systemInstruction = `Voc\xEA \xE9 o Perito Visual Chefe em Auditoria de V\xEDdeos em Lote para TikTok Shop e E-commerce.
+O usu\xE1rio anexou ${photosList.length} Foto(s) de Refer\xEAncia Oficiais com as cores e varia\xE7\xF5es do produto "${productName}".
+E anexou ${batchVideos.length} v\xEDdeo(s) gerados para aprova\xE7\xE3o em lote (at\xE9 25 v\xEDdeos).
+
+SUA MISS\xC3O RIGOROSA PARA CADA UM DOS ${batchVideos.length} V\xCDDEOS:
+1. IDENTIFICA\xC7\xC3O DA COR/VARIA\xC7\xC3O:
+   - Olhe para as capturas de cada v\xEDdeo e identifique qual das cores/varia\xE7\xF5es oficiais das fotos de refer\xEAncia est\xE1 retratada.
+   - Preencha "detectedColor" com o nome ou tom da cor identificada (ex: "Preto", "Rosa Beb\xEA", "Azul Marinho", "Verde Militar", etc.).
+
+2. VERIFICA\xC7\xC3O DE FIDELIDADE (REGRA ANTI-BANIMENTO TIKTOK SHOP):
+   - Aprove ("approved": true, status "green", score >= 90): Se o produto for id\xEAntico \xE0 foto de refer\xEAncia daquela cor (mesmo formato, propor\xE7\xF5es reais, acabamento, al\xE7as, bolsos, decote ou costura).
+   - Reprove ("approved": false, status "red", score < 70): Se o produto apresentar defeito real evidente (ex: c\xE2mera extra em celular, fivela ou detalhe que sumiu, bot\xF5es inexistentes, formato deformado, ou troca de cor abrupta).
+   - "issue": Descreva em portugu\xEAs com clareza a conclus\xE3o (ex: "\u{1F7E2} Aprovado: 100% consistente com a refer\xEAncia da cor Azul", ou "\u{1F534} Reprovado: fivela frontal ausente no segundo 4s").
+   - "defectSecond": Se houver erro, indique o segundo aproximado (ex: 4), ou null se estiver tudo certo.
+
+3. REGRAS DE TOLER\xC2NCIA REALISTA:
+   - N\xE3o reprove por \xE2ngulo de c\xE2mera diferente ou pose natural da modelo/m\xE3o.
+   - N\xE3o reprove frente do produto por n\xE3o ter detalhes da traseira.
+
+Retorne ESTRITAMENTE um objeto JSON com o formato:
+{
+  "batchSummary": {
+    "totalVideos": ${batchVideos.length},
+    "approvedCount": number,
+    "rejectedCount": number,
+    "overview": "Resumo executivo do lote de ${batchVideos.length} v\xEDdeos."
+  },
+  "results": [
+    {
+      "id": "id_do_video",
+      "videoFileName": "nome_do_arquivo.mp4",
+      "detectedColor": "Nome da cor identificada",
+      "score": 95,
+      "status": "green",
+      "approved": true,
+      "issue": "Motivo da aprova\xE7\xE3o ou detalhe do erro se reprovado",
+      "defectSecond": null
+    }
+  ]
+}`;
+    let parsed = null;
+    let usedModel = "gpt-4o-mini";
+    let promptTok = 0;
+    let compTok = 0;
+    if (openAIProvider.isConfigured()) {
+      try {
+        const client = openAIProvider.getClient();
+        const contentBlocks = [];
+        photosList.slice(0, 10).forEach((photo, idx) => {
+          contentBlocks.push({
+            type: "text",
+            text: `[FOTO DE REFER\xCANCIA OFICIAL #${idx + 1} \u2014 COR/VARIA\xC7\xC3O DO PRODUTO "${productName}"]:`
+          });
+          contentBlocks.push({
+            type: "image_url",
+            image_url: {
+              url: photo.startsWith("data:") ? photo : `data:image/jpeg;base64,${photo}`,
+              detail: "high"
+            }
+          });
+        });
+        batchVideos.forEach((vItem, vIdx) => {
+          const vId = vItem.id || `video_${vIdx + 1}`;
+          const vName = vItem.videoFileName || `V\xEDdeo ${vIdx + 1}`;
+          const frames = Array.isArray(vItem.frames) ? vItem.frames : [];
+          contentBlocks.push({
+            type: "text",
+            text: `
+=== [V\xCDDEO DO LOTE #${vIdx + 1} \u2014 "${vName}" (ID: ${vId}, DURA\xC7\xC3O: ${vItem.videoDurationSeconds || 10}s)] ===
+Inspecione as ${frames.length} capturas abaixo deste v\xEDdeo contra as Fotos de Refer\xEAncia:`
+          });
+          frames.forEach((f, fIdx) => {
+            if (!f.frameBase64) return;
+            const sec = f.second ?? fIdx;
+            contentBlocks.push({
+              type: "text",
+              text: `[V\xCDDEO #${vIdx + 1} ("${vName}") \u2014 CAPTURA NO SEGUNDO ${sec}s]:`
+            });
+            contentBlocks.push({
+              type: "image_url",
+              image_url: {
+                url: f.frameBase64.startsWith("data:") ? f.frameBase64 : `data:image/jpeg;base64,${f.frameBase64}`,
+                detail: "high"
+              }
+            });
+          });
+        });
+        contentBlocks.push({
+          type: "text",
+          text: `Analise todos os ${batchVideos.length} v\xEDdeos acima contra as ${photosList.length} fotos de cores/refer\xEAncia e retorne o JSON estritamente no schema solicitado.${lockContext ? `
+Trava do produto: ${lockContext}` : ""}`
+        });
+        const modelsToTry = ["gpt-4o-mini", "gpt-4o"];
+        for (const modelCandidate of modelsToTry) {
+          try {
+            const completion = await client.chat.completions.create({
+              model: modelCandidate,
+              messages: [
+                { role: "system", content: systemInstruction },
+                { role: "user", content: contentBlocks }
+              ],
+              response_format: { type: "json_object" },
+              temperature: 0.1,
+              max_tokens: 3800
+            });
+            usedModel = modelCandidate;
+            parsed = JSON.parse(completion.choices[0]?.message?.content || "{}");
+            promptTok = completion.usage?.prompt_tokens || 0;
+            compTok = completion.usage?.completion_tokens || 0;
+            break;
+          } catch (mErr) {
+            console.warn(`Aviso em batch audit com ${modelCandidate}:`, mErr?.message || mErr);
+          }
+        }
+      } catch (openAiErr) {
+        console.warn("Erro OpenAI em /api/produtos2-audit-video batch:", openAiErr?.message || openAiErr);
+      }
+    }
+    if (!parsed && process.env.GEMINI_API_KEY) {
+      try {
+        const parts = [];
+        photosList.slice(0, 10).forEach((photo, idx) => {
+          const parsedRef = parseInlineImage(photo);
+          if (parsedRef) {
+            parts.push({ text: `[FOTO DE REFER\xCANCIA OFICIAL #${idx + 1} \u2014 COR/VARIA\xC7\xC3O DO PRODUTO "${productName}"]:` });
+            parts.push({ inlineData: parsedRef });
+          }
+        });
+        batchVideos.forEach((vItem, vIdx) => {
+          const vId = vItem.id || `video_${vIdx + 1}`;
+          const vName = vItem.videoFileName || `V\xEDdeo ${vIdx + 1}`;
+          const frames = Array.isArray(vItem.frames) ? vItem.frames : [];
+          parts.push({
+            text: `
+=== [V\xCDDEO DO LOTE #${vIdx + 1} \u2014 "${vName}" (ID: ${vId})] ===:`
+          });
+          frames.forEach((f, fIdx) => {
+            if (!f.frameBase64) return;
+            const sec = f.second ?? fIdx;
+            const parsedFrame = parseInlineImage(f.frameBase64);
+            if (parsedFrame) {
+              parts.push({ text: `[V\xCDDEO #${vIdx + 1} \u2014 ${sec}s]:` });
+              parts.push({ inlineData: parsedFrame });
+            }
+          });
+        });
+        parts.push({
+          text: `${systemInstruction}
+
+Analise os ${batchVideos.length} v\xEDdeos acima contra as ${photosList.length} refer\xEAncias e retorne o JSON estritamente conforme o schema solicitado.`
+        });
+        const auditRes = await getGenAI().models.generateContent({
+          model: "gemini-2.5-flash",
+          contents: parts,
+          config: { responseMimeType: "application/json" }
+        });
+        parsed = JSON.parse(auditRes.text || "{}");
+        usedModel = "gemini-2.5-flash";
+        promptTok = auditRes.usageMetadata?.promptTokenCount || 0;
+        compTok = auditRes.usageMetadata?.candidatesTokenCount || 0;
+      } catch (gemErr) {
+        console.warn("Erro Gemini em batch audit:", gemErr?.message || gemErr);
+      }
+    }
+    if (!parsed || !Array.isArray(parsed.results)) {
+      throw new Error("Falha ao processar an\xE1lise em lote com a intelig\xEAncia visual.");
+    }
+    const normalizedResults = batchVideos.map((bv, idx) => {
+      const match = parsed.results.find((r) => r.id === bv.id || r.videoFileName === bv.videoFileName) || parsed.results[idx] || {};
+      const rawScore = Number(match.score);
+      const score = !isNaN(rawScore) ? Math.max(0, Math.min(100, Math.round(rawScore))) : 90;
+      const approved = match.approved !== void 0 ? Boolean(match.approved) : score >= 85;
+      const status = match.status && ["green", "yellow", "orange", "red"].includes(match.status) ? match.status : score >= 90 ? "green" : score >= 75 ? "yellow" : score >= 60 ? "orange" : "red";
+      return {
+        id: bv.id || `video_${idx + 1}`,
+        videoFileName: bv.videoFileName || `V\xEDdeo ${idx + 1}`,
+        detectedColor: String(match.detectedColor || "Padr\xE3o / Conforme Refer\xEAncia").trim(),
+        score,
+        status,
+        approved,
+        issue: String(
+          match.issue || (approved ? "Produto consistente com a refer\xEAncia." : "Diverg\xEAncia identificada.")
+        ).trim(),
+        defectSecond: match.defectSecond !== void 0 && match.defectSecond !== null ? Number(match.defectSecond) : null
+      };
+    });
+    const approvedCount = normalizedResults.filter((r) => r.approved).length;
+    const rejectedCount = normalizedResults.length - approvedCount;
+    const totTok = promptTok + compTok;
+    const costUSD = Math.round((promptTok / 1e6 * 0.15 + compTok / 1e6 * 0.6) * 1e4) / 1e4;
+    const costBRL = Math.round(costUSD * 5.7 * 1e3) / 1e3;
+    return res.json({
+      success: true,
+      batchSummary: {
+        totalVideos: normalizedResults.length,
+        approvedCount,
+        rejectedCount,
+        overview: parsed.batchSummary?.overview || `Foram auditados ${normalizedResults.length} v\xEDdeos. ${approvedCount} aprovados para publica\xE7\xE3o e ${rejectedCount} com ressalvas/diverg\xEAncias.`
+      },
+      results: normalizedResults,
+      usage: {
+        promptTokens: promptTok,
+        completionTokens: compTok,
+        totalTokens: totTok,
+        costUSD,
+        costBRL: Math.max(0.01, Math.round(costBRL * 100) / 100),
+        model: usedModel
+      }
+    });
+  } catch (err) {
+    console.error("Erro geral em /api/produtos2-audit-video batch:", err);
+    return res.status(500).json({ success: false, error: err?.message || "Falha na auditoria em lote." });
+  }
+}
 async function handleProdutos2AuditVideo(req, res) {
+  if (req.body?.isBatch === true || Array.isArray(req.body?.batchVideos)) {
+    return handleProdutos2AuditVideoBatch(req, res);
+  }
   try {
     const {
       videoFrames = [],

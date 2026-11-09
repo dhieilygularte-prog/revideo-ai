@@ -238,4 +238,29 @@ export interface VideoFidelityAudit {
   frames: VideoAuditFrameItem[];
 }
 
+export interface BatchVideoAuditResultItem {
+  id: string;
+  videoFileName: string;
+  detectedColor?: string;
+  score: number;
+  status: Produtos2AuditColorStatus;
+  approved: boolean;
+  issue: string;
+  defectSecond?: number | null;
+  thumbnail?: string;
+}
+
+export interface BatchVideoAuditSummary {
+  totalVideos: number;
+  approvedCount: number;
+  rejectedCount: number;
+  overview: string;
+}
+
+export interface BatchVideoFidelityAudit {
+  batchSummary: BatchVideoAuditSummary;
+  results: BatchVideoAuditResultItem[];
+  usage?: any;
+}
+
 
