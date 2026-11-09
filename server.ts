@@ -6336,24 +6336,7 @@ Retorne ESTRITAMENTE um objeto JSON válido em português com este formato (se n
           });
         });
 
-        // 2. Storyboard Contact Sheet de 1 em 1 segundo em ALTA RESOLUÇÃO (detail: 'high'), igual ao app concorrente
-        if (contactSheetBase64 && typeof contactSheetBase64 === 'string') {
-          contentBlocks.push({
-            type: 'text',
-            text: `[STORYBOARD DE ANÁLISE DO VÍDEO (${videoFrames.length} CAPTURAS DE 1 EM 1 SEGUNDO: ${framesTimestampsList}) — VISÃO GERAL DE CONTINUIDADE EM ALTA RESOLUÇÃO]:`,
-          });
-          contentBlocks.push({
-            type: 'image_url',
-            image_url: {
-              url: contactSheetBase64.startsWith('data:')
-                ? contactSheetBase64
-                : `data:image/jpeg;base64,${contactSheetBase64}`,
-              detail: 'high',
-            },
-          });
-        }
-
-        // 3. Frames de zoom em ALTA RESOLUÇÃO (detail: 'high') quando fornecidos
+        // 2. Capturas individuais do vídeo em ALTA RESOLUÇÃO (detail: 'high') de 1 em 1 segundo
         videoFrames.forEach((frameObj: any, idx: number) => {
           if (!frameObj.frameBase64) return;
           const sec = frameObj.second ?? idx;
@@ -6372,7 +6355,7 @@ Retorne ESTRITAMENTE um objeto JSON válido em português com este formato (se n
           });
         });
 
-        const promptText = `Realize a perícia visual completa do vídeo "${videoFileName}" (${videoDurationSeconds}s) comparando o Storyboard de Análise de 1 em 1 segundo (${framesTimestampsList}) e as capturas em alta resolução com as ${photosList.length} imagem(ns) de referência do produto "${productName}".
+        const promptText = `Realize a perícia visual completa do vídeo "${videoFileName}" (${videoDurationSeconds}s) inspecionando cada uma das ${videoFrames.length} capturas reais de 1 em 1 segundo (${framesTimestampsList}) em alta resolução e comparando diretamente com as ${photosList.length} imagem(ns) de referência do produto "${productName}".
 
 INSTRUÇÕES OBRIGATÓRIAS DE PERÍCIA VISUAL (ZERO FALSOS POSITIVOS):
 1) Inspecione cada frame (${framesTimestampsList}) com base EXCLUSIVA no que a imagem real de cada frame mostra:
@@ -6608,13 +6591,6 @@ Retorne APENAS um JSON no formato:
             parts.push({ inlineData: parsedRef });
           }
         });
-        if (contactSheetBase64 && typeof contactSheetBase64 === 'string') {
-          const parsedSheet = parseInlineImage(contactSheetBase64);
-          if (parsedSheet) {
-            parts.push({ text: `[STORYBOARD DE ANÁLISE DO VÍDEO (${framesTimestampsList})]:` });
-            parts.push({ inlineData: parsedSheet });
-          }
-        }
         videoFrames.forEach((frameObj: any, idx: number) => {
           const sec = frameObj.second ?? idx;
           const parsedFrame = parseInlineImage(frameObj.frameBase64);

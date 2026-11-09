@@ -7085,19 +7085,6 @@ Retorne ESTRITAMENTE um objeto JSON v\xE1lido em portugu\xEAs com este formato (
             }
           });
         });
-        if (contactSheetBase64 && typeof contactSheetBase64 === "string") {
-          contentBlocks.push({
-            type: "text",
-            text: `[STORYBOARD DE AN\xC1LISE DO V\xCDDEO (${videoFrames.length} CAPTURAS DE 1 EM 1 SEGUNDO: ${framesTimestampsList}) \u2014 VIS\xC3O GERAL DE CONTINUIDADE EM ALTA RESOLU\xC7\xC3O]:`
-          });
-          contentBlocks.push({
-            type: "image_url",
-            image_url: {
-              url: contactSheetBase64.startsWith("data:") ? contactSheetBase64 : `data:image/jpeg;base64,${contactSheetBase64}`,
-              detail: "high"
-            }
-          });
-        }
         videoFrames.forEach((frameObj, idx) => {
           if (!frameObj.frameBase64) return;
           const sec = frameObj.second ?? idx;
@@ -7113,7 +7100,7 @@ Retorne ESTRITAMENTE um objeto JSON v\xE1lido em portugu\xEAs com este formato (
             }
           });
         });
-        const promptText = `Realize a per\xEDcia visual completa do v\xEDdeo "${videoFileName}" (${videoDurationSeconds}s) comparando o Storyboard de An\xE1lise de 1 em 1 segundo (${framesTimestampsList}) e as capturas em alta resolu\xE7\xE3o com as ${photosList.length} imagem(ns) de refer\xEAncia do produto "${productName}".
+        const promptText = `Realize a per\xEDcia visual completa do v\xEDdeo "${videoFileName}" (${videoDurationSeconds}s) inspecionando cada uma das ${videoFrames.length} capturas reais de 1 em 1 segundo (${framesTimestampsList}) em alta resolu\xE7\xE3o e comparando diretamente com as ${photosList.length} imagem(ns) de refer\xEAncia do produto "${productName}".
 
 INSTRU\xC7\xD5ES OBRIGAT\xD3RIAS DE PER\xCDCIA VISUAL (ZERO FALSOS POSITIVOS):
 1) Inspecione cada frame (${framesTimestampsList}) com base EXCLUSIVA no que a imagem real de cada frame mostra:
@@ -7325,13 +7312,6 @@ Retorne APENAS um JSON no formato:
             parts.push({ inlineData: parsedRef });
           }
         });
-        if (contactSheetBase64 && typeof contactSheetBase64 === "string") {
-          const parsedSheet = parseInlineImage(contactSheetBase64);
-          if (parsedSheet) {
-            parts.push({ text: `[STORYBOARD DE AN\xC1LISE DO V\xCDDEO (${framesTimestampsList})]:` });
-            parts.push({ inlineData: parsedSheet });
-          }
-        }
         videoFrames.forEach((frameObj, idx) => {
           const sec = frameObj.second ?? idx;
           const parsedFrame = parseInlineImage(frameObj.frameBase64);

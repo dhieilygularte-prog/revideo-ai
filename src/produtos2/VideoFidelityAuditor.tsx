@@ -190,84 +190,6 @@ async function extractHighResVideoFrames1fps(
 }
 
 /**
- * Constrói uma única imagem em formato Storyboard Contact Sheet de alta definição (1200x660 / 1500x825)
- * contendo todos os frames de 1 em 1 segundo (0s, 1s, 2s, 3s, 4s...) organizados em grade sobre fundo branco,
- * exatamente como o storyboard pericial de referência.
- */
-async function buildVideoContactSheetStoryboard(
-  frames: { second: number; frameBase64: string }[]
-): Promise<string> {
-  if (!frames || frames.length === 0) return '';
-  try {
-    const loadedImages = await Promise.all(
-      frames.map(async (f: any) => ({
-        second: f.second,
-        img: await loadImageElement(f.frameBase64),
-      }))
-    );
-
-    const cols = Math.min(5, loadedImages.length);
-    const rows = Math.ceil(loadedImages.length / cols);
-
-    // Dimensões base de alta definição (proporcional a 1200x660 para 5x2, ou mais nítida em 1400x770)
-    const canvasWidth = 1400;
-    const padX = 24;
-    const padY = 18;
-    const labelHeight = 26;
-    const colGap = 28;
-    const rowGap = 20;
-
-    const cellWidth = Math.floor((canvasWidth - padX * 2 - colGap * (cols - 1)) / cols);
-    const firstImg = loadedImages[0].img;
-    const imgAspect = (firstImg.height || 1280) / (firstImg.width || 720);
-    const cellImgHeight = Math.round(cellWidth * Math.min(1.85, Math.max(0.75, imgAspect)));
-    const rowHeight = labelHeight + cellImgHeight;
-    const canvasHeight = padY * 2 + rows * rowHeight + (rows - 1) * rowGap;
-
-    const canvas = document.createElement('canvas');
-    canvas.width = canvasWidth;
-    canvas.height = canvasHeight;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return '';
-
-    // Fundo branco limpo para alto contraste pericial
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-
-    loadedImages.forEach((item, idx) => {
-      const col = idx % cols;
-      const row = Math.floor(idx / cols);
-      const x = padX + col * (cellWidth + colGap);
-      const y = padY + row * (rowHeight + rowGap);
-
-      // Rótulo do segundo ("0s", "1s", "2s"...)
-      ctx.fillStyle = '#18181b';
-      ctx.font = 'bold 16px Inter, system-ui, -apple-system, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'top';
-      ctx.fillText(`${item.second}s`, x, y + 2);
-
-      // Desenha o frame preservando a proporção exata sem esticar
-      const imgY = y + labelHeight;
-      const iw = item.img.width || 720;
-      const ih = item.img.height || 1280;
-      const scale = Math.min(cellWidth / iw, cellImgHeight / ih);
-      const drawW = Math.round(iw * scale);
-      const drawH = Math.round(ih * scale);
-      const drawX = x;
-      const drawY = imgY + Math.round((cellImgHeight - drawH) / 2);
-
-      ctx.drawImage(item.img, drawX, drawY, drawW, drawH);
-    });
-
-    return canvas.toDataURL('image/jpeg', 0.92);
-  } catch (err) {
-    console.warn('Aviso ao montar storyboard de capturas do vídeo:', err);
-    return '';
-  }
-}
-
-/**
  * Gera a imagem PNG "COMPARAÇÃO VISUAL — [COMPONENTE]" lado a lado:
  * Lado esquerdo: REFERÊNCIA ORIGINAL (recorte focado no componente sem distorcer proporção)
  * Lado direito: CAPTURA REAL DO VÍDEO — 00:XX (recorte focado no mesmo componente no frame do vídeo)
@@ -557,11 +479,8 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
         throw new Error('Falha ao extrair frames do vídeo.');
       }
 
-      setStatusMessage('Gerando Storyboard de Capturas (1 em 1s) e inspecionando detalhes...');
-      const contactSheetDataUrl = await buildVideoContactSheetStoryboard(frames);
-
       setStatusMessage(
-        `Analisando Storyboard HD (${frames.length} capturas) contra ${compressedRefs.length} imagem(ns) de referência...`
+        `Inspecionando capturas de 1 em 1 segundo (${frames.length} frames) contra ${compressedRefs.length} imagem(ns) de referência...`
       );
 
       // Envia TODOS os frames (0s..9s) compactados para o servidor (garantindo que o segundo exato do erro, ex: 4s, esteja sempre presente para inspeção e recorte pericial!),
@@ -575,7 +494,6 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
 
       const payloadBody = JSON.stringify({
         videoFrames: allFramesPayload,
-        contactSheetBase64: contactSheetDataUrl,
         productPhotosBase64: compressedRefs,
         productName,
         productLock,
@@ -658,7 +576,7 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
       let finalAudit: VideoFidelityAudit = {
         ...parsedData.audit,
         frames: hydratedFrames,
-        contactSheetUrl: contactSheetDataUrl || parsedData.audit.contactSheetUrl,
+        contactSheetUrl: undefined,
         videoFileName: fileToAudit.name,
         videoDurationSeconds: durationSeconds,
       };
@@ -1086,70 +1004,6 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
               </div>
             </div>
           </div>
-
-          {/* 2. STORYBOARD DE CAPTURAS DO VÍDEO (1 EM 1 SEGUNDO — 1400x770 HD) */}
-          {audit.contactSheetUrl && (
-            <div className="p-3.5 rounded-2xl bg-zinc-950/90 border border-zinc-800 space-y-2.5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <h5 className="text-xs font-black text-white uppercase tracking-wide">
-                    Storyboard de Análise do Vídeo (Capturas Reais de 1 em 1 Segundo)
-                  </h5>
-                  <p className="text-[11px] text-zinc-400">
-                    Grade pericial em alta resolução ({audit.frames.length} capturas: 0s a{' '}
-                    {audit.frames[audit.frames.length - 1]?.second ?? 9}s) — clique na imagem para ampliar
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {onOpenPreview && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        onOpenPreview(
-                          audit.contactSheetUrl!,
-                          `Storyboard de Análise do Vídeo (1 em 1s) • ${productName}`
-                        )
-                      }
-                      className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-[11px] font-bold text-zinc-200 flex items-center gap-1.5 transition-all cursor-pointer"
-                    >
-                      <Eye className="w-3.5 h-3.5 text-sky-400" />
-                      <span>Ampliar</span>
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() =>
-                      downloadDataUrlFile(
-                        audit.contactSheetUrl!,
-                        `storyboard-analise-${productName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.jpg`
-                      )
-                    }
-                    className="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-[11px] font-black flex items-center gap-1.5 transition-all cursor-pointer shadow"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Baixar Storyboard de Análise</span>
-                  </button>
-                </div>
-              </div>
-
-              <div
-                onClick={() =>
-                  onOpenPreview?.(
-                    audit.contactSheetUrl!,
-                    `Storyboard de Análise do Vídeo (1 em 1s) • ${productName}`
-                  )
-                }
-                className="rounded-xl overflow-hidden border border-white/15 bg-white cursor-pointer group relative"
-              >
-                <img
-                  src={audit.contactSheetUrl}
-                  alt="Storyboard de Análise 1 em 1 segundo"
-                  className="w-full h-auto object-contain max-h-[420px] mx-auto"
-                />
-              </div>
-            </div>
-          )}
 
           {/* 3. RELATÓRIO DETALHADO DE ACHADOS COM COMPARAÇÃO VISUAL REAL (ESTILO PERICIAL COMPLETO) */}
           {Array.isArray(audit.findings) && audit.findings.length > 0 && (
