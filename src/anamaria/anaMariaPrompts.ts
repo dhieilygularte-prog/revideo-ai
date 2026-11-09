@@ -161,11 +161,13 @@ export function detectShoeCategory(
   // 4. Vestidos em geral (tubinho, midi, longo casual, etc.) -> Sandália feminina elegante que harmonize com o vestido
   const isDress = /\b(vestido|vestidos|dress|dresses|longo|midi|chemise|tubinho)\b/i.test(combined);
   if (isDress) {
+    const isLongDress = /\b(longo|longa|maxi|arrastando|ch[aã]o|floor)\b/i.test(combined);
     return {
       category: 'C_OUTRO',
-      name: 'Sandália Feminina Elegante que Combina com o Vestido',
-      description:
-        'Sandália feminina elegante de tiras delicadas ou salto harmonioso que combine perfeitamente com a cor, caimento e proposta do vestido.',
+      name: isLongDress ? 'Sandália Feminina sob a Barra Longa (se visível)' : 'Sandália Feminina Elegante que Combina com o Vestido',
+      description: isLongDress
+        ? 'Sandália feminina elegante que harmoniza com o vestido longo. REGRA DE COMPRIMENTO: Se o vestido for longo até o chão cobrindo o calçado, preserve a barra longa cobrindo os pés; NÃO é obrigatório aparecer calçado e é proibido encurtar o vestido longo.'
+        : 'Sandália feminina elegante de tiras delicadas ou salto harmonioso que combine perfeitamente com a cor, caimento e proposta do vestido.',
     };
   }
 
@@ -677,7 +679,8 @@ ${
 
     const garmentTypeInstruction = isDressOrOnePiece
       ? '- O PRODUTO DA FOTO 1 É UM VESTIDO / PEÇA ÚNICA COMPLETA: A modelo veste EXCLUSIVAMENTE o vestido/peça única da Foto 1 com máxima fidelidade 1:1.\n' +
-        '- PROIBIÇÃO ABSOLUTA DE CALÇA OU SHORTS: É TERMINANTEMENTE PROIBIDO ADICIONAR CALÇA JEANS, CALÇA, SHORTS, BERMUDA OU QUALQUER OUTRA PEÇA INFERIOR. A modelo veste APENAS o vestido da Foto 1 cobrindo o corpo por completo com pernas limpas naturais até os pés.'
+        '- PROIBIÇÃO ABSOLUTA DE CALÇA OU SHORTS: É TERMINANTEMENTE PROIBIDO ADICIONAR CALÇA JEANS, CALÇA, SHORTS, BERMUDA OU QUALQUER OUTRA PEÇA INFERIOR. A modelo veste APENAS o vestido da Foto 1 cobrindo o corpo por completo com pernas limpas naturais.\n' +
+        '- REGRA CRÍTICA DE COMPRIMENTO (VESTIDO LONGO / SAIA LONGA): Se na Foto 1 o produto for vestido longo ou saia longa que cubra os pés/calçado, MANTENHA O COMPRIMENTO LONGO EXATO 1:1 ATÉ O CHÃO cobrindo os pés. NÃO É OBRIGATÓRIO APARECER O CALÇADO! É TERMINANTEMENTE PROIBIDO encurtar o vestido ou subir a barra para forçar mostrar o calçado.'
       : isUpperOnly
       ? '- O PRODUTO DA FOTO 1 É UMA PEÇA SUPERIOR: A modelo veste a peça superior da Foto 1 com máxima fidelidade 1:1, combinada com uma peça inferior que combine com harmonia (calça, saia, short ou bermuda) para compor um look comercial elegante de catálogo.'
       : isLowerOnly
@@ -693,7 +696,7 @@ ${
 1. FOTO 1 (PRODUTO — PEÇA DE ROUPA):
 - Vestir a modelo com a roupa da Foto 1 com máxima fidelidade 1:1 (mesma cor exata, tonalidade, textura do tecido, caimento, modelagem, decote, mangas e detalhes reais da peça).
 ${garmentTypeInstruction}
-- Calçado nos pés: ${shoeInfo.name} (${shoeInfo.description}), compondo um visual harmonioso e elegante com a peça.
+- Calçado nos pés: ${shoeInfo.name} (${shoeInfo.description}), compondo um visual harmonioso e elegante com a peça (se os pés estiverem visíveis; se a Foto 1 for vestido longo cobrindo o calçado, preserve a barra longa até o chão cobrindo o calçado, sem jamais encurtar o vestido para forçar mostrar o calçado; NÃO é obrigatório aparecer calçado em peças longas).
 - REGRA CRÍTICA DE ISOLAMENTO TOTAL DA FOTO 1: Da Foto 1 (produto), extraia RIGOROSAMENTE apenas a peça de roupa e tecido. É TERMINANTEMENTE PROIBIDO copiar, mesclar ou misturar o rosto, a cabeça, o cabelo, a pele ou a pose da pessoa da Foto 1! Ignore 100% a pessoa da Foto 1 (ZERO mistura com o rosto da Foto 1). É TERMINANTEMENTE PROIBIDO copiar tatuagens, marcas corporais ou desenhos da pessoa da Foto 1. A modelo gerada deve ter PELE 100% LIMPA, ZERO TATUAGENS em todo o corpo (braços, mãos, pernas, colo e pescoço totalmente livres de tatuagens).
 
 2. FOTO 2 (MODELO E CENÁRIO BASE ABSOLUTO — PRESERVAÇÃO INTEGRAL 1:1):
@@ -711,7 +714,7 @@ Qualidade fotográfica autêntica de smartphone moderno, textura de pele humana 
 1. FOTO 1 (PRODUTO — PEÇA DE ROUPA):
 - Vestir a modelo com a roupa da Foto 1 com máxima fidelidade 1:1 (mesma cor exata, tonalidade, textura do tecido, caimento, modelagem, decote, mangas e detalhes reais da peça).
 ${garmentTypeInstruction}
-- Calçado nos pés: ${shoeInfo.name} (${shoeInfo.description}), compondo um visual harmonioso e elegante com a peça.
+- Calçado nos pés: ${shoeInfo.name} (${shoeInfo.description}), compondo um visual harmonioso e elegante com a peça (se os pés estiverem visíveis; se a Foto 1 for vestido longo cobrindo o calçado, preserve a barra longa até o chão cobrindo o calçado, sem jamais encurtar o vestido para forçar mostrar o calçado; NÃO é obrigatório aparecer calçado em peças longas).
 - REGRA CRÍTICA DE ISOLAMENTO TOTAL DA FOTO 1: Da Foto 1 (produto), extraia RIGOROSAMENTE apenas a peça de roupa e tecido. É TERMINANTEMENTE PROIBIDO copiar, mesclar ou misturar o rosto, a cabeça, o cabelo, a pele ou a pose da pessoa da Foto 1! Ignore 100% a pessoa da Foto 1 (ZERO mistura com o rosto da Foto 1). É TERMINANTEMENTE PROIBIDO copiar tatuagens, marcas corporais ou desenhos da pessoa da Foto 1. A modelo gerada deve ter PELE 100% LIMPA, ZERO TATUAGENS em todo o corpo (braços, mãos, pernas, colo e pescoço totalmente livres de tatuagens).
 
 2. FOTO 2 (MODELO — IDENTIDADE, ROSTO E POSE 1:1):
@@ -758,10 +761,10 @@ ${phonePostureSection}
 ## 6. ACESSÓRIOS E JOIAS (${master.shortName.toUpperCase()})
 ${accessoriesSectionText}
 
-## 7. REGRA UNIVERSAL DE CALÇADO (CAMADA ACIMA DO PROMPT DA MESTRA)
-Calçado obrigatório nos dois pés: **${shoeInfo.name}**.
-Especificação do calçado: ${shoeInfo.description}
-(Observação: Esta regra universal de calçado prevalece sobre qualquer menção genérica de calçado do catálogo da Mestra, salvo se o usuário pediu outro calçado específico nas Instruções Adicionais). Enquadrar o corpo inteiro mostrando os dois pés calçados apoiados naturalmente no piso do cenário.
+## 7. REGRA UNIVERSAL DE CALÇADO (HARMONIA COM A ROUPA & RESPEITO AO COMPRIMENTO)
+Calçado nos pés: **${shoeInfo.name}** (se os pés estiverem visíveis).
+Especificação do calçado: ${shoeInfo.description}.
+(Observação: Esta regra universal de calçado harmoniza com o look. REGRA CRÍTICA E INVIOLÁVEL DE COMPRIMENTO — VESTIDO/SAIA LONGA: Se a peça for um vestido longo, saia longa, calça flare longa ou qualquer peça longa que desça até o chão ou cubra o calçado na foto de referência, PRESERVE O COMPRIMENTO LONGO EXATO ATÉ O CHÃO IGUAL À REFERÊNCIA. NÃO É OBRIGATÓRIO APARECER O CALÇADO! É TERMINANTEMENTE PROIBIDO encurtar a peça, subir a barra ou transformá-la em midi/curta para forçar mostrar o calçado. Se o vestido/saia longo cobre o calçado, o calçado permanece naturalmente oculto sob o tecido longo que toca o piso). Enquadrar o corpo inteiro naturalmente diante do espelho.
 
 ## 7.1. REGRA DE LOOK COMPLETO E PEÇAS COMPLEMENTARES (LOOK COMERCIAL COMPLETO)
 ${complementaryInfo.directiveTextPt}
@@ -769,7 +772,8 @@ ${complementaryInfo.directiveTextEn}
 
 ## 8. FIDELIDADE ABSOLUTA E SOBERANA AO PRODUTO ANEXADO (1:1 — ZERO INVENÇÃO DE DETALHES)
 A foto da peça anexada pelo usuário é a referência soberana e inviolável da roupa (venda real TikTok Shop).
-Reproduza a roupa 1:1 com máxima fidelidade: mesma cor exata, tonalidade, textura do tecido, modelagem, comprimento, decote, alças, mangas, barra, rendas, transparências, costuras, botões, recortes e estampas.
+Reproduza a roupa 1:1 com máxima fidelidade: mesma cor exata, tonalidade, textura do tecido, modelagem, comprimento exato da barra, decote, alças, mangas, barra, rendas, transparências, costuras, botões, recortes e estampas.
+REGRA DE COMPRIMENTO DE PEÇAS LONGAS: Se for vestido longo ou saia longa que cubra os pés/calçado, o comprimento DEVE ser mantido até o chão cobrindo os pés. Jamais encurte a barra de peças longas para forçar a aparição de calçados; não é obrigatório mostrar calçado em vestidos longos.
 É TERMINANTEMENTE PROIBIDO inventar detalhes inexistentes na peça (não adicionar rendas, babados, laços, botões, fendas, costuras ou estampas que não existam na foto real) e proibido omitir detalhes reais da peça.
 A roupa deve vestir anatomicamente o corpo ${isPlusSize ? 'genuinamente PLUS SIZE' : 'do(a) modelo'} sem jamais redesenhar ou descaracterizar o produto.`;
 

@@ -787,16 +787,22 @@ ${cleanPrompt}`;
           (productType && /\b(vestido|vestidos|dress|dresses|longo|midi|festa|chemise)\b/i.test(productType)) ||
           (cleanPrompt && /\b(vestido|vestidos|dress|dresses|longo|midi|festa|chemise)\b/i.test(cleanPrompt))
         );
+        const isLongDressGarment = Boolean(
+          (productType && /\b(longo|longa|maxi|floor|ch[aã]o|arrastando)\b/i.test(productType)) ||
+          (cleanPrompt && /\b(longo|longa|maxi|floor|ch[aã]o|arrastando)\b/i.test(cleanPrompt))
+        );
         const shoeEditInstruction = isDressGarment
-          ? 'Substitua também o calçado da modelo por uma sandália feminina elegante de tiras delicadas ou salto harmonioso que combine perfeitamente em estilo, cor e elegância com o vestido.'
-          : 'Substitua o calçado da modelo por um calçado harmonioso e elegante que combine perfeitamente com a peça anunciada.';
+          ? isLongDressGarment
+            ? 'Se os pés estiverem visíveis, calçado harmonioso; SE O VESTIDO FOR LONGO ATÉ O CHÃO COBRINDO O CALÇADO, MANTENHA O VESTIDO LONGO COBRINDO OS PÉS. NÃO é obrigatório aparecer calçado e é TERMINANTEMENTE PROIBIDO encurtar o vestido para mostrar calçado.'
+            : 'Substitua também o calçado da modelo por uma sandália feminina elegante de tiras delicadas ou salto harmonioso que combine perfeitamente em estilo, cor e elegância com o vestido.'
+          : 'Substitua o calçado da modelo por um calçado harmonioso e elegante que combine perfeitamente com a peça anunciada (se os pés estiverem visíveis; se for peça longa que cubra os pés, preserve o comprimento longo cobrindo o calçado).';
 
         effectivePrompt = `Esta é uma EDIÇÃO LOCALIZADA da imagem enviada. A imagem enviada é a base absoluta e deve permanecer IDÊNTICA: mesma mulher (rosto, cabelo, pele, corpo), mesma pose, mesmos braços e mãos, mesmo quarto/cenário, mesma iluminação, mesmo ângulo, mesmo enquadramento e mesma composição. NÃO recrie a cena, NÃO gere outra pessoa, NÃO mude o fundo. Zero tatuagens.
 
 ALTERAÇÃO SOLICITADA:
 1. Substitua a roupa/produto (${productType}) que ela veste por uma peça com exatamente estas características${variationName ? ` (variante "${variationName}")` : ''}: ${garmentSpec || productType}.
 2. CALÇADO: ${shoeEditInstruction}
-3. Se for vestido ou macacão, ela veste EXCLUSIVAMENTE o vestido com pernas limpas naturais (proibido calça jeans ou shorts sob o vestido); se for blusa, veste calça jeans combinando; se for calça, veste blusa combinando.
+3. Se for vestido ou macacão, ela veste EXCLUSIVAMENTE o vestido com pernas limpas naturais (proibido calça jeans ou shorts sob o vestido); se for blusa, veste calça jeans combinando; se for calça, veste blusa combinando. REGRA CRÍTICA DE COMPRIMENTO: Se a peça for vestido longo ou saia longa que cubra os pés/calçado na referência, MANTENHA O COMPRIMENTO LONGO ATÉ O CHÃO cobrindo os pés. NÃO é obrigatório aparecer calçado e é TERMINANTEMENTE PROIBIDO encurtar vestidos longos para mostrar calçado.
 4. MÁXIMA NITIDEZ, FOCO ÓPTICO CRISTALINO E ALTA RESOLUÇÃO:
 - Preserve a imagem com nitidez fotográfica impecável e foco cristalino, sem nenhum borrão, névoa ou perda de textura.
 - Pele humana realista e natural com microtextura e poros visíveis, olhos vívidos e nítidos, e textura detalhada do tecido com iluminação de câmera moderna topo de linha (iPhone 16 Pro).
