@@ -6774,24 +6774,69 @@ async function handleProdutos2AuditVideoBatch(req, res) {
       return res.status(400).json({ success: false, error: "Nenhuma foto de refer\xEAncia de cores/produto fornecida." });
     }
     const lockContext = Array.isArray(productLock) ? productLock.join("; ") : "";
-    const systemInstruction = `Voc\xEA \xE9 o Perito Visual Chefe em Auditoria de V\xEDdeos em Lote para TikTok Shop e E-commerce.
-O usu\xE1rio anexou ${photosList.length} Foto(s) de Refer\xEAncia Oficiais com as cores e varia\xE7\xF5es do produto "${productName}".
+    const systemInstruction = `Voc\xEA \xE9 o Perito Visual Chefe em Auditoria Forense de Produtos e Vestu\xE1rio para TikTok Shop e E-commerce.
+O usu\xE1rio anexou ${photosList.length} Foto(s) de Refer\xEAncia Oficiais com o corte, formato, modelagem e cores do produto "${productName}".
 E anexou ${batchVideos.length} v\xEDdeo(s) gerados para aprova\xE7\xE3o em lote (at\xE9 25 v\xEDdeos).
 
-SUA MISS\xC3O RIGOROSA PARA CADA UM DOS ${batchVideos.length} V\xCDDEOS:
-1. IDENTIFICA\xC7\xC3O DA COR/VARIA\xC7\xC3O:
-   - Olhe para as capturas de cada v\xEDdeo e identifique qual das cores/varia\xE7\xF5es oficiais das fotos de refer\xEAncia est\xE1 retratada.
-   - Preencha "detectedColor" com o nome ou tom da cor identificada (ex: "Preto", "Rosa Beb\xEA", "Azul Marinho", "Verde Militar", etc.).
+DIRETRIZ DE SEVERIDADE DO TIKTOK SHOP (LEI INEGOCI\xC1VEL):
+\u26A0\uFE0F 1. MUDAN\xC7A DE FORMATO / MODELAGEM DA PE\xC7A \xC9 GRAV\xCDSSIMA (INFRA\xC7\xC3O CR\xCDTICA):
+No TikTok Shop, o produto entregue ao cliente deve ter EXATAMENTE o mesmo corte e silhueta do v\xEDdeo exibido no an\xFAncio. Mudar o formato causa strike imediato por "Produto n\xE3o condizente com o an\xFAncio" ou suspens\xE3o da conta comercial.
+Voc\xEA DEVE auditar com rigor pericial 4 pilares estruturais da roupa em CADA V\xCDDEO:
 
-2. VERIFICA\xC7\xC3O DE FIDELIDADE (REGRA ANTI-BANIMENTO TIKTOK SHOP):
-   - Aprove ("approved": true, status "green", score >= 90): Se o produto for id\xEAntico \xE0 foto de refer\xEAncia daquela cor (mesmo formato, propor\xE7\xF5es reais, acabamento, al\xE7as, bolsos, decote ou costura).
-   - Reprove ("approved": false, status "red", score < 70): Se o produto apresentar defeito real evidente (ex: c\xE2mera extra em celular, fivela ou detalhe que sumiu, bot\xF5es inexistentes, formato deformado, ou troca de cor abrupta).
-   - "issue": Descreva em portugu\xEAs com clareza a conclus\xE3o (ex: "\u{1F7E2} Aprovado: 100% consistente com a refer\xEAncia da cor Azul", ou "\u{1F534} Reprovado: fivela frontal ausente no segundo 4s").
-   - "defectSecond": Se houver erro, indique o segundo aproximado (ex: 4), ou null se estiver tudo certo.
+A) PE\xC7A INFERIOR \u2014 SHORTS/BERMUDA vs SAIA (CRIT\xC9RIO ZERO TOLER\xC2NCIA):
+- Se a refer\xEAncia for Shorts, Bermuda ou Cal\xE7a: O v\xEDdeo DEVE OBRIGATORIAMENTE exibir a estrutura de DUAS PERNAS SEPARADAS (com abertura entrepernas/gancho/cavalo n\xEDtido e barras separadas em cada perna).
+- Se no v\xEDdeo a pe\xE7a apresentar formato de saia curta/minissaia, com caimento cont\xEDnuo de tecido em sino ou tubo ao redor das coxas, sem a divis\xE3o n\xEDtida de duas pernas: REPROVA\xC7\xC3O IMEDIATA (score <= 45, approved: false, status: "red")!
+- Da mesma forma, se a refer\xEAncia for saia/vestido, n\xE3o pode virar shorts.
 
-3. REGRAS DE TOLER\xC2NCIA REALISTA:
-   - N\xE3o reprove por \xE2ngulo de c\xE2mera diferente ou pose natural da modelo/m\xE3o.
-   - N\xE3o reprove frente do produto por n\xE3o ter detalhes da traseira.
+B) COMPRIMENTO E COBERTURA CORPORAL \u2014 BLUSA COBRINDO BARRIGA vs CROPPED / PELE EXPOSTA:
+- Observe o comprimento exato da blusa/topo na foto de refer\xEAncia.
+- Se na refer\xEAncia a blusa cobre o abd\xF4men, cintura e umbigo com caimento frontal fechado: Se no v\xEDdeo a blusa estiver mais curta (cropped), subida, ou com aberturas laterais/frontais que deixem a barriga, umbigo ou cintura exposta: REPROVA\xC7\xC3O IMEDIATA (score <= 45, approved: false, status: "red")!
+- O comprimento de saias e vestidos tamb\xE9m deve ser fiel (vestido midi n\xE3o pode virar mini curto).
+
+C) ESTRUTURA DE OMBROS, DECOTES, MANGAS E ACABAMENTOS:
+- Se na refer\xEAncia o ombro possui amarra\xE7\xE3o com faixa de tecido/n\xF3 simples: Se no v\xEDdeo surgir um volume adicional inventado de tecido com apar\xEAncia de babado, sobreposi\xE7\xE3o, volante ou manga bufante: REPROVA\xC7\xC3O IMEDIATA (score <= 45, approved: false, status: "red")!
+- N\xE3o permita inven\xE7\xE3o de golas, bot\xF5es extras, z\xEDperes onde n\xE3o havia ou al\xE7as modificadas.
+
+D) DETALHES EXTRAS OU INVENTADOS:
+- Bot\xF5es que n\xE3o existem na refer\xEAncia, bolsos inventados, pregas ou drapeados adicionados onde era liso: REPROVA\xC7\xC3O IMEDIATA (score <= 45, approved: false, status: "red")!
+
+\u26A0\uFE0F 2. COR E ILUMINA\xC7\xC3O \xC9 CRIT\xC9RIO LEVE (ALTA TOLER\xC2NCIA \u2014 ZERO FALSAS REPROVA\xC7\xD5ES):
+- No TikTok Shop e em v\xEDdeos gerados, varia\xE7\xF5es normais de ilumina\xE7\xE3o de grava\xE7\xE3o (luz amarela do quarto, l\xE2mpadas quentes/frias, sombra natural de espelho, reflexos, contraste ou satura\xE7\xE3o de compress\xE3o do v\xEDdeo) s\xE3o NORMAIS e ACEITAS.
+- Se o produto no v\xEDdeo apresentar a mesma cor base / fam\xEDlia de uma das fotos de refer\xEAncia (ex: tom de rosa, azul, verde, bege, branco, preto, etc.), MESMO QUE APARENTE MAIS CLARO OU ESCURO DEVIDO \xC0 ILUMINA\xC7\xC3O DO V\xCDDEO, CONSIDERE COR CORRETA E N\xC3O REPROVE POR COR!
+- NUNCA reprove um v\xEDdeo por varia\xE7\xE3o de tom, sombra ou luz!
+- S\xF3 aponte diverg\xEAncia de cor se for uma cor inteiramente diferente e ausente na cartela (ex: um conjunto vermelho quando a refer\xEAncia s\xF3 existe em azul e preto).
+
+3. PADR\xC3O OBRIGAT\xD3RIO DO CAMPO "issue" PARA CADA V\xCDDEO:
+Quando o v\xEDdeo for REPROVADO (approved: false), preencha o campo "issue" com clareza forense estruturada, exatamente no padr\xE3o:
+"\u{1F534} Reprovado \u2014 [Tipo do Erro]:
+O que mudou:
+- [Item 1 explicando o que a refer\xEAncia original apresentava]
+- [Item 2 explicando o que o v\xEDdeo alterou ou inventou]
+- [Item 3 apontando aus\xEAncia de elemento obrigat\xF3rio, se houver]
+O que observei:
+- [Evid\xEAncia visual clara identificada nas capturas do v\xEDdeo]"
+
+Exemplo 1 (Shorts virou Saia):
+"\u{1F534} Reprovado \u2014 Formato/Modelagem Incorreto:
+O que mudou:
+- Na refer\xEAncia original, a parte inferior \xE9 um shorts, com duas pernas separadas e barras dobradas.
+- No v\xEDdeo, a pe\xE7a apresenta formato de saia curta, com caimento cont\xEDnuo ao redor das pernas.
+- Nas capturas examinadas, n\xE3o consigo identificar a estrutura de duas pernas do shorts original.
+O que observei:
+- O tecido fecha em tubo cont\xEDnuo entre as coxas, caracterizando saia."
+
+Exemplo 2 (Blusa encurtada / Barriga exposta / Ombro com babado):
+"\u{1F534} Reprovado \u2014 Formato e Acabamento Incorreto:
+O que mudou:
+- Na refer\xEAncia, a blusa apresenta caimento frontal mais fechado, cobrindo a regi\xE3o da cintura.
+- No v\xEDdeo, aparece uma abertura lateral que deixa parte da barriga exposta.
+O que observei:
+- Na refer\xEAncia, o ombro apresenta uma amarra\xE7\xE3o com uma faixa de tecido.
+- No v\xEDdeo, aparece um volume adicional de tecido, com apar\xEAncia de babado ou sobreposi\xE7\xE3o sobre o ombro.
+- O acabamento parece diferente do apresentado na foto original."
+
+Quando o v\xEDdeo for APROVADO (approved: true):
+"\u{1F7E2} Aprovado: Produto 100% fiel \xE0 refer\xEAncia oficial da cor [Cor]. Corte, caimento, comprimento fechado na cintura e divis\xE3o de pernas preservados perfeitamente."
 
 Retorne ESTRITAMENTE um objeto JSON com o formato:
 {
@@ -6806,11 +6851,11 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
       "id": "id_do_video",
       "videoFileName": "nome_do_arquivo.mp4",
       "detectedColor": "Nome da cor identificada",
-      "score": 95,
-      "status": "green",
-      "approved": true,
-      "issue": "Motivo da aprova\xE7\xE3o ou detalhe do erro se reprovado",
-      "defectSecond": null
+      "score": number, // 92 a 100 se aprovado; <= 45 se reprovado
+      "status": "green" | "red",
+      "approved": boolean,
+      "issue": "Texto estruturado conforme instru\xE7\xE3o acima",
+      "defectSecond": number | null
     }
   ]
 }`;
@@ -6825,7 +6870,7 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
         photosList.slice(0, 10).forEach((photo, idx) => {
           contentBlocks.push({
             type: "text",
-            text: `[FOTO DE REFER\xCANCIA OFICIAL #${idx + 1} \u2014 COR/VARIA\xC7\xC3O DO PRODUTO "${productName}"]:`
+            text: `[FOTO DE REFER\xCANCIA OFICIAL #${idx + 1} \u2014 COR/VARIA\xC7\xC3O DO PRODUTO "${productName}"]: `
           });
           contentBlocks.push({
             type: "image_url",
@@ -6843,7 +6888,11 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
             type: "text",
             text: `
 === [V\xCDDEO DO LOTE #${vIdx + 1} \u2014 "${vName}" (ID: ${vId}, DURA\xC7\xC3O: ${vItem.videoDurationSeconds || 10}s)] ===
-Inspecione as ${frames.length} capturas abaixo deste v\xEDdeo contra as Fotos de Refer\xEAncia:`
+Execute a auditoria estrutural forense destas ${frames.length} capturas contra as fotos de refer\xEAncia:
+1. Pe\xE7a inferior: \xC9 shorts/bermuda com 2 pernas separadas e entrepernas n\xEDtido, ou virou saia cont\xEDnua sem divis\xE3o de pernas?
+2. Comprimento e cintura: A blusa cobre a cintura e o abd\xF4men como a refer\xEAncia, ou subiu/encurtou virando cropped e expondo a barriga/umbigo?
+3. Ombros e acabamentos: A amarra\xE7\xE3o de faixa de tecido foi mantida, ou surgiu volume/babado/volante inventado?
+4. Cor (Toler\xE2ncia alta): Pertence \xE0 mesma fam\xEDlia crom\xE1tica de alguma refer\xEAncia? Se sim, aprove (ignore varia\xE7\xF5es de sombra e ilumina\xE7\xE3o de espelho).`
           });
           frames.forEach((f, fIdx) => {
             if (!f.frameBase64) return;
@@ -6876,8 +6925,8 @@ Trava do produto: ${lockContext}` : ""}`
                 { role: "user", content: contentBlocks }
               ],
               response_format: { type: "json_object" },
-              temperature: 0.1,
-              max_tokens: 3800
+              temperature: 0,
+              max_tokens: 4800
             });
             usedModel = modelCandidate;
             parsed = JSON.parse(completion.choices[0]?.message?.content || "{}");
@@ -6908,7 +6957,12 @@ Trava do produto: ${lockContext}` : ""}`
           const frames = Array.isArray(vItem.frames) ? vItem.frames : [];
           parts.push({
             text: `
-=== [V\xCDDEO DO LOTE #${vIdx + 1} \u2014 "${vName}" (ID: ${vId})] ===:`
+=== [V\xCDDEO DO LOTE #${vIdx + 1} \u2014 "${vName}" (ID: ${vId})] ===:
+Execute a auditoria estrutural forense destas ${frames.length} capturas contra as fotos de refer\xEAncia:
+1. Pe\xE7a inferior: \xC9 shorts com 2 pernas separadas, ou virou saia cont\xEDnua?
+2. Comprimento e cintura: Cobre a cintura/abd\xF4men, ou virou cropped expondo a barriga?
+3. Ombros e acabamentos: Amarra\xE7\xE3o de faixa preservada, ou virou babado/volante?
+4. Cor: Pertence \xE0 mesma fam\xEDlia de cores? Se sim, aprove (ignore sombras).`
           });
           frames.forEach((f, fIdx) => {
             if (!f.frameBase64) return;
@@ -6943,20 +6997,41 @@ Analise os ${batchVideos.length} v\xEDdeos acima contra as ${photosList.length} 
     }
     const normalizedResults = batchVideos.map((bv, idx) => {
       const match = parsed.results.find((r) => r.id === bv.id || r.videoFileName === bv.videoFileName) || parsed.results[idx] || {};
+      let approved = match.approved !== void 0 ? Boolean(match.approved) : true;
       const rawScore = Number(match.score);
-      const score = !isNaN(rawScore) ? Math.max(0, Math.min(100, Math.round(rawScore))) : 90;
-      const approved = match.approved !== void 0 ? Boolean(match.approved) : score >= 85;
-      const status = match.status && ["green", "yellow", "orange", "red"].includes(match.status) ? match.status : score >= 90 ? "green" : score >= 75 ? "yellow" : score >= 60 ? "orange" : "red";
+      let score = !isNaN(rawScore) ? Math.max(0, Math.min(100, Math.round(rawScore))) : approved ? 95 : 45;
+      const issueText = String(match.issue || "").trim();
+      const issueLower = issueText.toLowerCase();
+      if (issueLower.includes("reprovad") || issueLower.includes("mudou") || issueLower.includes("saia") && issueLower.includes("shorts") || issueLower.includes("barriga") || issueLower.includes("cropped") || issueLower.includes("babado") || score < 70) {
+        if (!issueLower.includes("aprovado") || score < 70) {
+          approved = false;
+        }
+      }
+      if (!approved) {
+        score = Math.min(score, 48);
+      } else {
+        score = Math.max(score, 92);
+      }
+      const status = approved ? "green" : "red";
+      const detectedColor = String(match.detectedColor || "Padr\xE3o / Conforme Refer\xEAncia").trim();
+      let finalIssue = issueText;
+      if (approved && (!finalIssue || !finalIssue.includes("Aprovado"))) {
+        finalIssue = `\u{1F7E2} Aprovado: Produto 100% fiel \xE0 refer\xEAncia oficial da cor ${detectedColor}. Corte, modelagem, caimento fechado na cintura e estrutura de pernas preservados perfeitamente.`;
+      } else if (!approved && !finalIssue) {
+        finalIssue = `\u{1F534} Reprovado \u2014 Formato ou Modelagem Divergente:
+O que mudou:
+- Foram identificadas altera\xE7\xF5es no formato ou acabamento da pe\xE7a em rela\xE7\xE3o \xE0s fotos de refer\xEAncia.
+O que observei:
+- Diverg\xEAncia visual vis\xEDvel nas capturas do v\xEDdeo.`;
+      }
       return {
         id: bv.id || `video_${idx + 1}`,
         videoFileName: bv.videoFileName || `V\xEDdeo ${idx + 1}`,
-        detectedColor: String(match.detectedColor || "Padr\xE3o / Conforme Refer\xEAncia").trim(),
+        detectedColor,
         score,
         status,
         approved,
-        issue: String(
-          match.issue || (approved ? "Produto consistente com a refer\xEAncia." : "Diverg\xEAncia identificada.")
-        ).trim(),
+        issue: finalIssue,
         defectSecond: match.defectSecond !== void 0 && match.defectSecond !== null ? Number(match.defectSecond) : null
       };
     });
@@ -6971,7 +7046,7 @@ Analise os ${batchVideos.length} v\xEDdeos acima contra as ${photosList.length} 
         totalVideos: normalizedResults.length,
         approvedCount,
         rejectedCount,
-        overview: parsed.batchSummary?.overview || `Foram auditados ${normalizedResults.length} v\xEDdeos. ${approvedCount} aprovados para publica\xE7\xE3o e ${rejectedCount} com ressalvas/diverg\xEAncias.`
+        overview: parsed.batchSummary?.overview || `Foram auditados ${normalizedResults.length} v\xEDdeos. ${approvedCount} aprovados para publica\xE7\xE3o no TikTok Shop e ${rejectedCount} com ressalvas/diverg\xEAncias de modelagem.`
       },
       results: normalizedResults,
       usage: {
@@ -7032,7 +7107,16 @@ DIRETRIZES FUNDAMENTAIS DE PER\xCDCIA VISUAL (PRECIS\xC3O M\xC1XIMA E ZERO FALSO
    - BOT\xD5ES LATERAIS E PERFIL: Se o frame N\xC3O for um close focado explicitamente no perfil lateral do aparelho (por exemplo, se o aparelho estiver de costas, de frente, em movimento ou \xE0 dist\xE2ncia), \xC9 TERMINANTEMENTE PROIBIDO exigir que bot\xF5es laterais estejam vis\xEDveis ou reprovar o frame porque um bot\xE3o lateral n\xE3o aparece! Detalhes laterais s\xF3 s\xE3o auditados se houver um close n\xEDtido da borda/lateral no v\xEDdeo.
    - TRASEIRA DO APARELHO: Avalie as c\xE2meras traseiras APENAS quando a tampa traseira estiver de fato vis\xEDvel na dire\xE7\xE3o da c\xE2mera.
 
-2. REGRAS CIR\xDARGICAS PARA C\xC2MERAS TRASEIRAS E FLASH LED:
+2. REGRAS CIR\xDARGICAS PARA MODA / VESTU\xC1RIO (CRIT\xC9RIOS TIKTOK SHOP):
+   - MUDAN\xC7A DE FORMATO / MODELAGEM \xC9 GRAV\xCDSSIMA (INFRA\xC7\xC3O CR\xCDTICA):
+     * PE\xC7A INFERIOR: Se a refer\xEAncia for Shorts ou Bermuda, o v\xEDdeo DEVE exibir a divis\xE3o de DUAS PERNAS SEPARADAS (com gancho/entrepernas e barras separadas). Se virar saia curta com caimento cont\xEDnuo ao redor das pernas, REPROVE IMEDIATAMENTE (< 50%, status "red").
+     * COMPRIMENTO E CINTURA: Se a blusa original cobre o abd\xF4men e a cintura, ela N\xC3O pode encurtar virando cropped nem deixar a barriga exposta. Se houver barriga exposta ou abertura lateral indevida, REPROVE IMEDIATAMENTE (< 50%, status "red").
+     * OMBROS E MANGAS: Se a refer\xEAncia for amarra\xE7\xE3o de faixa de tecido simples, n\xE3o permita volume adicional de babado, sobreposi\xE7\xE3o ou volante inventado.
+     * ELEMENTOS EXTRAS: Bot\xF5es adicionais, bolsos ou recortes que n\xE3o existem na refer\xEAncia reprovam o frame.
+   - COR E ILUMINA\xC7\xC3O \xC9 CRIT\xC9RIO LEVE (ALTA TOLER\xC2NCIA \u2014 ZERO FALSOS POSITIVOS):
+     * Varia\xE7\xF5es de ilumina\xE7\xE3o do ambiente (luz amarela do quarto, sombra de espelho, reflexos ou satura\xE7\xE3o de v\xEDdeo) N\xC3O S\xC3O MUDAN\xC7A DE COR. Se a pe\xE7a for da mesma fam\xEDlia de cores da refer\xEAncia, APROVE EM VERDE (>= 92%). NUNCA reprove por varia\xE7\xE3o de sombra ou luz!
+
+3. REGRAS CIR\xDARGICAS PARA DISPOSITIVOS ELETR\xD4NICOS E GERAL:
    - DISTIN\xC7\xC3O ENTRE FLASH LED E C\xC2MERA EXTRA:
      * O design CORRETO de refer\xEAncia possui: carca\xE7a lisa sem ilha elevada, 2 lentes circulares pretas grandes e 1 pequeno flash circular claro ao lado da lente superior.
      * O flash LED claro N\xC3O \xE9 uma lente. Quando o aparelho tiver as 2 lentes e o flash claro (ex: em 1s), O PRODUTO EST\xC1 CORRETO. Aprove o frame em VERDE (>= 92%).
@@ -7115,7 +7199,7 @@ Retorne ESTRITAMENTE um objeto JSON v\xE1lido em portugu\xEAs com este formato (
         }
         const lowerIssue = issue.toLowerCase();
         const issueExplicitlyClean = lowerIssue.includes("sem inconsist") || lowerIssue.includes("sem diverg") || lowerIssue.includes("sem distor") || lowerIssue.includes("sem erro") || lowerIssue.includes("id\xEAntic") || lowerIssue.includes("fiel \xE0 refer\xEAncia") || lowerIssue.includes("fiel \xE0s refer\xEAncias") || lowerIssue.includes("consistente com a refer\xEAncia") || lowerIssue.includes("consistente com as refer\xEAncia") || lowerIssue.includes("produto consistente") || lowerIssue.includes("correto") || lowerIssue.includes("aprovado");
-        const issueMentionsDefect = !issueExplicitlyClean && (lowerIssue.includes("c\xE2mera extra") || lowerIssue.includes("lente extra") || lowerIssue.includes("terceira c\xE2mera") || lowerIssue.includes("terceira lente") || lowerIssue.includes("tr\xEAs lentes") || lowerIssue.includes("3 lentes") || lowerIssue.includes("c\xE2mera a mais") || lowerIssue.includes("lente a mais") || lowerIssue.includes("bloco elevado") || lowerIssue.includes("m\xF3dulo retangular") || lowerIssue.includes("m\xF3dulo traseiro") || lowerIssue.includes("ilha") || lowerIssue.includes("c\xE2meras diferentes") || lowerIssue.includes("desproporcional") || lowerIssue.includes("muito maior") || lowerIssue.includes("gigante") || lowerIssue.includes("configura\xE7\xE3o diferente") || lowerIssue.includes("diverg") || lowerIssue.includes("inconsist") || lowerIssue.includes("incorret") || lowerIssue.includes("diferente da refer\xEAncia") || lowerIssue.includes("deforma"));
+        const issueMentionsDefect = !issueExplicitlyClean && (lowerIssue.includes("c\xE2mera extra") || lowerIssue.includes("lente extra") || lowerIssue.includes("terceira c\xE2mera") || lowerIssue.includes("terceira lente") || lowerIssue.includes("tr\xEAs lentes") || lowerIssue.includes("3 lentes") || lowerIssue.includes("c\xE2mera a mais") || lowerIssue.includes("lente a mais") || lowerIssue.includes("bloco elevado") || lowerIssue.includes("m\xF3dulo retangular") || lowerIssue.includes("m\xF3dulo traseiro") || lowerIssue.includes("ilha") || lowerIssue.includes("c\xE2meras diferentes") || lowerIssue.includes("desproporcional") || lowerIssue.includes("muito maior") || lowerIssue.includes("gigante") || lowerIssue.includes("configura\xE7\xE3o diferente") || lowerIssue.includes("diverg") || lowerIssue.includes("inconsist") || lowerIssue.includes("incorret") || lowerIssue.includes("diferente da refer\xEAncia") || lowerIssue.includes("deforma") || lowerIssue.includes("saia") && lowerIssue.includes("shorts") || lowerIssue.includes("barriga") || lowerIssue.includes("cropped") || lowerIssue.includes("babado") || lowerIssue.includes("mudou") || lowerIssue.includes("reprovad"));
         if (issueExplicitlyClean) {
           score = 94;
         } else if (issueMentionsDefect || score < 60) {

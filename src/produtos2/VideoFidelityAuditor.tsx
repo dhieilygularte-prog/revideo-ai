@@ -369,10 +369,11 @@ async function extractKeyFramesForBatchVideo(
       const durationSeconds = Math.round(rawDuration * 10) / 10;
 
       const targetTimes: number[] = [];
-      const interval = Math.max(1, (durationSeconds - 0.4) / (frameCount - 1));
+      const startT = Math.min(1.0, Math.max(0.6, durationSeconds * 0.08));
+      const endT = Math.max(startT + 1, durationSeconds - 0.5);
+      const step = (endT - startT) / Math.max(1, frameCount - 1);
       for (let i = 0; i < frameCount; i++) {
-        const t = Math.min(durationSeconds - 0.1, Math.max(0.08, i * interval));
-        targetTimes.push(Math.round(t * 10) / 10);
+        targetTimes.push(Math.round((startT + step * i) * 10) / 10);
       }
 
       const canvas = document.createElement('canvas');
@@ -385,7 +386,8 @@ async function extractKeyFramesForBatchVideo(
 
       let w = video.videoWidth || 720;
       let h = video.videoHeight || 1280;
-      const maxSide = 480;
+      // 640px para 9:16 vertical = 360x640px (78% mais nitidez nos cortes de entrepernas, barriga e detalhes)
+      const maxSide = 640;
       if (w > maxSide || h > maxSide) {
         if (w > h) {
           h = Math.round((h * maxSide) / w);
@@ -409,7 +411,7 @@ async function extractKeyFramesForBatchVideo(
             video.removeEventListener('seeked', onSeeked);
             try {
               ctx.drawImage(video, 0, 0, w, h);
-              const b64 = canvas.toDataURL('image/jpeg', 0.78);
+              const b64 = canvas.toDataURL('image/jpeg', 0.80);
               extracted.push({ second: time, frameBase64: b64 });
             } catch (drawErr) {
               console.warn('Erro ao desenhar frame do lote:', drawErr);
@@ -1487,9 +1489,10 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
                             </span>
                           </div>
 
-                          <p className="text-[11px] text-zinc-300 line-clamp-3 leading-snug">
+                          {/* Laudo Forense Estruturado */}
+                          <div className="text-[11px] text-zinc-300 whitespace-pre-line leading-relaxed bg-black/40 p-2.5 rounded-xl border border-white/5 select-text">
                             {item.issue}
-                          </p>
+                          </div>
 
                           {item.defectSecond !== null && item.defectSecond !== undefined && (
                             <span className="inline-block text-[10px] font-black text-rose-300 bg-rose-950/60 border border-rose-500/40 px-2 py-0.5 rounded">

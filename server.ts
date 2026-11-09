@@ -5869,24 +5869,69 @@ async function handleProdutos2AuditVideoBatch(req: any, res: any) {
 
     const lockContext = Array.isArray(productLock) ? productLock.join('; ') : '';
 
-    const systemInstruction = `Você é o Perito Visual Chefe em Auditoria de Vídeos em Lote para TikTok Shop e E-commerce.
-O usuário anexou ${photosList.length} Foto(s) de Referência Oficiais com as cores e variações do produto "${productName}".
+    const systemInstruction = `Você é o Perito Visual Chefe em Auditoria Forense de Produtos e Vestuário para TikTok Shop e E-commerce.
+O usuário anexou ${photosList.length} Foto(s) de Referência Oficiais com o corte, formato, modelagem e cores do produto "${productName}".
 E anexou ${batchVideos.length} vídeo(s) gerados para aprovação em lote (até 25 vídeos).
 
-SUA MISSÃO RIGOROSA PARA CADA UM DOS ${batchVideos.length} VÍDEOS:
-1. IDENTIFICAÇÃO DA COR/VARIAÇÃO:
-   - Olhe para as capturas de cada vídeo e identifique qual das cores/variações oficiais das fotos de referência está retratada.
-   - Preencha "detectedColor" com o nome ou tom da cor identificada (ex: "Preto", "Rosa Bebê", "Azul Marinho", "Verde Militar", etc.).
+DIRETRIZ DE SEVERIDADE DO TIKTOK SHOP (LEI INEGOCIÁVEL):
+⚠️ 1. MUDANÇA DE FORMATO / MODELAGEM DA PEÇA É GRAVÍSSIMA (INFRAÇÃO CRÍTICA):
+No TikTok Shop, o produto entregue ao cliente deve ter EXATAMENTE o mesmo corte e silhueta do vídeo exibido no anúncio. Mudar o formato causa strike imediato por "Produto não condizente com o anúncio" ou suspensão da conta comercial.
+Você DEVE auditar com rigor pericial 4 pilares estruturais da roupa em CADA VÍDEO:
 
-2. VERIFICAÇÃO DE FIDELIDADE (REGRA ANTI-BANIMENTO TIKTOK SHOP):
-   - Aprove ("approved": true, status "green", score >= 90): Se o produto for idêntico à foto de referência daquela cor (mesmo formato, proporções reais, acabamento, alças, bolsos, decote ou costura).
-   - Reprove ("approved": false, status "red", score < 70): Se o produto apresentar defeito real evidente (ex: câmera extra em celular, fivela ou detalhe que sumiu, botões inexistentes, formato deformado, ou troca de cor abrupta).
-   - "issue": Descreva em português com clareza a conclusão (ex: "🟢 Aprovado: 100% consistente com a referência da cor Azul", ou "🔴 Reprovado: fivela frontal ausente no segundo 4s").
-   - "defectSecond": Se houver erro, indique o segundo aproximado (ex: 4), ou null se estiver tudo certo.
+A) PEÇA INFERIOR — SHORTS/BERMUDA vs SAIA (CRITÉRIO ZERO TOLERÂNCIA):
+- Se a referência for Shorts, Bermuda ou Calça: O vídeo DEVE OBRIGATORIAMENTE exibir a estrutura de DUAS PERNAS SEPARADAS (com abertura entrepernas/gancho/cavalo nítido e barras separadas em cada perna).
+- Se no vídeo a peça apresentar formato de saia curta/minissaia, com caimento contínuo de tecido em sino ou tubo ao redor das coxas, sem a divisão nítida de duas pernas: REPROVAÇÃO IMEDIATA (score <= 45, approved: false, status: "red")!
+- Da mesma forma, se a referência for saia/vestido, não pode virar shorts.
 
-3. REGRAS DE TOLERÂNCIA REALISTA:
-   - Não reprove por ângulo de câmera diferente ou pose natural da modelo/mão.
-   - Não reprove frente do produto por não ter detalhes da traseira.
+B) COMPRIMENTO E COBERTURA CORPORAL — BLUSA COBRINDO BARRIGA vs CROPPED / PELE EXPOSTA:
+- Observe o comprimento exato da blusa/topo na foto de referência.
+- Se na referência a blusa cobre o abdômen, cintura e umbigo com caimento frontal fechado: Se no vídeo a blusa estiver mais curta (cropped), subida, ou com aberturas laterais/frontais que deixem a barriga, umbigo ou cintura exposta: REPROVAÇÃO IMEDIATA (score <= 45, approved: false, status: "red")!
+- O comprimento de saias e vestidos também deve ser fiel (vestido midi não pode virar mini curto).
+
+C) ESTRUTURA DE OMBROS, DECOTES, MANGAS E ACABAMENTOS:
+- Se na referência o ombro possui amarração com faixa de tecido/nó simples: Se no vídeo surgir um volume adicional inventado de tecido com aparência de babado, sobreposição, volante ou manga bufante: REPROVAÇÃO IMEDIATA (score <= 45, approved: false, status: "red")!
+- Não permita invenção de golas, botões extras, zíperes onde não havia ou alças modificadas.
+
+D) DETALHES EXTRAS OU INVENTADOS:
+- Botões que não existem na referência, bolsos inventados, pregas ou drapeados adicionados onde era liso: REPROVAÇÃO IMEDIATA (score <= 45, approved: false, status: "red")!
+
+⚠️ 2. COR E ILUMINAÇÃO É CRITÉRIO LEVE (ALTA TOLERÂNCIA — ZERO FALSAS REPROVAÇÕES):
+- No TikTok Shop e em vídeos gerados, variações normais de iluminação de gravação (luz amarela do quarto, lâmpadas quentes/frias, sombra natural de espelho, reflexos, contraste ou saturação de compressão do vídeo) são NORMAIS e ACEITAS.
+- Se o produto no vídeo apresentar a mesma cor base / família de uma das fotos de referência (ex: tom de rosa, azul, verde, bege, branco, preto, etc.), MESMO QUE APARENTE MAIS CLARO OU ESCURO DEVIDO À ILUMINAÇÃO DO VÍDEO, CONSIDERE COR CORRETA E NÃO REPROVE POR COR!
+- NUNCA reprove um vídeo por variação de tom, sombra ou luz!
+- Só aponte divergência de cor se for uma cor inteiramente diferente e ausente na cartela (ex: um conjunto vermelho quando a referência só existe em azul e preto).
+
+3. PADRÃO OBRIGATÓRIO DO CAMPO "issue" PARA CADA VÍDEO:
+Quando o vídeo for REPROVADO (approved: false), preencha o campo "issue" com clareza forense estruturada, exatamente no padrão:
+"🔴 Reprovado — [Tipo do Erro]:
+O que mudou:
+- [Item 1 explicando o que a referência original apresentava]
+- [Item 2 explicando o que o vídeo alterou ou inventou]
+- [Item 3 apontando ausência de elemento obrigatório, se houver]
+O que observei:
+- [Evidência visual clara identificada nas capturas do vídeo]"
+
+Exemplo 1 (Shorts virou Saia):
+"🔴 Reprovado — Formato/Modelagem Incorreto:
+O que mudou:
+- Na referência original, a parte inferior é um shorts, com duas pernas separadas e barras dobradas.
+- No vídeo, a peça apresenta formato de saia curta, com caimento contínuo ao redor das pernas.
+- Nas capturas examinadas, não consigo identificar a estrutura de duas pernas do shorts original.
+O que observei:
+- O tecido fecha em tubo contínuo entre as coxas, caracterizando saia."
+
+Exemplo 2 (Blusa encurtada / Barriga exposta / Ombro com babado):
+"🔴 Reprovado — Formato e Acabamento Incorreto:
+O que mudou:
+- Na referência, a blusa apresenta caimento frontal mais fechado, cobrindo a região da cintura.
+- No vídeo, aparece uma abertura lateral que deixa parte da barriga exposta.
+O que observei:
+- Na referência, o ombro apresenta uma amarração com uma faixa de tecido.
+- No vídeo, aparece um volume adicional de tecido, com aparência de babado ou sobreposição sobre o ombro.
+- O acabamento parece diferente do apresentado na foto original."
+
+Quando o vídeo for APROVADO (approved: true):
+"🟢 Aprovado: Produto 100% fiel à referência oficial da cor [Cor]. Corte, caimento, comprimento fechado na cintura e divisão de pernas preservados perfeitamente."
 
 Retorne ESTRITAMENTE um objeto JSON com o formato:
 {
@@ -5901,11 +5946,11 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
       "id": "id_do_video",
       "videoFileName": "nome_do_arquivo.mp4",
       "detectedColor": "Nome da cor identificada",
-      "score": 95,
-      "status": "green",
-      "approved": true,
-      "issue": "Motivo da aprovação ou detalhe do erro se reprovado",
-      "defectSecond": null
+      "score": number, // 92 a 100 se aprovado; <= 45 se reprovado
+      "status": "green" | "red",
+      "approved": boolean,
+      "issue": "Texto estruturado conforme instrução acima",
+      "defectSecond": number | null
     }
   ]
 }`;
@@ -5923,7 +5968,7 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
         photosList.slice(0, 10).forEach((photo, idx) => {
           contentBlocks.push({
             type: 'text',
-            text: `[FOTO DE REFERÊNCIA OFICIAL #${idx + 1} — COR/VARIAÇÃO DO PRODUTO "${productName}"]:`,
+            text: `[FOTO DE REFERÊNCIA OFICIAL #${idx + 1} — COR/VARIAÇÃO DO PRODUTO "${productName}"]: `,
           });
           contentBlocks.push({
             type: 'image_url',
@@ -5941,7 +5986,7 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
 
           contentBlocks.push({
             type: 'text',
-            text: `\n=== [VÍDEO DO LOTE #${vIdx + 1} — "${vName}" (ID: ${vId}, DURAÇÃO: ${vItem.videoDurationSeconds || 10}s)] ===\nInspecione as ${frames.length} capturas abaixo deste vídeo contra as Fotos de Referência:`,
+            text: `\n=== [VÍDEO DO LOTE #${vIdx + 1} — "${vName}" (ID: ${vId}, DURAÇÃO: ${vItem.videoDurationSeconds || 10}s)] ===\nExecute a auditoria estrutural forense destas ${frames.length} capturas contra as fotos de referência:\n1. Peça inferior: É shorts/bermuda com 2 pernas separadas e entrepernas nítido, ou virou saia contínua sem divisão de pernas?\n2. Comprimento e cintura: A blusa cobre a cintura e o abdômen como a referência, ou subiu/encurtou virando cropped e expondo a barriga/umbigo?\n3. Ombros e acabamentos: A amarração de faixa de tecido foi mantida, ou surgiu volume/babado/volante inventado?\n4. Cor (Tolerância alta): Pertence à mesma família cromática de alguma referência? Se sim, aprove (ignore variações de sombra e iluminação de espelho).`,
           });
 
           frames.forEach((f: any, fIdx: number) => {
@@ -5976,8 +6021,8 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
                 { role: 'user', content: contentBlocks },
               ],
               response_format: { type: 'json_object' },
-              temperature: 0.1,
-              max_tokens: 3800,
+              temperature: 0.0,
+              max_tokens: 4800,
             });
             usedModel = modelCandidate;
             parsed = JSON.parse(completion.choices[0]?.message?.content || '{}');
@@ -6010,7 +6055,7 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
           const frames = Array.isArray(vItem.frames) ? vItem.frames : [];
 
           parts.push({
-            text: `\n=== [VÍDEO DO LOTE #${vIdx + 1} — "${vName}" (ID: ${vId})] ===:`,
+            text: `\n=== [VÍDEO DO LOTE #${vIdx + 1} — "${vName}" (ID: ${vId})] ===:\nExecute a auditoria estrutural forense destas ${frames.length} capturas contra as fotos de referência:\n1. Peça inferior: É shorts com 2 pernas separadas, ou virou saia contínua?\n2. Comprimento e cintura: Cobre a cintura/abdômen, ou virou cropped expondo a barriga?\n3. Ombros e acabamentos: Amarração de faixa preservada, ou virou babado/volante?\n4. Cor: Pertence à mesma família de cores? Se sim, aprove (ignore sombras).`,
           });
 
           frames.forEach((f: any, fIdx: number) => {
@@ -6053,30 +6098,52 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
         parsed.results[idx] ||
         {};
 
+      let approved = match.approved !== undefined ? Boolean(match.approved) : true;
       const rawScore = Number(match.score);
-      const score = !isNaN(rawScore) ? Math.max(0, Math.min(100, Math.round(rawScore))) : 90;
-      const approved = match.approved !== undefined ? Boolean(match.approved) : score >= 85;
-      const status: 'green' | 'yellow' | 'orange' | 'red' =
-        match.status && ['green', 'yellow', 'orange', 'red'].includes(match.status)
-          ? match.status
-          : score >= 90
-          ? 'green'
-          : score >= 75
-          ? 'yellow'
-          : score >= 60
-          ? 'orange'
-          : 'red';
+      let score = !isNaN(rawScore) ? Math.max(0, Math.min(100, Math.round(rawScore))) : (approved ? 95 : 45);
+
+      const issueText = String(match.issue || '').trim();
+      const issueLower = issueText.toLowerCase();
+
+      // Se o parecer mencionar defeito ou reprovação estrutural, força reprovação estrita
+      if (
+        issueLower.includes('reprovad') ||
+        issueLower.includes('mudou') ||
+        (issueLower.includes('saia') && issueLower.includes('shorts')) ||
+        issueLower.includes('barriga') ||
+        issueLower.includes('cropped') ||
+        issueLower.includes('babado') ||
+        score < 70
+      ) {
+        if (!issueLower.includes('aprovado') || score < 70) {
+          approved = false;
+        }
+      }
+
+      if (!approved) {
+        score = Math.min(score, 48);
+      } else {
+        score = Math.max(score, 92);
+      }
+
+      const status: 'green' | 'yellow' | 'orange' | 'red' = approved ? 'green' : 'red';
+      const detectedColor = String(match.detectedColor || 'Padrão / Conforme Referência').trim();
+
+      let finalIssue = issueText;
+      if (approved && (!finalIssue || !finalIssue.includes('Aprovado'))) {
+        finalIssue = `🟢 Aprovado: Produto 100% fiel à referência oficial da cor ${detectedColor}. Corte, modelagem, caimento fechado na cintura e estrutura de pernas preservados perfeitamente.`;
+      } else if (!approved && !finalIssue) {
+        finalIssue = `🔴 Reprovado — Formato ou Modelagem Divergente:\nO que mudou:\n- Foram identificadas alterações no formato ou acabamento da peça em relação às fotos de referência.\nO que observei:\n- Divergência visual visível nas capturas do vídeo.`;
+      }
 
       return {
         id: bv.id || `video_${idx + 1}`,
         videoFileName: bv.videoFileName || `Vídeo ${idx + 1}`,
-        detectedColor: String(match.detectedColor || 'Padrão / Conforme Referência').trim(),
+        detectedColor,
         score,
         status,
         approved,
-        issue: String(
-          match.issue || (approved ? 'Produto consistente com a referência.' : 'Divergência identificada.')
-        ).trim(),
+        issue: finalIssue,
         defectSecond: match.defectSecond !== undefined && match.defectSecond !== null ? Number(match.defectSecond) : null,
       };
     });
@@ -6096,7 +6163,7 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
         rejectedCount,
         overview:
           parsed.batchSummary?.overview ||
-          `Foram auditados ${normalizedResults.length} vídeos. ${approvedCount} aprovados para publicação e ${rejectedCount} com ressalvas/divergências.`,
+          `Foram auditados ${normalizedResults.length} vídeos. ${approvedCount} aprovados para publicação no TikTok Shop e ${rejectedCount} com ressalvas/divergências de modelagem.`,
       },
       results: normalizedResults,
       usage: {
@@ -6163,7 +6230,16 @@ DIRETRIZES FUNDAMENTAIS DE PERÍCIA VISUAL (PRECISÃO MÁXIMA E ZERO FALSOS POSI
    - BOTÕES LATERAIS E PERFIL: Se o frame NÃO for um close focado explicitamente no perfil lateral do aparelho (por exemplo, se o aparelho estiver de costas, de frente, em movimento ou à distância), É TERMINANTEMENTE PROIBIDO exigir que botões laterais estejam visíveis ou reprovar o frame porque um botão lateral não aparece! Detalhes laterais só são auditados se houver um close nítido da borda/lateral no vídeo.
    - TRASEIRA DO APARELHO: Avalie as câmeras traseiras APENAS quando a tampa traseira estiver de fato visível na direção da câmera.
 
-2. REGRAS CIRÚRGICAS PARA CÂMERAS TRASEIRAS E FLASH LED:
+2. REGRAS CIRÚRGICAS PARA MODA / VESTUÁRIO (CRITÉRIOS TIKTOK SHOP):
+   - MUDANÇA DE FORMATO / MODELAGEM É GRAVÍSSIMA (INFRAÇÃO CRÍTICA):
+     * PEÇA INFERIOR: Se a referência for Shorts ou Bermuda, o vídeo DEVE exibir a divisão de DUAS PERNAS SEPARADAS (com gancho/entrepernas e barras separadas). Se virar saia curta com caimento contínuo ao redor das pernas, REPROVE IMEDIATAMENTE (< 50%, status "red").
+     * COMPRIMENTO E CINTURA: Se a blusa original cobre o abdômen e a cintura, ela NÃO pode encurtar virando cropped nem deixar a barriga exposta. Se houver barriga exposta ou abertura lateral indevida, REPROVE IMEDIATAMENTE (< 50%, status "red").
+     * OMBROS E MANGAS: Se a referência for amarração de faixa de tecido simples, não permita volume adicional de babado, sobreposição ou volante inventado.
+     * ELEMENTOS EXTRAS: Botões adicionais, bolsos ou recortes que não existem na referência reprovam o frame.
+   - COR E ILUMINAÇÃO É CRITÉRIO LEVE (ALTA TOLERÂNCIA — ZERO FALSOS POSITIVOS):
+     * Variações de iluminação do ambiente (luz amarela do quarto, sombra de espelho, reflexos ou saturação de vídeo) NÃO SÃO MUDANÇA DE COR. Se a peça for da mesma família de cores da referência, APROVE EM VERDE (>= 92%). NUNCA reprove por variação de sombra ou luz!
+
+3. REGRAS CIRÚRGICAS PARA DISPOSITIVOS ELETRÔNICOS E GERAL:
    - DISTINÇÃO ENTRE FLASH LED E CÂMERA EXTRA:
      * O design CORRETO de referência possui: carcaça lisa sem ilha elevada, 2 lentes circulares pretas grandes e 1 pequeno flash circular claro ao lado da lente superior.
      * O flash LED claro NÃO é uma lente. Quando o aparelho tiver as 2 lentes e o flash claro (ex: em 1s), O PRODUTO ESTÁ CORRETO. Aprove o frame em VERDE (>= 92%).
@@ -6308,7 +6384,13 @@ Retorne ESTRITAMENTE um objeto JSON válido em português com este formato (se n
             lowerIssue.includes('inconsist') ||
             lowerIssue.includes('incorret') ||
             lowerIssue.includes('diferente da referência') ||
-            lowerIssue.includes('deforma'));
+            lowerIssue.includes('deforma') ||
+            (lowerIssue.includes('saia') && lowerIssue.includes('shorts')) ||
+            lowerIssue.includes('barriga') ||
+            lowerIssue.includes('cropped') ||
+            lowerIssue.includes('babado') ||
+            lowerIssue.includes('mudou') ||
+            lowerIssue.includes('reprovad'));
 
         if (issueExplicitlyClean) {
           score = 94;
