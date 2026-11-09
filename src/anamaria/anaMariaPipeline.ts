@@ -13,6 +13,7 @@ import { resolveHeadlineAndHashtags } from './anaMariaBank';
 import { AIProfile } from '../config/aiProfiles';
 import { PREFERRED_SCENARIO_BASE64 } from './assets/scenarioImage';
 import { SCENARIO_GALLERY_ITEMS, POV_SCENARIO_GALLERY_ITEMS } from './scenarioGalleryData';
+import { MODEL_GALLERY_ITEMS } from './modelGalleryData';
 import { getMasterPromptById } from './masterPromptsData';
 
 export interface AnaMariaPipelineCallbacks {
@@ -300,6 +301,9 @@ async function resolveScenarioBase64(form: AnaMariaFormState): Promise<string> {
 const modelBase64Cache = new Map<string, string>();
 
 export async function resolveModelBase64(form: AnaMariaFormState): Promise<string | undefined> {
+  if (form.generateModelViaPrompt) {
+    return undefined;
+  }
   if (form.selectedModelGalleryBase64 && form.selectedModelGalleryBase64.length > 50) {
     return compressImageForFastTransfer(form.selectedModelGalleryBase64, 800, 0.84);
   }
@@ -350,80 +354,78 @@ async function prepareProductPhotosForPayload(photos: string[]): Promise<{
  * - Para Mestra Catza (quando nenhum cenário foi selecionado): prioriza o Cenário 24 (ambiente mais escuro com flash).
  * - Nos demais casos: sorteia randomicamente um dos 24 cenários vencedores da galeria.
  */
-export function ensureAnaMariaScenario(form: AnaMariaFormState): AnaMariaFormState {
+export function ensureAnaMariaModelAndScenario(rawForm: AnaMariaFormState): AnaMariaFormState {
+  let form = { ...rawForm };
   const master = getMasterPromptById(form.selectedMasterId);
-  const mode = form.presentationMode || (master.isPov ? 'pov' : 'mirror_selfie');
-  const isPov = mode === 'pov' || Boolean(master.isPov);
+  const activeMode = form.presentationMode || (master.isPov ? 'pov' : 'mirror_selfie');
 
-  if (isPov) {
-    if (
-      form.selectedScenarioId &&
-      form.selectedScenarioId.startsWith('cenario_pov_') &&
-      (form.selectedScenarioUrl || form.selectedScenarioBase64)
-    ) {
-      return form;
-    }
+  // 1. Cenário: se o usuário não escolheu, seleciona de forma randômica
+  if (activeMode === 'pov' || master.isPov) {
     const preferredPov =
       POV_SCENARIO_GALLERY_ITEMS.find((s) => s.id === master.preferredScenarioId) ||
-      POV_SCENARIO_GALLERY_ITEMS[Math.floor(Math.random() * POV_SCENARIO_GALLERY_ITEMS.length)] ||
       POV_SCENARIO_GALLERY_ITEMS[0];
-    if (!preferredPov) return form;
-    return {
-      ...form,
-      presentationMode: 'pov',
-      selectedScenarioId: preferredPov.id,
-      selectedScenarioNumber: preferredPov.number,
-      selectedScenarioUrl: preferredPov.fullUrl,
-      selectedScenarioBase64: undefined,
-    };
-  }
-
-  if (
-    form.selectedScenarioId &&
-    !form.selectedScenarioId.startsWith('cenario_pov_') &&
-    (form.selectedScenarioUrl || form.selectedScenarioBase64)
+    if (preferredPov) {
+      form.presentationMode = 'pov';
+      form.selectedScenarioId = preferredPov.id;
+      form.selectedScenarioNumber = preferredPov.number;
+      form.selectedScenarioUrl = preferredPov.fullUrl;
+      form.selectedScenarioBase64 = undefined;
+    }
+  } else if (
+    !form.selectedScenarioId ||
+    form.selectedScenarioId.startsWith('cenario_pov_') ||
+    (!form.selectedScenarioUrl && !form.selectedScenarioBase64)
   ) {
-    return form;
-  }
+    if (master.id === 'mestra_catza' && master.preferredScenarioId) {
+      const catzaScenario = SCENARIO_GALLERY_ITEMS.find((s) => s.id === master.preferredScenarioId);
+      if (catzaScenario) {
+        form.selectedScenarioId = catzaScenario.id;
+        form.selectedScenarioNumber = catzaScenario.number;
+        form.selectedScenarioUrl = catzaScenario.fullUrl;
+        form.selectedScenarioBase64 = undefined;
+      }
+    } else if (SCENARIO_GALLERY_ITEMS && SCENARIO_GALLERY_ITEMS.length > 0) {
+      const chosenScenario =
+        prewarmedRandomScenario ||
+        SCENARIO_GALLERY_ITEMS[Math.floor(Math.random() * SCENARIO_GALLERY_ITEMS.length)] ||
+        SCENARIO_GALLERY_ITEMS[0];
 
-  if (!SCENARIO_GALLERY_ITEMS || SCENARIO_GALLERY_ITEMS.length === 0) {
-    return form;
-  }
+      const nextIndex = Math.floor(Math.random() * SCENARIO_GALLERY_ITEMS.length);
+      prewarmedRandomScenario = SCENARIO_GALLERY_ITEMS[nextIndex] || SCENARIO_GALLERY_ITEMS[0];
+      if (prewarmedRandomScenario?.fullUrl) {
+        preloadScenarioUrl(prewarmedRandomScenario.fullUrl);
+      }
 
-  if (master.id === 'mestra_catza' && master.preferredScenarioId) {
-    const catzaScenario = SCENARIO_GALLERY_ITEMS.find((s) => s.id === master.preferredScenarioId);
-    if (catzaScenario) {
-      return {
-        ...form,
-        selectedScenarioId: catzaScenario.id,
-        selectedScenarioNumber: catzaScenario.number,
-        selectedScenarioUrl: catzaScenario.fullUrl,
-        selectedScenarioBase64: undefined,
-      };
+      form.selectedScenarioId = chosenScenario.id;
+      form.selectedScenarioNumber = chosenScenario.number;
+      form.selectedScenarioUrl = chosenScenario.fullUrl;
+      form.selectedScenarioBase64 = undefined;
     }
   }
 
-  // Usa o cenário randômico já pré-aquecido em memória (0ms de download) e já sorteia/pré-carrega o próximo em background
-  const chosenScenario =
-    prewarmedRandomScenario ||
-    SCENARIO_GALLERY_ITEMS[Math.floor(Math.random() * SCENARIO_GALLERY_ITEMS.length)] ||
-    SCENARIO_GALLERY_ITEMS[0];
-
-  // Sorteia o próximo cenário randômico diferente para a próxima geração e já inicia seu pré-carregamento
-  const nextIndex = Math.floor(Math.random() * SCENARIO_GALLERY_ITEMS.length);
-  prewarmedRandomScenario = SCENARIO_GALLERY_ITEMS[nextIndex] || SCENARIO_GALLERY_ITEMS[0];
-  if (prewarmedRandomScenario?.fullUrl) {
-    preloadScenarioUrl(prewarmedRandomScenario.fullUrl);
+  // 2. Modelo:
+  // Se o usuário marcou "Desmarcar Modelo (Gerar via Prompt)", limpa qualquer modelo de foto
+  if (form.generateModelViaPrompt) {
+    form.selectedModelGalleryId = undefined;
+    form.selectedModelGalleryNumber = undefined;
+    form.selectedModelGalleryUrl = undefined;
+    form.selectedModelGalleryBase64 = undefined;
+  } else if (!form.selectedModelGalleryId && !form.selectedModelGalleryNumber) {
+    // Se o usuário NÃO escolheu nenhuma modelo (e não marcou gerar via prompt),
+    // o aplicativo seleciona de forma randômica uma das 24 modelos da galeria a cada geração!
+    if (MODEL_GALLERY_ITEMS && MODEL_GALLERY_ITEMS.length > 0) {
+      const chosenModel = MODEL_GALLERY_ITEMS[Math.floor(Math.random() * MODEL_GALLERY_ITEMS.length)];
+      form.selectedModelGalleryId = chosenModel.id;
+      form.selectedModelGalleryNumber = chosenModel.number;
+      form.selectedModelGalleryUrl = chosenModel.fullUrl;
+      form.selectedModelGalleryBase64 = undefined;
+    }
   }
 
-  return {
-    ...form,
-    selectedScenarioId: chosenScenario.id,
-    selectedScenarioNumber: chosenScenario.number,
-    selectedScenarioUrl: chosenScenario.fullUrl,
-    selectedScenarioBase64: undefined,
-  };
+  return form;
 }
+
+export const ensureAnaMariaScenario = ensureAnaMariaModelAndScenario;
 
 /**
  * Pipeline principal do Modo Ana Maria (otimizado para execução rápida <25s sem perda de qualidade)
@@ -439,7 +441,7 @@ export async function runAnaMariaPipeline(
     throw new Error('Por favor, anexe ao menos 1 foto de referência da peça.');
   }
 
-  const form = ensureAnaMariaScenario(rawForm);
+  const form = ensureAnaMariaModelAndScenario(rawForm);
   const master = getMasterPromptById(form.selectedMasterId);
   const activeMode = form.presentationMode || (master.isPov ? 'pov' : 'mirror_selfie');
 
@@ -511,6 +513,7 @@ export async function runAnaMariaPipeline(
       modelReferenceBase64: activeModelBase64,
       selectedModelGalleryId: form.selectedModelGalleryId,
       selectedModelGalleryNumber: form.selectedModelGalleryNumber,
+      generateModelViaPrompt: Boolean(form.generateModelViaPrompt),
       modelScenarioSource: form.modelScenarioSource || 'model',
       isAnaMariaMode: true,
       presentationMode: activeMode,
@@ -574,6 +577,7 @@ export async function runAnaMariaPipeline(
     selectedModelGalleryNumber: form.selectedModelGalleryNumber,
     selectedModelGalleryUrl: form.selectedModelGalleryUrl,
     modelScenarioSource: form.modelScenarioSource || 'model',
+    generateModelViaPrompt: form.generateModelViaPrompt,
     imagePrompt,
     videoPrompt,
     conciseVideoPrompt,
@@ -602,7 +606,7 @@ export async function regenerateAnaMariaImage(params: {
 
   const effectiveImageModel = imageModelOverride || form.imageModel;
 
-  const effectiveForm = ensureAnaMariaScenario({ ...form, imageModel: effectiveImageModel });
+  const effectiveForm = ensureAnaMariaModelAndScenario({ ...form, imageModel: effectiveImageModel });
   if (tweakPrompt && tweakPrompt.trim().length > 0) {
     effectiveForm.additionalInstructions = [form.additionalInstructions, tweakPrompt.trim()]
       .filter(Boolean)

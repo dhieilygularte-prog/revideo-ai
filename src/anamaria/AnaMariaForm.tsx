@@ -95,9 +95,12 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const [isPromptsGalleryExpanded, setIsPromptsGalleryExpanded] = useState(false);
   const [isModelGalleryExpanded, setIsModelGalleryExpanded] = useState(false);
 
-  const selectedModelItem = MODEL_GALLERY_ITEMS.find(
-    (m) => m.id === form.selectedModelGalleryId || m.number === form.selectedModelGalleryNumber
-  );
+  const selectedModelItem =
+    !form.generateModelViaPrompt && (form.selectedModelGalleryId || form.selectedModelGalleryNumber)
+      ? MODEL_GALLERY_ITEMS.find(
+          (m) => m.id === form.selectedModelGalleryId || m.number === form.selectedModelGalleryNumber
+        )
+      : undefined;
 
   const handleSelectModel = (item: AnaMariaModelItem) => {
     onChange((prev) => ({
@@ -105,6 +108,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       selectedModelGalleryId: item.id,
       selectedModelGalleryNumber: item.number,
       selectedModelGalleryUrl: item.fullUrl,
+      generateModelViaPrompt: false,
       modelScenarioSource: prev.modelScenarioSource || 'model',
     }));
   };
@@ -116,6 +120,18 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       selectedModelGalleryNumber: undefined,
       selectedModelGalleryUrl: undefined,
       selectedModelGalleryBase64: undefined,
+      generateModelViaPrompt: false,
+    }));
+  };
+
+  const handleToggleGenerateViaPrompt = () => {
+    onChange((prev) => ({
+      ...prev,
+      selectedModelGalleryId: undefined,
+      selectedModelGalleryNumber: undefined,
+      selectedModelGalleryUrl: undefined,
+      selectedModelGalleryBase64: undefined,
+      generateModelViaPrompt: !prev.generateModelViaPrompt,
     }));
   };
   const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
@@ -1694,14 +1710,18 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                     handleClearModel();
                   }}
                   className="hover:opacity-75 transition-opacity ml-1 p-0.5 cursor-pointer"
-                  title="Desmarcar modelo (gerar dinamicamente)"
+                  title="Desmarcar modelo (sortear automaticamente)"
                 >
                   <X className="w-3.5 h-3.5 stroke-[3]" />
                 </button>
               </div>
+            ) : form.generateModelViaPrompt ? (
+              <div className="flex items-center gap-1.5 text-amber-300 font-bold px-3 py-1.5 rounded-xl border border-amber-500/40 bg-amber-950/40 text-xs">
+                <span>✨ Gerar via Prompt</span>
+              </div>
             ) : (
-              <div className="flex items-center gap-1.5 text-zinc-400 font-bold px-3 py-1.5 rounded-xl border border-zinc-800 bg-zinc-900/80 text-xs">
-                <span>Dinâmico via Prompt</span>
+              <div className="flex items-center gap-1.5 text-sky-300 font-bold px-3 py-1.5 rounded-xl border border-sky-500/40 bg-sky-950/40 text-xs">
+                <span>🎲 Aleatório (Galeria)</span>
               </div>
             )}
             <div
@@ -1767,19 +1787,40 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                   Selecione uma modelo da galeria (${MODEL_GALLERY_ITEMS.length} opções disponíveis)
                 </span>
                 <p className="text-[11px] text-zinc-400 mt-0.5">
-                  Por padrão ("Cenário da Modelo"), a modelo e o cenário dela são preservados 100% idênticos, trocando apenas a roupa pelo seu produto.
+                  {form.generateModelViaPrompt
+                    ? '✨ Modo Gerar via Prompt ATIVO: Uma modelo exclusiva será gerada via IA por descrição textual (sem usar foto fixa), com joias delicadas e calçado combinando.'
+                    : selectedModelItem
+                    ? 'Por padrão ("Cenário da Modelo"), a modelo e o cenário dela são preservados 100% idênticos, trocando apenas a roupa pelo seu produto.'
+                    : '🎲 Modo Automático: Como nenhuma modelo foi selecionada, o app escolherá aleatoriamente uma das 24 modelos e um dos cenários da galeria a cada geração.'}
                 </p>
               </div>
-              {selectedModelItem && (
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={handleClearModel}
-                  className="px-3 py-1.5 rounded-lg text-xs font-bold bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-700 transition-colors flex items-center gap-1.5 cursor-pointer"
+                  onClick={handleToggleGenerateViaPrompt}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
+                    form.generateModelViaPrompt
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-400/60 ring-1 ring-amber-400/40'
+                      : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border-zinc-700'
+                  }`}
+                  title="Gera a modelo puramente via prompt (sem foto de referência de modelo)"
                 >
-                  <RefreshCw className="w-3 h-3" />
-                  <span>Desmarcar Modelo (Gerar via Prompt)</span>
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{form.generateModelViaPrompt ? 'Gerando via Prompt ✓' : 'Desmarcar Modelo (Gerar via Prompt)'}</span>
                 </button>
-              )}
+
+                {(selectedModelItem || form.generateModelViaPrompt) && (
+                  <button
+                    type="button"
+                    onClick={handleClearModel}
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-700 transition-colors flex items-center gap-1.5 cursor-pointer"
+                    title="Voltar ao modo randômico / aleatório automático"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>Aleatório da Galeria</span>
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Grid com as 5 modelos */}

@@ -59,6 +59,7 @@ export interface AnaMariaFormState {
   selectedModelGalleryUrl?: string; // URL da imagem da modelo
   selectedModelGalleryBase64?: string; // Base64 da imagem da modelo
   modelScenarioSource?: 'model' | 'gallery'; // Padrão: 'model' (cenário da própria modelo), 'gallery' (cenário da galeria de cenários)
+  generateModelViaPrompt?: boolean; // Se verdadeiro, gera a modelo puramente via prompt (sem foto de referência da modelo)
 }
 
 export interface AnaMariaResultState {
@@ -80,6 +81,7 @@ export interface AnaMariaResultState {
   selectedModelGalleryNumber?: number;
   selectedModelGalleryUrl?: string;
   modelScenarioSource?: 'model' | 'gallery';
+  generateModelViaPrompt?: boolean;
   imagePrompt: string;
   videoPrompt: string;
   conciseVideoPrompt?: string;

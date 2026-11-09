@@ -18,6 +18,41 @@ import {
  * REGRA UNIVERSAL DE CALÇADOS (CAMADA ACIMA DOS PROMPTS DOS MESTRES)
  * Determina o calçado com base no nome da peça, instruções adicionais e sexo do modelo.
  */
+// ACESSÓRIOS FIXOS DA MODELO — PADRÃO DOURADO (MODO GERAR VIA PROMPT)
+export const UNIVERSAL_GOLDEN_ACCESSORIES_PROMPT_BLOCK = `## ACESSÓRIOS FIXOS DA MODELO — PADRÃO DOURADO DISCRETO E ELEGANTE (COMBINANDO COM A ROUPA)
+
+**COLARES DOURADOS EM CAMADAS:**
+Utilizar dois colares dourados delicados, usados simultaneamente em camadas:
+- Primeiro colar: corrente dourada extremamente fina, curta, rente à base do pescoço, estilo gargantilha delicada.
+- Segundo colar: corrente dourada fina e um pouco mais comprida, com pequeno pingente oval ou medalhinha dourada, posicionado na região superior do colo.
+- O conjunto deve apresentar aparência elegante, discreta e feminina, com as duas correntes naturalmente distribuídas no colo.
+
+**PULSEIRAS FINAS NOS DOIS PULSOS:**
+Utilizar pulseiras finas e delicadas nos dois pulsos:
+- No pulso esquerdo: pulseira de corrente dourada fina, com pequenos elos e um pequeno pingente pendente.
+- No pulso direito: pulseira dourada delicada, de corrente fina, com pequenos detalhes metálicos e um pequeno elemento pendente.
+- As pulseiras devem ficar levemente soltas nos pulsos, acompanhando naturalmente os movimentos das mãos, com brilho metálico discreto de joias reais.
+
+**ANÉIS DELICADOS EM METAL CLARO / PRATEADO:**
+Utilizar anéis delicados predominantemente prateados ou em tonalidade metálica clara:
+- Anéis finos, minimalistas e elegantes: um anel delicado em um dos dedos da mão direita e um anel liso e discreto em um dedo da outra mão.
+- Não utilizar anéis grandes, pedras volumosas ou modelos chamativos.
+
+**PADRÃO GERAL:**
+Manter sempre a mesma identidade de acessórios: colares dourados em camadas, pulseiras douradas fininhas nos dois pulsos e anéis delicados em metal claro. Os acessórios devem parecer joias verdadeiras, com acabamento refinado, proporções pequenas e brilho natural.
+Não utilizar relógios grandes, maxi colares, pulseiras grossas ou acessórios exagerados. Os acessórios SEMPRE combinam perfeitamente com a roupa.`;
+
+export const UNIVERSAL_GOLDEN_ACCESSORIES_ENGLISH_BLOCK = `[MANDATORY FEMININE DELICATE ACCESSORIES - GOLD & LIGHT METALS]:
+- LAYERED GOLD NECKLACES: Two delicate gold necklaces worn simultaneously in layers:
+  1. Choker chain: extremely fine, short gold chain sitting close to the base of the neck.
+  2. Lower chain: slightly longer fine gold chain with a small subtle oval pendant or tiny gold medallion on the upper decolletage.
+- DELICATE BRACELETS ON BOTH WRISTS:
+  1. Left wrist: delicate fine gold chain bracelet with tiny links and a small dangling charm.
+  2. Right wrist: delicate fine gold chain bracelet with subtle metallic accents.
+  Loose natural fit on wrists, realistic understated jewelry sheen.
+- MINIMALIST METALLIC RINGS: Fine, subtle, elegant silver/light-gold rings (one delicate ring on right hand, one subtle smooth band on left hand; no chunky gems or large cocktail rings).
+- STRICT PROHIBITIONS: NO bulky watches, NO chunky bracelets, NO oversized statement jewelry. Accessories must look like real, refined, delicate fine jewelry harmonizing with the outfit.`;
+
 export function detectShoeCategory(
   productName: string,
   additionalInstructions: string = '',
@@ -26,18 +61,26 @@ export function detectShoeCategory(
   const combined = `${productName} ${additionalInstructions}`.toLowerCase();
   const isMale = influencer === 'Homem';
 
-  // B) Roupas Fitness / Academia / Esportivas
+  // 1. Roupas Fitness / Academia / Esportivas / Treino -> SEMPRE TÊNIS
   const isFitness =
     /\b(fitness|academia|treino|gym|legging|macacao fitness|macacão fitness|macaquinho fitness|esportiv|suplex|poliamida fitness|anarruga fitness|top fitness|conjunto fitness|short fitness|bermuda academia|camiseta treino|dry fit|dryfit)\b/i.test(
       combined
     );
 
-  // Calças (para mulher: calça = tênis branco; para homem: calça social = sapato social, demais calças = tênis casual)
-  const isPants = /\b(calca|calça|jeans|jogger|cargo|pantacourt|pantalona|sarja)\b/i.test(combined);
-  const isSocial =
-    /\b(social|camisa social|calça social|calca social|terno|blazer|alfaiataria|gravata|esporte fino)\b/i.test(
+  // 2. Camisola, Baby Doll, Roupa de Dormir, Pijama ou Roupa de Ficar em Casa -> CHINELO DE DEDO BRANCO COM DETALHES
+  const isSleepwearOrHomewear =
+    /\b(camisola|baby doll|babydoll|pijama|dormir|sleepwear|homewear|ficar em casa|roupa de casa|lingerie|robe)\b/i.test(
       combined
     );
+
+  // 3. Roupa de Festa, Vestido de Festa, Social, Gala, Casamento, Formatura -> SAPATO OU SANDÁLIA DE FESTA ELEGANTE
+  const isPartyOrSocial =
+    /\b(festa|vestido de festa|gala|formatura|social|casamento|cocktail|baile|madrinha|evento|alfaiataria|blazer|terno|fino|elegante)\b/i.test(
+      combined
+    );
+
+  // 4. Calças (para mulher: calça = tênis casual branco ou harmonioso; para homem: social = sapato social, demais = tênis)
+  const isPants = /\b(calca|calça|jeans|jogger|cargo|pantacourt|pantalona|sarja)\b/i.test(combined);
 
   if (isMale) {
     if (isFitness) {
@@ -49,12 +92,12 @@ export function detectShoeCategory(
       };
     }
 
-    if (isSocial) {
+    if (isPartyOrSocial) {
       return {
         category: 'C_OUTRO',
-        name: 'Sapato Social Masculino',
+        name: 'Sapato Social Masculino Elegante',
         description:
-          'Sapato social masculino de couro legítimo com acabamento fosco/acetinado elegante (preto ou marrom café conforme a peça), bico levemente arredondado e solado clássico alinhado à roupa social.',
+          'Sapato social masculino de couro legítimo com acabamento fosco/acetinado elegante (preto ou marrom café conforme a peça), bico levemente arredondado e solado clássico alinhado à roupa social/festa.',
       };
     }
 
@@ -67,64 +110,81 @@ export function detectShoeCategory(
       };
     }
 
-    // Demais roupas masculinas em casa (bermuda, camiseta, short, pijama, etc.) -> Chinelo masculino
+    if (isSleepwearOrHomewear) {
+      return {
+        category: 'A_CHINELO',
+        name: 'Chinelo Masculino de Casa',
+        description:
+          'Chinelo masculino tradicional de dedo ou slide discreto em tom neutro (branco, preto ou marinho), solado plano e visual autêntico e confortável de casa.',
+      };
+    }
+
     return {
-      category: 'A_CHINELO',
-      name: 'Chinelo Masculino Tradicional',
+      category: 'C_OUTRO',
+      name: 'Calçado Masculino Harmonioso',
       description:
-        'Chinelo masculino tradicional de dedo ou slide discreto em tom neutro (preto, marinho ou branco), solado plano de borracha e visual cotidiano autêntico de quem está em casa.',
+        'Calçado masculino moderno e harmonioso que combine perfeitamente com a proposta e estilo da peça anunciada.',
     };
   }
 
-  // REGRAS PARA MULHER (CAMADA UNIVERSAL ACIMA DOS MESTRES):
-  // 1. Vestidos e peças elegantes femininas -> Sandália feminina elegante ou salto harmonioso que combine com o vestido
-  const isDress = /\b(vestido|vestidos|dress|dresses|longo|midi|festa|gala|chemise|tubinho)\b/i.test(combined);
+  // REGRAS PARA MULHER (CAMADA UNIVERSAL SOBERANA):
+  // 1. Academia / Fitness -> SEMPRE TÊNIS
+  if (isFitness) {
+    return {
+      category: 'B_TENIS',
+      name: 'Tênis Esportivo Feminino Harmonioso',
+      description:
+        'Tênis esportivo feminino moderno de cano baixo (branco ou em tom coordenado), design anatômico impecável, solado esportivo e meias discretas, combinando 100% com a roupa de academia/fitness.',
+    };
+  }
+
+  // 2. Camisola, Baby Doll, Roupa de Dormir ou Roupa de Ficar em Casa -> CHINELO DE DEDO BRANCO COM DETALHES
+  if (isSleepwearOrHomewear) {
+    return {
+      category: 'A_CHINELO',
+      name: 'Chinelo de Dedo Branco Feminino com Detalhes Delicados',
+      description:
+        'Chinelo de dedo branco feminino delicado com detalhes refinados nas tiras, deixando o calçado charmoso, bonito e sofisticado, harmonizando perfeitamente com a camisola, baby doll ou roupa de ficar em casa.',
+    };
+  }
+
+  // 3. Roupa de Festa, Vestido de Festa ou Social -> SAPATO OU SANDÁLIA DE FESTA ELEGANTE
+  if (isPartyOrSocial) {
+    return {
+      category: 'C_OUTRO',
+      name: 'Sapato ou Sandália de Festa Elegante que Combina com a Roupa',
+      description:
+        'Sapato refinado de salto ou sandália feminina de festa sofisticada com tiras elegantes que combine e harmonize 100% com o vestido de festa ou roupa social.',
+    };
+  }
+
+  // 4. Vestidos em geral (tubinho, midi, longo casual, etc.) -> Sandália feminina elegante que harmonize com o vestido
+  const isDress = /\b(vestido|vestidos|dress|dresses|longo|midi|chemise|tubinho)\b/i.test(combined);
   if (isDress) {
     return {
       category: 'C_OUTRO',
       name: 'Sandália Feminina Elegante que Combina com o Vestido',
       description:
-        'Sandália feminina elegante de tiras delicadas ou salto bloco/fino discreto que harmonize perfeitamente com a cor, comprimento e estilo do vestido, com acabamento refinado e pés delicados e bem cuidados.',
+        'Sandália feminina elegante de tiras delicadas ou salto harmonioso que combine perfeitamente com a cor, caimento e proposta do vestido.',
     };
   }
 
-  // 2. Quando a mulher estiver de calça fitness, macacão fitness ou qualquer roupa de academia -> Tênis Branco Esportivo
-  if (isFitness) {
+  // 5. Calças casuais / jeans -> Tênis casual moderno ou calçado elegante harmonioso
+  if (isPants) {
     return {
       category: 'B_TENIS',
-      name: 'Tênis Branco Esportivo Casual Feminino',
+      name: 'Tênis Casual Feminino Harmonioso',
       description:
-        'Tênis feminino esportivo casual de cano baixo, inteiramente branco e com design moderno. Cabedal com acabamento impecável, cadarços brancos e solado esportivo anatômico.',
+        'Tênis casual feminino moderno de cano baixo ou calçado alinhado que harmonize perfeitamente com a calça e componha um look comercial moderno e elegante.',
     };
   }
 
-  // 3. Calças casuais / jeans -> Tênis casual ou calçado elegante que combine com a calça
-  if (isPants && !/\b(pijama|dormir|casa)\b/i.test(combined)) {
-    return {
-      category: 'B_TENIS',
-      name: 'Tênis Casual Feminino ou Calçado Harmonioso',
-      description:
-        'Calçado feminino moderno e alinhado (tênis casual limpo ou calçado moderno) que combine perfeitamente com a calça e componha um look comercial elegante.',
-    };
-  }
-
-  // 4. Roupas de dormir, pijama, camisola, lingerie ou homewear -> Chinelo Branco ou Slide Delicado
-  const isSleepwear = /\b(pijama|dormir|camisola|sleepwear|homewear|lingerie)\b/i.test(combined);
-  if (isSleepwear) {
-    return {
-      category: 'A_CHINELO',
-      name: 'Chinelo Branco Feminino Delicado ou Slide Homewear',
-      description:
-        'Calçado leve e delicado de homewear ou chinelo feminino tradicional de dedo em tom branco/neutro, com acabamento delicado e visual cotidiano autêntico de quem está em casa.',
-    };
-  }
-
-  // 5. Demais roupas femininas -> Calçado harmonioso que combine com a peça anunciada
+  // 6. Demais roupas femininas -> Calçado que SEMPRE combina com a roupa e contexto
   return {
     category: 'C_OUTRO',
     name: 'Calçado Harmonioso que Combina com a Peça',
     description:
-      'Calçado feminino harmonioso e elegante (sandália delicada, mule ou salto discreto) que combine perfeitamente em estilo, cor e proposta com a peça de roupa anunciada.',
+      'Calçado feminino elegante que combine 100% em estilo, cor e contexto com a peça anunciada na foto de referência.',
   };
 }
 
@@ -560,10 +620,14 @@ Qualidade fotográfica autêntica de smartphone moderno em alta definição 1080
   const hairSectionText = resolvedHairText;
 
   // Acessórios: Mestra vs Homem
+  const hasGalleryModel = Boolean(form.selectedModelGalleryId || form.selectedModelGalleryNumber) && !form.generateModelViaPrompt;
+
   const accessoriesSectionText = isMale
     ? `Acessórios masculinos discretos (Adaptação Masculina):
 - Relógio de pulso masculino elegante e discreto em um dos pulsos.
 - Ausência total de colares femininos, pulseiras femininas delicadas ou esmalte colorido. Unhas masculinas curtas e limpas.`
+    : form.generateModelViaPrompt || !hasGalleryModel
+    ? UNIVERSAL_GOLDEN_ACCESSORIES_PROMPT_BLOCK
     : `${master.accessoriesIdentityText}${userNailDirectivePt ? `\n- ${userNailDirectivePt}` : ''}`;
 
   // Regra de Rosto: Mirror Selfie (Corte estrito no queixo) vs Com Rosto (Rosto visível)
@@ -603,7 +667,7 @@ ${
     : `Postura natural em pé diante do espelho, peso apoiado de forma orgânica valorizando a silhueta e o caimento da peça, com o braço livre relaxado ou tocando suavemente a lateral sem esconder detalhes da roupa.`
 }`;
 
-  const hasGalleryModel = Boolean(form.selectedModelGalleryId || form.selectedModelGalleryNumber);
+  
 
   if (hasGalleryModel) {
     const isModelScenario = (form.modelScenarioSource || 'model') === 'model';
@@ -750,21 +814,17 @@ export function getConciseMovementForMaster(masterId: AnaMariaMasterId, isMale: 
     case 'mestra_iara':
       return isMale
         ? `**CRONOGRAMA DE MOVIMENTOS (10s CONTÍNUOS — MESTRA IARA):**
-- 0s–1.5s (Demonstração de elasticidade): Com a mão livre na lateral segura o tecido e puxa horizontalmente para fora demonstrando elasticidade; mantém por um instante e solta suavemente.
-- 1.5s–3.5s (Demonstração frontal): Retorna a mão ao abdômen e desliza para cima até o peitoral em alisamento natural do tecido.
-- 3.5s–5.5s (Giro lateral): Rotação gradual do corpo em 3/4 até alcançar perfil lateral com pequenos ajustes naturais dos pés.
-- 5.5s–6.5s (Apresentação lateral): Mantém perfil lateral por ~1s com discreta transferência de peso, valorizando o caimento lateral.
-- 6.5s–7.5s (Retorno frontal): Gira o corpo de volta para a posição frontal, deslizando a palma sobre a frente da peça.
-- 7.5s–9.5s (Pose frontal): Permanece de frente com pequenos ajustes de postura e toque suave na lateral do quadril.
-- 9.5s–10s (Pose final): Suave rotação em 3/4 com a mão livre no abdômen, finalizando em pose lateralizada elegante.`
+- 0s–1.5s (Elasticidade): Mão livre na lateral segura o tecido e puxa para fora demonstrando elasticidade; solta suavemente.
+- 1.5s–3.5s (Demonstração frontal): Retorna a mão ao abdômen e desliza para cima até o peitoral em alisamento suave.
+- 3.5s–6.5s (Giro lateral): Rotação gradual em 3/4 até perfil lateral com pequenos ajustes nos pés e discreta transferência de peso.
+- 6.5s–7.5s (Retorno frontal): Gira suavemente de volta para a posição frontal, deslizando a palma sobre a frente da peça.
+- 7.5s–10s (Pose final): Pequenos ajustes de postura, toque suave no quadril e sutil pose 3/4 finalizando com elegância diante do espelho.`
         : `**CRONOGRAMA DE MOVIMENTOS (10s CONTÍNUOS — MESTRA IARA):**
-- 0s–1.5s (Demonstração de elasticidade): Com a mão livre na lateral da peça, segura delicadamente o tecido e puxa horizontalmente para fora; mantém esticado por um instante e solta suavemente.
-- 1.5s–3.5s (Demonstração frontal): Retorna a mão à região abdominal e desliza lentamente para cima até o busto em movimento de alisamento natural do tecido.
-- 3.5s–5.5s (Giro lateral): Inicia rotação gradual do corpo em 3/4 até alcançar perfil lateral com pequenos ajustes naturais dos pés.
-- 5.5s–6.5s (Apresentação lateral): Mantém perfil lateral por ~1s com discreta transferência de peso entre as pernas, valorizando o caimento lateral da peça.
-- 6.5s–7.5s (Retorno frontal): Gira suavemente o corpo de volta para a posição frontal, deslizando a palma sobre a parte frontal da peça.
-- 7.5s–9.5s (Pose frontal): Permanece de frente, realizando pequenos ajustes naturais de postura e toque suave na lateral do quadril.
-- 9.5s–10s (Pose final): Suave rotação do corpo em 3/4 com a mão livre na região abdominal, finalizando em pose lateralizada elegante.`;
+- 0s–1.5s (Elasticidade): Com a mão livre na lateral da peça, segura delicadamente o tecido e puxa para fora; solta suavemente.
+- 1.5s–3.5s (Demonstração frontal): Retorna a mão ao abdômen e desliza lentamente para cima até o busto em alisamento suave do tecido.
+- 3.5s–6.5s (Giro lateral): Inicia rotação gradual em 3/4 até alcançar perfil lateral com pequenos ajustes nos pés e discreta transferência de peso.
+- 6.5s–7.5s (Retorno frontal): Gira o corpo de volta para a posição frontal, deslizando a palma sobre a parte frontal da peça.
+- 7.5s–10s (Pose final): Permanece de frente, realizando pequenos ajustes naturais de postura, toque no quadril e sutil pose 3/4 finalizando com elegância.`;
 
     case 'mestra_duda':
       return isMale
@@ -865,32 +925,46 @@ ${movementsBlock}
 - Demonstração 100% silenciosa: sem fala, sem diálogos e sem narração.`.trim();
   }
 
+  const headerLine = `Vídeo vertical 9:16 de 10s hiper-realista vitrine de moda no espelho. Use a imagem de referência anexada como ponto de partida visual absoluto.`;
+
   const framingBlock =
-    `**PRESERVAÇÃO DO ENQUADRAMENTO E DA FOTO DE REFERÊNCIA:**\n` +
-    `Manter rigorosamente o mesmo ângulo, enquadramento e perspectiva da imagem de referência inicial durante todo o vídeo de 10s:\n` +
-    `- Se na foto original o smartphone cobre o rosto, continue com o smartphone cobrindo o rosto durante todo o vídeo.\n` +
-    `- Se na foto original não aparece o rosto (corte no queixo/pescoço), mantenha sem mostrar o rosto sem a câmera inclinar ou subir para cima.\n` +
-    `- Se na foto original o rosto da modelo aparece (visível total ou parcialmente), continue com o mesmo rosto natural visível.`;
+    `**PRESERVAÇÃO DO ENQUADRAMENTO E DA FOTO ORIGINAL:**\n` +
+    `Manter rigorosamente o mesmo ângulo e enquadramento da foto de referência durante todo o vídeo de 10s:\n` +
+    `- Se o smartphone cobre o rosto, continue com o aparelho cobrindo o rosto durante todo o vídeo.\n` +
+    `- Se não aparece o rosto (corte no queixo), mantenha sem mostrar o rosto sem a câmera inclinar ou subir.\n` +
+    `- Se o rosto da modelo aparece (visível total ou parcialmente), continue com o mesmo rosto natural visível.`;
 
   const garmentFidelityBlock =
-    `**FIDELIDADE ABSOLUTA E IMUTÁVEL DA PEÇA DE ROUPA (1:1):**\n` +
-    `A roupa da imagem de referência é 100% sagrada e inviolável. É TERMINANTEMENTE PROIBIDO ao gerador de vídeo modificar a cor, tom, estampa, tecido, textura, modelagem, caimento, decote, mangas ou comprimento da peça. PROIBIDO inventar partes, botões, bolsos, zíperes ou costuras inexistentes. A peça deve se manter 100% fiel à imagem de referência em todos os frames e movimentos.`;
+    `**FIDELIDADE ABSOLUTA DA PEÇA (1:1):**\n` +
+    `A roupa da foto de referência é sagrada e imutável. TERMINANTEMENTE PROIBIDO modificar cor, estampa, tecido, modelagem, decote ou comprimento. Proibido inventar partes, botões, bolsos ou costuras inexistentes. A peça deve se manter 100% fiel à imagem em todos os frames e movimentos.`;
 
   const identityBlock =
     `**PRESERVAÇÃO DE IDENTIDADE E CENÁRIO:**\n` +
-    `Preservar exatamente ${isMale ? 'o mesmo modelo masculino' : 'a mesma modelo'} da foto de referência (${isPlusSize ? 'estrutura corporal robusta genuinamente PLUS SIZE preservada sem afinar membros' : 'mesmo corpo, curvas, biotipo'}), cabelos, tom de pele e o mesmo cômodo/cenário intacto.`;
-
-  const userBlock = hasUserInstructions
-    ? `**INSTRUÇÕES PERSONALIZADAS DO USUÁRIO:**\n"${userInstructionsText}" (priorizar rigorosamente essas instruções).`
-    : '';
+    `Preservar exatamente ${isMale ? 'o modelo masculino' : 'a modelo'} da foto (${isPlusSize ? 'corpo robusto PLUS SIZE preservado sem afinar membros' : 'mesmo corpo, curvas e biotipo'}), cabelos, tom de pele e o cômodo/cenário intacto.`;
 
   const executionBlock =
-    `**REGRAS DE EXECUÇÃO E ÁUDIO:**\n` +
-    `- Take único contínuo sem cortes, zooms ou transições. Gestos suaves, naturais e com velocidade humana realista.\n` +
-    `- Demonstração 100% silenciosa: sem fala, sem voz, sem locução e sem movimentar os lábios como se estivesse falando.`;
+    `**REGRAS DE EXECUÇÃO:**\n` +
+    `- Take único contínuo sem cortes, zooms ou transições. Movimentos suaves, fluidos e com velocidade humana realista.\n` +
+    `- Demonstração 100% silenciosa: sem fala, sem locução e sem movimentar os lábios.`;
+
+  const baseSections = [
+    headerLine,
+    framingBlock,
+    garmentFidelityBlock,
+    identityBlock,
+    movementsBlock,
+    executionBlock,
+  ];
+  const baseLength = baseSections.join('\n\n').length;
+  // Margem de segurança para garantir estritamente <= 2.480 caracteres e nunca cortar o final
+  const maxUserChars = Math.max(0, 2480 - baseLength - 40);
+
+  const userBlock = (hasUserInstructions && maxUserChars > 30)
+    ? `**INSTRUÇÕES DO USUÁRIO:**\n"${userInstructionsText.length > maxUserChars ? userInstructionsText.slice(0, maxUserChars - 4) + '...' : userInstructionsText}"`
+    : '';
 
   const sections = [
-    `Vídeo vertical 9:16 de 10s hiper-realista. Use a imagem de referência anexada como ponto de partida visual absoluto.`,
+    headerLine,
     framingBlock,
     garmentFidelityBlock,
     identityBlock,
@@ -901,23 +975,18 @@ ${movementsBlock}
 
   let concise = sections.join('\n\n').trim();
 
-  // Garante limite absoluto de 2.500 caracteres caso as instruções do usuário sejam muito extensas
+  // Caso exceda 2.500 caracteres, encontra a última frase completa antes do limite (NUNCA corta no meio de palavras ou blocos)
   if (concise.length > 2500) {
-    concise = concise.slice(0, 2480).trim();
+    const sub = concise.slice(0, 2490);
+    const lastPeriod = Math.max(sub.lastIndexOf('.'), sub.lastIndexOf('\n'));
+    if (lastPeriod > 1800) {
+      concise = sub.slice(0, lastPeriod + 1).trim();
+    }
   }
 
   return concise;
 }
 
-/**
- * Constrói o Prompt de Vídeo de Movimentos do Modo Ana Maria
- * Baseado no Prompt da Mestra selecionada na Galeria + Camadas Superiores:
- * - Preservação do Enquadramento e Rosto da Foto Original (celular cobrindo, sem rosto ou com rosto)
- * - Fidelidade Soberana da Peça de Roupa (1:1)
- * - Adaptação Masculina (quando influencer === 'Homem')
- * - Preservação da estrutura Plus Size (quando bodyType === 'plus_size')
- * - Prioridade Soberana das Instruções Adicionais do Usuário
- */
 export function buildAnaMariaVideoPrompt(params: {
   productName: string;
   influencer?: AnaMariaInfluencer;
