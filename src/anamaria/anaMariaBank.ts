@@ -877,6 +877,8 @@ export function resolveHeadlineAndHashtags(params: {
   influencer?: AnaMariaInfluencer;
   bodyType?: AnaMariaBodyType;
   additionalInstructions?: string;
+  excludeHeadline?: string;
+  excludeHashtags?: string;
 }): {
   headline: string;
   hashtags: string;
@@ -896,12 +898,34 @@ export function resolveHeadlineAndHashtags(params: {
   if (category !== 'outro' && PRODUCT_HEADLINES_GROUPED[category]) {
     const group = PRODUCT_HEADLINES_GROUPED[category];
     const items = group.items;
-    const randomIndex = Math.floor(Math.random() * items.length);
-    const chosen = items[randomIndex];
+
+    // Filtra para nunca repetir a headline atual caso haja outras disponíveis no banco de memória
+    let pool = items;
+    if (params.excludeHeadline && items.length > 1) {
+      const cleanExclude = params.excludeHeadline.trim().toLowerCase();
+      const filtered = items.filter(
+        (it) => it.headline.trim().toLowerCase() !== cleanExclude
+      );
+      if (filtered.length > 0) {
+        pool = filtered;
+      }
+    }
+
+    const randomIndex = Math.floor(Math.random() * pool.length);
+    const chosen = pool[randomIndex];
 
     chosenHeadline = chosen.headline;
     chosenHashtags = chosen.hashtags;
     flower = chosen.flowerSymbol || '❀';
+
+    // Se as hashtags do item sorteado forem idênticas às atuais e houver outras hashtags no grupo,
+    // seleciona um conjunto alternativo de hashtags de outro item da mesma categoria
+    if (params.excludeHashtags && chosenHashtags.trim() === params.excludeHashtags.trim() && items.length > 1) {
+      const altItem = items.find((it) => it.hashtags.trim() !== params.excludeHashtags?.trim());
+      if (altItem) {
+        chosenHashtags = altItem.hashtags;
+      }
+    }
   } else {
     // Produto não cadastrado em nenhuma das categorias conhecidas (ex: bolsas, sapatos, acessórios)
     const genericHeadlines = [
@@ -911,8 +935,14 @@ export function resolveHeadlineAndHashtags(params: {
       'Aquele achadinho que toda garota deveria ter ❀',
       'Simplesmente encontrei a melhor escolha por esse valor 🌸',
     ];
-    chosenHeadline = genericHeadlines[Math.floor(Math.random() * genericHeadlines.length)];
-    chosenHashtags = '#fyp #foryou #achadinhos #tiktokshop #produtosvirais #qualidade #modafeminina';
+    let pool = genericHeadlines;
+    if (params.excludeHeadline && genericHeadlines.length > 1) {
+      const cleanExclude = params.excludeHeadline.trim().toLowerCase();
+      const filtered = genericHeadlines.filter((h) => h.trim().toLowerCase() !== cleanExclude);
+      if (filtered.length > 0) pool = filtered;
+    }
+    chosenHeadline = pool[Math.floor(Math.random() * pool.length)];
+    chosenHashtags = '#fyp #foryou #achadinhos #tiktokshop #produtosvirais';
     flower = '✨';
   }
 
@@ -948,10 +978,23 @@ export function resolveHeadlineAndHashtags(params: {
   }
 
   // Higieniza para garantir que são apenas hashtags (#tag) separadas por espaço
-  const tagsOnly = rawHashtags
-    .split(/\s+/)
-    .filter((t) => t.startsWith('#'))
-    .join(' ');
+  // O TikTok aceita e recomenda até 5 hashtags por publicação para máximo alcance
+  const tagList = Array.from(new Set(rawHashtags.split(/\s+/).filter((t) => t.startsWith('#'))));
+
+  // Se tiver menos de 5 hashtags e pertencer a uma categoria, completa com outras hashtags reais da mesma categoria até 5
+  if (tagList.length < 5 && category !== 'outro' && PRODUCT_HEADLINES_GROUPED[category]) {
+    const allCatTags = PRODUCT_HEADLINES_GROUPED[category].items
+      .flatMap((it) => it.hashtags.split(/\s+/))
+      .filter((t) => t.startsWith('#'));
+    for (const extraTag of allCatTags) {
+      if (tagList.length >= 5) break;
+      if (!tagList.includes(extraTag)) {
+        tagList.push(extraTag);
+      }
+    }
+  }
+
+  const tagsOnly = tagList.slice(0, 5).join(' ');
 
   // Busca uma entrada correspondente no banco legado para manter retrocompatibilidade
   const matchedEntry = ANA_MARIA_BANK.find((e) => e.category === category) || ANA_MARIA_BANK[0];
