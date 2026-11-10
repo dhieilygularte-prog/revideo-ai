@@ -7,6 +7,7 @@ import {
   AnaMariaPresentationMode,
   AnaMariaMasterId,
 } from './types';
+import { isBagProduct } from '../produtos2/produtos2FidelityLock';
 import {
   getMasterPromptById,
   UNIVERSAL_PLUS_SIZE_MODULE,
@@ -40,7 +41,8 @@ Utilizar anéis delicados predominantemente prateados ou em tonalidade metálica
 
 **PADRÃO GERAL:**
 Manter sempre a mesma identidade de acessórios: colares dourados em camadas, pulseiras douradas fininhas nos dois pulsos e anéis delicados em metal claro. Os acessórios devem parecer joias verdadeiras, com acabamento refinado, proporções pequenas e brilho natural.
-Não utilizar relógios grandes, maxi colares, pulseiras grossas ou acessórios exagerados. Os acessórios SEMPRE combinam perfeitamente com a roupa.`;
+Não utilizar relógios grandes, maxi colares, pulseiras grossas ou acessórios exagerados. Os acessórios SEMPRE combinam perfeitamente com a roupa.
+- AUSÊNCIA TOTAL DE BOLSAS (REGRA MANDATÓRIA): É terminantemente proibido a modelo usar, segurar ou carregar qualquer tipo de bolsa, bolsa tiracolo, bolsa de ombro, bolsa de mão, clutch ou mochila (mãos e ombros completamente livres de bolsas), exceto se a bolsa for o próprio produto à venda.`;
 
 export const UNIVERSAL_GOLDEN_ACCESSORIES_ENGLISH_BLOCK = `[MANDATORY FEMININE DELICATE ACCESSORIES - GOLD & LIGHT METALS]:
 - LAYERED GOLD NECKLACES: Two delicate gold necklaces worn simultaneously in layers:
@@ -51,7 +53,8 @@ export const UNIVERSAL_GOLDEN_ACCESSORIES_ENGLISH_BLOCK = `[MANDATORY FEMININE D
   2. Right wrist: delicate fine gold chain bracelet with subtle metallic accents.
   Loose natural fit on wrists, realistic understated jewelry sheen.
 - MINIMALIST METALLIC RINGS: Fine, subtle, elegant silver/light-gold rings (one delicate ring on right hand, one subtle smooth band on left hand; no chunky gems or large cocktail rings).
-- STRICT PROHIBITIONS: NO bulky watches, NO chunky bracelets, NO oversized statement jewelry. Accessories must look like real, refined, delicate fine jewelry harmonizing with the outfit.`;
+- STRICT PROHIBITIONS: NO bulky watches, NO chunky bracelets, NO oversized statement jewelry. Accessories must look like real, refined, delicate fine jewelry harmonizing with the outfit.
+- STRICT NO BAGS MANDATE: The model must NOT wear, carry or hold any bag, purse, handbag, tote bag, shoulder bag, backpack or clutch. Hands and shoulders must be 100% free of bags.`;
 
 export function detectShoeCategory(
   productName: string,
@@ -526,6 +529,13 @@ export function buildAnaMariaImagePrompt(
   const isMale = form.influencer === 'Homem';
   const isPlusSize = form.bodyType === 'plus_size';
   const shoeInfo = detectShoeCategory(form.productName, form.additionalInstructions, form.influencer);
+  const isBag = isBagProduct(form.productName, form.additionalInstructions);
+  const noBagDirectivePt = !isBag
+    ? '\n- REGRA OBRIGATÓRIA DE ZERO BOLSAS: A modelo NÃO DEVE usar, segurar ou carregar nenhum tipo de bolsa, bolsa tiracolo, bolsa de mão, carteira, sacola, clutch ou mochila. Mãos e ombros completamente livres de bolsas. Bolsas só podem aparecer se a bolsa for o próprio produto de referência anunciado (o que NÃO é o caso aqui).'
+    : '';
+  const noBagDirectiveEn = !isBag
+    ? '\nMANDATORY CONSTRAINT: NO BAGS, NO PURSES, NO HANDBAGS. The model must NOT wear, hold, or carry any handbag, purse, tote bag, shoulder bag, backpack, clutch or crossbody bag. Both hands and shoulders 100% free of bags.'
+    : '';
   const complementaryInfo = detectComplementaryGarment(form.productName, form.additionalInstructions, form.influencer);
 
   const hasUserInstructions = Boolean(
@@ -698,6 +708,7 @@ ${
 ${garmentTypeInstruction}
 - Calçado nos pés: ${shoeInfo.name} (${shoeInfo.description}), compondo um visual harmonioso e elegante com a peça (se os pés estiverem visíveis; se a Foto 1 for vestido longo cobrindo o calçado, preserve a barra longa até o chão cobrindo o calçado, sem jamais encurtar o vestido para forçar mostrar o calçado; NÃO é obrigatório aparecer calçado em peças longas).
 - REGRA CRÍTICA DE ISOLAMENTO TOTAL DA FOTO 1: Da Foto 1 (produto), extraia RIGOROSAMENTE apenas a peça de roupa e tecido. É TERMINANTEMENTE PROIBIDO copiar, mesclar ou misturar o rosto, a cabeça, o cabelo, a pele ou a pose da pessoa da Foto 1! Ignore 100% a pessoa da Foto 1 (ZERO mistura com o rosto da Foto 1). É TERMINANTEMENTE PROIBIDO copiar tatuagens, marcas corporais ou desenhos da pessoa da Foto 1. A modelo gerada deve ter PELE 100% LIMPA, ZERO TATUAGENS em todo o corpo (braços, mãos, pernas, colo e pescoço totalmente livres de tatuagens).
+${noBagDirectivePt}${noBagDirectiveEn}
 
 2. FOTO 2 (MODELO E CENÁRIO BASE ABSOLUTO — PRESERVAÇÃO INTEGRAL 1:1):
 - A modelo gerada DEVE SER RIGOROSAMENTE A MESMA MULHER DA FOTO 2, NA MESMA POSE DIANTE DO ESPELHO E DENTRO DO MESMO CÔMODO/CENÁRIO DA FOTO 2.
@@ -716,6 +727,7 @@ Qualidade fotográfica autêntica de smartphone moderno, textura de pele humana 
 ${garmentTypeInstruction}
 - Calçado nos pés: ${shoeInfo.name} (${shoeInfo.description}), compondo um visual harmonioso e elegante com a peça (se os pés estiverem visíveis; se a Foto 1 for vestido longo cobrindo o calçado, preserve a barra longa até o chão cobrindo o calçado, sem jamais encurtar o vestido para forçar mostrar o calçado; NÃO é obrigatório aparecer calçado em peças longas).
 - REGRA CRÍTICA DE ISOLAMENTO TOTAL DA FOTO 1: Da Foto 1 (produto), extraia RIGOROSAMENTE apenas a peça de roupa e tecido. É TERMINANTEMENTE PROIBIDO copiar, mesclar ou misturar o rosto, a cabeça, o cabelo, a pele ou a pose da pessoa da Foto 1! Ignore 100% a pessoa da Foto 1 (ZERO mistura com o rosto da Foto 1). É TERMINANTEMENTE PROIBIDO copiar tatuagens, marcas corporais ou desenhos da pessoa da Foto 1. A modelo gerada deve ter PELE 100% LIMPA, ZERO TATUAGENS em todo o corpo (braços, mãos, pernas, colo e pescoço totalmente livres de tatuagens).
+${noBagDirectivePt}${noBagDirectiveEn}
 
 2. FOTO 2 (MODELO — IDENTIDADE, ROSTO E POSE 1:1):
 - A modelo gerada DEVE SER LITERALMENTE A MESMA MULHER DA FOTO 2.
@@ -760,6 +772,10 @@ ${phonePostureSection}
 
 ## 6. ACESSÓRIOS E JOIAS (${master.shortName.toUpperCase()})
 ${accessoriesSectionText}
+
+## 6.1. REGRA MANDATÓRIA DE ZERO BOLSAS (PROIBIÇÃO TOTAL DE BOLSAS)
+${isBag ? "O produto anunciado é uma bolsa: a modelo pode apresentar/usar a bolsa de referência." : "A modelo NÃO DEVE estar usando, segurando ou carregando NENHUM tipo de bolsa, bolsa tiracolo, bolsa de mão, bolsa de ombro, carteira, sacola, clutch ou mochila. Mãos e ombros completamente livres de bolsas. Bolsas só podem aparecer se a bolsa for o produto de referência anunciado.\nCRITICAL CONSTRAINT (NO BAGS): The model must NOT wear, carry or hold any handbag, purse, tote bag, shoulder bag, backpack, clutch or crossbody bag. Hands and shoulders must remain 100% free of bags."}
+
 
 ## 7. REGRA UNIVERSAL DE CALÇADO (HARMONIA COM A ROUPA & RESPEITO AO COMPRIMENTO)
 Calçado nos pés: **${shoeInfo.name}** (se os pés estiverem visíveis).

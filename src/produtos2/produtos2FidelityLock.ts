@@ -52,7 +52,10 @@ Every single frame must preserve 100% of the consolidated reference sheet across
 - Zero Hand-Object Fusion: Human hands and fingers must grip the product cleanly by neutral sides or handles with crisp anatomical separation (5 natural fingers). Fingers must NEVER melt, fuse, blend, or morph into the product surface, and must NEVER cover or occlude the manufacturer logo, display, or primary buttons.
 - Zero Disappearing or Mutating Parts: Nozzles, tips, caps, cables, buttons, seams, or accessories must NEVER vanish, pop in, detach unexpectedly, or morph into different shapes between frames.
 - Rigid Structural Stability: Rigid bodies, shafts, nozzles, and cables must remain 100% solid and dimensionally stable throughout motion without rubbery bending, stretching, shrinking, or thickness fluctuation.
-- Color & Finish Continuity: Maintain consistent product color and surface finish across all consecutive frames without sudden color shifts.`;
+- Color & Finish Continuity: Maintain consistent product color and surface finish across all consecutive frames without sudden color shifts.
+
+11. STRICT NO-BAGS RULE (TIKTOK SHOP ZERO-TOLERANCE COMPLIANCE):
+Unless the advertised product itself is a bag (handbag, purse, tote bag, shoulder bag, backpack, clutch, crossbody bag), it is STRICTLY FORBIDDEN for the model or creator to wear, hold, or carry any bag, purse, backpack, or accessory bag in the video or image. A bag is ONLY permitted on screen if the product being sold is a bag. Never add a bag to the outfit or hands of the model when selling clothing, cosmetics, electronics, shoes, or any non-bag product.`;
 
 /**
  * Anexa a trava global de fidelidade visual aos prompts de video do Veo 3 / Vell / OmniFlash
@@ -83,6 +86,7 @@ export function buildProductFidelityDirectives(_productInfo?: string): string {
 8. INTEGRIDADE ESTRUTURAL DOS 5 GRUPOS PERICIAIS DO DETECTOR (GARANTIA DE APROVAÇÃO >=90%): Preservar 100% de cada componente físico visível nas fotos de referência consolidadas (corpo principal, base, conexões, cabos/fios, alças, tampas, bicos, fechos, botões, articulações e todas as peças individuais de kits). Nenhuma peça pode sumir, mudar de espessura, mudar de curvatura ou ser simplificada.
 9. SEPARAÇÃO ANATÔMICA LIMPA MÃO-PRODUTO (PREVENÇÃO ANTI-MORPHING): As mãos e os dedos devem segurar o produto pelas laterais ou empunhaduras neutras com contorno limpo e 5 dedos perfeitos, NUNCA fundindo os dedos ao produto e NUNCA cobrindo a logomarca original do fabricante, o visor ou os botões principais.
 10. ACABAMENTO E TEXTURA REAL 1:1 (FOSCO, BRILHANTE, METÁLICO OU TRAMA): Reproduzir exatamente o mesmo material aparente, textura e reflexo de superfície das fotos de referência em todos os quadros.
+11. PROIBIÇÃO ABSOLUTA DE BOLSAS (TIKTOK SHOP ZERO-RESTRIÇÃO): A modelo/apresentadora NÃO deve usar, carregar ou segurar NENHUM tipo de bolsa, bolsa tiracolo, bolsa de ombro, bolsa de mão, carteira, sacola, clutch ou mochila, a menos que o produto de referência anunciado seja expressamente uma bolsa. Mãos e ombros completamente livres de bolsas! A bolsa só pode aparecer se ela for o produto à venda.
 ========================`;
 }
 
@@ -153,6 +157,16 @@ export function isOralCareProduct(productName: string, productInfo?: string, ext
 export function isApparelProduct(productName: string, productInfo?: string, extraContext?: string): boolean {
   const combined = `${productName || ''} ${productInfo || ''} ${extraContext || ''}`.toLowerCase();
   return /\b(vestido|camisa|camiseta|bermuda|cal[çc]a|short|shorts|jaqueta|casaco|blusa|saia|cueca|calcinha|suti[aã]|lingerie|jogger|moletom|roupa|vestu[aá]rio)\b/i.test(combined);
+}
+
+/**
+ * Detecta se o produto é uma bolsa, mochila ou acessório de carregar.
+ * Ignora instruções negativas como "sem bolsa", "não usar bolsa".
+ */
+export function isBagProduct(productName?: string, productInfo?: string, extraContext?: string): boolean {
+  const combined = `${productName || ''} ${productInfo || ''} ${extraContext || ''}`.toLowerCase()
+    .replace(/\b(?:sem|não|nao|zero|proibido|remover|tirar)\s+(?:usar\s+)?(?:qualquer\s+)?(?:bolsas?|mochilas?|pochetes?|clutches?|tote\s*bags?|handbags?)\b/gi, '');
+  return /\b(bolsas?|bolsinhas?|mochilas?|mochilinhas?|clutch(?:es)?|pochetes?|tote\s*bags?|handbags?|crossbody\s*bags?|shoulder\s*bags?|malas?|maletas?|necessaires?)\b/i.test(combined);
 }
 
 /**
@@ -430,10 +444,20 @@ export function sanitizeVisualMapForFidelity<T extends { excerpt: string; intent
  */
 export function sanitizeStoryboardPromptForFidelity(prompt: string, productName?: string, productInfo?: string): string {
   if (!prompt || typeof prompt !== 'string') return prompt || '';
-  const isPackaged = isPackagedProductOnly(productName || '', productInfo, prompt);
-  if (!isPackaged) return prompt;
+  let sanitized = prompt;
 
-  return prompt
+  // Se o produto NÃO for uma bolsa, remove qualquer alusão a segurar/usar bolsa e impõe mãos livres
+  if (!isBagProduct(productName, productInfo, prompt)) {
+    sanitized = sanitized
+      .replace(/\b(?:segurando|carregando|usando|com uma)\s+(?:uma\s+)?(?:bolsa|bolsinha|mochila|mochilinha|clutch|pochete)[^,.;\n]*/gi, 'com as mãos livres sem bolsa')
+      .replace(/\b(?:bolsa|bolsinha|mochila|mochilinha|clutch|pochete)\s+(?:a\s+tiracolo|de\s+ombro|de\s+mão|transversal)[^,.;\n]*/gi, 'sem bolsa')
+      .replace(/\b(?:handbag|purse|tote bag|shoulder bag|backpack|crossbody bag)\b/gi, 'no bags');
+  }
+
+  const isPackaged = isPackagedProductOnly(productName || '', productInfo, prompt);
+  if (!isPackaged) return sanitized;
+
+  return sanitized
     .replace(/\b(?:abrindo|rasgando|deslacrando)\s+[^,.;\n]*/gi, 'segurando o pacote fechado de frente')
     .replace(/\b(?:tirando|retirando|puxando)\s+[^,.;\n]*(?:fralda|unidade|item)[^,.;\n]*/gi, 'exibindo os pacotes fechados de frente')
     .replace(/\b(?:desdobrando|esticando)\s+[^,.;\n]*/gi, 'apresentando o pacote fechado')

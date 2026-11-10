@@ -20,6 +20,7 @@ import {
   sanitizeAllScenesForFidelity,
   sanitizeProductLockForFidelity,
   sanitizeSceneFidelityAction,
+  isBagProduct,
   sanitizeStoryboardPromptForFidelity,
   sanitizeVisualMapForFidelity,
 } from './produtos2FidelityLock';
@@ -635,6 +636,7 @@ AS 10 REGRAS MANDATÓRIAS DE FIDELIDADE TOTAL AO PRODUTO ANEXADO E CALIBRAGEM PA
    - Grupo 4 (Cores, Materiais, Texturas e Acabamento): Reproduzir exatamente o acabamento (fosco, brilhante, metálico ou trama), textura e tom de cor real das fotos de referência.
    - Grupo 5 (Funcionalidade e Anatomia): Demonstrações práticas 100% fiéis à mecânica real do produto.
 10. SEPARAÇÃO ANATÔMICA LIMPA MÃO-PRODUTO (PREVENÇÃO ANTI-MORPHING PARA O VEO 3): As mãos e os dedos do apresentador devem segurar o produto pelas laterais ou empunhaduras neutras com contorno nítido (5 dedos anatômicos perfeitos), NUNCA fundindo os dedos ao produto e NUNCA cobrindo a logomarca original do fabricante, o visor ou os botões/bicos principais, garantindo quadros limpos que o Veo 3 animará sem deformações!
+11. REGRA MANDATÓRIA — PROIBIÇÃO DE BOLSAS (TIKTOK SHOP ZERO-RESTRIÇÃO): Quando o produto anunciado NÃO for uma bolsa ou mochila, a apresentadora/modelo NUNCA deve usar, carregar ou segurar bolsa, bolsa de ombro, bolsa tiracolo, bolsa de mão, carteira ou mochila. Mãos e ombros completamente livres de bolsas! A bolsa só pode aparecer se ela for o produto de referência à venda.
 A copy selecionada para este criativo é:
 "${finalCopy}"
 As cenas do storyboard devem ser construídas A PARTIR DESSA COPY. Cada cena deve provar, ilustrar ou reforçar visualmente um trecho da fala.

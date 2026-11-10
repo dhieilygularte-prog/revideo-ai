@@ -41,6 +41,7 @@ import {
   isPackagedProductOnly,
   sanitizeAllScenesForFidelity,
   sanitizeProductLockForFidelity,
+  isBagProduct,
   sanitizeStoryboardPromptForFidelity,
   sanitizeVisualMapForFidelity,
 } from './src/produtos2/produtos2FidelityLock';
@@ -1997,8 +1998,11 @@ async function generateImageWithKling(params: {
   // NOVO: No Kling 3.0 Omni, NENHUMA predefinição corporal rígida adicional é injetada.
   // QUEM MANDA É O PROMPT DA MESTRA ESCOLHIDO. Removemos qualquer sobreposição externa de corpo, cintura ou quadril.
   const hasModelRefKling = Boolean(params.modelReferenceBase64 && params.modelReferenceBase64.length > 50);
+  const isBagKling = isBagProduct(params.prompt, undefined, undefined);
 
-  let headerKling = '';
+  let headerKling = !isBagKling
+    ? '[REGRA MANDATÓRIA — PROIBIDO BOLSAS]: A modelo NÃO deve usar, segurar ou carregar nenhuma bolsa, bolsa tiracolo, bolsa de ombro, clutch ou mochila. Mãos livres sem bolsas. / NO BAGS: The model must not hold, wear or carry any handbag, purse, tote bag, shoulder bag, backpack or clutch.\n\n'
+    : '';
   if (params.isAnaMariaMode) {
     if (isPovModeKling) {
       headerKling = '[MODO POV: Preservar 100% do cenário POV da cama da Imagem 1; produtos da Imagem 2 manipulados apenas pelas duas mãos limpas sem tatuagens sobre a cama. PROIBIDO corpo, rosto ou espelho!]\n\n';
@@ -2053,13 +2057,14 @@ async function generateImageWithKling(params: {
   }
 
   // Negative prompt estritamente focado em qualidade/artefatos — SEM tokens de corpo para que quem mande seja 100% o prompt da Mestra
-  const negativePrompt = params.isAnaMariaMode
+  const bagNegativeTokens = !isBagKling ? ', bag, bags, handbag, handbags, purse, purses, tote bag, shoulder bag, backpack, clutch, crossbody bag, sacola, bolsa, bolsas' : '';
+  const negativePrompt = (params.isAnaMariaMode
     ? (hasModelRefKling
         ? 'copying face from image 2, copying person from image 2, blending person from image 2, model from product photo, mixing face of product photo, tattoos on skin from image 2, tattoos on skin, tattoo, body ink, skin ink, arm tattoo, leg tattoo, chest tattoo, wrist tattoo, hand tattoo, ink on skin, drawing on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, low quality, 3d render, cartoon, illustration, jeans with dress, pants under dress, oily skin, greasy skin, shining skin, wet skin, oil sheen, plastic skin, wax skin, wax doll, porcelain skin, fake skin, heavy airbrushing, artificial gloss'
         : (allowsFace
             ? 'tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, deformed face, bad eyes, low quality, 3d render, cartoon, illustration'
             : 'face, head, eyes, eyebrows, nose, lips, mouth, teeth, smile, chin up, portrait, headshot, selfie with face, looking at camera, visible face, jeans with dress, pants under dress, jeans, sideways pose, profile angle, no smartphone, empty hands, without phone, naked, pantless, topless, no pants, underwear only, skinny, emaciated, boyish torso, flat hips, oily skin, greasy skin, shining skin, wet skin, oil sheen, plastic skin, wax skin, wax doll, porcelain skin, fake skin, heavy airbrushing, artificial gloss, tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, low quality, 3d render, cartoon, illustration'))
-    : 'original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry';
+    : 'original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry') + bagNegativeTokens;
 
   const payload: any = {
     model_name: 'kling-v3-omni',
@@ -2277,6 +2282,10 @@ async function generateImageWithSeedream(params: {
   // O header técnico apenas mapeia as referências visuais (Imagem 1 = cenário, Imagem 2+ = produto/tecido 1:1),
   // proibindo expressamente copiar a modelo/manequim da foto de produto na Imagem 2+.
   const hasModelRefSeedream = Boolean(params.modelReferenceBase64 && params.modelReferenceBase64.length > 50);
+  const isBagSeedream = isBagProduct(params.prompt, undefined, undefined);
+  const bagDirectiveSeedream = !isBagSeedream
+    ? '[PROIBIDO BOLSAS]: A modelo NÃO deve usar, segurar ou carregar qualquer tipo de bolsa, bolsa de ombro, bolsa tiracolo, clutch ou mochila. / NO BAGS: No handbags, no purses, no shoulder bags, no backpacks.\n'
+    : '';
 
   const allowsFaceSeedream =
     params.presentationMode === 'com_rosto' ||
@@ -2894,6 +2903,11 @@ app.post('/api/generate-scene-image', async (req, res) => {
       basePromptWithUser = `INSTRUÇÕES ADICIONAIS PRIORITÁRIAS DO USUÁRIO (CENÁRIO, MODELO E DETALHES):\n${userExtras}\n\n${prompt}`;
     }
 
+    const isBagGenScene = isBagProduct(productType || req.body?.productName, additionalInstructions, prompt);
+    const bagDirectiveScene = !isBagGenScene && !basePromptWithUser.includes('PROIBIDO BOLSAS')
+      ? '\n\n[REGRA MANDATÓRIA — PROIBIDO BOLSAS]: A modelo NÃO deve usar, segurar ou carregar nenhuma bolsa, bolsa de mão, bolsa tiracolo, sacola, clutch ou mochila. Mãos e ombros 100% livres de bolsas. / NO BAGS: Do not include any bag, handbag, purse, tote bag, shoulder bag, backpack, clutch or crossbody bag.'
+      : '';
+    basePromptWithUser += bagDirectiveScene;
     const effectivePrompt = isAnaMariaMode
       ? basePromptWithUser
       : sanitizeStoryboardPromptForFidelity(basePromptWithUser, productType, req.body.productInfo);
@@ -5998,6 +6012,15 @@ O usuário anexou ${photosList.length} Foto(s) de Referência Oficiais com o cor
 E anexou ${batchVideos.length} vídeo(s) gerados para aprovação em lote (até 25 vídeos).
 
 DIRETRIZ DE SEVERIDADE DO TIKTOK SHOP (LEI INEGOCIÁVEL):
+⚠️ REGRA DE OURO SOBRE BOLSAS E ACESSÓRIOS DE CARREGAR (TOLERÂNCIA ZERO):
+- A bolsa SÓ PODE APARECER quando ela for o próprio produto da imagem de referência (ou seja, quando o produto à venda for uma bolsa, mochila, bolsa tiracolo, etc.).
+- Quando o produto da imagem de referência NÃO for uma bolsa (ex: vestidos, conjuntos, calças, blusas, macaquinhos, calçados, celulares, eletrônicos, maquiagem, etc.):
+  SE A MODELO ESTIVER USANDO, SEGURANDO OU CARREGANDO UMA BOLSA NO VÍDEO (seja bolsa de ombro, bolsa tiracolo, bolsa de mão, mochilinha, pochete ou sacola):
+  O VÍDEO DEVE SER REPROVADO IMEDIATAMENTE (status: "red", score <= 35, approved: false)!
+  O aviso do campo "issue" DEVE SER ESTRITAMENTE:
+  "🔴 Reprovado: Não use bolsa pois isso vai dar restrição no seu vídeo."
+  Apenas pode ser aprovado vídeo onde a bolsa aparece SE a bolsa for o produto da imagem de referência (produto à venda).
+
 ⚠️ 1. MUDANÇA DE FORMATO / MODELAGEM DA PEÇA É GRAVÍSSIMA (INFRAÇÃO CRÍTICA):
 No TikTok Shop, o produto entregue ao cliente deve ter EXATAMENTE o mesmo corte e silhueta do vídeo exibido no anúncio. Mudar o formato causa strike imediato por "Produto não condizente com o anúncio" ou suspensão da conta comercial.
 Você DEVE auditar com rigor pericial 4 pilares estruturais da roupa em CADA VÍDEO:
@@ -6075,6 +6098,7 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
       "lowerPiece": "shorts" | "bermuda" | "calca" | "saia",
       "isGenuineSkirt": boolean, // true APENAS se for saia tubular/sino rodado contínua sem divisão de pernas; false se for shorts/bermuda mesmo com coxas encostadas
       "bellySkinExposedInVideo": boolean, // true se no vídeo houver qualquer pedaço de pele/barriga/cintura exposta entre blusa e shorts
+      "modelUsingBag": boolean, // true se no vídeo a modelo estiver usando, segurando ou carregando qualquer bolsa, bolsa tiracolo, bolsa de ombro, bolsa de mão, mochila ou sacola
       "score": number, // 90 a 100 se aprovado verde; 70 a 89 se risco amarelo; <= 60 se reprovado vermelho
       "status": "green" | "yellow" | "red",
       "approved": boolean, // true se green ou yellow aceitável; false se red
@@ -6116,7 +6140,8 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
 
           contentBlocks.push({
             type: 'text',
-            text: `\n=== [VÍDEO DO LOTE #${vIdx + 1} — "${vName}" (ID: ${vId}, DURAÇÃO: ${vItem.videoDurationSeconds || 10}s)] ===\nExecute a auditoria estrutural forense destas ${frames.length} capturas contra as fotos de referência:\n1. REGRA DA BARRIGA ZERO (TOLERÂNCIA ZERO): Inspecione milimetricamente a linha da cintura/abdômen entre a blusa e a parte de baixo. Há QUALQUER centímetro, triângulo, recorte ou fenda de PELE NUA (barriga, flanco, umbigo ou cintura) à mostra? Se a blusa foi encurtada virando cropped ou deixou a barriga de fora enquanto a referência cobre a barriga: marque bellySkinExposedInVideo: true e REPROVE IMEDIATAMENTE (score <= 38, approved: false)!\n2. REGRA DO SHORTS vs SAIA (ZERO FALSAS REPROVAÇÕES): Se a referência for shorts/bermuda e a modelo estiver em frente ao espelho com pernas juntas ou coxas encostadas, NÃO É SAIA! Verifique as barras individuais dobradas em cada coxa, bolsos ou costura central (gancho). Se tiver barras individuais contornando as pernas ou costura central, É SHORTS (lowerPiece: 'shorts', isGenuineSkirt: false). Só reprove como saia se for sino rodado ou tubo contínuo sem nenhuma divisão de pernas!\n3. Ombros e acabamentos: A amarração de faixa de tecido foi mantida, ou surgiu volume/babado/volante inventado?\n4. Cor (Tolerância alta): Pertence à mesma família cromática de alguma referência? Se sim, aprove (ignore variações de sombra e iluminação de espelho).`,
+            text: `\n=== [VÍDEO DO LOTE #${vIdx + 1} — "${vName}" (ID: ${vId}, DURAÇÃO: ${vItem.videoDurationSeconds || 10}s)] ===\nExecute a auditoria estrutural forense destas ${frames.length} capturas contra as fotos de referência:\n1. REGRA DA BARRIGA ZERO (TOLERÂNCIA ZERO): Inspecione milimetricamente a linha da cintura/abdômen entre a blusa e a parte de baixo. Há QUALQUER centímetro, triângulo, recorte ou fenda de PELE NUA (barriga, flanco, umbigo ou cintura) à mostra? Se a blusa foi encurtada virando cropped ou deixou a barriga de fora enquanto a referência cobre a barriga: marque bellySkinExposedInVideo: true e REPROVE IMEDIATAMENTE (score <= 38, approved: false)!\n2. REGRA DO SHORTS vs SAIA (ZERO FALSAS REPROVAÇÕES): Se a referência for shorts/bermuda e a modelo estiver em frente ao espelho com pernas juntas ou coxas encostadas, NÃO É SAIA! Verifique as barras individuais dobradas em cada coxa, bolsos ou costura central (gancho). Se tiver barras individuais contornando as pernas ou costura central, É SHORTS (lowerPiece: 'shorts', isGenuineSkirt: false). Só reprove como saia se for sino rodado ou tubo contínuo sem nenhuma divisão de pernas!\n3. Ombros e acabamentos: A amarração de faixa de tecido foi mantida, ou surgiu volume/babado/volante inventado?\n4. Cor (Tolerância alta): Pertence à mesma família cromática de alguma referência? Se sim, aprove (ignore variações de sombra e iluminação de espelho).
+5. REGRA DA BOLSA: Verifique se a modelo está usando, segurando ou carregando qualquer bolsa, bolsa tiracolo, bolsa de ombro, bolsa de mão, sacola ou mochila. Se o produto da referência NÃO for uma bolsa e houver bolsa no vídeo: marque modelUsingBag: true e REPROVE IMEDIATAMENTE com score <= 35 e issue: "🔴 Reprovado: Não use bolsa pois isso vai dar restrição no seu vídeo."`,
           });
 
           frames.forEach((f: any, fIdx: number) => {
@@ -6354,9 +6379,16 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
         }
       }
 
+      const isBagProductBatch = isBagProduct(productName, lockContext);
+      const bagDefect = !isBagProductBatch && Boolean(
+        match.modelUsingBag === true ||
+        /\b(bolsas?|bolsinhas?|mochilas?|pochetes?|handbags?|purses?)\b/i.test(issueLower)
+      );
+
       // Avaliação do status final (green, yellow, red)
       let status: 'green' | 'yellow' | 'red' = 'green';
-      if (bellyDefect || !approved || score < 70) {
+      if (bagDefect || bellyDefect || !approved || score < 70) {
+        if (bagDefect) score = Math.min(score, 35);
         status = 'red';
         approved = false;
         score = Math.min(score, 60);
@@ -6395,7 +6427,9 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
         finalIssue = `🟡 Risco — Possível Divergência: ${cleanYellow}`;
       } else {
         // 🔴 Vermelho / Reprovado: explica de forma enxuta todas as divergências observadas
-        if (bellyDefect) {
+        if (bagDefect) {
+          finalIssue = '🔴 Reprovado: Não use bolsa pois isso vai dar restrição no seu vídeo.';
+        } else if (bellyDefect) {
           finalIssue = `🔴 Reprovado: Barriga exposta (na referência oficial a blusa cobre 100% da cintura e abdômen sem pele à mostra).`;
         } else {
           // Extrai os pontos principais de divergência sem repetições de forma enxuta
@@ -6827,6 +6861,34 @@ Retorne ESTRITAMENTE um objeto JSON válido em português com este formato (se n
 
     const finalizeVideoAuditResponse = (parsed: any, usageObj: any) => {
       const { normalizedFrames, rawFindings } = syncFramesAndFindings(parsed);
+      const isBagSingle = isBagProduct(productName, lockContext);
+      if (!isBagSingle) {
+        const bagFinding = rawFindings.find((f: any) =>
+          /\b(bolsas?|bolsinhas?|mochilas?|pochetes?|handbags?|purses?)\b/i.test(`${f.title || ''} ${f.whatAppearsInVideo || ''} ${f.howToFix || ''}`)
+        );
+        const bagFrame = normalizedFrames.find((f: any) =>
+          /\b(bolsas?|bolsinhas?|mochilas?|pochetes?|handbags?|purses?)\b/i.test(String(f.issue || ''))
+        );
+        if (bagFinding || bagFrame) {
+          if (bagFinding) {
+            bagFinding.severity = 'evident';
+            bagFinding.title = 'Não use bolsa pois isso vai dar restrição no seu vídeo.';
+            bagFinding.whatAppearsInVideo = 'A modelo está usando uma bolsa no vídeo, mas o produto anunciado não é uma bolsa.';
+            bagFinding.howToFix = 'Não use bolsa pois isso vai dar restrição no seu vídeo.';
+          } else {
+            rawFindings.unshift({
+              number: 1,
+              title: 'Não use bolsa pois isso vai dar restrição no seu vídeo.',
+              severity: 'evident',
+              whatAppearsInVideo: 'A modelo está usando uma bolsa no vídeo, mas o produto anunciado não é uma bolsa.',
+              whereItAppears: 'Vídeo gerado',
+              howToFix: 'Não use bolsa pois isso vai dar restrição no seu vídeo.',
+              bestFrameSecond: bagFrame?.second ?? 2,
+              bestRefIndex: 1,
+            });
+          }
+        }
+      }
 
       const normalizedFindings = rawFindings.map((f: any, idx: number) => {
         const sevRaw = String(f.severity || 'evident').toLowerCase();
@@ -6993,6 +7055,9 @@ Retorne ESTRITAMENTE um objeto JSON válido em português com este formato (se n
         const promptText = `Realize a perícia visual completa do vídeo "${videoFileName}" (${videoDurationSeconds}s) inspecionando cada uma das ${videoFrames.length} capturas reais de 1 em 1 segundo (${framesTimestampsList}) em alta resolução e comparando diretamente com as ${photosList.length} imagem(ns) de referência do produto "${productName}".
 
 INSTRUÇÕES OBRIGATÓRIAS DE PERÍCIA VISUAL (ZERO FALSOS POSITIVOS):
+0) REGRA DE OURO SOBRE BOLSAS (TOLERÂNCIA ZERO):
+   A bolsa SÓ PODE APARECER quando a bolsa for o produto da imagem de referência. Se o produto da referência NÃO for uma bolsa e a modelo estiver usando, segurando ou carregando qualquer bolsa, bolsa de ombro, bolsa tiracolo, bolsa de mão ou mochila no vídeo:
+   REPROVE O VÍDEO IMEDIATAMENTE (score <= 35, status "red") e crie um finding com severidade "evident", title: "Não use bolsa pois isso vai dar restrição no seu vídeo.", whatAppearsInVideo: "A modelo está usando uma bolsa no vídeo, mas a bolsa não é o produto anunciado na referência.", howToFix: "Não use bolsa pois isso vai dar restrição no seu vídeo."
 1) Inspecione cada frame (${framesTimestampsList}) com base EXCLUSIVA no que a imagem real de cada frame mostra:
    - Se o frame mostrar a FRENTE do celular (display ligado, papel de parede, ícones ou câmera frontal), NÃO cobre câmeras traseiras! Aprove o frame com nota VERDE (>= 92%).
    - Se o frame mostrar a CAIXA/EMBALAGEM do produto, avalie como embalagem comercial e aprove com nota VERDE (>= 92%).

@@ -1470,7 +1470,10 @@ Every single frame must preserve 100% of the consolidated reference sheet across
 - Zero Hand-Object Fusion: Human hands and fingers must grip the product cleanly by neutral sides or handles with crisp anatomical separation (5 natural fingers). Fingers must NEVER melt, fuse, blend, or morph into the product surface, and must NEVER cover or occlude the manufacturer logo, display, or primary buttons.
 - Zero Disappearing or Mutating Parts: Nozzles, tips, caps, cables, buttons, seams, or accessories must NEVER vanish, pop in, detach unexpectedly, or morph into different shapes between frames.
 - Rigid Structural Stability: Rigid bodies, shafts, nozzles, and cables must remain 100% solid and dimensionally stable throughout motion without rubbery bending, stretching, shrinking, or thickness fluctuation.
-- Color & Finish Continuity: Maintain consistent product color and surface finish across all consecutive frames without sudden color shifts.`;
+- Color & Finish Continuity: Maintain consistent product color and surface finish across all consecutive frames without sudden color shifts.
+
+11. STRICT NO-BAGS RULE (TIKTOK SHOP ZERO-TOLERANCE COMPLIANCE):
+Unless the advertised product itself is a bag (handbag, purse, tote bag, shoulder bag, backpack, clutch, crossbody bag), it is STRICTLY FORBIDDEN for the model or creator to wear, hold, or carry any bag, purse, backpack, or accessory bag in the video or image. A bag is ONLY permitted on screen if the product being sold is a bag. Never add a bag to the outfit or hands of the model when selling clothing, cosmetics, electronics, shoes, or any non-bag product.`;
 function appendFidelityLockToVeoPrompt(prompt) {
   if (!prompt || typeof prompt !== "string") return prompt || "";
   if (prompt.includes("PRODUCT VISUAL FIDELITY LOCK")) {
@@ -1510,6 +1513,10 @@ function isOralCareProduct(productName, productInfo, extraContext) {
 function isApparelProduct(productName, productInfo, extraContext) {
   const combined = `${productName || ""} ${productInfo || ""} ${extraContext || ""}`.toLowerCase();
   return /\b(vestido|camisa|camiseta|bermuda|cal[çc]a|short|shorts|jaqueta|casaco|blusa|saia|cueca|calcinha|suti[aã]|lingerie|jogger|moletom|roupa|vestu[aá]rio)\b/i.test(combined);
+}
+function isBagProduct(productName, productInfo, extraContext) {
+  const combined = `${productName || ""} ${productInfo || ""} ${extraContext || ""}`.toLowerCase().replace(/\b(?:sem|não|nao|zero|proibido|remover|tirar)\s+(?:usar\s+)?(?:qualquer\s+)?(?:bolsas?|mochilas?|pochetes?|clutches?|tote\s*bags?|handbags?)\b/gi, "");
+  return /\b(bolsas?|bolsinhas?|mochilas?|mochilinhas?|clutch(?:es)?|pochetes?|tote\s*bags?|handbags?|crossbody\s*bags?|shoulder\s*bags?|malas?|maletas?|necessaires?)\b/i.test(combined);
 }
 function getCanonicalPackagedScene(index, productName, totalCount = 9, partIndex = 1) {
   const p = (productName || "Produto").trim();
@@ -1673,9 +1680,13 @@ function sanitizeVisualMapForFidelity(visualMap, productName, productInfo) {
 }
 function sanitizeStoryboardPromptForFidelity(prompt, productName, productInfo) {
   if (!prompt || typeof prompt !== "string") return prompt || "";
+  let sanitized = prompt;
+  if (!isBagProduct(productName, productInfo, prompt)) {
+    sanitized = sanitized.replace(/\b(?:segurando|carregando|usando|com uma)\s+(?:uma\s+)?(?:bolsa|bolsinha|mochila|mochilinha|clutch|pochete)[^,.;\n]*/gi, "com as m\xE3os livres sem bolsa").replace(/\b(?:bolsa|bolsinha|mochila|mochilinha|clutch|pochete)\s+(?:a\s+tiracolo|de\s+ombro|de\s+mão|transversal)[^,.;\n]*/gi, "sem bolsa").replace(/\b(?:handbag|purse|tote bag|shoulder bag|backpack|crossbody bag)\b/gi, "no bags");
+  }
   const isPackaged = isPackagedProductOnly(productName || "", productInfo, prompt);
-  if (!isPackaged) return prompt;
-  return prompt.replace(/\b(?:abrindo|rasgando|deslacrando)\s+[^,.;\n]*/gi, "segurando o pacote fechado de frente").replace(/\b(?:tirando|retirando|puxando)\s+[^,.;\n]*(?:fralda|unidade|item)[^,.;\n]*/gi, "exibindo os pacotes fechados de frente").replace(/\b(?:desdobrando|esticando)\s+[^,.;\n]*/gi, "apresentando o pacote fechado").replace(/\b(?:el[aá]sticos?|abas?|fitas?|forro|revestimento interno|núcleo|camada|gel|absorção)[^,.;\n]*/gi, "especifica\xE7\xF5es na embalagem lacrada de f\xE1brica").replace(/\bfraldas?\s+(?:abertas?|soltas?|desdobradas?|fora do pacote|de dentro)[^,.;\n]*/gi, "pacote fechado de fraldas").replace(/\b(?:com\s+)?estampa\s+(?:d[aeo]|divertida|infantil|colorida)?\s*(?:galinha\s*pintadinha|desenho|personagem)?[^,.;\n]*/gi, "arte e logomarca oficiais impressas na embalagem de refer\xEAncia").replace(/galinha\s*pintadinha/gi, "embalagem de refer\xEAncia").replace(/\b(?:jogando|despejando|derramando)\s+[aá]gua[^,.;\n]*/gi, "destacando os pacotes fechados").replace(/\bcopo d'?\s*[aá]gua[^,.;\n]*/gi, "pacote fechado de fraldas").replace(/\bteste de absor[çc][aã]o[^,.;\n]*/gi, "destaque dos pacotes fechados").replace(/\bindicador de umidade[^,.;\n]*/gi, "pacotes fechados organizados na bancada").replace(/\btocando a textura da fralda[^,.;\n]*/gi, "apontando para o selo oficial impresso na embalagem fechada").replace(/\bfralda\b(?!\s+(?:babysec|pampers|huggies|fechada))/gi, "pacote de fraldas fechado").replace(/\bfraldas\b(?!\s+(?:babysec|pampers|huggies|fechadas))/gi, "pacotes de fraldas fechados");
+  if (!isPackaged) return sanitized;
+  return sanitized.replace(/\b(?:abrindo|rasgando|deslacrando)\s+[^,.;\n]*/gi, "segurando o pacote fechado de frente").replace(/\b(?:tirando|retirando|puxando)\s+[^,.;\n]*(?:fralda|unidade|item)[^,.;\n]*/gi, "exibindo os pacotes fechados de frente").replace(/\b(?:desdobrando|esticando)\s+[^,.;\n]*/gi, "apresentando o pacote fechado").replace(/\b(?:el[aá]sticos?|abas?|fitas?|forro|revestimento interno|núcleo|camada|gel|absorção)[^,.;\n]*/gi, "especifica\xE7\xF5es na embalagem lacrada de f\xE1brica").replace(/\bfraldas?\s+(?:abertas?|soltas?|desdobradas?|fora do pacote|de dentro)[^,.;\n]*/gi, "pacote fechado de fraldas").replace(/\b(?:com\s+)?estampa\s+(?:d[aeo]|divertida|infantil|colorida)?\s*(?:galinha\s*pintadinha|desenho|personagem)?[^,.;\n]*/gi, "arte e logomarca oficiais impressas na embalagem de refer\xEAncia").replace(/galinha\s*pintadinha/gi, "embalagem de refer\xEAncia").replace(/\b(?:jogando|despejando|derramando)\s+[aá]gua[^,.;\n]*/gi, "destacando os pacotes fechados").replace(/\bcopo d'?\s*[aá]gua[^,.;\n]*/gi, "pacote fechado de fraldas").replace(/\bteste de absor[çc][aã]o[^,.;\n]*/gi, "destaque dos pacotes fechados").replace(/\bindicador de umidade[^,.;\n]*/gi, "pacotes fechados organizados na bancada").replace(/\btocando a textura da fralda[^,.;\n]*/gi, "apontando para o selo oficial impresso na embalagem fechada").replace(/\bfralda\b(?!\s+(?:babysec|pampers|huggies|fechada))/gi, "pacote de fraldas fechado").replace(/\bfraldas\b(?!\s+(?:babysec|pampers|huggies|fechadas))/gi, "pacotes de fraldas fechados");
 }
 
 // src/produtos2/produtos2Prompts.ts
@@ -3659,7 +3670,8 @@ async function generateImageWithKling(params) {
   );
   const isPovModeKling = params.presentationMode === "pov" || params.selectedMasterId === "pov_cinta_85k" || params.selectedMasterId === "pov_blusinhas_13k" || Boolean(params.prompt && params.prompt.includes("PRESERVA\xC7\xC3O INTEGRAL DO CEN\xC1RIO POV"));
   const hasModelRefKling = Boolean(params.modelReferenceBase64 && params.modelReferenceBase64.length > 50);
-  let headerKling = "";
+  const isBagKling = isBagProduct(params.prompt, void 0, void 0);
+  let headerKling = !isBagKling ? "[REGRA MANDAT\xD3RIA \u2014 PROIBIDO BOLSAS]: A modelo N\xC3O deve usar, segurar ou carregar nenhuma bolsa, bolsa tiracolo, bolsa de ombro, clutch ou mochila. M\xE3os livres sem bolsas. / NO BAGS: The model must not hold, wear or carry any handbag, purse, tote bag, shoulder bag, backpack or clutch.\n\n" : "";
   if (params.isAnaMariaMode) {
     if (isPovModeKling) {
       headerKling = "[MODO POV: Preservar 100% do cen\xE1rio POV da cama da Imagem 1; produtos da Imagem 2 manipulados apenas pelas duas m\xE3os limpas sem tatuagens sobre a cama. PROIBIDO corpo, rosto ou espelho!]\n\n";
@@ -3700,7 +3712,8 @@ ${params.prompt}` : params.prompt).trim();
     console.warn(`[Kling Omni] Prompt com ${klingPrompt.length} caracteres excede o limite oficial de 2.500 caracteres da API.`);
     klingPrompt = compactPromptToLimit(params.prompt, 2490, headerKling);
   }
-  const negativePrompt = params.isAnaMariaMode ? hasModelRefKling ? "copying face from image 2, copying person from image 2, blending person from image 2, model from product photo, mixing face of product photo, tattoos on skin from image 2, tattoos on skin, tattoo, body ink, skin ink, arm tattoo, leg tattoo, chest tattoo, wrist tattoo, hand tattoo, ink on skin, drawing on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, low quality, 3d render, cartoon, illustration, jeans with dress, pants under dress, oily skin, greasy skin, shining skin, wet skin, oil sheen, plastic skin, wax skin, wax doll, porcelain skin, fake skin, heavy airbrushing, artificial gloss" : allowsFace ? "tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, deformed face, bad eyes, low quality, 3d render, cartoon, illustration" : "face, head, eyes, eyebrows, nose, lips, mouth, teeth, smile, chin up, portrait, headshot, selfie with face, looking at camera, visible face, jeans with dress, pants under dress, jeans, sideways pose, profile angle, no smartphone, empty hands, without phone, naked, pantless, topless, no pants, underwear only, skinny, emaciated, boyish torso, flat hips, oily skin, greasy skin, shining skin, wet skin, oil sheen, plastic skin, wax skin, wax doll, porcelain skin, fake skin, heavy airbrushing, artificial gloss, tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, low quality, 3d render, cartoon, illustration" : "original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry";
+  const bagNegativeTokens = !isBagKling ? ", bag, bags, handbag, handbags, purse, purses, tote bag, shoulder bag, backpack, clutch, crossbody bag, sacola, bolsa, bolsas" : "";
+  const negativePrompt = (params.isAnaMariaMode ? hasModelRefKling ? "copying face from image 2, copying person from image 2, blending person from image 2, model from product photo, mixing face of product photo, tattoos on skin from image 2, tattoos on skin, tattoo, body ink, skin ink, arm tattoo, leg tattoo, chest tattoo, wrist tattoo, hand tattoo, ink on skin, drawing on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, low quality, 3d render, cartoon, illustration, jeans with dress, pants under dress, oily skin, greasy skin, shining skin, wet skin, oil sheen, plastic skin, wax skin, wax doll, porcelain skin, fake skin, heavy airbrushing, artificial gloss" : allowsFace ? "tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, deformed face, bad eyes, low quality, 3d render, cartoon, illustration" : "face, head, eyes, eyebrows, nose, lips, mouth, teeth, smile, chin up, portrait, headshot, selfie with face, looking at camera, visible face, jeans with dress, pants under dress, jeans, sideways pose, profile angle, no smartphone, empty hands, without phone, naked, pantless, topless, no pants, underwear only, skinny, emaciated, boyish torso, flat hips, oily skin, greasy skin, shining skin, wet skin, oil sheen, plastic skin, wax skin, wax doll, porcelain skin, fake skin, heavy airbrushing, artificial gloss, tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, low quality, 3d render, cartoon, illustration" : "original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry") + bagNegativeTokens;
   const payload = {
     model_name: "kling-v3-omni",
     prompt: klingPrompt,
@@ -3856,6 +3869,8 @@ async function generateImageWithSeedream(params) {
   const refImages = (params.referenceImages && params.referenceImages.length > 0 ? params.referenceImages : [params.imageReferenceBase64]).map((img) => toDataUri(img)).filter((img) => Boolean(img)).slice(0, params.presentationMode === "pov" || params.selectedMasterId === "pov_cinta_85k" || params.selectedMasterId === "pov_blusinhas_13k" || Boolean(params.prompt && params.prompt.includes("PRESERVA\xC7\xC3O INTEGRAL DO CEN\xC1RIO POV")) ? 3 : 4);
   const isPovModeSeedream = params.presentationMode === "pov" || params.selectedMasterId === "pov_cinta_85k" || params.selectedMasterId === "pov_blusinhas_13k" || Boolean(params.prompt && params.prompt.includes("PRESERVA\xC7\xC3O INTEGRAL DO CEN\xC1RIO POV"));
   const hasModelRefSeedream = Boolean(params.modelReferenceBase64 && params.modelReferenceBase64.length > 50);
+  const isBagSeedream = isBagProduct(params.prompt, void 0, void 0);
+  const bagDirectiveSeedream = !isBagSeedream ? "[PROIBIDO BOLSAS]: A modelo N\xC3O deve usar, segurar ou carregar qualquer tipo de bolsa, bolsa de ombro, bolsa tiracolo, clutch ou mochila. / NO BAGS: No handbags, no purses, no shoulder bags, no backpacks.\n" : "";
   const allowsFaceSeedream = params.presentationMode === "com_rosto" || params.selectedMasterId === "mestra_catza" || Boolean(
     params.prompt && (params.prompt.includes("MODO COM ROSTO") || params.prompt.includes("ROSTO E ENQUADRAMENTO \u2014 MODO COM ROSTO") || params.prompt.includes("o rosto da modelo DEVE aparecer") || params.prompt.includes("MESTRA CATZA"))
   );
@@ -4331,6 +4346,9 @@ ${userExtras}
 
 ${prompt}`;
     }
+    const isBagGenScene = isBagProduct(productType || req.body?.productName, additionalInstructions, prompt);
+    const bagDirectiveScene = !isBagGenScene && !basePromptWithUser.includes("PROIBIDO BOLSAS") ? "\n\n[REGRA MANDAT\xD3RIA \u2014 PROIBIDO BOLSAS]: A modelo N\xC3O deve usar, segurar ou carregar nenhuma bolsa, bolsa de m\xE3o, bolsa tiracolo, sacola, clutch ou mochila. M\xE3os e ombros 100% livres de bolsas. / NO BAGS: Do not include any bag, handbag, purse, tote bag, shoulder bag, backpack, clutch or crossbody bag." : "";
+    basePromptWithUser += bagDirectiveScene;
     const effectivePrompt = isAnaMariaMode ? basePromptWithUser : sanitizeStoryboardPromptForFidelity(basePromptWithUser, productType, req.body.productInfo);
     const requestedImageModel = req.body?.imageModel;
     const presentationMode = req.body?.presentationMode;
@@ -6887,6 +6905,15 @@ O usu\xE1rio anexou ${photosList.length} Foto(s) de Refer\xEAncia Oficiais com o
 E anexou ${batchVideos.length} v\xEDdeo(s) gerados para aprova\xE7\xE3o em lote (at\xE9 25 v\xEDdeos).
 
 DIRETRIZ DE SEVERIDADE DO TIKTOK SHOP (LEI INEGOCI\xC1VEL):
+\u26A0\uFE0F REGRA DE OURO SOBRE BOLSAS E ACESS\xD3RIOS DE CARREGAR (TOLER\xC2NCIA ZERO):
+- A bolsa S\xD3 PODE APARECER quando ela for o pr\xF3prio produto da imagem de refer\xEAncia (ou seja, quando o produto \xE0 venda for uma bolsa, mochila, bolsa tiracolo, etc.).
+- Quando o produto da imagem de refer\xEAncia N\xC3O for uma bolsa (ex: vestidos, conjuntos, cal\xE7as, blusas, macaquinhos, cal\xE7ados, celulares, eletr\xF4nicos, maquiagem, etc.):
+  SE A MODELO ESTIVER USANDO, SEGURANDO OU CARREGANDO UMA BOLSA NO V\xCDDEO (seja bolsa de ombro, bolsa tiracolo, bolsa de m\xE3o, mochilinha, pochete ou sacola):
+  O V\xCDDEO DEVE SER REPROVADO IMEDIATAMENTE (status: "red", score <= 35, approved: false)!
+  O aviso do campo "issue" DEVE SER ESTRITAMENTE:
+  "\u{1F534} Reprovado: N\xE3o use bolsa pois isso vai dar restri\xE7\xE3o no seu v\xEDdeo."
+  Apenas pode ser aprovado v\xEDdeo onde a bolsa aparece SE a bolsa for o produto da imagem de refer\xEAncia (produto \xE0 venda).
+
 \u26A0\uFE0F 1. MUDAN\xC7A DE FORMATO / MODELAGEM DA PE\xC7A \xC9 GRAV\xCDSSIMA (INFRA\xC7\xC3O CR\xCDTICA):
 No TikTok Shop, o produto entregue ao cliente deve ter EXATAMENTE o mesmo corte e silhueta do v\xEDdeo exibido no an\xFAncio. Mudar o formato causa strike imediato por "Produto n\xE3o condizente com o an\xFAncio" ou suspens\xE3o da conta comercial.
 Voc\xEA DEVE auditar com rigor pericial 4 pilares estruturais da roupa em CADA V\xCDDEO:
@@ -6964,6 +6991,7 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
       "lowerPiece": "shorts" | "bermuda" | "calca" | "saia",
       "isGenuineSkirt": boolean, // true APENAS se for saia tubular/sino rodado cont\xEDnua sem divis\xE3o de pernas; false se for shorts/bermuda mesmo com coxas encostadas
       "bellySkinExposedInVideo": boolean, // true se no v\xEDdeo houver qualquer peda\xE7o de pele/barriga/cintura exposta entre blusa e shorts
+      "modelUsingBag": boolean, // true se no v\xEDdeo a modelo estiver usando, segurando ou carregando qualquer bolsa, bolsa tiracolo, bolsa de ombro, bolsa de m\xE3o, mochila ou sacola
       "score": number, // 90 a 100 se aprovado verde; 70 a 89 se risco amarelo; <= 60 se reprovado vermelho
       "status": "green" | "yellow" | "red",
       "approved": boolean, // true se green ou yellow aceit\xE1vel; false se red
@@ -7006,7 +7034,8 @@ Execute a auditoria estrutural forense destas ${frames.length} capturas contra a
 1. REGRA DA BARRIGA ZERO (TOLER\xC2NCIA ZERO): Inspecione milimetricamente a linha da cintura/abd\xF4men entre a blusa e a parte de baixo. H\xE1 QUALQUER cent\xEDmetro, tri\xE2ngulo, recorte ou fenda de PELE NUA (barriga, flanco, umbigo ou cintura) \xE0 mostra? Se a blusa foi encurtada virando cropped ou deixou a barriga de fora enquanto a refer\xEAncia cobre a barriga: marque bellySkinExposedInVideo: true e REPROVE IMEDIATAMENTE (score <= 38, approved: false)!
 2. REGRA DO SHORTS vs SAIA (ZERO FALSAS REPROVA\xC7\xD5ES): Se a refer\xEAncia for shorts/bermuda e a modelo estiver em frente ao espelho com pernas juntas ou coxas encostadas, N\xC3O \xC9 SAIA! Verifique as barras individuais dobradas em cada coxa, bolsos ou costura central (gancho). Se tiver barras individuais contornando as pernas ou costura central, \xC9 SHORTS (lowerPiece: 'shorts', isGenuineSkirt: false). S\xF3 reprove como saia se for sino rodado ou tubo cont\xEDnuo sem nenhuma divis\xE3o de pernas!
 3. Ombros e acabamentos: A amarra\xE7\xE3o de faixa de tecido foi mantida, ou surgiu volume/babado/volante inventado?
-4. Cor (Toler\xE2ncia alta): Pertence \xE0 mesma fam\xEDlia crom\xE1tica de alguma refer\xEAncia? Se sim, aprove (ignore varia\xE7\xF5es de sombra e ilumina\xE7\xE3o de espelho).`
+4. Cor (Toler\xE2ncia alta): Pertence \xE0 mesma fam\xEDlia crom\xE1tica de alguma refer\xEAncia? Se sim, aprove (ignore varia\xE7\xF5es de sombra e ilumina\xE7\xE3o de espelho).
+5. REGRA DA BOLSA: Verifique se a modelo est\xE1 usando, segurando ou carregando qualquer bolsa, bolsa tiracolo, bolsa de ombro, bolsa de m\xE3o, sacola ou mochila. Se o produto da refer\xEAncia N\xC3O for uma bolsa e houver bolsa no v\xEDdeo: marque modelUsingBag: true e REPROVE IMEDIATAMENTE com score <= 35 e issue: "\u{1F534} Reprovado: N\xE3o use bolsa pois isso vai dar restri\xE7\xE3o no seu v\xEDdeo."`
           });
           frames.forEach((f, fIdx) => {
             if (!f.frameBase64) return;
@@ -7181,8 +7210,13 @@ Analise os ${batchVideos.length} v\xEDdeos acima contra as ${photosList.length} 
           score = Math.min(score, 38);
         }
       }
+      const isBagProductBatch = isBagProduct(productName, lockContext);
+      const bagDefect = !isBagProductBatch && Boolean(
+        match.modelUsingBag === true || /\b(bolsas?|bolsinhas?|mochilas?|pochetes?|handbags?|purses?)\b/i.test(issueLower)
+      );
       let status = "green";
-      if (bellyDefect || !approved || score < 70) {
+      if (bagDefect || bellyDefect || !approved || score < 70) {
+        if (bagDefect) score = Math.min(score, 35);
         status = "red";
         approved = false;
         score = Math.min(score, 60);
@@ -7205,7 +7239,9 @@ Analise os ${batchVideos.length} v\xEDdeos acima contra as ${photosList.length} 
         }
         finalIssue = `\u{1F7E1} Risco \u2014 Poss\xEDvel Diverg\xEAncia: ${cleanYellow}`;
       } else {
-        if (bellyDefect) {
+        if (bagDefect) {
+          finalIssue = "\u{1F534} Reprovado: N\xE3o use bolsa pois isso vai dar restri\xE7\xE3o no seu v\xEDdeo.";
+        } else if (bellyDefect) {
           finalIssue = `\u{1F534} Reprovado: Barriga exposta (na refer\xEAncia oficial a blusa cobre 100% da cintura e abd\xF4men sem pele \xE0 mostra).`;
         } else {
           const rawLines = issueText.split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("\u{1F534}") && !l.startsWith("O que mudou:") && !l.startsWith("O que observei:")).map((l) => l.replace(/^[-*•]\s*/, ""));
@@ -7492,6 +7528,34 @@ Retorne ESTRITAMENTE um objeto JSON v\xE1lido em portugu\xEAs com este formato (
     };
     const finalizeVideoAuditResponse = (parsed, usageObj) => {
       const { normalizedFrames, rawFindings } = syncFramesAndFindings(parsed);
+      const isBagSingle = isBagProduct(productName, lockContext);
+      if (!isBagSingle) {
+        const bagFinding = rawFindings.find(
+          (f) => /\b(bolsas?|bolsinhas?|mochilas?|pochetes?|handbags?|purses?)\b/i.test(`${f.title || ""} ${f.whatAppearsInVideo || ""} ${f.howToFix || ""}`)
+        );
+        const bagFrame = normalizedFrames.find(
+          (f) => /\b(bolsas?|bolsinhas?|mochilas?|pochetes?|handbags?|purses?)\b/i.test(String(f.issue || ""))
+        );
+        if (bagFinding || bagFrame) {
+          if (bagFinding) {
+            bagFinding.severity = "evident";
+            bagFinding.title = "N\xE3o use bolsa pois isso vai dar restri\xE7\xE3o no seu v\xEDdeo.";
+            bagFinding.whatAppearsInVideo = "A modelo est\xE1 usando uma bolsa no v\xEDdeo, mas o produto anunciado n\xE3o \xE9 uma bolsa.";
+            bagFinding.howToFix = "N\xE3o use bolsa pois isso vai dar restri\xE7\xE3o no seu v\xEDdeo.";
+          } else {
+            rawFindings.unshift({
+              number: 1,
+              title: "N\xE3o use bolsa pois isso vai dar restri\xE7\xE3o no seu v\xEDdeo.",
+              severity: "evident",
+              whatAppearsInVideo: "A modelo est\xE1 usando uma bolsa no v\xEDdeo, mas o produto anunciado n\xE3o \xE9 uma bolsa.",
+              whereItAppears: "V\xEDdeo gerado",
+              howToFix: "N\xE3o use bolsa pois isso vai dar restri\xE7\xE3o no seu v\xEDdeo.",
+              bestFrameSecond: bagFrame?.second ?? 2,
+              bestRefIndex: 1
+            });
+          }
+        }
+      }
       const normalizedFindings = rawFindings.map((f, idx) => {
         const sevRaw = String(f.severity || "evident").toLowerCase();
         const severity = sevRaw.includes("evid") || sevRaw === "red" || sevRaw === "high" ? "evident" : sevRaw.includes("obs") || sevRaw === "info" ? "observation" : "possible";
@@ -7616,6 +7680,9 @@ Retorne ESTRITAMENTE um objeto JSON v\xE1lido em portugu\xEAs com este formato (
         const promptText = `Realize a per\xEDcia visual completa do v\xEDdeo "${videoFileName}" (${videoDurationSeconds}s) inspecionando cada uma das ${videoFrames.length} capturas reais de 1 em 1 segundo (${framesTimestampsList}) em alta resolu\xE7\xE3o e comparando diretamente com as ${photosList.length} imagem(ns) de refer\xEAncia do produto "${productName}".
 
 INSTRU\xC7\xD5ES OBRIGAT\xD3RIAS DE PER\xCDCIA VISUAL (ZERO FALSOS POSITIVOS):
+0) REGRA DE OURO SOBRE BOLSAS (TOLER\xC2NCIA ZERO):
+   A bolsa S\xD3 PODE APARECER quando a bolsa for o produto da imagem de refer\xEAncia. Se o produto da refer\xEAncia N\xC3O for uma bolsa e a modelo estiver usando, segurando ou carregando qualquer bolsa, bolsa de ombro, bolsa tiracolo, bolsa de m\xE3o ou mochila no v\xEDdeo:
+   REPROVE O V\xCDDEO IMEDIATAMENTE (score <= 35, status "red") e crie um finding com severidade "evident", title: "N\xE3o use bolsa pois isso vai dar restri\xE7\xE3o no seu v\xEDdeo.", whatAppearsInVideo: "A modelo est\xE1 usando uma bolsa no v\xEDdeo, mas a bolsa n\xE3o \xE9 o produto anunciado na refer\xEAncia.", howToFix: "N\xE3o use bolsa pois isso vai dar restri\xE7\xE3o no seu v\xEDdeo."
 1) Inspecione cada frame (${framesTimestampsList}) com base EXCLUSIVA no que a imagem real de cada frame mostra:
    - Se o frame mostrar a FRENTE do celular (display ligado, papel de parede, \xEDcones ou c\xE2mera frontal), N\xC3O cobre c\xE2meras traseiras! Aprove o frame com nota VERDE (>= 92%).
    - Se o frame mostrar a CAIXA/EMBALAGEM do produto, avalie como embalagem comercial e aprove com nota VERDE (>= 92%).
