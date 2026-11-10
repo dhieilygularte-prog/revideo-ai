@@ -1200,7 +1200,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                 )}
               </h3>
             </div>
-            {/* Controles da direita: Botão discreto Refazer + Botão Copiar Descrição */}
+            {/* Controles da direita: Botão discreto Refazer + Botão Copiar Hastags */}
             <div className="flex items-center gap-3">
               <button
                 type="button"
@@ -1232,7 +1232,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                 ) : (
                   <>
                     <Copy className="w-3.5 h-3.5" />
-                    <span>Copiar Descrição</span>
+                    <span>Copiar Hastags</span>
                   </>
                 )}
               </button>
