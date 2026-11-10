@@ -82,6 +82,13 @@ export function detectShoeCategory(
       combined
     );
 
+  // Peças únicas (vestidos, macacões, camisolas, babydolls, pijamas) NÃO são peças superiores avulsas
+  const isOnePieceForShoes = /\b(vestido|vestidos|dress|dresses|macac[aã]o|macaquinho|camisola|baby\s*doll|babydoll|jumpsuit|chemise|tubinho|pijama completo|robe)\b/i.test(combined);
+  const isDress = /\b(vestido|vestidos|dress|dresses|longo|midi|chemise|tubinho)\b/i.test(combined);
+
+  // 3.1. Blusas, Blusinhas, Croppeds ou Peças Superiores -> SEMPRE TÊNIS (combinando com a Calça Jeans obrigatória)
+  const isUpperPieceForShoes = !isOnePieceForShoes && /\b(blusa|blusinha|blusinhas|blusas|rendada|rendado|cropped|top|regata|camisa|camiseta|t-shirt|tshirt|casaco|jaqueta|blazer|moletom|sueter|suéter|cardiga|cardigã|bata|cropped rendad[oa]|blusa rendad[oa])\b/i.test(combined);
+
   // 4. Calças (para mulher: calça = tênis casual branco ou harmonioso; para homem: social = sapato social, demais = tênis)
   const isPants = /\b(calca|calça|jeans|jogger|cargo|pantacourt|pantalona|sarja)\b/i.test(combined);
 
@@ -161,8 +168,17 @@ export function detectShoeCategory(
     };
   }
 
+  // 3.2. Para Mulher: Blusa, Blusinha ou Peça Superior -> TÊNIS FEMININO CASUAL (combinando com a Calça Jeans)
+  if (isUpperPieceForShoes && !isDress && !isSleepwearOrHomewear && !isPartyOrSocial) {
+    return {
+      category: 'B_TENIS',
+      name: 'Tênis Casual Feminino Moderno (combinando com a Calça Jeans)',
+      description:
+        'Tênis casual feminino moderno de cano baixo (branco ou neutro claro), design anatômico elegante e solado reto, combinando perfeitamente com a calça jeans clássica e a blusa anunciada.',
+    };
+  }
+
   // 4. Vestidos em geral (tubinho, midi, longo casual, etc.) -> Sandália feminina elegante que harmonize com o vestido
-  const isDress = /\b(vestido|vestidos|dress|dresses|longo|midi|chemise|tubinho)\b/i.test(combined);
   if (isDress) {
     const isLongDress = /\b(longo|longa|maxi|arrastando|ch[aã]o|floor)\b/i.test(combined);
     return {
@@ -215,7 +231,7 @@ export function detectComplementaryGarment(
 
   const isFullBody = /\b(vestido|longo|midi|macacao|macacão|macaquinho|jumpsuit|conjunto|pijama completo|robe e pijama|terno completo)\b/i.test(combined);
   const isLingerie = /\b(lingerie|suti[aã]|calcinha|babydoll|baby doll|camisola|corselet|cinta modeladora|body de renda)\b/i.test(combined);
-  const isUpper = /\b(blusa|camisa|camiseta|cropped|top|regata|t-shirt|tshirt|casaco|jaqueta|blazer|moletom|sueter|suéter|cardiga|cardigã|cropped rendad[oa]|blusa rendad[oa]|bata)\b/i.test(combined);
+  const isUpper = /\b(blusa|blusinha|blusinhas|blusas|camisa|camiseta|cropped|top|regata|t-shirt|tshirt|casaco|jaqueta|blazer|moletom|sueter|suéter|cardiga|cardigã|cropped rendad[oa]|blusa rendad[oa]|bata|rendada|rendado)\b/i.test(combined);
   const isLower = /\b(calca|calça|jeans|short|shorts|bermuda|saia|minissaia|pantacourt|pantalona|legging|pant|pants)\b/i.test(combined);
 
   if (isFullBody) {
@@ -236,8 +252,8 @@ export function detectComplementaryGarment(
     }
     return {
       type: 'upper_only',
-      directiveTextPt: `REGRA DE LOOK COMERCIAL COMPLETO (PARTE INFERIOR COMPLEMENTAR):\nComo o produto anunciado na foto de referência é exclusivamente uma peça superior (${productName}), a modelo veste uma calça jeans feminina clássica de cintura alta em tom azul tradicional (ou jeans claro clássico), corte reto ou flare elegante, com caimento impecável que valoriza a silhueta da modelo. A blusa anunciada é o foco principal (fidelidade 1:1), e a calça jeans completa o look comercial realista com calçado adequado nos pés.`,
-      directiveTextEn: `[MANDATORY COMPLEMENTARY BOTTOM GARMENT - COMMERCIAL CATALOG DIRECTIVE]: The advertised product in the reference photo is strictly an upper-body piece (${productName}). The model wears a complementary bottom garment: stylish classic high-waisted blue denim jeans with a flattering feminine fit. The model is fully dressed in a complete commercial mirror-selfie outfit.`,
+      directiveTextPt: `REGRA DE LOOK COMERCIAL COMPLETO (PARTE INFERIOR COMPLEMENTAR & TÊNIS OBRIGATÓRIOS — PROIBIDO NUDEZ EMBAIXO):\nComo o produto anunciado na foto de referência é exclusivamente uma peça superior (${productName}), a modelo veste OBRIGATORIAMENTE uma CALÇA JEANS feminina clássica de cintura alta em tom azul tradicional (ou jeans claro clássico) com caimento impecável E TÊNIS casual moderno nos pés. É TERMINANTEMENTE PROIBIDO a modelo ficar sem calça, de calcinha, com pernas despidas ou nua na parte de baixo! A blusa/peça superior anunciada é o foco principal (fidelidade 1:1), e a calça jeans com tênis completam o look comercial 100% vestido e realista.`,
+      directiveTextEn: `[MANDATORY COMPLEMENTARY JEANS AND SNEAKERS - STRICTLY NO LOWER-BODY NUDITY]: The advertised product in the reference photo is strictly an upper-body piece (${productName}). The model MUST wear complementary bottom clothing: stylish classic high-waisted blue denim jeans, and CASUAL SNEAKERS on her feet. STRICTLY FORBIDDEN FOR THE MODEL TO BE PANTLESS, IN UNDERWEAR ONLY, BARE-LEGGED WITHOUT PANTS, OR NUDE ON THE LOWER BODY! The model is 100% fully dressed in a complete commercial mirror-selfie outfit: reference blouse + classic blue denim jeans + casual sneakers.`,
     };
   }
 
@@ -692,10 +708,10 @@ ${
         '- PROIBIÇÃO ABSOLUTA DE CALÇA OU SHORTS: É TERMINANTEMENTE PROIBIDO ADICIONAR CALÇA JEANS, CALÇA, SHORTS, BERMUDA OU QUALQUER OUTRA PEÇA INFERIOR. A modelo veste APENAS o vestido da Foto 1 cobrindo o corpo por completo com pernas limpas naturais.\n' +
         '- REGRA CRÍTICA DE COMPRIMENTO (VESTIDO LONGO / SAIA LONGA): Se na Foto 1 o produto for vestido longo ou saia longa que cubra os pés/calçado, MANTENHA O COMPRIMENTO LONGO EXATO 1:1 ATÉ O CHÃO cobrindo os pés. NÃO É OBRIGATÓRIO APARECER O CALÇADO! É TERMINANTEMENTE PROIBIDO encurtar o vestido ou subir a barra para forçar mostrar o calçado.'
       : isUpperOnly
-      ? '- O PRODUTO DA FOTO 1 É UMA PEÇA SUPERIOR: A modelo veste a peça superior da Foto 1 com máxima fidelidade 1:1, combinada com uma peça inferior que combine com harmonia (calça, saia, short ou bermuda) para compor um look comercial elegante de catálogo.'
+      ? '- O PRODUTO DA FOTO 1 É UMA PEÇA SUPERIOR (BLUSA, BLUSINHA, CROPPED OU PARTE DE CIMA): A modelo veste a peça superior da Foto 1 com máxima fidelidade 1:1, combinada OBRIGATORIAMENTE com CALÇA JEANS feminina clássica de cintura alta (azul tradicional) e TÊNIS casual nos pés. É TERMINANTEMENTE PROIBIDO a modelo ficar sem calça, de calcinha, com pernas despidas ou nua na parte de baixo! Look 100% completo, elegante e comercial com blusa + calça jeans + tênis.'
       : isLowerOnly
       ? '- O PRODUTO DA FOTO 1 É UMA PEÇA INFERIOR: A modelo veste a peça inferior da Foto 1 com máxima fidelidade 1:1, combinada com uma blusa neutra elegante para compor um look comercial elegante de catálogo.'
-      : '- Se o produto for vestido ou macacão, veste EXCLUSIVAMENTE o vestido (sem calça jeans ou shorts por baixo); se for blusa, veste peça inferior combinando; se for calça/short, veste blusa combinando.';
+      : '- Se o produto for vestido ou macacão, veste EXCLUSIVAMENTE o vestido (sem calça jeans ou shorts por baixo); se for blusa/peça superior, veste CALÇA JEANS clássica de cintura alta e TÊNIS nos pés (TERMINANTEMENTE PROIBIDO ficar sem calça ou nua na parte de baixo); se for calça/short, veste blusa combinando.';
 
     let galleryModelPrompt = '';
 

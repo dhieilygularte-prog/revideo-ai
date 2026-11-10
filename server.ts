@@ -2000,9 +2000,17 @@ async function generateImageWithKling(params: {
   const hasModelRefKling = Boolean(params.modelReferenceBase64 && params.modelReferenceBase64.length > 50);
   const isBagKling = isBagProduct(params.prompt, undefined, undefined);
 
-  let headerKling = !isBagKling
-    ? '[REGRA MANDATÓRIA — PROIBIDO BOLSAS]: A modelo NÃO deve usar, segurar ou carregar nenhuma bolsa, bolsa tiracolo, bolsa de ombro, clutch ou mochila. Mãos livres sem bolsas. / NO BAGS: The model must not hold, wear or carry any handbag, purse, tote bag, shoulder bag, backpack or clutch.\n\n'
+  const isUpperPiecePromptKling = Boolean(
+    params.prompt &&
+      (/\b(blusa|blusinha|blusinhas|blusas|rendada|rendado|cropped|top|regata|camisa|camiseta|t-shirt|tshirt|casaco|jaqueta|blazer|moletom|sueter|suéter|cardiga|cardigã|bata)\b/i.test(params.prompt) ||
+        params.prompt.includes('PEÇA SUPERIOR'))
+  );
+  const upperJeansKlingHeader = isUpperPiecePromptKling && !params.prompt.includes('VESTIDO')
+    ? '[REGRA OBRIGATÓRIA — BLUSA COM CALÇA JEANS E TÊNIS]: Como o produto é uma blusa/peça superior, a modelo DEVE obrigatoriamente vestir CALÇA JEANS clássica de cintura alta e TÊNIS nos pés (PROIBIDO ficar sem calça, de calcinha ou desvestida na parte de baixo). Look 100% completo com calça jeans e tênis casual.\n\n'
     : '';
+  let headerKling = upperJeansKlingHeader + (!isBagKling
+    ? '[REGRA MANDATÓRIA — PROIBIDO BOLSAS]: A modelo NÃO deve usar, segurar ou carregar nenhuma bolsa, bolsa tiracolo, bolsa de ombro, clutch ou mochila. Mãos livres sem bolsas. / NO BAGS: The model must not hold, wear or carry any handbag, purse, tote bag, shoulder bag, backpack or clutch.\n\n'
+    : '');
   if (params.isAnaMariaMode) {
     if (isPovModeKling) {
       headerKling = '[MODO POV: Preservar 100% do cenário POV da cama da Imagem 1; produtos da Imagem 2 manipulados apenas pelas duas mãos limpas sem tatuagens sobre a cama. PROIBIDO corpo, rosto ou espelho!]\n\n';
@@ -2013,9 +2021,17 @@ async function generateImageWithKling(params: {
             params.prompt.includes('PEÇA ÚNICA') ||
             params.prompt.includes('VESTIDO'))
       );
+      const isUpperPieceKling = Boolean(
+        params.prompt &&
+          (/\b(blusa|blusinha|blusinhas|blusas|rendada|rendado|cropped|top|regata|camisa|camiseta|t-shirt|tshirt|casaco|jaqueta|blazer|moletom|sueter|suéter|cardiga|cardigã|bata)\b/i.test(params.prompt) ||
+            params.prompt.includes('PEÇA SUPERIOR') ||
+            params.prompt.includes('BLUSA'))
+      );
       const clothingDirectiveKling = isDressOrOnePieceKling
         ? 'A modelo veste EXCLUSIVAMENTE o vestido de <<<image_1>>> com pernas limpas naturais. TERMINANTEMENTE PROIBIDO calça jeans, calça ou shorts sob o vestido. REGRA CRÍTICA DE COMPRIMENTO (VESTIDO LONGO / SAIA LONGA): Se o vestido for longo até o chão cobrindo o calçado na foto de referência, MANTENHA A BARRA LONGA ATÉ O CHÃO cobrindo os pés. NÃO É OBRIGATÓRIO APARECER CALÇADO e é TERMINANTEMENTE PROIBIDO encurtar o vestido para mostrar calçado.'
-        : 'Se o produto for vestido, veste apenas o vestido; se for blusa, veste calça jeans combinando; se for calça, veste blusa combinando.';
+        : (isUpperPieceKling
+            ? 'A modelo veste a blusa anunciada com máxima fidelidade 1:1 combinada OBRIGATORIAMENTE com CALÇA JEANS feminina clássica de cintura alta e TÊNIS casual nos pés. É TERMINANTEMENTE PROIBIDO a modelo ficar sem calça, de calcinha, com pernas despidas ou nua na parte de baixo! Look 100% completo com calça jeans e tênis.'
+            : 'Se o produto for vestido, veste apenas o vestido; se for blusa, veste calça jeans e tênis; se for calça, veste blusa combinando.');
 
       const isModelScenarioKling = (params.modelScenarioSource || 'model') === 'model';
       if (isModelScenarioKling) {
@@ -2063,8 +2079,8 @@ async function generateImageWithKling(params: {
         ? 'copying face from image 2, copying person from image 2, blending person from image 2, model from product photo, mixing face of product photo, tattoos on skin from image 2, tattoos on skin, tattoo, body ink, skin ink, arm tattoo, leg tattoo, chest tattoo, wrist tattoo, hand tattoo, ink on skin, drawing on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, low quality, 3d render, cartoon, illustration, jeans with dress, pants under dress, oily skin, greasy skin, shining skin, wet skin, oil sheen, plastic skin, wax skin, wax doll, porcelain skin, fake skin, heavy airbrushing, artificial gloss'
         : (allowsFace
             ? 'tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, deformed face, bad eyes, low quality, 3d render, cartoon, illustration'
-            : 'face, head, eyes, eyebrows, nose, lips, mouth, teeth, smile, chin up, portrait, headshot, selfie with face, looking at camera, visible face, jeans with dress, pants under dress, jeans, sideways pose, profile angle, no smartphone, empty hands, without phone, naked, pantless, topless, no pants, underwear only, skinny, emaciated, boyish torso, flat hips, oily skin, greasy skin, shining skin, wet skin, oil sheen, plastic skin, wax skin, wax doll, porcelain skin, fake skin, heavy airbrushing, artificial gloss, tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, low quality, 3d render, cartoon, illustration'))
-    : 'original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry') + bagNegativeTokens;
+            : 'face, head, eyes, eyebrows, nose, lips, mouth, teeth, smile, chin up, portrait, headshot, selfie with face, looking at camera, visible face, jeans with dress, pants under dress, sideways pose, profile angle, no smartphone, empty hands, without phone, naked, pantless, topless, no pants, underwear only, skinny, emaciated, boyish torso, flat hips, oily skin, greasy skin, shining skin, wet skin, oil sheen, plastic skin, wax skin, wax doll, porcelain skin, fake skin, heavy airbrushing, artificial gloss, tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, low quality, 3d render, cartoon, illustration'))
+    : 'original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry') + bagNegativeTokens + ', pantless, no pants, underwear only, bottomless, bare legs under top, naked bottom, topless, naked, panties only, without pants';
 
   const payload: any = {
     model_name: 'kling-v3-omni',
@@ -2282,6 +2298,11 @@ async function generateImageWithSeedream(params: {
   // O header técnico apenas mapeia as referências visuais (Imagem 1 = cenário, Imagem 2+ = produto/tecido 1:1),
   // proibindo expressamente copiar a modelo/manequim da foto de produto na Imagem 2+.
   const hasModelRefSeedream = Boolean(params.modelReferenceBase64 && params.modelReferenceBase64.length > 50);
+  const isUpperPieceSeedream = Boolean(
+    params.prompt &&
+      (/\b(blusa|blusinha|blusinhas|blusas|rendada|rendado|cropped|top|regata|camisa|camiseta|t-shirt|tshirt|casaco|jaqueta|blazer|moletom|sueter|suéter|cardiga|cardigã|bata)\b/i.test(params.prompt) ||
+        params.prompt.includes('PEÇA SUPERIOR'))
+  );
   const isBagSeedream = isBagProduct(params.prompt, undefined, undefined);
   const bagDirectiveSeedream = !isBagSeedream
     ? '[PROIBIDO BOLSAS]: A modelo NÃO deve usar, segurar ou carregar qualquer tipo de bolsa, bolsa de ombro, bolsa tiracolo, clutch ou mochila. / NO BAGS: No handbags, no purses, no shoulder bags, no backpacks.\n'
@@ -2314,7 +2335,9 @@ async function generateImageWithSeedream(params: {
 
   const clothingDirectiveSeedream = isDressOrOnePieceSeedream
     ? '[REGRA DE VESTUÁRIO: VESTIDO / PEÇA ÚNICA]: A modelo veste EXCLUSIVAMENTE o vestido da Foto 1 cobrindo o corpo com máxima fidelidade e pernas limpas naturais. REGRA CRÍTICA DE COMPRIMENTO (VESTIDO LONGO / SAIA LONGA): Se o produto for vestido longo ou saia longa que cubra os pés/calçado na foto de referência, MANTENHA O COMPRIMENTO LONGO EXATO ATÉ O CHÃO cobrindo os pés. NÃO É OBRIGATÓRIO APARECER O CALÇADO! É TERMINANTEMENTE PROIBIDO encurtar o vestido ou subir a barra para forçar mostrar o calçado. É TERMINANTEMENTE PROIBIDO ADICIONAR CALÇA JEANS, CALÇA, SHORTS OU BERMUDA POR BAIXO DO VESTIDO.\n'
-    : '[REGRA DE LOOK COMPLETO]: Se o produto for vestido/macacão, veste EXCLUSIVAMENTE o vestido (PROIBIDO calça jeans sob vestido); se for blusa avulsa, veste calça jeans feminina cintura alta combinando; se for peça inferior, veste blusa neutra combinando. Se o produto for peça longa até o chão, preserve a barra longa até o piso sem encurtar.\n';
+    : (isUpperPieceSeedream
+        ? '[REGRA OBRIGATÓRIA DE LOOK COMPLETO — BLUSA COM CALÇA JEANS E TÊNIS]: Como o produto anunciado é uma blusa/peça superior, a modelo DEVE OBRIGATORIAMENTE vestir CALÇA JEANS feminina de cintura alta e TÊNIS nos pés. É TERMINANTEMENTE PROIBIDO a modelo ficar sem calça, de calcinha, com pernas despidas ou nua na parte de baixo! Look 100% vestido e comercial com calça jeans azul e tênis casual nos pés.\n'
+        : '[REGRA DE LOOK COMPLETO]: Se o produto for vestido/macacão, veste EXCLUSIVAMENTE o vestido (PROIBIDO calça jeans sob vestido); se for blusa avulsa, veste calça jeans feminina cintura alta e tênis nos pés (PROIBIDO ficar sem calça); se for peça inferior, veste blusa neutra combinando.\n');
 
   const frontalPoseDirectiveSeedream =
     '[POSE OBRIGATÓRIA DE FRENTE]: A modelo deve estar POSICIONADA RIGOROSAMENTE DE FRENTE PARA O ESPELHO (front-facing), de corpo inteiro de frente. Da Foto de produto (Foto 1), extraia EXCLUSIVAMENTE a roupa e o tecido; É TERMINANTEMENTE PROIBIDO copiar pose de lado, de perfil ou ângulo da pessoa da foto de produto!\n';
@@ -2562,9 +2585,14 @@ async function generateImageWithKlingO3Fal(params: {
           params.prompt.includes('PEÇA ÚNICA') ||
           params.prompt.includes('VESTIDO'))
     );
+    const isUpperPieceO3 = Boolean(
+      params.prompt &&
+        (/\b(blusa|blusinha|blusinhas|blusas|rendada|rendado|cropped|top|regata|camisa|camiseta|t-shirt|tshirt|casaco|jaqueta|blazer|moletom|sueter|suéter|cardiga|cardigã|bata)\b/i.test(params.prompt) ||
+          params.prompt.includes('PEÇA SUPERIOR'))
+    );
     const dressRuleO3 = isDressKlingO3
       ? 'The model wears EXCLUSIVELY the dress from <<<image_1>>> (STRICTLY PROHIBITED jeans or pants under dress).'
-      : 'If top, wear matching bottom; if dress, wear ONLY the dress.';
+      : (isUpperPieceO3 ? 'The model wears the top/blouse with MANDATORY classic high-waisted blue denim jeans and casual sneakers on her feet (STRICTLY PROHIBITED pantless, underwear only or bare legs on bottom).' : 'If top, wear classic blue jeans and sneakers; if dress, wear ONLY the dress.');
     const isModelScenarioO3 = (params.modelScenarioSource || 'model') === 'model';
     const headerKlingO3 = isModelScenarioO3
       ? '<<<image_1>>> is the PRIMARY MODEL AND ROOM BASE: The generated image MUST feature 100% the exact same woman, same body, curves, facial features, hair, skin, exact same pose and framing from <<<image_1>>>. If <<<image_1>>> shows her face, KEEP HER EXACT SAME FACE from <<<image_1>>>; do NOT crop her head or face if shown in <<<image_1>>>! Preserve 100% the exact same room and background setting from <<<image_1>>>. ' +
@@ -2589,7 +2617,7 @@ async function generateImageWithKlingO3Fal(params: {
       image_urls: imageUrls,
       negative_prompt: params.modelReferenceBase64
         ? 'copying person from image 2, copying face from image 2, blending person from image 2, model from product photo, mixing face of product photo, altering clothing, redesigning garment, wrong fabric, wrong pattern, wrong dress, different clothes, tattoos on skin from image 2, tattoos on skin, tattoo, body ink, skin ink, arm tattoo, leg tattoo, chest tattoo, wrist tattoo, hand tattoo, ink on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, low quality, 3d render, cartoon, illustration, jeans with dress, pants under dress, oily skin, greasy skin, shining skin, wet skin, oil sheen, plastic skin, wax skin, wax doll'
-        : 'face, head, eyes, eyebrows, nose, lips, mouth, teeth, smile, chin up, portrait, headshot, selfie with face, looking at camera, visible face, jeans with dress, pants under dress, jeans, sideways pose, profile angle, deformed, blurry',
+        : 'face, head, eyes, eyebrows, nose, lips, mouth, teeth, smile, chin up, portrait, headshot, selfie with face, looking at camera, visible face, jeans with dress, pants under dress, sideways pose, profile angle, deformed, blurry',
       resolution: params.resolution || '2K',
       aspect_ratio: params.aspectRatio || '9:16',
       output_format: 'png',
@@ -2674,9 +2702,14 @@ async function generateImageWithFlux2ProEdit(params: {
           params.prompt.includes('PEÇA ÚNICA') ||
           params.prompt.includes('VESTIDO'))
     );
+    const isUpperPieceFlux = Boolean(
+      params.prompt &&
+        (/\b(blusa|blusinha|blusinhas|blusas|rendada|rendado|cropped|top|regata|camisa|camiseta|t-shirt|tshirt|casaco|jaqueta|blazer|moletom|sueter|suéter|cardiga|cardigã|bata)\b/i.test(params.prompt) ||
+          params.prompt.includes('PEÇA SUPERIOR'))
+    );
     const dressRuleFlux = isDressFlux
       ? 'The model wears EXCLUSIVELY the dress from Photo 2 (strictly NO jeans or pants under dress). CRITICAL LENGTH MANDATE: If the dress is floor-length / maxi / long covering the feet in the reference photo, PRESERVE THE FULL FLOOR-LENGTH DRESS TOUCHING THE FLOOR AND COVERING THE FEET. Footwear is NOT mandatory to be visible; DO NOT SHORTEN or raise the hemline of long dresses to show shoes.'
-      : 'If top, wear matching bottom; if dress, wear ONLY the dress.';
+      : (isUpperPieceFlux ? 'The model wears the top/blouse from Photo 2 with MANDATORY classic blue denim jeans and casual sneakers on her feet (STRICTLY FORBIDDEN pantless, underwear only or bare legs on bottom).' : 'If top, wear classic blue jeans and sneakers; if dress, wear ONLY the dress.');
     const isModelScenarioFlux = (params.modelScenarioSource || 'model') === 'model';
     const headerFlux = isModelScenarioFlux
       ? 'Photo 1 is the MODEL AND ROOM BASE: preserve 100% the exact same woman, same body, curves, hair, skin, exact same pose and framing from Photo 1. If Photo 1 shows her face, KEEP HER EXACT SAME FACE, eyes, lips, and facial expression from Photo 1; do NOT crop or cut her face if shown in Photo 1! Preserve 100% the exact same room/background setting from Photo 1. ' +
@@ -2908,6 +2941,20 @@ app.post('/api/generate-scene-image', async (req, res) => {
       ? '\n\n[REGRA MANDATÓRIA — PROIBIDO BOLSAS]: A modelo NÃO deve usar, segurar ou carregar nenhuma bolsa, bolsa de mão, bolsa tiracolo, sacola, clutch ou mochila. Mãos e ombros 100% livres de bolsas. / NO BAGS: Do not include any bag, handbag, purse, tote bag, shoulder bag, backpack, clutch or crossbody bag.'
       : '';
     basePromptWithUser += bagDirectiveScene;
+    const isDressOrOnePieceGeneral = Boolean(
+      basePromptWithUser &&
+        (/\b(vestido|vestidos|dress|dresses|macac[aã]o|macaquinho|camisola|jumpsuit|babydoll|baby doll)\b/i.test(basePromptWithUser) ||
+          basePromptWithUser.includes('PEÇA ÚNICA') ||
+          basePromptWithUser.includes('VESTIDO'))
+    );
+    const isUpperPieceGeneral = Boolean(
+      (productType && /\b(blusa|blusinha|blusinhas|blusas|rendada|rendado|cropped|top|regata|camisa|camiseta|bata)\b/i.test(productType)) ||
+      (req.body?.productName && /\b(blusa|blusinha|blusinhas|blusas|rendada|rendado|cropped|top|regata|camisa|camiseta|bata)\b/i.test(req.body.productName)) ||
+      (basePromptWithUser && /\b(blusa|blusinha|blusinhas|blusas|rendada|rendado|cropped|top|regata|camisa|camiseta|bata)\b/i.test(basePromptWithUser))
+    );
+    if (isUpperPieceGeneral && !isDressOrOnePieceGeneral && !basePromptWithUser.includes('CALÇA JEANS E TÊNIS')) {
+      basePromptWithUser += '\n\n[REGRA MANDATÓRIA DE LOOK COMPLETO — BLUSA COM CALÇA JEANS E TÊNIS]: Como o produto é uma blusa/peça superior, a modelo DEVE OBRIGATORIAMENTE vestir calça jeans feminina clássica de cintura alta e tênis casual nos pés. É TERMINANTEMENTE PROIBIDO a modelo ficar sem calça, de calcinha, com pernas despidas ou nua na parte de baixo! / MANDATORY: The model wears classic high-waisted blue denim jeans and casual sneakers on her feet with the top (STRICTLY NO PANTLESS, NO UNDERWEAR ONLY, NO BARE LEGS UNDER TOP).';
+    }
     const effectivePrompt = isAnaMariaMode
       ? basePromptWithUser
       : sanitizeStoryboardPromptForFidelity(basePromptWithUser, productType, req.body.productInfo);
