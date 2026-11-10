@@ -1525,12 +1525,14 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
                               </span>
                               <span
                                 className={`text-[9px] font-black uppercase px-2 py-0.5 rounded shadow ${
-                                  item.approved
+                                  item.status === 'yellow'
+                                    ? 'bg-amber-500 text-black'
+                                    : item.approved
                                     ? 'bg-emerald-500 text-white'
                                     : 'bg-rose-600 text-white'
                                 }`}
                               >
-                                {item.approved ? 'Aprovado' : 'Reprovado'}
+                                {item.status === 'yellow' ? 'Risco' : item.approved ? 'Aprovado' : 'Reprovado'}
                               </span>
                             </div>
 

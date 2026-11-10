@@ -6929,33 +6929,30 @@ D) DETALHES EXTRAS OU INVENTADOS:
 - NUNCA reprove um v\xEDdeo por varia\xE7\xE3o de tom, sombra ou luz!
 - S\xF3 aponte diverg\xEAncia de cor se for uma cor inteiramente diferente e ausente na cartela (ex: um conjunto vermelho quando a refer\xEAncia s\xF3 existe em azul e preto).
 
-3. PADR\xC3O OBRIGAT\xD3RIO DO CAMPO "issue" PARA CADA V\xCDDEO:
-Quando o v\xEDdeo for REPROVADO (approved: false), preencha o campo "issue" com clareza forense estruturada, exatamente no padr\xE3o:
+3. PADR\xC3O OBRIGAT\xD3RIO DO CAMPO "issue" PARA CADA V\xCDDEO (SEJA DIRETO E ENXUTO):
 
-Exemplo 1 (Barriga exposta / Top virou cropped \u2014 REPROVADO):
-"\u{1F534} Reprovado \u2014 Comprimento e Cobertura Incorreto:
-O que mudou:
-- Na refer\xEAncia oficial, a blusa apresenta caimento longo e fechado, cobrindo 100% da regi\xE3o da cintura, abd\xF4men e umbigo.
-- No v\xEDdeo, a blusa apresenta recorte/corte assim\xE9trico que deixa parte da barriga e cintura exposta.
-O que observei:
-- Faixa evidente de pele nua vis\xEDvel entre a blusa e o c\xF3s do shorts na regi\xE3o da cintura/abd\xF4men."
+A) QUANDO FOR APROVADO (status: "green", score >= 90):
+N\xC3O use textos longos de justificativa! Preencha ESTRITAMENTE no formato enxuto:
+"\u{1F7E2} Aprovado: Produto [score]% fiel \xE0 refer\xEAncia na cor [detectedColor]"
+Exemplo: "\u{1F7E2} Aprovado: Produto 98% fiel \xE0 refer\xEAncia na cor Preto"
 
-Exemplo 2 (Shorts virou Saia Genu\xEDna \u2014 REPROVADO):
-"\u{1F534} Reprovado \u2014 Formato/Modelagem Incorreto (Shorts virou Saia):
-O que mudou:
-- Na refer\xEAncia original, a parte inferior \xE9 shorts/bermuda com pernas e barras separadas.
-- No v\xEDdeo, a pe\xE7a virou uma saia rodada/evas\xEA cont\xEDnua sem divis\xE3o de pernas.
-O que observei:
-- O tecido fecha em sino cont\xEDnuo sem barras individuais de perna."
+B) QUANDO FOR RISCO / POSS\xCDVEL DIVERG\xCANCIA (status: "yellow", score 70 a 89):
+Explique de forma enxuta onde est\xE1 a poss\xEDvel diverg\xEAncia observada:
+"\u{1F7E1} Risco \u2014 Poss\xEDvel Diverg\xEAncia: [explica\xE7\xE3o enxuta da poss\xEDvel diverg\xEAncia]"
+Exemplo: "\u{1F7E1} Risco \u2014 Poss\xEDvel Diverg\xEAncia: Varia\xE7\xE3o sutil na ilumina\xE7\xE3o aos 3s gerando leve sombra no decote."
 
-Quando o v\xEDdeo for APROVADO (approved: true):
-"\u{1F7E2} Aprovado: Produto 100% fiel \xE0 refer\xEAncia oficial da cor [Cor]. Corte, caimento, comprimento fechado na cintura e estrutura de shorts preservados perfeitamente (pose com pernas alinhadas no espelho condizente com a pe\xE7a original)."
+C) QUANDO FOR REPROVADO (status: "red", score <= 60):
+Explique de forma enxuta e direta todas as diverg\xEAncias observadas (sem enrola\xE7\xE3o):
+"\u{1F534} Reprovado: [explica\xE7\xE3o enxuta de todas as diverg\xEAncias observadas]"
+Exemplo 1: "\u{1F534} Reprovado: Barriga exposta aos 2s (na refer\xEAncia oficial a blusa cobre 100% da cintura)."
+Exemplo 2: "\u{1F534} Reprovado: Pe\xE7a inferior gerada como saia (na refer\xEAncia oficial \xE9 shorts com duas pernas)."
 
 Retorne ESTRITAMENTE um objeto JSON com o formato:
 {
   "batchSummary": {
     "totalVideos": ${batchVideos.length},
     "approvedCount": number,
+    "flaggedCount": number,
     "rejectedCount": number,
     "overview": "Resumo executivo do lote de ${batchVideos.length} v\xEDdeos."
   },
@@ -6967,10 +6964,10 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
       "lowerPiece": "shorts" | "bermuda" | "calca" | "saia",
       "isGenuineSkirt": boolean, // true APENAS se for saia tubular/sino rodado cont\xEDnua sem divis\xE3o de pernas; false se for shorts/bermuda mesmo com coxas encostadas
       "bellySkinExposedInVideo": boolean, // true se no v\xEDdeo houver qualquer peda\xE7o de pele/barriga/cintura exposta entre blusa e shorts
-      "score": number, // 92 a 100 se aprovado; <= 38 se reprovado
-      "status": "green" | "red",
-      "approved": boolean,
-      "issue": "Texto estruturado conforme instru\xE7\xE3o acima",
+      "score": number, // 90 a 100 se aprovado verde; 70 a 89 se risco amarelo; <= 60 se reprovado vermelho
+      "status": "green" | "yellow" | "red",
+      "approved": boolean, // true se green ou yellow aceit\xE1vel; false se red
+      "issue": "Texto estritamente conforme o padr\xE3o enxuto solicitado",
       "defectSecond": number | null
     }
   ]
@@ -7175,48 +7172,51 @@ Analise os ${batchVideos.length} v\xEDdeos acima contra as ${photosList.length} 
         score = Math.min(score, 38);
       }
       const isActuallyShorts = match.lowerPiece === "shorts" || match.lowerPiece === "bermuda" || match.isGenuineSkirt === false || issueLower.includes("pernas juntas") || issueLower.includes("coxas encostadas") || issueLower.includes("gancho") || issueLower.includes("cavalo") || issueLower.includes("barra dobrada") || issueLower.includes("bainha dobrada") || issueLower.includes("bainha italiana") || issueLower.includes("duas pernas") || issueLower.includes("bolso faca") || isRefShorts && (issueLower.includes("tubo cont\xEDnuo entre as coxas") || issueLower.includes("n\xE3o consigo identificar a estrutura de duas pernas") || issueLower.includes("entre as coxas") || issueLower.includes("coxas"));
-      let finalIssue = issueText;
       if (isActuallyShorts && (issueLower.includes("saia") || match.isGenuineSkirt === false)) {
         if (!bellyDefect) {
           approved = true;
           score = Math.max(score, 94);
-          finalIssue = `\u{1F7E2} Aprovado: Produto 100% fiel \xE0 refer\xEAncia oficial da cor ${match.detectedColor || "Padr\xE3o"}. Shorts com costura frontal e barras individuais preservadas, pose com pernas alinhadas condizente e comprimento coberto na cintura.`;
         } else {
-          finalIssue = `\u{1F534} Reprovado \u2014 Comprimento e Cobertura Incorreto (Barriga Exposta):
-O que mudou:
-- Na refer\xEAncia oficial, a blusa apresenta caimento longo e fechado, cobrindo 100% da regi\xE3o da cintura, abd\xF4men e umbigo sem pele \xE0 mostra.
-- No v\xEDdeo gerado, a pe\xE7a virou cropped/assim\xE9trica com recorte que deixa parte da barriga e cintura expostas.
-O que observei:
-- Faixa evidente de pele nua vis\xEDvel entre a blusa e o c\xF3s do shorts na regi\xE3o da cintura/abd\xF4men.`;
-        }
-      } else if (bellyDefect) {
-        finalIssue = `\u{1F534} Reprovado \u2014 Comprimento e Cobertura Incorreto (Barriga Exposta):
-O que mudou:
-- Na refer\xEAncia oficial, a blusa apresenta caimento longo e fechado, cobrindo 100% da regi\xE3o da cintura, abd\xF4men e umbigo sem pele \xE0 mostra.
-- No v\xEDdeo gerado, a pe\xE7a foi encurtada virando cropped/assim\xE9trica com pele da barriga exposta.
-O que observei:
-- Faixa evidente de pele nua vis\xEDvel entre a blusa e o c\xF3s na regi\xE3o da cintura/abd\xF4men.`;
-      }
-      if (!bellyDefect && (issueLower.includes("reprovad") || issueLower.includes("mudou") || issueLower.includes("babado") || score < 70)) {
-        if (!issueLower.includes("aprovado") || score < 70) {
           approved = false;
+          score = Math.min(score, 38);
         }
       }
-      if (!approved) {
-        score = Math.min(score, 45);
+      let status = "green";
+      if (bellyDefect || !approved || score < 70) {
+        status = "red";
+        approved = false;
+        score = Math.min(score, 60);
+      } else if (match.status === "yellow" || score >= 70 && score < 90 || issueLower.includes("risco") || issueLower.includes("poss\xEDvel diverg\xEAncia") || issueLower.includes("possivel divergencia")) {
+        status = "yellow";
+        approved = true;
       } else {
+        status = "green";
+        approved = true;
         score = Math.max(score, 92);
       }
-      const status = approved ? "green" : "red";
-      const detectedColor = String(match.detectedColor || "Padr\xE3o / Conforme Refer\xEAncia").trim();
-      if (approved && (!finalIssue || !finalIssue.includes("Aprovado"))) {
-        finalIssue = `\u{1F7E2} Aprovado: Produto 100% fiel \xE0 refer\xEAncia oficial da cor ${detectedColor}. Corte, modelagem, caimento fechado na cintura e estrutura de pernas preservados perfeitamente.`;
-      } else if (!approved && !finalIssue) {
-        finalIssue = `\u{1F534} Reprovado \u2014 Formato ou Modelagem Divergente:
-O que mudou:
-- Foram identificadas altera\xE7\xF5es no formato ou acabamento da pe\xE7a em rela\xE7\xE3o \xE0s fotos de refer\xEAncia.
-O que observei:
-- Diverg\xEAncia visual vis\xEDvel nas capturas do v\xEDdeo.`;
+      const detectedColor = String(match.detectedColor || "Padr\xE3o").trim();
+      let finalIssue = "";
+      if (status === "green") {
+        finalIssue = `\u{1F7E2} Aprovado: Produto ${score}% fiel \xE0 refer\xEAncia na cor ${detectedColor}`;
+      } else if (status === "yellow") {
+        let cleanYellow = issueText.replace(/^[🟢🟡🔴]\s*(Aprovado|Atenção|Risco|Reprovado)[^:]*:\s*/i, "").replace(/O que mudou:[\s\S]*$/i, "").trim();
+        if (!cleanYellow || cleanYellow.toLowerCase().includes("produto")) {
+          cleanYellow = "Poss\xEDvel varia\xE7\xE3o sutil em detalhes ou ilumina\xE7\xE3o; verificar se condiz com a refer\xEAncia.";
+        }
+        finalIssue = `\u{1F7E1} Risco \u2014 Poss\xEDvel Diverg\xEAncia: ${cleanYellow}`;
+      } else {
+        if (bellyDefect) {
+          finalIssue = `\u{1F534} Reprovado: Barriga exposta (na refer\xEAncia oficial a blusa cobre 100% da cintura e abd\xF4men sem pele \xE0 mostra).`;
+        } else {
+          const rawLines = issueText.split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("\u{1F534}") && !l.startsWith("O que mudou:") && !l.startsWith("O que observei:")).map((l) => l.replace(/^[-*•]\s*/, ""));
+          const cleanList = rawLines.filter((l) => l.length > 5);
+          if (cleanList.length > 0) {
+            finalIssue = `\u{1F534} Reprovado: ${cleanList.join("; ")}`;
+          } else {
+            const cleanRed = issueText.replace(/^[🔴🟢🟡]\s*(Reprovado|Aprovado)[^:]*:\s*/i, "").trim();
+            finalIssue = `\u{1F534} Reprovado: ${cleanRed || "Diverg\xEAncia cr\xEDtica no corte ou modelagem da pe\xE7a em rela\xE7\xE3o \xE0 refer\xEAncia oficial."}`;
+          }
+        }
       }
       return {
         id: bv.id || `video_${idx + 1}`,
@@ -7229,8 +7229,9 @@ O que observei:
         defectSecond: match.defectSecond !== void 0 && match.defectSecond !== null ? Number(match.defectSecond) : null
       };
     });
-    const approvedCount = normalizedResults.filter((r) => r.approved).length;
-    const rejectedCount = normalizedResults.length - approvedCount;
+    const approvedCount = normalizedResults.filter((r) => r.approved && r.status === "green").length;
+    const flaggedCount = normalizedResults.filter((r) => r.status === "yellow").length;
+    const rejectedCount = normalizedResults.filter((r) => r.status === "red" || !r.approved).length;
     const totTok = promptTok + compTok;
     const costUSD = Math.round((promptTok / 1e6 * 0.15 + compTok / 1e6 * 0.6) * 1e4) / 1e4;
     const costBRL = Math.round(costUSD * 5.7 * 1e3) / 1e3;
@@ -7239,6 +7240,7 @@ O que observei:
       batchSummary: {
         totalVideos: normalizedResults.length,
         approvedCount,
+        flaggedCount,
         rejectedCount,
         overview: parsed.batchSummary?.overview || `Foram auditados ${normalizedResults.length} v\xEDdeos. ${approvedCount} aprovados para publica\xE7\xE3o no TikTok Shop e ${rejectedCount} com ressalvas/diverg\xEAncias de modelagem.`
       },
