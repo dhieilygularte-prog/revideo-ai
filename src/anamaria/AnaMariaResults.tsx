@@ -1091,28 +1091,98 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* SEÇÃO INFERIOR: DESCRIÇÃO DO POST + HASHTAGS E HEADLINE VIRAL             */}
+      {/* SEÇÃO INFERIOR: TEXTO DO VÍDEO (HEADLINE) E DESCRIÇÃO/HASHTAGS            */}
       {/* ========================================================================= */}
       <div className={`space-y-4 pt-4 border-t ${isAmetista ? 'border-purple-500/20' : 'border-zinc-800'}`}>
-        {/* Barra superior com botão para refazer Headline e Hashtags do banco de memória */}
+        {/* Barra superior com botão para refazer Texto do Vídeo e Hashtags do banco de memória */}
         <div className="flex flex-wrap items-center justify-between gap-2 px-1">
           <div className="flex items-center gap-1.5 text-xs text-zinc-400">
             <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            <span className="font-semibold">Textos TikTok & Reels do Banco de Memória</span>
+            <span className="font-semibold">Textos Validados do Banco de Memória</span>
           </div>
           <button
             type="button"
             onClick={handleRemixHeadlinesAndHashtags}
             disabled={isRemixing}
             className="text-xs text-sky-400 hover:text-sky-300 underline underline-offset-4 decoration-sky-400/60 hover:decoration-sky-300 font-bold flex items-center gap-1.5 transition-all cursor-pointer py-1 px-2.5 rounded-lg hover:bg-sky-500/10 active:scale-95 disabled:opacity-50"
-            title="Refazer Headline e Hashtags usando outro item do banco de memória para este produto"
+            title="Refazer Texto do Vídeo e Hashtags usando outro item do banco de memória para este produto"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-sky-400 ${isRemixing ? 'animate-spin' : ''}`} />
-            <span>Refazer Headlines e Hashtags</span>
+            <span>Refazer</span>
           </button>
         </div>
 
-        {/* Card: Descrição do Post + Hashtags */}
+        {/* 1º Card (ACIMA): Texto do Vídeo */}
+        <div
+          className={`p-4 sm:p-5 rounded-2xl transition-all duration-300 space-y-3 ${
+            hasCopiedHeadlineOnce ? copiedBlueSectionClass : defaultSectionClass
+          }`}
+        >
+          <div className={`flex flex-wrap items-center justify-between gap-2 border-b pb-2.5 ${isAmetista ? 'border-purple-500/20' : 'border-zinc-800/80'}`}>
+            <div className="flex items-center gap-2">
+              <Smile className={`w-4 h-4 ${accentIconClass}`} />
+              <h3 className="text-xs font-black text-white uppercase tracking-wide flex items-center gap-2">
+                <span>Texto do Vídeo</span>
+                {hasCopiedHeadlineOnce && (
+                  <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-sky-300" /> COPIADO ✓
+                  </span>
+                )}
+              </h3>
+            </div>
+            {/* Controles da direita: Botão discreto Refazer + Botão Copiar Texto do Vídeo */}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleRemixHeadlinesAndHashtags}
+                disabled={isRemixing}
+                className="text-xs text-sky-400 hover:text-sky-300 underline underline-offset-4 decoration-sky-400/60 hover:decoration-sky-300 font-bold flex items-center gap-1.5 transition-all cursor-pointer py-1 px-2 rounded-lg hover:bg-sky-500/10 active:scale-95 disabled:opacity-50"
+                title="Refazer Texto do Vídeo e Hashtags usando outro item do banco de memória para este produto"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 text-sky-400 ${isRemixing ? 'animate-spin' : ''}`} />
+                <span>Refazer</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCopyHeadline}
+                className={`py-2 px-4 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-md ${
+                  hasCopiedHeadlineOnce || copiedHeadline
+                    ? 'bg-sky-500 hover:bg-sky-400 text-white border border-sky-300 ring-2 ring-sky-300/60'
+                    : isAmetista
+                    ? 'bg-[#d4ff59] hover:bg-[#e2ff85] text-zinc-950'
+                    : 'bg-zinc-800 hover:bg-zinc-700 border border-orange-500/45 text-white'
+                }`}
+              >
+                {copiedHeadline ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-white" />
+                    <span>Copiado!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Copiar Texto do Vídeo</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div
+            className={`p-3.5 rounded-xl text-sm font-semibold select-all transition-all leading-relaxed ${
+              hasCopiedHeadlineOnce
+                ? 'bg-slate-950/90 border border-sky-400/60 text-white'
+                : isAmetista
+                ? 'bg-[#0e0817]/95 border border-purple-500/25 text-white'
+                : 'bg-zinc-900/95 border border-zinc-800 text-white'
+            }`}
+          >
+            {result.headline}
+          </div>
+        </div>
+
+        {/* 2º Card (ABAIXO): Descrição/Hastags */}
         <div
           className={`p-4 sm:p-5 rounded-2xl transition-all duration-300 space-y-3 ${
             hasCopiedHashtagsOnce ? copiedBlueSectionClass : defaultSectionClass
@@ -1122,7 +1192,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
             <div className="flex items-center gap-2">
               <Hash className={`w-4 h-4 ${accentIconClass}`} />
               <h3 className="text-xs font-black text-white uppercase tracking-wide flex items-center gap-2">
-                <span>Descrição do Post + Hashtags (TikTok & Reels)</span>
+                <span>Descrição/Hastags</span>
                 {hasCopiedHashtagsOnce && (
                   <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3 text-sky-300" /> COPIADO ✓
@@ -1137,7 +1207,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                 onClick={handleRemixHeadlinesAndHashtags}
                 disabled={isRemixing}
                 className="text-xs text-sky-400 hover:text-sky-300 underline underline-offset-4 decoration-sky-400/60 hover:decoration-sky-300 font-bold flex items-center gap-1.5 transition-all cursor-pointer py-1 px-2 rounded-lg hover:bg-sky-500/10 active:scale-95 disabled:opacity-50"
-                title="Refazer Headline e Hashtags usando outro item do banco de memória para este produto"
+                title="Refazer Texto do Vídeo e Hashtags usando outro item do banco de memória para este produto"
               >
                 <RefreshCw className={`w-3.5 h-3.5 text-sky-400 ${isRemixing ? 'animate-spin' : ''}`} />
                 <span>Refazer</span>
@@ -1179,76 +1249,6 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
             }`}
           >
             {result.hashtags}
-          </div>
-        </div>
-
-        {/* Card: Headline Viral */}
-        <div
-          className={`p-4 sm:p-5 rounded-2xl transition-all duration-300 space-y-3 ${
-            hasCopiedHeadlineOnce ? copiedBlueSectionClass : defaultSectionClass
-          }`}
-        >
-          <div className={`flex flex-wrap items-center justify-between gap-2 border-b pb-2.5 ${isAmetista ? 'border-purple-500/20' : 'border-zinc-800/80'}`}>
-            <div className="flex items-center gap-2">
-              <Smile className={`w-4 h-4 ${accentIconClass}`} />
-              <h3 className="text-xs font-black text-white uppercase tracking-wide flex items-center gap-2">
-                <span>Headline Viral</span>
-                {hasCopiedHeadlineOnce && (
-                  <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3 text-sky-300" /> COPIADO ✓
-                  </span>
-                )}
-              </h3>
-            </div>
-            {/* Controles da direita: Botão discreto Refazer + Botão Copiar Headline */}
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={handleRemixHeadlinesAndHashtags}
-                disabled={isRemixing}
-                className="text-xs text-sky-400 hover:text-sky-300 underline underline-offset-4 decoration-sky-400/60 hover:decoration-sky-300 font-bold flex items-center gap-1.5 transition-all cursor-pointer py-1 px-2 rounded-lg hover:bg-sky-500/10 active:scale-95 disabled:opacity-50"
-                title="Refazer Headline e Hashtags usando outro item do banco de memória para este produto"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 text-sky-400 ${isRemixing ? 'animate-spin' : ''}`} />
-                <span>Refazer</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleCopyHeadline}
-                className={`py-2 px-4 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-md ${
-                  hasCopiedHeadlineOnce || copiedHeadline
-                    ? 'bg-sky-500 hover:bg-sky-400 text-white border border-sky-300 ring-2 ring-sky-300/60'
-                    : isAmetista
-                    ? 'bg-[#d4ff59] hover:bg-[#e2ff85] text-zinc-950'
-                    : 'bg-zinc-800 hover:bg-zinc-700 border border-orange-500/45 text-white'
-                }`}
-              >
-                {copiedHeadline ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-white" />
-                    <span>Copiado!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>Copiar Headline</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-
-          <div
-            className={`p-3.5 rounded-xl text-sm font-semibold select-all transition-all leading-relaxed ${
-              hasCopiedHeadlineOnce
-                ? 'bg-slate-950/90 border border-sky-400/60 text-white'
-                : isAmetista
-                ? 'bg-[#0e0817]/95 border border-purple-500/25 text-white'
-                : 'bg-zinc-900/95 border border-zinc-800 text-white'
-            }`}
-          >
-            {result.headline}
           </div>
         </div>
       </div>
