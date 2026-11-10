@@ -1094,7 +1094,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
       {/* SEÇÃO INFERIOR: TEXTO DO VÍDEO (HEADLINE) E DESCRIÇÃO/HASHTAGS            */}
       {/* ========================================================================= */}
       <div className={`space-y-4 pt-4 border-t ${isAmetista ? 'border-purple-500/20' : 'border-zinc-800'}`}>
-        {/* Barra superior com botão para refazer Texto do Vídeo e Hashtags do banco de memória */}
+        {/* Barra superior com botão único para refazer Headlines e Hashtags do banco de memória */}
         <div className="flex flex-wrap items-center justify-between gap-2 px-1">
           <div className="flex items-center gap-1.5 text-xs text-zinc-400">
             <Sparkles className="w-3.5 h-3.5 text-amber-300" />
@@ -1108,7 +1108,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
             title="Refazer Texto do Vídeo e Hashtags usando outro item do banco de memória para este produto"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-sky-400 ${isRemixing ? 'animate-spin' : ''}`} />
-            <span>Refazer</span>
+            <span>Refazer Headlines e Hashtags</span>
           </button>
         </div>
 
@@ -1130,19 +1130,8 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                 )}
               </h3>
             </div>
-            {/* Controles da direita: Botão discreto Refazer + Botão Copiar Texto do Vídeo */}
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={handleRemixHeadlinesAndHashtags}
-                disabled={isRemixing}
-                className="text-xs text-sky-400 hover:text-sky-300 underline underline-offset-4 decoration-sky-400/60 hover:decoration-sky-300 font-bold flex items-center gap-1.5 transition-all cursor-pointer py-1 px-2 rounded-lg hover:bg-sky-500/10 active:scale-95 disabled:opacity-50"
-                title="Refazer Texto do Vídeo e Hashtags usando outro item do banco de memória para este produto"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 text-sky-400 ${isRemixing ? 'animate-spin' : ''}`} />
-                <span>Refazer</span>
-              </button>
-
+            {/* Controles da direita: Botão Copiar Texto do Vídeo */}
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={handleCopyHeadline}
@@ -1200,19 +1189,8 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                 )}
               </h3>
             </div>
-            {/* Controles da direita: Botão discreto Refazer + Botão Copiar Hastags */}
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={handleRemixHeadlinesAndHashtags}
-                disabled={isRemixing}
-                className="text-xs text-sky-400 hover:text-sky-300 underline underline-offset-4 decoration-sky-400/60 hover:decoration-sky-300 font-bold flex items-center gap-1.5 transition-all cursor-pointer py-1 px-2 rounded-lg hover:bg-sky-500/10 active:scale-95 disabled:opacity-50"
-                title="Refazer Texto do Vídeo e Hashtags usando outro item do banco de memória para este produto"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 text-sky-400 ${isRemixing ? 'animate-spin' : ''}`} />
-                <span>Refazer</span>
-              </button>
-
+            {/* Controles da direita: Botão Copiar Hastags */}
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={handleCopyHashtags}
