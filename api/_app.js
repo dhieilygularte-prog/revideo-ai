@@ -2104,10 +2104,7 @@ function getRequestAIProfile(req) {
   if (hasOpenAi) return "openai";
   return "gemini";
 }
-var FALLBACK_GEMINI_KEY = Buffer.from("QUl6YVN5QVBhQWsxZFYyV2tHNXJWV3gxc1JFNlp5WkowWmpoMHBF", "base64").toString("utf8").trim();
 var GEMINI_CANDIDATE_KEYS = Array.from(new Set([
-  FALLBACK_GEMINI_KEY,
-  // Chave operacional ativa verificada (sem bloqueio de saldo)
   process.env.GEMINI_API_KEY,
   process.env.GOOGLE_API_KEY,
   process.env.GEMINI_BACKUP_KEY,
@@ -6982,6 +6979,7 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
     let usedModel = "gpt-4o";
     let promptTok = 0;
     let compTok = 0;
+    let lastOpenAiError = "";
     if (openAIProvider.isConfigured()) {
       try {
         const client = openAIProvider.getClient();
@@ -7053,11 +7051,13 @@ Trava do produto: ${lockContext}` : ""}`
             compTok = completion.usage?.completion_tokens || 0;
             break;
           } catch (mErr) {
-            console.warn(`Aviso em batch audit com ${modelCandidate}:`, mErr?.message || mErr);
+            lastOpenAiError = mErr?.message || String(mErr);
+            console.warn(`Aviso em batch audit com ${modelCandidate}:`, lastOpenAiError);
           }
         }
       } catch (openAiErr) {
-        console.warn("Erro OpenAI em /api/produtos2-audit-video batch:", openAiErr?.message || openAiErr);
+        lastOpenAiError = openAiErr?.message || String(openAiErr);
+        console.warn("Erro OpenAI em /api/produtos2-audit-video batch:", lastOpenAiError);
       }
     }
     let lastGeminiAuditError = "";
@@ -7149,6 +7149,14 @@ Analise os ${batchVideos.length} v\xEDdeos acima contra as ${photosList.length} 
       }
     }
     if (!parsed || !Array.isArray(parsed.results)) {
+      if (lastOpenAiError) {
+        if (lastOpenAiError.includes("credit_balance_exhausted") || lastOpenAiError.includes("insufficient_quota") || lastOpenAiError.includes("quota") || lastOpenAiError.includes("credits")) {
+          throw new Error(
+            "Seu saldo de cr\xE9ditos na OpenAI esgotou (You have no credits remaining). Recarregue seus cr\xE9ditos em https://platform.openai.com/settings/organization/billing/ para que a an\xE1lise com GPT-4o continue funcionando."
+          );
+        }
+        throw new Error(`Erro na API da OpenAI (${usedModel}): ${lastOpenAiError}`);
+      }
       console.error("Falha ao processar an\xE1lise em lote com intelig\xEAncia visual. \xDAltimo erro Gemini:", lastGeminiAuditError);
       throw new Error(`Falha ao processar an\xE1lise em lote com a intelig\xEAncia visual: ${lastGeminiAuditError || "resposta sem formato esperado"}`);
     }
