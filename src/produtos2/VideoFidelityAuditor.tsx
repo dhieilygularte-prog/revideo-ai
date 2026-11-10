@@ -386,8 +386,8 @@ async function extractKeyFramesForBatchVideo(
 
       let w = video.videoWidth || 720;
       let h = video.videoHeight || 1280;
-      // 640px para 9:16 vertical = 360x640px (máxima resolução e nitidez na cintura/barriga e costuras de entrepernas mantendo payload seguro <1.3MB por lote de 10 vídeos)
-      const maxSide = 640;
+      // 960px para 9:16 vertical = 540x960px (alta definição forense na cintura/barriga, costuras centrais e barras de shorts)
+      const maxSide = 960;
       if (w > maxSide || h > maxSide) {
         if (w > h) {
           h = Math.round((h * maxSide) / w);
@@ -411,7 +411,7 @@ async function extractKeyFramesForBatchVideo(
             video.removeEventListener('seeked', onSeeked);
             try {
               ctx.drawImage(video, 0, 0, w, h);
-              const b64 = canvas.toDataURL('image/jpeg', 0.76);
+              const b64 = canvas.toDataURL('image/jpeg', 0.80);
               extracted.push({ second: time, frameBase64: b64 });
             } catch (drawErr) {
               console.warn('Erro ao desenhar frame do lote:', drawErr);
@@ -918,9 +918,8 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
         throw new Error('Falha ao extrair frames dos vídeos anexados.');
       }
 
-      // Chunking automático para garantir que a requisição NUNCA estoure o limite de payload (HTTP 413)
-      // Cada chunk de até 10 vídeos consome ~1.1MB de transferência, ficando muito abaixo do limite do servidor
-      const CHUNK_SIZE = 10;
+      // Chunking automático de 5 vídeos por requisição para máxima fidelidade visual da IA e payload leve
+      const CHUNK_SIZE = 5;
       const totalChunks = Math.ceil(batchPayloadVideos.length / CHUNK_SIZE);
 
       const aggregatedResults: any[] = [];
