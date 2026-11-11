@@ -355,21 +355,54 @@ Manter permanentemente:
 11. O mesmo enquadramento sem mostrar o rosto.
 
 INSTRUÇÃO FINAL: Reproduzir a identidade visual e corporal descrita nesta referência, sem reinterpretar ou modificar suas características. A fotografia do produto anexada em cada geração deve ser utilizada exclusivamente para determinar a peça que será vestida pela modelo. Não modificar a anatomia, o cabelo, a pele, os acessórios ou a pose para adaptar o corpo ao produto. A peça deve se ajustar naturalmente à modelo, preservando integralmente suas características originais.`,
-    movementPromptText: `Animate the model in a realistic mirror-selfie fashion showcase, following the exact movement sequence of the reference video.
+    movementPromptText: `Create a 10-second ultra-realistic mirror-selfie fashion video using the provided image as the EXACT first-frame reference.
 
-The model holds her smartphone steadily in one hand throughout the video. She begins facing the mirror in a relaxed pose. With her free hand, she gently touches the upper front area of the garment, then slowly moves her hand across the front, naturally highlighting its appearance and details. She gradually slides her hand down over the abdomen toward the waist. Next, she gently touches the lower section of the garment, making a subtle gesture to showcase its fit and details.
+Preserve the exact same woman, body proportions, outfit, smartphone, environment, mirror, lighting and visual identity. The face must NEVER appear. The phone must remain naturally covering the face during the entire video.
 
-She briefly holds this pose, then moves her free arm slightly outward and slowly rotates her body into a three-quarter side pose, showcasing the garment's side silhouette and fit. Finish in a natural side-facing pose.
+ACTION — FOLLOW THIS EXACT ORDER:
 
-Keep movements smooth, feminine, delicate and realistic, matching the timing and rhythm of the reference video.
+0–1.5s:
+Starting from the original frontal mirror-selfie pose, she PHYSICALLY moves slightly closer to the mirror while holding the smartphone. Her body and phone move forward together. NO digital zoom.
 
-**STRICT OUTFIT LOCK:** Preserve the exact garment shown in the attached image, including its original design, color, fabric, texture, construction, seams, proportions and fit. Do not redesign, add, remove or invent any garment details. All hand movements must adapt to the actual clothing shown.
+1.5–2.7s:
+While close to the mirror, with her free hand she grabs a small section of the SIDE/WAISTBAND of the shorts and gently pulls the fabric outward once, clearly demonstrating elasticity. Do not exaggerate the stretch.
 
-**STRICT CAMERA LOCK:** Preserve the original framing, camera angle, distance, perspective, lighting and environment. No zoom or reframing.
+2.7–3.3s:
+She naturally releases the fabric. The shorts immediately return to their exact original shape and fit.
 
-Preserve the original body proportions, hairstyle, accessories and mirror-selfie style. Maintain natural anatomy and realistic fabric movement.
+3.3–4.8s:
+She smoothly rotates her body approximately 40–60 degrees to the side, showing the side fit of the outfit while keeping the phone covering her face.
 
-**NEGATIVE PROMPT:** Exaggerated gestures, fast movements, aggressive fabric pulling, lifting garments, full rotation, walking away, invented clothing details, altered garment design, clothing changes, body deformation, distorted hands, extra fingers, camera movement, zoom, flickering, background changes or blur.`,
+4.8–5.8s:
+She smoothly returns to the frontal position while slightly moving back toward the original distance from the mirror.
+
+5.8–7s:
+Facing the mirror, she gently slides her free hand over the upper part of the outfit/chest area in a natural fashion-showing gesture. She does not pull the top.
+
+7–8.5s:
+She smoothly turns to the side again, showing the waist, hips and side silhouette of the outfit.
+
+8.5–10s:
+She returns to the frontal mirror-selfie position and naturally lowers/rests her free hand, ending relaxed.
+
+IMPORTANT:
+NO digital zoom. Distance changes happen only because she physically moves closer or farther from the mirror.
+Keep the smartphone in front of the face at all times.
+Never reveal eyes, nose or mouth.
+Keep the same outfit, color, design, length and fit.
+Natural soft fabric physics.
+Realistic skin and anatomy.
+Five fingers only.
+No extra hands or limbs.
+No morphing.
+No body transformation.
+No clothing redesign.
+No environment change.
+No text, captions or watermark.
+No CTA gesture.
+No pointing.
+No cinematic camera movement.
+Ultra-realistic smartphone video with natural motion and perfect temporal consistency.`,
   },
   {
     id: 'mestra_iara',

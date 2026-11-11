@@ -831,17 +831,23 @@ export function getConciseMovementForMaster(masterId: AnaMariaMasterId, isMale: 
     case 'mestra_ana_maria':
       return isMale
         ? `**CRONOGRAMA DE MOVIMENTOS (10s CONTÍNUOS — MESTRA ANA MARIA):**
-- 0s–1.5s: Postura relaxada diante do espelho segurando o smartphone firmemente com uma das mãos, iniciando de frente.
-- 1.5s–4s: Com a mão livre, toca suavemente a parte superior frontal da peça e desliza devagar pela frente, destacando a aparência e os detalhes.
-- 4s–6s: Desliza a mão para baixo sobre o abdômen em direção à cintura e toca suavemente a parte inferior da peça com gesto sutil para demonstrar o caimento e os detalhes.
-- 6s–7.5s: Sustenta a pose brevemente e afasta o braço livre ligeiramente para fora.
-- 7.5s–10s: Rotação gradual do corpo em pose 3/4 lateral, exibindo a silhueta lateral e o caimento da peça, finalizando em pose lateralizada natural.`
+- 0s–1.5s: Postura frontal diante do espelho segurando o smartphone; aproxima-se fisicamente um pouco do espelho (sem zoom digital).
+- 1.5s–2.7s: Próximo ao espelho, com a mão livre puxa suavemente para fora a lateral/cós demonstrando elasticidade sem exagerar.
+- 2.7s–3.3s: Solta naturalmente o tecido; a peça retorna imediatamente ao caimento original.
+- 3.3s–4.8s: Gira suavemente cerca de 40–60 graus de lado mostrando o caimento lateral com o celular cobrindo o rosto.
+- 4.8s–5.8s: Retorna à posição frontal recuando suavemente à distância original do espelho.
+- 5.8s–7s: De frente para o espelho, desliza a mão livre pela parte superior/peitoral em gesto natural.
+- 7s–8.5s: Gira de lado novamente mostrando cintura, quadril e silhueta lateral.
+- 8.5s–10s: Retorna à posição frontal diante do espelho e relaxa a mão livre.`
         : `**CRONOGRAMA DE MOVIMENTOS (10s CONTÍNUOS — MESTRA ANA MARIA):**
-- 0s–1.5s: Postura relaxada diante do espelho segurando o smartphone firmemente com uma das mãos, iniciando de frente.
-- 1.5s–4s: Com a mão livre, toca suavemente a parte superior frontal da peça e desliza devagar pela frente, destacando a aparência e os detalhes.
-- 4s–6s: Desliza a mão para baixo sobre o abdômen em direção à cintura e toca suavemente a parte inferior da peça com gesto sutil para demonstrar o caimento e os detalhes.
-- 6s–7.5s: Sustenta a pose brevemente e afasta o braço livre ligeiramente para fora.
-- 7.5s–10s: Rotação gradual do corpo em pose 3/4 lateral, exibindo a silhueta lateral e o caimento da peça, finalizando em pose lateralizada natural.`;
+- 0s–1.5s: Postura frontal diante do espelho segurando o smartphone; aproxima-se fisicamente um pouco do espelho (sem zoom digital).
+- 1.5s–2.7s: Próxima ao espelho, com a mão livre puxa suavemente para fora a lateral/cós do shorts demonstrando elasticidade sem exagerar.
+- 2.7s–3.3s: Solta naturalmente o tecido; o shorts retorna imediatamente ao formato original.
+- 3.3s–4.8s: Gira suavemente cerca de 40–60 graus de lado mostrando o caimento lateral com o celular cobrindo o rosto.
+- 4.8s–5.8s: Retorna à posição frontal recuando suavemente à distância original do espelho.
+- 5.8s–7s: De frente para o espelho, desliza a mão livre pela parte superior/peito em gesto delicado sem puxar a blusa.
+- 7s–8.5s: Gira de lado novamente mostrando cintura, quadril e silhueta lateral.
+- 8.5s–10s: Retorna à posição frontal diante do espelho e relaxa a mão livre.`;
 
     case 'mestra_iara':
       return isMale

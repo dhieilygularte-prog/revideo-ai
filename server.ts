@@ -6068,6 +6068,12 @@ DIRETRIZ DE SEVERIDADE DO TIKTOK SHOP (LEI INEGOCIÁVEL):
   "🔴 Reprovado: Não use bolsa pois isso vai dar restrição no seu vídeo."
   Apenas pode ser aprovado vídeo onde a bolsa aparece SE a bolsa for o produto da imagem de referência (produto à venda).
 
+⚠️ REGRA SAGRADA DE CONTEÚDO SEXUAL / CALCINHA (TOLERÂNCIA ZERO):
+- Se no vídeo for identificada CALCINHA exposta (visível total ou parcialmente), calcinha de biquíni, roupa íntima, lingerie ou qualquer teor sexual / semi-nudez / apelo erótico:
+  O VÍDEO DEVE SER REPROVADO IMEDIATAMENTE (status: "red", score <= 20, approved: false, sexualContent: true)!
+  O aviso do campo "issue" DEVE SER ESTRITAMENTE:
+  "🔴 Reprovado por conteúdo sexual."
+
 ⚠️ 1. MUDANÇA DE FORMATO / MODELAGEM DA PEÇA É GRAVÍSSIMA (INFRAÇÃO CRÍTICA):
 No TikTok Shop, o produto entregue ao cliente deve ter EXATAMENTE o mesmo corte e silhueta do vídeo exibido no anúncio. Mudar o formato causa strike imediato por "Produto não condizente com o anúncio" ou suspensão da conta comercial.
 Você DEVE auditar com rigor pericial 4 pilares estruturais da roupa em CADA VÍDEO:
@@ -6146,6 +6152,7 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
       "isGenuineSkirt": boolean, // true APENAS se for saia tubular/sino rodado contínua sem divisão de pernas; false se for shorts/bermuda mesmo com coxas encostadas
       "bellySkinExposedInVideo": boolean, // true se no vídeo houver qualquer pedaço de pele/barriga/cintura exposta entre blusa e shorts
       "modelUsingBag": boolean, // true se no vídeo a modelo estiver usando, segurando ou carregando qualquer bolsa, bolsa tiracolo, bolsa de ombro, bolsa de mão, mochila ou sacola
+      "sexualContent": boolean, // true se for identificada calcinha (visível total ou parcialmente), roupa íntima, lingerie ou teor sexual/semi-nudez
       "score": number, // 90 a 100 se aprovado verde; 70 a 89 se risco amarelo; <= 60 se reprovado vermelho
       "status": "green" | "yellow" | "red",
       "approved": boolean, // true se green ou yellow aceitável; false se red
@@ -6188,7 +6195,8 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
           contentBlocks.push({
             type: 'text',
             text: `\n=== [VÍDEO DO LOTE #${vIdx + 1} — "${vName}" (ID: ${vId}, DURAÇÃO: ${vItem.videoDurationSeconds || 10}s)] ===\nExecute a auditoria estrutural forense destas ${frames.length} capturas contra as fotos de referência:\n1. REGRA DA BARRIGA ZERO (TOLERÂNCIA ZERO): Inspecione milimetricamente a linha da cintura/abdômen entre a blusa e a parte de baixo. Há QUALQUER centímetro, triângulo, recorte ou fenda de PELE NUA (barriga, flanco, umbigo ou cintura) à mostra? Se a blusa foi encurtada virando cropped ou deixou a barriga de fora enquanto a referência cobre a barriga: marque bellySkinExposedInVideo: true e REPROVE IMEDIATAMENTE (score <= 38, approved: false)!\n2. REGRA DO SHORTS vs SAIA (ZERO FALSAS REPROVAÇÕES): Se a referência for shorts/bermuda e a modelo estiver em frente ao espelho com pernas juntas ou coxas encostadas, NÃO É SAIA! Verifique as barras individuais dobradas em cada coxa, bolsos ou costura central (gancho). Se tiver barras individuais contornando as pernas ou costura central, É SHORTS (lowerPiece: 'shorts', isGenuineSkirt: false). Só reprove como saia se for sino rodado ou tubo contínuo sem nenhuma divisão de pernas!\n3. Ombros e acabamentos: A amarração de faixa de tecido foi mantida, ou surgiu volume/babado/volante inventado?\n4. Cor (Tolerância alta): Pertence à mesma família cromática de alguma referência? Se sim, aprove (ignore variações de sombra e iluminação de espelho).
-5. REGRA DA BOLSA: Verifique se a modelo está usando, segurando ou carregando qualquer bolsa, bolsa tiracolo, bolsa de ombro, bolsa de mão, sacola ou mochila. Se o produto da referência NÃO for uma bolsa e houver bolsa no vídeo: marque modelUsingBag: true e REPROVE IMEDIATAMENTE com score <= 35 e issue: "🔴 Reprovado: Não use bolsa pois isso vai dar restrição no seu vídeo."`,
+5. REGRA DA BOLSA: Verifique se a modelo está usando, segurando ou carregando qualquer bolsa, bolsa tiracolo, bolsa de ombro, bolsa de mão, sacola ou mochila. Se o produto da referência NÃO for uma bolsa e houver bolsa no vídeo: marque modelUsingBag: true e REPROVE IMEDIATAMENTE com score <= 35 e issue: "🔴 Reprovado: Não use bolsa pois isso vai dar restrição no seu vídeo."
+6. REGRA DE CONTEÚDO SEXUAL / CALCINHA (TOLERÂNCIA ZERO): Verifique minuciosamente se a modelo está de calcinha (visível total ou parcialmente), calcinha de biquíni, lingerie, roupa íntima ou se há qualquer teor sexual, semi-nudez ou nudez no vídeo. Se for identificada calcinha ou qualquer teor sexual: marque sexualContent: true e REPROVE IMEDIATAMENTE com score <= 20, status "red", approved: false e issue: "🔴 Reprovado por conteúdo sexual."`,
           });
 
           frames.forEach((f: any, fIdx: number) => {
@@ -6432,10 +6440,17 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
         /\b(bolsas?|bolsinhas?|mochilas?|pochetes?|handbags?|purses?)\b/i.test(issueLower)
       );
 
+      // ─── FILTRO 3: DETECÇÃO OBRIGATÓRIA DE CONTEÚDO SEXUAL / CALCINHA ───
+      const sexualContentDefect = Boolean(
+        match.sexualContent === true ||
+        /\b(calcinhas?|cuecas?|lingeries?|calcinha de biqu[ií]ni|roupa [ií]ntima|roupas [ií]ntimas|panties|underwear|teor sexual|conte[uú]do sexual|semi-nudez|nudez|sexual)\b/i.test(issueLower)
+      );
+
       // Avaliação do status final (green, yellow, red)
       let status: 'green' | 'yellow' | 'red' = 'green';
-      if (bagDefect || bellyDefect || !approved || score < 70) {
-        if (bagDefect) score = Math.min(score, 35);
+      if (sexualContentDefect || bagDefect || bellyDefect || !approved || score < 70) {
+        if (sexualContentDefect) score = Math.min(score, 20);
+        else if (bagDefect) score = Math.min(score, 35);
         status = 'red';
         approved = false;
         score = Math.min(score, 60);
@@ -6474,7 +6489,9 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
         finalIssue = `🟡 Risco — Possível Divergência: ${cleanYellow}`;
       } else {
         // 🔴 Vermelho / Reprovado: explica de forma enxuta todas as divergências observadas
-        if (bagDefect) {
+        if (sexualContentDefect) {
+          finalIssue = '🔴 Reprovado por conteúdo sexual.';
+        } else if (bagDefect) {
           finalIssue = '🔴 Reprovado: Não use bolsa pois isso vai dar restrição no seu vídeo.';
         } else if (bellyDefect) {
           finalIssue = `🔴 Reprovado: Barriga exposta (na referência oficial a blusa cobre 100% da cintura e abdômen sem pele à mostra).`;
@@ -6937,6 +6954,37 @@ Retorne ESTRITAMENTE um objeto JSON válido em português com este formato (se n
         }
       }
 
+            // Verificação soberana de conteúdo sexual / calcinha no vídeo individual:
+      const sexualFinding = rawFindings.find((f: any) =>
+        /\b(calcinhas?|cuecas?|lingeries?|calcinha de biqu[ií]ni|roupa [ií]ntima|roupas [ií]ntimas|panties|underwear|teor sexual|conte[uú]do sexual|semi-nudez|nudez|sexual)\b/i.test(
+          `${f.title || ''} ${f.whatAppearsInVideo || ''} ${f.howToFix || ''}`
+        )
+      );
+      const sexualFrame = normalizedFrames.find((f: any) =>
+        /\b(calcinhas?|cuecas?|lingeries?|calcinha de biqu[ií]ni|roupa [ií]ntima|roupas [ií]ntimas|panties|underwear|teor sexual|conte[uú]do sexual|semi-nudez|nudez|sexual)\b/i.test(
+          String(f.issue || '')
+        )
+      );
+      if (sexualFinding || sexualFrame) {
+        if (sexualFinding) {
+          sexualFinding.severity = 'evident';
+          sexualFinding.title = 'Reprovado por conteúdo sexual.';
+          sexualFinding.whatAppearsInVideo = 'Identificada calcinha ou teor sexual no vídeo, violando as diretrizes da plataforma.';
+          sexualFinding.howToFix = 'Regerar o vídeo garantindo que a modelo esteja adequadamente vestida sem calcinha visível ou teor sexual.';
+        } else {
+          rawFindings.unshift({
+            number: 1,
+            title: 'Reprovado por conteúdo sexual.',
+            severity: 'evident',
+            whatAppearsInVideo: 'Identificada calcinha ou teor sexual no vídeo, violando as diretrizes da plataforma.',
+            whereItAppears: 'Vídeo gerado',
+            howToFix: 'Regerar o vídeo garantindo que a modelo esteja adequadamente vestida sem calcinha visível ou teor sexual.',
+            bestFrameSecond: sexualFrame?.second ?? 2,
+            bestRefIndex: 1,
+          });
+        }
+      }
+
       const normalizedFindings = rawFindings.map((f: any, idx: number) => {
         const sevRaw = String(f.severity || 'evident').toLowerCase();
         const severity: 'evident' | 'possible' | 'observation' =
@@ -7004,7 +7052,11 @@ Retorne ESTRITAMENTE um objeto JSON válido em português com este formato (se n
       let overallStatus: 'green' | 'yellow' | 'orange' | 'red' = 'green';
       let overallLabel = 'Aprovado: Vídeo Liberado';
 
-      if (hasEvidentFinding || minScore < 60) {
+      if (sexualFinding || sexualFrame) {
+        overallStatus = 'red';
+        overallScore = Math.min(20, minScore < 60 ? minScore : 20);
+        overallLabel = '🔴 Reprovado por conteúdo sexual';
+      } else if (hasEvidentFinding || minScore < 60) {
         overallStatus = 'red';
         overallScore = Math.min(52, minScore < 60 ? minScore : 48);
         overallLabel = '🔴 Inconsistência evidente — Risco de Restrição (Reprovado)';
@@ -7105,6 +7157,9 @@ INSTRUÇÕES OBRIGATÓRIAS DE PERÍCIA VISUAL (ZERO FALSOS POSITIVOS):
 0) REGRA DE OURO SOBRE BOLSAS (TOLERÂNCIA ZERO):
    A bolsa SÓ PODE APARECER quando a bolsa for o produto da imagem de referência. Se o produto da referência NÃO for uma bolsa e a modelo estiver usando, segurando ou carregando qualquer bolsa, bolsa de ombro, bolsa tiracolo, bolsa de mão ou mochila no vídeo:
    REPROVE O VÍDEO IMEDIATAMENTE (score <= 35, status "red") e crie um finding com severidade "evident", title: "Não use bolsa pois isso vai dar restrição no seu vídeo.", whatAppearsInVideo: "A modelo está usando uma bolsa no vídeo, mas a bolsa não é o produto anunciado na referência.", howToFix: "Não use bolsa pois isso vai dar restrição no seu vídeo."
+0.1) REGRA CRÍTICA DE CONTEÚDO SEXUAL / CALCINHA (TOLERÂNCIA ZERO):
+   Se em qualquer frame for identificada CALCINHA exposta (visível total ou parcialmente), calcinha de biquíni, roupa íntima, lingerie ou qualquer teor sexual / semi-nudez:
+   REPROVE O VÍDEO IMEDIATAMENTE (score <= 20, status "red") e crie um finding com severidade "evident", title: "Reprovado por conteúdo sexual.", whatAppearsInVideo: "Identificada calcinha ou teor sexual no vídeo, violando as diretrizes da plataforma.", howToFix: "Regerar o vídeo garantindo que a modelo esteja adequadamente vestida sem calcinha visível ou teor sexual."
 1) Inspecione cada frame (${framesTimestampsList}) com base EXCLUSIVA no que a imagem real de cada frame mostra:
    - Se o frame mostrar a FRENTE do celular (display ligado, papel de parede, ícones ou câmera frontal), NÃO cobre câmeras traseiras! Aprove o frame com nota VERDE (>= 92%).
    - Se o frame mostrar a CAIXA/EMBALAGEM do produto, avalie como embalagem comercial e aprove com nota VERDE (>= 92%).
