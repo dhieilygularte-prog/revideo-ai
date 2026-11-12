@@ -6926,15 +6926,32 @@ async function handleProdutos2AuditVideoBatch(req, res) {
     }
     const lockContext = Array.isArray(productLock) ? productLock.join("; ") : "";
     const systemInstruction = `Voc\xEA \xE9 o Perito Visual Chefe em Auditoria Forense de Produtos e Vestu\xE1rio para TikTok Shop e E-commerce.
-O usu\xE1rio anexou ${photosList.length} Foto(s) de Refer\xEAncia Oficiais com o corte, formato, modelagem e cores do produto "${productName}".
+O usu\xE1rio anexou ${photosList.length} Foto(s) de Refer\xEAncia Oficiais com o corte, formato, modelagem, tecidos, aviamentos e cores do produto "${productName}".
 E anexou ${batchVideos.length} v\xEDdeo(s) gerados para aprova\xE7\xE3o em lote (at\xE9 25 v\xEDdeos).
 
-DIRETRIZ DE SEVERIDADE DO TIKTOK SHOP (LEI INEGOCI\xC1VEL):
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+DIRETRIZ DE SEVERIDADE DO TIKTOK SHOP E PROTOCOLO PERICIAL DE INCONSIST\xCANCIAS:
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+
+\u26A0\uFE0F 0. CONSOLIDA\xC7\xC3O PR\xC9VIA: FICHA VISUAL CONSOLIDADA DAS FOTOS DE REFER\xCANCIA (CONJUNTO \xDANICO):
+Antes de comparar e julgar qualquer v\xEDdeo, examine TODAS as ${photosList.length} fotos de refer\xEAncia como um conjunto visual \xFAnico:
+- Mapeie mentalmente a Ficha Visual do produto: categoria, modelagem, corte, comprimento, silhueta e propor\xE7\xF5es.
+- Mapeie tecido, textura e acabamento: cetim/seda com brilho refletivo vs algod\xE3o/viscose fosca vs linho vs jeans vs malha canelada.
+- Mapeie estampas e padronagens: tecido 100% liso monocrom\xE1tico vs estampado (floral, flores mi\xFAdas, po\xE1, listras, animal print, xadrez).
+- Mapeie aviamentos e bot\xF5es: presen\xE7a/aus\xEAncia de bot\xF5es, quantidade, formato e cor (ex: bot\xF5es frontais dourados, madrep\xE9rola, forrados).
+- Mapeie costuras e pespontos: costura central do cavalo/gancho (em shorts), pespontos aparentes, nervuras verticais, pregas, c\xF3s de alfaiataria.
+- Mapeie z\xEDperes e fechos: z\xEDper aparente vs invis\xEDvel, posi\xE7\xE3o (costas, lateral, frontal).
+- Mapeie bolsos: bolsos laterais faca, frontais, embutidos ou aus\xEAncia total de bolsos.
+- Mapeie golas, decotes, al\xE7as e mangas: decote degag\xEA (cowl), decote reto franzido com el\xE1stico, decote V, amarra\xE7\xF5es de n\xF3, alcinhas finas espaguete, regata, manga princesa/bufante.
+- Mapeie barras e fendas: comprimento curto/mini (acima do joelho), m\xEDdi (abaixo do joelho/canela) ou longo; presen\xE7a ou aus\xEAncia de fenda na perna.
+- Regra de m\xFAltiplos \xE2ngulos: N\xE3o conclua que um detalhe est\xE1 ausente s\xF3 porque n\xE3o aparece em uma foto espec\xEDfica, caso ele seja vis\xEDvel em outra foto da refer\xEAncia com \xE2ngulo complementar.
+- Se for conjunto/kit de pe\xE7as (ex: blusa e shorts, kit de produtos), inventarie cada unidade individualmente.
+
 \u26A0\uFE0F REGRA DE OURO SOBRE BOLSAS E ACESS\xD3RIOS DE CARREGAR (TOLER\xC2NCIA ZERO):
 - A bolsa S\xD3 PODE APARECER quando ela for o pr\xF3prio produto da imagem de refer\xEAncia (ou seja, quando o produto \xE0 venda for uma bolsa, mochila, bolsa tiracolo, etc.).
 - Quando o produto da imagem de refer\xEAncia N\xC3O for uma bolsa (ex: vestidos, conjuntos, cal\xE7as, blusas, macaquinhos, cal\xE7ados, celulares, eletr\xF4nicos, maquiagem, etc.):
   SE A MODELO ESTIVER USANDO, SEGURANDO OU CARREGANDO UMA BOLSA NO V\xCDDEO (seja bolsa de ombro, bolsa tiracolo, bolsa de m\xE3o, mochilinha, pochete ou sacola):
-  O V\xCDDEO DEVE SER REPROVADO IMEDIATAMENTE (status: "red", score <= 35, approved: false)!
+  O V\xCDDEO DEVE SER REPROVADO IMEDIATAMENTE (status: "red", score <= 35, approved: false, modelUsingBag: true)!
   O aviso do campo "issue" DEVE SER ESTRITAMENTE:
   "\u{1F534} Reprovado: N\xE3o use bolsa pois isso vai dar restri\xE7\xE3o no seu v\xEDdeo."
   Apenas pode ser aprovado v\xEDdeo onde a bolsa aparece SE a bolsa for o produto da imagem de refer\xEAncia (produto \xE0 venda).
@@ -6945,94 +6962,103 @@ DIRETRIZ DE SEVERIDADE DO TIKTOK SHOP (LEI INEGOCI\xC1VEL):
   O aviso do campo "issue" DEVE SER ESTRITAMENTE:
   "\u{1F534} Reprovado por conte\xFAdo sexual."
 
-\u26A0\uFE0F 0. REGRA SOBERANA DE IDENTIDADE E FIDELIDADE DO PRODUTO (TOLER\xC2NCIA ZERO \u2014 PRODUTO DIFERENTE = REPROVA\xC7\xC3O IMEDIATA):
-O PRODUTO NO V\xCDDEO DEVE SER RIGOROSA E EXATAMENTE O MESMO PRODUTO DAS FOTOS DE REFER\xCANCIA OFICIAIS!
-Voc\xEA NUNCA deve aprovar um produto apenas porque ele tem a mesma cor base (ex: ambos s\xE3o claros, brancos ou beges) se a pe\xE7a for diferente!
-SE O PRODUTO DO V\xCDDEO FOR DIFERENTE DA REFER\xCANCIA EM QUALQUER UM DOS PILARES ABAIXO, REPROVE IMEDIATAMENTE (status: "red", score <= 20, approved: false, wrongProduct: true):
-1) ESTAMPA vs TECIDO LISO (GRAV\xCDSSIMO):
-   - Se a refer\xEAncia oficial for LISA (tecido monocrom\xE1tico, sem estampas) e a roupa no v\xEDdeo tiver qualquer estampa (floral, flores, po\xE1, listras, animal print, xadrez, etc.): REPROVA\xC7\xC3O IMEDIATA (score <= 20, status: "red")!
-   - Se a refer\xEAncia for estampada e o v\xEDdeo for liso: REPROVA\xC7\xC3O IMEDIATA!
-   - Issue: "\u{1F534} Reprovado: Produto totalmente diferente da refer\xEAncia (roupa do v\xEDdeo \xE9 estampada com flores, enquanto a refer\xEAncia oficial \xE9 lisa sem estampa)."
-2) COMPRIMENTO DA PE\xC7A / VESTIDO / SAIA (CURTO/MINI vs M\xCDDI vs LONGO):
-   - Se a refer\xEAncia for vestido CURTO / MINI (acima do joelho) e o v\xEDdeo mostrar vestido M\xCDDI (abaixo do joelho / canela) ou LONGO: REPROVA\xC7\xC3O IMEDIATA (score <= 20, status: "red")!
-   - Se a refer\xEAncia for vestido LONGO ou M\xCDDI e o v\xEDdeo for CURTO/MINI: REPROVA\xC7\xC3O IMEDIATA!
-   - Issue: "\u{1F534} Reprovado: Comprimento divergente da refer\xEAncia oficial (refer\xEAncia \xE9 vestido curto/mini, mas o v\xEDdeo mostra vestido m\xEDdi cobrindo os joelhos)."
-3) FENDA NA PERNA / ABERTURAS LATERAIS:
-   - Se o vestido no v\xEDdeo tiver uma FENDA na perna/coxa e a refer\xEAncia N\xC3O tem fenda (ou vice-versa): REPROVA\xC7\xC3O IMEDIATA (score <= 20, status: "red")!
-   - Issue: "\u{1F534} Reprovado: Fenda profunda na perna inexistente na refer\xEAncia oficial."
-4) TECIDO, TEXTURA E BRILHO (CETIM/BRILHO vs ALGOD\xC3O/FOSCO):
-   - Se a refer\xEAncia oficial for CETIM / SEDA / TECIDO ACETINADO BRILHANTE e o v\xEDdeo for tecido fosco de algod\xE3o/viscose (ou vice-versa): REPROVA\xC7\xC3O IMEDIATA (score <= 25, status: "red")!
-   - Issue: "\u{1F534} Reprovado: Tecido divergente (refer\xEAncia oficial \xE9 cetim acetinado brilhante, mas o v\xEDdeo mostra tecido fosco)."
-5) MODELAGEM DO DECOTE, BUSTO E AL\xC7AS:
-   - Se o decote da refer\xEAncia for drapeado/degag\xEA (cowl neck) com alcinhas e o v\xEDdeo tiver decote reto franzido com el\xE1stico (ou vice-versa): REPROVA\xC7\xC3O IMEDIATA (score <= 25, status: "red")!
-   - Issue: "\u{1F534} Reprovado: Modelagem do decote e busto incompat\xEDvel com a refer\xEAncia oficial."
-
 \u26A0\uFE0F REGRA SOBERANA DE DUPLICIDADE (V\xCDDEOS IGUAIS NO MESMO LOTE):
 - Inspecione e compare atentamente todos os v\xEDdeos do lote entre si.
 - Se voc\xEA identificar que um v\xEDdeo \xE9 IGUAL a outro (apresenta a MESMA MODELO, MESMO CEN\xC1RIO E MESMOS MOVIMENTOS/COREOGRAFIA):
   * Marque "isDuplicate": true, "duplicateOf": "nome_do_video_anterior".
   * Se esse v\xEDdeo n\xE3o possuir defeitos cr\xEDticos vermelhos de produto, seu status DEVE SER OBRIGATORIAMENTE "yellow" (Aten\xE7\xE3o / Risco), score entre 70 e 78, e o parecer do campo "issue" DEVE SER ESTRITAMENTE:
-    "\u{1F7E1} Aten\xE7\xE3o: Poss\xEDvel v\xEDdeo duplicado (mesmos movimentos, modelo e cen\xE1rio)."
+    "\u{1F7E1} Aten\xE7\xE3o: Poss\xEDvel v\xEDdeo duplicado com o [nome_do_video_anterior] (mesmos movimentos, modelo e cen\xE1rio)."
 
-\u26A0\uFE0F 1. MUDAN\xC7A DE FORMATO / MODELAGEM DA PE\xC7A \xC9 GRAV\xCDSSIMA (INFRA\xC7\xC3O CR\xCDTICA):
-No TikTok Shop, o produto entregue ao cliente deve ter EXATAMENTE o mesmo corte e silhueta do v\xEDdeo exibido no an\xFAncio. Mudar o formato causa strike imediato por "Produto n\xE3o condizente com o an\xFAncio" ou suspens\xE3o da conta comercial.
-Voc\xEA DEVE auditar com rigor pericial 4 pilares estruturais da roupa em CADA V\xCDDEO:
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+OS 5 GRUPOS FORENSES DE INSPE\xC7\xC3O COMPONENTE A COMPONENTE (TOLER\xC2NCIA ZERO):
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
 
-A) COMPRIMENTO E COBERTURA DO ABD\xD4MEN/CINTURA (REGRA DA BARRIGA ZERO \u2014 TOLER\xC2NCIA ZERO):
-- FOCAL POINT FORENSE MILIM\xC9TRICO NA FAIXA ENTRE A BLUSA E O C\xD3S INFERIOR:
-  * Observe a foto de refer\xEAncia oficial: a blusa/pe\xE7a superior desce cobrindo o abd\xF4men, umbigo e cintura at\xE9 o c\xF3s da pe\xE7a inferior (100% coberto por tecido, zero pele \xE0 mostra).
-  * No v\xEDdeo gerado: examine atentamente a linha de transi\xE7\xE3o entre o topo e a pe\xE7a inferior.
-    Procure especificamente:
-    1) H\xE1 qualquer faixa, tri\xE2ngulo, recorte ou cent\xEDmetro de PELE NUA (barriga, flanco, cintura lateral ou umbigo) vis\xEDvel?
-    2) A blusa foi encurtada virando cropped?
-    3) H\xE1 um recorte ou corte diagonal na barra da blusa que exp\xF5e a pele da barriga enquanto a refer\xEAncia cobria tudo?
-  * SE HOUVER QUALQUER EXPOSI\xC7\xC3O DE PELE NA BARRIGA/CINTURA:
-    REPROVA\xC7\xC3O IMEDIATA (score <= 38, approved: false, status: "red", bellySkinExposedInVideo: true)!
-    No TikTok Shop, vender uma roupa que originalmente cobre a barriga e entregar no v\xEDdeo uma blusa cropped com a barriga \xE0 mostra causa suspens\xE3o comercial imediata por inconsist\xEAncia grave do produto.
+O PRODUTO NO V\xCDDEO DEVE SER RIGOROSA E EXATAMENTE O MESMO PRODUTO DAS FOTOS DE REFER\xCANCIA OFICIAIS!
+Voc\xEA NUNCA deve aprovar um produto apenas porque ele tem a mesma cor base (ex: ambos s\xE3o claros, brancos ou beges) se a pe\xE7a for diferente!
 
-B) PE\xC7A INFERIOR \u2014 SHORTS/BERMUDA vs SAIA (ZERO FALSAS REPROVA\xC7\xD5ES):
-- Se a refer\xEAncia for Shorts, Bermuda, Cal\xE7a ou Macac\xE3o/Macaquinho com shorts:
-  * ATEN\xC7\xC3O CR\xCDTICA COM POSES DE PERNAS JUNTAS / COXAS ENCOSTADAS (N\xC3O \xC9 SAIA!):
-    Em v\xEDdeos de espelho (mirror-selfie) de provador, \xE9 a postura f\xEDsica natural da modelo posar de p\xE9 com as pernas alinhadas e coxas encostadas uma na outra. Quando as coxas se tocam, N\xC3O haver\xE1 v\xE3o livre ou fresta de luz entre as pernas. Isso \xE9 a anatomia da modelo e pose, N\xC3O significa que a pe\xE7a virou saia!
-  * SINAIS CLAROS DE QUE \xC9 SHORTS/BERMUDA V\xC1LIDO (APROVAR!):
-    1) BARRAS DOBRADAS INDIVIDUAIS: Olhe a barra inferior nas coxas. H\xE1 duas bocas de perna contornando cada coxa (com dobra/bainha italiana individual)?
-    2) COSTURA VERTICAL FRONTAL CENTRAL: H\xE1 a costura do cavalo / gancho / braguilha / vista frontal descendo no meio da pe\xE7a at\xE9 o entrepernas?
-    3) BOLSOS LATERAIS tipo faca e estrutura de c\xF3s de alfaiataria.
-    Se voc\xEA observar barras individuais contornando as pernas, bolsos ou costura central, \xC9 SHORTS/BERMUDA CORRETO! \xC9 PROIBIDO REPROVAR COMO SAIA! Marque lowerPiece: "shorts", isGenuineSkirt: false.
-  * QUANDO REALMENTE \xC9 UMA SAIA (REPROVA\xC7\xC3O GENU\xCDNA):
-    S\xF3 reprove como saia se a pe\xE7a inferior for comprovadamente uma saia genu\xEDna (um sino rodado, evas\xEA ou tubo cont\xEDnuo de tecido sem nenhuma barra individual de perna e sem divis\xE3o de entrepernas em nenhum \xE2ngulo do v\xEDdeo).
-  * Da mesma forma, se a refer\xEAncia for saia/vestido, n\xE3o pode virar shorts.
+GRUPO 1: IDENTIDADE, MODELO E SILHUETA:
+1) COMPRIMENTO DA PE\xC7A / VESTIDO / SAIA (CURTO/MINI vs M\xCDDI vs LONGO):
+   - Se a refer\xEAncia for vestido CURTO / MINI (acima do joelho) e o v\xEDdeo mostrar vestido M\xCDDI (abaixo do joelho / canela) ou LONGO: REPROVA\xC7\xC3O IMEDIATA (score <= 20, status: "red", lengthDefect: true, wrongProduct: true)!
+   - Se a refer\xEAncia for vestido LONGO ou M\xCDDI e o v\xEDdeo for CURTO/MINI: REPROVA\xC7\xC3O IMEDIATA!
+   - Issue: "\u{1F534} Reprovado: Comprimento divergente da refer\xEAncia oficial (refer\xEAncia \xE9 vestido curto/mini, mas o v\xEDdeo mostra vestido m\xEDdi cobrindo os joelhos)."
+2) REGRA DA BARRIGA ZERO (TOLER\xC2NCIA ZERO EM CINTURA/CROPPED):
+   - Se a blusa na refer\xEAncia oficial cobre 100% da cintura, umbigo e abd\xF4men at\xE9 a pe\xE7a inferior:
+   - Se no v\xEDdeo houver qualquer faixa, cent\xEDmetro ou recorte de PELE NUA da barriga/cintura exposta (blusa encurtada virando cropped):
+     REPROVA\xC7\xC3O IMEDIATA (score <= 35, status: "red", bellySkinExposedInVideo: true)!
+     Issue: "\u{1F534} Reprovado: Blusa encurtada virando cropped com barriga exposta (a refer\xEAncia oficial cobre 100% do abd\xF4men)."
+3) SHORTS/BERMUDA vs SAIA (ZERO FALSAS REPROVA\xC7\xD5ES):
+   - Em poses de pernas juntas/coxas encostadas em frente ao espelho, N\xC3O \xC9 SAIA se houver barras dobradas individuais em cada coxa, bolsos laterais faca ou costura central vertical do gancho. Marque lowerPiece: "shorts", isGenuineSkirt: false e aprove.
+   - S\xD3 reprove como saia se for comprovadamente uma saia genu\xEDna (sino rodado cont\xEDnuo ou tubo de tecido sem barras individuais e sem entrepernas).
 
-C) ESTRUTURA DE OMBROS, DECOTES, MANGAS E ACABAMENTOS:
-- Se na refer\xEAncia o ombro possui amarra\xE7\xE3o com faixa de tecido/n\xF3 simples: Se no v\xEDdeo surgir um volume adicional inventado de tecido com apar\xEAncia de babado, sobreposi\xE7\xE3o, volante ou manga bufante: REPROVA\xC7\xC3O IMEDIATA (score <= 45, approved: false, status: "red")!
-- N\xE3o permita inven\xE7\xE3o de golas, bot\xF5es extras, z\xEDperes onde n\xE3o havia ou al\xE7as modificadas.
+GRUPO 2: ESTRUTURA F\xCDSICA, COMPONENTES E AVIAMENTOS:
+4) BOT\xD5ES E FECHAMENTOS:
+   - Presen\xE7a, aus\xEAncia, quantidade, formato e cor dos bot\xF5es (ex: bot\xF5es frontais dourados, madrep\xE9rola, transparentes, forrados).
+   - Se a refer\xEAncia tem bot\xF5es e o v\xEDdeo omitir, ou se o v\xEDdeo inventar bot\xF5es onde a refer\xEAncia era lisa, ou bot\xF5es de cor/tipo divergente: REPROVA\xC7\xC3O IMEDIATA (score <= 20, status: "red", buttonsDefect: true, wrongProduct: true)!
+   - Issue: "\u{1F534} Reprovado: Bot\xF5es divergentes da refer\xEAncia oficial."
+5) COSTURAS, PESPONTOS E NERVURAS:
+   - Se a refer\xEAncia tiver costura central vertical (gancho/braguilha em shorts, nervuras frontais no busto ou saia) e o v\xEDdeo omitir, ou inventar costuras inexistentes: REPROVA\xC7\xC3O IMEDIATA (score <= 25, status: "red", seamsDefect: true)!
+   - Issue: "\u{1F534} Reprovado: Detalhes de costura e pespontos divergentes da refer\xEAncia oficial."
+6) Z\xCDPERES E BOLSOS:
+   - Bolsos inventados onde a pe\xE7a \xE9 lisa, ou bolsos marcantes da refer\xEAncia omitidos no v\xEDdeo: REPROVA\xC7\xC3O IMEDIATA (score <= 25, status: "red", pocketsDefect: true)!
+   - Z\xEDper de modelo ou localiza\xE7\xE3o incompat\xEDvel: REPROVA\xC7\xC3O IMEDIATA!
+7) GOLAS, DECOTES, AL\xC7AS E MANGAS:
+   - Se o decote da refer\xEAncia for drapeado/degag\xEA (cowl neck) com alcinhas e o v\xEDdeo tiver decote reto franzido com el\xE1stico (ou vice-versa): REPROVA\xC7\xC3O IMEDIATA (score <= 25, status: "red", wrongProduct: true)!
+   - Se a al\xE7a na refer\xEAncia for amarra\xE7\xE3o de tecido simples e no v\xEDdeo virar manga bufante, babado volumoso ou volante inventado: REPROVA\xC7\xC3O IMEDIATA (score <= 35, status: "red")!
+8) FENDA NA PERNA / ABERTURAS LATERAIS:
+   - Se o vestido/saia no v\xEDdeo tiver uma FENDA na coxa/perna e a refer\xEAncia N\xC3O tem fenda (ou vice-versa): REPROVA\xC7\xC3O IMEDIATA (score <= 20, status: "red", slitDefect: true, wrongProduct: true)!
+   - Issue: "\u{1F534} Reprovado: Fenda na perna inexistente na refer\xEAncia oficial."
 
-D) DETALHES EXTRAS OU INVENTADOS:
-- Bot\xF5es que n\xE3o existem na refer\xEAncia, bolsos inventados, pregas ou drapeados adicionados onde era liso: REPROVA\xC7\xC3O IMEDIATA (score <= 45, approved: false, status: "red")!
+GRUPO 3: TECIDO, ACABAMENTO, TEXTURA E ESTAMPA:
+9) ESTAMPA vs TECIDO LISO (GRAV\xCDSSIMO):
+   - Se a refer\xEAncia oficial for LISA (tecido monocrom\xE1tico, sem estampas) e a roupa no v\xEDdeo tiver qualquer estampa (floral, flores mi\xFAdas ou grandes, po\xE1, listras, animal print, xadrez, etc.): REPROVA\xC7\xC3O IMEDIATA (score <= 20, status: "red", patternDefect: true, wrongProduct: true)!
+   - Se a refer\xEAncia for estampada e o v\xEDdeo for liso: REPROVA\xC7\xC3O IMEDIATA!
+   - Issue: "\u{1F534} Reprovado: Produto totalmente diferente da refer\xEAncia (roupa do v\xEDdeo \xE9 estampada com flores, enquanto a refer\xEAncia oficial \xE9 lisa sem estampa)."
+10) TECIDO, TEXTURA E BRILHO (CETIM/BRILHO vs ALGOD\xC3O/FOSCO):
+   - Se a refer\xEAncia oficial for CETIM / SEDA / TECIDO ACETINADO BRILHANTE e o v\xEDdeo for tecido fosco de algod\xE3o/viscose (ou vice-versa): REPROVA\xC7\xC3O IMEDIATA (score <= 25, status: "red", fabricDefect: true, wrongProduct: true)!
+   - Issue: "\u{1F534} Reprovado: Tecido divergente (refer\xEAncia oficial \xE9 cetim acetinado brilhante, mas o v\xEDdeo mostra tecido fosco)."
 
-\u26A0\uFE0F 2. COR E ILUMINA\xC7\xC3O \xC9 CRIT\xC9RIO LEVE (ALTA TOLER\xC2NCIA \u2014 ZERO FALSAS REPROVA\xC7\xD5ES):
-- No TikTok Shop e em v\xEDdeos gerados, varia\xE7\xF5es normais de ilumina\xE7\xE3o de grava\xE7\xE3o (luz amarela do quarto, l\xE2mpadas quentes/frias, sombra natural de espelho, reflexos, contraste ou satura\xE7\xE3o de compress\xE3o do v\xEDdeo) s\xE3o NORMAIS e ACEITAS.
-- Se o produto no v\xEDdeo apresentar a mesma cor base / fam\xEDlia de uma das fotos de refer\xEAncia (ex: tom de rosa, azul, verde, bege, branco, preto, etc.), MESMO QUE APARENTE MAIS CLARO OU ESCURO DEVIDO \xC0 ILUMINA\xC7\xC3O DO V\xCDDEO, CONSIDERE COR CORRETA E N\xC3O REPROVE POR COR!
-- NUNCA reprove um v\xEDdeo por varia\xE7\xE3o de tom, sombra ou luz!
-- S\xF3 aponte diverg\xEAncia de cor se for uma cor inteiramente diferente e ausente na cartela (ex: um conjunto vermelho quando a refer\xEAncia s\xF3 existe em azul e preto).
+GRUPO 4: CORES E ILUMINA\xC7\xC3O:
+11) COR DA PE\xC7A:
+   - Varia\xE7\xF5es normais de ilumina\xE7\xE3o do quarto, l\xE2mpadas quentes/frias e sombra natural de espelho s\xE3o toleradas SOMENTE SE o produto for comprovadamente a mesma pe\xE7a!
+   - Jamais aprove um produto diferente apenas por apresentar cor clara semelhante (ex: branco/bege)!
+   - Se a cor da pe\xE7a for inteiramente divergente da cartela de refer\xEAncias: REPROVE O V\xCDDEO (score <= 40, status: "red").
 
-3. PADR\xC3O OBRIGAT\xD3RIO DO CAMPO "issue" PARA CADA V\xCDDEO (SEJA DIRETO E ENXUTO):
+GRUPO 5: CONTINUIDADE VISUAL E DEFORMA\xC7\xD5ES DE IA (VEO / PIXVERSE):
+12) DEFORMA\xC7\xC3O TEMPORAL E PE\xC7AS QUE SOMEM / SE FUNDEM:
+   - Compare o produto consigo mesmo quadro a quadro ao longo do v\xEDdeo:
+     a) Al\xE7a ou amarra\xE7\xE3o que desaparece quando a modelo gira de lado.
+     b) Tecido que se funde com a pele ou com a m\xE3o ao puxar/tocar a roupa no espelho.
+     c) Bot\xF5es ou bolsos que somem ou surgem do nada entre os segundos.
+     d) Estampa floral que muda de desenho ou escala entre poses.
+   - Se houver muta\xE7\xE3o ou deforma\xE7\xE3o de IA: REPROVA\xC7\xC3O IMEDIATA (score <= 30, status: "red", aiMorphingDefect: true)!
+   - Issue: "\u{1F534} Reprovado: Deforma\xE7\xE3o visual e falha de continuidade da IA durante os movimentos da modelo."
+
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+PADR\xC3O OBRIGAT\xD3RIO DO CAMPO "issue" PARA CADA V\xCDDEO (SEJA DIRETO E ENXUTO):
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
 
 A) QUANDO FOR APROVADO (status: "green", score >= 90):
 N\xC3O use textos longos de justificativa! Preencha ESTRITAMENTE no formato enxuto:
 "\u{1F7E2} Aprovado: Produto [score]% fiel \xE0 refer\xEAncia na cor [detectedColor]"
 Exemplo: "\u{1F7E2} Aprovado: Produto 98% fiel \xE0 refer\xEAncia na cor Preto"
 
-B) QUANDO FOR RISCO / POSS\xCDVEL DIVERG\xCANCIA (status: "yellow", score 70 a 89):
+B) QUANDO FOR ATEN\xC7\xC3O / DUPLICADO (status: "yellow", score 70 a 78):
+"\u{1F7E1} Aten\xE7\xE3o: Poss\xEDvel v\xEDdeo duplicado com o [nome_do_video_original] (mesmos movimentos, modelo e cen\xE1rio)."
+
+C) QUANDO FOR RISCO / POSS\xCDVEL DIVERG\xCANCIA (status: "yellow", score 70 a 89):
 Explique de forma enxuta onde est\xE1 a poss\xEDvel diverg\xEAncia observada:
 "\u{1F7E1} Risco \u2014 Poss\xEDvel Diverg\xEAncia: [explica\xE7\xE3o enxuta da poss\xEDvel diverg\xEAncia]"
 Exemplo: "\u{1F7E1} Risco \u2014 Poss\xEDvel Diverg\xEAncia: Varia\xE7\xE3o sutil na ilumina\xE7\xE3o aos 3s gerando leve sombra no decote."
 
-C) QUANDO FOR REPROVADO (status: "red", score <= 60):
+D) QUANDO FOR REPROVADO (status: "red", score <= 60):
 Explique de forma enxuta e direta todas as diverg\xEAncias observadas (sem enrola\xE7\xE3o):
 "\u{1F534} Reprovado: [explica\xE7\xE3o enxuta de todas as diverg\xEAncias observadas]"
-Exemplo 1: "\u{1F534} Reprovado: Barriga exposta aos 2s (na refer\xEAncia oficial a blusa cobre 100% da cintura)."
-Exemplo 2: "\u{1F534} Reprovado: Pe\xE7a inferior gerada como saia (na refer\xEAncia oficial \xE9 shorts com duas pernas)."
+Exemplos:
+- "\u{1F534} Reprovado: N\xE3o use bolsa pois isso vai dar restri\xE7\xE3o no seu v\xEDdeo."
+- "\u{1F534} Reprovado por conte\xFAdo sexual."
+- "\u{1F534} Reprovado: Produto totalmente diferente da refer\xEAncia (estampa floral em tecido fosco com comprimento m\xEDdi e fenda, enquanto a refer\xEAncia oficial \xE9 vestido curto de cetim liso sem fenda)."
+- "\u{1F534} Reprovado: Bot\xF5es frontais e bolsos divergentes da refer\xEAncia oficial."
+- "\u{1F534} Reprovado: Blusa encurtada virando cropped com barriga exposta aos 2s."
 
 Retorne ESTRITAMENTE um objeto JSON com o formato:
 {
@@ -7041,24 +7067,32 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
     "approvedCount": number,
     "flaggedCount": number,
     "rejectedCount": number,
-    "overview": "Resumo executivo do lote de ${batchVideos.length} v\xEDdeos."
+    "overview": "Resumo executivo pericial do lote de ${batchVideos.length} v\xEDdeos."
   },
   "results": [
     {
       "id": "id_do_video",
       "videoFileName": "nome_do_arquivo.mp4",
       "detectedColor": "Nome da cor identificada",
-      "lowerPiece": "shorts" | "bermuda" | "calca" | "saia",
-      "isGenuineSkirt": boolean, // true APENAS se for saia tubular/sino rodado cont\xEDnua sem divis\xE3o de pernas; false se for shorts/bermuda mesmo com coxas encostadas
-      "bellySkinExposedInVideo": boolean, // true se no v\xEDdeo houver qualquer peda\xE7o de pele/barriga/cintura exposta entre blusa e shorts
-      "modelUsingBag": boolean, // true se no v\xEDdeo a modelo estiver usando, segurando ou carregando qualquer bolsa, bolsa tiracolo, bolsa de ombro, bolsa de m\xE3o, mochila ou sacola
-      "sexualContent": boolean, // true se for identificada calcinha (vis\xEDvel total ou parcialmente), roupa \xEDntima, lingerie ou teor sexual/semi-nudez
-      "wrongProduct": boolean, // true se o produto do v\xEDdeo for diferente da refer\xEAncia (estampa diferente, comprimento mini vs m\xEDdi, tecido cetim vs fosco, fenda inventada)
-      "isDuplicate": boolean, // true se no lote este v\xEDdeo for repeti\xE7\xE3o/duplicado de outro (mesma modelo, mesmo cen\xE1rio e mesmos movimentos)
-      "duplicateOf": string | null, // nome ou id do v\xEDdeo original do qual este \xE9 c\xF3pia/duplicado
-      "score": number, // 90 a 100 se aprovado verde; 70 a 89 se risco amarelo; <= 60 se reprovado vermelho
+      "lowerPiece": "shorts" | "bermuda" | "calca" | "saia" | "vestido" | "outro",
+      "isGenuineSkirt": boolean,
+      "bellySkinExposedInVideo": boolean,
+      "modelUsingBag": boolean,
+      "sexualContent": boolean,
+      "wrongProduct": boolean,
+      "patternDefect": boolean,
+      "lengthDefect": boolean,
+      "slitDefect": boolean,
+      "fabricDefect": boolean,
+      "buttonsDefect": boolean,
+      "seamsDefect": boolean,
+      "pocketsDefect": boolean,
+      "aiMorphingDefect": boolean,
+      "isDuplicate": boolean,
+      "duplicateOf": string | null,
+      "score": number,
       "status": "green" | "yellow" | "red",
-      "approved": boolean, // true se green ou yellow aceit\xE1vel; false se red
+      "approved": boolean,
       "issue": "Texto estritamente conforme o padr\xE3o enxuto solicitado",
       "defectSecond": number | null
     }
@@ -7094,13 +7128,16 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
             type: "text",
             text: `
 === [V\xCDDEO DO LOTE #${vIdx + 1} \u2014 "${vName}" (ID: ${vId}, DURA\xC7\xC3O: ${vItem.videoDurationSeconds || 10}s)] ===
-Execute a auditoria estrutural forense destas ${frames.length} capturas contra as fotos de refer\xEAncia:
-1. REGRA DA BARRIGA ZERO (TOLER\xC2NCIA ZERO): Inspecione milimetricamente a linha da cintura/abd\xF4men entre a blusa e a parte de baixo. H\xE1 QUALQUER cent\xEDmetro, tri\xE2ngulo, recorte ou fenda de PELE NUA (barriga, flanco, umbigo ou cintura) \xE0 mostra? Se a blusa foi encurtada virando cropped ou deixou a barriga de fora enquanto a refer\xEAncia cobre a barriga: marque bellySkinExposedInVideo: true e REPROVE IMEDIATAMENTE (score <= 38, approved: false)!
-2. REGRA DO SHORTS vs SAIA (ZERO FALSAS REPROVA\xC7\xD5ES): Se a refer\xEAncia for shorts/bermuda e a modelo estiver em frente ao espelho com pernas juntas ou coxas encostadas, N\xC3O \xC9 SAIA! Verifique as barras individuais dobradas em cada coxa, bolsos ou costura central (gancho). Se tiver barras individuais contornando as pernas ou costura central, \xC9 SHORTS (lowerPiece: 'shorts', isGenuineSkirt: false). S\xF3 reprove como saia se for sino rodado ou tubo cont\xEDnuo sem nenhuma divis\xE3o de pernas!
-3. Ombros e acabamentos: A amarra\xE7\xE3o de faixa de tecido foi mantida, ou surgiu volume/babado/volante inventado?
-4. Cor (Toler\xE2ncia alta): Pertence \xE0 mesma fam\xEDlia crom\xE1tica de alguma refer\xEAncia? Se sim, aprove (ignore varia\xE7\xF5es de sombra e ilumina\xE7\xE3o de espelho).
-5. REGRA DA BOLSA: Verifique se a modelo est\xE1 usando, segurando ou carregando qualquer bolsa, bolsa tiracolo, bolsa de ombro, bolsa de m\xE3o, sacola ou mochila. Se o produto da refer\xEAncia N\xC3O for uma bolsa e houver bolsa no v\xEDdeo: marque modelUsingBag: true e REPROVE IMEDIATAMENTE com score <= 35 e issue: "\u{1F534} Reprovado: N\xE3o use bolsa pois isso vai dar restri\xE7\xE3o no seu v\xEDdeo."
-6. REGRA DE CONTE\xDADO SEXUAL / CALCINHA (TOLER\xC2NCIA ZERO): Verifique minuciosamente se a modelo est\xE1 de calcinha (vis\xEDvel total ou parcialmente), calcinha de biqu\xEDni, lingerie, roupa \xEDntima ou se h\xE1 qualquer teor sexual, semi-nudez ou nudez no v\xEDdeo. Se for identificada calcinha ou qualquer teor sexual: marque sexualContent: true e REPROVE IMEDIATAMENTE com score <= 20, status "red", approved: false e issue: "\u{1F534} Reprovado por conte\xFAdo sexual."`
+Execute a auditoria forense estrutural componente a componente destas ${frames.length} capturas contra a Ficha Visual Consolidada das refer\xEAncias:
+1. IDENTIDADE E MODELO: O produto \xE9 RIGOROSAMENTE o mesmo? Se for vestido, o comprimento \xE9 id\xEAntico (mini vs m\xEDdi vs longo)? Se houver fenda na perna n\xE3o existente na refer\xEAncia, REPROVE IMEDIATAMENTE (wrongProduct: true, lengthDefect: true, slitDefect: true, score <= 20)!
+2. ESTAMPA E TECIDO (TOLER\xC2NCIA ZERO): Se a refer\xEAncia for lisa e o v\xEDdeo for estampado com flores (ou vice-versa), ou se a refer\xEAncia for cetim acetinado brilhante e o v\xEDdeo for tecido fosco: REPROVE IMEDIATAMENTE (wrongProduct: true, patternDefect: true, fabricDefect: true, score <= 20)!
+3. ESTRUTURA, BOT\xD5ES, COSTURAS E BOLSOS: Bot\xF5es presentes/ausentes/quantidade/cor condizem com a refer\xEAncia? Costuras centrais (gancho de shorts, pespontos, nervuras) foram preservadas? H\xE1 bolsos inventados ou omitidos? Se houver diverg\xEAncia, REPROVE (buttonsDefect/seamsDefect/pocketsDefect: true, score <= 25)!
+4. REGRA DA BARRIGA ZERO (TOLER\xC2NCIA ZERO): Se a refer\xEAncia cobre o abd\xF4men, h\xE1 qualquer cent\xEDmetro de barriga/cintura exposta virando cropped? Se sim: bellySkinExposedInVideo: true e REPROVE (score <= 35)!
+5. REGRA DO SHORTS vs SAIA: Pernas juntas com barras individuais dobradas ou costura central \xC9 SHORTS (lowerPiece: 'shorts', isGenuineSkirt: false). S\xF3 reprove como saia se for tubo cont\xEDnuo/sino sem pernas.
+6. CONTINUIDADE E DEFORMA\xC7\xC3O DE IA: H\xE1 pe\xE7as que somem no giro ou tecido que se funde na m\xE3o ao puxar no espelho? Se sim: aiMorphingDefect: true e REPROVE (score <= 25)!
+7. REGRA DA BOLSA: Se o produto n\xE3o for bolsa e houver bolsa no v\xEDdeo: modelUsingBag: true e REPROVE IMEDIATAMENTE com score <= 35 e issue: "\u{1F534} Reprovado: N\xE3o use bolsa pois isso vai dar restri\xE7\xE3o no seu v\xEDdeo."
+8. REGRA DE CONTE\xDADO SEXUAL / CALCINHA: Calcinha exposta ou teor sexual: sexualContent: true e REPROVE com score <= 20 e issue: "\u{1F534} Reprovado por conte\xFAdo sexual."
+9. DUPLICIDADE: Se este v\xEDdeo for id\xEAntico a outro anterior no lote (mesma modelo, cen\xE1rio e movimentos): isDuplicate: true, status: "yellow", score: 75.`
           });
           frames.forEach((f, fIdx) => {
             if (!f.frameBase64) return;
@@ -7169,11 +7206,16 @@ Trava do produto: ${lockContext}` : ""}`
           parts.push({
             text: `
 === [V\xCDDEO DO LOTE #${vIdx + 1} \u2014 "${vName}" (ID: ${vId})] ===:
-Execute a auditoria estrutural forense destas ${frames.length} capturas contra as fotos de refer\xEAncia:
-1. REGRA DA BARRIGA ZERO (TOLER\xC2NCIA ZERO): Inspecione milimetricamente a linha da cintura/abd\xF4men entre a blusa e a parte de baixo. H\xE1 QUALQUER cent\xEDmetro, tri\xE2ngulo, recorte ou fenda de PELE NUA (barriga, flanco, umbigo ou cintura) \xE0 mostra? Se a blusa foi encurtada virando cropped ou deixou a barriga de fora enquanto a refer\xEAncia cobre a barriga: marque bellySkinExposedInVideo: true e REPROVE IMEDIATAMENTE (score <= 38, approved: false)!
-2. REGRA DO SHORTS vs SAIA (ZERO FALSAS REPROVA\xC7\xD5ES): Se a refer\xEAncia for shorts/bermuda e a modelo estiver em frente ao espelho com pernas juntas ou coxas encostadas, N\xC3O \xC9 SAIA! Verifique as barras individuais dobradas em cada coxa, bolsos ou costura central (gancho). Se tiver barras individuais contornando as pernas ou costura central, \xC9 SHORTS (lowerPiece: 'shorts', isGenuineSkirt: false). S\xF3 reprove como saia se for sino rodado ou tubo cont\xEDnuo sem nenhuma divis\xE3o de pernas!
-3. Ombros e acabamentos: Amarra\xE7\xE3o de faixa preservada, ou virou babado/volante?
-4. Cor: Pertence \xE0 mesma fam\xEDlia de cores? Se sim, aprove (ignore sombras).`
+Execute a auditoria forense estrutural componente a componente destas ${frames.length} capturas contra a Ficha Visual Consolidada das refer\xEAncias:
+1. IDENTIDADE E MODELO: O produto \xE9 RIGOROSAMENTE o mesmo? Se for vestido, o comprimento \xE9 id\xEAntico (mini vs m\xEDdi vs longo)? Se houver fenda na perna n\xE3o existente na refer\xEAncia, REPROVE IMEDIATAMENTE (wrongProduct: true, lengthDefect: true, slitDefect: true, score <= 20)!
+2. ESTAMPA E TECIDO (TOLER\xC2NCIA ZERO): Se a refer\xEAncia for lisa e o v\xEDdeo for estampado com flores (ou vice-versa), ou se a refer\xEAncia for cetim acetinado brilhante e o v\xEDdeo for tecido fosco: REPROVE IMEDIATAMENTE (wrongProduct: true, patternDefect: true, fabricDefect: true, score <= 20)!
+3. ESTRUTURA, BOT\xD5ES, COSTURAS E BOLSOS: Bot\xF5es presentes/ausentes/quantidade/cor condizem com a refer\xEAncia? Costuras centrais (gancho de shorts, pespontos, nervuras) foram preservadas? H\xE1 bolsos inventados ou omitidos? Se houver diverg\xEAncia, REPROVE (buttonsDefect/seamsDefect/pocketsDefect: true, score <= 25)!
+4. REGRA DA BARRIGA ZERO (TOLER\xC2NCIA ZERO): Se a refer\xEAncia cobre o abd\xF4men, h\xE1 qualquer cent\xEDmetro de barriga/cintura exposta virando cropped? Se sim: bellySkinExposedInVideo: true e REPROVE (score <= 35)!
+5. REGRA DO SHORTS vs SAIA: Pernas juntas com barras individuais dobradas ou costura central \xC9 SHORTS (lowerPiece: 'shorts', isGenuineSkirt: false). S\xF3 reprove como saia se for tubo cont\xEDnuo/sino sem pernas.
+6. CONTINUIDADE E DEFORMA\xC7\xC3O DE IA: H\xE1 pe\xE7as que somem no giro ou tecido que se funde na m\xE3o ao puxar no espelho? Se sim: aiMorphingDefect: true e REPROVE (score <= 25)!
+7. REGRA DA BOLSA: Se o produto n\xE3o for bolsa e houver bolsa no v\xEDdeo: modelUsingBag: true e REPROVE IMEDIATAMENTE com score <= 35 e issue: "\u{1F534} Reprovado: N\xE3o use bolsa pois isso vai dar restri\xE7\xE3o no seu v\xEDdeo."
+8. REGRA DE CONTE\xDADO SEXUAL / CALCINHA: Calcinha exposta ou teor sexual: sexualContent: true e REPROVE com score <= 20 e issue: "\u{1F534} Reprovado por conte\xFAdo sexual."
+9. DUPLICIDADE: Se este v\xEDdeo for id\xEAntico a outro anterior no lote: isDuplicate: true, status: "yellow", score: 75.`
           });
           frames.forEach((f, fIdx) => {
             if (!f.frameBase64) return;
@@ -7282,8 +7324,32 @@ Analise os ${batchVideos.length} v\xEDdeos acima contra as ${photosList.length} 
       const sexualContentDefect = Boolean(
         match.sexualContent === true || /\b(calcinhas?|cuecas?|lingeries?|calcinha de biqu[ií]ni|roupa [ií]ntima|roupas [ií]ntimas|panties|underwear|teor sexual|conte[uú]do sexual|semi-nudez|nudez|sexual)\b/i.test(issueLower)
       );
+      const patternDefect = Boolean(
+        match.patternDefect === true || issueLower.includes("estampa") && (issueLower.includes("lisa") || issueLower.includes("estampad") || issueLower.includes("floral"))
+      );
+      const lengthDefect = Boolean(
+        match.lengthDefect === true || issueLower.includes("comprimento") || issueLower.includes("mini vs m\xEDdi") || issueLower.includes("mini vs midi") || issueLower.includes("curto vs midi") || issueLower.includes("curto vs m\xEDdi")
+      );
+      const slitDefect = Boolean(
+        match.slitDefect === true || issueLower.includes("fenda") && (issueLower.includes("inexistente") || issueLower.includes("inventada") || issueLower.includes("abertura"))
+      );
+      const fabricDefect = Boolean(
+        match.fabricDefect === true || issueLower.includes("tecido divergente") || issueLower.includes("cetim") && issueLower.includes("fosco")
+      );
+      const buttonsDefect = Boolean(
+        match.buttonsDefect === true || issueLower.includes("bot\xE3o") || issueLower.includes("bot\xF5es") || issueLower.includes("botoes")
+      );
+      const seamsDefect = Boolean(
+        match.seamsDefect === true || issueLower.includes("costura") || issueLower.includes("pesponto") || issueLower.includes("nervura")
+      );
+      const pocketsDefect = Boolean(
+        match.pocketsDefect === true || issueLower.includes("bolso") || issueLower.includes("bolsos")
+      );
+      const aiMorphingDefect = Boolean(
+        match.aiMorphingDefect === true || issueLower.includes("deforma\xE7\xE3o") || issueLower.includes("muta\xE7\xE3o") || issueLower.includes("continuidade") || issueLower.includes("fundindo")
+      );
       const wrongProductDefect = Boolean(
-        match.wrongProduct === true || issueLower.includes("produto totalmente diferente") || issueLower.includes("produtos totalmente diferentes") || issueLower.includes("estampa") && (issueLower.includes("lisa") || issueLower.includes("estampad")) || issueLower.includes("fenda") && issueLower.includes("inexistente") || (issueLower.includes("comprimento divergente") || issueLower.includes("mini vs m\xEDdi") || issueLower.includes("curto vs midi") || issueLower.includes("curto vs m\xEDdi")) || (issueLower.includes("tecido divergente") || issueLower.includes("cetim") && issueLower.includes("fosco"))
+        match.wrongProduct === true || patternDefect || lengthDefect || slitDefect || fabricDefect || buttonsDefect || seamsDefect || pocketsDefect || aiMorphingDefect || issueLower.includes("produto totalmente diferente") || issueLower.includes("produtos totalmente diferentes")
       );
       const isDuplicateVideo = Boolean(
         match.isDuplicate === true || issueLower.includes("duplicado") || issueLower.includes("repetido") || issueLower.includes("mesmos movimentos, modelo e cen\xE1rio")
@@ -7293,6 +7359,7 @@ Analise os ${batchVideos.length} v\xEDdeos acima contra as ${photosList.length} 
         if (wrongProductDefect) score = Math.min(score, 20);
         else if (sexualContentDefect) score = Math.min(score, 20);
         else if (bagDefect) score = Math.min(score, 35);
+        else if (bellyDefect) score = Math.min(score, 38);
         status = "red";
         approved = false;
         score = Math.min(score, 60);
@@ -7420,46 +7487,66 @@ async function handleProdutos2AuditVideo(req, res) {
 [MODO ATIVO: ETAPA 2 \u2014 INSPE\xC7\xC3O DIRECIONADA EM ALTA DENSIDADE (1 FRAME POR SEGUNDO NA REGI\xC3O SUSPEITA)]:
 Na varredura anterior, houve sinal suspeito nos segundos: ${Array.isArray(suspiciousSeconds) && suspiciousSeconds.length > 0 ? suspiciousSeconds.map((s) => `${s}s`).join(", ") : "indicados"}.
 Examine os frames de 1 em 1 segundo e confirme se a diverg\xEAncia \xE9 real e persistente ou apenas oclus\xE3o/perspectiva.` : "";
-    const systemInstruction = `Voc\xEA \xE9 o Perito Visual em Fidelidade de Produtos para V\xEDdeos Comerciais (Veo 3 / TikTok Shop).
-Sua miss\xE3o \xE9 inspecionar o v\xEDdeo "${videoFileName}" (${videoDurationSeconds}s), analisando cada segundo (${framesTimestampsList}) em compara\xE7\xE3o com as ${photosList.length} imagem(ns) de refer\xEAncia reais do produto "${productName}".
+    const systemInstruction = `Voc\xEA \xE9 o Perito Visual Chefe em Auditoria Forense de Fidelidade de Produtos e Vestu\xE1rio para TikTok Shop e V\xEDdeos Comerciais (Veo 3 / Pixverse).
+Sua miss\xE3o \xE9 inspecionar o v\xEDdeo "${videoFileName}" (${videoDurationSeconds}s), analisando cada segundo (${framesTimestampsList}) em compara\xE7\xE3o direta com as ${photosList.length} imagem(ns) de refer\xEAncia reais do produto "${productName}".
 
-DIRETRIZES FUNDAMENTAIS DE PER\xCDCIA VISUAL (PRECIS\xC3O M\xC1XIMA E ZERO FALSOS POSITIVOS):
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+PROTOCOLO PERICIAL DE AN\xC1LISE FORENSE (PRECIS\xC3O M\xC1XIMA E ZERO FALSOS POSITIVOS):
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
 
-1. IDENTIFICA\xC7\xC3O RIGOROSA DO QUE APARECE EM CADA FRAME:
-   - FRENTE DO PRODUTO: Se a tela frontal estiver virada para a c\xE2mera (exibindo papel de parede, tela ligada, \xEDcones de aplicativos ou orif\xEDcio da c\xE2mera selfie), essa \xE9 a FRENTE! A frente N\xC3O possui c\xE2meras traseiras e n\xE3o possui logomarca traseira. \xC9 TERMINANTEMENTE PROIBIDO esperar ver c\xE2meras traseiras na frente do celular. Se a frente estiver correta e condizente, APROVE O FRAME COM NOTA VERDE (>= 92%).
-   - EMBALAGEM / CAIXA: Se a pessoa estiver segurando a caixa de papel\xE3o ou embalagem lacrada do produto (ex: caixa preta/amarela/branca de varejo), avalie a EMBALAGEM como embalagem comercial. NUNCA confunda a caixa com o aparelho. APROVE COM NOTA VERDE (>= 92%).
-   - BOT\xD5ES LATERAIS E PERFIL: Se o frame N\xC3O for um close focado explicitamente no perfil lateral do aparelho (por exemplo, se o aparelho estiver de costas, de frente, em movimento ou \xE0 dist\xE2ncia), \xC9 TERMINANTEMENTE PROIBIDO exigir que bot\xF5es laterais estejam vis\xEDveis ou reprovar o frame porque um bot\xE3o lateral n\xE3o aparece! Detalhes laterais s\xF3 s\xE3o auditados se houver um close n\xEDtido da borda/lateral no v\xEDdeo.
-   - TRASEIRA DO APARELHO: Avalie as c\xE2meras traseiras APENAS quando a tampa traseira estiver de fato vis\xEDvel na dire\xE7\xE3o da c\xE2mera.
+0. FICHA VISUAL CONSOLIDADA DAS FOTOS DE REFER\xCANCIA (CONJUNTO \xDANICO):
+Antes de comparar o v\xEDdeo, examine todas as ${photosList.length} imagens originais de refer\xEAncia como um conjunto visual \xFAnico:
+- Mapeie a Ficha Visual consolidada: categoria, tipo, corte, silhueta e propor\xE7\xF5es aparentes.
+- Mapeie o tecido e textura: cetim/seda com brilho refletivo vs algod\xE3o/viscose fosca vs linho r\xFAstico vs jeans vs malha canelada.
+- Mapeie estampas e padronagens: tecido 100% liso monocrom\xE1tico vs estampado (floral, flores mi\xFAdas ou grandes, po\xE1, listras, animal print, xadrez).
+- Mapeie fechamentos e aviamentos: bot\xF5es (presen\xE7a, quantidade, posi\xE7\xE3o, formato e cor, ex: bot\xF5es dourados, madrep\xE9rola, forrados), z\xEDperes, fechos, amarra\xE7\xF5es.
+- Mapeie costuras e pespontos: costura central do cavalo/gancho (em shorts), pespontos aparentes, nervuras verticais, pregas, c\xF3s com passantes.
+- Mapeie bolsos: bolsos faca laterais, bolsos frontais, ou aus\xEAncia total de bolsos.
+- Mapeie golas, decotes, al\xE7as e mangas: decote degag\xEA (cowl), decote reto franzido com el\xE1stico, decote V, amarra\xE7\xF5es com n\xF3 de tecido, alcinhas finas espaguete, regata, manga princesa/bufante.
+- Mapeie barras e fendas: comprimento curto/mini (acima do joelho), m\xEDdi (abaixo do joelho/canela) ou longo; presen\xE7a ou aus\xEAncia de fenda na perna.
+- Regra de m\xFAltiplos \xE2ngulos: N\xE3o conclua que um detalhe est\xE1 ausente s\xF3 porque n\xE3o aparece em uma foto espec\xEDfica, caso ele seja vis\xEDvel em outra foto da refer\xEAncia com \xE2ngulo complementar (ex: costas, lateral ou close).
+- Se for conjunto/kit de pe\xE7as, inventarie cada unidade individualmente.
 
-2. REGRAS CIR\xDARGICAS PARA MODA / VESTU\xC1RIO (CRIT\xC9RIOS TIKTOK SHOP):
-   - MUDAN\xC7A DE FORMATO / MODELAGEM \xC9 GRAV\xCDSSIMA (INFRA\xC7\xC3O CR\xCDTICA):
-     * PE\xC7A INFERIOR: Se a refer\xEAncia for Shorts ou Bermuda, o v\xEDdeo DEVE exibir a divis\xE3o de DUAS PERNAS SEPARADAS (com gancho/entrepernas e barras separadas). Se virar saia curta com caimento cont\xEDnuo ao redor das pernas, REPROVE IMEDIATAMENTE (< 50%, status "red").
-     * COMPRIMENTO E CINTURA: Se a blusa original cobre o abd\xF4men e a cintura, ela N\xC3O pode encurtar virando cropped nem deixar a barriga exposta. Se houver barriga exposta ou abertura lateral indevida, REPROVE IMEDIATAMENTE (< 50%, status "red").
-     * OMBROS E MANGAS: Se a refer\xEAncia for amarra\xE7\xE3o de faixa de tecido simples, n\xE3o permita volume adicional de babado, sobreposi\xE7\xE3o ou volante inventado.
-     * ELEMENTOS EXTRAS: Bot\xF5es adicionais, bolsos ou recortes que n\xE3o existem na refer\xEAncia reprovam o frame.
-   - COR E ILUMINA\xC7\xC3O \xC9 CRIT\xC9RIO LEVE (ALTA TOLER\xC2NCIA \u2014 ZERO FALSOS POSITIVOS):
-     * Varia\xE7\xF5es de ilumina\xE7\xE3o do ambiente (luz amarela do quarto, sombra de espelho, reflexos ou satura\xE7\xE3o de v\xEDdeo) N\xC3O S\xC3O MUDAN\xC7A DE COR. Se a pe\xE7a for da mesma fam\xEDlia de cores da refer\xEAncia, APROVE EM VERDE (>= 92%). NUNCA reprove por varia\xE7\xE3o de sombra ou luz!
+\u26A0\uFE0F REGRAS SOBERANAS INEGOCI\xC1VEIS DO TIKTOK SHOP:
+1. REGRA DE OURO SOBRE BOLSAS (TOLER\xC2NCIA ZERO):
+   A bolsa S\xD3 PODE APARECER quando ela for o pr\xF3prio produto da imagem de refer\xEAncia. Se o produto da refer\xEAncia N\xC3O for uma bolsa e a modelo estiver usando, segurando ou carregando qualquer bolsa, bolsa de ombro, bolsa tiracolo, bolsa de m\xE3o ou mochila no v\xEDdeo:
+   REPROVE O V\xCDDEO IMEDIATAMENTE (score <= 35, status "red") e crie um finding com severidade "evident", title: "N\xE3o use bolsa pois isso vai dar restri\xE7\xE3o no seu v\xEDdeo.", whatAppearsInVideo: "A modelo est\xE1 usando uma bolsa no v\xEDdeo, mas a bolsa n\xE3o \xE9 o produto anunciado na refer\xEAncia.", howToFix: "N\xE3o use bolsa pois isso vai dar restri\xE7\xE3o no seu v\xEDdeo."
 
-3. REGRAS CIR\xDARGICAS PARA DISPOSITIVOS ELETR\xD4NICOS E GERAL:
-   - DISTIN\xC7\xC3O ENTRE FLASH LED E C\xC2MERA EXTRA:
-     * O design CORRETO de refer\xEAncia possui: carca\xE7a lisa sem ilha elevada, 2 lentes circulares pretas grandes e 1 pequeno flash circular claro ao lado da lente superior.
-     * O flash LED claro N\xC3O \xE9 uma lente. Quando o aparelho tiver as 2 lentes e o flash claro (ex: em 1s), O PRODUTO EST\xC1 CORRETO. Aprove o frame em VERDE (>= 92%).
-   - DEFEITO REAL: C\xC2MERA EXTRA / M\xD3DULO ELEVADO COM 3 LENTES:
-     * Inspecione atentamente se em algum frame surge uma C\xC2MERA EXTRA REAL (por exemplo: um terceiro orif\xEDcio/lente circular escura acima do flash, ou uma ilha/bloco retangular elevado saliente na traseira com 3 c\xEDrculos de c\xE2mera e barra cinza com a logo, como pode ocorrer aos 4 segundos).
-     * Se surgir uma 3\xAA lente ou bloco com 3 c\xE2meras onde a refer\xEAncia s\xF3 tem 2 lentes na tampa lisa, ISSO \xC9 UMA INCONSIST\xCANCIA EVIDENTE GRAVE!
-     * Nesse caso, voc\xEA DEVE REPROVAR O FRAME (< 50%, status "red") e criar um achado em "findings" com severidade "evident": "M\xF3dulo traseiro com c\xE2mera extra (3 lentes e bloco elevado)", informando o segundo exato onde ocorre e as caixas de recorte ("refCropBox" e "videoCropBox")!
-   - PROPOR\xC7\xC3O E ESCALA DAS C\xC2MERAS: Verifique se o di\xE2metro das lentes e do m\xF3dulo est\xE1 na propor\xE7\xE3o correta com o corpo do aparelho.
-   - BRILHO / REFLEXO N\xC3O \xC9 TELA TRASEIRA: Aparelhos brancos, de vidro ou met\xE1licos refletem a ilumina\xE7\xE3o ambiente (l\xE2mpadas do teto, janelas) como um clar\xE3o branco liso ou reflexo especular brilhante. NUNCA confunda reflexo de luz branca com "tela na traseira"! Uma tela traseira possui display ativo, bordas de tela, interface ou \xEDcones. Carca\xE7a lisa com brilho de luz \xE9 apenas o acabamento do celular refletindo a luz.
+2. REGRA SAGRADA DE CONTE\xDADO SEXUAL / CALCINHA (TOLER\xC2NCIA ZERO):
+   Se em qualquer frame for identificada CALCINHA exposta (vis\xEDvel total ou parcialmente), calcinha de biqu\xEDni, roupa \xEDntima, lingerie ou qualquer teor sexual / semi-nudez:
+   REPROVE O V\xCDDEO IMEDIATAMENTE (score <= 20, status "red") e crie um finding com severidade "evident", title: "Reprovado por conte\xFAdo sexual.", whatAppearsInVideo: "Identificada calcinha ou teor sexual no v\xEDdeo, violando as diretrizes da plataforma.", howToFix: "Regerar o v\xEDdeo garantindo que a modelo esteja adequadamente vestida sem calcinha vis\xEDvel ou teor sexual."
 
-3. INDEPEND\xCANCIA E OBJETIVIDADE DE CADA FRAME:
-   - Avalie cada segundo (${framesTimestampsList}) de forma aut\xF4noma e fiel ao que a imagem daquele segundo de fato mostra.
-   - Se o produto no v\xEDdeo condiz com as fotos de refer\xEAncia em todas as cenas, retorne "findings": [] VAZIO e aprove com nota VERDE (>= 92%).
-   - Se houver inconsist\xEAncia real evidente (como a c\xE2mera extra / bloco com 3 lentes em 4s), registre o achado em "findings" e reprove o frame correspondente (< 50%, vermelho).
+3. REGRA SOBERANA DE PRODUTO ID\xCANTICO (TOLER\xC2NCIA ZERO \u2014 PRODUTO DIVERGENTE = REPROVA\xC7\xC3O IMEDIATA):
+   O produto exibido no v\xEDdeo DEVE SER rigorosamente a mesma pe\xE7a das fotos de refer\xEAncia oficiais. Nunca aprove produtos diferentes apenas por terem cor clara similar (ex: branco/bege)!
+   Audite os 5 Pilares Estruturais:
+   a) ESTAMPA vs LISO (GRAV\xCDSSIMO): Se a refer\xEAncia oficial for lisa e a roupa no v\xEDdeo for estampada (ex: estampa floral mi\xFAda ou grande), ou vice-versa: REPROVE IMEDIATAMENTE (score <= 20, status "red") com finding severidade "evident", title: "Produto divergente da refer\xEAncia oficial (estampa floral).", whatAppearsInVideo: "O v\xEDdeo exibe um vestido estampado com flores, enquanto a refer\xEAncia oficial \xE9 lisa monocrom\xE1tica sem estampa.", howToFix: "Regerar o v\xEDdeo utilizando rigorosamente o produto liso da refer\xEAncia."
+   b) COMPRIMENTO (CURTO/MINI vs M\xCDDI vs LONGO): Se a refer\xEAncia for vestido curto/mini (acima do joelho) e o v\xEDdeo for m\xEDdi (abaixo do joelho/canela) ou longo (ou vice-versa): REPROVE IMEDIATAMENTE (score <= 20, status "red") com finding severidade "evident", title: "Comprimento divergente da refer\xEAncia.", whatAppearsInVideo: "O vestido no v\xEDdeo tem comprimento m\xEDdi cobrindo os joelhos, mas a refer\xEAncia oficial \xE9 vestido curto/mini.", howToFix: "Regerar o v\xEDdeo mantendo o comprimento curto/mini da refer\xEAncia."
+   c) FENDA NA PERNA / ABERTURAS: Se o vestido tiver fenda na coxa/perna inexistente na refer\xEAncia oficial (ou vice-versa): REPROVE IMEDIATAMENTE (score <= 20, status "red") com finding severidade "evident", title: "Fenda inexistente na refer\xEAncia.", whatAppearsInVideo: "O vestido no v\xEDdeo apresenta uma fenda profunda na perna que n\xE3o existe na refer\xEAncia oficial.", howToFix: "Remover a fenda e preservar a modelagem fechada da refer\xEAncia."
+   d) TECIDO E BRILHO (CETIM vs FOSCO): Se a refer\xEAncia for cetim acetinado brilhante e o v\xEDdeo for tecido fosco de algod\xE3o/viscose (ou vice-versa): REPROVE IMEDIATAMENTE (score <= 25, status "red") com finding severidade "evident", title: "Tecido divergente da refer\xEAncia.", whatAppearsInVideo: "A refer\xEAncia oficial \xE9 cetim brilhante acetinado com caimento fluido, mas o v\xEDdeo mostra tecido fosco de algod\xE3o/viscose.", howToFix: "Preservar a textura e brilho acetinado do cetim da refer\xEAncia."
+   e) ESTRUTURA, BOT\xD5ES, COSTURAS E BOLSOS:
+      - Se a refer\xEAncia tiver bot\xF5es frontais e o v\xEDdeo omitir (ou vice-versa), ou bot\xF5es divergentes: REPROVE (score <= 20, status "red", severidade "evident", title: "Bot\xF5es divergentes da refer\xEAncia oficial").
+      - Se a refer\xEAncia tiver costura central vertical ou nervuras e o v\xEDdeo omitir: REPROVE (score <= 25, status "red", severidade "evident").
+      - Se o v\xEDdeo adicionar bolsos onde a pe\xE7a era lisa, ou omitir bolsos caracter\xEDsticos: REPROVE (score <= 25, status "red", severidade "evident").
+      - Se a refer\xEAncia tiver decote degag\xEA (cowl) e o v\xEDdeo tiver decote reto franzido com el\xE1stico: REPROVE (score <= 25, status "red", severidade "evident").
 
-4. SELE\xC7\xC3O DA MELHOR REFER\xCANCIA E CAIXAS DE RECORTE (APENAS SE HOUVER ACHADO REAL):
-   - "bestRefIndex": n\xFAmero inteiro (1 a ${photosList.length}) da Foto de Refer\xEAncia que MELHOR exibe o componente analisado.
-   - "bestFrameSecond": n\xFAmero inteiro (entre ${framesTimestampsList}) indicando o SEGUNDO EXATO onde a diverg\xEAncia/erro visual aparece com mais clareza no v\xEDdeo (ex: se a c\xE2mera extra e o m\xF3dulo com 3 lentes aparecem aos 4s, defina OBRIGATORIAMENTE "bestFrameSecond": 4!). NUNCA aponte um segundo onde o produto est\xE1 de frente ou sem erro!
-   - "refCropBox" e "videoCropBox": caixas delimitadoras [ymin, xmin, ymax, xmax] em escala de 0 a 1000 que englobam o componente completo com folga.
+4. REGRA DA BARRIGA ZERO (TOLER\xC2NCIA ZERO EM CINTURA/CROPPED):
+   Se a blusa/pe\xE7a superior na refer\xEAncia cobre o abd\xF4men e a cintura at\xE9 a pe\xE7a inferior, ela N\xC3O pode encurtar virando cropped nem deixar a barriga exposta. Se houver barriga exposta ou abertura indevida: REPROVE IMEDIATAMENTE (< 50%, status "red") com finding severidade "evident".
+
+5. REGRA DO SHORTS vs SAIA (ZERO FALSAS REPROVA\xC7\xD5ES):
+   Se a refer\xEAncia for shorts/bermuda e a modelo posar com pernas juntas em frente ao espelho, N\xC3O \xC9 SAIA se houver barras dobradas individuais em cada coxa ou costura central do cavalo. Aprove com nota verde (>= 92%). S\xF3 reprove como saia se for tubo cont\xEDnuo ou sino rodado sem pernas.
+
+6. CONTINUIDADE TEMPORAL E DEFORMA\xC7\xD5ES DE IA (VEO / PIXVERSE):
+   Compare o produto consigo mesmo ao longo dos segundos do v\xEDdeo:
+   - Pe\xE7as que somem entre os segundos (ex: al\xE7a que desaparece quando a modelo gira).
+   - Componentes que surgem do nada (bot\xE3o ou bolso aparecendo no meio da cena).
+   - Objetos que se fundem (tecido fundindo no corpo ou na m\xE3o ao puxar a roupa no espelho).
+   - Estampas que se distorcem ou mudam de escala entre poses.
+   Se houver deforma\xE7\xE3o ou muta\xE7\xE3o de IA: REPROVE O FRAME CORRESPONDENTE (< 50%, status "red") e crie um finding com severidade "evident", title: "Deforma\xE7\xE3o visual de IA durante o movimento".
+
+7. CONTEXTO DE ALTERA\xC7\xC3O E PRECIS\xC3O VISUAL:
+   - N\xE3o confunda perspectiva com deforma\xE7\xE3o f\xEDsica.
+   - N\xE3o confunda sombra de espelho ou ilumina\xE7\xE3o quente do quarto com mudan\xE7a real de cor.
+   - N\xE3o confunda oclus\xE3o tempor\xE1ria pela m\xE3o ou cabelo com componente desaparecido (conferir segundos antes e depois).
 
 Retorne ESTRITAMENTE um objeto JSON v\xE1lido em portugu\xEAs com este formato (se n\xE3o houver erro no v\xEDdeo, retorne "findings": [] vazio; se houver erro f\xEDsico real em algum frame, preencha todos os campos do objeto em "findings" vinculando ao segundo exato do frame reprovado):
 {
@@ -7470,16 +7557,16 @@ Retorne ESTRITAMENTE um objeto JSON v\xE1lido em portugu\xEAs com este formato (
   "findings": [
     {
       "number": 1,
-      "title": "Nome claro e espec\xEDfico da inconsist\xEAncia (ex: M\xF3dulo traseiro com c\xE2mera extra \u2014 3 lentes e bloco elevado)",
+      "title": "Nome claro e espec\xEDfico da inconsist\xEAncia (ex: Produto totalmente diferente \u2014 vestido m\xEDdi estampado com fenda vs vestido curto de cetim liso)",
       "severity": "evident",
-      "referenceNotes": [{ "refIndex": 1, "label": "Refer\xEAncia original", "description": "Traseira original com carca\xE7a lisa, 2 lentes verticais e flash lateral" }],
+      "referenceNotes": [{ "refIndex": 1, "label": "Refer\xEAncia original", "description": "Vestido curto de cetim liso sem estampa e sem fenda" }],
       "whatAppearsInVideo": "Descri\xE7\xE3o objetiva do que aparece no frame do erro em compara\xE7\xE3o com a foto de refer\xEAncia",
       "whereItAppears": "Frame 5 (4s \u2014 00:04)",
       "bestFrameSecond": 4,
       "bestRefIndex": 1,
       "refCropBox": [100, 200, 900, 800],
       "videoCropBox": [150, 100, 750, 600],
-      "howToFix": "Substituir ou regerar o trecho de 4s mantendo apenas as 2 lentes originais sem bloco elevado."
+      "howToFix": "Regerar o v\xEDdeo utilizando rigorosamente o produto da refer\xEAncia oficial."
     }
   ],
   "frames": [
@@ -7802,35 +7889,43 @@ Retorne ESTRITAMENTE um objeto JSON v\xE1lido em portugu\xEAs com este formato (
             }
           });
         });
-        const promptText = `Realize a per\xEDcia visual completa do v\xEDdeo "${videoFileName}" (${videoDurationSeconds}s) inspecionando cada uma das ${videoFrames.length} capturas reais de 1 em 1 segundo (${framesTimestampsList}) em alta resolu\xE7\xE3o e comparando diretamente com as ${photosList.length} imagem(ns) de refer\xEAncia do produto "${productName}".
+        const promptText = `Realize a per\xEDcia visual forense completa do v\xEDdeo "${videoFileName}" (${videoDurationSeconds}s) inspecionando cada uma das ${videoFrames.length} capturas reais de 1 em 1 segundo (${framesTimestampsList}) em alta resolu\xE7\xE3o e comparando diretamente com as ${photosList.length} imagem(ns) de refer\xEAncia oficiais do produto "${productName}".
 
-INSTRU\xC7\xD5ES OBRIGAT\xD3RIAS DE PER\xCDCIA VISUAL (ZERO FALSOS POSITIVOS):
-0) REGRA DE OURO SOBRE BOLSAS (TOLER\xC2NCIA ZERO):
-   A bolsa S\xD3 PODE APARECER quando a bolsa for o produto da imagem de refer\xEAncia. Se o produto da refer\xEAncia N\xC3O for uma bolsa e a modelo estiver usando, segurando ou carregando qualquer bolsa, bolsa de ombro, bolsa tiracolo, bolsa de m\xE3o ou mochila no v\xEDdeo:
+INSTRU\xC7\xD5ES OBRIGAT\xD3RIAS DE AUDITORIA PERICIAL FORENSE:
+0. FICHA VISUAL CONSOLIDADA DAS FOTOS DE REFER\xCANCIA:
+   Examine o conjunto completo das fotos de refer\xEAncia antes de auditar os quadros:
+   - Identifique o modelo, corte, silhueta e comprimento (curto/mini, m\xEDdi, longo).
+   - Identifique a estampa (liso monocrom\xE1tico vs estampa floral, po\xE1, listras, animal print).
+   - Identifique o tecido e textura (cetim brilhante vs algod\xE3o/viscose fosca, linho, jeans).
+   - Identifique bot\xF5es, fechos e aviamentos (presen\xE7a/aus\xEAncia, quantidade, formato e cor).
+   - Identifique costuras, pespontos e nervuras (costura central do gancho/braguilha em shorts, nervuras verticais).
+   - Identifique bolsos (bolsos faca laterais, bolsos frontais, ou inexistentes).
+   - Identifique golas, decotes, al\xE7as e mangas (degag\xEA vs reto com el\xE1stico vs decote V; al\xE7a fina espaguete vs amarra\xE7\xF5es com la\xE7o vs manga bufante).
+   - Identifique fendas na perna (presen\xE7a ou aus\xEAncia de abertura lateral).
+
+1. REGRA DE OURO SOBRE BOLSAS (TOLER\xC2NCIA ZERO):
+   A bolsa S\xD3 PODE APARECER quando a bolsa for o produto da imagem de refer\xEAncia. Se o produto da refer\xEAncia N\xC3O for uma bolsa e a modelo estiver usando, segurando ou carregando qualquer bolsa no v\xEDdeo:
    REPROVE O V\xCDDEO IMEDIATAMENTE (score <= 35, status "red") e crie um finding com severidade "evident", title: "N\xE3o use bolsa pois isso vai dar restri\xE7\xE3o no seu v\xEDdeo.", whatAppearsInVideo: "A modelo est\xE1 usando uma bolsa no v\xEDdeo, mas a bolsa n\xE3o \xE9 o produto anunciado na refer\xEAncia.", howToFix: "N\xE3o use bolsa pois isso vai dar restri\xE7\xE3o no seu v\xEDdeo."
-0.1) REGRA CR\xCDTICA DE CONTE\xDADO SEXUAL / CALCINHA (TOLER\xC2NCIA ZERO):
+
+2. REGRA CR\xCDTICA DE CONTE\xDADO SEXUAL / CALCINHA (TOLER\xC2NCIA ZERO):
    Se em qualquer frame for identificada CALCINHA exposta (vis\xEDvel total ou parcialmente), calcinha de biqu\xEDni, roupa \xEDntima, lingerie ou qualquer teor sexual / semi-nudez:
    REPROVE O V\xCDDEO IMEDIATAMENTE (score <= 20, status "red") e crie um finding com severidade "evident", title: "Reprovado por conte\xFAdo sexual.", whatAppearsInVideo: "Identificada calcinha ou teor sexual no v\xEDdeo, violando as diretrizes da plataforma.", howToFix: "Regerar o v\xEDdeo garantindo que a modelo esteja adequadamente vestida sem calcinha vis\xEDvel ou teor sexual."
-0.2) REGRA CR\xCDTICA DE PRODUTO IDENTICO vs PRODUTO TOTALMENTE DIFERENTE (TOLER\xC2NCIA ZERO):
+
+3. REGRA CR\xCDTICA DE PRODUTO ID\xCANTICO vs PRODUTO TOTALMENTE DIFERENTE (TOLER\xC2NCIA ZERO):
    O produto exibido no v\xEDdeo DEVE SER rigorosamente a mesma pe\xE7a das fotos de refer\xEAncia:
-   - ESTAMPA vs LISO: Se a refer\xEAncia oficial for lisa e a roupa no v\xEDdeo for estampada (ex: estampa floral mi\xFAda), ou vice-versa: REPROVE O V\xCDDEO IMEDIATAMENTE (score <= 20, status "red") com finding severidade "evident", title: "Produto divergente da refer\xEAncia oficial.", whatAppearsInVideo: "O v\xEDdeo exibe um vestido estampado com flores, enquanto a refer\xEAncia oficial \xE9 lisa sem estampa.", howToFix: "Regerar o v\xEDdeo utilizando rigorosamente o produto liso da refer\xEAncia."
-   - COMPRIMENTO (CURTO/MINI vs M\xCDDI vs LONGO): Se a refer\xEAncia for vestido curto/mini (acima do joelho) e o v\xEDdeo for m\xEDdi (abaixo do joelho/canela) ou longo (ou vice-versa): REPROVE IMEDIATAMENTE (score <= 20, status "red") com finding severidade "evident", title: "Comprimento divergente da refer\xEAncia.", whatAppearsInVideo: "O vestido no v\xEDdeo tem comprimento m\xEDdi cobrindo os joelhos, mas a refer\xEAncia oficial \xE9 vestido curto/mini.", howToFix: "Regerar o v\xEDdeo mantendo o comprimento curto/mini da refer\xEAncia."
+   - ESTAMPA vs LISO: Se a refer\xEAncia oficial for lisa e a roupa no v\xEDdeo for estampada com flores, ou vice-versa: REPROVE O V\xCDDEO IMEDIATAMENTE (score <= 20, status "red") com finding severidade "evident", title: "Produto divergente da refer\xEAncia oficial (estampa floral).", whatAppearsInVideo: "O v\xEDdeo exibe um vestido estampado com flores, enquanto a refer\xEAncia oficial \xE9 lisa sem estampa.", howToFix: "Regerar o v\xEDdeo utilizando rigorosamente o produto liso da refer\xEAncia."
+   - COMPRIMENTO (CURTO/MINI vs M\xCDDI vs LONGO): Se a refer\xEAncia for vestido curto/mini e o v\xEDdeo for m\xEDdi (abaixo do joelho/canela) ou longo: REPROVE IMEDIATAMENTE (score <= 20, status "red") com finding severidade "evident", title: "Comprimento divergente da refer\xEAncia.", whatAppearsInVideo: "O vestido no v\xEDdeo tem comprimento m\xEDdi cobrindo os joelhos, mas a refer\xEAncia oficial \xE9 vestido curto/mini.", howToFix: "Regerar o v\xEDdeo mantendo o comprimento curto/mini da refer\xEAncia."
    - FENDA NA PERNA: Se o vestido tiver fenda aberta na coxa/perna inexistente na refer\xEAncia oficial (ou vice-versa): REPROVE IMEDIATAMENTE (score <= 20, status "red") com finding severidade "evident", title: "Fenda inexistente na refer\xEAncia.", whatAppearsInVideo: "O vestido no v\xEDdeo apresenta uma fenda profunda na perna que n\xE3o existe na refer\xEAncia oficial.", howToFix: "Remover a fenda e preservar a modelagem fechada da refer\xEAncia."
-   - TECIDO / BRILHO: Se a refer\xEAncia for cetim acetinado brilhante e o v\xEDdeo for tecido fosco de algod\xE3o/viscose (ou vice-versa): REPROVE IMEDIATAMENTE (score <= 25, status "red") com finding severidade "evident", title: "Tecido divergente da refer\xEAncia.", whatAppearsInVideo: "A refer\xEAncia oficial \xE9 cetim brilhante acetinado, mas o v\xEDdeo mostra tecido fosco.", howToFix: "Preservar a textura e brilho acetinado do cetim da refer\xEAncia."
-1) Inspecione cada frame (${framesTimestampsList}) com base EXCLUSIVA no que a imagem real de cada frame mostra:
-   - Se o frame mostrar a FRENTE do celular (display ligado, papel de parede, \xEDcones ou c\xE2mera frontal), N\xC3O cobre c\xE2meras traseiras! Aprove o frame com nota VERDE (>= 92%).
-   - Se o frame mostrar a CAIXA/EMBALAGEM do produto, avalie como embalagem comercial e aprove com nota VERDE (>= 92%).
-   - BOT\xD5ES LATERAIS: Se o frame N\xC3O for um close focado explicitamente no perfil lateral do aparelho (ex: se o aparelho estiver de costas, de frente ou \xE0 dist\xE2ncia), \xC9 TERMINANTEMENTE PROIBIDO exigir que bot\xF5es laterais estejam vis\xEDveis ou reprovar o frame!
-   - TRASEIRA E C\xC2MERAS:
-     * QUANDO EST\xC1 CORRETO: Em smartphones de 2 c\xE2meras (como POCO X8 Pro), o design original possui carca\xE7a lisa com 2 lentes circulares pretas grandes e 1 pequeno flash circular claro ao lado da lente superior. Quando o frame mostrar apenas essas 2 lentes e o flash claro (ex: em 1s), O PRODUTO EST\xC1 CORRETO. Aprove com nota VERDE (>= 92%).
-     * QUANDO \xC9 DEFEITO REAL A SER REPROVADO: Se em algum frame (como aos 4 segundos / 4s) surgir uma C\xC2MERA EXTRA (uma 3\xAA lente circular escura acima do flash, ou um m\xF3dulo/ilha retangular elevado com 3 lentes de c\xE2mera e a marca em barra horizontal), REPROVE ESSE FRAME IMEDIATAMENTE (< 50%, status "red") e crie um finding com severidade "evident" detalhando a 3\xAA c\xE2mera extra / bloco elevado divergente!
-     * NUNCA confunda reflexo de luz branca da tampa traseira com tela na traseira!
-2) SE E SOMENTE SE O V\xCDDEO ESTIVER FIEL E CORRETO EM TODAS AS CENAS:
-   - Retorne "findings": [] (array VAZIO).
-   - Retorne "summary": "\u{1F7E2} NENHUMA INCONSIST\xCANCIA IDENTIFICADA: O produto exibido no v\xEDdeo \xE9 100% consistente com as fotos de refer\xEAncia."
-   - Retorne todos os frames em "frames" com status "green" (>= 92%).
-3) SE HOUVER DEFEITO REAL (ex: c\xE2mera extra / 3 lentes aos 4s):
-   - Crie o achado em "findings" com severidade "evident", preencha "refCropBox" e "videoCropBox" e reprove o frame correspondente em "frames" (< 50%, status "red").${lockContext ? `
+   - TECIDO / BRILHO: Se a refer\xEAncia for cetim acetinado brilhante e o v\xEDdeo for tecido fosco de algod\xE3o/viscose: REPROVE IMEDIATAMENTE (score <= 25, status "red") com finding severidade "evident", title: "Tecido divergente da refer\xEAncia.", whatAppearsInVideo: "A refer\xEAncia oficial \xE9 cetim brilhante acetinado, mas o v\xEDdeo mostra tecido fosco.", howToFix: "Preservar a textura e brilho acetinado do cetim da refer\xEAncia."
+   - BOT\xD5ES, COSTURAS E BOLSOS: Se bot\xF5es, costuras ou bolsos divergirem da refer\xEAncia: REPROVE IMEDIATAMENTE (score <= 25, status "red") com finding severidade "evident", title: "Detalhes de bot\xF5es/costuras divergentes da refer\xEAncia."
+
+4. REGRA DA BARRIGA ZERO: Se a blusa original cobre o abd\xF4men e no v\xEDdeo a barriga/cintura fica exposta virando cropped: REPROVE IMEDIATAMENTE (< 50%, status "red") com finding severidade "evident".
+5. REGRA DO SHORTS vs SAIA: Pernas juntas com barras individuais dobradas ou costura central \xC9 SHORTS. N\xE3o reprove como saia!
+6. CONTINUIDADE TEMPORAL DE IA: Pe\xE7as que somem, muta\xE7\xE3o no giro ou tecido fundindo na m\xE3o: REPROVE (< 50%, status "red") com finding severidade "evident".
+
+7. RESULTADO:
+   - Se o v\xEDdeo for 100% fiel em todas as cenas: retorne "findings": [] VAZIO e aprove todos os frames em "frames" com nota VERDE (>= 92%).
+   - Se houver inconsist\xEAncia real: crie o achado em "findings" com severidade "evident", bestRefIndex, bestFrameSecond, refCropBox e videoCropBox e reprove o frame correspondente em "frames" (< 50%, status "red").${lockContext ? `
 Trava do produto: ${lockContext}` : ""}
 ${targetedContextInstruction}
 Retorne o JSON estritamente conforme o schema especificado.`;
