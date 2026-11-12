@@ -7,6 +7,7 @@ import {
 import {
   buildAnaMariaImagePrompt,
   buildAnaMariaVideoPrompt,
+  detectComplementaryGarment,
   AnaMariaRoomType,
 } from './anaMariaPrompts';
 import { resolveHeadlineAndHashtags } from './anaMariaBank';
@@ -356,6 +357,20 @@ async function prepareProductPhotosForPayload(photos: string[]): Promise<{
  */
 export function ensureAnaMariaModelAndScenario(rawForm: AnaMariaFormState): AnaMariaFormState {
   let form = { ...rawForm };
+
+  const complementaryInfo = detectComplementaryGarment(
+    form.productName,
+    form.additionalInstructions,
+    form.influencer
+  );
+  const isUpperOnly = complementaryInfo.type === 'upper_only';
+
+  // Se o produto for uma peça que fica acima da cintura (blusa, blusinha, cropped, camiseta, jaqueta...),
+  // usa por padrão o prompt "01. MESTRA CATZA — COM ROSTO & FLASH DIRETO NO ESPELHO" (mestra_catza)
+  if (isUpperOnly && (!form.selectedMasterId || form.selectedMasterId === 'mestra_ana_maria')) {
+    form.selectedMasterId = 'mestra_catza';
+  }
+
   const master = getMasterPromptById(form.selectedMasterId);
   const activeMode = form.presentationMode || (master.isPov ? 'pov' : 'mirror_selfie');
 
@@ -411,9 +426,16 @@ export function ensureAnaMariaModelAndScenario(rawForm: AnaMariaFormState): AnaM
     form.selectedModelGalleryUrl = undefined;
     form.selectedModelGalleryBase64 = undefined;
   } else if (!form.selectedModelGalleryId && !form.selectedModelGalleryNumber) {
-    // Se o usuário NÃO escolheu nenhuma modelo (e não marcou gerar via prompt),
-    // o aplicativo seleciona de forma randômica uma das 24 modelos da galeria a cada geração!
-    if (MODEL_GALLERY_ITEMS && MODEL_GALLERY_ITEMS.length > 0) {
+    // Se o produto for peça da parte de cima, dá preferência à modelo 5 (Mestra Catza)
+    if (isUpperOnly) {
+      const model5 = MODEL_GALLERY_ITEMS.find((m) => m.number === 5) || MODEL_GALLERY_ITEMS[4];
+      if (model5) {
+        form.selectedModelGalleryId = model5.id;
+        form.selectedModelGalleryNumber = model5.number;
+        form.selectedModelGalleryUrl = model5.fullUrl;
+        form.selectedModelGalleryBase64 = undefined;
+      }
+    } else if (MODEL_GALLERY_ITEMS && MODEL_GALLERY_ITEMS.length > 0) {
       const chosenModel = MODEL_GALLERY_ITEMS[Math.floor(Math.random() * MODEL_GALLERY_ITEMS.length)];
       form.selectedModelGalleryId = chosenModel.id;
       form.selectedModelGalleryNumber = chosenModel.number;

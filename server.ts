@@ -6098,6 +6098,35 @@ Antes de comparar e julgar qualquer vídeo, examine TODAS as ${photosList.length
   * Se esse vídeo não possuir defeitos críticos vermelhos de produto, seu status DEVE SER OBRIGATORIAMENTE "yellow" (Atenção / Risco), score entre 70 e 78, e o parecer do campo "issue" DEVE SER ESTRITAMENTE:
     "🟡 Atenção: Possível vídeo duplicado com o [nome_do_video_anterior] (mesmos movimentos, modelo e cenário)."
 
+⚠️ REGRA CRÍTICA DE BOLSOS TRASEIROS E PARTE TRASEIRA / COSTAS (TIKTOK SHOP):
+- Inspecione minuciosamente TODAS as fotos de referência (de qualquer cor) para verificar se alguma delas mostra o produto por trás / de costas.
+- Se qualquer foto de referência mostrar que a peça possui (ou não possui) bolsos traseiros (em calça, bermuda, shorts ou saia), essa regra é válida para todas as cores do produto.
+- QUANDO A MODELO VIRAR DE COSTAS NO VÍDEO (mostrando as nádegas, parte traseira ou costas da roupa):
+  * CASO 1: HÁ FOTOS DE REFERÊNCIA MOSTRANDO AS COSTAS DO PRODUTO:
+    - Se a referência NÃO possui bolsos traseiros e no vídeo aparecem bolsos traseiros (ou vice-versa, a referência TEM bolsos traseiros e o vídeo omite): REPROVAÇÃO IMEDIATA (score <= 25, status: "red", rearPocketsDefect: true, wrongProduct: true)!
+      Issue: "🔴 Reprovado: Bolsos traseiros divergentes da referência oficial (a referência [possui/não possui] bolsos traseiros, mas no vídeo ao virar de costas a peça [não tem/apresenta] bolsos inventados)."
+    - Se a amarração traseira (laço, decote nas costas, alças cruzadas, zíper) for divergente da foto de referência traseira: REPROVAÇÃO IMEDIATA (score <= 25, status: "red")!
+      Issue: "🔴 Reprovado: Amarração/detalhes das costas divergentes da referência oficial."
+  * CASO 2: A MODELO VIRA DE COSTAS NO VÍDEO, MAS NENHUMA FOTO DE REFERÊNCIA MOSTRA O PRODUTO POR TRÁS:
+    - Como o gerador de IA pode ter inventado o design traseiro sem referência, o vídeo NÃO deve ser aprovado em verde silencioso nem reprovado direto, e sim DEVE OBRIGATORIAMENTE RECEBER SINAL LARANJA DE CUIDADO (status: "orange", score entre 72 e 76, approved: true, noRearPhotosWarning: true):
+      Issue: "🟠 Cuidado: Não há fotos de referência do produto na parte das costas. Verifique para não tomar violação."
+
+⚠️ REGRA DE FOCO RESTRITO NO PRODUTO ANUNCIADO ("${productName}"):
+- O usuário especificou no campo "Produto" o item "${productName}".
+- Muitas imagens de referência contêm a modelo vestindo look completo (ex: blusa + calça jeans + calçado).
+- SE O PRODUTO FOR ESPECIFICADO COMO UMA PEÇA ESPECÍFICA (Ex: "Blusa", "Cropped", "Camiseta", "Regata", "Calça", "Saia", "Shorts"):
+  * A perícia 1:1 DEVE FOCAR EXCLUSIVAMENTE NA PEÇA ESPECIFICADA ("${productName}")!
+  * Se o produto for "Blusa", calça, saia e calçados usados pela modelo no vídeo são apenas complementares e NÃO devem reprovar o vídeo se forem diferentes da foto de referência.
+  * Se o produto for "Calça", a blusa usada pela modelo no vídeo é complementar e NÃO deve reprovar o vídeo se for diferente da foto de referência.
+  * Só avalie o look completo em conjunto se o produto for explicitamente "Conjunto", "Vestido", "Macacão" ou ambas as peças à venda.
+
+⚠️ REGRA DE ENQUADRAMENTO PARA PEÇAS DA PARTE DE CIMA (BLUSA / CROPPED / CAMISETA / JAQUETA):
+- Quando o produto anunciado for uma blusa, blusinha, cropped, camiseta, regata, jaqueta ou qualquer peça que fica acima da cintura:
+  * Se o enquadramento do vídeo for de CORPO INTEIRO (mostrando pernas inteiras e calçados):
+    O vídeo NÃO DEVE receber bola vermelha de reprovado!
+    O vídeo DEVE OBRIGATORIAMENTE receber sinal AMARELO (status: "yellow", score entre 74 e 78, approved: true, upperPieceFullBodyFraming: true) com o parecer:
+    "🟡 Atenção: Possível reprovação porque o vídeo não enfoca a peça em questão (enquadramento de corpo inteiro para peça da parte de cima)."
+
 ═════════════════════════════════════════════════════════════════════════════════
 OS 5 GRUPOS FORENSES DE INSPEÇÃO COMPONENTE A COMPONENTE (TOLERÂNCIA ZERO):
 ═════════════════════════════════════════════════════════════════════════════════
@@ -6219,6 +6248,9 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
       "buttonsDefect": boolean,
       "seamsDefect": boolean,
       "pocketsDefect": boolean,
+      "rearPocketsDefect": boolean,
+      "noRearPhotosWarning": boolean,
+      "upperPieceFullBodyFraming": boolean,
       "aiMorphingDefect": boolean,
       "isDuplicate": boolean,
       "duplicateOf": string | null,
@@ -6573,8 +6605,34 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
         issueLower.includes('nervura')
       );
 
+      const rearPocketsDefect = Boolean(
+        match.rearPocketsDefect === true ||
+        (issueLower.includes('bolso') && (issueLower.includes('traseir') || issueLower.includes('costas') || issueLower.includes('atrás') || issueLower.includes('atras'))) ||
+        (issueLower.includes('amarração') && (issueLower.includes('costas') || issueLower.includes('traseir')))
+      );
+
+      const noRearPhotosWarning = Boolean(
+        match.noRearPhotosWarning === true ||
+        issueLower.includes('não há fotos de referência do produto na parte das costas') ||
+        issueLower.includes('nao ha fotos de referencia do produto na parte das costas') ||
+        issueLower.includes('sem fotos de referência das costas') ||
+        (issueLower.includes('virou de costas') && issueLower.includes('não há fotos'))
+      );
+
+      const isUpperGarmentPiece = /\b(blusa|blusinha|blusinhas|blusas|cropped|top|regata|camiseta|camisetas|t-shirt|jaqueta|jaquetas|casaco|blazer)\b/i.test(pNameLower);
+      const upperPieceFullBodyFraming = Boolean(
+        match.upperPieceFullBodyFraming === true ||
+        (isUpperGarmentPiece && (
+          issueLower.includes('não enfoca a peça') ||
+          issueLower.includes('nao enfoca a peca') ||
+          issueLower.includes('enquadramento de corpo inteiro para peça da parte de cima') ||
+          (issueLower.includes('corpo inteiro') && (issueLower.includes('peça de cima') || issueLower.includes('blusa')))
+        ))
+      );
+
       const pocketsDefect = Boolean(
         match.pocketsDefect === true ||
+        rearPocketsDefect ||
         issueLower.includes('bolso') ||
         issueLower.includes('bolsos')
       );
@@ -6609,17 +6667,23 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
         issueLower.includes('mesmos movimentos, modelo e cenário')
       );
 
-      // Avaliação do status final (green, yellow, red)
-      let status: 'green' | 'yellow' | 'red' = 'green';
-      if (wrongProductDefect || sexualContentDefect || bagDefect || bellyDefect || !approved || score < 70) {
+      // Avaliação do status final (green, yellow, orange, red)
+      let status: 'green' | 'yellow' | 'orange' | 'red' = 'green';
+      if (wrongProductDefect || rearPocketsDefect || sexualContentDefect || bagDefect || bellyDefect || !approved || score < 70) {
         if (wrongProductDefect) score = Math.min(score, 20);
+        else if (rearPocketsDefect) score = Math.min(score, 25);
         else if (sexualContentDefect) score = Math.min(score, 20);
         else if (bagDefect) score = Math.min(score, 35);
         else if (bellyDefect) score = Math.min(score, 38);
         status = 'red';
         approved = false;
         score = Math.min(score, 60);
+      } else if (noRearPhotosWarning || match.status === 'orange' || issueLower.includes('não há fotos de referência do produto na parte das costas')) {
+        status = 'orange';
+        approved = true;
+        score = Math.min(score, 76);
       } else if (
+        upperPieceFullBodyFraming ||
         isDuplicateVideo ||
         match.status === 'yellow' ||
         (score >= 70 && score < 90) ||
@@ -6633,6 +6697,8 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
         approved = true;
         if (isDuplicateVideo) {
           score = Math.min(score, 78);
+        } else if (upperPieceFullBodyFraming) {
+          score = Math.min(score, 76);
         }
       } else {
         status = 'green';
@@ -6811,6 +6877,28 @@ Antes de comparar o vídeo, examine todas as ${photosList.length} imagens origin
 
 3. REGRA SOBERANA DE PRODUTO IDÊNTICO (TOLERÂNCIA ZERO — PRODUTO DIVERGENTE = REPROVAÇÃO IMEDIATA):
    O produto exibido no vídeo DEVE SER rigorosamente a mesma peça das fotos de referência oficiais. Nunca aprove produtos diferentes apenas por terem cor clara similar (ex: branco/bege)!
+
+⚠️ REGRA CRÍTICA DE BOLSOS TRASEIROS E PARTE TRASEIRA / COSTAS (TIKTOK SHOP):
+- Inspecione minuciosamente TODAS as fotos de referência para verificar se alguma delas mostra o produto por trás / de costas.
+- Se qualquer foto de referência mostrar que a peça possui (ou não possui) bolsos traseiros (em calça, bermuda, shorts ou saia), essa regra é válida para todas as cores do produto.
+- QUANDO A MODELO VIRAR DE COSTAS NO VÍDEO (mostrando as nádegas, parte traseira ou costas da roupa):
+  * CASO 1: HÁ FOTOS DE REFERÊNCIA MOSTRANDO AS COSTAS DO PRODUTO:
+    - Se a referência NÃO possui bolsos traseiros e no vídeo aparecem bolsos traseiros (ou vice-versa, a referência TEM bolsos traseiros e o vídeo omite): REPROVE O VÍDEO IMEDIATAMENTE (score <= 25, status: "red") com finding severidade "evident", title: "Bolsos traseiros divergentes da referência oficial.", whatAppearsInVideo: "A peça na referência possui/não possui bolsos traseiros, mas no vídeo ao virar de costas a peça apresenta bolsos inventados ou divergentes.", howToFix: "Regerar o vídeo preservando exatamente o design traseiro sem bolsos/com bolsos da referência."
+    - Se a amarração traseira (laço, decote nas costas, alças cruzadas, zíper) for divergente da foto de referência traseira: REPROVE IMEDIATAMENTE (status: "red")!
+  * CASO 2: A MODELO VIRA DE COSTAS NO VÍDEO, MAS NENHUMA FOTO DE REFERÊNCIA MOSTRA O PRODUTO POR TRÁS:
+    - O vídeo DEVE OBRIGATORIAMENTE RECEBER SINAL LARANJA DE CUIDADO (status: "orange", score entre 72 e 76) com finding severidade "possible", title: "Cuidado: Não há fotos de referência do produto na parte das costas. Verifique para não tomar violação.", whatAppearsInVideo: "A modelo virou de costas no vídeo, porém nenhuma das fotos de referência fornecidas mostra a parte traseira do produto.", howToFix: "Verifique se a parte traseira gerada condiz com o produto real ou anexe fotos de referência das costas para auditoria 100% precisa."
+
+⚠️ REGRA DE FOCO RESTRITO NO PRODUTO ANUNCIADO ("${productName}"):
+- O usuário especificou no campo "Produto" o item "${productName}".
+- SE O PRODUTO FOR UMA PEÇA ESPECÍFICA (Ex: "Blusa", "Cropped", "Camiseta", "Calça", "Saia", "Shorts"):
+  * A perícia 1:1 DEVE FOCAR EXCLUSIVAMENTE NA PEÇA ESPECIFICADA ("${productName}")!
+  * Se o produto for "Blusa", calça, saia e sapatos são complementares e NÃO devem reprovar o vídeo se forem diferentes da foto de referência.
+  * Se o produto for "Calça", a blusa usada pela modelo no vídeo é complementar e NÃO deve reprovar o vídeo se for diferente da referência.
+
+⚠️ REGRA DE ENQUADRAMENTO PARA PEÇAS DA PARTE DE CIMA (BLUSA / CROPPED / CAMISETA / JAQUETA):
+- Quando o produto anunciado for uma blusa, blusinha, cropped, camiseta, regata, jaqueta ou qualquer peça que fica acima da cintura:
+  * Se o enquadramento do vídeo for de CORPO INTEIRO (mostrando pernas inteiras e sapatos):
+    O vídeo NÃO DEVE receber bola vermelha de reprovado! Deve receber sinal AMARELO (status: "yellow", score 76) com finding severidade "possible", title: "Atenção: Possível reprovação porque o vídeo não enfoca a peça em questão (enquadramento de corpo inteiro para peça da parte de cima).", howToFix: "Regerar o vídeo com enquadramento da cintura para cima destacando a peça superior."
    Audite os 5 Pilares Estruturais:
    a) ESTAMPA vs LISO (GRAVÍSSIMO): Se a referência oficial for lisa e a roupa no vídeo for estampada (ex: estampa floral miúda ou grande), ou vice-versa: REPROVE IMEDIATAMENTE (score <= 20, status "red") com finding severidade "evident", title: "Produto divergente da referência oficial (estampa floral).", whatAppearsInVideo: "O vídeo exibe um vestido estampado com flores, enquanto a referência oficial é lisa monocromática sem estampa.", howToFix: "Regerar o vídeo utilizando rigorosamente o produto liso da referência."
    b) COMPRIMENTO (CURTO/MINI vs MÍDI vs LONGO): Se a referência for vestido curto/mini (acima do joelho) e o vídeo for mídi (abaixo do joelho/canela) ou longo (ou vice-versa): REPROVE IMEDIATAMENTE (score <= 20, status "red") com finding severidade "evident", title: "Comprimento divergente da referência.", whatAppearsInVideo: "O vestido no vídeo tem comprimento mídi cobrindo os joelhos, mas a referência oficial é vestido curto/mini.", howToFix: "Regerar o vídeo mantendo o comprimento curto/mini da referência."

@@ -6969,6 +6969,35 @@ Antes de comparar e julgar qualquer v\xEDdeo, examine TODAS as ${photosList.leng
   * Se esse v\xEDdeo n\xE3o possuir defeitos cr\xEDticos vermelhos de produto, seu status DEVE SER OBRIGATORIAMENTE "yellow" (Aten\xE7\xE3o / Risco), score entre 70 e 78, e o parecer do campo "issue" DEVE SER ESTRITAMENTE:
     "\u{1F7E1} Aten\xE7\xE3o: Poss\xEDvel v\xEDdeo duplicado com o [nome_do_video_anterior] (mesmos movimentos, modelo e cen\xE1rio)."
 
+\u26A0\uFE0F REGRA CR\xCDTICA DE BOLSOS TRASEIROS E PARTE TRASEIRA / COSTAS (TIKTOK SHOP):
+- Inspecione minuciosamente TODAS as fotos de refer\xEAncia (de qualquer cor) para verificar se alguma delas mostra o produto por tr\xE1s / de costas.
+- Se qualquer foto de refer\xEAncia mostrar que a pe\xE7a possui (ou n\xE3o possui) bolsos traseiros (em cal\xE7a, bermuda, shorts ou saia), essa regra \xE9 v\xE1lida para todas as cores do produto.
+- QUANDO A MODELO VIRAR DE COSTAS NO V\xCDDEO (mostrando as n\xE1degas, parte traseira ou costas da roupa):
+  * CASO 1: H\xC1 FOTOS DE REFER\xCANCIA MOSTRANDO AS COSTAS DO PRODUTO:
+    - Se a refer\xEAncia N\xC3O possui bolsos traseiros e no v\xEDdeo aparecem bolsos traseiros (ou vice-versa, a refer\xEAncia TEM bolsos traseiros e o v\xEDdeo omite): REPROVA\xC7\xC3O IMEDIATA (score <= 25, status: "red", rearPocketsDefect: true, wrongProduct: true)!
+      Issue: "\u{1F534} Reprovado: Bolsos traseiros divergentes da refer\xEAncia oficial (a refer\xEAncia [possui/n\xE3o possui] bolsos traseiros, mas no v\xEDdeo ao virar de costas a pe\xE7a [n\xE3o tem/apresenta] bolsos inventados)."
+    - Se a amarra\xE7\xE3o traseira (la\xE7o, decote nas costas, al\xE7as cruzadas, z\xEDper) for divergente da foto de refer\xEAncia traseira: REPROVA\xC7\xC3O IMEDIATA (score <= 25, status: "red")!
+      Issue: "\u{1F534} Reprovado: Amarra\xE7\xE3o/detalhes das costas divergentes da refer\xEAncia oficial."
+  * CASO 2: A MODELO VIRA DE COSTAS NO V\xCDDEO, MAS NENHUMA FOTO DE REFER\xCANCIA MOSTRA O PRODUTO POR TR\xC1S:
+    - Como o gerador de IA pode ter inventado o design traseiro sem refer\xEAncia, o v\xEDdeo N\xC3O deve ser aprovado em verde silencioso nem reprovado direto, e sim DEVE OBRIGATORIAMENTE RECEBER SINAL LARANJA DE CUIDADO (status: "orange", score entre 72 e 76, approved: true, noRearPhotosWarning: true):
+      Issue: "\u{1F7E0} Cuidado: N\xE3o h\xE1 fotos de refer\xEAncia do produto na parte das costas. Verifique para n\xE3o tomar viola\xE7\xE3o."
+
+\u26A0\uFE0F REGRA DE FOCO RESTRITO NO PRODUTO ANUNCIADO ("${productName}"):
+- O usu\xE1rio especificou no campo "Produto" o item "${productName}".
+- Muitas imagens de refer\xEAncia cont\xEAm a modelo vestindo look completo (ex: blusa + cal\xE7a jeans + cal\xE7ado).
+- SE O PRODUTO FOR ESPECIFICADO COMO UMA PE\xC7A ESPEC\xCDFICA (Ex: "Blusa", "Cropped", "Camiseta", "Regata", "Cal\xE7a", "Saia", "Shorts"):
+  * A per\xEDcia 1:1 DEVE FOCAR EXCLUSIVAMENTE NA PE\xC7A ESPECIFICADA ("${productName}")!
+  * Se o produto for "Blusa", cal\xE7a, saia e cal\xE7ados usados pela modelo no v\xEDdeo s\xE3o apenas complementares e N\xC3O devem reprovar o v\xEDdeo se forem diferentes da foto de refer\xEAncia.
+  * Se o produto for "Cal\xE7a", a blusa usada pela modelo no v\xEDdeo \xE9 complementar e N\xC3O deve reprovar o v\xEDdeo se for diferente da foto de refer\xEAncia.
+  * S\xF3 avalie o look completo em conjunto se o produto for explicitamente "Conjunto", "Vestido", "Macac\xE3o" ou ambas as pe\xE7as \xE0 venda.
+
+\u26A0\uFE0F REGRA DE ENQUADRAMENTO PARA PE\xC7AS DA PARTE DE CIMA (BLUSA / CROPPED / CAMISETA / JAQUETA):
+- Quando o produto anunciado for uma blusa, blusinha, cropped, camiseta, regata, jaqueta ou qualquer pe\xE7a que fica acima da cintura:
+  * Se o enquadramento do v\xEDdeo for de CORPO INTEIRO (mostrando pernas inteiras e cal\xE7ados):
+    O v\xEDdeo N\xC3O DEVE receber bola vermelha de reprovado!
+    O v\xEDdeo DEVE OBRIGATORIAMENTE receber sinal AMARELO (status: "yellow", score entre 74 e 78, approved: true, upperPieceFullBodyFraming: true) com o parecer:
+    "\u{1F7E1} Aten\xE7\xE3o: Poss\xEDvel reprova\xE7\xE3o porque o v\xEDdeo n\xE3o enfoca a pe\xE7a em quest\xE3o (enquadramento de corpo inteiro para pe\xE7a da parte de cima)."
+
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
 OS 5 GRUPOS FORENSES DE INSPE\xC7\xC3O COMPONENTE A COMPONENTE (TOLER\xC2NCIA ZERO):
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
@@ -7090,6 +7119,9 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
       "buttonsDefect": boolean,
       "seamsDefect": boolean,
       "pocketsDefect": boolean,
+      "rearPocketsDefect": boolean,
+      "noRearPhotosWarning": boolean,
+      "upperPieceFullBodyFraming": boolean,
       "aiMorphingDefect": boolean,
       "isDuplicate": boolean,
       "duplicateOf": string | null,
@@ -7348,8 +7380,18 @@ Analise os ${batchVideos.length} v\xEDdeos acima contra as ${photosList.length} 
       const seamsDefect = Boolean(
         match.seamsDefect === true || issueLower.includes("costura") || issueLower.includes("pesponto") || issueLower.includes("nervura")
       );
+      const rearPocketsDefect = Boolean(
+        match.rearPocketsDefect === true || issueLower.includes("bolso") && (issueLower.includes("traseir") || issueLower.includes("costas") || issueLower.includes("atr\xE1s") || issueLower.includes("atras")) || issueLower.includes("amarra\xE7\xE3o") && (issueLower.includes("costas") || issueLower.includes("traseir"))
+      );
+      const noRearPhotosWarning = Boolean(
+        match.noRearPhotosWarning === true || issueLower.includes("n\xE3o h\xE1 fotos de refer\xEAncia do produto na parte das costas") || issueLower.includes("nao ha fotos de referencia do produto na parte das costas") || issueLower.includes("sem fotos de refer\xEAncia das costas") || issueLower.includes("virou de costas") && issueLower.includes("n\xE3o h\xE1 fotos")
+      );
+      const isUpperGarmentPiece = /\b(blusa|blusinha|blusinhas|blusas|cropped|top|regata|camiseta|camisetas|t-shirt|jaqueta|jaquetas|casaco|blazer)\b/i.test(pNameLower);
+      const upperPieceFullBodyFraming = Boolean(
+        match.upperPieceFullBodyFraming === true || isUpperGarmentPiece && (issueLower.includes("n\xE3o enfoca a pe\xE7a") || issueLower.includes("nao enfoca a peca") || issueLower.includes("enquadramento de corpo inteiro para pe\xE7a da parte de cima") || issueLower.includes("corpo inteiro") && (issueLower.includes("pe\xE7a de cima") || issueLower.includes("blusa")))
+      );
       const pocketsDefect = Boolean(
-        match.pocketsDefect === true || issueLower.includes("bolso") || issueLower.includes("bolsos")
+        match.pocketsDefect === true || rearPocketsDefect || issueLower.includes("bolso") || issueLower.includes("bolsos")
       );
       const aiMorphingDefect = Boolean(
         match.aiMorphingDefect === true || issueLower.includes("deforma\xE7\xE3o") || issueLower.includes("muta\xE7\xE3o") || issueLower.includes("continuidade") || issueLower.includes("fundindo")
@@ -7361,19 +7403,26 @@ Analise os ${batchVideos.length} v\xEDdeos acima contra as ${photosList.length} 
         match.isDuplicate === true || issueLower.includes("duplicado") || issueLower.includes("repetido") || issueLower.includes("mesmos movimentos, modelo e cen\xE1rio")
       );
       let status = "green";
-      if (wrongProductDefect || sexualContentDefect || bagDefect || bellyDefect || !approved || score < 70) {
+      if (wrongProductDefect || rearPocketsDefect || sexualContentDefect || bagDefect || bellyDefect || !approved || score < 70) {
         if (wrongProductDefect) score = Math.min(score, 20);
+        else if (rearPocketsDefect) score = Math.min(score, 25);
         else if (sexualContentDefect) score = Math.min(score, 20);
         else if (bagDefect) score = Math.min(score, 35);
         else if (bellyDefect) score = Math.min(score, 38);
         status = "red";
         approved = false;
         score = Math.min(score, 60);
-      } else if (isDuplicateVideo || match.status === "yellow" || score >= 70 && score < 90 || issueLower.includes("risco") || issueLower.includes("poss\xEDvel diverg\xEAncia") || issueLower.includes("possivel divergencia") || issueLower.includes("aten\xE7\xE3o") || issueLower.includes("atencao")) {
+      } else if (noRearPhotosWarning || match.status === "orange" || issueLower.includes("n\xE3o h\xE1 fotos de refer\xEAncia do produto na parte das costas")) {
+        status = "orange";
+        approved = true;
+        score = Math.min(score, 76);
+      } else if (upperPieceFullBodyFraming || isDuplicateVideo || match.status === "yellow" || score >= 70 && score < 90 || issueLower.includes("risco") || issueLower.includes("poss\xEDvel diverg\xEAncia") || issueLower.includes("possivel divergencia") || issueLower.includes("aten\xE7\xE3o") || issueLower.includes("atencao")) {
         status = "yellow";
         approved = true;
         if (isDuplicateVideo) {
           score = Math.min(score, 78);
+        } else if (upperPieceFullBodyFraming) {
+          score = Math.min(score, 76);
         }
       } else {
         status = "green";
@@ -7524,6 +7573,28 @@ Antes de comparar o v\xEDdeo, examine todas as ${photosList.length} imagens orig
 
 3. REGRA SOBERANA DE PRODUTO ID\xCANTICO (TOLER\xC2NCIA ZERO \u2014 PRODUTO DIVERGENTE = REPROVA\xC7\xC3O IMEDIATA):
    O produto exibido no v\xEDdeo DEVE SER rigorosamente a mesma pe\xE7a das fotos de refer\xEAncia oficiais. Nunca aprove produtos diferentes apenas por terem cor clara similar (ex: branco/bege)!
+
+\u26A0\uFE0F REGRA CR\xCDTICA DE BOLSOS TRASEIROS E PARTE TRASEIRA / COSTAS (TIKTOK SHOP):
+- Inspecione minuciosamente TODAS as fotos de refer\xEAncia para verificar se alguma delas mostra o produto por tr\xE1s / de costas.
+- Se qualquer foto de refer\xEAncia mostrar que a pe\xE7a possui (ou n\xE3o possui) bolsos traseiros (em cal\xE7a, bermuda, shorts ou saia), essa regra \xE9 v\xE1lida para todas as cores do produto.
+- QUANDO A MODELO VIRAR DE COSTAS NO V\xCDDEO (mostrando as n\xE1degas, parte traseira ou costas da roupa):
+  * CASO 1: H\xC1 FOTOS DE REFER\xCANCIA MOSTRANDO AS COSTAS DO PRODUTO:
+    - Se a refer\xEAncia N\xC3O possui bolsos traseiros e no v\xEDdeo aparecem bolsos traseiros (ou vice-versa, a refer\xEAncia TEM bolsos traseiros e o v\xEDdeo omite): REPROVE O V\xCDDEO IMEDIATAMENTE (score <= 25, status: "red") com finding severidade "evident", title: "Bolsos traseiros divergentes da refer\xEAncia oficial.", whatAppearsInVideo: "A pe\xE7a na refer\xEAncia possui/n\xE3o possui bolsos traseiros, mas no v\xEDdeo ao virar de costas a pe\xE7a apresenta bolsos inventados ou divergentes.", howToFix: "Regerar o v\xEDdeo preservando exatamente o design traseiro sem bolsos/com bolsos da refer\xEAncia."
+    - Se a amarra\xE7\xE3o traseira (la\xE7o, decote nas costas, al\xE7as cruzadas, z\xEDper) for divergente da foto de refer\xEAncia traseira: REPROVE IMEDIATAMENTE (status: "red")!
+  * CASO 2: A MODELO VIRA DE COSTAS NO V\xCDDEO, MAS NENHUMA FOTO DE REFER\xCANCIA MOSTRA O PRODUTO POR TR\xC1S:
+    - O v\xEDdeo DEVE OBRIGATORIAMENTE RECEBER SINAL LARANJA DE CUIDADO (status: "orange", score entre 72 e 76) com finding severidade "possible", title: "Cuidado: N\xE3o h\xE1 fotos de refer\xEAncia do produto na parte das costas. Verifique para n\xE3o tomar viola\xE7\xE3o.", whatAppearsInVideo: "A modelo virou de costas no v\xEDdeo, por\xE9m nenhuma das fotos de refer\xEAncia fornecidas mostra a parte traseira do produto.", howToFix: "Verifique se a parte traseira gerada condiz com o produto real ou anexe fotos de refer\xEAncia das costas para auditoria 100% precisa."
+
+\u26A0\uFE0F REGRA DE FOCO RESTRITO NO PRODUTO ANUNCIADO ("${productName}"):
+- O usu\xE1rio especificou no campo "Produto" o item "${productName}".
+- SE O PRODUTO FOR UMA PE\xC7A ESPEC\xCDFICA (Ex: "Blusa", "Cropped", "Camiseta", "Cal\xE7a", "Saia", "Shorts"):
+  * A per\xEDcia 1:1 DEVE FOCAR EXCLUSIVAMENTE NA PE\xC7A ESPECIFICADA ("${productName}")!
+  * Se o produto for "Blusa", cal\xE7a, saia e sapatos s\xE3o complementares e N\xC3O devem reprovar o v\xEDdeo se forem diferentes da foto de refer\xEAncia.
+  * Se o produto for "Cal\xE7a", a blusa usada pela modelo no v\xEDdeo \xE9 complementar e N\xC3O deve reprovar o v\xEDdeo se for diferente da refer\xEAncia.
+
+\u26A0\uFE0F REGRA DE ENQUADRAMENTO PARA PE\xC7AS DA PARTE DE CIMA (BLUSA / CROPPED / CAMISETA / JAQUETA):
+- Quando o produto anunciado for uma blusa, blusinha, cropped, camiseta, regata, jaqueta ou qualquer pe\xE7a que fica acima da cintura:
+  * Se o enquadramento do v\xEDdeo for de CORPO INTEIRO (mostrando pernas inteiras e sapatos):
+    O v\xEDdeo N\xC3O DEVE receber bola vermelha de reprovado! Deve receber sinal AMARELO (status: "yellow", score 76) com finding severidade "possible", title: "Aten\xE7\xE3o: Poss\xEDvel reprova\xE7\xE3o porque o v\xEDdeo n\xE3o enfoca a pe\xE7a em quest\xE3o (enquadramento de corpo inteiro para pe\xE7a da parte de cima).", howToFix: "Regerar o v\xEDdeo com enquadramento da cintura para cima destacando a pe\xE7a superior."
    Audite os 5 Pilares Estruturais:
    a) ESTAMPA vs LISO (GRAV\xCDSSIMO): Se a refer\xEAncia oficial for lisa e a roupa no v\xEDdeo for estampada (ex: estampa floral mi\xFAda ou grande), ou vice-versa: REPROVE IMEDIATAMENTE (score <= 20, status "red") com finding severidade "evident", title: "Produto divergente da refer\xEAncia oficial (estampa floral).", whatAppearsInVideo: "O v\xEDdeo exibe um vestido estampado com flores, enquanto a refer\xEAncia oficial \xE9 lisa monocrom\xE1tica sem estampa.", howToFix: "Regerar o v\xEDdeo utilizando rigorosamente o produto liso da refer\xEAncia."
    b) COMPRIMENTO (CURTO/MINI vs M\xCDDI vs LONGO): Se a refer\xEAncia for vestido curto/mini (acima do joelho) e o v\xEDdeo for m\xEDdi (abaixo do joelho/canela) ou longo (ou vice-versa): REPROVE IMEDIATAMENTE (score <= 20, status "red") com finding severidade "evident", title: "Comprimento divergente da refer\xEAncia.", whatAppearsInVideo: "O vestido no v\xEDdeo tem comprimento m\xEDdi cobrindo os joelhos, mas a refer\xEAncia oficial \xE9 vestido curto/mini.", howToFix: "Regerar o v\xEDdeo mantendo o comprimento curto/mini da refer\xEAncia."

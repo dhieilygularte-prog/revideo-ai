@@ -708,7 +708,8 @@ ${
         '- PROIBIÇÃO ABSOLUTA DE CALÇA OU SHORTS: É TERMINANTEMENTE PROIBIDO ADICIONAR CALÇA JEANS, CALÇA, SHORTS, BERMUDA OU QUALQUER OUTRA PEÇA INFERIOR. A modelo veste APENAS o vestido da Foto 1 cobrindo o corpo por completo com pernas limpas naturais.\n' +
         '- REGRA CRÍTICA DE COMPRIMENTO (VESTIDO LONGO / SAIA LONGA): Se na Foto 1 o produto for vestido longo ou saia longa que cubra os pés/calçado, MANTENHA O COMPRIMENTO LONGO EXATO 1:1 ATÉ O CHÃO cobrindo os pés. NÃO É OBRIGATÓRIO APARECER O CALÇADO! É TERMINANTEMENTE PROIBIDO encurtar o vestido ou subir a barra para forçar mostrar o calçado.'
       : isUpperOnly
-      ? '- O PRODUTO DA FOTO 1 É UMA PEÇA SUPERIOR (BLUSA, BLUSINHA, CROPPED OU PARTE DE CIMA): A modelo veste a peça superior da Foto 1 com máxima fidelidade 1:1, combinada OBRIGATORIAMENTE com CALÇA JEANS feminina clássica de cintura alta (azul tradicional) e TÊNIS casual nos pés. É TERMINANTEMENTE PROIBIDO a modelo ficar sem calça, de calcinha, com pernas despidas ou nua na parte de baixo! Look 100% completo, elegante e comercial com blusa + calça jeans + tênis.'
+      ? '- O PRODUTO DA FOTO 1 É UMA PEÇA SUPERIOR (BLUSA, BLUSINHA, CROPPED OU PARTE DE CIMA): A modelo veste a peça superior da Foto 1 com máxima fidelidade 1:1, combinada OBRIGATORIAMENTE com CALÇA JEANS feminina clássica de cintura alta (azul tradicional) e TÊNIS casual nos pés. É TERMINANTEMENTE PROIBIDO a modelo ficar sem calça, de calcinha, com pernas despidas ou nua na parte de baixo! Look 100% completo, elegante e comercial com blusa + calça jeans + tênis.\n' +
+        '- REGRA DE ENQUADRAMENTO DA CINTURA PARA CIMA (PEÇA SUPERIOR): Como o produto anunciado é uma peça que fica acima da cintura, o enquadramento fotográfico no espelho deve priorizar da cintura para cima (waist-up medium close-up shot), focando diretamente na blusa/peça superior com máxima nitidez de detalhes, decote, caimento e textura.'
       : isLowerOnly
       ? '- O PRODUTO DA FOTO 1 É UMA PEÇA INFERIOR: A modelo veste a peça inferior da Foto 1 com máxima fidelidade 1:1, combinada com uma blusa neutra elegante para compor um look comercial elegante de catálogo.'
       : '- Se o produto for vestido ou macacão, veste EXCLUSIVAMENTE o vestido (sem calça jeans ou shorts por baixo); se for blusa/peça superior, veste CALÇA JEANS clássica de cintura alta e TÊNIS nos pés (TERMINANTEMENTE PROIBIDO ficar sem calça ou nua na parte de baixo); se for calça/short, veste blusa combinando.';
@@ -826,7 +827,27 @@ export const VENCEDOR_BY_GPT_SCENARIO_PROMPT = getMasterPromptById('mestra_ana_m
  * Retorna a coreografia cronológica rica e concisa de movimentos de cada Mestra
  * Baseada 100% no documento da Mestra selecionada
  */
-export function getConciseMovementForMaster(masterId: AnaMariaMasterId, isMale: boolean): string {
+export function getConciseMovementForMaster(
+  masterId: AnaMariaMasterId,
+  isMale: boolean,
+  isUpperOnly: boolean = false
+): string {
+  if (isUpperOnly) {
+    return isMale
+      ? `**CRONOGRAMA DE MOVIMENTOS (10s CONTÍNUOS — FOCO NA PEÇA SUPERIOR):**
+- 0s–2.5s: Mão livre sobe até o peitoral e gola da peça superior, tocando o acabamento frontal sob o flash do smartphone.
+- 2.5s–5s: Desliza suavemente a mão pelo peitoral até a barra da peça superior; segura sutilmente a lateral da peça demonstrando caimento e elasticidade, soltando com suavidade.
+- 5s–7.5s: Gira suavemente cerca de 35 a 45 graus exibindo o caimento lateral e mangas da peça superior diante do espelho.
+- 7.5s–10s: Retorna à postura frontal diante do espelho com gesto natural apresentando o caimento da peça superior.
+(REGRA: Movimentos focados exclusivamente na peça superior. PROIBIDO tocar, puxar ou alisar calça/bermuda).`
+      : `**CRONOGRAMA DE MOVIMENTOS (10s CONTÍNUOS — MESTRA CATZA / FOCO NA PEÇA SUPERIOR):**
+- 0s–2.5s: A mão livre sobe delicadamente até o colo e decote da blusa, tocando acabamentos frontais sob iluminação com flash do smartphone.
+- 2.5s–5s: Desliza suavemente a mão pelo busto até a barra da blusa; segura delicadamente a lateral do tecido demonstrando caimento e elasticidade, soltando com suavidade.
+- 5s–7.5s: Gira sutilmente de 35 a 45 graus exibindo o caimento lateral, cavas e mangas da blusa diante do espelho.
+- 7.5s–10s: Retorna à postura frontal diante do espelho, alisando delicadamente a parte frontal da blusa em pose natural e estável.
+(REGRA: Movimentos focados exclusivamente na blusa/peça superior. PROIBIDO tocar, puxar ou alisar calça, saia ou bermuda).`;
+  }
+
   switch (masterId) {
     case 'mestra_ana_maria':
       return isMale
@@ -948,7 +969,14 @@ export function buildAnaMariaConciseVideoPrompt(params: {
   );
   const userInstructionsText = hasUserInstructions ? params.additionalInstructions!.trim() : '';
 
-  const movementsBlock = getConciseMovementForMaster(master.id, isMale);
+  const complementaryInfo = detectComplementaryGarment(
+    params.productName,
+    params.additionalInstructions,
+    params.influencer
+  );
+  const isUpperOnly = complementaryInfo.type === 'upper_only';
+
+  const movementsBlock = getConciseMovementForMaster(master.id, isMale, isUpperOnly);
 
   if (master.isPov) {
     return `Vídeo vertical 9:16 hiper-realista de 10s em perspectiva POV (visão superior em primeira pessoa). Use a imagem inicial anexada como referência soberana.
@@ -1001,10 +1029,17 @@ ${movementsBlock}
     ? `**INSTRUÇÕES DO USUÁRIO:**\n"${userInstructionsText.length > maxUserChars ? userInstructionsText.slice(0, maxUserChars - 4) + '...' : userInstructionsText}"`
     : '';
 
+  const upperGarmentRule =
+    isUpperOnly && !master.isPov
+      ? `**REGRA OBRIGATÓRIA DE INTERAÇÃO COM A ROUPA (PEÇA SUPERIOR):**\n` +
+        `Como o produto objeto do vídeo é uma peça superior (${params.productName}), a modelo deve interagir, passar a mão e demonstrar EXCLUSIVAMENTE a blusa/peça superior. É TERMINANTEMENTE PROIBIDO à modelo puxar, tocar, alisar ou interagir com a calça, saia ou bermuda (peça de baixo). Toda a movimentação das mãos deve focar exclusivamente na valorização da peça superior anunciada.`
+      : '';
+
   const sections = [
     headerLine,
     framingBlock,
     garmentFidelityBlock,
+    upperGarmentRule,
     identityBlock,
     userBlock,
     movementsBlock,
@@ -1115,6 +1150,22 @@ Adapte toda a execução para o modelo masculino da imagem de referência, prese
       `A roupa da imagem de referência é 100% sagrada e imutável. É TERMINANTEMENTE PROIBIDO ao gerador de vídeo modificar a cor, tom, estampa, tecido, textura, modelagem, caimento, decote, mangas ou comprimento da peça. PROIBIDO inventar partes, botões, bolsos, zíperes ou costuras inexistentes. A peça deve se manter 100% fiel à imagem de referência em todos os frames e movimentos.\n\n`;
 
     base = framingAndGarmentRule + base;
+  }
+
+  // 4. Regra de Interação Restrita para Peça Superior (Blusa, Cropped, Camiseta, Jaqueta)
+  const complementaryInfo = detectComplementaryGarment(
+    params.productName,
+    params.additionalInstructions,
+    params.influencer
+  );
+  const isUpperOnly = complementaryInfo.type === 'upper_only';
+
+  if (isUpperOnly && !master.isPov) {
+    const upperGarmentRule =
+      `**REGRA OBRIGATÓRIA DE INTERAÇÃO COM A ROUPA (PEÇA SUPERIOR — ${params.productName.toUpperCase()}):**\n` +
+      `Como o produto anunciado é uma peça que fica acima da cintura (${params.productName}), a modelo deve tocar, passar a mão e demonstrar EXCLUSIVAMENTE a blusa/peça superior (gola, decote, mangas, busto e barra da blusa).\n` +
+      `É TERMINANTEMENTE PROIBIDO à modelo puxar, tocar, alisar ou demonstrar a peça da parte de baixo (calça jeans, calça, saia ou bermuda). A atenção e movimentação das mãos devem focar única e exclusivamente na peça superior do anúncio.\n\n`;
+    base = upperGarmentRule + base;
   }
 
   // 4. Prioridade Soberana das Instruções Adicionais do Usuário (sobrepõe características e movimentos específicos)

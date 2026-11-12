@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Video,
   Upload,
@@ -19,6 +19,7 @@ import {
   X,
   Download,
   Search,
+  Tag,
 } from 'lucide-react';
 import {
   VideoFidelityAudit,
@@ -604,8 +605,15 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
   const [auditMode, setAuditMode] = useState<'single' | 'batch'>('single');
   const [batchFiles, setBatchFiles] = useState<File[]>([]);
   const [batchAudit, setBatchAudit] = useState<BatchVideoFidelityAudit | null>(null);
-  const [batchFilter, setBatchFilter] = useState<'all' | 'approved' | 'rejected'>('all');
+  const [batchFilter, setBatchFilter] = useState<'all' | 'approved' | 'flagged' | 'rejected'>('all');
   const [copiedBatchApproved, setCopiedBatchApproved] = useState(false);
+  const [editableProductName, setEditableProductName] = useState(productName || '');
+
+  useEffect(() => {
+    setEditableProductName(productName || '');
+  }, [productName]);
+
+  const activeProductName = editableProductName.trim() || productName || 'Produto';
 
   // Se o usuário anexou imagens neste campo, usa ELAS como referência; caso contrário, usa as da página anterior
   const effectiveReferencePhotos =
@@ -694,7 +702,7 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
       const payloadBody = JSON.stringify({
         videoFrames: allFramesPayload,
         productPhotosBase64: compressedRefs,
-        productName,
+        productName: activeProductName,
         productLock,
         videoFileName: fileToAudit.name,
         videoDurationSeconds: durationSeconds,
@@ -1030,7 +1038,7 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
 
         const payloadBody = JSON.stringify({
           isBatch: true,
-          productName,
+          productName: activeProductName,
           productLock,
           productPhotosBase64: compressedRefs,
           batchVideos: chunkVideos,
@@ -1112,8 +1120,16 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
             item.status = 'yellow';
             item.score = Math.min(item.score, 78);
             item.approved = true;
-            const originalName = prevItem.videoFileName || `Vídeo ${i + 1}`;
-            item.issue = `🟡 Atenção: Possível vídeo duplicado com o ${originalName} (mesmos movimentos, modelo e cenário).`;
+            item.issue = `🟡 Atenção: Os vídeos #${i + 1} e #${j + 1} parecem ser o mesmo, verifique (mesmos movimentos, modelo e cenário).`;
+
+            if (prevItem.status !== 'red') {
+              prevItem.status = 'yellow';
+              prevItem.score = Math.min(prevItem.score, 78);
+              prevItem.approved = true;
+              if (!prevItem.issue || !prevItem.issue.includes('parecem ser o mesmo')) {
+                prevItem.issue = `🟡 Atenção: Os vídeos #${i + 1} e #${j + 1} parecem ser o mesmo, verifique (mesmos movimentos, modelo e cenário).`;
+              }
+            }
             break;
           }
         }
@@ -1131,7 +1147,8 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
       const finalBatchAudit: BatchVideoFidelityAudit = {
         batchSummary: {
           totalVideos: hydratedResults.length,
-          approvedCount: totalApprovedFinal + totalFlaggedFinal,
+          approvedCount: totalApprovedFinal,
+          flaggedCount: totalFlaggedFinal,
           rejectedCount: totalRejectedFinal,
           overview:
             executiveSummaries.join(' | ') ||
@@ -1192,7 +1209,7 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `relatorio-lote-${productName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.txt`;
+    a.download = `relatorio-lote-${activeProductName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.txt`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -1275,6 +1292,38 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
             Perícia segundo a segundo com recortes lado a lado
           </div>
         )}
+      </div>
+
+      {/* CAMPO DE PRODUTO (FOCO DA AUDITORIA) */}
+      <div className="p-3 bg-zinc-950/80 border border-zinc-800 rounded-xl space-y-1.5">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <label className="text-xs font-bold text-zinc-300 flex items-center gap-1.5">
+            <Tag className="w-3.5 h-3.5 text-sky-400" />
+            <span>Produto (Foco da Auditoria):</span>
+          </label>
+          <span className="text-[10px] text-zinc-400">
+            Define a peça exata que a IA deve auditar (ex: blusa, calça, saia, conjunto)
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <input
+            type="text"
+            value={editableProductName}
+            onChange={(e) => setEditableProductName(e.target.value)}
+            placeholder="Ex: Blusa canelada, Calça jeans, Saia midi, Vestido, etc."
+            className="w-full bg-zinc-900 border border-zinc-700 focus:border-sky-500 rounded-lg px-3 py-1.5 text-xs text-white placeholder-zinc-500 outline-none transition-colors"
+          />
+          {editableProductName !== productName && productName && (
+            <button
+              type="button"
+              onClick={() => setEditableProductName(productName)}
+              className="text-[10px] text-sky-400 hover:text-sky-300 underline shrink-0 cursor-pointer"
+              title="Restaurar nome vindo da tela anterior"
+            >
+              Restaurar
+            </button>
+          )}
+        </div>
       </div>
 
       <input
@@ -1485,8 +1534,8 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
           {/* DASHBOARD EXECUTIVO DO LOTE (QUANDO PRONTO) */}
           {batchAudit && !isProcessing && (
             <div className="space-y-4 pt-2">
-              {/* Placar de Resumo */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Placar de Resumo (4 Cards) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                 <div className="p-3.5 rounded-2xl bg-zinc-950/80 border border-zinc-800 flex items-center justify-between">
                   <div>
                     <span className="text-[10px] uppercase font-bold text-zinc-400 block">Total Auditado</span>
@@ -1503,7 +1552,7 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
                   <div>
                     <span className="text-[10px] uppercase font-bold text-emerald-400 block">Aprovados TikTok</span>
                     <span className="text-2xl font-black text-emerald-300 font-mono">
-                      {batchAudit.batchSummary.approvedCount} liberados
+                      {batchAudit.results.filter((r) => r.status === 'green').length} liberados
                     </span>
                   </div>
                   <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
@@ -1511,15 +1560,27 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
                   </div>
                 </div>
 
+                <div className="p-3.5 rounded-2xl bg-amber-950/30 border border-amber-500/40 flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-amber-400 block">Atenção / Cuidado</span>
+                    <span className="text-2xl font-black text-amber-300 font-mono">
+                      {batchAudit.results.filter((r) => r.status === 'yellow' || r.status === 'orange').length} atenção
+                    </span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                    <AlertTriangle className="w-5 h-5" />
+                  </div>
+                </div>
+
                 <div className="p-3.5 rounded-2xl bg-rose-950/30 border border-rose-500/40 flex items-center justify-between">
                   <div>
                     <span className="text-[10px] uppercase font-bold text-rose-400 block">Com Inconsistência</span>
                     <span className="text-2xl font-black text-rose-300 font-mono">
-                      {batchAudit.batchSummary.rejectedCount} com erro
+                      {batchAudit.results.filter((r) => r.status === 'red').length} com erro
                     </span>
                   </div>
                   <div className="p-2.5 rounded-xl bg-rose-500/20 text-rose-300 border border-rose-500/40">
-                    <AlertTriangle className="w-5 h-5" />
+                    <AlertCircle className="w-5 h-5" />
                   </div>
                 </div>
               </div>
@@ -1563,7 +1624,18 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
                         : 'bg-emerald-950/40 text-emerald-300 hover:bg-emerald-900/60'
                     }`}
                   >
-                    🟢 Aprovados ({batchAudit.batchSummary.approvedCount})
+                    🟢 Aprovados ({batchAudit.results.filter((r) => r.status === 'green').length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBatchFilter('flagged')}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold cursor-pointer transition-all ${
+                      batchFilter === 'flagged'
+                        ? 'bg-amber-500 text-zinc-950'
+                        : 'bg-amber-950/40 text-amber-300 hover:bg-amber-900/60'
+                    }`}
+                  >
+                    🟡 Atenção ({batchAudit.results.filter((r) => r.status === 'yellow' || r.status === 'orange').length})
                   </button>
                   <button
                     type="button"
@@ -1574,7 +1646,7 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
                         : 'bg-rose-950/40 text-rose-300 hover:bg-rose-900/60'
                     }`}
                   >
-                    🔴 Com Erro ({batchAudit.batchSummary.rejectedCount})
+                    🔴 Com Erro ({batchAudit.results.filter((r) => r.status === 'red').length})
                   </button>
                 </div>
 
@@ -1615,8 +1687,10 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
                     batchFilter === 'all'
                       ? true
                       : batchFilter === 'approved'
-                      ? r.approved
-                      : !r.approved
+                      ? r.status === 'green'
+                      : batchFilter === 'flagged'
+                      ? (r.status === 'yellow' || r.status === 'orange')
+                      : r.status === 'red'
                   )
                   .map((item, idx) => {
                     const itemStyles = getAuditBoxClasses(item.status);
@@ -1649,14 +1723,16 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
                               </span>
                               <span
                                 className={`text-[9px] font-black uppercase px-2 py-0.5 rounded shadow ${
-                                  item.status === 'yellow'
-                                    ? 'bg-amber-500 text-black'
+                                  item.status === 'orange'
+                                    ? 'bg-orange-500 text-black'
+                                    : item.status === 'yellow'
+                                    ? 'bg-amber-400 text-zinc-950'
                                     : item.approved
                                     ? 'bg-emerald-500 text-white'
                                     : 'bg-rose-600 text-white'
                                 }`}
                               >
-                                {item.status === 'yellow' ? (String(item.issue || '').toLowerCase().includes('duplicado') ? 'Atenção' : 'Risco') : item.approved ? 'Aprovado' : 'Reprovado'}
+                                {item.status === 'orange' ? 'Cuidado' : item.status === 'yellow' ? 'Atenção' : item.approved ? 'Aprovado' : 'Reprovado'}
                               </span>
                             </div>
 
@@ -1685,9 +1761,14 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
                             <p className="text-xs font-bold text-white truncate" title={item.videoFileName}>
                               {item.videoFileName}
                             </p>
-                            <span className="inline-block mt-0.5 text-[10px] font-bold text-sky-300 bg-sky-950/60 border border-sky-500/30 px-2 py-0.5 rounded">
-                              🎨 Cor: {item.detectedColor || 'Padrão'}
-                            </span>
+                            <div className="flex items-center justify-between gap-1.5 mt-1">
+                              <span className="inline-block text-[10px] font-bold text-sky-300 bg-sky-950/60 border border-sky-500/30 px-2 py-0.5 rounded truncate">
+                                🎨 Cor: {item.detectedColor || 'Padrão'}
+                              </span>
+                              <span className="text-white font-mono font-black text-xs bg-zinc-800/90 px-2 py-0.5 rounded border border-zinc-700 shrink-0">
+                                #{batchAudit.results.findIndex((r) => r.id === item.id) + 1}
+                              </span>
+                            </div>
                           </div>
 
                           {/* Laudo Forense Estruturado */}
