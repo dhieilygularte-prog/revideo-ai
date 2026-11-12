@@ -6139,13 +6139,18 @@ GRUPO 1: IDENTIDADE, MODELO E SILHUETA:
    - Se a referência for vestido CURTO / MINI (acima do joelho) e o vídeo mostrar vestido MÍDI (abaixo do joelho / canela) ou LONGO: REPROVAÇÃO IMEDIATA (score <= 20, status: "red", lengthDefect: true, wrongProduct: true)!
    - Se a referência for vestido LONGO ou MÍDI e o vídeo for CURTO/MINI: REPROVAÇÃO IMEDIATA!
    - Issue: "🔴 Reprovado: Comprimento divergente da referência oficial (referência é vestido curto/mini, mas o vídeo mostra vestido mídi cobrindo os joelhos)."
-2) REGRA DE COMPRIMENTO DA PEÇA DE CIMA (BLUSA MAIS CURTA OU MAIS COMPRIDA QUE A REFERÊNCIA):
-   - A BARRIGA DE FORA EM SI NÃO É PROBLEMA E NÃO É INFRAÇÃO! Se a imagem de referência oficial for um cropped, top curto, biquíni, maiô ou conjunto com barriga à mostra, o vídeo DEVE ter a barriga à mostra e ser aprovado normalmente (status: "green")!
-   - A BARRIGA SÓ É PROBLEMA quando se trata de um conjunto (peça de cima + peça de baixo) ou blusa em que a peça de cima na foto de referência oficial cobre toda a barriga/cintura, e no vídeo aparece uma peça de cima (blusa) mais curta mostrando a barriga que originalmente estava coberta!
-   - Da mesma forma, se a referência oficial for cropped com a barriga à mostra e no vídeo a blusa for gerada comprida cobrindo a barriga, também é divergência de comprimento!
-   - O PROBLEMA NUNCA É A BARRIGA, E SIM A PEÇA DE CIMA NO VÍDEO SER MAIS CURTA OU MAIS COMPRIDA QUE A FOTO DE REFERÊNCIA OFICIAL!
-   - Se houver essa divergência de comprimento da peça de cima: REPROVAÇÃO IMEDIATA (score <= 35, status: "red", topPieceLengthMismatch: true)!
-     Issue: "🔴 Reprovado: Peça de cima mais curta que a referência oficial (blusa encurtada virando cropped enquanto a referência cobria a barriga)."
+2) REGRA DE COMPRIMENTO DA PEÇA DE CIMA E CONJUNTOS CROPPED (ZERO FALSAS REPROVAÇÕES):
+   - A BARRIGA DE FORA EM SI NÃO É PROBLEMA E NUNCA É MOTIVO DE REPROVAÇÃO!
+   - PASSO 1: Olhe as fotos de referência oficiais. A peça é um CROPPED, TOP CURTO ou CONJUNTO com a barriga/cintura à mostra?
+     * Se SIM (a referência oficial já é cropped ou mostra a barriga):
+       O VÍDEO COM TOP CROPPED E BARRIGA À MOSTRA É 100% CORRETO E IDÊNTICO À REFERÊNCIA!
+       Marque OBRIGATORIAMENTE: "refExposesBelly": true, "topPieceLengthMismatch": false, "approved": true, status: "green", score >= 92!
+       É TERMINANTEMENTE PROIBIDO reprovar alegando "Peça de cima mais curta que a referência" quando a própria referência já for cropped ou já mostrar a barriga!
+   - PASSO 2: A divergência de comprimento ("topPieceLengthMismatch": true) SÓ DEVE SER MARCADA se:
+     * A foto de referência oficial era uma blusa/camisa/camiseta que cobria toda a barriga/cós, MAS no vídeo foi encurtada mostrando a barriga que originalmente estava coberta; OU
+     * A referência oficial era um cropped curto com barriga à mostra, MAS no vídeo foi alongada até o quadril cobrindo a barriga.
+     * Se houver essa divergência real contra a referência: REPROVAÇÃO IMEDIATA (score <= 35, status: "red", topPieceLengthMismatch: true, refExposesBelly: false)!
+       Issue: "🔴 Reprovado: Peça de cima com comprimento divergente da referência oficial (blusa encurtada virando cropped enquanto a referência cobria a barriga)."
 3) SHORTS/BERMUDA vs SAIA (ZERO FALSAS REPROVAÇÕES):
    - Em poses de pernas juntas/coxas encostadas em frente ao espelho, NÃO É SAIA se houver barras dobradas individuais em cada coxa, bolsos laterais faca ou costura central vertical do gancho. Marque lowerPiece: "shorts", isGenuineSkirt: false e aprove.
    - SÓ reprove como saia se for comprovadamente uma saia genuína (sino rodado contínuo ou tubo de tecido sem barras individuais e sem entrepernas).
@@ -6236,8 +6241,8 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
       "detectedColor": "Nome da cor identificada",
       "lowerPiece": "shorts" | "bermuda" | "calca" | "saia" | "vestido" | "outro",
       "isGenuineSkirt": boolean,
-      "bellySkinExposedInVideo": boolean,
-      "topPieceLengthMismatch": boolean, // true se a peça de cima for mais curta ou mais comprida que na referência oficial
+      "refExposesBelly": boolean, // true se a referência oficial for cropped, top curto ou conjunto que deixa a barriga/cintura à mostra
+      "topPieceLengthMismatch": boolean, // true EXCLUSIVAMENTE se a peça de cima divergir em comprimento da referência (ex: referência cobria a barriga e vídeo encurtou virando cropped). Se a referência já for cropped e o vídeo também for cropped com barriga à mostra, topPieceLengthMismatch DEVE SER false!
       "modelUsingBag": boolean,
       "sexualContent": boolean,
       "wrongProduct": boolean,
@@ -6299,7 +6304,7 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
 1. IDENTIDADE E MODELO: O produto é RIGOROSAMENTE o mesmo? Se for vestido, o comprimento é idêntico (mini vs mídi vs longo)? Se houver fenda na perna não existente na referência, REPROVE IMEDIATAMENTE (wrongProduct: true, lengthDefect: true, slitDefect: true, score <= 20)!
 2. ESTAMPA E TECIDO (TOLERÂNCIA ZERO): Se a referência for lisa e o vídeo for estampado com flores (ou vice-versa), ou se a referência for cetim acetinado brilhante e o vídeo for tecido fosco: REPROVE IMEDIATAMENTE (wrongProduct: true, patternDefect: true, fabricDefect: true, score <= 20)!
 3. ESTRUTURA, BOTÕES, COSTURAS E BOLSOS: Botões presentes/ausentes/quantidade/cor condizem com a referência? Costuras centrais (gancho de shorts, pespontos, nervuras) foram preservadas? Há bolsos inventados ou omitidos? Se houver divergência, REPROVE (buttonsDefect/seamsDefect/pocketsDefect: true, score <= 25)!
-4. REGRA DE COMPRIMENTO DA PEÇA DE CIMA (BLUSA MAIS CURTA OU MAIS COMPRIDA): A barriga de fora em si NÃO é problema (se a referência for cropped ou biquíni, aprove normalmente!). Apenas reprove se na referência oficial a blusa cobria a barriga e no vídeo a blusa foi encurtada virando cropped e mostrando a barriga (ou vice-versa). O problema é a peça ser mais curta ou mais comprida que a referência! Se houver essa divergência: marque topPieceLengthMismatch: true, bellySkinExposedInVideo: true e REPROVE (score <= 35)!
+4. REGRA DE COMPRIMENTO DA PEÇA DE CIMA E CROPPED: Se a referência oficial JÁ FOR cropped, top curto ou conjunto com barriga à mostra, o vídeo com cropped e barriga à mostra é 100% CORRETO — APROVE EM VERDE (refExposesBelly: true, topPieceLengthMismatch: false, approved: true, score >= 92)! Apenas reprove se na referência oficial a blusa cobria toda a barriga e no vídeo a blusa foi encurtada virando cropped (ou se a referência era cropped e o vídeo virou blusa comprida). Se e SOMENTE SE houver essa divergência real contra a referência: marque topPieceLengthMismatch: true, refExposesBelly: false e REPROVE (score <= 35)!
 5. REGRA DO SHORTS vs SAIA: Pernas juntas com barras individuais dobradas ou costura central É SHORTS (lowerPiece: 'shorts', isGenuineSkirt: false). Só reprove como saia se for tubo contínuo/sino sem pernas.
 6. CONTINUIDADE E DEFORMAÇÃO DE IA: Há peças que somem no giro ou tecido que se funde na mão ao puxar no espelho? Se sim: aiMorphingDefect: true e REPROVE (score <= 25)!
 7. REGRA DA BOLSA: Se o produto não for bolsa e houver bolsa no vídeo: modelUsingBag: true e REPROVE IMEDIATAMENTE com score <= 35 e issue: "🔴 Reprovado: Não use bolsa pois isso vai dar restrição no seu vídeo."
@@ -6381,7 +6386,7 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
 1. IDENTIDADE E MODELO: O produto é RIGOROSAMENTE o mesmo? Se for vestido, o comprimento é idêntico (mini vs mídi vs longo)? Se houver fenda na perna não existente na referência, REPROVE IMEDIATAMENTE (wrongProduct: true, lengthDefect: true, slitDefect: true, score <= 20)!
 2. ESTAMPA E TECIDO (TOLERÂNCIA ZERO): Se a referência for lisa e o vídeo for estampado com flores (ou vice-versa), ou se a referência for cetim acetinado brilhante e o vídeo for tecido fosco: REPROVE IMEDIATAMENTE (wrongProduct: true, patternDefect: true, fabricDefect: true, score <= 20)!
 3. ESTRUTURA, BOTÕES, COSTURAS E BOLSOS: Botões presentes/ausentes/quantidade/cor condizem com a referência? Costuras centrais (gancho de shorts, pespontos, nervuras) foram preservadas? Há bolsos inventados ou omitidos? Se houver divergência, REPROVE (buttonsDefect/seamsDefect/pocketsDefect: true, score <= 25)!
-4. REGRA DE COMPRIMENTO DA PEÇA DE CIMA (BLUSA MAIS CURTA OU MAIS COMPRIDA): A barriga de fora em si NÃO é problema (se a referência for cropped ou biquíni, aprove normalmente!). Apenas reprove se na referência oficial a blusa cobria a barriga e no vídeo a blusa foi encurtada virando cropped e mostrando a barriga (ou vice-versa). O problema é a peça ser mais curta ou mais comprida que a referência! Se houver essa divergência: marque topPieceLengthMismatch: true, bellySkinExposedInVideo: true e REPROVE (score <= 35)!
+4. REGRA DE COMPRIMENTO DA PEÇA DE CIMA E CROPPED: Se a referência oficial JÁ FOR cropped, top curto ou conjunto com barriga à mostra, o vídeo com cropped e barriga à mostra é 100% CORRETO — APROVE EM VERDE (refExposesBelly: true, topPieceLengthMismatch: false, approved: true, score >= 92)! Apenas reprove se na referência oficial a blusa cobria toda a barriga e no vídeo a blusa foi encurtada virando cropped (ou se a referência era cropped e o vídeo virou blusa comprida). Se e SOMENTE SE houver essa divergência real contra a referência: marque topPieceLengthMismatch: true, refExposesBelly: false e REPROVE (score <= 35)!
 5. REGRA DO SHORTS vs SAIA: Pernas juntas com barras individuais dobradas ou costura central É SHORTS (lowerPiece: 'shorts', isGenuineSkirt: false). Só reprove como saia se for tubo contínuo/sino sem pernas.
 6. CONTINUIDADE E DEFORMAÇÃO DE IA: Há peças que somem no giro ou tecido que se funde na mão ao puxar no espelho? Se sim: aiMorphingDefect: true e REPROVE (score <= 25)!
 7. REGRA DA BOLSA: Se o produto não for bolsa e houver bolsa no vídeo: modelUsingBag: true e REPROVE IMEDIATAMENTE com score <= 35 e issue: "🔴 Reprovado: Não use bolsa pois isso vai dar restrição no seu vídeo."
@@ -6500,17 +6505,34 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
         pNameLower.includes('conjunto');
 
             // ─── FILTRO 1: COMPRIMENTO DA PEÇA DE CIMA (BLUSA MAIS CURTA OU MAIS COMPRIDA QUE A REFERÊNCIA) ───
-      // A barriga de fora em si NÃO é problema (se a referência for cropped, top curto ou biquíni, aprove normalmente!).
-      // O problema é exclusivamente a peça de cima no vídeo ser mais curta (virando cropped quando a referência cobria a barriga) ou mais comprida.
+      // A barriga de fora em si NÃO é problema e NUNCA é motivo de reprovação se a referência oficial já é cropped ou mostra a barriga!
+      // O defeito SÓ EXISTE se houver divergência comprovada de comprimento contra a referência oficial.
+      const isRefCropped = Boolean(
+        match.refExposesBelly === true ||
+        pNameLower.includes('cropped') ||
+        pNameLower.includes('top') ||
+        pNameLower.includes('biquini') ||
+        pNameLower.includes('biquíni')
+      );
+
+      // Só é defeito se o LLM explicitamente marcou topPieceLengthMismatch = true E não aprovou E a referência NÃO for cropped
       const topLengthDefect = Boolean(
-        match.topPieceLengthMismatch === true ||
-        match.bellySkinExposedInVideo === true ||
-        issueLower.includes('blusa mais curta') ||
-        issueLower.includes('peça de cima mais curta') ||
-        issueLower.includes('peca de cima mais curta') ||
-        issueLower.includes('virando cropped') ||
-        (issueLower.includes('cropped') && (issueLower.includes('quando a referência') || issueLower.includes('referência cobria') || issueLower.includes('referencia cobria'))) ||
-        (issueLower.includes('barriga') && (issueLower.includes('encurtada') || issueLower.includes('cobre') || issueLower.includes('mais curta') || issueLower.includes('divergente') || issueLower.includes('mostra a barriga que')))
+        !isRefCropped &&
+        match.refExposesBelly !== true &&
+        match.topPieceLengthMismatch === true &&
+        !match.approved &&
+        (
+          issueLower.includes('blusa mais curta') ||
+          issueLower.includes('peça de cima mais curta') ||
+          issueLower.includes('peca de cima mais curta') ||
+          issueLower.includes('virando cropped enquanto a referência cobria') ||
+          issueLower.includes('virando cropped enquanto a referencia cobria') ||
+          (issueLower.includes('cropped') && (issueLower.includes('quando a referência cobria') || issueLower.includes('referência cobria toda'))) ||
+          (issueLower.includes('barriga') && (issueLower.includes('encurtada') || issueLower.includes('virando cropped') || issueLower.includes('mostra a barriga que estava coberta')))
+        ) &&
+        !issueLower.includes('fiel à referência') &&
+        !issueLower.includes('fiel a referencia') &&
+        !issueLower.includes('aprovado')
       );
 
       const bellyDefect = topLengthDefect;
@@ -6742,7 +6764,7 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
         } else if (bagDefect) {
           finalIssue = '🔴 Reprovado: Não use bolsa pois isso vai dar restrição no seu vídeo.';
         } else if (bellyDefect) {
-          finalIssue = '🔴 Reprovado: Peça de cima mais curta que a referência oficial (blusa encurtada virando cropped enquanto a referência cobria a barriga).';
+          finalIssue = '🔴 Reprovado: Peça de cima com comprimento divergente da referência oficial (comprimento alterado em relação à referência).';
         } else {
           // Extrai os pontos principais de divergência sem repetições de forma enxuta
           const rawLines = issueText
@@ -7057,8 +7079,7 @@ Retorne ESTRITAMENTE um objeto JSON válido em português com este formato (se n
             lowerIssue.includes('diferente da referência') ||
             lowerIssue.includes('deforma') ||
             (lowerIssue.includes('saia') && lowerIssue.includes('shorts')) ||
-            lowerIssue.includes('barriga') ||
-            lowerIssue.includes('cropped') ||
+            ((lowerIssue.includes('barriga') || lowerIssue.includes('cropped')) && (lowerIssue.includes('encurtada') || lowerIssue.includes('mais curta') || lowerIssue.includes('virando cropped') || lowerIssue.includes('referência cobria') || lowerIssue.includes('referencia cobria'))) ||
             lowerIssue.includes('babado') ||
             lowerIssue.includes('mudou') ||
             lowerIssue.includes('reprovad'));
@@ -7473,7 +7494,7 @@ INSTRUÇÕES OBRIGATÓRIAS DE AUDITORIA PERICIAL FORENSE:
    - TECIDO / BRILHO: Se a referência for cetim acetinado brilhante e o vídeo for tecido fosco de algodão/viscose: REPROVE IMEDIATAMENTE (score <= 25, status "red") com finding severidade "evident", title: "Tecido divergente da referência.", whatAppearsInVideo: "A referência oficial é cetim brilhante acetinado, mas o vídeo mostra tecido fosco.", howToFix: "Preservar a textura e brilho acetinado do cetim da referência."
    - BOTÕES, COSTURAS E BOLSOS: Se botões, costuras ou bolsos divergirem da referência: REPROVE IMEDIATAMENTE (score <= 25, status "red") com finding severidade "evident", title: "Detalhes de botões/costuras divergentes da referência."
 
-4. REGRA DE COMPRIMENTO DA PEÇA DE CIMA: A barriga de fora em si NÃO é problema (se a referência for cropped ou biquíni, aprove normalmente!). Apenas reprove se na referência a blusa cobria a barriga e no vídeo foi encurtada virando cropped mostrando a barriga (ou vice-versa). O problema é a peça ser mais curta ou mais comprida que a referência! Se houver essa divergência: REPROVE (< 50%, status "red") com finding severidade "evident".
+4. REGRA DE COMPRIMENTO DA PEÇA DE CIMA E CROPPED: Se a referência oficial JÁ FOR cropped, top curto ou conjunto com barriga à mostra, o vídeo com cropped e barriga à mostra é 100% CORRETO — APROVE NORMALMENTE (score >= 92%, status "green")! Apenas reprove se na referência oficial a blusa cobria toda a barriga e no vídeo foi encurtada virando cropped (ou se a referência era cropped e o vídeo virou blusa comprida). O problema é a peça ser mais curta ou mais comprida que a referência! Se houver essa divergência real contra a referência: REPROVE (< 50%, status "red") com finding severidade "evident".
 5. REGRA DO SHORTS vs SAIA: Pernas juntas com barras individuais dobradas ou costura central É SHORTS. Não reprove como saia!
 6. CONTINUIDADE TEMPORAL DE IA: Peças que somem, mutação no giro ou tecido fundindo na mão: REPROVE (< 50%, status "red") com finding severidade "evident".
 
