@@ -6981,11 +6981,13 @@ GRUPO 1: IDENTIDADE, MODELO E SILHUETA:
    - Se a refer\xEAncia for vestido CURTO / MINI (acima do joelho) e o v\xEDdeo mostrar vestido M\xCDDI (abaixo do joelho / canela) ou LONGO: REPROVA\xC7\xC3O IMEDIATA (score <= 20, status: "red", lengthDefect: true, wrongProduct: true)!
    - Se a refer\xEAncia for vestido LONGO ou M\xCDDI e o v\xEDdeo for CURTO/MINI: REPROVA\xC7\xC3O IMEDIATA!
    - Issue: "\u{1F534} Reprovado: Comprimento divergente da refer\xEAncia oficial (refer\xEAncia \xE9 vestido curto/mini, mas o v\xEDdeo mostra vestido m\xEDdi cobrindo os joelhos)."
-2) REGRA DA BARRIGA ZERO (TOLER\xC2NCIA ZERO EM CINTURA/CROPPED):
-   - Se a blusa na refer\xEAncia oficial cobre 100% da cintura, umbigo e abd\xF4men at\xE9 a pe\xE7a inferior:
-   - Se no v\xEDdeo houver qualquer faixa, cent\xEDmetro ou recorte de PELE NUA da barriga/cintura exposta (blusa encurtada virando cropped):
-     REPROVA\xC7\xC3O IMEDIATA (score <= 35, status: "red", bellySkinExposedInVideo: true)!
-     Issue: "\u{1F534} Reprovado: Blusa encurtada virando cropped com barriga exposta (a refer\xEAncia oficial cobre 100% do abd\xF4men)."
+2) REGRA DE COMPRIMENTO DA PE\xC7A DE CIMA (BLUSA MAIS CURTA OU MAIS COMPRIDA QUE A REFER\xCANCIA):
+   - A BARRIGA DE FORA EM SI N\xC3O \xC9 PROBLEMA E N\xC3O \xC9 INFRA\xC7\xC3O! Se a imagem de refer\xEAncia oficial for um cropped, top curto, biqu\xEDni, mai\xF4 ou conjunto com barriga \xE0 mostra, o v\xEDdeo DEVE ter a barriga \xE0 mostra e ser aprovado normalmente (status: "green")!
+   - A BARRIGA S\xD3 \xC9 PROBLEMA quando se trata de um conjunto (pe\xE7a de cima + pe\xE7a de baixo) ou blusa em que a pe\xE7a de cima na foto de refer\xEAncia oficial cobre toda a barriga/cintura, e no v\xEDdeo aparece uma pe\xE7a de cima (blusa) mais curta mostrando a barriga que originalmente estava coberta!
+   - Da mesma forma, se a refer\xEAncia oficial for cropped com a barriga \xE0 mostra e no v\xEDdeo a blusa for gerada comprida cobrindo a barriga, tamb\xE9m \xE9 diverg\xEAncia de comprimento!
+   - O PROBLEMA NUNCA \xC9 A BARRIGA, E SIM A PE\xC7A DE CIMA NO V\xCDDEO SER MAIS CURTA OU MAIS COMPRIDA QUE A FOTO DE REFER\xCANCIA OFICIAL!
+   - Se houver essa diverg\xEAncia de comprimento da pe\xE7a de cima: REPROVA\xC7\xC3O IMEDIATA (score <= 35, status: "red", topPieceLengthMismatch: true)!
+     Issue: "\u{1F534} Reprovado: Pe\xE7a de cima mais curta que a refer\xEAncia oficial (blusa encurtada virando cropped enquanto a refer\xEAncia cobria a barriga)."
 3) SHORTS/BERMUDA vs SAIA (ZERO FALSAS REPROVA\xC7\xD5ES):
    - Em poses de pernas juntas/coxas encostadas em frente ao espelho, N\xC3O \xC9 SAIA se houver barras dobradas individuais em cada coxa, bolsos laterais faca ou costura central vertical do gancho. Marque lowerPiece: "shorts", isGenuineSkirt: false e aprove.
    - S\xD3 reprove como saia se for comprovadamente uma saia genu\xEDna (sino rodado cont\xEDnuo ou tubo de tecido sem barras individuais e sem entrepernas).
@@ -7058,7 +7060,7 @@ Exemplos:
 - "\u{1F534} Reprovado por conte\xFAdo sexual."
 - "\u{1F534} Reprovado: Produto totalmente diferente da refer\xEAncia (estampa floral em tecido fosco com comprimento m\xEDdi e fenda, enquanto a refer\xEAncia oficial \xE9 vestido curto de cetim liso sem fenda)."
 - "\u{1F534} Reprovado: Bot\xF5es frontais e bolsos divergentes da refer\xEAncia oficial."
-- "\u{1F534} Reprovado: Blusa encurtada virando cropped com barriga exposta aos 2s."
+- "\u{1F534} Reprovado: Pe\xE7a de cima mais curta que a refer\xEAncia oficial (blusa encurtada virando cropped enquanto a refer\xEAncia cobria a barriga)."
 
 Retorne ESTRITAMENTE um objeto JSON com o formato:
 {
@@ -7077,6 +7079,7 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
       "lowerPiece": "shorts" | "bermuda" | "calca" | "saia" | "vestido" | "outro",
       "isGenuineSkirt": boolean,
       "bellySkinExposedInVideo": boolean,
+      "topPieceLengthMismatch": boolean, // true se a pe\xE7a de cima for mais curta ou mais comprida que na refer\xEAncia oficial
       "modelUsingBag": boolean,
       "sexualContent": boolean,
       "wrongProduct": boolean,
@@ -7132,7 +7135,7 @@ Execute a auditoria forense estrutural componente a componente destas ${frames.l
 1. IDENTIDADE E MODELO: O produto \xE9 RIGOROSAMENTE o mesmo? Se for vestido, o comprimento \xE9 id\xEAntico (mini vs m\xEDdi vs longo)? Se houver fenda na perna n\xE3o existente na refer\xEAncia, REPROVE IMEDIATAMENTE (wrongProduct: true, lengthDefect: true, slitDefect: true, score <= 20)!
 2. ESTAMPA E TECIDO (TOLER\xC2NCIA ZERO): Se a refer\xEAncia for lisa e o v\xEDdeo for estampado com flores (ou vice-versa), ou se a refer\xEAncia for cetim acetinado brilhante e o v\xEDdeo for tecido fosco: REPROVE IMEDIATAMENTE (wrongProduct: true, patternDefect: true, fabricDefect: true, score <= 20)!
 3. ESTRUTURA, BOT\xD5ES, COSTURAS E BOLSOS: Bot\xF5es presentes/ausentes/quantidade/cor condizem com a refer\xEAncia? Costuras centrais (gancho de shorts, pespontos, nervuras) foram preservadas? H\xE1 bolsos inventados ou omitidos? Se houver diverg\xEAncia, REPROVE (buttonsDefect/seamsDefect/pocketsDefect: true, score <= 25)!
-4. REGRA DA BARRIGA ZERO (TOLER\xC2NCIA ZERO): Se a refer\xEAncia cobre o abd\xF4men, h\xE1 qualquer cent\xEDmetro de barriga/cintura exposta virando cropped? Se sim: bellySkinExposedInVideo: true e REPROVE (score <= 35)!
+4. REGRA DE COMPRIMENTO DA PE\xC7A DE CIMA (BLUSA MAIS CURTA OU MAIS COMPRIDA): A barriga de fora em si N\xC3O \xE9 problema (se a refer\xEAncia for cropped ou biqu\xEDni, aprove normalmente!). Apenas reprove se na refer\xEAncia oficial a blusa cobria a barriga e no v\xEDdeo a blusa foi encurtada virando cropped e mostrando a barriga (ou vice-versa). O problema \xE9 a pe\xE7a ser mais curta ou mais comprida que a refer\xEAncia! Se houver essa diverg\xEAncia: marque topPieceLengthMismatch: true, bellySkinExposedInVideo: true e REPROVE (score <= 35)!
 5. REGRA DO SHORTS vs SAIA: Pernas juntas com barras individuais dobradas ou costura central \xC9 SHORTS (lowerPiece: 'shorts', isGenuineSkirt: false). S\xF3 reprove como saia se for tubo cont\xEDnuo/sino sem pernas.
 6. CONTINUIDADE E DEFORMA\xC7\xC3O DE IA: H\xE1 pe\xE7as que somem no giro ou tecido que se funde na m\xE3o ao puxar no espelho? Se sim: aiMorphingDefect: true e REPROVE (score <= 25)!
 7. REGRA DA BOLSA: Se o produto n\xE3o for bolsa e houver bolsa no v\xEDdeo: modelUsingBag: true e REPROVE IMEDIATAMENTE com score <= 35 e issue: "\u{1F534} Reprovado: N\xE3o use bolsa pois isso vai dar restri\xE7\xE3o no seu v\xEDdeo."
@@ -7210,7 +7213,7 @@ Execute a auditoria forense estrutural componente a componente destas ${frames.l
 1. IDENTIDADE E MODELO: O produto \xE9 RIGOROSAMENTE o mesmo? Se for vestido, o comprimento \xE9 id\xEAntico (mini vs m\xEDdi vs longo)? Se houver fenda na perna n\xE3o existente na refer\xEAncia, REPROVE IMEDIATAMENTE (wrongProduct: true, lengthDefect: true, slitDefect: true, score <= 20)!
 2. ESTAMPA E TECIDO (TOLER\xC2NCIA ZERO): Se a refer\xEAncia for lisa e o v\xEDdeo for estampado com flores (ou vice-versa), ou se a refer\xEAncia for cetim acetinado brilhante e o v\xEDdeo for tecido fosco: REPROVE IMEDIATAMENTE (wrongProduct: true, patternDefect: true, fabricDefect: true, score <= 20)!
 3. ESTRUTURA, BOT\xD5ES, COSTURAS E BOLSOS: Bot\xF5es presentes/ausentes/quantidade/cor condizem com a refer\xEAncia? Costuras centrais (gancho de shorts, pespontos, nervuras) foram preservadas? H\xE1 bolsos inventados ou omitidos? Se houver diverg\xEAncia, REPROVE (buttonsDefect/seamsDefect/pocketsDefect: true, score <= 25)!
-4. REGRA DA BARRIGA ZERO (TOLER\xC2NCIA ZERO): Se a refer\xEAncia cobre o abd\xF4men, h\xE1 qualquer cent\xEDmetro de barriga/cintura exposta virando cropped? Se sim: bellySkinExposedInVideo: true e REPROVE (score <= 35)!
+4. REGRA DE COMPRIMENTO DA PE\xC7A DE CIMA (BLUSA MAIS CURTA OU MAIS COMPRIDA): A barriga de fora em si N\xC3O \xE9 problema (se a refer\xEAncia for cropped ou biqu\xEDni, aprove normalmente!). Apenas reprove se na refer\xEAncia oficial a blusa cobria a barriga e no v\xEDdeo a blusa foi encurtada virando cropped e mostrando a barriga (ou vice-versa). O problema \xE9 a pe\xE7a ser mais curta ou mais comprida que a refer\xEAncia! Se houver essa diverg\xEAncia: marque topPieceLengthMismatch: true, bellySkinExposedInVideo: true e REPROVE (score <= 35)!
 5. REGRA DO SHORTS vs SAIA: Pernas juntas com barras individuais dobradas ou costura central \xC9 SHORTS (lowerPiece: 'shorts', isGenuineSkirt: false). S\xF3 reprove como saia se for tubo cont\xEDnuo/sino sem pernas.
 6. CONTINUIDADE E DEFORMA\xC7\xC3O DE IA: H\xE1 pe\xE7as que somem no giro ou tecido que se funde na m\xE3o ao puxar no espelho? Se sim: aiMorphingDefect: true e REPROVE (score <= 25)!
 7. REGRA DA BOLSA: Se o produto n\xE3o for bolsa e houver bolsa no v\xEDdeo: modelUsingBag: true e REPROVE IMEDIATAMENTE com score <= 35 e issue: "\u{1F534} Reprovado: N\xE3o use bolsa pois isso vai dar restri\xE7\xE3o no seu v\xEDdeo."
@@ -7302,7 +7305,10 @@ Analise os ${batchVideos.length} v\xEDdeos acima contra as ${photosList.length} 
       const issueLower = issueText.toLowerCase();
       const pNameLower = String(productName || "").toLowerCase();
       const isRefShorts = pNameLower.includes("short") || pNameLower.includes("bermuda") || pNameLower.includes("macaquinh") || pNameLower.includes("macacao") || pNameLower.includes("macac\xE3o") || pNameLower.includes("conjunto");
-      const bellyDefect = match.bellySkinExposedInVideo === true || issueLower.includes("barriga") || issueLower.includes("cropped") || issueLower.includes("cintura exposta") || issueLower.includes("abertura lateral") || issueLower.includes("abd\xF4men exposto") || issueLower.includes("abdomen exposto") || issueLower.includes("pele exposta") || issueLower.includes("pele nua") || issueLower.includes("flanco") || issueLower.includes("umbigo");
+      const topLengthDefect = Boolean(
+        match.topPieceLengthMismatch === true || match.bellySkinExposedInVideo === true || issueLower.includes("blusa mais curta") || issueLower.includes("pe\xE7a de cima mais curta") || issueLower.includes("peca de cima mais curta") || issueLower.includes("virando cropped") || issueLower.includes("cropped") && (issueLower.includes("quando a refer\xEAncia") || issueLower.includes("refer\xEAncia cobria") || issueLower.includes("referencia cobria")) || issueLower.includes("barriga") && (issueLower.includes("encurtada") || issueLower.includes("cobre") || issueLower.includes("mais curta") || issueLower.includes("divergente") || issueLower.includes("mostra a barriga que"))
+      );
+      const bellyDefect = topLengthDefect;
       if (bellyDefect) {
         approved = false;
         score = Math.min(score, 38);
@@ -7401,7 +7407,7 @@ Analise os ${batchVideos.length} v\xEDdeos acima contra as ${photosList.length} 
         } else if (bagDefect) {
           finalIssue = "\u{1F534} Reprovado: N\xE3o use bolsa pois isso vai dar restri\xE7\xE3o no seu v\xEDdeo.";
         } else if (bellyDefect) {
-          finalIssue = `\u{1F534} Reprovado: Barriga exposta (na refer\xEAncia oficial a blusa cobre 100% da cintura e abd\xF4men sem pele \xE0 mostra).`;
+          finalIssue = "\u{1F534} Reprovado: Pe\xE7a de cima mais curta que a refer\xEAncia oficial (blusa encurtada virando cropped enquanto a refer\xEAncia cobria a barriga).";
         } else {
           const rawLines = issueText.split("\n").map((l) => l.trim()).filter((l) => l && !l.startsWith("\u{1F534}") && !l.startsWith("O que mudou:") && !l.startsWith("O que observei:")).map((l) => l.replace(/^[-*•]\s*/, ""));
           const cleanList = rawLines.filter((l) => l.length > 5);
@@ -7529,8 +7535,10 @@ Antes de comparar o v\xEDdeo, examine todas as ${photosList.length} imagens orig
       - Se o v\xEDdeo adicionar bolsos onde a pe\xE7a era lisa, ou omitir bolsos caracter\xEDsticos: REPROVE (score <= 25, status "red", severidade "evident").
       - Se a refer\xEAncia tiver decote degag\xEA (cowl) e o v\xEDdeo tiver decote reto franzido com el\xE1stico: REPROVE (score <= 25, status "red", severidade "evident").
 
-4. REGRA DA BARRIGA ZERO (TOLER\xC2NCIA ZERO EM CINTURA/CROPPED):
-   Se a blusa/pe\xE7a superior na refer\xEAncia cobre o abd\xF4men e a cintura at\xE9 a pe\xE7a inferior, ela N\xC3O pode encurtar virando cropped nem deixar a barriga exposta. Se houver barriga exposta ou abertura indevida: REPROVE IMEDIATAMENTE (< 50%, status "red") com finding severidade "evident".
+4. REGRA DE COMPRIMENTO DA PE\xC7A DE CIMA (BLUSA MAIS CURTA OU MAIS COMPRIDA QUE A REFER\xCANCIA):
+   - A BARRIGA DE FORA EM SI N\xC3O \xC9 PROBLEMA! Se a roupa de refer\xEAncia oficial for cropped, top curto ou biqu\xEDni, a barriga de fora \xE9 totalmente leg\xEDtima e correta (aprove com nota verde >= 92%).
+   - A BARRIGA S\xD3 \xC9 PROBLEMA quando se trata de um conjunto (pe\xE7a de cima + pe\xE7a de baixo) ou blusa em que a pe\xE7a de cima na foto de refer\xEAncia oficial cobre toda a barriga, e no v\xEDdeo a blusa foi encurtada virando cropped e mostrando a barriga que na refer\xEAncia estava coberta (ou vice-versa, a refer\xEAncia era cropped e o v\xEDdeo virou comprido).
+   - O problema n\xE3o \xE9 a barriga em si, mas sim a pe\xE7a de cima no v\xEDdeo ser mais curta ou mais comprida que a foto de refer\xEAncia oficial! Se houver essa diverg\xEAncia de comprimento: REPROVE IMEDIATAMENTE (< 50%, status "red") com finding severidade "evident", title: "Pe\xE7a de cima com comprimento divergente da refer\xEAncia (blusa encurtada virando cropped)".
 
 5. REGRA DO SHORTS vs SAIA (ZERO FALSAS REPROVA\xC7\xD5ES):
    Se a refer\xEAncia for shorts/bermuda e a modelo posar com pernas juntas em frente ao espelho, N\xC3O \xC9 SAIA se houver barras dobradas individuais em cada coxa ou costura central do cavalo. Aprove com nota verde (>= 92%). S\xF3 reprove como saia se for tubo cont\xEDnuo ou sino rodado sem pernas.
@@ -7919,7 +7927,7 @@ INSTRU\xC7\xD5ES OBRIGAT\xD3RIAS DE AUDITORIA PERICIAL FORENSE:
    - TECIDO / BRILHO: Se a refer\xEAncia for cetim acetinado brilhante e o v\xEDdeo for tecido fosco de algod\xE3o/viscose: REPROVE IMEDIATAMENTE (score <= 25, status "red") com finding severidade "evident", title: "Tecido divergente da refer\xEAncia.", whatAppearsInVideo: "A refer\xEAncia oficial \xE9 cetim brilhante acetinado, mas o v\xEDdeo mostra tecido fosco.", howToFix: "Preservar a textura e brilho acetinado do cetim da refer\xEAncia."
    - BOT\xD5ES, COSTURAS E BOLSOS: Se bot\xF5es, costuras ou bolsos divergirem da refer\xEAncia: REPROVE IMEDIATAMENTE (score <= 25, status "red") com finding severidade "evident", title: "Detalhes de bot\xF5es/costuras divergentes da refer\xEAncia."
 
-4. REGRA DA BARRIGA ZERO: Se a blusa original cobre o abd\xF4men e no v\xEDdeo a barriga/cintura fica exposta virando cropped: REPROVE IMEDIATAMENTE (< 50%, status "red") com finding severidade "evident".
+4. REGRA DE COMPRIMENTO DA PE\xC7A DE CIMA: A barriga de fora em si N\xC3O \xE9 problema (se a refer\xEAncia for cropped ou biqu\xEDni, aprove normalmente!). Apenas reprove se na refer\xEAncia a blusa cobria a barriga e no v\xEDdeo foi encurtada virando cropped mostrando a barriga (ou vice-versa). O problema \xE9 a pe\xE7a ser mais curta ou mais comprida que a refer\xEAncia! Se houver essa diverg\xEAncia: REPROVE (< 50%, status "red") com finding severidade "evident".
 5. REGRA DO SHORTS vs SAIA: Pernas juntas com barras individuais dobradas ou costura central \xC9 SHORTS. N\xE3o reprove como saia!
 6. CONTINUIDADE TEMPORAL DE IA: Pe\xE7as que somem, muta\xE7\xE3o no giro ou tecido fundindo na m\xE3o: REPROVE (< 50%, status "red") com finding severidade "evident".
 

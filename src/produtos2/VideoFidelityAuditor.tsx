@@ -397,8 +397,10 @@ async function extractKeyFramesForBatchVideo(
   frames: { second: number; frameBase64: string }[];
   durationSeconds: number;
   thumbnail: string;
+  hashes: string[];
 }> {
   return new Promise((resolve, reject) => {
+    let isSettled = false;
     const video = document.createElement('video');
     video.preload = 'auto';
     video.muted = true;
@@ -408,83 +410,116 @@ async function extractKeyFramesForBatchVideo(
     const fileUrl = URL.createObjectURL(videoFile);
     video.src = fileUrl;
 
+    // Timeout de segurança absoluto de 25 segundos por vídeo para nunca travar a fila
+    const safetyTimer = setTimeout(() => {
+      if (isSettled) return;
+      isSettled = true;
+      URL.revokeObjectURL(fileUrl);
+      console.warn(`Tempo limite de 25s atingido ao extrair frames de ${videoFile.name}`);
+      resolve({ frames: [], durationSeconds: 10, thumbnail: '', hashes: [] });
+    }, 25000);
+
     video.onloadedmetadata = async () => {
-      const rawDuration = video.duration || 10;
-      const durationSeconds = Math.round(rawDuration * 10) / 10;
+      try {
+        const rawDuration = video.duration || 10;
+        const durationSeconds = Math.round(rawDuration * 10) / 10;
 
-      const targetTimes: number[] = [];
-      const startT = Math.min(1.0, Math.max(0.6, durationSeconds * 0.08));
-      const endT = Math.max(startT + 1, durationSeconds - 0.5);
-      const step = (endT - startT) / Math.max(1, frameCount - 1);
-      for (let i = 0; i < frameCount; i++) {
-        targetTimes.push(Math.round((startT + step * i) * 10) / 10);
-      }
-
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (!ctx) {
-        URL.revokeObjectURL(fileUrl);
-        reject(new Error('Canvas indisponível.'));
-        return;
-      }
-
-      let w = video.videoWidth || 720;
-      let h = video.videoHeight || 1280;
-      // 960px para 9:16 vertical = 540x960px (alta definição forense na cintura/barriga, costuras centrais e barras de shorts)
-      const maxSide = 960;
-      if (w > maxSide || h > maxSide) {
-        if (w > h) {
-          h = Math.round((h * maxSide) / w);
-          w = maxSide;
-        } else {
-          w = Math.round((w * maxSide) / h);
-          h = maxSide;
+        const targetTimes: number[] = [];
+        const startT = Math.min(1.0, Math.max(0.6, durationSeconds * 0.08));
+        const endT = Math.max(startT + 1, durationSeconds - 0.5);
+        const step = (endT - startT) / Math.max(1, frameCount - 1);
+        for (let i = 0; i < frameCount; i++) {
+          targetTimes.push(Math.round((startT + step * i) * 10) / 10);
         }
-      }
-      canvas.width = w;
-      canvas.height = h;
 
-      const extracted: { second: number; frameBase64: string }[] = [];
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          if (!isSettled) {
+            isSettled = true;
+            clearTimeout(safetyTimer);
+            URL.revokeObjectURL(fileUrl);
+            reject(new Error('Canvas indisponível.'));
+          }
+          return;
+        }
 
-      for (const time of targetTimes) {
-        await new Promise<void>((res) => {
-          let isDone = false;
-          const onSeeked = () => {
-            if (isDone) return;
-            isDone = true;
-            video.removeEventListener('seeked', onSeeked);
-            try {
-              ctx.drawImage(video, 0, 0, w, h);
-              const b64 = canvas.toDataURL('image/jpeg', 0.80);
-              extracted.push({ second: time, frameBase64: b64 });
-              hashes.push(computeCanvasDHash(canvas));
-            } catch (drawErr) {
-              console.warn('Erro ao desenhar frame do lote:', drawErr);
-            }
-            res();
-          };
+        let w = video.videoWidth || 720;
+        let h = video.videoHeight || 1280;
+        // 960px para 9:16 vertical = 540x960px (alta definição forense na cintura/barriga, costuras centrais e barras de shorts)
+        const maxSide = 960;
+        if (w > maxSide || h > maxSide) {
+          if (w > h) {
+            h = Math.round((h * maxSide) / w);
+            w = maxSide;
+          } else {
+            w = Math.round((w * maxSide) / h);
+            h = maxSide;
+          }
+        }
+        canvas.width = w;
+        canvas.height = h;
 
-          video.addEventListener('seeked', onSeeked);
-          video.currentTime = Math.max(0.08, time);
+        const extracted: { second: number; frameBase64: string }[] = [];
+        const hashes: string[] = [];
 
-          setTimeout(() => {
-            if (!isDone) {
+        for (const time of targetTimes) {
+          await new Promise<void>((res) => {
+            let isDone = false;
+            const onSeeked = () => {
+              if (isDone) return;
               isDone = true;
               video.removeEventListener('seeked', onSeeked);
+              try {
+                ctx.drawImage(video, 0, 0, w, h);
+                const b64 = canvas.toDataURL('image/jpeg', 0.80);
+                extracted.push({ second: time, frameBase64: b64 });
+                hashes.push(computeCanvasDHash(canvas));
+              } catch (drawErr) {
+                console.warn('Erro ao desenhar frame do lote:', drawErr);
+              }
               res();
-            }
-          }, 2000);
-        });
-      }
+            };
 
-      URL.revokeObjectURL(fileUrl);
-      const thumbnail = extracted[0]?.frameBase64 || '';
-      resolve({ frames: extracted, durationSeconds, thumbnail, hashes });
+            video.addEventListener('seeked', onSeeked);
+            video.currentTime = Math.max(0.08, time);
+
+            setTimeout(() => {
+              if (!isDone) {
+                isDone = true;
+                video.removeEventListener('seeked', onSeeked);
+                res();
+              }
+            }, 2500);
+          });
+        }
+
+        if (!isSettled) {
+          isSettled = true;
+          clearTimeout(safetyTimer);
+          URL.revokeObjectURL(fileUrl);
+          const thumbnail = extracted[0]?.frameBase64 || '';
+          resolve({ frames: extracted, durationSeconds, thumbnail, hashes });
+        }
+      } catch (err) {
+        if (!isSettled) {
+          isSettled = true;
+          clearTimeout(safetyTimer);
+          URL.revokeObjectURL(fileUrl);
+          console.warn(`Erro em onloadedmetadata de ${videoFile.name}:`, err);
+          resolve({ frames: [], durationSeconds: 10, thumbnail: '', hashes: [] });
+        }
+      }
     };
 
     video.onerror = () => {
-      URL.revokeObjectURL(fileUrl);
-      reject(new Error(`Erro ao carregar o vídeo ${videoFile.name}.`));
+      if (!isSettled) {
+        isSettled = true;
+        clearTimeout(safetyTimer);
+        URL.revokeObjectURL(fileUrl);
+        console.warn(`Erro video.onerror em ${videoFile.name}`);
+        resolve({ frames: [], durationSeconds: 10, thumbnail: '', hashes: [] });
+      }
     };
   });
 }
@@ -1001,11 +1036,25 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
           batchVideos: chunkVideos,
         });
 
-        const res = await fetch('/api/produtos2-audit-video', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: payloadBody,
-        });
+        const fetchController = new AbortController();
+        const fetchTimeoutId = setTimeout(() => fetchController.abort(), 110000);
+
+        let res: Response;
+        try {
+          res = await fetch('/api/produtos2-audit-video', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: payloadBody,
+            signal: fetchController.signal,
+          });
+        } catch (fetchErr: any) {
+          clearTimeout(fetchTimeoutId);
+          if (fetchErr.name === 'AbortError') {
+            throw new Error(`Tempo limite da requisição excedido na parte ${c + 1} de ${totalChunks}. O servidor demorou mais de 110s para responder.`);
+          }
+          throw fetchErr;
+        }
+        clearTimeout(fetchTimeoutId);
 
         const rawText = await res.text();
         let json: any = null;
