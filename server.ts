@@ -6074,6 +6074,35 @@ DIRETRIZ DE SEVERIDADE DO TIKTOK SHOP (LEI INEGOCIÁVEL):
   O aviso do campo "issue" DEVE SER ESTRITAMENTE:
   "🔴 Reprovado por conteúdo sexual."
 
+⚠️ 0. REGRA SOBERANA DE IDENTIDADE E FIDELIDADE DO PRODUTO (TOLERÂNCIA ZERO — PRODUTO DIFERENTE = REPROVAÇÃO IMEDIATA):
+O PRODUTO NO VÍDEO DEVE SER RIGOROSA E EXATAMENTE O MESMO PRODUTO DAS FOTOS DE REFERÊNCIA OFICIAIS!
+Você NUNCA deve aprovar um produto apenas porque ele tem a mesma cor base (ex: ambos são claros, brancos ou beges) se a peça for diferente!
+SE O PRODUTO DO VÍDEO FOR DIFERENTE DA REFERÊNCIA EM QUALQUER UM DOS PILARES ABAIXO, REPROVE IMEDIATAMENTE (status: "red", score <= 20, approved: false, wrongProduct: true):
+1) ESTAMPA vs TECIDO LISO (GRAVÍSSIMO):
+   - Se a referência oficial for LISA (tecido monocromático, sem estampas) e a roupa no vídeo tiver qualquer estampa (floral, flores, poá, listras, animal print, xadrez, etc.): REPROVAÇÃO IMEDIATA (score <= 20, status: "red")!
+   - Se a referência for estampada e o vídeo for liso: REPROVAÇÃO IMEDIATA!
+   - Issue: "🔴 Reprovado: Produto totalmente diferente da referência (roupa do vídeo é estampada com flores, enquanto a referência oficial é lisa sem estampa)."
+2) COMPRIMENTO DA PEÇA / VESTIDO / SAIA (CURTO/MINI vs MÍDI vs LONGO):
+   - Se a referência for vestido CURTO / MINI (acima do joelho) e o vídeo mostrar vestido MÍDI (abaixo do joelho / canela) ou LONGO: REPROVAÇÃO IMEDIATA (score <= 20, status: "red")!
+   - Se a referência for vestido LONGO ou MÍDI e o vídeo for CURTO/MINI: REPROVAÇÃO IMEDIATA!
+   - Issue: "🔴 Reprovado: Comprimento divergente da referência oficial (referência é vestido curto/mini, mas o vídeo mostra vestido mídi cobrindo os joelhos)."
+3) FENDA NA PERNA / ABERTURAS LATERAIS:
+   - Se o vestido no vídeo tiver uma FENDA na perna/coxa e a referência NÃO tem fenda (ou vice-versa): REPROVAÇÃO IMEDIATA (score <= 20, status: "red")!
+   - Issue: "🔴 Reprovado: Fenda profunda na perna inexistente na referência oficial."
+4) TECIDO, TEXTURA E BRILHO (CETIM/BRILHO vs ALGODÃO/FOSCO):
+   - Se a referência oficial for CETIM / SEDA / TECIDO ACETINADO BRILHANTE e o vídeo for tecido fosco de algodão/viscose (ou vice-versa): REPROVAÇÃO IMEDIATA (score <= 25, status: "red")!
+   - Issue: "🔴 Reprovado: Tecido divergente (referência oficial é cetim acetinado brilhante, mas o vídeo mostra tecido fosco)."
+5) MODELAGEM DO DECOTE, BUSTO E ALÇAS:
+   - Se o decote da referência for drapeado/degagê (cowl neck) com alcinhas e o vídeo tiver decote reto franzido com elástico (ou vice-versa): REPROVAÇÃO IMEDIATA (score <= 25, status: "red")!
+   - Issue: "🔴 Reprovado: Modelagem do decote e busto incompatível com a referência oficial."
+
+⚠️ REGRA SOBERANA DE DUPLICIDADE (VÍDEOS IGUAIS NO MESMO LOTE):
+- Inspecione e compare atentamente todos os vídeos do lote entre si.
+- Se você identificar que um vídeo é IGUAL a outro (apresenta a MESMA MODELO, MESMO CENÁRIO E MESMOS MOVIMENTOS/COREOGRAFIA):
+  * Marque "isDuplicate": true, "duplicateOf": "nome_do_video_anterior".
+  * Se esse vídeo não possuir defeitos críticos vermelhos de produto, seu status DEVE SER OBRIGATORIAMENTE "yellow" (Atenção / Risco), score entre 70 e 78, e o parecer do campo "issue" DEVE SER ESTRITAMENTE:
+    "🟡 Atenção: Possível vídeo duplicado (mesmos movimentos, modelo e cenário)."
+
 ⚠️ 1. MUDANÇA DE FORMATO / MODELAGEM DA PEÇA É GRAVÍSSIMA (INFRAÇÃO CRÍTICA):
 No TikTok Shop, o produto entregue ao cliente deve ter EXATAMENTE o mesmo corte e silhueta do vídeo exibido no anúncio. Mudar o formato causa strike imediato por "Produto não condizente com o anúncio" ou suspensão da conta comercial.
 Você DEVE auditar com rigor pericial 4 pilares estruturais da roupa em CADA VÍDEO:
@@ -6153,6 +6182,9 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
       "bellySkinExposedInVideo": boolean, // true se no vídeo houver qualquer pedaço de pele/barriga/cintura exposta entre blusa e shorts
       "modelUsingBag": boolean, // true se no vídeo a modelo estiver usando, segurando ou carregando qualquer bolsa, bolsa tiracolo, bolsa de ombro, bolsa de mão, mochila ou sacola
       "sexualContent": boolean, // true se for identificada calcinha (visível total ou parcialmente), roupa íntima, lingerie ou teor sexual/semi-nudez
+      "wrongProduct": boolean, // true se o produto do vídeo for diferente da referência (estampa diferente, comprimento mini vs mídi, tecido cetim vs fosco, fenda inventada)
+      "isDuplicate": boolean, // true se no lote este vídeo for repetição/duplicado de outro (mesma modelo, mesmo cenário e mesmos movimentos)
+      "duplicateOf": string | null, // nome ou id do vídeo original do qual este é cópia/duplicado
       "score": number, // 90 a 100 se aprovado verde; 70 a 89 se risco amarelo; <= 60 se reprovado vermelho
       "status": "green" | "yellow" | "red",
       "approved": boolean, // true se green ou yellow aceitável; false se red
@@ -6446,23 +6478,49 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
         /\b(calcinhas?|cuecas?|lingeries?|calcinha de biqu[ií]ni|roupa [ií]ntima|roupas [ií]ntimas|panties|underwear|teor sexual|conte[uú]do sexual|semi-nudez|nudez|sexual)\b/i.test(issueLower)
       );
 
+      // ─── FILTRO 4: DETECÇÃO DE PRODUTO TOTALMENTE DIFERENTE (ESTAMPA, COMPRIMENTO, FENDA, TECIDO) ───
+      const wrongProductDefect = Boolean(
+        match.wrongProduct === true ||
+        issueLower.includes('produto totalmente diferente') ||
+        issueLower.includes('produtos totalmente diferentes') ||
+        (issueLower.includes('estampa') && (issueLower.includes('lisa') || issueLower.includes('estampad'))) ||
+        (issueLower.includes('fenda') && issueLower.includes('inexistente')) ||
+        (issueLower.includes('comprimento divergente') || issueLower.includes('mini vs mídi') || issueLower.includes('curto vs midi') || issueLower.includes('curto vs mídi')) ||
+        (issueLower.includes('tecido divergente') || (issueLower.includes('cetim') && issueLower.includes('fosco')))
+      );
+
+      // ─── FILTRO 5: DETECÇÃO DE VÍDEO DUPLICADO (MESMA MODELO, MESMO CENÁRIO E MESMOS MOVIMENTOS) ───
+      const isDuplicateVideo = Boolean(
+        match.isDuplicate === true ||
+        issueLower.includes('duplicado') ||
+        issueLower.includes('repetido') ||
+        issueLower.includes('mesmos movimentos, modelo e cenário')
+      );
+
       // Avaliação do status final (green, yellow, red)
       let status: 'green' | 'yellow' | 'red' = 'green';
-      if (sexualContentDefect || bagDefect || bellyDefect || !approved || score < 70) {
-        if (sexualContentDefect) score = Math.min(score, 20);
+      if (wrongProductDefect || sexualContentDefect || bagDefect || bellyDefect || !approved || score < 70) {
+        if (wrongProductDefect) score = Math.min(score, 20);
+        else if (sexualContentDefect) score = Math.min(score, 20);
         else if (bagDefect) score = Math.min(score, 35);
         status = 'red';
         approved = false;
         score = Math.min(score, 60);
       } else if (
+        isDuplicateVideo ||
         match.status === 'yellow' ||
         (score >= 70 && score < 90) ||
         issueLower.includes('risco') ||
         issueLower.includes('possível divergência') ||
-        issueLower.includes('possivel divergencia')
+        issueLower.includes('possivel divergencia') ||
+        issueLower.includes('atenção') ||
+        issueLower.includes('atencao')
       ) {
         status = 'yellow';
         approved = true;
+        if (isDuplicateVideo) {
+          score = Math.min(score, 78);
+        }
       } else {
         status = 'green';
         approved = true;
@@ -6478,18 +6536,29 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
         // 🟢 Aprovado: apenas a linha enxuta exata solicitada pelo usuário
         finalIssue = `🟢 Aprovado: Produto ${score}% fiel à referência na cor ${detectedColor}`;
       } else if (status === 'yellow') {
-        // 🟡 Amarelo / Risco: explica de forma enxuta onde está a possível divergência
-        let cleanYellow = issueText
-          .replace(/^[🟢🟡🔴]\s*(Aprovado|Atenção|Risco|Reprovado)[^:]*:\s*/i, '')
-          .replace(/O que mudou:[\s\S]*$/i, '')
-          .trim();
-        if (!cleanYellow || cleanYellow.toLowerCase().includes('produto')) {
-          cleanYellow = 'Possível variação sutil em detalhes ou iluminação; verificar se condiz com a referência.';
+        if (isDuplicateVideo) {
+          const dupTarget = match.duplicateOf ? ` com o ${match.duplicateOf}` : '';
+          finalIssue = `🟡 Atenção: Possível vídeo duplicado${dupTarget} (mesmos movimentos, modelo e cenário).`;
+        } else {
+          // 🟡 Amarelo / Risco: explica de forma enxuta onde está a possível divergência
+          let cleanYellow = issueText
+            .replace(/^[🟢🟡🔴]\s*(Aprovado|Atenção|Risco|Reprovado)[^:]*:\s*/i, '')
+            .replace(/O que mudou:[\s\S]*$/i, '')
+            .trim();
+          if (!cleanYellow || cleanYellow.toLowerCase().includes('produto')) {
+            cleanYellow = 'Possível variação sutil em detalhes ou iluminação; verificar se condiz com a referência.';
+          }
+          finalIssue = `🟡 Risco — Possível Divergência: ${cleanYellow}`;
         }
-        finalIssue = `🟡 Risco — Possível Divergência: ${cleanYellow}`;
       } else {
         // 🔴 Vermelho / Reprovado: explica de forma enxuta todas as divergências observadas
-        if (sexualContentDefect) {
+        if (wrongProductDefect) {
+          let cleanReason = issueText.replace(/^[🔴🟢🟡]\s*(Reprovado|Aprovado)[^:]*:\s*/i, '').trim();
+          if (!cleanReason || cleanReason.length < 10) {
+            cleanReason = 'Produto totalmente diferente da referência oficial (estampa, comprimento mídi/curto, fenda ou modelagem divergente).';
+          }
+          finalIssue = `🔴 Reprovado: ${cleanReason}`;
+        } else if (sexualContentDefect) {
           finalIssue = '🔴 Reprovado por conteúdo sexual.';
         } else if (bagDefect) {
           finalIssue = '🔴 Reprovado: Não use bolsa pois isso vai dar restrição no seu vídeo.';
@@ -7160,6 +7229,12 @@ INSTRUÇÕES OBRIGATÓRIAS DE PERÍCIA VISUAL (ZERO FALSOS POSITIVOS):
 0.1) REGRA CRÍTICA DE CONTEÚDO SEXUAL / CALCINHA (TOLERÂNCIA ZERO):
    Se em qualquer frame for identificada CALCINHA exposta (visível total ou parcialmente), calcinha de biquíni, roupa íntima, lingerie ou qualquer teor sexual / semi-nudez:
    REPROVE O VÍDEO IMEDIATAMENTE (score <= 20, status "red") e crie um finding com severidade "evident", title: "Reprovado por conteúdo sexual.", whatAppearsInVideo: "Identificada calcinha ou teor sexual no vídeo, violando as diretrizes da plataforma.", howToFix: "Regerar o vídeo garantindo que a modelo esteja adequadamente vestida sem calcinha visível ou teor sexual."
+0.2) REGRA CRÍTICA DE PRODUTO IDENTICO vs PRODUTO TOTALMENTE DIFERENTE (TOLERÂNCIA ZERO):
+   O produto exibido no vídeo DEVE SER rigorosamente a mesma peça das fotos de referência:
+   - ESTAMPA vs LISO: Se a referência oficial for lisa e a roupa no vídeo for estampada (ex: estampa floral miúda), ou vice-versa: REPROVE O VÍDEO IMEDIATAMENTE (score <= 20, status "red") com finding severidade "evident", title: "Produto divergente da referência oficial.", whatAppearsInVideo: "O vídeo exibe um vestido estampado com flores, enquanto a referência oficial é lisa sem estampa.", howToFix: "Regerar o vídeo utilizando rigorosamente o produto liso da referência."
+   - COMPRIMENTO (CURTO/MINI vs MÍDI vs LONGO): Se a referência for vestido curto/mini (acima do joelho) e o vídeo for mídi (abaixo do joelho/canela) ou longo (ou vice-versa): REPROVE IMEDIATAMENTE (score <= 20, status "red") com finding severidade "evident", title: "Comprimento divergente da referência.", whatAppearsInVideo: "O vestido no vídeo tem comprimento mídi cobrindo os joelhos, mas a referência oficial é vestido curto/mini.", howToFix: "Regerar o vídeo mantendo o comprimento curto/mini da referência."
+   - FENDA NA PERNA: Se o vestido tiver fenda aberta na coxa/perna inexistente na referência oficial (ou vice-versa): REPROVE IMEDIATAMENTE (score <= 20, status "red") com finding severidade "evident", title: "Fenda inexistente na referência.", whatAppearsInVideo: "O vestido no vídeo apresenta uma fenda profunda na perna que não existe na referência oficial.", howToFix: "Remover a fenda e preservar a modelagem fechada da referência."
+   - TECIDO / BRILHO: Se a referência for cetim acetinado brilhante e o vídeo for tecido fosco de algodão/viscose (ou vice-versa): REPROVE IMEDIATAMENTE (score <= 25, status "red") com finding severidade "evident", title: "Tecido divergente da referência.", whatAppearsInVideo: "A referência oficial é cetim brilhante acetinado, mas o vídeo mostra tecido fosco.", howToFix: "Preservar a textura e brilho acetinado do cetim da referência."
 1) Inspecione cada frame (${framesTimestampsList}) com base EXCLUSIVA no que a imagem real de cada frame mostra:
    - Se o frame mostrar a FRENTE do celular (display ligado, papel de parede, ícones ou câmera frontal), NÃO cobre câmeras traseiras! Aprove o frame com nota VERDE (>= 92%).
    - Se o frame mostrar a CAIXA/EMBALAGEM do produto, avalie como embalagem comercial e aprove com nota VERDE (>= 92%).

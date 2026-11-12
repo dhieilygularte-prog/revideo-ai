@@ -149,6 +149,7 @@ async function extractHighResVideoFrames1fps(
       canvas.height = h;
 
       const extracted: { second: number; frameBase64: string }[] = [];
+      const hashes: string[] = [];
 
       for (const time of targetTimes) {
         const seekTarget = time === 0 ? 0.08 : time;
@@ -346,6 +347,49 @@ async function buildVisualComparisonBanner(params: {
  * em resolução compacta e nítida (480px, JPEG 0.78), otimizando a transmissão
  * para permitir até 25 vídeos por requisição com velocidade máxima e custo mínimo de tokens.
  */
+function computeCanvasDHash(sourceCanvas: HTMLCanvasElement): string {
+  try {
+    const smallCanvas = document.createElement('canvas');
+    smallCanvas.width = 9;
+    smallCanvas.height = 8;
+    const sCtx = smallCanvas.getContext('2d');
+    if (!sCtx) return '';
+    sCtx.drawImage(sourceCanvas, 0, 0, 9, 8);
+    const imgData = sCtx.getImageData(0, 0, 9, 8);
+    const d = imgData.data;
+    let hash = '';
+    for (let y = 0; y < 8; y++) {
+      for (let x = 0; x < 8; x++) {
+        const idxL = (y * 9 + x) * 4;
+        const idxR = (y * 9 + (x + 1)) * 4;
+        const gL = 0.299 * d[idxL] + 0.587 * d[idxL + 1] + 0.114 * d[idxL + 2];
+        const gR = 0.299 * d[idxR] + 0.587 * d[idxR + 1] + 0.114 * d[idxR + 2];
+        hash += gL > gR ? '1' : '0';
+      }
+    }
+    return hash;
+  } catch {
+    return '';
+  }
+}
+
+function checkVideosAreDuplicate(hashesA: string[], hashesB: string[]): boolean {
+  if (!hashesA || !hashesB || hashesA.length === 0 || hashesB.length === 0) return false;
+  const count = Math.min(hashesA.length, hashesB.length);
+  let totalDist = 0;
+  for (let i = 0; i < count; i++) {
+    const hA = hashesA[i];
+    const hB = hashesB[i];
+    let dist = 0;
+    for (let c = 0; c < 64; c++) {
+      if (hA[c] !== hB[c]) dist++;
+    }
+    totalDist += dist;
+  }
+  const avgDist = totalDist / count;
+  return avgDist <= 11;
+}
+
 async function extractKeyFramesForBatchVideo(
   videoFile: File,
   frameCount = 5
@@ -413,6 +457,7 @@ async function extractKeyFramesForBatchVideo(
               ctx.drawImage(video, 0, 0, w, h);
               const b64 = canvas.toDataURL('image/jpeg', 0.80);
               extracted.push({ second: time, frameBase64: b64 });
+              hashes.push(computeCanvasDHash(canvas));
             } catch (drawErr) {
               console.warn('Erro ao desenhar frame do lote:', drawErr);
             }
@@ -434,7 +479,7 @@ async function extractKeyFramesForBatchVideo(
 
       URL.revokeObjectURL(fileUrl);
       const thumbnail = extracted[0]?.frameBase64 || '';
-      resolve({ frames: extracted, durationSeconds, thumbnail });
+      resolve({ frames: extracted, durationSeconds, thumbnail, hashes });
     };
 
     video.onerror = () => {
@@ -894,6 +939,7 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
 
       const batchPayloadVideos: any[] = [];
       const localThumbnailsMap = new Map<string, string>();
+    const localVideoHashesMap = new Map<string, string[]>();
 
       for (let i = 0; i < batchFiles.length; i++) {
         const file = batchFiles[i];
@@ -901,8 +947,9 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
         setStatusMessage(`Extraindo frames: Vídeo ${i + 1} de ${batchFiles.length} (${file.name})...`);
 
         try {
-          const { frames, durationSeconds, thumbnail } = await extractKeyFramesForBatchVideo(file, 5);
+          const { frames, durationSeconds, thumbnail, hashes } = await extractKeyFramesForBatchVideo(file, 5);
           localThumbnailsMap.set(vId, thumbnail);
+          localVideoHashesMap.set(vId, hashes);
           batchPayloadVideos.push({
             id: vId,
             videoFileName: file.name,
@@ -999,6 +1046,34 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
         }
       }
 
+      // ─── VERIFICAÇÃO SOBERANA DE VÍDEOS DUPLICADOS (MESMA MODELO, CENÁRIO E MOVIMENTOS) ───
+      for (let j = 0; j < aggregatedResults.length; j++) {
+        const item = aggregatedResults[j];
+        if (item.status === 'red') continue; // Se já tiver reprovação por produto divergente ou conteúdo sexual, mantém vermelho
+
+        const hashesJ = localVideoHashesMap.get(item.id);
+        if (!hashesJ || hashesJ.length === 0) continue;
+
+        for (let i = 0; i < j; i++) {
+          const prevItem = aggregatedResults[i];
+          const hashesI = localVideoHashesMap.get(prevItem.id);
+          if (!hashesI || hashesI.length === 0) continue;
+
+          if (checkVideosAreDuplicate(hashesI, hashesJ)) {
+            item.status = 'yellow';
+            item.score = Math.min(item.score, 78);
+            item.approved = true;
+            const originalName = prevItem.videoFileName || `Vídeo ${i + 1}`;
+            item.issue = `🟡 Atenção: Possível vídeo duplicado com o ${originalName} (mesmos movimentos, modelo e cenário).`;
+            break;
+          }
+        }
+      }
+
+      const totalApprovedFinal = aggregatedResults.filter((r) => r.status === 'green').length;
+      const totalFlaggedFinal = aggregatedResults.filter((r) => r.status === 'yellow').length;
+      const totalRejectedFinal = aggregatedResults.filter((r) => r.status === 'red').length;
+
       const hydratedResults: BatchVideoAuditResultItem[] = aggregatedResults.map((r: any) => ({
         ...r,
         thumbnail: localThumbnailsMap.get(r.id),
@@ -1007,8 +1082,8 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
       const finalBatchAudit: BatchVideoFidelityAudit = {
         batchSummary: {
           totalVideos: hydratedResults.length,
-          approvedCount: totalApproved,
-          rejectedCount: totalRejected,
+          approvedCount: totalApprovedFinal + totalFlaggedFinal,
+          rejectedCount: totalRejectedFinal,
           overview:
             executiveSummaries.join(' | ') ||
             (totalRejected === 0
@@ -1532,7 +1607,7 @@ export const VideoFidelityAuditor: React.FC<VideoFidelityAuditorProps> = ({
                                     : 'bg-rose-600 text-white'
                                 }`}
                               >
-                                {item.status === 'yellow' ? 'Risco' : item.approved ? 'Aprovado' : 'Reprovado'}
+                                {item.status === 'yellow' ? (String(item.issue || '').toLowerCase().includes('duplicado') ? 'Atenção' : 'Risco') : item.approved ? 'Aprovado' : 'Reprovado'}
                               </span>
                             </div>
 

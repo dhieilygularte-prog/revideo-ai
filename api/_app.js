@@ -6945,6 +6945,35 @@ DIRETRIZ DE SEVERIDADE DO TIKTOK SHOP (LEI INEGOCI\xC1VEL):
   O aviso do campo "issue" DEVE SER ESTRITAMENTE:
   "\u{1F534} Reprovado por conte\xFAdo sexual."
 
+\u26A0\uFE0F 0. REGRA SOBERANA DE IDENTIDADE E FIDELIDADE DO PRODUTO (TOLER\xC2NCIA ZERO \u2014 PRODUTO DIFERENTE = REPROVA\xC7\xC3O IMEDIATA):
+O PRODUTO NO V\xCDDEO DEVE SER RIGOROSA E EXATAMENTE O MESMO PRODUTO DAS FOTOS DE REFER\xCANCIA OFICIAIS!
+Voc\xEA NUNCA deve aprovar um produto apenas porque ele tem a mesma cor base (ex: ambos s\xE3o claros, brancos ou beges) se a pe\xE7a for diferente!
+SE O PRODUTO DO V\xCDDEO FOR DIFERENTE DA REFER\xCANCIA EM QUALQUER UM DOS PILARES ABAIXO, REPROVE IMEDIATAMENTE (status: "red", score <= 20, approved: false, wrongProduct: true):
+1) ESTAMPA vs TECIDO LISO (GRAV\xCDSSIMO):
+   - Se a refer\xEAncia oficial for LISA (tecido monocrom\xE1tico, sem estampas) e a roupa no v\xEDdeo tiver qualquer estampa (floral, flores, po\xE1, listras, animal print, xadrez, etc.): REPROVA\xC7\xC3O IMEDIATA (score <= 20, status: "red")!
+   - Se a refer\xEAncia for estampada e o v\xEDdeo for liso: REPROVA\xC7\xC3O IMEDIATA!
+   - Issue: "\u{1F534} Reprovado: Produto totalmente diferente da refer\xEAncia (roupa do v\xEDdeo \xE9 estampada com flores, enquanto a refer\xEAncia oficial \xE9 lisa sem estampa)."
+2) COMPRIMENTO DA PE\xC7A / VESTIDO / SAIA (CURTO/MINI vs M\xCDDI vs LONGO):
+   - Se a refer\xEAncia for vestido CURTO / MINI (acima do joelho) e o v\xEDdeo mostrar vestido M\xCDDI (abaixo do joelho / canela) ou LONGO: REPROVA\xC7\xC3O IMEDIATA (score <= 20, status: "red")!
+   - Se a refer\xEAncia for vestido LONGO ou M\xCDDI e o v\xEDdeo for CURTO/MINI: REPROVA\xC7\xC3O IMEDIATA!
+   - Issue: "\u{1F534} Reprovado: Comprimento divergente da refer\xEAncia oficial (refer\xEAncia \xE9 vestido curto/mini, mas o v\xEDdeo mostra vestido m\xEDdi cobrindo os joelhos)."
+3) FENDA NA PERNA / ABERTURAS LATERAIS:
+   - Se o vestido no v\xEDdeo tiver uma FENDA na perna/coxa e a refer\xEAncia N\xC3O tem fenda (ou vice-versa): REPROVA\xC7\xC3O IMEDIATA (score <= 20, status: "red")!
+   - Issue: "\u{1F534} Reprovado: Fenda profunda na perna inexistente na refer\xEAncia oficial."
+4) TECIDO, TEXTURA E BRILHO (CETIM/BRILHO vs ALGOD\xC3O/FOSCO):
+   - Se a refer\xEAncia oficial for CETIM / SEDA / TECIDO ACETINADO BRILHANTE e o v\xEDdeo for tecido fosco de algod\xE3o/viscose (ou vice-versa): REPROVA\xC7\xC3O IMEDIATA (score <= 25, status: "red")!
+   - Issue: "\u{1F534} Reprovado: Tecido divergente (refer\xEAncia oficial \xE9 cetim acetinado brilhante, mas o v\xEDdeo mostra tecido fosco)."
+5) MODELAGEM DO DECOTE, BUSTO E AL\xC7AS:
+   - Se o decote da refer\xEAncia for drapeado/degag\xEA (cowl neck) com alcinhas e o v\xEDdeo tiver decote reto franzido com el\xE1stico (ou vice-versa): REPROVA\xC7\xC3O IMEDIATA (score <= 25, status: "red")!
+   - Issue: "\u{1F534} Reprovado: Modelagem do decote e busto incompat\xEDvel com a refer\xEAncia oficial."
+
+\u26A0\uFE0F REGRA SOBERANA DE DUPLICIDADE (V\xCDDEOS IGUAIS NO MESMO LOTE):
+- Inspecione e compare atentamente todos os v\xEDdeos do lote entre si.
+- Se voc\xEA identificar que um v\xEDdeo \xE9 IGUAL a outro (apresenta a MESMA MODELO, MESMO CEN\xC1RIO E MESMOS MOVIMENTOS/COREOGRAFIA):
+  * Marque "isDuplicate": true, "duplicateOf": "nome_do_video_anterior".
+  * Se esse v\xEDdeo n\xE3o possuir defeitos cr\xEDticos vermelhos de produto, seu status DEVE SER OBRIGATORIAMENTE "yellow" (Aten\xE7\xE3o / Risco), score entre 70 e 78, e o parecer do campo "issue" DEVE SER ESTRITAMENTE:
+    "\u{1F7E1} Aten\xE7\xE3o: Poss\xEDvel v\xEDdeo duplicado (mesmos movimentos, modelo e cen\xE1rio)."
+
 \u26A0\uFE0F 1. MUDAN\xC7A DE FORMATO / MODELAGEM DA PE\xC7A \xC9 GRAV\xCDSSIMA (INFRA\xC7\xC3O CR\xCDTICA):
 No TikTok Shop, o produto entregue ao cliente deve ter EXATAMENTE o mesmo corte e silhueta do v\xEDdeo exibido no an\xFAncio. Mudar o formato causa strike imediato por "Produto n\xE3o condizente com o an\xFAncio" ou suspens\xE3o da conta comercial.
 Voc\xEA DEVE auditar com rigor pericial 4 pilares estruturais da roupa em CADA V\xCDDEO:
@@ -7024,6 +7053,9 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
       "bellySkinExposedInVideo": boolean, // true se no v\xEDdeo houver qualquer peda\xE7o de pele/barriga/cintura exposta entre blusa e shorts
       "modelUsingBag": boolean, // true se no v\xEDdeo a modelo estiver usando, segurando ou carregando qualquer bolsa, bolsa tiracolo, bolsa de ombro, bolsa de m\xE3o, mochila ou sacola
       "sexualContent": boolean, // true se for identificada calcinha (vis\xEDvel total ou parcialmente), roupa \xEDntima, lingerie ou teor sexual/semi-nudez
+      "wrongProduct": boolean, // true se o produto do v\xEDdeo for diferente da refer\xEAncia (estampa diferente, comprimento mini vs m\xEDdi, tecido cetim vs fosco, fenda inventada)
+      "isDuplicate": boolean, // true se no lote este v\xEDdeo for repeti\xE7\xE3o/duplicado de outro (mesma modelo, mesmo cen\xE1rio e mesmos movimentos)
+      "duplicateOf": string | null, // nome ou id do v\xEDdeo original do qual este \xE9 c\xF3pia/duplicado
       "score": number, // 90 a 100 se aprovado verde; 70 a 89 se risco amarelo; <= 60 se reprovado vermelho
       "status": "green" | "yellow" | "red",
       "approved": boolean, // true se green ou yellow aceit\xE1vel; false se red
@@ -7250,16 +7282,26 @@ Analise os ${batchVideos.length} v\xEDdeos acima contra as ${photosList.length} 
       const sexualContentDefect = Boolean(
         match.sexualContent === true || /\b(calcinhas?|cuecas?|lingeries?|calcinha de biqu[ií]ni|roupa [ií]ntima|roupas [ií]ntimas|panties|underwear|teor sexual|conte[uú]do sexual|semi-nudez|nudez|sexual)\b/i.test(issueLower)
       );
+      const wrongProductDefect = Boolean(
+        match.wrongProduct === true || issueLower.includes("produto totalmente diferente") || issueLower.includes("produtos totalmente diferentes") || issueLower.includes("estampa") && (issueLower.includes("lisa") || issueLower.includes("estampad")) || issueLower.includes("fenda") && issueLower.includes("inexistente") || (issueLower.includes("comprimento divergente") || issueLower.includes("mini vs m\xEDdi") || issueLower.includes("curto vs midi") || issueLower.includes("curto vs m\xEDdi")) || (issueLower.includes("tecido divergente") || issueLower.includes("cetim") && issueLower.includes("fosco"))
+      );
+      const isDuplicateVideo = Boolean(
+        match.isDuplicate === true || issueLower.includes("duplicado") || issueLower.includes("repetido") || issueLower.includes("mesmos movimentos, modelo e cen\xE1rio")
+      );
       let status = "green";
-      if (sexualContentDefect || bagDefect || bellyDefect || !approved || score < 70) {
-        if (sexualContentDefect) score = Math.min(score, 20);
+      if (wrongProductDefect || sexualContentDefect || bagDefect || bellyDefect || !approved || score < 70) {
+        if (wrongProductDefect) score = Math.min(score, 20);
+        else if (sexualContentDefect) score = Math.min(score, 20);
         else if (bagDefect) score = Math.min(score, 35);
         status = "red";
         approved = false;
         score = Math.min(score, 60);
-      } else if (match.status === "yellow" || score >= 70 && score < 90 || issueLower.includes("risco") || issueLower.includes("poss\xEDvel diverg\xEAncia") || issueLower.includes("possivel divergencia")) {
+      } else if (isDuplicateVideo || match.status === "yellow" || score >= 70 && score < 90 || issueLower.includes("risco") || issueLower.includes("poss\xEDvel diverg\xEAncia") || issueLower.includes("possivel divergencia") || issueLower.includes("aten\xE7\xE3o") || issueLower.includes("atencao")) {
         status = "yellow";
         approved = true;
+        if (isDuplicateVideo) {
+          score = Math.min(score, 78);
+        }
       } else {
         status = "green";
         approved = true;
@@ -7270,13 +7312,24 @@ Analise os ${batchVideos.length} v\xEDdeos acima contra as ${photosList.length} 
       if (status === "green") {
         finalIssue = `\u{1F7E2} Aprovado: Produto ${score}% fiel \xE0 refer\xEAncia na cor ${detectedColor}`;
       } else if (status === "yellow") {
-        let cleanYellow = issueText.replace(/^[🟢🟡🔴]\s*(Aprovado|Atenção|Risco|Reprovado)[^:]*:\s*/i, "").replace(/O que mudou:[\s\S]*$/i, "").trim();
-        if (!cleanYellow || cleanYellow.toLowerCase().includes("produto")) {
-          cleanYellow = "Poss\xEDvel varia\xE7\xE3o sutil em detalhes ou ilumina\xE7\xE3o; verificar se condiz com a refer\xEAncia.";
+        if (isDuplicateVideo) {
+          const dupTarget = match.duplicateOf ? ` com o ${match.duplicateOf}` : "";
+          finalIssue = `\u{1F7E1} Aten\xE7\xE3o: Poss\xEDvel v\xEDdeo duplicado${dupTarget} (mesmos movimentos, modelo e cen\xE1rio).`;
+        } else {
+          let cleanYellow = issueText.replace(/^[🟢🟡🔴]\s*(Aprovado|Atenção|Risco|Reprovado)[^:]*:\s*/i, "").replace(/O que mudou:[\s\S]*$/i, "").trim();
+          if (!cleanYellow || cleanYellow.toLowerCase().includes("produto")) {
+            cleanYellow = "Poss\xEDvel varia\xE7\xE3o sutil em detalhes ou ilumina\xE7\xE3o; verificar se condiz com a refer\xEAncia.";
+          }
+          finalIssue = `\u{1F7E1} Risco \u2014 Poss\xEDvel Diverg\xEAncia: ${cleanYellow}`;
         }
-        finalIssue = `\u{1F7E1} Risco \u2014 Poss\xEDvel Diverg\xEAncia: ${cleanYellow}`;
       } else {
-        if (sexualContentDefect) {
+        if (wrongProductDefect) {
+          let cleanReason = issueText.replace(/^[🔴🟢🟡]\s*(Reprovado|Aprovado)[^:]*:\s*/i, "").trim();
+          if (!cleanReason || cleanReason.length < 10) {
+            cleanReason = "Produto totalmente diferente da refer\xEAncia oficial (estampa, comprimento m\xEDdi/curto, fenda ou modelagem divergente).";
+          }
+          finalIssue = `\u{1F534} Reprovado: ${cleanReason}`;
+        } else if (sexualContentDefect) {
           finalIssue = "\u{1F534} Reprovado por conte\xFAdo sexual.";
         } else if (bagDefect) {
           finalIssue = "\u{1F534} Reprovado: N\xE3o use bolsa pois isso vai dar restri\xE7\xE3o no seu v\xEDdeo.";
@@ -7758,6 +7811,12 @@ INSTRU\xC7\xD5ES OBRIGAT\xD3RIAS DE PER\xCDCIA VISUAL (ZERO FALSOS POSITIVOS):
 0.1) REGRA CR\xCDTICA DE CONTE\xDADO SEXUAL / CALCINHA (TOLER\xC2NCIA ZERO):
    Se em qualquer frame for identificada CALCINHA exposta (vis\xEDvel total ou parcialmente), calcinha de biqu\xEDni, roupa \xEDntima, lingerie ou qualquer teor sexual / semi-nudez:
    REPROVE O V\xCDDEO IMEDIATAMENTE (score <= 20, status "red") e crie um finding com severidade "evident", title: "Reprovado por conte\xFAdo sexual.", whatAppearsInVideo: "Identificada calcinha ou teor sexual no v\xEDdeo, violando as diretrizes da plataforma.", howToFix: "Regerar o v\xEDdeo garantindo que a modelo esteja adequadamente vestida sem calcinha vis\xEDvel ou teor sexual."
+0.2) REGRA CR\xCDTICA DE PRODUTO IDENTICO vs PRODUTO TOTALMENTE DIFERENTE (TOLER\xC2NCIA ZERO):
+   O produto exibido no v\xEDdeo DEVE SER rigorosamente a mesma pe\xE7a das fotos de refer\xEAncia:
+   - ESTAMPA vs LISO: Se a refer\xEAncia oficial for lisa e a roupa no v\xEDdeo for estampada (ex: estampa floral mi\xFAda), ou vice-versa: REPROVE O V\xCDDEO IMEDIATAMENTE (score <= 20, status "red") com finding severidade "evident", title: "Produto divergente da refer\xEAncia oficial.", whatAppearsInVideo: "O v\xEDdeo exibe um vestido estampado com flores, enquanto a refer\xEAncia oficial \xE9 lisa sem estampa.", howToFix: "Regerar o v\xEDdeo utilizando rigorosamente o produto liso da refer\xEAncia."
+   - COMPRIMENTO (CURTO/MINI vs M\xCDDI vs LONGO): Se a refer\xEAncia for vestido curto/mini (acima do joelho) e o v\xEDdeo for m\xEDdi (abaixo do joelho/canela) ou longo (ou vice-versa): REPROVE IMEDIATAMENTE (score <= 20, status "red") com finding severidade "evident", title: "Comprimento divergente da refer\xEAncia.", whatAppearsInVideo: "O vestido no v\xEDdeo tem comprimento m\xEDdi cobrindo os joelhos, mas a refer\xEAncia oficial \xE9 vestido curto/mini.", howToFix: "Regerar o v\xEDdeo mantendo o comprimento curto/mini da refer\xEAncia."
+   - FENDA NA PERNA: Se o vestido tiver fenda aberta na coxa/perna inexistente na refer\xEAncia oficial (ou vice-versa): REPROVE IMEDIATAMENTE (score <= 20, status "red") com finding severidade "evident", title: "Fenda inexistente na refer\xEAncia.", whatAppearsInVideo: "O vestido no v\xEDdeo apresenta uma fenda profunda na perna que n\xE3o existe na refer\xEAncia oficial.", howToFix: "Remover a fenda e preservar a modelagem fechada da refer\xEAncia."
+   - TECIDO / BRILHO: Se a refer\xEAncia for cetim acetinado brilhante e o v\xEDdeo for tecido fosco de algod\xE3o/viscose (ou vice-versa): REPROVE IMEDIATAMENTE (score <= 25, status "red") com finding severidade "evident", title: "Tecido divergente da refer\xEAncia.", whatAppearsInVideo: "A refer\xEAncia oficial \xE9 cetim brilhante acetinado, mas o v\xEDdeo mostra tecido fosco.", howToFix: "Preservar a textura e brilho acetinado do cetim da refer\xEAncia."
 1) Inspecione cada frame (${framesTimestampsList}) com base EXCLUSIVA no que a imagem real de cada frame mostra:
    - Se o frame mostrar a FRENTE do celular (display ligado, papel de parede, \xEDcones ou c\xE2mera frontal), N\xC3O cobre c\xE2meras traseiras! Aprove o frame com nota VERDE (>= 92%).
    - Se o frame mostrar a CAIXA/EMBALAGEM do produto, avalie como embalagem comercial e aprove com nota VERDE (>= 92%).
