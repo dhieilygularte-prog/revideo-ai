@@ -197,21 +197,9 @@ export const PRODUCT_HEADLINES_GROUPED: Record<
         sourceProduct: 'Vestido',
       },
       {
-        headline: 'Sem acreditar que esse vestido perfeito está tão de graça 😍',
-        hashtags: '#vestido #modafeminina #roupasfemininas #tiktokshop',
-        flowerSymbol: '😍',
-        sourceProduct: 'Vestido',
-      },
-      {
-        headline: 'SIM esse vestido perfeito está está quase de graça 🥺',
+        headline: 'SIM esse vestido perfeito está quase de graça 🥺',
         hashtags: '#vestido #modafeminina #fyp #look',
         flowerSymbol: '🥺',
-        sourceProduct: 'Vestido',
-      },
-      {
-        headline: 'Sim, esse vestido perfeito está literalmente de graça 🤍',
-        hashtags: '#vestido #vestidos #vestidofeminino #foryou',
-        flowerSymbol: '🤍',
         sourceProduct: 'Vestido',
       },
       {
@@ -284,12 +272,6 @@ export const PRODUCT_HEADLINES_GROUPED: Record<
         headline: 'Amo comprar depois do hype, tipo olha o preço desse vestido ✿',
         hashtags: '#vestido #vestidos #vestidofeminino #pangeia #modafeminina',
         flowerSymbol: '✿',
-        sourceProduct: 'Vestido',
-      },
-      {
-        headline: 'Sim, esse vestido perfeito está literalmente de graça 🌸',
-        hashtags: '#fyp #foryou #modafeminina #vestido',
-        flowerSymbol: '🌸',
         sourceProduct: 'Vestido',
       },
       {

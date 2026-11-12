@@ -5457,7 +5457,7 @@ ${pInfo}
 
 ESTRUTURA OBRIGAT\xD3RIA E RIGOROSA:
 CENA 1 (Gancho no sal\xE3o de leil\xE3o - 0 a 12s):
-"Quem d\xE1 ${l1Text} reais nesse ${shortName}? Quem d\xE1 ${l2Text}? Dou-lhe uma! Pera\xED... Olha o valor desse ${shortName} no TikTok Shop. T\xE1 de gra\xE7a!"
+"Quem d\xE1 ${l1Text} reais nesse ${shortName}? Quem d\xE1 ${l2Text}? Dou-lhe uma! Pera\xED... Olha o valor desse ${shortName} no TikTok Shop. T\xE1 quase de gra\xE7a!"
 
 CENA 2 (Revela\xE7\xE3o e 2 diferenciais reais do produto - 12 a 24s):
 "Leil\xE3o cancelado! Esse \xE9 o ${fullName}. [DIFERENCIAL 1]. [DIFERENCIAL 2]."
@@ -5487,13 +5487,13 @@ Responda EXCLUSIVAMENTE em formato JSON com esta estrutura:
         const rawJson = aiOutput.text.replace(/```json\s*/i, "").replace(/```\s*$/i, "").trim();
         let parsed = JSON.parse(rawJson);
         const cleanSpeech = (t) => normalizeVoiceText(t).replace(/[®™©℠]/g, "").replace(/[*_~•|/\\#]/g, " ").replace(/\.{2,}/g, ".").replace(/\s+/g, " ").trim();
-        const cena1 = cleanSpeech(parsed.cena1 || `Quem d\xE1 ${l1Text} reais nesse ${shortName}? Quem d\xE1 ${l2Text}? Dou-lhe uma! Pera\xED... Olha o valor desse ${shortName} no TikTok Shop. T\xE1 de gra\xE7a!`);
+        const cena1 = cleanSpeech(parsed.cena1 || `Quem d\xE1 ${l1Text} reais nesse ${shortName}? Quem d\xE1 ${l2Text}? Dou-lhe uma! Pera\xED... Olha o valor desse ${shortName} no TikTok Shop. T\xE1 quase de gra\xE7a!`);
         const cena2 = cleanSpeech(parsed.cena2 || `Leil\xE3o cancelado! Esse \xE9 o ${fullName}. Alta performance e velocidade. Constru\xE7\xE3o refor\xE7ada de longa durabilidade.`);
         const cena3 = cleanSpeech(parsed.cena3 || `Por esse valor, n\xE3o tem como fazer leil\xE3o! Clica no carrinho laranja e garante o seu!`);
         const cleanShortClean = shortName.replace(/[®™©℠]/g, "").trim();
         const fallback1A = `Quem d\xE1 ${l1Text} reais nesse ${cleanShortClean}?`;
         const fallback1B = `Quem d\xE1 ${l2Text}? Dou-lhe uma!`;
-        const fallback1C = `Pera\xED... Olha o valor desse ${cleanShortClean} no TikTok Shop. T\xE1 de gra\xE7a!`;
+        const fallback1C = `Pera\xED... Olha o valor desse ${cleanShortClean} no TikTok Shop. T\xE1 quase de gra\xE7a!`;
         let c1A = fallback1A;
         let c1B = fallback1B;
         let c1C = fallback1C;

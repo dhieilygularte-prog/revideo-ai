@@ -603,7 +603,7 @@ export function buildLeilaoPresenter(additionalInstructions?: string): {
 
 /**
  * Constrói as Falas Oficiais do Modo Leilão usando a matriz fixa da Correção 2:
- * - CENA 1: 1A = "Quem dá [L1] reais nesse [NOME CURTO]?" · 1B = "Quem dá [L2]? Dou-lhe uma!" · 1C = "Peraí... Olha o valor desse [NOME CURTO] no TikTok Shop. Tá de graça!"
+ * - CENA 1: 1A = "Quem dá [L1] reais nesse [NOME CURTO]?" · 1B = "Quem dá [L2]? Dou-lhe uma!" · 1C = "Peraí... Olha o valor desse [NOME CURTO] no TikTok Shop. Tá quase de graça!"
  * - CENA 2: 2A = "Leilão cancelado! Esse é o [NOME COMPLETO]." · 2B = "[BENEFÍCIO 1]." · 2C = "[BENEFÍCIO 2]."
  * - CENA 3: "Por esse valor, não tem como fazer leilão! Clica no carrinho laranja e garante o seu!"
  */
@@ -639,7 +639,7 @@ export function buildLeilaoSpeeches(params: {
   // CENA 1: fiel ao modelo original (dividida em 3 partes: 1A, 1B e 1C)
   const cena1A = `Quem dá ${l1Words} reais nesse ${cleanShortName}?`;
   const cena1B = `Quem dá ${l2Words}? Dou-lhe uma!`;
-  const cena1C = `Peraí... Olha o valor desse ${cleanShortName} no TikTok Shop. Tá de graça!`;
+  const cena1C = `Peraí... Olha o valor desse ${cleanShortName} no TikTok Shop. Tá quase de graça!`;
   const cena1 = `${cena1A} ${cena1B} ${cena1C}`.trim();
 
   // CENA 2: fiel ao modelo original

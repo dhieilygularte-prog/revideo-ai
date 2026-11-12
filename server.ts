@@ -4224,7 +4224,7 @@ ${pInfo}
 
 ESTRUTURA OBRIGATÓRIA E RIGOROSA:
 CENA 1 (Gancho no salão de leilão - 0 a 12s):
-"Quem dá ${l1Text} reais nesse ${shortName}? Quem dá ${l2Text}? Dou-lhe uma! Peraí... Olha o valor desse ${shortName} no TikTok Shop. Tá de graça!"
+"Quem dá ${l1Text} reais nesse ${shortName}? Quem dá ${l2Text}? Dou-lhe uma! Peraí... Olha o valor desse ${shortName} no TikTok Shop. Tá quase de graça!"
 
 CENA 2 (Revelação e 2 diferenciais reais do produto - 12 a 24s):
 "Leilão cancelado! Esse é o ${fullName}. [DIFERENCIAL 1]. [DIFERENCIAL 2]."
@@ -4264,14 +4264,14 @@ Responda EXCLUSIVAMENTE em formato JSON com esta estrutura:
             .replace(/\s+/g, ' ')
             .trim();
 
-        const cena1 = cleanSpeech(parsed.cena1 || `Quem dá ${l1Text} reais nesse ${shortName}? Quem dá ${l2Text}? Dou-lhe uma! Peraí... Olha o valor desse ${shortName} no TikTok Shop. Tá de graça!`);
+        const cena1 = cleanSpeech(parsed.cena1 || `Quem dá ${l1Text} reais nesse ${shortName}? Quem dá ${l2Text}? Dou-lhe uma! Peraí... Olha o valor desse ${shortName} no TikTok Shop. Tá quase de graça!`);
         const cena2 = cleanSpeech(parsed.cena2 || `Leilão cancelado! Esse é o ${fullName}. Alta performance e velocidade. Construção reforçada de longa durabilidade.`);
         const cena3 = cleanSpeech(parsed.cena3 || `Por esse valor, não tem como fazer leilão! Clica no carrinho laranja e garante o seu!`);
 
         const cleanShortClean = shortName.replace(/[®™©℠]/g, '').trim();
         const fallback1A = `Quem dá ${l1Text} reais nesse ${cleanShortClean}?`;
         const fallback1B = `Quem dá ${l2Text}? Dou-lhe uma!`;
-        const fallback1C = `Peraí... Olha o valor desse ${cleanShortClean} no TikTok Shop. Tá de graça!`;
+        const fallback1C = `Peraí... Olha o valor desse ${cleanShortClean} no TikTok Shop. Tá quase de graça!`;
 
         let c1A = fallback1A;
         let c1B = fallback1B;
