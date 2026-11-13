@@ -237,14 +237,45 @@ export async function exportAnaMariaZip(result: AnaMariaResultState): Promise<vo
   const cleanName = sanitizeCleanName(result.productName);
   const timeStr = formatTimeForFilename(result.timestamp);
   const modelLabel = getImageModelLabel(result.imageModel);
-  // 1. Imagem Principal padronizada em 1080x1920 PNG (~2MB): "[Nome da Peça] [Hora da Geração] [Gerador].png"
-  const imageFileName = buildImageFileName(result.productName, result.timestamp, result.imageModel, 'png');
-  try {
-    const imgBlob = await ensureHighResAnaMariaBlob(result.imageUrl, 1080, 1920);
-    const imgBuffer = await imgBlob.arrayBuffer();
-    zip.file(imageFileName, imgBuffer);
-  } catch (err) {
-    console.warn('Falha ao adicionar imagem de alta resolução no zip:', err);
+  // 1. Imagem(ns) padronizada(s) em 1080x1920 PNG
+  const imagesToExport =
+    result.generatedImages && result.generatedImages.length > 0
+      ? result.generatedImages
+      : [
+          {
+            id: result.id,
+            imageUrl: result.imageUrl,
+            imageModel: result.imageModel,
+            colorGroupIndex: result.activeColorGroupIndex || 0,
+            colorName: 'Cor Principal',
+            timestamp: result.timestamp,
+          },
+        ];
+
+  const usedFileNames = new Set<string>();
+  for (let i = 0; i < imagesToExport.length; i++) {
+    const imgItem = imagesToExport[i];
+    const itemNamePrefix =
+      imagesToExport.length > 1
+        ? `${cleanName} - Cor ${imgItem.colorGroupIndex + 1}`
+        : result.productName;
+    let imageFileName = buildImageFileName(
+      itemNamePrefix,
+      imgItem.timestamp || result.timestamp,
+      imgItem.imageModel || result.imageModel,
+      'png'
+    );
+    if (usedFileNames.has(imageFileName)) {
+      imageFileName = imageFileName.replace(/\.png$/i, ` (${i + 1}).png`);
+    }
+    usedFileNames.add(imageFileName);
+    try {
+      const imgBlob = await ensureHighResAnaMariaBlob(imgItem.imageUrl, 1080, 1920);
+      const imgBuffer = await imgBlob.arrayBuffer();
+      zip.file(imageFileName, imgBuffer);
+    } catch (err) {
+      console.warn(`Falha ao adicionar imagem ${i + 1} no zip:`, err);
+    }
   }
 
   // 2. Doc de Hashtags e Headline: "Hastags e Headline - [Nome da Peça] [Hora da Geração].txt"

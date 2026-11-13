@@ -213,6 +213,7 @@ export default function App() {
   const [anaMariaForm, setAnaMariaForm] = useState<AnaMariaFormState>({
     productName: '',
     referencePhotos: [],
+    extraColorPhotos: [],
     influencer: 'Mulher',
     bodyType: 'normal',
     presentationMode: 'mirror_selfie',
@@ -223,6 +224,9 @@ export default function App() {
     selectedModelGalleryUrl: undefined,
     generateModelViaPrompt: false,
     modelScenarioSource: 'model',
+    sameModelForAllColors: false,
+    sameScenarioForAllColors: false,
+    generateOneColorAtATime: false,
     additionalInstructions: '',
     imageModel: 'openai',
     videoPromptLimit: 'unlimited',
@@ -1312,6 +1316,9 @@ export default function App() {
       selectedModelGalleryUrl: undefined,
       generateModelViaPrompt: false,
       modelScenarioSource: 'model',
+      sameModelForAllColors: false,
+      sameScenarioForAllColors: false,
+      generateOneColorAtATime: false,
       additionalInstructions: '',
       imageModel: 'openai',
       videoPromptLimit: 'unlimited',
@@ -2439,6 +2446,7 @@ export default function App() {
               setAnaMariaForm({
                 productName: item.productName,
                 referencePhotos: item.referencePhotos,
+                extraColorPhotos: [],
                 influencer: item.influencer,
                 bodyType: item.bodyType,
                 presentationMode: item.presentationMode || 'mirror_selfie',
@@ -2452,6 +2460,9 @@ export default function App() {
                 selectedModelGalleryNumber: item.selectedModelGalleryNumber,
                 selectedModelGalleryUrl: item.selectedModelGalleryUrl,
                 modelScenarioSource: item.modelScenarioSource || 'model',
+                sameModelForAllColors: Boolean(item.sameModelForAllColors),
+                sameScenarioForAllColors: Boolean(item.sameScenarioForAllColors),
+                generateOneColorAtATime: Boolean(item.generateOneColorAtATime),
               });
               setAnaMariaPage('results');
               setIsAnaMariaHistoryOpen(false);

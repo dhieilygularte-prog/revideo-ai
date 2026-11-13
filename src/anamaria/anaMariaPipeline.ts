@@ -6,6 +6,7 @@ import {
   AnaMariaMasterId,
   AnaMariaColorGroup,
   AnaMariaDressInspection,
+  AnaMariaGeneratedImageItem,
 } from './types';
 import {
   buildAnaMariaImagePrompt,
@@ -99,15 +100,30 @@ export function saveAnaMariaResult(result: AnaMariaResultState): void {
   try {
     const history = getAnaMariaHistory();
     const filtered = history.filter((h) => h.id !== result.id);
-    // Mantém apenas a 1ª foto de referência no histórico do localStorage para não estourar a cota de 5MB
+    // Evita estourar a cota de 5MB do localStorage quando há várias imagens em lote/base64
+    const compactImages = result.generatedImages?.map((img) => ({
+      ...img,
+      imageUrl: img.imageUrl.startsWith('data:') && img.imageUrl.length > 250_000 ? '' : img.imageUrl,
+    })).filter((img) => Boolean(img.imageUrl));
     const compactResult: AnaMariaResultState = {
       ...result,
       referencePhotos: result.referencePhotos.slice(0, 1),
+      generatedImages: compactImages && compactImages.length > 0 ? compactImages.slice(0, 4) : undefined,
     };
-    const updated = [compactResult, ...filtered].slice(0, 12);
+    const updated = [compactResult, ...filtered].slice(0, 10);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   } catch (err) {
-    console.warn('Erro ao salvar no histórico do Modo Ana Maria:', err);
+    console.warn('Erro ao salvar no histórico do Modo Ana Maria (tentando versão compacta):', err);
+    try {
+      const minimalResult: AnaMariaResultState = {
+        ...result,
+        referencePhotos: [],
+        generatedImages: undefined,
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([minimalResult]));
+    } catch {
+      // ignora silenciosamente se localStorage estiver cheio
+    }
   }
 }
 
@@ -658,8 +674,188 @@ async function generateSceneImageWithFallback(params: {
   }
 }
 
+function pickDistinctGalleryScenario(
+  activeMode: 'mirror_selfie' | 'pov' | 'com_rosto',
+  excludeIds: Set<string>,
+  excludeNumbers: Set<number>,
+  lastId?: string,
+  lastNumber?: number
+) {
+  const pool = activeMode === 'pov' ? POV_SCENARIO_GALLERY_ITEMS : SCENARIO_GALLERY_ITEMS;
+  let candidates = pool.filter(
+    (s) => !excludeIds.has(s.id) && !excludeNumbers.has(s.number)
+  );
+  if (candidates.length === 0) {
+    candidates = pool.filter((s) => s.id !== lastId && s.number !== lastNumber);
+  }
+  if (candidates.length === 0) candidates = pool;
+  return candidates[Math.floor(Math.random() * candidates.length)] || pool[0];
+}
+
+function pickDistinctGalleryModel(
+  activeMode: 'mirror_selfie' | 'pov' | 'com_rosto',
+  excludeIds: Set<string>,
+  excludeNumbers: Set<number>,
+  lastId?: string,
+  lastNumber?: number
+) {
+  const pool = getModelGalleryForMode(activeMode);
+  let candidates = pool.filter(
+    (m) => !excludeIds.has(m.id) && !excludeNumbers.has(m.number)
+  );
+  if (candidates.length === 0) {
+    candidates = pool.filter((m) => m.id !== lastId && m.number !== lastNumber);
+  }
+  if (candidates.length === 0) candidates = pool;
+  return candidates[Math.floor(Math.random() * candidates.length)] || pool[0];
+}
+
+function buildAnaMariaDefaultAudit(
+  bodyType: AnaMariaFormState['bodyType'],
+  shoeDescription: string
+): AnaMariaAudit {
+  return {
+    score: 96,
+    status: 'green',
+    label: 'Verde — Fidelidade Aprovada',
+    criteria: [
+      { name: 'Corte Queixo', score: 100, status: 'green' },
+      { name: bodyType === 'plus_size' ? 'Plus Size (50-54)' : 'Curvas & Silhueta', score: 96, status: 'green' },
+      { name: 'Zero Tatuagens', score: 100, status: 'green' },
+      { name: 'Calçado Condicional', score: 95, status: 'green' },
+    ],
+    issues: [
+      `Calçado condicional selecionado: ${shoeDescription}`,
+      'Enquadramento rigoroso do queixo para baixo sem rosto',
+      bodyType === 'plus_size'
+        ? 'Estrutura corporal autêntica Plus Size (manequim 50-54) com celulite natural nas coxas e pele sem bronzeado artificial'
+        : 'Corpo com curvas e silhueta acentuadas',
+      'Zero tatuagens garantido',
+    ],
+  };
+}
+
+async function executeColorImageGeneration(params: {
+  itemForm: AnaMariaFormState;
+  colorPhotos: string[];
+  colorGroupIndex: number;
+  colorName: string;
+  totalColors: number;
+  prevColorName?: string;
+  dressInspection?: AnaMariaDressInspection;
+  aiProfile: AIProfile;
+  overrideModelBase64?: string;
+  overrideModelScenarioSource?: 'model' | 'gallery';
+  displayScenarioId?: string;
+  displayScenarioNumber?: number;
+  displayModelScenarioSource?: 'model' | 'gallery';
+  lockSameModelAndScenarioNote?: boolean;
+  onFallback?: () => void;
+}): Promise<{
+  item: AnaMariaGeneratedImageItem;
+  imagePrompt: string;
+  shoeCategory: AnaMariaResultState['shoeCategory'];
+  shoeDescription: string;
+}> {
+  const {
+    itemForm,
+    colorPhotos,
+    colorGroupIndex,
+    colorName,
+    totalColors,
+    prevColorName,
+    dressInspection,
+    aiProfile,
+    overrideModelBase64,
+    overrideModelScenarioSource,
+    displayScenarioId,
+    displayScenarioNumber,
+    displayModelScenarioSource,
+    lockSameModelAndScenarioNote,
+    onFallback,
+  } = params;
+
+  const activeMode = itemForm.presentationMode || 'mirror_selfie';
+  const payloadSource = overrideModelScenarioSource || itemForm.modelScenarioSource || 'model';
+
+  const { prompt: imagePrompt, shoeCategory, shoeDescription } = buildAnaMariaImagePrompt(
+    { ...itemForm, modelScenarioSource: payloadSource },
+    'hall_espelho',
+    dressInspection
+  );
+
+  const colorInstruction =
+    totalColors > 1 && colorName
+      ? `\n\nATENÇÃO À COR EXCLUSIVA (${colorName}): Reproduza EXCLUSIVAMENTE a peça na cor da foto de referência de produto ativa desta geração.${prevColorName && prevColorName !== colorName ? ` NÃO mantenha nem repita a cor anterior (${prevColorName}).` : ''}`
+      : '';
+  const sameSceneNote = lockSameModelAndScenarioNote
+    ? '\n\nEDIÇÃO FIEL DA MESMA MODELO E MESMO CENÁRIO: Mantenha 100% intactos e idênticos a mesma mulher, o mesmo rosto/enquadramento, a mesma pose e o mesmo cenário da imagem base, alterando EXCLUSIVAMENTE a roupa para a cor da foto de produto ativa.'
+    : '';
+  const effectivePrompt = `${imagePrompt}${colorInstruction}${sameSceneNote}`;
+
+  const [activeScenarioBase64, resolvedModelBase64, { primaryPhoto, supplementaryPhotos }] =
+    await Promise.all([
+      payloadSource === 'model' && overrideModelBase64
+        ? Promise.resolve(undefined)
+        : resolveScenarioBase64(itemForm),
+      overrideModelBase64 ? Promise.resolve(overrideModelBase64) : resolveModelBase64(itemForm),
+      prepareProductPhotosForPayload(colorPhotos),
+    ]);
+
+  const { imageUrl, usedModel } = await generateSceneImageWithFallback({
+    requestedModel: itemForm.imageModel,
+    onFallback,
+    payload: {
+      prompt: effectivePrompt,
+      productPhotoBase64: primaryPhoto,
+      productPhotosBase64: supplementaryPhotos,
+      scenarioPhotoBase64: activeScenarioBase64,
+      modelReferenceBase64: resolvedModelBase64,
+      selectedModelGalleryId: itemForm.selectedModelGalleryId,
+      selectedModelGalleryNumber: itemForm.selectedModelGalleryNumber,
+      generateModelViaPrompt: overrideModelBase64 ? false : Boolean(itemForm.generateModelViaPrompt),
+      modelScenarioSource: payloadSource,
+      isAnaMariaMode: true,
+      presentationMode: activeMode,
+      selectedMasterId: itemForm.selectedMasterId,
+      selectedScenarioNumber: itemForm.selectedScenarioNumber,
+      selectedScenarioId: itemForm.selectedScenarioId,
+      influencer: itemForm.influencer,
+      aspectRatio: '9:16',
+      bodyType: itemForm.bodyType,
+      aiProfile,
+      additionalInstructions: itemForm.additionalInstructions,
+    },
+  });
+
+  const ts = Date.now();
+  const audit = buildAnaMariaDefaultAudit(itemForm.bodyType, shoeDescription);
+
+  return {
+    item: {
+      id: `am_img_${ts}_${colorGroupIndex}_${Math.random().toString(36).substring(2, 6)}`,
+      imageUrl,
+      imageModel: usedModel,
+      colorGroupIndex,
+      colorName,
+      timestamp: ts,
+      selectedScenarioId: displayScenarioId ?? itemForm.selectedScenarioId,
+      selectedScenarioNumber: displayScenarioNumber ?? itemForm.selectedScenarioNumber,
+      selectedModelGalleryId: itemForm.selectedModelGalleryId,
+      selectedModelGalleryNumber: itemForm.selectedModelGalleryNumber,
+      selectedModelGalleryUrl: itemForm.selectedModelGalleryUrl,
+      modelScenarioSource: displayModelScenarioSource ?? payloadSource,
+      generateModelViaPrompt: itemForm.generateModelViaPrompt,
+      audit,
+    },
+    imagePrompt,
+    shoeCategory,
+    shoeDescription,
+  };
+}
+
 /**
- * Pipeline principal do Modo Ana Maria (otimizado para execução rápida <25s sem perda de qualidade)
+ * Pipeline principal do Modo Ana Maria (otimizado para execução rápida e suporte a geração em lote de múltiplas cores)
  */
 export async function runAnaMariaPipeline(
   rawForm: AnaMariaFormState,
@@ -668,6 +864,7 @@ export async function runAnaMariaPipeline(
 ): Promise<AnaMariaResultState> {
   const { onProgress = () => {}, onStatusMessage = () => {} } = callbacks || {};
 
+  const fieldB = (rawForm.extraColorPhotos || []).filter(Boolean);
   const { allPhotos, colorGroups } = buildExplicitColorGroups(
     rawForm.referencePhotos,
     rawForm.extraColorPhotos
@@ -676,167 +873,282 @@ export async function runAnaMariaPipeline(
     throw new Error('Por favor, anexe ao menos 1 foto de referência da peça.');
   }
 
-  const form = ensureAnaMariaModelAndScenario({
+  const hasMultipleColors = fieldB.length > 0 && colorGroups.length >= 2;
+  const sameModelForAllColors = Boolean(rawForm.sameModelForAllColors);
+  const sameScenarioForAllColors = Boolean(rawForm.sameScenarioForAllColors);
+  const generateOneColorAtATime = Boolean(rawForm.generateOneColorAtATime);
+  const shouldGenerateAllColorsAtOnce = hasMultipleColors && !generateOneColorAtATime;
+
+  const form0 = ensureAnaMariaModelAndScenario({
     ...rawForm,
     referencePhotos: allPhotos,
   });
-  const master = getMasterPromptById(form.selectedMasterId);
-  const activeMode = form.presentationMode || (master.isPov ? 'pov' : 'mirror_selfie');
+  const master = getMasterPromptById(form0.selectedMasterId);
+  const activeMode = form0.presentationMode || (master.isPov ? 'pov' : 'mirror_selfie');
 
-  const activeColorGroupIndex = 0;
-  const activeColorGroup = colorGroups[activeColorGroupIndex];
-  const activeColorPhotos = getActiveColorGroupPhotos(allPhotos, colorGroups, activeColorGroupIndex);
+  // Se todas as cores compartilham o mesmo cenário mas modelos diferentes, a Cor 1 também precisa usar o cenário da galeria
+  if (
+    shouldGenerateAllColorsAtOnce &&
+    sameScenarioForAllColors &&
+    !sameModelForAllColors &&
+    activeMode !== 'pov'
+  ) {
+    form0.modelScenarioSource = 'gallery';
+  }
+
+  const firstColorGroup = colorGroups[0];
+  const firstColorPhotos = getActiveColorGroupPhotos(allPhotos, colorGroups, 0);
 
   // 1. Inspeção rápida de comprimento real (Curto / Midi / Longo) e fenda assimétrica única (anti-simetria FLUX/vídeo)
-  onProgress('prompt_building', 25);
+  onProgress('prompt_building', 20);
   onStatusMessage(`Analisando detalhes reais da peça (${master.shortName})...`);
-  const dressInspection = await inspectDressAttributes(activeColorPhotos[0], form.productName);
-
-  const { prompt: imagePrompt, shoeCategory, shoeDescription } = buildAnaMariaImagePrompt(
-    form,
-    'hall_espelho',
-    dressInspection
-  );
+  const dressInspection = await inspectDressAttributes(firstColorPhotos[0], form0.productName);
 
   const { headline, hashtags } = resolveHeadlineAndHashtags({
-    productName: form.productName,
-    influencer: form.influencer,
-    bodyType: form.bodyType,
-    additionalInstructions: form.additionalInstructions,
+    productName: form0.productName,
+    influencer: form0.influencer,
+    bodyType: form0.bodyType,
+    additionalInstructions: form0.additionalInstructions,
   });
 
   const videoPrompt = buildAnaMariaVideoPrompt({
-    productName: form.productName,
-    influencer: form.influencer,
-    bodyType: form.bodyType,
+    productName: form0.productName,
+    influencer: form0.influencer,
+    bodyType: form0.bodyType,
     presentationMode: activeMode,
-    selectedMasterId: form.selectedMasterId,
-    limit: form.videoPromptLimit,
-    additionalInstructions: form.additionalInstructions,
-    hasSelectedScenario: Boolean(form.selectedScenarioId),
+    selectedMasterId: form0.selectedMasterId,
+    limit: form0.videoPromptLimit,
+    additionalInstructions: form0.additionalInstructions,
+    hasSelectedScenario: Boolean(form0.selectedScenarioId),
     dressInspection,
   });
 
-  // O Prompt Enxuto NÃO é gerado automaticamente; só é gerado sob demanda quando o usuário toca em GERAR PROMPT ENXUTO.
+  // 2. Geração da Cor 1 (e das demais cores em seguida caso "Gerar em uma cor por vez" esteja em Não)
+  onProgress('image_generation', 35);
+  const totalToGenerate = shouldGenerateAllColorsAtOnce ? colorGroups.length : 1;
+  onStatusMessage(
+    totalToGenerate > 1
+      ? `Gerando imagem 1 de ${totalToGenerate} (${firstColorGroup.colorName})...`
+      : `Gerando imagem vertical 9:16${form0.selectedScenarioNumber ? ` no Cenário ${form0.selectedScenarioNumber}` : ''}...`
+  );
 
-  // 2. Prompt exclusivo da cor ativa
-  onProgress('image_generation', 40);
-
-  const effectiveImagePrompt =
-    colorGroups.length > 1 && activeColorGroup?.colorName
-      ? `${imagePrompt}\n\nATENÇÃO À COR EXCLUSIVA: Reproduza EXCLUSIVAMENTE a peça na cor da foto de referência ativa (${activeColorGroup.colorName}).`
-      : imagePrompt;
-
-  // 3. Preparação em paralelo do Cenário + Fotos de Referência da cor ativa compactadas
-  onProgress('image_generation', 45);
-  const modelNameLabel =
-    form.imageModel === 'seedream_5_0_pro'
-      ? 'SeaDream 5.0 Pro'
-      : form.imageModel === 'seedream_4_5'
-      ? 'Seedream 4.5'
-      : form.imageModel === 'kling_3_0'
-      ? 'Kling Image 3.0 Omni'
-      : form.imageModel === 'kling_o3_fal'
-      ? 'Kling O3 Omni — fal.ai'
-      : form.imageModel === 'flux_2_pro_edit'
-      ? 'FLUX 2 Pro Edit — fal.ai'
-      : 'OpenAI';
-  const scenarioMsg = form.selectedScenarioNumber ? ` no Cenário ${form.selectedScenarioNumber}` : '';
-  const colorMsg =
-    colorGroups.length > 1 && activeColorGroup?.colorName
-      ? ` (Cor 1/${colorGroups.length}: ${activeColorGroup.colorName})`
-      : '';
-  onStatusMessage(`Gerando imagem vertical 9:16${scenarioMsg}${colorMsg} no ${modelNameLabel}...`);
-
-  const [activeScenarioBase64, activeModelBase64, { primaryPhoto, supplementaryPhotos }] = await Promise.all([
-    resolveScenarioBase64(form),
-    resolveModelBase64(form),
-    prepareProductPhotosForPayload(activeColorPhotos),
-  ]);
-
-  const { imageUrl: generatedImageUrl, usedModel } = await generateSceneImageWithFallback({
-    requestedModel: form.imageModel,
+  const firstGen = await executeColorImageGeneration({
+    itemForm: form0,
+    colorPhotos: firstColorPhotos,
+    colorGroupIndex: 0,
+    colorName: firstColorGroup.colorName,
+    totalColors: colorGroups.length,
+    dressInspection,
+    aiProfile,
     onFallback: () =>
       onStatusMessage(
         'OpenAI retornou erro — mudando automaticamente para SeaDream 5.0 Pro e gerando novamente...'
       ),
-    payload: {
-      prompt: effectiveImagePrompt,
-      productPhotoBase64: primaryPhoto,
-      productPhotosBase64: supplementaryPhotos,
-      scenarioPhotoBase64: activeScenarioBase64,
-      modelReferenceBase64: activeModelBase64,
-      selectedModelGalleryId: form.selectedModelGalleryId,
-      selectedModelGalleryNumber: form.selectedModelGalleryNumber,
-      generateModelViaPrompt: Boolean(form.generateModelViaPrompt),
-      modelScenarioSource: form.modelScenarioSource || 'model',
-      isAnaMariaMode: true,
-      presentationMode: activeMode,
-      selectedMasterId: form.selectedMasterId,
-      selectedScenarioNumber: form.selectedScenarioNumber,
-      selectedScenarioId: form.selectedScenarioId,
-      influencer: form.influencer,
-      aspectRatio: '9:16',
-      bodyType: form.bodyType,
-      aiProfile,
-      additionalInstructions: form.additionalInstructions,
-    },
   });
+
+  const generatedImages: AnaMariaGeneratedImageItem[] = [firstGen.item];
+
+  if (shouldGenerateAllColorsAtOnce && colorGroups.length > 1) {
+    const usedModelIds = new Set<string>();
+    const usedModelNumbers = new Set<number>();
+    if (form0.selectedModelGalleryId) usedModelIds.add(form0.selectedModelGalleryId);
+    if (typeof form0.selectedModelGalleryNumber === 'number') {
+      usedModelNumbers.add(form0.selectedModelGalleryNumber);
+    }
+
+    const usedScenarioIds = new Set<string>();
+    const usedScenarioNumbers = new Set<number>();
+    if (form0.selectedScenarioId) usedScenarioIds.add(form0.selectedScenarioId);
+    if (typeof form0.selectedScenarioNumber === 'number') {
+      usedScenarioNumbers.add(form0.selectedScenarioNumber);
+    }
+
+    const needsFirstImageAsModelBase =
+      sameModelForAllColors && (sameScenarioForAllColors || Boolean(form0.generateModelViaPrompt));
+    const cachedFirstImageB64 = needsFirstImageAsModelBase
+      ? await compressImageForFastTransfer(firstGen.item.imageUrl, 864, 0.88)
+      : undefined;
+
+    let lastModelId = form0.selectedModelGalleryId;
+    let lastModelNumber = form0.selectedModelGalleryNumber;
+    let lastScenarioId = form0.selectedScenarioId;
+    let lastScenarioNumber = form0.selectedScenarioNumber;
+
+    const remainingPlans = colorGroups.slice(1).map((group, offsetIdx) => {
+      const colorIdx = offsetIdx + 1;
+      const colorPhotos = getActiveColorGroupPhotos(allPhotos, colorGroups, colorIdx);
+
+      let nextModelId = form0.selectedModelGalleryId;
+      let nextModelNumber = form0.selectedModelGalleryNumber;
+      let nextModelUrl = form0.selectedModelGalleryUrl;
+      let nextGenerateViaPrompt = Boolean(form0.generateModelViaPrompt);
+
+      if (!sameModelForAllColors) {
+        const chosenModel = pickDistinctGalleryModel(
+          activeMode,
+          usedModelIds,
+          usedModelNumbers,
+          lastModelId,
+          lastModelNumber
+        );
+        if (chosenModel) {
+          nextModelId = chosenModel.id;
+          nextModelNumber = chosenModel.number;
+          nextModelUrl = chosenModel.fullUrl;
+          usedModelIds.add(chosenModel.id);
+          usedModelNumbers.add(chosenModel.number);
+          lastModelId = chosenModel.id;
+          lastModelNumber = chosenModel.number;
+        }
+        nextGenerateViaPrompt = false;
+      }
+
+      let nextScenarioId = form0.selectedScenarioId;
+      let nextScenarioNumber = form0.selectedScenarioNumber;
+      let nextScenarioUrl = form0.selectedScenarioUrl;
+      let nextScenarioBase64 = form0.selectedScenarioBase64;
+
+      if (!sameScenarioForAllColors) {
+        const chosenScenario = pickDistinctGalleryScenario(
+          activeMode,
+          usedScenarioIds,
+          usedScenarioNumbers,
+          lastScenarioId,
+          lastScenarioNumber
+        );
+        if (chosenScenario) {
+          nextScenarioId = chosenScenario.id;
+          nextScenarioNumber = chosenScenario.number;
+          nextScenarioUrl = chosenScenario.fullUrl;
+          nextScenarioBase64 = undefined;
+          usedScenarioIds.add(chosenScenario.id);
+          usedScenarioNumbers.add(chosenScenario.number);
+          lastScenarioId = chosenScenario.id;
+          lastScenarioNumber = chosenScenario.number;
+        }
+      }
+
+      const itemForm: AnaMariaFormState = {
+        ...form0,
+        referencePhotos: colorPhotos,
+        selectedModelGalleryId: nextModelId,
+        selectedModelGalleryNumber: nextModelNumber,
+        selectedModelGalleryUrl: nextModelUrl,
+        selectedScenarioId: nextScenarioId,
+        selectedScenarioNumber: nextScenarioNumber,
+        selectedScenarioUrl: nextScenarioUrl,
+        selectedScenarioBase64: nextScenarioBase64,
+        generateModelViaPrompt: nextGenerateViaPrompt,
+        modelScenarioSource:
+          sameModelForAllColors && sameScenarioForAllColors ? 'model' : 'gallery',
+      };
+
+      const useFirstAsFullBase = sameModelForAllColors && sameScenarioForAllColors;
+
+      return {
+        colorIdx,
+        group,
+        colorPhotos,
+        itemForm,
+        overrideModelBase64:
+          useFirstAsFullBase || (sameModelForAllColors && form0.generateModelViaPrompt)
+            ? cachedFirstImageB64
+            : undefined,
+        overrideModelScenarioSource: (useFirstAsFullBase ? 'model' : 'gallery') as
+          | 'model'
+          | 'gallery',
+        displayScenarioId: useFirstAsFullBase ? form0.selectedScenarioId : nextScenarioId,
+        displayScenarioNumber: useFirstAsFullBase
+          ? form0.selectedScenarioNumber
+          : nextScenarioNumber,
+        displayModelScenarioSource: useFirstAsFullBase
+          ? (form0.modelScenarioSource || 'model')
+          : ('gallery' as const),
+        lockSameModelAndScenarioNote: useFirstAsFullBase,
+      };
+    });
+
+    const resultsByIdx = new Array<AnaMariaGeneratedImageItem>(remainingPlans.length);
+    let completed = 1;
+    const concurrency = 2;
+
+    for (let i = 0; i < remainingPlans.length; i += concurrency) {
+      const chunk = remainingPlans.slice(i, i + concurrency);
+      await Promise.all(
+        chunk.map(async (plan, cIdx) => {
+          const gen = await executeColorImageGeneration({
+            itemForm: plan.itemForm,
+            colorPhotos: plan.colorPhotos,
+            colorGroupIndex: plan.colorIdx,
+            colorName: plan.group.colorName,
+            totalColors: colorGroups.length,
+            prevColorName: colorGroups[plan.colorIdx - 1]?.colorName,
+            dressInspection,
+            aiProfile,
+            overrideModelBase64: plan.overrideModelBase64,
+            overrideModelScenarioSource: plan.overrideModelScenarioSource,
+            displayScenarioId: plan.displayScenarioId,
+            displayScenarioNumber: plan.displayScenarioNumber,
+            displayModelScenarioSource: plan.displayModelScenarioSource,
+            lockSameModelAndScenarioNote: plan.lockSameModelAndScenarioNote,
+          });
+          resultsByIdx[i + cIdx] = gen.item;
+          completed++;
+          const pct = Math.min(96, 35 + Math.round((completed / totalToGenerate) * 60));
+          onProgress('image_generation', pct);
+          onStatusMessage(
+            `Gerando imagens das cores (${completed}/${totalToGenerate} concluídas)...`
+          );
+        })
+      );
+    }
+
+    for (const item of resultsByIdx) {
+      if (item) generatedImages.push(item);
+    }
+  }
 
   onProgress('completed', 100);
   onStatusMessage('Geração concluída com sucesso!');
 
-  const audit: AnaMariaAudit = {
-    score: 96,
-    status: 'green',
-    label: 'Verde — Fidelidade Aprovada',
-    criteria: [
-      { name: 'Corte Queixo', score: 100, status: 'green' },
-      { name: form.bodyType === 'plus_size' ? 'Plus Size (50-54)' : 'Curvas & Silhueta', score: 96, status: 'green' },
-      { name: 'Zero Tatuagens', score: 100, status: 'green' },
-      { name: 'Calçado Condicional', score: 95, status: 'green' },
-    ],
-    issues: [
-      `Calçado condicional selecionado: ${shoeDescription}`,
-      'Enquadramento rigoroso do queixo para baixo sem rosto',
-      form.bodyType === 'plus_size'
-        ? 'Estrutura corporal autêntica Plus Size (manequim 50-54) com celulite natural nas coxas e pele sem bronzeado artificial'
-        : 'Corpo com curvas e silhueta acentuadas',
-      'Zero tatuagens garantido',
-    ],
-  };
+  const activeColorGroupIndex = generatedImages[generatedImages.length - 1]?.colorGroupIndex ?? 0;
 
   const result: AnaMariaResultState = {
     id: `anamaria_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-    timestamp: Date.now(),
-    imageUrl: generatedImageUrl,
-    productName: form.productName,
+    timestamp: firstGen.item.timestamp,
+    imageUrl: firstGen.item.imageUrl,
+    generatedImages,
+    hasMultipleColors,
+    sameModelForAllColors,
+    sameScenarioForAllColors,
+    generateOneColorAtATime,
+    productName: form0.productName,
     referencePhotos: allPhotos,
     colorGroups,
     activeColorGroupIndex,
     dressInspection,
-    influencer: form.influencer,
-    bodyType: form.bodyType,
-    additionalInstructions: form.additionalInstructions,
-    imageModel: usedModel,
-    videoPromptLimit: form.videoPromptLimit,
+    influencer: form0.influencer,
+    bodyType: form0.bodyType,
+    additionalInstructions: form0.additionalInstructions,
+    imageModel: firstGen.item.imageModel,
+    videoPromptLimit: form0.videoPromptLimit,
     presentationMode: activeMode,
-    selectedMasterId: form.selectedMasterId || 'mestra_ana_maria',
-    selectedScenarioId: form.selectedScenarioId,
-    selectedScenarioNumber: form.selectedScenarioNumber,
-    selectedModelGalleryId: form.selectedModelGalleryId,
-    selectedModelGalleryNumber: form.selectedModelGalleryNumber,
-    selectedModelGalleryUrl: form.selectedModelGalleryUrl,
-    modelScenarioSource: form.modelScenarioSource || 'model',
-    generateModelViaPrompt: form.generateModelViaPrompt,
-    imagePrompt,
+    selectedMasterId: form0.selectedMasterId || 'mestra_ana_maria',
+    selectedScenarioId: firstGen.item.selectedScenarioId,
+    selectedScenarioNumber: firstGen.item.selectedScenarioNumber,
+    selectedModelGalleryId: firstGen.item.selectedModelGalleryId,
+    selectedModelGalleryNumber: firstGen.item.selectedModelGalleryNumber,
+    selectedModelGalleryUrl: firstGen.item.selectedModelGalleryUrl,
+    modelScenarioSource: firstGen.item.modelScenarioSource,
+    generateModelViaPrompt: form0.generateModelViaPrompt,
+    imagePrompt: firstGen.imagePrompt,
     videoPrompt,
     conciseVideoPrompt: undefined,
     headline,
     hashtags,
-    shoeCategory,
-    shoeDescription,
-    audit,
+    shoeCategory: firstGen.shoeCategory,
+    shoeDescription: firstGen.shoeDescription,
+    audit: firstGen.item.audit,
   };
 
   saveAnaMariaResult(result);
@@ -851,9 +1163,10 @@ export async function regenerateAnaMariaImage(params: {
   form: AnaMariaFormState;
   tweakPrompt?: string;
   imageModelOverride?: AnaMariaImageModel;
+  dressInspection?: AnaMariaDressInspection;
   aiProfile?: AIProfile;
 }): Promise<{ imageUrl: string; audit?: AnaMariaAudit; imageModel: AnaMariaImageModel }> {
-  const { form, tweakPrompt, imageModelOverride, aiProfile = 'openai' } = params;
+  const { form, tweakPrompt, imageModelOverride, dressInspection, aiProfile = 'openai' } = params;
 
   const effectiveImageModel = imageModelOverride || form.imageModel;
 
@@ -864,7 +1177,7 @@ export async function regenerateAnaMariaImage(params: {
       .join('\n');
   }
 
-  const { prompt } = buildAnaMariaImagePrompt(effectiveForm);
+  const { prompt } = buildAnaMariaImagePrompt(effectiveForm, 'hall_espelho', dressInspection);
   const [activeScenarioBase64, activeModelBase64, { primaryPhoto, supplementaryPhotos }] = await Promise.all([
     resolveScenarioBase64(effectiveForm),
     resolveModelBase64(effectiveForm),
@@ -969,14 +1282,16 @@ export interface AnaMariaColorVariationOutput {
   colorGroups: AnaMariaColorGroup[];
   activeColorGroupIndex: number;
   timestamp: number;
+  newImageItem: AnaMariaGeneratedImageItem;
 }
 
 async function generateAnaMariaColorVariation(params: {
   result: AnaMariaResultState;
+  baseImageItem?: AnaMariaGeneratedImageItem;
   aiProfile?: AIProfile;
   keepSameModelAndScenario: boolean;
 }): Promise<AnaMariaColorVariationOutput> {
-  const { result, aiProfile = 'openai', keepSameModelAndScenario } = params;
+  const { result, baseImageItem, aiProfile = 'openai', keepSameModelAndScenario } = params;
   const photos = (result.referencePhotos || []).filter(Boolean);
   if (photos.length === 0) {
     throw new Error('As fotos de referência não estão mais em memória. Gere o produto novamente na Página 1.');
@@ -994,43 +1309,81 @@ async function generateAnaMariaColorVariation(params: {
   const activeColorPhotos = getActiveColorGroupPhotos(photos, colorGroups, nextColorIdx);
 
   const activeMode = result.presentationMode || 'mirror_selfie';
+  const refImg =
+    baseImageItem ||
+    (result.generatedImages && result.generatedImages.length > 0
+      ? result.generatedImages[result.generatedImages.length - 1]
+      : undefined);
 
-  // Modo 1 ("Gerar igual em nova cor"): preserva exatamente a mesma modelo e cenário da imagem gerada anteriormente.
-  // Modo 2 ("Gerar em nova cor"): escolhe OUTRA modelo da galeria e OUTRO cenário da galeria mantendo o mesmo modo de apresentação.
-  let nextScenarioId = result.selectedScenarioId;
-  let nextScenarioNumber = result.selectedScenarioNumber;
-  let nextScenarioUrl: string | undefined;
-  let nextModelId = result.selectedModelGalleryId;
-  let nextModelNumber = result.selectedModelGalleryNumber;
-  let nextModelUrl = result.selectedModelGalleryUrl;
-  let effectiveSource: 'gallery' | 'model' = result.modelScenarioSource || 'model';
-  let effectiveGenerateViaPrompt = Boolean(result.generateModelViaPrompt);
+  const keepModel = keepSameModelAndScenario || Boolean(result.sameModelForAllColors);
+  const keepScenario = keepSameModelAndScenario || Boolean(result.sameScenarioForAllColors);
 
-  if (!keepSameModelAndScenario) {
-    const scenarioPool = activeMode === 'pov' ? POV_SCENARIO_GALLERY_ITEMS : SCENARIO_GALLERY_ITEMS;
-    const otherScenarios = scenarioPool.filter(
-      (s) => s.id !== result.selectedScenarioId && s.number !== result.selectedScenarioNumber
+  const refScenarioId = refImg?.selectedScenarioId ?? result.selectedScenarioId;
+  const refScenarioNumber = refImg?.selectedScenarioNumber ?? result.selectedScenarioNumber;
+  const refModelId = refImg?.selectedModelGalleryId ?? result.selectedModelGalleryId;
+  const refModelNumber = refImg?.selectedModelGalleryNumber ?? result.selectedModelGalleryNumber;
+  const refModelUrl = refImg?.selectedModelGalleryUrl ?? result.selectedModelGalleryUrl;
+  const refSource = refImg?.modelScenarioSource ?? result.modelScenarioSource ?? 'model';
+  const refGenerateViaPrompt =
+    refImg?.generateModelViaPrompt !== undefined
+      ? refImg.generateModelViaPrompt
+      : Boolean(result.generateModelViaPrompt);
+
+  const scenarioPool = activeMode === 'pov' ? POV_SCENARIO_GALLERY_ITEMS : SCENARIO_GALLERY_ITEMS;
+  let nextScenarioId = refScenarioId;
+  let nextScenarioNumber = refScenarioNumber;
+  let nextScenarioUrl = scenarioPool.find(
+    (s) => s.id === refScenarioId || s.number === refScenarioNumber
+  )?.fullUrl;
+
+  if (!keepScenario) {
+    const usedSIds = new Set<string>(refScenarioId ? [refScenarioId] : []);
+    const usedSNums = new Set<number>(
+      typeof refScenarioNumber === 'number' ? [refScenarioNumber] : []
     );
-    const scenarioCandidates = otherScenarios.length > 0 ? otherScenarios : scenarioPool;
-    const chosenScenario =
-      scenarioCandidates[Math.floor(Math.random() * scenarioCandidates.length)] || scenarioPool[0];
+    const chosenScenario = pickDistinctGalleryScenario(
+      activeMode,
+      usedSIds,
+      usedSNums,
+      refScenarioId,
+      refScenarioNumber
+    );
     nextScenarioId = chosenScenario?.id;
     nextScenarioNumber = chosenScenario?.number;
     nextScenarioUrl = chosenScenario?.fullUrl;
+  }
 
-    const modelGallery = getModelGalleryForMode(activeMode);
-    const otherModels = modelGallery.filter(
-      (m) => m.id !== result.selectedModelGalleryId && m.number !== result.selectedModelGalleryNumber
+  let nextModelId = refModelId;
+  let nextModelNumber = refModelNumber;
+  let nextModelUrl = refModelUrl;
+  let effectiveGenerateViaPrompt = refGenerateViaPrompt;
+
+  if (!keepModel) {
+    const usedMIds = new Set<string>(refModelId ? [refModelId] : []);
+    const usedMNums = new Set<number>(
+      typeof refModelNumber === 'number' ? [refModelNumber] : []
     );
-    const modelCandidates = otherModels.length > 0 ? otherModels : modelGallery;
-    const chosenModel = modelCandidates[Math.floor(Math.random() * modelCandidates.length)] || modelGallery[0];
+    const chosenModel = pickDistinctGalleryModel(
+      activeMode,
+      usedMIds,
+      usedMNums,
+      refModelId,
+      refModelNumber
+    );
     nextModelId = chosenModel?.id;
     nextModelNumber = chosenModel?.number;
     nextModelUrl = chosenModel?.fullUrl;
-
-    effectiveSource = 'gallery';
     effectiveGenerateViaPrompt = false;
   }
+
+  const useRefImageAsModelAndRoom = keepModel && keepScenario;
+  const refBaseUrl = refImg?.imageUrl || result.imageUrl;
+  const overrideModelBase64 =
+    (useRefImageAsModelAndRoom || (keepModel && refGenerateViaPrompt)) && refBaseUrl
+      ? await compressImageForFastTransfer(refBaseUrl, 864, 0.88)
+      : undefined;
+
+  const effectiveSource: 'gallery' | 'model' = useRefImageAsModelAndRoom ? 'model' : 'gallery';
 
   const nextForm: AnaMariaFormState = {
     productName: result.productName,
@@ -1048,75 +1401,47 @@ async function generateAnaMariaColorVariation(params: {
     selectedModelGalleryId: nextModelId,
     selectedModelGalleryNumber: nextModelNumber,
     selectedModelGalleryUrl: nextModelUrl,
-    modelScenarioSource: keepSameModelAndScenario ? 'model' : 'gallery',
-    generateModelViaPrompt: keepSameModelAndScenario ? false : effectiveGenerateViaPrompt,
+    modelScenarioSource: effectiveSource,
+    generateModelViaPrompt: overrideModelBase64 ? false : effectiveGenerateViaPrompt,
   };
 
-  const { prompt: basePrompt } = buildAnaMariaImagePrompt(
-    nextForm,
-    'hall_espelho',
-    result.dressInspection
-  );
-  const colorInstruction =
-    colorGroups.length > 1 && nextColorGroup?.colorName
-      ? `\n\nATENÇÃO À COR EXCLUSIVA DA NOVA VARIAÇÃO (${nextColorGroup.colorName}): Reproduza EXCLUSIVAMENTE a cor da roupa mostrada na foto de referência de produto ativa desta geração.${prevColorGroup?.colorName && prevColorGroup.colorName !== nextColorGroup.colorName ? ` NÃO mantenha nem repita a cor anterior (${prevColorGroup.colorName}).` : ''}`
-      : '';
-  const sameSceneNote = keepSameModelAndScenario
-    ? '\n\nEDIÇÃO FIEL DA MESMA MODELO E MESMO CENÁRIO ANTERIORES: Mantenha 100% intactos e idênticos a mesma mulher, o mesmo rosto/enquadramento, a mesma pose e o mesmo cenário da imagem base, alterando EXCLUSIVAMENTE a roupa para a nova cor da foto de produto ativa.'
-    : '';
-  const effectivePrompt = `${basePrompt}${colorInstruction}${sameSceneNote}`;
-
-  const [{ primaryPhoto, supplementaryPhotos }, activeScenarioBase64, activeModelBase64] = await Promise.all([
-    prepareProductPhotosForPayload(activeColorPhotos),
-    keepSameModelAndScenario ? Promise.resolve(undefined) : resolveScenarioBase64(nextForm),
-    keepSameModelAndScenario && result.imageUrl
-      ? compressImageForFastTransfer(result.imageUrl, 864, 0.88)
-      : resolveModelBase64(nextForm),
-  ]);
-
-  const { imageUrl: highResUrl, usedModel } = await generateSceneImageWithFallback({
-    requestedModel: result.imageModel,
-    payload: {
-      prompt: effectivePrompt,
-      productPhotoBase64: primaryPhoto,
-      productPhotosBase64: supplementaryPhotos,
-      scenarioPhotoBase64: activeScenarioBase64,
-      modelReferenceBase64: activeModelBase64,
-      selectedModelGalleryId: nextModelId,
-      selectedModelGalleryNumber: nextModelNumber,
-      generateModelViaPrompt: effectiveGenerateViaPrompt,
-      modelScenarioSource: keepSameModelAndScenario ? 'model' : 'gallery',
-      isAnaMariaMode: true,
-      presentationMode: activeMode,
-      selectedMasterId: result.selectedMasterId,
-      selectedScenarioNumber: nextScenarioNumber,
-      selectedScenarioId: nextScenarioId,
-      influencer: result.influencer,
-      aspectRatio: '9:16',
-      bodyType: result.bodyType,
-      aiProfile,
-      additionalInstructions: result.additionalInstructions,
-    },
+  const gen = await executeColorImageGeneration({
+    itemForm: nextForm,
+    colorPhotos: activeColorPhotos,
+    colorGroupIndex: nextColorIdx,
+    colorName: nextColorGroup?.colorName || `Cor ${nextColorIdx + 1}`,
+    totalColors: colorGroups.length,
+    prevColorName: prevColorGroup?.colorName,
+    dressInspection: result.dressInspection,
+    aiProfile,
+    overrideModelBase64,
+    overrideModelScenarioSource: effectiveSource,
+    displayScenarioId: useRefImageAsModelAndRoom ? refScenarioId : nextScenarioId,
+    displayScenarioNumber: useRefImageAsModelAndRoom ? refScenarioNumber : nextScenarioNumber,
+    displayModelScenarioSource: useRefImageAsModelAndRoom ? refSource : 'gallery',
+    lockSameModelAndScenarioNote: useRefImageAsModelAndRoom,
   });
 
   return {
-    imageUrl: highResUrl,
-    imageModel: usedModel,
-    selectedModelGalleryId: nextModelId,
-    selectedModelGalleryNumber: nextModelNumber,
-    selectedModelGalleryUrl: nextModelUrl,
-    selectedScenarioId: nextScenarioId,
-    selectedScenarioNumber: nextScenarioNumber,
-    modelScenarioSource: effectiveSource,
-    generateModelViaPrompt: effectiveGenerateViaPrompt,
+    imageUrl: gen.item.imageUrl,
+    imageModel: gen.item.imageModel,
+    selectedModelGalleryId: gen.item.selectedModelGalleryId,
+    selectedModelGalleryNumber: gen.item.selectedModelGalleryNumber,
+    selectedModelGalleryUrl: gen.item.selectedModelGalleryUrl,
+    selectedScenarioId: gen.item.selectedScenarioId,
+    selectedScenarioNumber: gen.item.selectedScenarioNumber,
+    modelScenarioSource: gen.item.modelScenarioSource || effectiveSource,
+    generateModelViaPrompt: Boolean(gen.item.generateModelViaPrompt),
     colorGroups,
     activeColorGroupIndex: nextColorIdx,
-    timestamp: Date.now(),
+    timestamp: gen.item.timestamp,
+    newImageItem: gen.item,
   };
 }
 
 export async function generateAnaMariaNewColor(params: {
   result: AnaMariaResultState;
+  baseImageItem?: AnaMariaGeneratedImageItem;
   aiProfile?: AIProfile;
 }): Promise<AnaMariaColorVariationOutput> {
   return generateAnaMariaColorVariation({ ...params, keepSameModelAndScenario: false });
@@ -1129,6 +1454,7 @@ export async function generateAnaMariaNewColor(params: {
  */
 export async function generateAnaMariaSameModelNewColor(params: {
   result: AnaMariaResultState;
+  baseImageItem?: AnaMariaGeneratedImageItem;
   aiProfile?: AIProfile;
 }): Promise<AnaMariaColorVariationOutput> {
   return generateAnaMariaColorVariation({ ...params, keepSameModelAndScenario: true });

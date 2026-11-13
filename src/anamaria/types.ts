@@ -62,6 +62,9 @@ export interface AnaMariaFormState {
   selectedModelGalleryBase64?: string; // Base64 da imagem da modelo
   modelScenarioSource?: 'model' | 'gallery'; // Padrão: 'model' (cenário da própria modelo), 'gallery' (cenário da galeria de cenários)
   generateModelViaPrompt?: boolean; // Se verdadeiro, gera a modelo puramente via prompt (sem foto de referência da modelo)
+  sameModelForAllColors?: boolean; // Padrão: false (Não) -> gera cada cor com uma modelo diferente da galeria
+  sameScenarioForAllColors?: boolean; // Padrão: false (Não) -> a cada nova cor escolhe um novo cenário da galeria
+  generateOneColorAtATime?: boolean; // Padrão: false (Não) -> gera todas as cores anexadas de uma vez
 }
 
 export interface AnaMariaColorGroup {
@@ -75,10 +78,32 @@ export interface AnaMariaDressInspection {
   slitLegWearer: 'left' | 'right' | 'both' | 'center' | 'none';
 }
 
+export interface AnaMariaGeneratedImageItem {
+  id: string;
+  imageUrl: string;
+  imageModel: AnaMariaImageModel;
+  colorGroupIndex: number;
+  colorName: string;
+  timestamp: number;
+  selectedScenarioId?: string;
+  selectedScenarioNumber?: number;
+  selectedModelGalleryId?: string;
+  selectedModelGalleryNumber?: number;
+  selectedModelGalleryUrl?: string;
+  modelScenarioSource?: 'model' | 'gallery';
+  generateModelViaPrompt?: boolean;
+  audit?: AnaMariaAudit;
+}
+
 export interface AnaMariaResultState {
   id: string;
   timestamp: number;
   imageUrl: string;
+  generatedImages?: AnaMariaGeneratedImageItem[];
+  hasMultipleColors?: boolean;
+  sameModelForAllColors?: boolean;
+  sameScenarioForAllColors?: boolean;
+  generateOneColorAtATime?: boolean;
   productName: string;
   referencePhotos: string[];
   colorGroups?: AnaMariaColorGroup[];

@@ -660,7 +660,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                 1. Fotos de Referência da Peça
               </h2>
               <p className="text-[11px] text-zinc-400">
-                Use o Campo 1 para vários ângulos da MESMA cor (detalhes) e o Campo 2 para adicionar CORES DIFERENTES da mesma peça (usadas em &quot;Gerar em nova cor&quot;).
+                Use o campo <strong className="text-zinc-200">1A</strong> para ângulos da <strong className="text-zinc-200">mesma cor</strong> (1 imagem) ou o campo <strong className="text-sky-300">1B</strong> para gerar <strong className="text-sky-300">várias cores</strong> do produto.
               </p>
             </div>
           </div>
@@ -723,7 +723,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                   1A. Mesma Cor (Vários Ângulos / Detalhes)
                 </p>
                 <p className="text-[11px] text-zinc-400">
-                  Fotos extras aqui mostram detalhes da <strong className="text-zinc-200">mesma cor</strong> (frente, costas, decote) em uma única imagem.
+                  Para várias fotos da <strong className="text-zinc-200">mesma cor</strong> (frente, costas, detalhes). Gera 1 imagem única (não habilita &quot;Gerar em nova cor&quot;).
                 </p>
               </div>
               <span className="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-700 text-[11px] font-bold text-zinc-300 shrink-0">
@@ -825,10 +825,10 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               <div>
                 <p className="text-xs font-extrabold text-sky-300 uppercase tracking-wide flex items-center gap-1.5">
                   <Palette className="w-3.5 h-3.5 text-sky-400" />
-                  <span>1B. Outras Cores (Gerar em Nova Cor)</span>
+                  <span>1B. Várias Cores do Produto</span>
                 </p>
                 <p className="text-[11px] text-zinc-400">
-                  Cada foto anexada aqui será tratada como uma <strong className="text-sky-200">cor diferente</strong> ao clicar no botão <strong className="text-sky-300">Gerar em nova cor</strong>.
+                  Anexe aqui as fotos das <strong className="text-sky-200">várias cores</strong> do produto que deseja gerar (cada foto aqui = 1 cor).
                 </p>
               </div>
               <span className="px-2 py-0.5 rounded bg-sky-950/60 border border-sky-500/35 text-[11px] font-bold text-sky-200 shrink-0">
@@ -906,6 +906,85 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             )}
           </div>
         </div>
+
+        {/* OPÇÕES DE GERAÇÃO EM VÁRIAS CORES (APARECE AUTOMATICAMENTE AO ANEXAR EM 1B) */}
+        {extraColorPhotos.length > 0 && (
+          <div className="p-4 rounded-xl border border-sky-500/40 bg-gradient-to-br from-sky-950/35 to-[#0b1322]/90 space-y-3 animate-fade-in">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-sky-500/20 pb-2">
+              <div className="flex items-center gap-2">
+                <Palette className="w-4 h-4 text-sky-400" />
+                <span className="text-xs font-black text-sky-200 uppercase tracking-wide">
+                  Configurações das Várias Cores ({(form.referencePhotos.length > 0 ? 1 : 0) + extraColorPhotos.length} cor{((form.referencePhotos.length > 0 ? 1 : 0) + extraColorPhotos.length) === 1 ? '' : 'es'})
+                </span>
+              </div>
+              <span className="text-[10px] text-sky-300/80 font-semibold">
+                Padrão: Não nas 3 opções (gera todas as cores de uma vez com modelos e cenários variados)
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {[
+                {
+                  key: 'sameModelForAllColors' as const,
+                  label: 'Gerar todas as cores com a mesma modelo',
+                  yesHint: 'Sim: mesma modelo em todas as cores',
+                  noHint: 'Não: cada cor em uma modelo diferente',
+                },
+                {
+                  key: 'sameScenarioForAllColors' as const,
+                  label: 'Gerar todas as cores com o mesmo cenário',
+                  yesHint: 'Sim: todas as cores no mesmo cenário',
+                  noHint: 'Não: novo cenário da galeria a cada cor',
+                },
+                {
+                  key: 'generateOneColorAtATime' as const,
+                  label: 'Gerar em uma cor por vez',
+                  yesHint: 'Sim: gera a 1ª cor e aguarda os botões',
+                  noHint: 'Não: gera todas as cores de uma vez',
+                },
+              ].map((opt) => {
+                const isYes = Boolean(form[opt.key]);
+                return (
+                  <div
+                    key={opt.key}
+                    className="p-3 rounded-xl border border-sky-500/25 bg-[#090f1c]/90 flex flex-col justify-between gap-2.5"
+                  >
+                    <div>
+                      <p className="text-xs font-bold text-white leading-snug">{opt.label}:</p>
+                      <p className="text-[10px] text-zinc-400 mt-0.5">
+                        {isYes ? opt.yesHint : opt.noHint}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => onChange((prev) => ({ ...prev, [opt.key]: true }))}
+                        className={`py-1.5 px-3 rounded-lg text-xs font-black border transition-all cursor-pointer ${
+                          isYes
+                            ? 'bg-sky-600 border-sky-400 text-white shadow-sm'
+                            : 'bg-zinc-900/80 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700'
+                        }`}
+                      >
+                        Sim
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onChange((prev) => ({ ...prev, [opt.key]: false }))}
+                        className={`py-1.5 px-3 rounded-lg text-xs font-black border transition-all cursor-pointer ${
+                          !isYes
+                            ? 'bg-sky-600 border-sky-400 text-white shadow-sm'
+                            : 'bg-zinc-900/80 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700'
+                        }`}
+                      >
+                        Não
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {totalProductPhotos === 0 && (
           <div

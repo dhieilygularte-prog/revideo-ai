@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Download,
   Copy,
@@ -25,7 +25,12 @@ import {
   Scissors,
   Palette,
 } from 'lucide-react';
-import { AnaMariaResultState, AnaMariaAuditColorStatus, AnaMariaTheme } from './types';
+import {
+  AnaMariaResultState,
+  AnaMariaAuditColorStatus,
+  AnaMariaTheme,
+  AnaMariaGeneratedImageItem,
+} from './types';
 import {
   downloadAnaMariaSingleImage,
   exportAnaMariaZip,
@@ -97,6 +102,23 @@ function getStatusClasses(status: AnaMariaAuditColorStatus) {
   }
 }
 
+function formatImageEngineLabel(imageModel?: string): string {
+  switch (imageModel) {
+    case 'seedream_5_0_pro':
+      return 'SeaDream 5.0 Pro';
+    case 'seedream_4_5':
+      return 'Seedream 4.5';
+    case 'kling_3_0':
+      return 'Kling Image 3.0 Omni';
+    case 'kling_o3_fal':
+      return 'Kling O3 Omni — fal.ai';
+    case 'flux_2_pro_edit':
+      return 'FLUX 2 Pro Edit — fal.ai';
+    default:
+      return 'OpenAI';
+  }
+}
+
 export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
   result,
   onUpdateResult,
@@ -135,6 +157,49 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
 
   const [downloadedImage, setDownloadedImage] = useState(false);
   const [hasDownloadedImageOnce, setHasDownloadedImageOnce] = useState(false);
+  const [downloadedImageIds, setDownloadedImageIds] = useState<Record<string, boolean>>({});
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+
+  useEffect(() => {
+    setSelectedImageIndex(0);
+    setDownloadedImageIds({});
+    setHasDownloadedImageOnce(false);
+    setDownloadedImage(false);
+  }, [result.id]);
+
+  const imagesList: AnaMariaGeneratedImageItem[] =
+    result.generatedImages && result.generatedImages.length > 0
+      ? result.generatedImages
+      : [
+          {
+            id: result.id,
+            imageUrl: result.imageUrl,
+            imageModel: result.imageModel,
+            colorGroupIndex: result.activeColorGroupIndex || 0,
+            colorName:
+              result.colorGroups?.[result.activeColorGroupIndex || 0]?.colorName || 'Cor Principal',
+            timestamp: result.timestamp,
+            selectedScenarioId: result.selectedScenarioId,
+            selectedScenarioNumber: result.selectedScenarioNumber,
+            selectedModelGalleryId: result.selectedModelGalleryId,
+            selectedModelGalleryNumber: result.selectedModelGalleryNumber,
+            selectedModelGalleryUrl: result.selectedModelGalleryUrl,
+            modelScenarioSource: result.modelScenarioSource,
+            generateModelViaPrompt: result.generateModelViaPrompt,
+            audit: result.audit,
+          },
+        ];
+
+  const safeSelectedIdx = Math.min(
+    Math.max(selectedImageIndex, 0),
+    Math.max(imagesList.length - 1, 0)
+  );
+  const activeImageItem = imagesList[safeSelectedIdx];
+  const canUseNewColorButtons = Boolean(
+    (result.hasMultipleColors !== undefined
+      ? result.hasMultipleColors
+      : (result.colorGroups?.length || 0) >= 2) && (result.colorGroups?.length || 0) >= 2
+  );
 
   // Estados de ajuste de imagem
   const [imageTweakText, setImageTweakText] = useState('');
@@ -373,16 +438,30 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
     }
   };
 
-  const handleDownloadImage = async () => {
+  const handleDownloadSpecificImage = async (item: AnaMariaGeneratedImageItem) => {
     try {
-      await downloadAnaMariaSingleImage(result.imageUrl, result.productName, result.timestamp, result.imageModel);
-      setDownloadedImage(true);
-      setHasDownloadedImageOnce(true);
-      setTimeout(() => setDownloadedImage(false), 2500);
+      const namePrefix =
+        imagesList.length > 1
+          ? `${result.productName} - Cor ${item.colorGroupIndex + 1}`
+          : result.productName;
+      await downloadAnaMariaSingleImage(
+        item.imageUrl,
+        namePrefix,
+        item.timestamp || result.timestamp,
+        item.imageModel || result.imageModel
+      );
+      setDownloadedImageIds((prev) => ({ ...prev, [item.id]: true }));
+      if (item.id === activeImageItem.id) {
+        setDownloadedImage(true);
+        setHasDownloadedImageOnce(true);
+        setTimeout(() => setDownloadedImage(false), 2500);
+      }
     } catch (err) {
       console.warn('Erro ao baixar imagem:', err);
     }
   };
+
+  const handleDownloadImage = () => handleDownloadSpecificImage(activeImageItem);
 
   const handleExportZip = async () => {
     if (isExportingZipRef.current) return;
@@ -398,6 +477,22 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
     }
   };
 
+  const updateActiveImageInResult = (patch: Partial<AnaMariaGeneratedImageItem>) => {
+    const nextImages = imagesList.map((item, idx) =>
+      idx === safeSelectedIdx ? { ...item, ...patch } : item
+    );
+    const updatedItem = nextImages[safeSelectedIdx];
+    const updated: AnaMariaResultState = {
+      ...result,
+      generatedImages: nextImages,
+      imageUrl: updatedItem.imageUrl,
+      imageModel: updatedItem.imageModel,
+      audit: updatedItem.audit || result.audit,
+    };
+    onUpdateResult(updated);
+    saveAnaMariaResult(updated);
+  };
+
   // Refazer Imagem (com ou sem ajuste)
   const handleRegenerateImage = async (customInstruction?: string) => {
     try {
@@ -405,7 +500,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
       const activePhotos = getActiveColorGroupPhotos(
         result.referencePhotos,
         result.colorGroups,
-        result.activeColorGroupIndex || 0
+        activeImageItem.colorGroupIndex
       );
       const res = await regenerateAnaMariaImage({
         form: {
@@ -416,25 +511,26 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
           presentationMode: result.presentationMode,
           selectedMasterId: result.selectedMasterId,
           additionalInstructions: result.additionalInstructions,
-          imageModel: result.imageModel,
+          imageModel: activeImageItem.imageModel || result.imageModel,
           videoPromptLimit: result.videoPromptLimit,
-          selectedScenarioId: result.selectedScenarioId,
-          selectedScenarioNumber: result.selectedScenarioNumber,
-          selectedModelGalleryId: result.selectedModelGalleryId,
-          selectedModelGalleryNumber: result.selectedModelGalleryNumber,
-          selectedModelGalleryUrl: result.selectedModelGalleryUrl,
-          modelScenarioSource: result.modelScenarioSource,
-          generateModelViaPrompt: result.generateModelViaPrompt,
+          selectedScenarioId: activeImageItem.selectedScenarioId ?? result.selectedScenarioId,
+          selectedScenarioNumber: activeImageItem.selectedScenarioNumber ?? result.selectedScenarioNumber,
+          selectedModelGalleryId: activeImageItem.selectedModelGalleryId ?? result.selectedModelGalleryId,
+          selectedModelGalleryNumber: activeImageItem.selectedModelGalleryNumber ?? result.selectedModelGalleryNumber,
+          selectedModelGalleryUrl: activeImageItem.selectedModelGalleryUrl ?? result.selectedModelGalleryUrl,
+          modelScenarioSource: activeImageItem.modelScenarioSource ?? result.modelScenarioSource,
+          generateModelViaPrompt: activeImageItem.generateModelViaPrompt ?? result.generateModelViaPrompt,
         },
         tweakPrompt: customInstruction || imageTweakText,
+        dressInspection: result.dressInspection,
         aiProfile,
       });
 
-      onUpdateResult({
-        ...result,
+      updateActiveImageInResult({
         imageUrl: res.imageUrl,
         imageModel: res.imageModel,
-        audit: res.audit || result.audit,
+        audit: res.audit || activeImageItem.audit,
+        timestamp: Date.now(),
       });
       setImageTweakText('');
       setHasDownloadedImageOnce(false);
@@ -453,7 +549,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
       const activePhotos = getActiveColorGroupPhotos(
         result.referencePhotos,
         result.colorGroups,
-        result.activeColorGroupIndex || 0
+        activeImageItem.colorGroupIndex
       );
       const res = await regenerateAnaMariaImage({
         form: {
@@ -466,23 +562,24 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
           additionalInstructions: result.additionalInstructions,
           imageModel: 'seedream_5_0_pro',
           videoPromptLimit: result.videoPromptLimit,
-          selectedScenarioId: result.selectedScenarioId,
-          selectedScenarioNumber: result.selectedScenarioNumber,
-          selectedModelGalleryId: result.selectedModelGalleryId,
-          selectedModelGalleryNumber: result.selectedModelGalleryNumber,
-          selectedModelGalleryUrl: result.selectedModelGalleryUrl,
-          modelScenarioSource: result.modelScenarioSource,
-          generateModelViaPrompt: result.generateModelViaPrompt,
+          selectedScenarioId: activeImageItem.selectedScenarioId ?? result.selectedScenarioId,
+          selectedScenarioNumber: activeImageItem.selectedScenarioNumber ?? result.selectedScenarioNumber,
+          selectedModelGalleryId: activeImageItem.selectedModelGalleryId ?? result.selectedModelGalleryId,
+          selectedModelGalleryNumber: activeImageItem.selectedModelGalleryNumber ?? result.selectedModelGalleryNumber,
+          selectedModelGalleryUrl: activeImageItem.selectedModelGalleryUrl ?? result.selectedModelGalleryUrl,
+          modelScenarioSource: activeImageItem.modelScenarioSource ?? result.modelScenarioSource,
+          generateModelViaPrompt: activeImageItem.generateModelViaPrompt ?? result.generateModelViaPrompt,
         },
         imageModelOverride: 'seedream_5_0_pro',
+        dressInspection: result.dressInspection,
         aiProfile,
       });
 
-      onUpdateResult({
-        ...result,
+      updateActiveImageInResult({
         imageUrl: res.imageUrl,
         imageModel: 'seedream_5_0_pro',
-        audit: res.audit || result.audit,
+        audit: res.audit || activeImageItem.audit,
+        timestamp: Date.now(),
       });
       setHasDownloadedImageOnce(false);
       setDownloadedImage(false);
@@ -500,7 +597,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
       const activePhotos = getActiveColorGroupPhotos(
         result.referencePhotos,
         result.colorGroups,
-        result.activeColorGroupIndex || 0
+        activeImageItem.colorGroupIndex
       );
       const res = await regenerateAnaMariaNewScenario({
         form: {
@@ -511,18 +608,18 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
           presentationMode: result.presentationMode,
           selectedMasterId: result.selectedMasterId,
           additionalInstructions: result.additionalInstructions,
-          imageModel: result.imageModel,
+          imageModel: activeImageItem.imageModel || result.imageModel,
           videoPromptLimit: result.videoPromptLimit,
-          selectedScenarioId: result.selectedScenarioId,
-          selectedScenarioNumber: result.selectedScenarioNumber,
+          selectedScenarioId: activeImageItem.selectedScenarioId ?? result.selectedScenarioId,
+          selectedScenarioNumber: activeImageItem.selectedScenarioNumber ?? result.selectedScenarioNumber,
         },
         aiProfile,
       });
 
-      onUpdateResult({
-        ...result,
+      updateActiveImageInResult({
         imageUrl: res.imageUrl,
         imageModel: res.imageModel,
+        timestamp: Date.now(),
       });
       setHasDownloadedImageOnce(false);
       setDownloadedImage(false);
@@ -534,9 +631,12 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
   };
 
   // Variações de cor:
-  // keepSameModelAndScenario = false ("Gerar em nova cor"): nova cor + outra modelo + outro cenário (mesmo modo de apresentação e mesmos prompts/textos)
-  // keepSameModelAndScenario = true ("GERAR IGUAL EM NOVA COR"): nova cor + mesma modelo + mesmo cenário anteriores (mesmos prompts/textos)
+  // A ordem das cores continua sempre em sequência (Cor 1 -> Cor 2 -> ... -> Cor N -> Cor 1),
+  // independentemente de o usuário clicar em "Gerar em nova cor" ou "GERAR IGUAL EM NOVA COR".
   const handleColorVariation = async (keepSameModelAndScenario: boolean) => {
+    if (!canUseNewColorButtons) {
+      return;
+    }
     if (!result.referencePhotos || result.referencePhotos.length === 0) {
       alert('Nenhuma foto de referência encontrada na memória deste resultado.');
       return;
@@ -547,13 +647,19 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
       const generator = keepSameModelAndScenario
         ? generateAnaMariaSameModelNewColor
         : generateAnaMariaNewColor;
-      const res = await generator({ result, aiProfile });
+      const res = await generator({
+        result,
+        baseImageItem: activeImageItem,
+        aiProfile,
+      });
 
+      const nextImages = [...imagesList, res.newImageItem];
       const updatedResult: AnaMariaResultState = {
         ...result,
         timestamp: res.timestamp,
         imageUrl: res.imageUrl,
         imageModel: res.imageModel,
+        generatedImages: nextImages,
         generateModelViaPrompt: res.generateModelViaPrompt,
         selectedModelGalleryId: res.selectedModelGalleryId,
         selectedModelGalleryNumber: res.selectedModelGalleryNumber,
@@ -563,8 +669,10 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
         modelScenarioSource: res.modelScenarioSource,
         colorGroups: res.colorGroups,
         activeColorGroupIndex: res.activeColorGroupIndex,
+        audit: res.newImageItem.audit || result.audit,
       };
       onUpdateResult(updatedResult);
+      setSelectedImageIndex(nextImages.length - 1);
       saveAnaMariaResult(updatedResult);
       setHasDownloadedImageOnce(false);
       setDownloadedImage(false);
@@ -601,11 +709,30 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
     }
   };
 
-  const audit = result.audit;
+  const audit = activeImageItem.audit || result.audit;
   const auditStatus = audit?.status || 'green';
   const auditStyles = getStatusClasses(auditStatus);
   const auditScore = audit?.score ?? 96;
   const auditLabel = audit?.label ?? 'Verde — Fidelidade Aprovada';
+
+  const presentationModeLabel =
+    result.presentationMode === 'pov'
+      ? 'Modo POV'
+      : result.presentationMode === 'com_rosto'
+      ? 'Com Rosto (UGC)'
+      : 'Mirror Selfie';
+  const resolveModelDisplay = (item: AnaMariaGeneratedImageItem) =>
+    item.generateModelViaPrompt
+      ? 'Via Prompt'
+      : item.selectedModelGalleryNumber !== undefined
+      ? item.selectedModelGalleryNumber
+      : 'Automática';
+  const resolveScenarioDisplay = (item: AnaMariaGeneratedImageItem) =>
+    result.presentationMode === 'pov' ||
+    item.generateModelViaPrompt ||
+    item.modelScenarioSource === 'gallery'
+      ? item.selectedScenarioNumber ?? 'Automático'
+      : 'Da Modelo';
 
   const defaultCriteria: { name: string; score: number; status: AnaMariaAuditColorStatus; issue?: string }[] = [
     { name: 'Corte Queixo', score: 100, status: 'green' as AnaMariaAuditColorStatus },
@@ -683,10 +810,24 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
           {/* Gerar em nova cor */}
           <button
             type="button"
-            disabled={isGeneratingNewColor || isGeneratingSameModelNewColor || isSwitchingScenario || isRegeneratingImage}
+            disabled={
+              !canUseNewColorButtons ||
+              isGeneratingNewColor ||
+              isGeneratingSameModelNewColor ||
+              isSwitchingScenario ||
+              isRegeneratingImage
+            }
             onClick={() => handleColorVariation(false)}
-            className="px-4 py-2 bg-sky-600 hover:bg-sky-500 disabled:opacity-60 text-white text-xs font-black rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-sky-950/50 border border-sky-400/50"
-            title="Escolhe a próxima cor das fotos de referência, outra modelo da galeria e outro cenário da galeria, mantendo o mesmo modo de apresentação e mesmos prompts/textos"
+            className={`px-4 py-2 text-white text-xs font-black rounded-xl flex items-center gap-2 transition-all shadow-md border ${
+              !canUseNewColorButtons
+                ? 'bg-zinc-800/70 border-zinc-700/60 text-zinc-400 opacity-50 cursor-not-allowed shadow-none'
+                : 'bg-sky-600 hover:bg-sky-500 disabled:opacity-60 cursor-pointer shadow-sky-950/50 border-sky-400/50'
+            }`}
+            title={
+              !canUseNewColorButtons
+                ? 'Indisponível: adicione 2 ou mais cores no campo 1B (Várias Cores) para usar esta função'
+                : 'Escolhe a próxima cor em sequência das fotos de referência, outra modelo e outro cenário da galeria'
+            }
           >
             <Palette className={`w-4 h-4 text-white ${isGeneratingNewColor ? 'animate-spin' : ''}`} />
             <span>{isGeneratingNewColor ? 'Gerando nova cor...' : 'Gerar em nova cor'}</span>
@@ -695,10 +836,24 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
           {/* GERAR IGUAL EM NOVA COR */}
           <button
             type="button"
-            disabled={isGeneratingSameModelNewColor || isGeneratingNewColor || isSwitchingScenario || isRegeneratingImage}
+            disabled={
+              !canUseNewColorButtons ||
+              isGeneratingSameModelNewColor ||
+              isGeneratingNewColor ||
+              isSwitchingScenario ||
+              isRegeneratingImage
+            }
             onClick={() => handleColorVariation(true)}
-            className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-60 text-white text-xs font-black rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-cyan-950/50 border border-cyan-400/50"
-            title="Mantém exatamente a mesma modelo e mesmo cenário da imagem anterior, alterando apenas a cor da roupa para a próxima cor de referência"
+            className={`px-4 py-2 text-white text-xs font-black rounded-xl flex items-center gap-2 transition-all shadow-md border ${
+              !canUseNewColorButtons
+                ? 'bg-zinc-800/70 border-zinc-700/60 text-zinc-400 opacity-50 cursor-not-allowed shadow-none'
+                : 'bg-cyan-600 hover:bg-cyan-500 disabled:opacity-60 cursor-pointer shadow-cyan-950/50 border-cyan-400/50'
+            }`}
+            title={
+              !canUseNewColorButtons
+                ? 'Indisponível: adicione 2 ou mais cores no campo 1B (Várias Cores) para usar esta função'
+                : 'Mantém exatamente a mesma modelo e mesmo cenário da imagem selecionada, avançando para a próxima cor em sequência'
+            }
           >
             <Copy className={`w-4 h-4 text-white ${isGeneratingSameModelNewColor ? 'animate-spin' : ''}`} />
             <span>{isGeneratingSameModelNewColor ? 'Gerando igual...' : 'GERAR IGUAL EM NOVA COR'}</span>
@@ -720,6 +875,90 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
           </button>
         )}
       </div>
+
+      {/* ─── GALERIA DE TODAS AS CORES GERADAS (QUANDO HÁ 2 OU MAIS IMAGENS) ─── */}
+      {imagesList.length > 1 && (
+        <div className={`p-4 sm:p-5 rounded-2xl space-y-3 ${defaultSectionClass}`}>
+          <div className={`flex flex-wrap items-center justify-between gap-2 border-b pb-2.5 ${isAmetista ? 'border-purple-500/20' : 'border-zinc-800/80'}`}>
+            <div className="flex items-center gap-2">
+              <Palette className="w-4 h-4 text-sky-400" />
+              <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-wide">
+                Cores Geradas ({imagesList.length} imagem{imagesList.length === 1 ? '' : 'ns'} • 1 Prompt)
+              </h3>
+            </div>
+            <span className="text-[11px] text-zinc-400">
+              Clique em uma imagem para visualizar/editar em destaque abaixo
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
+            {imagesList.map((imgItem, idx) => {
+              const isSelected = idx === safeSelectedIdx;
+              const isCardDownloaded = Boolean(downloadedImageIds[imgItem.id]);
+              return (
+                <div
+                  key={imgItem.id}
+                  onClick={() => setSelectedImageIndex(idx)}
+                  className={`rounded-xl p-2 transition-all cursor-pointer space-y-2 border-2 ${
+                    isSelected
+                      ? 'border-sky-400 bg-sky-950/35 ring-2 ring-sky-400/40 shadow-lg'
+                      : isAmetista
+                      ? 'border-purple-500/25 hover:border-purple-400/60 bg-[#0e0817]/90'
+                      : 'border-zinc-800 hover:border-orange-500/50 bg-zinc-950/80'
+                  }`}
+                >
+                  <div className="relative aspect-[9/16] w-full rounded-lg overflow-hidden bg-black">
+                    <img
+                      src={imgItem.imageUrl}
+                      alt={`${result.productName || 'Peça'} - ${imgItem.colorName}`}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-sky-600/95 text-white text-[10px] font-black shadow">
+                      {imgItem.colorName}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenPreviewModal(
+                          imgItem.imageUrl,
+                          `${result.productName || 'Peça'} - ${imgItem.colorName}`
+                        );
+                      }}
+                      className="absolute top-2 right-2 p-1.5 rounded-lg bg-black/70 hover:bg-black/90 text-white border border-white/20 cursor-pointer"
+                      title="Ampliar imagem"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDownloadSpecificImage(imgItem);
+                      }}
+                      className={`absolute bottom-2 right-2 px-2.5 py-1.5 rounded-lg text-[10px] font-black flex items-center gap-1 cursor-pointer shadow-lg border ${
+                        isCardDownloaded
+                          ? 'bg-sky-500 text-white border-sky-300'
+                          : 'bg-zinc-950/90 hover:bg-zinc-800 text-white border-white/20'
+                      }`}
+                      title="Baixar esta imagem"
+                    >
+                      <Download className="w-3 h-3" />
+                      <span>{isCardDownloaded ? 'OK' : 'Baixar'}</span>
+                    </button>
+                  </div>
+                  <div className="px-0.5 text-[10px] text-zinc-300 leading-tight space-y-0.5">
+                    <p className="font-bold text-white truncate">{formatImageEngineLabel(imgItem.imageModel)}</p>
+                    <p className="text-zinc-400 truncate">
+                      Modelo: {resolveModelDisplay(imgItem)} • Cenário: {resolveScenarioDisplay(imgItem)}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ─── GRID PRINCIPAL: LADO ESQUERDO (FOTO + FISCALIZAÇÃO ABAIXO) / LADO DIREITO (PROMPT + BAIXAR TUDO + DETECTOR) ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -752,7 +991,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
             {/* Imagem Vertical 9:16 */}
             <div className="relative aspect-[9/16] w-full rounded-xl overflow-hidden bg-black flex items-center justify-center">
               <img
-                src={result.imageUrl}
+                src={activeImageItem.imageUrl}
                 alt={`Modo Ana Maria - ${result.productName || 'Peça de Vestuário'}`}
                 className="w-full h-full object-cover"
               />
@@ -762,7 +1001,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                 type="button"
                 onClick={() =>
                   onOpenPreviewModal(
-                    result.imageUrl,
+                    activeImageItem.imageUrl,
                     `Modo Ana Maria - ${result.productName || 'Peça de Vestuário'}`
                   )
                 }
@@ -780,17 +1019,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                     : 'border-orange-500/45 text-orange-300'
                 }`}
               >
-                {result.imageModel === 'seedream_5_0_pro'
-                  ? 'SeaDream 5.0 Pro'
-                  : result.imageModel === 'seedream_4_5'
-                  ? 'Seedream 4.5'
-                  : result.imageModel === 'kling_3_0'
-                  ? 'Kling Image 3.0 Omni'
-                  : result.imageModel === 'kling_o3_fal'
-                  ? 'Kling O3 Omni — fal.ai'
-                  : result.imageModel === 'flux_2_pro_edit'
-                  ? 'FLUX 2 Pro Edit — fal.ai'
-                  : 'OpenAI'}
+                {formatImageEngineLabel(activeImageItem.imageModel)}
               </div>
 
               {/* Botão Circular de Baixar Imagem (Padrão 1 Download no canto inferior direito do Modo Produtos 2.0) */}
@@ -975,7 +1204,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
             </button>
 
             {/* Botão REFAZER COM SEEDREAM 5.0 (quando gerado via OpenAI) */}
-            {result.imageModel === 'openai' && (
+            {activeImageItem.imageModel === 'openai' && (
               <button
                 type="button"
                 disabled={isRegeneratingImage}
@@ -1026,29 +1255,11 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                 </p>
                 <p className="text-[11px] text-zinc-300 mt-1 font-medium">
                   Modo de Apresentação:{' '}
-                  <span className="text-white font-semibold">
-                    {result.presentationMode === 'pov'
-                      ? 'Modo POV'
-                      : result.presentationMode === 'com_rosto'
-                      ? 'Com Rosto (UGC)'
-                      : 'Mirror Selfie'}
-                  </span>
+                  <span className="text-white font-semibold">{presentationModeLabel}</span>
                   {', Modelo: '}
-                  <span className="text-white font-semibold">
-                    {result.generateModelViaPrompt
-                      ? 'Via Prompt'
-                      : result.selectedModelGalleryNumber !== undefined
-                      ? result.selectedModelGalleryNumber
-                      : 'Automática'}
-                  </span>
+                  <span className="text-white font-semibold">{resolveModelDisplay(activeImageItem)}</span>
                   {', Cenário: '}
-                  <span className="text-white font-semibold">
-                    {result.presentationMode === 'pov' ||
-                    result.generateModelViaPrompt ||
-                    result.modelScenarioSource === 'gallery'
-                      ? result.selectedScenarioNumber ?? 'Automático'
-                      : 'Da Modelo'}
-                  </span>
+                  <span className="text-white font-semibold">{resolveScenarioDisplay(activeImageItem)}</span>
                   {', Prompt: '}
                   <span className="text-white font-semibold">
                     {getMasterPromptById(result.selectedMasterId).shortName.replace(/^(\d+)\.\s*/, '$1- ')}
@@ -1057,8 +1268,8 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                     <>
                       {', Cor: '}
                       <span className="text-sky-300 font-semibold">
-                        {result.colorGroups[result.activeColorGroupIndex || 0]?.colorName || 'Cor'}{' '}
-                        ({(result.activeColorGroupIndex || 0) + 1}/{result.colorGroups.length})
+                        {activeImageItem.colorName || 'Cor'}{' '}
+                        ({activeImageItem.colorGroupIndex + 1}/{result.colorGroups.length})
                       </span>
                     </>
                   )}
