@@ -737,11 +737,14 @@ REGRA SOBERANA ACIMA DO PROMPT DA MESTRA: Enquadrar a cabeça RIGOROSAMENTE DA A
 É TERMINANTEMENTE PROIBIDO MOSTRAR LÁBIOS, BOCA, NARIZ OU OLHOS EM QUALQUER PARTE DA IMAGEM.
 Os lábios, a boca, o nariz e os olhos devem ficar 100% FORA do enquadramento em todas as circunstâncias. Mostrar somente a ponta inferior do queixo, o pescoço, o colo (com parte do comprimento dos cabelos caindo sobre os ombros/colo) e todo o corpo até os pés. O corte deve parecer uma selfie espontânea natural tirada no espelho com corte exato na base do queixo.`;
 
+  const scenarioRelightRulePt = `- ILUMINAÇÃO SOBERANA DO CENÁRIO & INTEGRAÇÃO SEM CONTORNO BRANCO: Quem manda 100% na luz, direção luminosa, temperatura de cor (quente/fria/neutra), brilho e sombras é o CENÁRIO (nunca a foto da modelo nem a foto da peça). Reilumine pele, rosto, cabelos e roupa para obedecer fielmente à iluminação real do cômodo, com sombra de contato suave no piso sob os pés, light-wrap natural nas bordas dos fios/pele/tecido e ZERO linha branca, aura ou efeito de colagem/recorte.`;
+
   const scenarioSection = hasSelectedScenario
     ? `## 4. PRESERVAÇÃO INTEGRAL DO CENÁRIO INDEPENDENTE (${scenarioTitle.toUpperCase()})
 A foto de cenário anexada é a autoridade visual absoluta do ambiente.
 Preserve integralmente e sem modificações todo o cômodo da foto de referência: piso, paredes, portas, cama/móveis, espelho e elementos arquitetônicos.
-NÃO redesenhe, NÃO altere e NÃO gere um ambiente diferente. Insira ${isMale ? 'o modelo' : 'a modelo'} perfeitamente integrado(a) e em pé diante do espelho dentro deste exato cômodo real.`
+NÃO redesenhe, NÃO altere e NÃO gere um ambiente diferente. Insira ${isMale ? 'o modelo' : 'a modelo'} perfeitamente integrado(a) e em pé diante do espelho dentro deste exato cômodo real.
+${scenarioRelightRulePt}`
     : `## 4. CENÁRIO RESIDENCIAL E AMBIENTE
 ${scenarioText}`;
 
@@ -797,6 +800,7 @@ ${noBagDirectivePt}${noBagDirectiveEn}
 - PRESERVAÇÃO INTEGRAL DO CENÁRIO DA FOTO 2 (CENÁRIO DA MODELO): O cômodo de fundo, paredes, piso, espelho, portas, móveis e iluminação natural DEVEM ser 100% preservados e idênticos aos da Foto 2. NÃO altere nem redesenhe o ambiente da Foto 2.
 - PRESERVAÇÃO INTEGRAL DE ROSTO, POSE E ENQUADRAMENTO DA FOTO 2: Mantenha RIGOROSAMENTE o mesmo enquadramento, mesmo ângulo, mesma pose e mesma cabeça/rosto da Foto 2. Se na Foto 2 o rosto da modelo aparece (total ou parcialmente), o rosto DEVE APARECER IDENTICAMENTE, com a mesma face, olhos, nariz, boca, cabelo e expressão da mulher da Foto 2 (PROIBIDO cortar a cabeça ou o queixo se o rosto aparece na Foto 2!). Se na Foto 2 o rosto estiver encoberto pelo celular ou cortado no enquadramento, mantenha o mesmo corte original da Foto 2.
 - ÚNICA MUDANÇA PERMITIDA: Substituir as roupas que a modelo veste na Foto 2 pela roupa da Foto 1 (respeitando as regras de look completo e calçado harmonioso).
+- REILUMINAÇÃO & ZERO BORDA DE RECORTE: A roupa e o calçado trocados devem assumir 100% a iluminação, temperatura de cor e sombras do cômodo da Foto 2, sem contorno branco ou aspecto colado.
 
 Qualidade fotográfica autêntica de smartphone moderno, textura de pele humana real com poros visíveis, acabamento fosco suave sem brilho excessivo de óleo, sem aspecto de cera ou plástico. ZERO tatuagens.`;
     } else {
@@ -815,11 +819,12 @@ ${noBagDirectivePt}${noBagDirectiveEn}
 - PRESERVAÇÃO INTEGRAL DO BIOTIPO DA FOTO 2: reproduza com fidelidade 100% o mesmo corpo, curvas, biotipo, quadris, cintura, pernas, tom de pele natural com poros reais, cabelos (mesma cor, corte e textura da foto da modelo).
 - PRESERVAÇÃO INTEGRAL DE ROSTO E ENQUADRAMENTO DA FOTO 2: Se na Foto 2 o rosto da modelo aparece, o rosto DEVE APARECER IDENTICAMENTE ao da Foto 2, com os mesmos traços, olhos, boca e expressão. Se na Foto 2 o rosto estiver encoberto ou fora do quadro, mantenha exatamente o mesmo corte original da Foto 2.
 - POSE OBRIGATÓRIA DA FOTO 2: A modelo mantém a mesma pose e mesma atitude diante do espelho da Foto 2.
-- DESCONSIDERAR A ROUPA E O CENÁRIO DA FOTO 2: É TERMINANTEMENTE PROIBIDO copiar a roupa que a modelo veste na Foto 2 e PROIBIDO usar o cenário de fundo da Foto 2.
+- DESCONSIDERAR A ROUPA, A LUZ ORIGINAL E O CENÁRIO DA FOTO 2: É TERMINANTEMENTE PROIBIDO copiar a roupa, a iluminação de origem ou o cenário de fundo da Foto 2.
 
-3. FOTO 3 (CENÁRIO INDEPENDENTE DA GALERIA — BASE ARQUITETÔNICA FIXA):
+3. FOTO 3 (CENÁRIO INDEPENDENTE DA GALERIA — BASE ARQUITETÔNICA E DE LUZ FIXA):
 - O ponto de vista da câmera da Foto 3 JÁ É o reflexo do espelho olhando para dentro do cômodo. Posicione a modelo da Foto 2 (vestindo a roupa da Foto 1) em pé no primeiro plano sobre o piso da Foto 3, sem adicionar moldura de espelho extra nem alterar o ambiente.
 - Preserve integralmente 100% do cenário real da Foto 3: piso, paredes, rodapés, cortinas (cor e caimento exatos), portas, iluminação natural e enquadramento sem alterar, redesenhar nem inventar um cômodo parecido.
+${scenarioRelightRulePt}
 
 Qualidade fotográfica autêntica de smartphone moderno, textura de pele humana real com poros visíveis, acabamento fosco suave sem brilho excessivo de óleo, sem aspecto de cera ou plástico. ZERO tatuagens.`;
     }

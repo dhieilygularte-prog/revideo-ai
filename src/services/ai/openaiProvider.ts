@@ -707,6 +707,10 @@ Retorne estritamente um JSON estruturado:
 
       const productPhotoCount = Math.min(allPhotos.filter(Boolean).length, 2);
 
+      const scenarioRelightAndEdgeBlendDirective = `[SCENARIO LIGHTING SOVEREIGNTY & SEAMLESS ANTI-HALO INTEGRATION (ZERO WHITE OUTLINE / ZERO CUTOUT)]:
+- SCENARIO DICTATES 100% OF LIGHTING: The scenario's ambient lighting, direction of light, color temperature (warm/cool/neutral), brightness, contrast, and shadows MUST govern the model's skin, hair, face, and garment. Completely discard any studio/bright-wall lighting from the model or product reference photos and physically relight the model + garment to match the exact room illumination.
+- ZERO WHITE HALO / ZERO STICKER EDGE: Strictly eliminate any thin white line, bright fringe, outline, or cutout halo along hair strands, shoulders, arms, legs, hands, or garment edges. Apply natural optical edge light-wrap (subtle ambient color spill from the scenario onto her contours) and realistic soft contact shadows / ambient occlusion on the floor beneath her feet and hemline so she looks 100% photographed inside this exact room.`;
+
       if (isAnaMariaGallery3Img) {
         baseImageFile = imageFiles[0] || null;
         const scenarioIdx = 1;
@@ -757,23 +761,25 @@ Retorne estritamente um JSON estruturado:
         effectivePrompt = `[STRICT IN-PLACE CANVAS COMPOSITE — LOCK REFERENCE IMAGE ${scenarioIdx} PIXEL-FOR-PIXEL]:
 You are performing a high-fidelity composite edit directly onto Reference Image ${scenarioIdx} (the base canvas image).
 
-1. REFERENCE IMAGE ${scenarioIdx} (IMMUTABLE BASE ROOM CANVAS — DO NOT MODIFY ARCHITECTURE):
-- KEEP 100% of Reference Image ${scenarioIdx} EXACTLY AS IT IS behind the model: exact room geometry, walls, baseboards, doorway/doorframe, curtains (exact orange/color, folds, fabric), doors, handles, floor planks/tiles, background items, shadows, ambient lighting, and camera angle.
+1. REFERENCE IMAGE ${scenarioIdx} (IMMUTABLE BASE ROOM CANVAS — DO NOT MODIFY ARCHITECTURE OR ROOM LIGHTING):
+- KEEP 100% of Reference Image ${scenarioIdx} EXACTLY AS IT IS behind the model: exact room geometry, walls, baseboards, doorway/doorframe, curtains (exact color, folds, fabric), doors, handles, floor planks/tiles, background items, shadows, ambient lighting, and camera angle.
 - PERSPECTIVE RULE: Reference Image ${scenarioIdx} is ALREADY shot from the mirror's vantage point looking straight into the room. DO NOT add or draw a mirror frame, DO NOT rotate the room, DO NOT invent/redraw a "similar" room, and DO NOT replace any wall, door, floor, or curtain from Reference Image ${scenarioIdx}!
 
-2. REFERENCE IMAGE ${modelIdx} (GALLERY MODEL IDENTITY & POSE ONLY — DISCARD HER OLD ROOM):
-- Extract ONLY the woman from Reference Image ${modelIdx} (exact face, eyes, nose, lips, hair, skin tone, body curves, and smartphone-holding mirror selfie pose) and composite her standing naturally centered on the floor in the foreground of Reference Image ${scenarioIdx} with realistic contact shadows on Reference Image ${scenarioIdx}'s floor.
-- 100% DISCARD AND IGNORE the bedroom, bed, door, walls, background, and old clothing of Reference Image ${modelIdx}. Do NOT bring any part of Reference Image ${modelIdx}'s room into Reference Image ${scenarioIdx}.
+2. REFERENCE IMAGE ${modelIdx} (GALLERY MODEL IDENTITY & POSE ONLY — DISCARD HER OLD ROOM & OLD LIGHTING):
+- Extract ONLY the woman from Reference Image ${modelIdx} (exact face, eyes, nose, lips, hair, skin tone, body curves, and smartphone-holding mirror selfie pose) and composite her standing naturally centered on the floor in the foreground of Reference Image ${scenarioIdx} with realistic contact shadows and ambient floor occlusion beneath her feet.
+- 100% DISCARD AND IGNORE the bedroom, bed, door, walls, background lighting, bright white wall edge-glow, and old clothing of Reference Image ${modelIdx}. Do NOT bring any part of Reference Image ${modelIdx}'s room or cutout edge rim into Reference Image ${scenarioIdx}.
 
 3. REFERENCE IMAGE ${productRangeLabel} (EXACT GARMENT & COLOR ONLY — DISCARD ANY PERSON/BACKGROUND):
-- Dress the woman from Reference Image ${modelIdx} exclusively in the EXACT garment shown in Reference Image ${productRangeLabel}: 1:1 exact color/shade/print, cut, neckline, straps, fabric texture, exact hemline length (never lengthen midi/short dresses to the floor), and single-side slit if present.
+- Dress the woman from Reference Image ${modelIdx} exclusively in the EXACT garment shown in Reference Image ${productRangeLabel}: 1:1 exact color/shade/print, cut, neckline, straps, fabric texture, exact hemline length (never lengthen midi/short dresses to the floor), and single-side slit if present, naturally shaded by Reference Image ${scenarioIdx}'s room light.
 - Harmonious matching footwear if feet are visible (or keep floor-length dress covering feet if it is floor-length in Reference Image ${productRangeLabel}).
 - 100% IGNORE any person, face, body, tattoos, or background in Reference Image ${productRangeLabel}.
+
+${scenarioRelightAndEdgeBlendDirective}
 
 ${framingSection}
 ${preservedDirectives ? `\n[GARMENT & USER CONSTRAINTS]:\n${preservedDirectives}` : ''}
 
-PHOTOGRAPHIC REALISM: Sharp flagship smartphone photo (iPhone 16 Pro), natural skin texture with pores, natural lighting matching Reference Image ${scenarioIdx}, zero tattoos, zero handbags unless the product is a bag.`;
+PHOTOGRAPHIC REALISM: Sharp flagship smartphone photo (iPhone 16 Pro), natural skin texture with pores, unified lighting matching Reference Image ${scenarioIdx} with smooth edge light-wrap and zero white outline around the silhouette, zero tattoos, zero handbags unless the product is a bag.`;
       } else if (isAnaMariaModel2Img) {
         baseImageFile = imageFiles[0] || null;
         const productRange = productPhotoCount > 1 ? 'Reference Images 2 and 3' : 'Reference Image 2';
@@ -783,6 +789,7 @@ PHOTOGRAPHIC REALISM: Sharp flagship smartphone photo (iPhone 16 Pro), natural s
         effectivePrompt = `[STRICT 2-IMAGE EDIT DIRECTIVE - GALLERY MODEL & ROOM BASE + EXACT PRODUCT CLOTHING]:
 - REFERENCE IMAGE 1 (MODEL & ROOM BASE — KEEP IDENTICAL): Preserve 100% the exact same woman (same face if visible or same phone covering face, same hair, skin tone, body curves, pose, hands) and the EXACT same room/background/mirror/lighting from Reference Image 1.
 - ${productRange.toUpperCase()} (GARMENT & EXACT COLOR ONLY): Dress the woman from Reference Image 1 in the EXACT garment shown in ${productRange}, replicating 1:1 its exact color/shade/print, cut, neckline, straps, fabric texture, and length (and harmonious matching footwear if feet are visible; if long dress covers feet, keep it long). 100% IGNORE any person/background in ${productRange}.
+- SEAMLESS GARMENT RELIGHTING & ZERO CUTOUT EDGES: Relight the swapped garment and footwear to obey Reference Image 1's exact ambient lighting, shadows, and color temperature, with natural hair/shoulder/skin blending and ZERO white outline or pasted look.
 - Zero tattoos anywhere on the skin. Preserve sharp iPhone 16 Pro optical clarity.
 
 ${aligned2ImgCleanPrompt}`;
@@ -839,7 +846,7 @@ ${cleanPrompt}`;
             ? `[FRAMING & FACE DIRECTIVE — MODO COM ROSTO / UGC]:
 - The model's natural, harmonious face and expression MUST appear clearly in the mirror reflection.
 - Expressive, authentic, natural makeup, dark neat eyebrows, long hair naturally falling over shoulders.
-- Modern smartphone held naturally taking the mirror selfie with rear flash activated.
+- Modern smartphone held naturally taking the mirror selfie under Reference Image 1's natural room illumination.
 - Zero tattoos anywhere on the skin (100% clean skin).`
             : `[STRICT FRAMING & FACE PROHIBITION]:
 - STRICT CHIN-DOWN FRAMING: Frame strictly from the bottom base of the chin downward.
@@ -852,6 +859,8 @@ You are editing the base scenario photograph (Reference Image 1).
 KEEP the architectural setting from Reference Image 1 100% UNCHANGED and INTACT:
 - Preserve 100% of the room, architecture, floor, walls, mirrors, lighting, colors, reflections, doors, and background exactly as shown in Reference Image 1.
 - DO NOT invent, generate, redesign or redraw a new room. Place the woman standing inside this EXACT real room from Reference Image 1 in front of the mirror taking a mirror-selfie.
+
+${scenarioRelightAndEdgeBlendDirective}
 
 [PRODUCT FIDELITY & BODY ISOLATION MANDATE (REFERENCE IMAGE 2+)]:
 - The woman wears the EXACT garment shown in reference image 2 (and subsequent photos): 1:1 identical color, shade, fabric texture, seams, straps, neckline, cut, and fit.
