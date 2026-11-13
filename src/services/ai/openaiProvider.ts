@@ -630,12 +630,20 @@ Retorne estritamente um JSON estruturado:
       };
 
       // No Modo Ana Maria com Modelo da Galeria, enviamos explicitamente:
-      // - Modo 3 Imagens (modelScenarioSource === 'gallery'): [Produto, Modelo da Galeria, Cenário da Galeria]
-      // - Modo 2 Imagens (cenário da própria modelo): [Modelo da Galeria, Produto]
+      // - Modo 3 Imagens (modelScenarioSource === 'gallery'): [Cenário da Galeria (BASE ARQUITETÔNICA 1), Modelo da Galeria (2), Produto (3+)]
+      // - Modo 2 Imagens (cenário da própria modelo): [Modelo da Galeria (BASE 1), Produto (2+)]
       const isAnaMariaGallery3Img = Boolean(isAnaMariaMode && modelReferenceBase64 && scenarioPhotoBase64 && !isPovMode);
       const isAnaMariaModel2Img = Boolean(isAnaMariaMode && modelReferenceBase64 && !scenarioPhotoBase64 && !isPovMode);
 
       if (isAnaMariaGallery3Img) {
+        // IMPORTANTE (OpenAI images.edit): A 1ª imagem do array (imageFiles[0] / baseImageFile) define o canvas/ambiente base.
+        // Colocar o CENÁRIO DA GALERIA em Reference Image 1 garante preservação arquitetônica exata 1:1 (paredes, piso, espelho, portas e luz).
+        try {
+          imageFiles.push(toImageFile(scenarioPhotoBase64!, 'reference_scenario_background'));
+        } catch {}
+        try {
+          imageFiles.push(toImageFile(modelReferenceBase64!, 'reference_gallery_model'));
+        } catch {}
         allPhotos.slice(0, 2).forEach((photoStr, idx) => {
           try {
             if (photoStr && typeof photoStr === 'string') {
@@ -643,12 +651,6 @@ Retorne estritamente um JSON estruturado:
             }
           } catch {}
         });
-        try {
-          imageFiles.push(toImageFile(modelReferenceBase64!, 'reference_gallery_model'));
-        } catch {}
-        try {
-          imageFiles.push(toImageFile(scenarioPhotoBase64!, 'reference_scenario_background'));
-        } catch {}
       } else if (isAnaMariaModel2Img) {
         try {
           imageFiles.push(toImageFile(modelReferenceBase64!, 'reference_gallery_model'));
@@ -706,8 +708,13 @@ Retorne estritamente um JSON estruturado:
 
       if (isAnaMariaGallery3Img) {
         baseImageFile = imageFiles[0] || null;
-        const modelIdx = productPhotoCount + 1;
-        const scenarioIdx = productPhotoCount + 2;
+        const scenarioIdx = 1;
+        const modelIdx = 2;
+        const productStartIdx = 3;
+        const productRangeLabel =
+          productPhotoCount > 1
+            ? `${productStartIdx} and ${productStartIdx + 1}`
+            : `${productStartIdx}`;
         const allowsFace =
           presentationMode === 'com_rosto' ||
           (cleanPrompt &&
@@ -716,22 +723,28 @@ Retorne estritamente um JSON estruturado:
               cleanPrompt.includes('o rosto da modelo DEVE aparecer')));
 
         const framingSection = allowsFace
-          ? `[FRAMING & FACE PRESERVATION — GALLERY MODEL UGC]:
+          ? `[FRAMING & FACE PRESERVATION — GALLERY MODEL UGC (REFERENCE IMAGE ${modelIdx})]:
 - Preserve 100% the exact same woman, face, eyes, nose, lips, hair, skin tone, and body curves shown in Reference Image ${modelIdx} (the gallery model).
-- Modern smartphone held naturally taking the mirror selfie. Zero tattoos anywhere on the skin.`
-          : `[FRAMING & MIRROR SELFIE POSE PRESERVATION — GALLERY MODEL]:
+- Modern smartphone held naturally taking the mirror selfie inside the room from Reference Image ${scenarioIdx}. Zero tattoos anywhere on the skin.`
+          : `[FRAMING & MIRROR SELFIE POSE PRESERVATION — GALLERY MODEL (REFERENCE IMAGE ${modelIdx})]:
 - Preserve 100% the exact same woman, body silhouette, skin tone, hair, and mirror-selfie pose holding the smartphone in front of her face as shown in Reference Image ${modelIdx} (the gallery model).
 - Strictly keep her face hidden/covered by the smartphone/chin-down crop matching Reference Image ${modelIdx}. Zero tattoos anywhere on the skin.`;
 
-        effectivePrompt = `[STRICT 3-IMAGE COMPOSITION DIRECTIVE - GALLERY MODEL + NEW GARMENT COLOR + NEW GALLERY SCENARIO - MODO ANA MARIA]:
-- REFERENCE IMAGE ${productPhotoCount === 1 ? '1' : '1 and 2'} (GARMENT & EXACT COLOR ONLY): Extract EXCLUSIVELY the garment/dress/outfit design, cut, fabric texture, details, and the EXACT COLOR/PRINT shown here. 100% IGNORE any person, face, body, or background from Reference Image ${productPhotoCount === 1 ? '1' : '1 and 2'}.
-- REFERENCE IMAGE ${modelIdx} (EXACT GALLERY MODEL WOMAN): You MUST use the EXACT woman from Reference Image ${modelIdx} (same body silhouette, curves, skin tone, hair, nails, and natural mirror-selfie pose). DO NOT generate a random woman from text prompt and DO NOT keep her old outfit or old room from Reference Image ${modelIdx}.
-- REFERENCE IMAGE ${scenarioIdx} (EXACT GALLERY ROOM SCENARIO): Place the woman from Reference Image ${modelIdx} standing in front of the mirror INSIDE this EXACT room/interior from Reference Image ${scenarioIdx}. Preserve 100% of the walls, floor, mirror, doors, lighting, and background of Reference Image ${scenarioIdx}.
-- RESULT: The exact woman from Reference Image ${modelIdx}, dressed in the exact garment and exact color from Reference Image ${productPhotoCount === 1 ? '1' : '1 and 2'}, standing inside the exact room from Reference Image ${scenarioIdx} taking a vertical 9:16 mirror selfie. Zero tattoos.
+        // Alinha eventuais referências numéricas internas ("Foto 1/2/3") do prompt base com a nova ordem [1=Cenário, 2=Modelo, 3+=Produto]
+        const alignedCleanPrompt = cleanPrompt
+          .replace(/Foto 1\b/gi, `Reference Image ${productRangeLabel}`)
+          .replace(/Foto 2\b/gi, `Reference Image ${modelIdx}`)
+          .replace(/Foto 3\b/gi, `Reference Image ${scenarioIdx}`);
+
+        effectivePrompt = `[STRICT EDIT DIRECTIVE - IMMUTABLE BASE ROOM SCENARIO (REFERENCE IMAGE ${scenarioIdx}) + GALLERY MODEL (REFERENCE IMAGE ${modelIdx}) + GARMENT COLOR (REFERENCE IMAGE ${productRangeLabel}) - MODO ANA MARIA]:
+- REFERENCE IMAGE ${scenarioIdx} (BASE ROOM CANVAS — 100% UNCHANGED PIXEL-FOR-PIXEL ARCHITECTURE): You are editing directly onto Reference Image ${scenarioIdx}. KEEP 100% of the exact room, walls, floor texture/tiles, doors, furniture, mirror frame, window, objects, reflections, ambient lighting, shadows, and camera angle from Reference Image ${scenarioIdx} COMPLETELY INTACT. STRICTLY FORBIDDEN: DO NOT invent, redraw, swap, or generate a "similar" room! Every architectural feature of Reference Image ${scenarioIdx} MUST stay identical!
+- REFERENCE IMAGE ${modelIdx} (EXACT GALLERY MODEL WOMAN): Extract ONLY the exact woman from Reference Image ${modelIdx} (exact face, eyes, nose, mouth, hair, skin tone, nails, body silhouette, curves, and natural smartphone mirror-selfie pose) and place her standing naturally in front of the mirror INSIDE Reference Image ${scenarioIdx}. 100% IGNORE AND DISCARD the old background/room and old clothing from Reference Image ${modelIdx}.
+- REFERENCE IMAGE ${productRangeLabel} (GARMENT & EXACT COLOR ONLY): Dress the woman from Reference Image ${modelIdx} in the EXACT garment shown in Reference Image ${productRangeLabel} (1:1 exact color/shade/print, cut, neckline, straps, fabric texture, length, and single-side slit if present). 100% IGNORE any person, face, body, or background from Reference Image ${productRangeLabel}.
+- RESULT: The exact room of Reference Image ${scenarioIdx}, containing the exact woman of Reference Image ${modelIdx}, wearing the exact garment of Reference Image ${productRangeLabel}, taking a 9:16 vertical mirror selfie. Zero tattoos.
 
 ${framingSection}
 
-${cleanPrompt}`;
+${alignedCleanPrompt}`;
       } else if (isAnaMariaModel2Img) {
         baseImageFile = imageFiles[0] || null;
         const productRange = productPhotoCount > 1 ? 'Reference Images 2 and 3' : 'Reference Image 2';

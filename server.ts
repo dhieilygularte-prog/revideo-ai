@@ -2599,30 +2599,74 @@ function getGalleryModelBase64(modelNum?: number | string, presentationMode?: st
   return undefined;
 }
 
-function getGalleryScenarioBase64(scenarioNum?: number | string): string | undefined {
+function getGalleryScenarioBase64(
+  scenarioNum?: number | string,
+  scenarioId?: string,
+  presentationMode?: string
+): string | undefined {
+  const cleanId = scenarioId ? String(scenarioId).trim() : '';
+  if (presentationMode === 'pov' || /^cenario_pov_/i.test(cleanId)) {
+    const povNum = cleanId.replace(/^cenario_pov_/i, '') || String(scenarioNum || '1').trim();
+    const povPath = path.join(process.cwd(), 'public', 'scenarios', 'pov', `${povNum}.png`);
+    try {
+      if (fs.existsSync(povPath)) {
+        return `data:image/png;base64,${fs.readFileSync(povPath).toString('base64')}`;
+      }
+    } catch {}
+    return undefined;
+  }
+
+  // Em SCENARIO_GALLERY_ITEMS: cenario_X aponta sempre para '<X>.png'
+  // (números 1..14 correspondem aos arquivos 0..13.png; números 15..24 correspondem a 15..24.png)
+  if (/^cenario_\d+$/i.test(cleanId)) {
+    const idFileNum = cleanId.replace(/^cenario_/i, '');
+    const idPath = path.join(process.cwd(), 'public', 'scenarios', 'gallery', `${idFileNum}.png`);
+    try {
+      if (fs.existsSync(idPath)) {
+        return `data:image/png;base64,${fs.readFileSync(idPath).toString('base64')}`;
+      }
+    } catch {}
+  }
+
   if (scenarioNum === undefined || scenarioNum === null || scenarioNum === '') return undefined;
-  const numStr = String(scenarioNum).trim();
-  const filePath = path.join(process.cwd(), 'public', 'scenarios', 'gallery', `${numStr}.png`);
-  try {
-    if (fs.existsSync(filePath)) {
-      const buf = fs.readFileSync(filePath);
-      return `data:image/png;base64,${buf.toString('base64')}`;
+  const parsed = Number(String(scenarioNum).trim());
+  const mappedFileNum =
+    Number.isFinite(parsed) && parsed >= 1 && parsed <= 14 ? parsed - 1 : parsed;
+  const candidateNames = Number.isFinite(mappedFileNum)
+    ? [`${mappedFileNum}.png`, `${String(scenarioNum).trim()}.png`]
+    : [`${String(scenarioNum).trim()}.png`];
+
+  for (const fname of candidateNames) {
+    const filePath = path.join(process.cwd(), 'public', 'scenarios', 'gallery', fname);
+    try {
+      if (fs.existsSync(filePath)) {
+        const buf = fs.readFileSync(filePath);
+        return `data:image/png;base64,${buf.toString('base64')}`;
+      }
+    } catch (err) {
+      console.warn('Erro ao carregar cenário da galeria no backend:', err);
     }
-  } catch (err) {
-    console.warn('Erro ao carregar cenário da galeria no backend:', err);
   }
   return undefined;
 }
 
-function getEffectiveScenarioBase64(scenarioPhotoBase64?: string, selectedScenarioNumber?: number | string): string | undefined {
-  if (selectedScenarioNumber !== undefined && selectedScenarioNumber !== null && selectedScenarioNumber !== '') {
-    const diskScenario = getGalleryScenarioBase64(selectedScenarioNumber);
+function getEffectiveScenarioBase64(
+  scenarioPhotoBase64?: string,
+  selectedScenarioNumber?: number | string,
+  selectedScenarioId?: string,
+  presentationMode?: string
+): string | undefined {
+  if (
+    (selectedScenarioId && String(selectedScenarioId).trim() !== '') ||
+    (selectedScenarioNumber !== undefined && selectedScenarioNumber !== null && selectedScenarioNumber !== '')
+  ) {
+    const diskScenario = getGalleryScenarioBase64(selectedScenarioNumber, selectedScenarioId, presentationMode);
     if (diskScenario) return diskScenario;
   }
   if (scenarioPhotoBase64 && scenarioPhotoBase64.length > 50) {
     return scenarioPhotoBase64;
   }
-  return getGalleryScenarioBase64(0) || getGalleryScenarioBase64(1);
+  return getGalleryScenarioBase64(1, 'cenario_0', presentationMode);
 }
 
 async function generateImageWithSeedream(params: {
@@ -3388,10 +3432,16 @@ app.post('/api/generate-scene-image', async (req, res) => {
     const presentationMode = req.body?.presentationMode;
     const selectedMasterId = req.body?.selectedMasterId;
     const selectedScenarioNumber = req.body?.selectedScenarioNumber;
+    const selectedScenarioId = req.body?.selectedScenarioId;
     const selectedModelGalleryNumber = req.body?.selectedModelGalleryNumber;
 
     const effectiveScenarioPhotoBase64 = isAnaMariaMode
-      ? getEffectiveScenarioBase64(scenarioPhotoBase64, selectedScenarioNumber)
+      ? getEffectiveScenarioBase64(
+          scenarioPhotoBase64,
+          selectedScenarioNumber,
+          selectedScenarioId,
+          presentationMode
+        )
       : scenarioPhotoBase64;
 
     const generateModelViaPrompt = Boolean(req.body?.generateModelViaPrompt);

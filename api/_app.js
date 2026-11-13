@@ -945,6 +945,14 @@ ${prompt}` : prompt;
       const isAnaMariaGallery3Img = Boolean(isAnaMariaMode && modelReferenceBase64 && scenarioPhotoBase64 && !isPovMode);
       const isAnaMariaModel2Img = Boolean(isAnaMariaMode && modelReferenceBase64 && !scenarioPhotoBase64 && !isPovMode);
       if (isAnaMariaGallery3Img) {
+        try {
+          imageFiles.push(toImageFile(scenarioPhotoBase64, "reference_scenario_background"));
+        } catch {
+        }
+        try {
+          imageFiles.push(toImageFile(modelReferenceBase64, "reference_gallery_model"));
+        } catch {
+        }
         allPhotos.slice(0, 2).forEach((photoStr, idx) => {
           try {
             if (photoStr && typeof photoStr === "string") {
@@ -953,14 +961,6 @@ ${prompt}` : prompt;
           } catch {
           }
         });
-        try {
-          imageFiles.push(toImageFile(modelReferenceBase64, "reference_gallery_model"));
-        } catch {
-        }
-        try {
-          imageFiles.push(toImageFile(scenarioPhotoBase64, "reference_scenario_background"));
-        } catch {
-        }
       } else if (isAnaMariaModel2Img) {
         try {
           imageFiles.push(toImageFile(modelReferenceBase64, "reference_gallery_model"));
@@ -1004,23 +1004,26 @@ ${prompt}` : prompt;
       const productPhotoCount = Math.min(allPhotos.filter(Boolean).length, 2);
       if (isAnaMariaGallery3Img) {
         baseImageFile = imageFiles[0] || null;
-        const modelIdx = productPhotoCount + 1;
-        const scenarioIdx = productPhotoCount + 2;
+        const scenarioIdx = 1;
+        const modelIdx = 2;
+        const productStartIdx = 3;
+        const productRangeLabel = productPhotoCount > 1 ? `${productStartIdx} and ${productStartIdx + 1}` : `${productStartIdx}`;
         const allowsFace = presentationMode === "com_rosto" || cleanPrompt && (cleanPrompt.includes("MODO COM ROSTO") || cleanPrompt.includes("ROSTO E ENQUADRAMENTO \u2014 MODO COM ROSTO") || cleanPrompt.includes("o rosto da modelo DEVE aparecer"));
-        const framingSection = allowsFace ? `[FRAMING & FACE PRESERVATION \u2014 GALLERY MODEL UGC]:
+        const framingSection = allowsFace ? `[FRAMING & FACE PRESERVATION \u2014 GALLERY MODEL UGC (REFERENCE IMAGE ${modelIdx})]:
 - Preserve 100% the exact same woman, face, eyes, nose, lips, hair, skin tone, and body curves shown in Reference Image ${modelIdx} (the gallery model).
-- Modern smartphone held naturally taking the mirror selfie. Zero tattoos anywhere on the skin.` : `[FRAMING & MIRROR SELFIE POSE PRESERVATION \u2014 GALLERY MODEL]:
+- Modern smartphone held naturally taking the mirror selfie inside the room from Reference Image ${scenarioIdx}. Zero tattoos anywhere on the skin.` : `[FRAMING & MIRROR SELFIE POSE PRESERVATION \u2014 GALLERY MODEL (REFERENCE IMAGE ${modelIdx})]:
 - Preserve 100% the exact same woman, body silhouette, skin tone, hair, and mirror-selfie pose holding the smartphone in front of her face as shown in Reference Image ${modelIdx} (the gallery model).
 - Strictly keep her face hidden/covered by the smartphone/chin-down crop matching Reference Image ${modelIdx}. Zero tattoos anywhere on the skin.`;
-        effectivePrompt = `[STRICT 3-IMAGE COMPOSITION DIRECTIVE - GALLERY MODEL + NEW GARMENT COLOR + NEW GALLERY SCENARIO - MODO ANA MARIA]:
-- REFERENCE IMAGE ${productPhotoCount === 1 ? "1" : "1 and 2"} (GARMENT & EXACT COLOR ONLY): Extract EXCLUSIVELY the garment/dress/outfit design, cut, fabric texture, details, and the EXACT COLOR/PRINT shown here. 100% IGNORE any person, face, body, or background from Reference Image ${productPhotoCount === 1 ? "1" : "1 and 2"}.
-- REFERENCE IMAGE ${modelIdx} (EXACT GALLERY MODEL WOMAN): You MUST use the EXACT woman from Reference Image ${modelIdx} (same body silhouette, curves, skin tone, hair, nails, and natural mirror-selfie pose). DO NOT generate a random woman from text prompt and DO NOT keep her old outfit or old room from Reference Image ${modelIdx}.
-- REFERENCE IMAGE ${scenarioIdx} (EXACT GALLERY ROOM SCENARIO): Place the woman from Reference Image ${modelIdx} standing in front of the mirror INSIDE this EXACT room/interior from Reference Image ${scenarioIdx}. Preserve 100% of the walls, floor, mirror, doors, lighting, and background of Reference Image ${scenarioIdx}.
-- RESULT: The exact woman from Reference Image ${modelIdx}, dressed in the exact garment and exact color from Reference Image ${productPhotoCount === 1 ? "1" : "1 and 2"}, standing inside the exact room from Reference Image ${scenarioIdx} taking a vertical 9:16 mirror selfie. Zero tattoos.
+        const alignedCleanPrompt = cleanPrompt.replace(/Foto 1\b/gi, `Reference Image ${productRangeLabel}`).replace(/Foto 2\b/gi, `Reference Image ${modelIdx}`).replace(/Foto 3\b/gi, `Reference Image ${scenarioIdx}`);
+        effectivePrompt = `[STRICT EDIT DIRECTIVE - IMMUTABLE BASE ROOM SCENARIO (REFERENCE IMAGE ${scenarioIdx}) + GALLERY MODEL (REFERENCE IMAGE ${modelIdx}) + GARMENT COLOR (REFERENCE IMAGE ${productRangeLabel}) - MODO ANA MARIA]:
+- REFERENCE IMAGE ${scenarioIdx} (BASE ROOM CANVAS \u2014 100% UNCHANGED PIXEL-FOR-PIXEL ARCHITECTURE): You are editing directly onto Reference Image ${scenarioIdx}. KEEP 100% of the exact room, walls, floor texture/tiles, doors, furniture, mirror frame, window, objects, reflections, ambient lighting, shadows, and camera angle from Reference Image ${scenarioIdx} COMPLETELY INTACT. STRICTLY FORBIDDEN: DO NOT invent, redraw, swap, or generate a "similar" room! Every architectural feature of Reference Image ${scenarioIdx} MUST stay identical!
+- REFERENCE IMAGE ${modelIdx} (EXACT GALLERY MODEL WOMAN): Extract ONLY the exact woman from Reference Image ${modelIdx} (exact face, eyes, nose, mouth, hair, skin tone, nails, body silhouette, curves, and natural smartphone mirror-selfie pose) and place her standing naturally in front of the mirror INSIDE Reference Image ${scenarioIdx}. 100% IGNORE AND DISCARD the old background/room and old clothing from Reference Image ${modelIdx}.
+- REFERENCE IMAGE ${productRangeLabel} (GARMENT & EXACT COLOR ONLY): Dress the woman from Reference Image ${modelIdx} in the EXACT garment shown in Reference Image ${productRangeLabel} (1:1 exact color/shade/print, cut, neckline, straps, fabric texture, length, and single-side slit if present). 100% IGNORE any person, face, body, or background from Reference Image ${productRangeLabel}.
+- RESULT: The exact room of Reference Image ${scenarioIdx}, containing the exact woman of Reference Image ${modelIdx}, wearing the exact garment of Reference Image ${productRangeLabel}, taking a 9:16 vertical mirror selfie. Zero tattoos.
 
 ${framingSection}
 
-${cleanPrompt}`;
+${alignedCleanPrompt}`;
       } else if (isAnaMariaModel2Img) {
         baseImageFile = imageFiles[0] || null;
         const productRange = productPhotoCount > 1 ? "Reference Images 2 and 3" : "Reference Image 2";
@@ -4250,29 +4253,55 @@ function getGalleryModelBase64(modelNum, presentationMode) {
   }
   return void 0;
 }
-function getGalleryScenarioBase64(scenarioNum) {
-  if (scenarioNum === void 0 || scenarioNum === null || scenarioNum === "") return void 0;
-  const numStr = String(scenarioNum).trim();
-  const filePath = path.join(process.cwd(), "public", "scenarios", "gallery", `${numStr}.png`);
-  try {
-    if (fs.existsSync(filePath)) {
-      const buf = fs.readFileSync(filePath);
-      return `data:image/png;base64,${buf.toString("base64")}`;
+function getGalleryScenarioBase64(scenarioNum, scenarioId, presentationMode) {
+  const cleanId = scenarioId ? String(scenarioId).trim() : "";
+  if (presentationMode === "pov" || /^cenario_pov_/i.test(cleanId)) {
+    const povNum = cleanId.replace(/^cenario_pov_/i, "") || String(scenarioNum || "1").trim();
+    const povPath = path.join(process.cwd(), "public", "scenarios", "pov", `${povNum}.png`);
+    try {
+      if (fs.existsSync(povPath)) {
+        return `data:image/png;base64,${fs.readFileSync(povPath).toString("base64")}`;
+      }
+    } catch {
     }
-  } catch (err) {
-    console.warn("Erro ao carregar cen\xE1rio da galeria no backend:", err);
+    return void 0;
+  }
+  if (/^cenario_\d+$/i.test(cleanId)) {
+    const idFileNum = cleanId.replace(/^cenario_/i, "");
+    const idPath = path.join(process.cwd(), "public", "scenarios", "gallery", `${idFileNum}.png`);
+    try {
+      if (fs.existsSync(idPath)) {
+        return `data:image/png;base64,${fs.readFileSync(idPath).toString("base64")}`;
+      }
+    } catch {
+    }
+  }
+  if (scenarioNum === void 0 || scenarioNum === null || scenarioNum === "") return void 0;
+  const parsed = Number(String(scenarioNum).trim());
+  const mappedFileNum = Number.isFinite(parsed) && parsed >= 1 && parsed <= 14 ? parsed - 1 : parsed;
+  const candidateNames = Number.isFinite(mappedFileNum) ? [`${mappedFileNum}.png`, `${String(scenarioNum).trim()}.png`] : [`${String(scenarioNum).trim()}.png`];
+  for (const fname of candidateNames) {
+    const filePath = path.join(process.cwd(), "public", "scenarios", "gallery", fname);
+    try {
+      if (fs.existsSync(filePath)) {
+        const buf = fs.readFileSync(filePath);
+        return `data:image/png;base64,${buf.toString("base64")}`;
+      }
+    } catch (err) {
+      console.warn("Erro ao carregar cen\xE1rio da galeria no backend:", err);
+    }
   }
   return void 0;
 }
-function getEffectiveScenarioBase64(scenarioPhotoBase64, selectedScenarioNumber) {
-  if (selectedScenarioNumber !== void 0 && selectedScenarioNumber !== null && selectedScenarioNumber !== "") {
-    const diskScenario = getGalleryScenarioBase64(selectedScenarioNumber);
+function getEffectiveScenarioBase64(scenarioPhotoBase64, selectedScenarioNumber, selectedScenarioId, presentationMode) {
+  if (selectedScenarioId && String(selectedScenarioId).trim() !== "" || selectedScenarioNumber !== void 0 && selectedScenarioNumber !== null && selectedScenarioNumber !== "") {
+    const diskScenario = getGalleryScenarioBase64(selectedScenarioNumber, selectedScenarioId, presentationMode);
     if (diskScenario) return diskScenario;
   }
   if (scenarioPhotoBase64 && scenarioPhotoBase64.length > 50) {
     return scenarioPhotoBase64;
   }
-  return getGalleryScenarioBase64(0) || getGalleryScenarioBase64(1);
+  return getGalleryScenarioBase64(1, "cenario_0", presentationMode);
 }
 async function generateImageWithSeedream(params) {
   let apiKey = (process.env.apiauroraseedreamvip || process.env.APIAURORASEEDREAMVIP || process.env.Apiauroraseedreamvip || process.env.SEEDREAM_API_KEY || process.env.APISEEDREAMVALIDA || process.env.APISEEDREAM || process.env.BYTEPLUS_ARK_API_KEY || "").trim();
@@ -4812,8 +4841,14 @@ ${prompt}`;
     const presentationMode = req.body?.presentationMode;
     const selectedMasterId = req.body?.selectedMasterId;
     const selectedScenarioNumber = req.body?.selectedScenarioNumber;
+    const selectedScenarioId = req.body?.selectedScenarioId;
     const selectedModelGalleryNumber = req.body?.selectedModelGalleryNumber;
-    const effectiveScenarioPhotoBase64 = isAnaMariaMode ? getEffectiveScenarioBase64(scenarioPhotoBase64, selectedScenarioNumber) : scenarioPhotoBase64;
+    const effectiveScenarioPhotoBase64 = isAnaMariaMode ? getEffectiveScenarioBase64(
+      scenarioPhotoBase64,
+      selectedScenarioNumber,
+      selectedScenarioId,
+      presentationMode
+    ) : scenarioPhotoBase64;
     const generateModelViaPrompt = Boolean(req.body?.generateModelViaPrompt);
     let effectiveModelReferenceBase64 = modelReferenceBase64;
     if (generateModelViaPrompt) {
