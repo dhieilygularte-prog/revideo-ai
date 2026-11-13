@@ -60,19 +60,29 @@ export const UNIVERSAL_GOLDEN_ACCESSORIES_ENGLISH_BLOCK = `[MANDATORY FEMININE D
 export function detectShoeCategory(
   productName: string,
   additionalInstructions: string = '',
-  influencer: AnaMariaInfluencer = 'Mulher'
+  influencer: AnaMariaInfluencer = 'Mulher',
+  dressInspection?: AnaMariaDressInspection
 ): { category: AnaMariaShoeCategory; description: string; name: string } {
   const combined = `${productName} ${additionalInstructions}`.toLowerCase();
   const isMale = influencer === 'Homem';
+  const inspectedCat = dressInspection?.garmentCategory;
+  const inspectedIsDress =
+    inspectedCat === 'dress' ||
+    (dressInspection?.lengthCategory !== undefined &&
+      dressInspection.lengthCategory !== 'unknown' &&
+      inspectedCat !== 'upper' &&
+      inspectedCat !== 'lower');
 
   // 1. Roupas Fitness / Academia / Esportivas / Treino -> SEMPRE TÊNIS
   const isFitness =
+    inspectedCat === 'fitness' ||
     /\b(fitness|academia|treino|gym|legging|macacao fitness|macacão fitness|macaquinho fitness|esportiv|suplex|poliamida fitness|anarruga fitness|top fitness|conjunto fitness|short fitness|bermuda academia|camiseta treino|dry fit|dryfit)\b/i.test(
       combined
     );
 
   // 2. Camisola, Baby Doll, Roupa de Dormir, Pijama ou Roupa de Ficar em Casa -> CHINELO DE DEDO BRANCO COM DETALHES
   const isSleepwearOrHomewear =
+    inspectedCat === 'sleepwear' ||
     /\b(camisola|baby doll|babydoll|pijama|dormir|sleepwear|homewear|ficar em casa|roupa de casa|lingerie|robe)\b/i.test(
       combined
     );
@@ -84,14 +94,28 @@ export function detectShoeCategory(
     );
 
   // Peças únicas (vestidos, macacões, camisolas, babydolls, pijamas) NÃO são peças superiores avulsas
-  const isOnePieceForShoes = /\b(vestido|vestidos|dress|dresses|macac[aã]o|macaquinho|camisola|baby\s*doll|babydoll|jumpsuit|chemise|tubinho|pijama completo|robe)\b/i.test(combined);
-  const isDress = /\b(vestido|vestidos|dress|dresses|longo|midi|chemise|tubinho)\b/i.test(combined);
+  const isOnePieceForShoes =
+    inspectedIsDress ||
+    /\b(vestido|vestidos|dress|dresses|macac[aã]o|macaquinho|camisola|baby\s*doll|babydoll|jumpsuit|chemise|tubinho|pijama completo|robe)\b/i.test(
+      combined
+    );
+  const isDress =
+    inspectedIsDress ||
+    /\b(vestido|vestidos|dress|dresses|longo|midi|chemise|tubinho)\b/i.test(combined);
 
   // 3.1. Blusas, Blusinhas, Croppeds ou Peças Superiores -> SEMPRE TÊNIS (combinando com a Calça Jeans obrigatória)
-  const isUpperPieceForShoes = !isOnePieceForShoes && /\b(blusa|blusinha|blusinhas|blusas|rendada|rendado|cropped|top|regata|camisa|camiseta|t-shirt|tshirt|casaco|jaqueta|blazer|moletom|sueter|suéter|cardiga|cardigã|bata|cropped rendad[oa]|blusa rendad[oa])\b/i.test(combined);
+  const isUpperPieceForShoes =
+    !isOnePieceForShoes &&
+    (inspectedCat === 'upper' ||
+      /\b(blusa|blusinha|blusinhas|blusas|rendada|rendado|cropped|top|regata|camisa|camiseta|t-shirt|tshirt|casaco|jaqueta|blazer|moletom|sueter|suéter|cardiga|cardigã|bata|cropped rendad[oa]|blusa rendad[oa])\b/i.test(
+        combined
+      ));
 
   // 4. Calças (para mulher: calça = tênis casual branco ou harmonioso; para homem: social = sapato social, demais = tênis)
-  const isPants = /\b(calca|calça|jeans|jogger|cargo|pantacourt|pantalona|sarja)\b/i.test(combined);
+  const isPants =
+    !isOnePieceForShoes &&
+    (inspectedCat === 'lower' ||
+      /\b(calca|calça|jeans|jogger|cargo|pantacourt|pantalona|sarja)\b/i.test(combined));
 
   if (isMale) {
     if (isFitness) {
@@ -179,15 +203,19 @@ export function detectShoeCategory(
     };
   }
 
-  // 4. Vestidos em geral (tubinho, midi, longo casual, etc.) -> Sandália feminina elegante que harmonize com o vestido
+  // 4. Vestidos em geral (tubinho, midi, longo casual, festa, etc.) -> Sandália de festa elegante que harmonize com o vestido
   if (isDress) {
-    const isLongDress = /\b(longo|longa|maxi|arrastando|ch[aã]o|floor)\b/i.test(combined);
+    const isLongDress =
+      dressInspection?.lengthCategory === 'longo' ||
+      /\b(longo|longa|maxi|arrastando|ch[aã]o|floor)\b/i.test(combined);
     return {
       category: 'C_OUTRO',
-      name: isLongDress ? 'Sandália Feminina sob a Barra Longa (se visível)' : 'Sandália Feminina Elegante que Combina com o Vestido',
+      name: isLongDress
+        ? 'Sandália de Festa Elegante sob a Barra Longa (se visível)'
+        : 'Sandália de Festa Elegante que Combina com o Vestido',
       description: isLongDress
-        ? 'Sandália feminina elegante que harmoniza com o vestido longo. REGRA DE COMPRIMENTO: Se o vestido for longo até o chão cobrindo o calçado, preserve a barra longa cobrindo os pés; NÃO é obrigatório aparecer calçado e é proibido encurtar o vestido longo.'
-        : 'Sandália feminina elegante de tiras delicadas ou salto harmonioso que combine perfeitamente com a cor, caimento e proposta do vestido.',
+        ? 'Sandália feminina de festa elegante de salto fino que harmoniza com o vestido longo (PROIBIDO tênis). REGRA DE COMPRIMENTO: Se o vestido for longo até o chão cobrindo o calçado, preserve a barra longa cobrindo os pés; NÃO é obrigatório aparecer calçado e é proibido encurtar o vestido longo.'
+        : 'Sandália feminina de festa elegante de salto fino e tiras delicadas que combine perfeitamente com a cor, caimento e proposta do vestido (TERMINANTEMENTE PROIBIDO usar tênis ou calçado esportivo com vestido).',
     };
   }
 
@@ -201,17 +229,17 @@ export function detectShoeCategory(
     };
   }
 
-  // 6. Demais roupas femininas -> Calçado que SEMPRE combina com a roupa e contexto
+  // 6. Demais roupas femininas -> Sandália elegante que SEMPRE combina com a roupa e contexto
   return {
     category: 'C_OUTRO',
-    name: 'Calçado Harmonioso que Combina com a Peça',
+    name: 'Sandália de Festa ou Calçado Elegante que Combina com a Peça',
     description:
-      'Calçado feminino elegante que combine 100% em estilo, cor e contexto com a peça anunciada na foto de referência.',
+      'Sandália feminina elegante de salto e tiras delicadas que combine 100% em estilo, cor e contexto com a peça anunciada na foto de referência (PROIBIDO tênis esportivo em vestidos ou looks sociais).',
   };
 }
 
 export interface ComplementaryGarmentInfo {
-  type: 'upper_only' | 'lower_only' | 'full_body' | 'lingerie';
+  type: 'upper_only' | 'lower_only' | 'full_body' | 'lingerie' | 'auto';
   directiveTextPt: string;
   directiveTextEn: string;
 }
@@ -225,15 +253,41 @@ export interface ComplementaryGarmentInfo {
 export function detectComplementaryGarment(
   productName: string,
   additionalInstructions: string = '',
-  influencer: AnaMariaInfluencer = 'Mulher'
+  influencer: AnaMariaInfluencer = 'Mulher',
+  dressInspection?: AnaMariaDressInspection
 ): ComplementaryGarmentInfo {
   const combined = `${productName} ${additionalInstructions}`.toLowerCase();
   const isMale = influencer === 'Homem';
+  const inspectedCat = dressInspection?.garmentCategory;
+  const inspectedIsDress =
+    inspectedCat === 'dress' ||
+    (dressInspection?.lengthCategory !== undefined &&
+      dressInspection.lengthCategory !== 'unknown' &&
+      inspectedCat !== 'upper' &&
+      inspectedCat !== 'lower');
 
-  const isFullBody = /\b(vestido|longo|midi|macacao|macacão|macaquinho|jumpsuit|conjunto|pijama completo|robe e pijama|terno completo)\b/i.test(combined);
-  const isLingerie = /\b(lingerie|suti[aã]|calcinha|babydoll|baby doll|camisola|corselet|cinta modeladora|body de renda)\b/i.test(combined);
-  const isUpper = /\b(blusa|blusinha|blusinhas|blusas|camisa|camiseta|cropped|top|regata|t-shirt|tshirt|casaco|jaqueta|blazer|moletom|sueter|suéter|cardiga|cardigã|cropped rendad[oa]|blusa rendad[oa]|bata|rendada|rendado)\b/i.test(combined);
-  const isLower = /\b(calca|calça|jeans|short|shorts|bermuda|saia|minissaia|pantacourt|pantalona|legging|pant|pants)\b/i.test(combined);
+  const isFullBody =
+    inspectedIsDress ||
+    /\b(vestido|longo|midi|macacao|macacão|macaquinho|jumpsuit|conjunto|pijama completo|robe e pijama|terno completo)\b/i.test(
+      combined
+    );
+  const isLingerie =
+    inspectedCat === 'sleepwear' ||
+    /\b(lingerie|suti[aã]|calcinha|babydoll|baby doll|camisola|corselet|cinta modeladora|body de renda)\b/i.test(
+      combined
+    );
+  const isUpper =
+    !isFullBody &&
+    (inspectedCat === 'upper' ||
+      /\b(blusa|blusinha|blusinhas|blusas|camisa|camiseta|cropped|top|regata|t-shirt|tshirt|casaco|jaqueta|blazer|moletom|sueter|suéter|cardiga|cardigã|cropped rendad[oa]|blusa rendad[oa]|bata|rendada|rendado)\b/i.test(
+        combined
+      ));
+  const isLower =
+    !isFullBody &&
+    (inspectedCat === 'lower' ||
+      /\b(calca|calça|jeans|short|shorts|bermuda|saia|minissaia|pantacourt|pantalona|legging|pant|pants)\b/i.test(
+        combined
+      ));
 
   if (isFullBody) {
     return {
@@ -282,9 +336,9 @@ export function detectComplementaryGarment(
   }
 
   return {
-    type: 'upper_only',
-    directiveTextPt: `REGRA DE LOOK COMERCIAL COMPLETO:\nSe a foto de produto anexada for de uma peça superior, a modelo veste calça jeans feminina clássica de cintura alta. Se for peça inferior, veste blusa neutra elegante para compor um visual completo de moda.`,
-    directiveTextEn: `[FULL OUTFIT MANDATE]: The model is fully dressed with matching complementary garment (jeans or neutral top) for a complete commercial look.`,
+    type: 'auto',
+    directiveTextPt: `REGRA DE LOOK COMERCIAL COMPLETO:\nReproduza fielmente a peça mostrada na foto de produto anexada (se for vestido ou peça única, a modelo veste exclusivamente o vestido com sandália de festa elegante nos pés; se for peça avulsa, componha o look comercial completo).`,
+    directiveTextEn: `[FULL OUTFIT MANDATE]: The model wears the exact garment from the product photo (if a dress or one-piece, wear exclusively the dress with elegant party sandals; if a separate piece, wear matching complementary garment for a complete commercial look).`,
   };
 }
 
@@ -602,7 +656,12 @@ export function buildAnaMariaImagePrompt(
     form.presentationMode || (master.isPov ? 'pov' : 'mirror_selfie');
   const isMale = form.influencer === 'Homem';
   const isPlusSize = form.bodyType === 'plus_size';
-  const shoeInfo = detectShoeCategory(form.productName, form.additionalInstructions, form.influencer);
+  const shoeInfo = detectShoeCategory(
+    form.productName,
+    form.additionalInstructions,
+    form.influencer,
+    dressInspection
+  );
   const isBag = isBagProduct(form.productName, form.additionalInstructions);
   const noBagDirectivePt = !isBag
     ? '\n- REGRA OBRIGATÓRIA DE ZERO BOLSAS: A modelo NÃO DEVE usar, segurar ou carregar nenhum tipo de bolsa, bolsa tiracolo, bolsa de mão, carteira, sacola, clutch ou mochila. Mãos e ombros completamente livres de bolsas. Bolsas só podem aparecer se a bolsa for o próprio produto de referência anunciado (o que NÃO é o caso aqui).'
@@ -610,7 +669,12 @@ export function buildAnaMariaImagePrompt(
   const noBagDirectiveEn = !isBag
     ? '\nMANDATORY CONSTRAINT: NO BAGS, NO PURSES, NO HANDBAGS. The model must NOT wear, hold, or carry any handbag, purse, tote bag, shoulder bag, backpack, clutch or crossbody bag. Both hands and shoulders 100% free of bags.'
     : '';
-  const complementaryInfo = detectComplementaryGarment(form.productName, form.additionalInstructions, form.influencer);
+  const complementaryInfo = detectComplementaryGarment(
+    form.productName,
+    form.additionalInstructions,
+    form.influencer,
+    dressInspection
+  );
   const { imageLengthRule, imageSlitRule } = buildDressLengthAndSlitDirectives(
     form.productName,
     form.additionalInstructions,
@@ -737,13 +801,15 @@ REGRA SOBERANA ACIMA DO PROMPT DA MESTRA: Enquadrar a cabeça RIGOROSAMENTE DA A
 É TERMINANTEMENTE PROIBIDO MOSTRAR LÁBIOS, BOCA, NARIZ OU OLHOS EM QUALQUER PARTE DA IMAGEM.
 Os lábios, a boca, o nariz e os olhos devem ficar 100% FORA do enquadramento em todas as circunstâncias. Mostrar somente a ponta inferior do queixo, o pescoço, o colo (com parte do comprimento dos cabelos caindo sobre os ombros/colo) e todo o corpo até os pés. O corte deve parecer uma selfie espontânea natural tirada no espelho com corte exato na base do queixo.`;
 
-  const scenarioRelightRulePt = `- ILUMINAÇÃO SOBERANA DO CENÁRIO & INTEGRAÇÃO SEM CONTORNO BRANCO: Quem manda 100% na luz, direção luminosa, temperatura de cor (quente/fria/neutra), brilho e sombras é o CENÁRIO (nunca a foto da modelo nem a foto da peça). Reilumine pele, rosto, cabelos e roupa para obedecer fielmente à iluminação real do cômodo, com sombra de contato suave no piso sob os pés, light-wrap natural nas bordas dos fios/pele/tecido e ZERO linha branca, aura ou efeito de colagem/recorte.`;
+  const scenarioRelightRulePt = `- FOTOGRAFIA ÚNICA NATIVA NO CÔMODO (ZERO MONTAGEM / ZERO COLAGEM / ZERO CONTORNO BRANCO): A imagem DEVE ser renderizada como uma única fotografia real capturada em exposição única dentro do cômodo do CENÁRIO — nunca como recorte ou sobreposição.
+- PERSPECTIVA 3D, ESCALA E ANCORAGEM FÍSICA NO PISO: Alinhe a escala corporal, a altura do horizonte da câmera, a distância focal e a perspectiva dos pés ao plano geométrico real do piso e rodapés do CENÁRIO. Os pés/calçado (ou a barra longa) apoiam-se firmemente no chão, projetando sombra de contato escura sob a sola/salto, oclusão de ambiente nos tornozelos/barra e sombra projetada suave no piso coerente com a direção da luz do quarto.
+- REILUMINAÇÃO FÍSICA GLOBAL & TRANSIÇÃO ÓPTICA DE BORDAS: Descarte 100% a iluminação de estúdio ou parede clara da foto original da modelo/produto. Reilumine pele, rosto, cabelos e tecido obedecendo exclusivamente à luz ambiente, temperatura de cor (quente/fria), contraste, reflexos indiretos das paredes/cortinas e grão óptico da câmera do CENÁRIO, com fusão sub-pixel orgânica nos fios de cabelo, ombros e braços (ZERO linha branca, ZERO halo claro, ZERO borda dura de máscara).`;
 
   const scenarioSection = hasSelectedScenario
     ? `## 4. PRESERVAÇÃO INTEGRAL DO CENÁRIO INDEPENDENTE (${scenarioTitle.toUpperCase()})
-A foto de cenário anexada é a autoridade visual absoluta do ambiente.
-Preserve integralmente e sem modificações todo o cômodo da foto de referência: piso, paredes, portas, cama/móveis, espelho e elementos arquitetônicos.
-NÃO redesenhe, NÃO altere e NÃO gere um ambiente diferente. Insira ${isMale ? 'o modelo' : 'a modelo'} perfeitamente integrado(a) e em pé diante do espelho dentro deste exato cômodo real.
+A foto de cenário anexada é a autoridade visual absoluta do ambiente e da iluminação.
+Preserve integralmente todo o cômodo da foto de referência: piso, paredes, portas, cama/móveis, cortinas e arquitetura.
+NÃO redesenhe e NÃO gere um ambiente diferente. Fotografe ${isMale ? 'o modelo' : 'a modelo'} fisicamente presente e em pé sobre o piso real dentro deste exato cômodo em uma única captura óptica natural.
 ${scenarioRelightRulePt}`
     : `## 4. CENÁRIO RESIDENCIAL E AMBIENTE
 ${scenarioText}`;
@@ -772,14 +838,15 @@ ${
     const dressDetailDirective = [imageLengthRule, imageSlitRule].filter(Boolean).join('\n');
     const garmentTypeInstruction = isDressOrOnePiece
       ? '- O PRODUTO DA FOTO 1 É UM VESTIDO / PEÇA ÚNICA COMPLETA: A modelo veste EXCLUSIVAMENTE o vestido/peça única da Foto 1 com máxima fidelidade 1:1.\n' +
-        '- PROIBIÇÃO ABSOLUTA DE CALÇA OU SHORTS: É TERMINANTEMENTE PROIBIDO ADICIONAR CALÇA JEANS, CALÇA, SHORTS, BERMUDA OU QUALQUER OUTRA PEÇA INFERIOR. A modelo veste APENAS o vestido da Foto 1 cobrindo o corpo por completo com pernas limpas naturais.' +
+        '- PROIBIÇÃO ABSOLUTA DE CALÇA, SHORTS OU TÊNIS: É TERMINANTEMENTE PROIBIDO ADICIONAR CALÇA JEANS, CALÇA, SHORTS, BERMUDA OU TÊNIS ESPORTIVO. A modelo veste APENAS o vestido da Foto 1 cobrindo o corpo por completo com pernas limpas naturais e sandália de festa elegante nos pés (se visíveis).' +
         (dressDetailDirective ? `\n${dressDetailDirective}` : '')
       : isUpperOnly
       ? '- O PRODUTO DA FOTO 1 É UMA PEÇA SUPERIOR (BLUSA, BLUSINHA, CROPPED OU PARTE DE CIMA): A modelo veste a peça superior da Foto 1 com máxima fidelidade 1:1, combinada OBRIGATORIAMENTE com CALÇA JEANS feminina clássica de cintura alta (azul tradicional) e TÊNIS casual nos pés. É TERMINANTEMENTE PROIBIDO a modelo ficar sem calça, de calcinha, com pernas despidas ou nua na parte de baixo! Look 100% completo, elegante e comercial com blusa + calça jeans + tênis.\n' +
         '- REGRA DE ENQUADRAMENTO DA CINTURA PARA CIMA (PEÇA SUPERIOR): Como o produto anunciado é uma peça que fica acima da cintura, o enquadramento fotográfico no espelho deve priorizar da cintura para cima (waist-up medium close-up shot), focando diretamente na blusa/peça superior com máxima nitidez de detalhes, decote, caimento e textura.'
       : isLowerOnly
       ? '- O PRODUTO DA FOTO 1 É UMA PEÇA INFERIOR: A modelo veste a peça inferior da Foto 1 com máxima fidelidade 1:1, combinada com uma blusa neutra elegante para compor um look comercial elegante de catálogo.'
-      : '- Se o produto for vestido ou macacão, veste EXCLUSIVAMENTE o vestido (sem calça jeans ou shorts por baixo); se for blusa/peça superior, veste CALÇA JEANS clássica de cintura alta e TÊNIS nos pés (TERMINANTEMENTE PROIBIDO ficar sem calça ou nua na parte de baixo); se for calça/short, veste blusa combinando.';
+      : '- Reproduza com máxima fidelidade 1:1 o look completo da Foto 1 (se for vestido ou peça única, veste exclusivamente o vestido sem nenhuma calça por baixo e com sandália de festa elegante nos pés).' +
+        (dressDetailDirective ? `\n${dressDetailDirective}` : '');
 
     let galleryModelPrompt = '';
 
@@ -790,7 +857,7 @@ ${
 1. FOTO 1 (PRODUTO — PEÇA DE ROUPA):
 - Vestir a modelo com a roupa da Foto 1 com máxima fidelidade 1:1 (mesma cor exata, tonalidade, textura do tecido, caimento, modelagem, decote, mangas e detalhes reais da peça).
 ${garmentTypeInstruction}
-- Calçado nos pés: ${shoeInfo.name} (${shoeInfo.description}), compondo um visual harmonioso e elegante com a peça (se os pés estiverem visíveis; respeite rigorosamente o comprimento exato da barra na Foto 1 sem jamais alongar vestidos curtos/midi nem encurtar vestidos longos).
+- Calçado nos pés: ${shoeInfo.name} (${shoeInfo.description}), substituindo qualquer sapato/tênis original da Foto 2 para compor um visual 100% harmonioso e elegante com a peça (se os pés estiverem visíveis; respeite rigorosamente o comprimento exato da barra na Foto 1 sem jamais alongar vestidos curtos/midi nem encurtar vestidos longos).
 - REGRA CRÍTICA DE ISOLAMENTO TOTAL DA FOTO 1: Da Foto 1 (produto), extraia RIGOROSAMENTE apenas a peça de roupa e tecido. É TERMINANTEMENTE PROIBIDO copiar, mesclar ou misturar o rosto, a cabeça, o cabelo, a pele ou a pose da pessoa da Foto 1! Ignore 100% a pessoa da Foto 1 (ZERO mistura com o rosto da Foto 1). É TERMINANTEMENTE PROIBIDO copiar tatuagens, marcas corporais ou desenhos da pessoa da Foto 1. A modelo gerada deve ter PELE 100% LIMPA, ZERO TATUAGENS em todo o corpo (braços, mãos, pernas, colo e pescoço totalmente livres de tatuagens).
 ${noBagDirectivePt}${noBagDirectiveEn}
 
@@ -799,34 +866,31 @@ ${noBagDirectivePt}${noBagDirectiveEn}
 - PRESERVAÇÃO INTEGRAL DE BIOTIPO E IDENTIDADE: reproduza com fidelidade 100% o mesmo corpo, curvas, biotipo, quadris, cintura, pernas, tom de pele natural com poros reais e cabelos (mesma cor, corte e textura da foto da modelo).
 - PRESERVAÇÃO INTEGRAL DO CENÁRIO DA FOTO 2 (CENÁRIO DA MODELO): O cômodo de fundo, paredes, piso, espelho, portas, móveis e iluminação natural DEVEM ser 100% preservados e idênticos aos da Foto 2. NÃO altere nem redesenhe o ambiente da Foto 2.
 - PRESERVAÇÃO INTEGRAL DE ROSTO, POSE E ENQUADRAMENTO DA FOTO 2: Mantenha RIGOROSAMENTE o mesmo enquadramento, mesmo ângulo, mesma pose e mesma cabeça/rosto da Foto 2. Se na Foto 2 o rosto da modelo aparece (total ou parcialmente), o rosto DEVE APARECER IDENTICAMENTE, com a mesma face, olhos, nariz, boca, cabelo e expressão da mulher da Foto 2 (PROIBIDO cortar a cabeça ou o queixo se o rosto aparece na Foto 2!). Se na Foto 2 o rosto estiver encoberto pelo celular ou cortado no enquadramento, mantenha o mesmo corte original da Foto 2.
-- ÚNICA MUDANÇA PERMITIDA: Substituir as roupas que a modelo veste na Foto 2 pela roupa da Foto 1 (respeitando as regras de look completo e calçado harmonioso).
+- ÚNICA MUDANÇA PERMITIDA: Substituir as roupas e o calçado que a modelo veste na Foto 2 pela roupa da Foto 1 e pelo calçado indicado (${shoeInfo.name}).
 - REILUMINAÇÃO & ZERO BORDA DE RECORTE: A roupa e o calçado trocados devem assumir 100% a iluminação, temperatura de cor e sombras do cômodo da Foto 2, sem contorno branco ou aspecto colado.
 
 Qualidade fotográfica autêntica de smartphone moderno, textura de pele humana real com poros visíveis, acabamento fosco suave sem brilho excessivo de óleo, sem aspecto de cera ou plástico. ZERO tatuagens.`;
     } else {
-      // MODO CENÁRIO DA GALERIA (3 FOTOS): Modelo da Foto 2 + Cenário Independente da Foto 3
-      galleryModelPrompt = `${resolvedPriorityBlock || priorityOverrideBlock}FOTOGRAFIA COMERCIAL VERTICAL 9:16 (1080x1920) COMBINANDO RIGOROSAMENTE AS 3 FOTOS DE REFERÊNCIA:
+      // MODO CENÁRIO DA GALERIA (3 FOTOS): Modelo da Foto 2 fotografada nativamente dentro do Cenário Independente da Foto 3
+      galleryModelPrompt = `${resolvedPriorityBlock || priorityOverrideBlock}FOTOGRAFIA COMERCIAL REALISTA VERTICAL 9:16 (1080x1920) EM EXPOSIÇÃO ÚNICA NATIVA:
 
 1. FOTO 1 (PRODUTO — PEÇA DE ROUPA):
 - Vestir a modelo com a roupa da Foto 1 com máxima fidelidade 1:1 (mesma cor exata, tonalidade, textura do tecido, caimento, modelagem, decote, mangas e detalhes reais da peça).
 ${garmentTypeInstruction}
-- Calçado nos pés: ${shoeInfo.name} (${shoeInfo.description}), compondo um visual harmonioso e elegante com a peça (se os pés estiverem visíveis; respeite rigorosamente o comprimento exato da barra na Foto 1 sem jamais alongar vestidos curtos/midi nem encurtar vestidos longos).
-- REGRA CRÍTICA DE ISOLAMENTO TOTAL DA FOTO 1: Da Foto 1 (produto), extraia RIGOROSAMENTE apenas a peça de roupa e tecido. É TERMINANTEMENTE PROIBIDO copiar, mesclar ou misturar o rosto, a cabeça, o cabelo, a pele ou a pose da pessoa da Foto 1! Ignore 100% a pessoa da Foto 1 (ZERO mistura com o rosto da Foto 1). É TERMINANTEMENTE PROIBIDO copiar tatuagens, marcas corporais ou desenhos da pessoa da Foto 1. A modelo gerada deve ter PELE 100% LIMPA, ZERO TATUAGENS em todo o corpo (braços, mãos, pernas, colo e pescoço totalmente livres de tatuagens).
+- Calçado nos pés: ${shoeInfo.name} (${shoeInfo.description}), descartando qualquer tênis ou sapato original da Foto 2 (se os pés estiverem visíveis; respeite rigorosamente o comprimento exato da barra na Foto 1 sem jamais alongar vestidos curtos/midi nem encurtar vestidos longos).
+- REGRA CRÍTICA DE ISOLAMENTO TOTAL DA FOTO 1: Da Foto 1 (produto), use APENAS a peça de roupa e tecido. Ignore 100% o rosto, cabeça, corpo, tatuagens ou fundo da pessoa da Foto 1. PELE 100% LIMPA, ZERO TATUAGENS.
 ${noBagDirectivePt}${noBagDirectiveEn}
 
-2. FOTO 2 (MODELO — IDENTIDADE, ROSTO E POSE 1:1):
-- A modelo gerada DEVE SER LITERALMENTE A MESMA MULHER DA FOTO 2.
-- PRESERVAÇÃO INTEGRAL DO BIOTIPO DA FOTO 2: reproduza com fidelidade 100% o mesmo corpo, curvas, biotipo, quadris, cintura, pernas, tom de pele natural com poros reais, cabelos (mesma cor, corte e textura da foto da modelo).
-- PRESERVAÇÃO INTEGRAL DE ROSTO E ENQUADRAMENTO DA FOTO 2: Se na Foto 2 o rosto da modelo aparece, o rosto DEVE APARECER IDENTICAMENTE ao da Foto 2, com os mesmos traços, olhos, boca e expressão. Se na Foto 2 o rosto estiver encoberto ou fora do quadro, mantenha exatamente o mesmo corte original da Foto 2.
-- POSE OBRIGATÓRIA DA FOTO 2: A modelo mantém a mesma pose e mesma atitude diante do espelho da Foto 2.
-- DESCONSIDERAR A ROUPA, A LUZ ORIGINAL E O CENÁRIO DA FOTO 2: É TERMINANTEMENTE PROIBIDO copiar a roupa, a iluminação de origem ou o cenário de fundo da Foto 2.
+2. FOTO 2 (IDENTIDADE E POSTURA DA MODELO — DESCARTE TOTAL DA LUZ E DO QUARTO ANTIGO):
+- A mulher fotografada possui 100% a mesma identidade facial (mesmo rosto, olhos, boca e expressão se visíveis na Foto 2; ou mesmo corte com celular cobrindo o rosto se não visível na Foto 2), mesmos cabelos, mesmo tom de pele, mesmas curvas corporais e mesma postura de selfie da Foto 2.
+- DESCARTE ABSOLUTO DO QUARTO, DA LUZ E DAS BORDAS DA FOTO 2: É TERMINANTEMENTE PROIBIDO trazer a iluminação frontal/estúdio, o contraste, o brilho de parede branca nos contornos do cabelo/ombros, a roupa antiga, o tênis antigo ou qualquer elemento do quarto da Foto 2.
 
-3. FOTO 3 (CENÁRIO INDEPENDENTE DA GALERIA — BASE ARQUITETÔNICA E DE LUZ FIXA):
-- O ponto de vista da câmera da Foto 3 JÁ É o reflexo do espelho olhando para dentro do cômodo. Posicione a modelo da Foto 2 (vestindo a roupa da Foto 1) em pé no primeiro plano sobre o piso da Foto 3, sem adicionar moldura de espelho extra nem alterar o ambiente.
-- Preserve integralmente 100% do cenário real da Foto 3: piso, paredes, rodapés, cortinas (cor e caimento exatos), portas, iluminação natural e enquadramento sem alterar, redesenhar nem inventar um cômodo parecido.
+3. FOTO 3 (CENÁRIO REAL E CAMPO DE LUZ SOBERANO — INTEGRAÇÃO ÓPTICA E GEOMÉTRICA 3D):
+- Fotografe a mulher fisicamente em pé sobre o piso real dentro do cômodo exato da Foto 3 (que já está no ponto de vista do espelho olhando para dentro do quarto — NÃO adicione moldura de espelho extra).
+- Preserve 100% a arquitetura real da Foto 3: piso, paredes, rodapés, cortinas (cor e dobras exatas), portas e móveis, permitindo que a presença física da modelo interaja naturalmente com a luz do quarto (projetando sombras reais no piso e oclusão de ambiente).
 ${scenarioRelightRulePt}
 
-Qualidade fotográfica autêntica de smartphone moderno, textura de pele humana real com poros visíveis, acabamento fosco suave sem brilho excessivo de óleo, sem aspecto de cera ou plástico. ZERO tatuagens.`;
+Qualidade fotográfica autêntica de smartphone moderno (iPhone 16 Pro) em captura única real, textura de pele humana com poros visíveis, grão e nitidez óptica unificados entre modelo e cômodo. ZERO tatuagens.`;
     }
 
     return {

@@ -1293,21 +1293,6 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
 
             <button
               type="button"
-              onClick={() => onChange((prev) => ({ ...prev, imageModel: 'seedream_4_5' }))}
-              className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between text-xs ${
-                form.imageModel === 'seedream_4_5'
-                  ? activeOptionButtonClass
-                  : inactiveOptionButtonClass
-              }`}
-            >
-              <span>Seedream 4.5</span>
-              {form.imageModel === 'seedream_4_5' && (
-                <Check className={`w-4 h-4 stroke-[3] ${checkIconColorClass}`} />
-              )}
-            </button>
-
-            <button
-              type="button"
               onClick={() => onChange((prev) => ({ ...prev, imageModel: 'kling_3_0' }))}
               className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between text-xs ${
                 form.imageModel === 'kling_3_0'
@@ -1332,21 +1317,6 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             >
               <span>Kling O3 Omni — fal.ai</span>
               {form.imageModel === 'kling_o3_fal' && (
-                <Check className={`w-4 h-4 stroke-[3] ${checkIconColorClass}`} />
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => onChange((prev) => ({ ...prev, imageModel: 'flux_2_pro_edit' }))}
-              className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between text-xs ${
-                form.imageModel === 'flux_2_pro_edit'
-                  ? activeOptionButtonClass
-                  : inactiveOptionButtonClass
-              }`}
-            >
-              <span>FLUX 2 Pro Edit — fal.ai</span>
-              {form.imageModel === 'flux_2_pro_edit' && (
                 <Check className={`w-4 h-4 stroke-[3] ${checkIconColorClass}`} />
               )}
             </button>

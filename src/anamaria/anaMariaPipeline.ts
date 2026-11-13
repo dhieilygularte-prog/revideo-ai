@@ -16,9 +16,8 @@ import {
 } from './anaMariaPrompts';
 import { resolveHeadlineAndHashtags } from './anaMariaBank';
 import { AIProfile } from '../config/aiProfiles';
-import { PREFERRED_SCENARIO_BASE64 } from './assets/scenarioImage';
 import { SCENARIO_GALLERY_ITEMS, POV_SCENARIO_GALLERY_ITEMS } from './scenarioGalleryData';
-import { MODEL_GALLERY_ITEMS, getModelGalleryForMode } from './modelGalleryData';
+import { getModelGalleryForMode } from './modelGalleryData';
 import { getMasterPromptById, resolveMasterPromptByProductName } from './masterPromptsData';
 
 export interface AnaMariaPipelineCallbacks {
@@ -192,22 +191,13 @@ export async function compressImageForFastTransfer(
   });
 }
 
+const preloadedScenarioUrls = new Set<string>();
+
 export function preloadScenarioUrl(url?: string): void {
-  if (!url || typeof window === 'undefined') return;
-  if (scenarioBase64Cache.has(url) || scenarioInFlightPromises.has(url)) return;
-  const p = compressImageForFastTransfer(url, 800, 0.84)
-    .then((b64) => {
-      if (b64 && b64.startsWith('data:image/')) {
-        scenarioBase64Cache.set(url, b64);
-      }
-      scenarioInFlightPromises.delete(url);
-      return b64;
-    })
-    .catch(() => {
-      scenarioInFlightPromises.delete(url);
-      return url;
-    });
-  scenarioInFlightPromises.set(url, p);
+  if (!url || typeof window === 'undefined' || preloadedScenarioUrls.has(url)) return;
+  preloadedScenarioUrls.add(url);
+  const img = new Image();
+  img.src = url;
 }
 
 /**
@@ -295,29 +285,26 @@ export function prewarmDefaultScenarios(): void {
   });
 }
 
-async function resolveScenarioBase64(form: AnaMariaFormState): Promise<string> {
+async function resolveScenarioBase64(form: AnaMariaFormState): Promise<string | undefined> {
   if (form.selectedScenarioBase64 && form.selectedScenarioBase64.length > 50) {
-    return compressImageForFastTransfer(form.selectedScenarioBase64, 800, 0.84);
+    return compressImageForFastTransfer(form.selectedScenarioBase64, 1024, 0.88);
   }
-  if (form.selectedScenarioUrl) {
-    const cached = scenarioBase64Cache.get(form.selectedScenarioUrl);
-    if (cached) return cached;
-    const inFlight = scenarioInFlightPromises.get(form.selectedScenarioUrl);
-    if (inFlight) {
-      const res = await inFlight;
-      if (res && res.startsWith('data:image/')) return res;
-    }
-    try {
-      const compressed = await compressImageForFastTransfer(form.selectedScenarioUrl, 800, 0.84);
-      if (compressed && compressed.startsWith('data:image/')) {
-        scenarioBase64Cache.set(form.selectedScenarioUrl, compressed);
-        return compressed;
-      }
-    } catch (e) {
-      console.warn('Falha ao converter cenário selecionado para base64:', e);
-    }
+  // Quando um cenário da galeria (com ID ou número) ou o padrão é usado, o servidor carrega o PNG nativo direto do disco (com cache em memória), evitando download/compressão no browser e upload base64 redundante.
+  if (form.selectedScenarioId || form.selectedScenarioNumber || !form.selectedScenarioUrl) {
+    return undefined;
   }
-  return compressImageForFastTransfer(PREFERRED_SCENARIO_BASE64, 800, 0.84);
+  const cached = scenarioBase64Cache.get(form.selectedScenarioUrl);
+  if (cached) return cached;
+  try {
+    const compressed = await compressImageForFastTransfer(form.selectedScenarioUrl, 1024, 0.88);
+    if (compressed && compressed.startsWith('data:image/')) {
+      scenarioBase64Cache.set(form.selectedScenarioUrl, compressed);
+      return compressed;
+    }
+  } catch (e) {
+    console.warn('Falha ao converter cenário selecionado para base64:', e);
+  }
+  return undefined;
 }
 
 const modelBase64Cache = new Map<string, string>();
@@ -327,18 +314,18 @@ export async function resolveModelBase64(form: AnaMariaFormState): Promise<strin
     return undefined;
   }
   if (form.selectedModelGalleryBase64 && form.selectedModelGalleryBase64.length > 50) {
-    return compressImageForFastTransfer(form.selectedModelGalleryBase64, 800, 0.84);
+    return compressImageForFastTransfer(form.selectedModelGalleryBase64, 1024, 0.88);
   }
-  const fallbackFolder = form.presentationMode === 'com_rosto' ? 'com_rosto' : 'sem_rosto';
-  const url =
-    form.selectedModelGalleryUrl ||
-    (form.selectedModelGalleryNumber ? `/models/gallery/${fallbackFolder}/${form.selectedModelGalleryNumber}.png` : undefined) ||
-    (form.selectedModelGalleryNumber ? `/models/gallery/${form.selectedModelGalleryNumber}.png` : undefined);
+  // Quando uma modelo da galeria é selecionada por número, o servidor carrega o PNG nativo em resolução máxima direto de public/models/gallery, evitando perda de qualidade JPEG (800px) e bordas de recorte.
+  if (form.selectedModelGalleryNumber) {
+    return undefined;
+  }
+  const url = form.selectedModelGalleryUrl;
   if (url) {
     const cached = modelBase64Cache.get(url);
     if (cached) return cached;
     try {
-      const compressed = await compressImageForFastTransfer(url, 800, 0.84);
+      const compressed = await compressImageForFastTransfer(url, 1024, 0.88);
       if (compressed && compressed.startsWith('data:image/')) {
         modelBase64Cache.set(url, compressed);
         return compressed;
@@ -348,96 +335,6 @@ export async function resolveModelBase64(form: AnaMariaFormState): Promise<strin
     }
   }
   return undefined;
-}
-
-async function sampleCenterRgbFromDataUrl(src: string): Promise<[number, number, number] | null> {
-  if (typeof window === 'undefined' || !src) return null;
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => {
-      try {
-        const size = 32;
-        const canvas = document.createElement('canvas');
-        canvas.width = size;
-        canvas.height = size;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return resolve(null);
-        ctx.drawImage(img, 0, 0, size, size);
-        const data = ctx.getImageData(8, 8, 16, 16).data;
-        let r = 0, g = 0, b = 0, count = 0;
-        for (let i = 0; i < data.length; i += 4) {
-          if (data[i + 3] < 128) continue;
-          r += data[i];
-          g += data[i + 1];
-          b += data[i + 2];
-          count++;
-        }
-        if (count === 0) return resolve(null);
-        resolve([r / count, g / count, b / count]);
-      } catch {
-        resolve(null);
-      }
-    };
-    img.onerror = () => resolve(null);
-    img.src = src;
-  });
-}
-
-async function groupPhotosByCanvasColorFallback(photos: string[]): Promise<AnaMariaColorGroup[]> {
-  const samples = await Promise.all(photos.map((p) => sampleCenterRgbFromDataUrl(p)));
-  const groups: Array<{ colorName: string; photoIndices: number[]; rgb: [number, number, number] | null }> = [];
-  photos.forEach((_, idx) => {
-    const rgb = samples[idx];
-    if (!rgb) {
-      groups.push({ colorName: `Cor ${groups.length + 1}`, photoIndices: [idx], rgb: null });
-      return;
-    }
-    const existing = groups.find((g) => {
-      if (!g.rgb) return false;
-      const dist = Math.hypot(rgb[0] - g.rgb[0], rgb[1] - g.rgb[1], rgb[2] - g.rgb[2]);
-      return dist <= 36;
-    });
-    if (existing) {
-      existing.photoIndices.push(idx);
-    } else {
-      groups.push({ colorName: `Cor ${groups.length + 1}`, photoIndices: [idx], rgb });
-    }
-  });
-  return groups.map(({ colorName, photoIndices }) => ({ colorName, photoIndices }));
-}
-
-export async function classifyProductColorGroups(
-  photos: string[],
-  productName?: string
-): Promise<AnaMariaColorGroup[]> {
-  const validPhotos = (photos || []).filter(Boolean).slice(0, 10);
-  if (validPhotos.length === 0) return [];
-  if (validPhotos.length === 1) {
-    return [{ colorName: 'Cor 1', photoIndices: [0] }];
-  }
-
-  try {
-    const thumbs = await Promise.all(
-      validPhotos.map((p) => compressImageForFastTransfer(p, 384, 0.72, true))
-    );
-    const res = await postJson<{
-      success: boolean;
-      fallback?: boolean;
-      groups?: AnaMariaColorGroup[];
-    }>('/api/anamaria-group-colors', {
-      photos: thumbs,
-      productName,
-    }, 0);
-
-    if (res?.success && !res?.fallback && Array.isArray(res.groups) && res.groups.length > 0) {
-      return res.groups;
-    }
-  } catch (err) {
-    console.warn('Falha ao agrupar cores via servidor, aplicando agrupamento visual local:', err);
-  }
-
-  return groupPhotosByCanvasColorFallback(validPhotos);
 }
 
 export function buildExplicitColorGroups(
@@ -470,32 +367,48 @@ export function buildExplicitColorGroups(
   return { allPhotos, colorGroups };
 }
 
+const dressInspectionCache = new Map<string, AnaMariaDressInspection>();
+
 export async function inspectDressAttributes(
   photo: string,
-  productName?: string
+  productName?: string,
+  presentationMode?: string
 ): Promise<AnaMariaDressInspection | undefined> {
-  if (!photo) return undefined;
-  const isDressOrUnsure =
-    !productName ||
-    productName.trim().length === 0 ||
-    /\b(vestido|vestidos|dress|dresses|chemise|tubinho|midi|longo)\b/i.test(productName);
-  if (!isDressOrUnsure) return undefined;
+  if (!photo || presentationMode === 'pov') return undefined;
+  const trimmedName = (productName || '').trim();
+  // Se o usuário já informou explicitamente uma peça que não é vestido (ex.: blusa, calça, bolsa), evita gastar chamada e tokens de visão
+  const isExplicitlyNotDress =
+    trimmedName.length > 0 &&
+    /\b(blusa|blusinha|camisa|camiseta|t-shirt|tee|cropped|top|regata|body|tric[oô]|su[eê]ter|cardigan|jaqueta|casaco|blazer|cal[cç]a|jeans|short|shorts|bermuda|saia|legging|bolsa|sapato|sand[aá]lia|t[eê]nis|bota)\b/i.test(
+      trimmedName
+    ) &&
+    !/\b(vestido|vestidos|dress|dresses|chemise|tubinho|macaquinho|macac[aã]o)\b/i.test(trimmedName);
+
+  if (isExplicitlyNotDress) return undefined;
+
+  const cacheKey = `${photo.slice(0, 64)}_${photo.slice(-64)}_${photo.length}_${trimmedName.toLowerCase()}`;
+  const cached = dressInspectionCache.get(cacheKey);
+  if (cached) return cached;
 
   try {
     const thumb = await compressImageForFastTransfer(photo, 384, 0.78, true);
     const res = await postJson<{
       success: boolean;
+      garmentCategory?: AnaMariaDressInspection['garmentCategory'];
       lengthCategory?: AnaMariaDressInspection['lengthCategory'];
       hasSingleSideSlit?: boolean;
       slitLegWearer?: AnaMariaDressInspection['slitLegWearer'];
     }>('/api/anamaria-inspect-dress', { photoBase64: thumb, productName }, 0);
 
     if (res?.success) {
-      return {
+      const inspection: AnaMariaDressInspection = {
+        garmentCategory: res.garmentCategory || 'dress',
         lengthCategory: res.lengthCategory || 'unknown',
         hasSingleSideSlit: Boolean(res.hasSingleSideSlit),
         slitLegWearer: res.slitLegWearer || 'none',
       };
+      dressInspectionCache.set(cacheKey, inspection);
+      return inspection;
     }
   } catch (err) {
     console.warn('Falha ao inspecionar comprimento/fenda do vestido:', err);
@@ -518,25 +431,37 @@ export function getActiveColorGroupPhotos(
   return groupPhotos.length > 0 ? groupPhotos : safePhotos;
 }
 
+const preparedProductPhotoCache = new Map<string, { primaryPhoto: string; supplementaryPhotos: string[] }>();
+
 async function prepareProductPhotosForPayload(photos: string[]): Promise<{
   primaryPhoto: string;
   supplementaryPhotos: string[];
 }> {
   const validPhotos = (photos || []).filter(Boolean).slice(0, 4);
+  const cacheKey = validPhotos.map((p) => `${p.slice(0, 48)}_${p.slice(-48)}_${p.length}`).join('|');
+  if (cacheKey && preparedProductPhotoCache.has(cacheKey)) {
+    return preparedProductPhotoCache.get(cacheKey)!;
+  }
   const optimizedPhotos = await Promise.all(
-    validPhotos.map((p) => compressImageForFastTransfer(p, 800, 0.85))
+    validPhotos.map((p) => compressImageForFastTransfer(p, 1024, 0.88))
   );
+  let result: { primaryPhoto: string; supplementaryPhotos: string[] };
   if (optimizedPhotos.length >= 2) {
-    const combined = await combineTwoPhotosSideBySide(optimizedPhotos[0], optimizedPhotos[1], 864);
-    return {
+    const combined = await combineTwoPhotosSideBySide(optimizedPhotos[0], optimizedPhotos[1], 1024);
+    result = {
       primaryPhoto: combined,
       supplementaryPhotos: [],
     };
+  } else {
+    result = {
+      primaryPhoto: optimizedPhotos[0] || '',
+      supplementaryPhotos: [],
+    };
   }
-  return {
-    primaryPhoto: optimizedPhotos[0] || '',
-    supplementaryPhotos: [],
-  };
+  if (cacheKey) {
+    preparedProductPhotoCache.set(cacheKey, result);
+  }
+  return result;
 }
 
 /**
@@ -651,24 +576,30 @@ async function generateSceneImageWithFallback(params: {
       throw new Error(imgData?.error || 'Não foi possível obter a imagem gerada do servidor.');
     }
     return { imageUrl: imgData.imageUrl, usedModel: params.requestedModel };
-  } catch (err) {
+  } catch (err: any) {
     if (params.requestedModel === 'openai') {
+      const openAiErrMsg = err?.message || 'Erro desconhecido na OpenAI';
       console.warn(
         '[AnaMaria] Erro na geração com OpenAI; alternando automaticamente para SeaDream 5.0 Pro:',
         err
       );
       params.onFallback?.();
-      const fallbackData = await postJson<{ success: boolean; imageUrl: string; error?: string }>(
-        '/api/generate-scene-image',
-        {
-          ...params.payload,
-          imageModel: 'seedream_5_0_pro',
+      try {
+        const fallbackData = await postJson<{ success: boolean; imageUrl: string; error?: string }>(
+          '/api/generate-scene-image',
+          {
+            ...params.payload,
+            imageModel: 'seedream_5_0_pro',
+          }
+        );
+        if (!fallbackData || !fallbackData.imageUrl) {
+          throw new Error(fallbackData?.error || 'Falha no fallback automático com SeaDream 5.0 Pro.');
         }
-      );
-      if (!fallbackData || !fallbackData.imageUrl) {
-        throw new Error(fallbackData?.error || 'Falha no fallback automático com SeaDream 5.0 Pro.');
+        return { imageUrl: fallbackData.imageUrl, usedModel: 'seedream_5_0_pro' };
+      } catch (fallbackErr: any) {
+        const fallbackErrMsg = fallbackErr?.message || 'Falha no fallback automático com SeaDream 5.0 Pro.';
+        throw new Error(`OpenAI falhou (${openAiErrMsg}) e o fallback SeaDream 5.0 Pro também falhou (${fallbackErrMsg})`);
       }
-      return { imageUrl: fallbackData.imageUrl, usedModel: 'seedream_5_0_pro' };
     }
     throw err;
   }
@@ -813,6 +744,7 @@ async function executeColorImageGeneration(params: {
       modelReferenceBase64: resolvedModelBase64,
       selectedModelGalleryId: itemForm.selectedModelGalleryId,
       selectedModelGalleryNumber: itemForm.selectedModelGalleryNumber,
+      isLockedGeneratedBase: Boolean(overrideModelBase64),
       generateModelViaPrompt: overrideModelBase64 ? false : Boolean(itemForm.generateModelViaPrompt),
       modelScenarioSource: payloadSource,
       isAnaMariaMode: true,
@@ -899,10 +831,13 @@ export async function runAnaMariaPipeline(
   const firstColorGroup = colorGroups[0];
   const firstColorPhotos = getActiveColorGroupPhotos(allPhotos, colorGroups, 0);
 
-  // 1. Inspeção rápida de comprimento real (Curto / Midi / Longo) e fenda assimétrica única (anti-simetria FLUX/vídeo)
+  // 1. Inspeção rápida de comprimento real (Curto / Midi / Longo) e fenda assimétrica única em paralelo com a compressão da foto do produto
   onProgress('prompt_building', 20);
   onStatusMessage(`Analisando detalhes reais da peça (${master.shortName})...`);
-  const dressInspection = await inspectDressAttributes(firstColorPhotos[0], form0.productName);
+  const [dressInspection] = await Promise.all([
+    inspectDressAttributes(firstColorPhotos[0], form0.productName, activeMode),
+    prepareProductPhotosForPayload(firstColorPhotos),
+  ]);
 
   const { headline, hashtags } = resolveHeadlineAndHashtags({
     productName: form0.productName,

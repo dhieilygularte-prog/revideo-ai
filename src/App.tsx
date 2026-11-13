@@ -1290,11 +1290,13 @@ export default function App() {
         setAnaMariaErrorMessage(
           'Nova versão do app detectada! Recarregando a página automaticamente para sincronizar os novos arquivos...'
         );
+        window.scrollTo({ top: 0, behavior: 'smooth' });
         setTimeout(() => {
           window.location.reload();
         }, 1200);
       } else {
         setAnaMariaErrorMessage(err?.message || 'Falha ao processar no Modo Ana Maria.');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       }
     } finally {
       setIsProcessingAnaMaria(false);

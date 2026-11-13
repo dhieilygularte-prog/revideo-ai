@@ -707,9 +707,11 @@ Retorne estritamente um JSON estruturado:
 
       const productPhotoCount = Math.min(allPhotos.filter(Boolean).length, 2);
 
-      const scenarioRelightAndEdgeBlendDirective = `[SCENARIO LIGHTING SOVEREIGNTY & SEAMLESS ANTI-HALO INTEGRATION (ZERO WHITE OUTLINE / ZERO CUTOUT)]:
-- SCENARIO DICTATES 100% OF LIGHTING: The scenario's ambient lighting, direction of light, color temperature (warm/cool/neutral), brightness, contrast, and shadows MUST govern the model's skin, hair, face, and garment. Completely discard any studio/bright-wall lighting from the model or product reference photos and physically relight the model + garment to match the exact room illumination.
-- ZERO WHITE HALO / ZERO STICKER EDGE: Strictly eliminate any thin white line, bright fringe, outline, or cutout halo along hair strands, shoulders, arms, legs, hands, or garment edges. Apply natural optical edge light-wrap (subtle ambient color spill from the scenario onto her contours) and realistic soft contact shadows / ambient occlusion on the floor beneath her feet and hemline so she looks 100% photographed inside this exact room.`;
+      const scenarioRelightAndEdgeBlendDirective = `[SINGLE-EXPOSURE PHOTOMETRIC UNITY, 3D FLOOR GROUNDING & ZERO CUTOUT HALO]:
+- SINGLE NATIVE CAMERA EXPOSURE (NO MONTAGE / NO CUTOUT PASTE): Render the scene as a single, authentic real-world photograph captured through one lens in a single exposure inside the scenario room — never as a layered cutout or pasted sticker.
+- SCENARIO DICTATES 100% OF LIGHTING & COLOR TEMPERATURE: The scenario's ambient light sources, direction of light, Kelvin color temperature (warm/cool/neutral), shadow softness, contrast ratio, and wall/curtain color bounce MUST govern the model's skin, face, hair, and garment. Completely discard any studio, ring-light, or bright-wall lighting from the model or product reference photos.
+- 3D PERSPECTIVE, SCALE & MULTI-LAYER FLOOR SHADOWS: Align the model's standing scale, camera eye-level horizon, and foot perspective to the 3D floor plane and baseboards of the scenario room. Plant her feet/footwear firmly on the floor with dark contact occlusion directly under the soles/heels and soft directional cast shadows across the floor matching the room's light direction.
+- SUB-PIXEL EDGE LIGHT-WRAP (ZERO WHITE OUTLINE): Strictly eliminate any thin white line, bright fringe, sharp alpha mask, or halo along hair strands, shoulders, arms, legs, hands, or garment edges. Apply natural optical edge light-wrap (subtle background color spill onto her outer contours) and unified sensor micro-grain across both subject and room.`;
 
       if (isAnaMariaGallery3Img) {
         baseImageFile = imageFiles[0] || null;
@@ -758,20 +760,21 @@ Retorne estritamente um JSON estruturado:
           .filter(Boolean)
           .join('\n');
 
-        effectivePrompt = `[STRICT IN-PLACE CANVAS COMPOSITE — LOCK REFERENCE IMAGE ${scenarioIdx} PIXEL-FOR-PIXEL]:
-You are performing a high-fidelity composite edit directly onto Reference Image ${scenarioIdx} (the base canvas image).
+        effectivePrompt = `[SINGLE-EXPOSURE REAL-WORLD PHOTOGRAPH INSIDE REFERENCE IMAGE ${scenarioIdx}'S EXACT ROOM]:
+Generate a single, cohesive, unedited real-world mirror-selfie photograph captured inside the exact room of Reference Image ${scenarioIdx}.
 
-1. REFERENCE IMAGE ${scenarioIdx} (IMMUTABLE BASE ROOM CANVAS — DO NOT MODIFY ARCHITECTURE OR ROOM LIGHTING):
-- KEEP 100% of Reference Image ${scenarioIdx} EXACTLY AS IT IS behind the model: exact room geometry, walls, baseboards, doorway/doorframe, curtains (exact color, folds, fabric), doors, handles, floor planks/tiles, background items, shadows, ambient lighting, and camera angle.
-- PERSPECTIVE RULE: Reference Image ${scenarioIdx} is ALREADY shot from the mirror's vantage point looking straight into the room. DO NOT add or draw a mirror frame, DO NOT rotate the room, DO NOT invent/redraw a "similar" room, and DO NOT replace any wall, door, floor, or curtain from Reference Image ${scenarioIdx}!
+1. REFERENCE IMAGE ${scenarioIdx} (EXACT ROOM ARCHITECTURE, 3D FLOOR PLANE & MASTER LIGHTING):
+- Preserve 100% of Reference Image ${scenarioIdx}'s real room architecture and decor: exact room geometry, walls, baseboards, doorway/doorframe, curtains (exact color, folds, fabric), doors, handles, floor planks/tiles, background items, and camera vantage point.
+- PERSPECTIVE RULE: Reference Image ${scenarioIdx} is ALREADY shot from the mirror's vantage point looking straight into the room. DO NOT add or draw a mirror frame, DO NOT rotate the room, and DO NOT invent or substitute any wall, door, floor, or curtain from Reference Image ${scenarioIdx}.
+- PHYSICAL ROOM INTERACTION: Allow the woman's physical presence inside Reference Image ${scenarioIdx} to naturally interact with the room's light — casting realistic contact occlusion and soft directional shadows onto Reference Image ${scenarioIdx}'s floor and subtle ambient depth against the room behind her.
 
-2. REFERENCE IMAGE ${modelIdx} (GALLERY MODEL IDENTITY & POSE ONLY — DISCARD HER OLD ROOM & OLD LIGHTING):
-- Extract ONLY the woman from Reference Image ${modelIdx} (exact face, eyes, nose, lips, hair, skin tone, body curves, and smartphone-holding mirror selfie pose) and composite her standing naturally centered on the floor in the foreground of Reference Image ${scenarioIdx} with realistic contact shadows and ambient floor occlusion beneath her feet.
-- 100% DISCARD AND IGNORE the bedroom, bed, door, walls, background lighting, bright white wall edge-glow, and old clothing of Reference Image ${modelIdx}. Do NOT bring any part of Reference Image ${modelIdx}'s room or cutout edge rim into Reference Image ${scenarioIdx}.
+2. REFERENCE IMAGE ${modelIdx} (WOMAN'S IDENTITY, BODY & POSTURE ONLY — DISCARD HER OLD ROOM, SHOES & LIGHTING):
+- Photograph the exact same woman from Reference Image ${modelIdx} (same face, eyes, nose, lips, hair, skin tone, body curves, and smartphone mirror-selfie posture) physically standing centered on the floor inside Reference Image ${scenarioIdx}, aligned to Reference Image ${scenarioIdx}'s 3D perspective, horizon line, and room scale.
+- 100% DISCARD AND IGNORE the bedroom, bed, door, walls, bright white wall edge-glow, studio/frontal lighting, old clothing, and old footwear of Reference Image ${modelIdx}.
 
 3. REFERENCE IMAGE ${productRangeLabel} (EXACT GARMENT & COLOR ONLY — DISCARD ANY PERSON/BACKGROUND):
-- Dress the woman from Reference Image ${modelIdx} exclusively in the EXACT garment shown in Reference Image ${productRangeLabel}: 1:1 exact color/shade/print, cut, neckline, straps, fabric texture, exact hemline length (never lengthen midi/short dresses to the floor), and single-side slit if present, naturally shaded by Reference Image ${scenarioIdx}'s room light.
-- Harmonious matching footwear if feet are visible (or keep floor-length dress covering feet if it is floor-length in Reference Image ${productRangeLabel}).
+- She wears the EXACT garment shown in Reference Image ${productRangeLabel}: 1:1 exact color/shade/print, cut, neckline, straps, fabric texture, exact hemline length (never lengthen midi/short dresses to the floor), and single-side slit if present, physically shaded by Reference Image ${scenarioIdx}'s ambient room light.
+- Harmonious matching footwear planted firmly on Reference Image ${scenarioIdx}'s floor if feet are visible (elegant high-heel party sandals for dresses; or keep floor-length dress covering feet if floor-length in Reference Image ${productRangeLabel}).
 - 100% IGNORE any person, face, body, tattoos, or background in Reference Image ${productRangeLabel}.
 
 ${scenarioRelightAndEdgeBlendDirective}
@@ -779,7 +782,7 @@ ${scenarioRelightAndEdgeBlendDirective}
 ${framingSection}
 ${preservedDirectives ? `\n[GARMENT & USER CONSTRAINTS]:\n${preservedDirectives}` : ''}
 
-PHOTOGRAPHIC REALISM: Sharp flagship smartphone photo (iPhone 16 Pro), natural skin texture with pores, unified lighting matching Reference Image ${scenarioIdx} with smooth edge light-wrap and zero white outline around the silhouette, zero tattoos, zero handbags unless the product is a bag.`;
+PHOTOGRAPHIC REALISM: Authentic flagship smartphone photo (iPhone 16 Pro) shot in one native exposure, natural skin texture with pores, unified room lighting and sensor grain matching Reference Image ${scenarioIdx} with smooth sub-pixel contour blending and zero white outline around the silhouette, zero tattoos, zero handbags unless the product is a bag.`;
       } else if (isAnaMariaModel2Img) {
         baseImageFile = imageFiles[0] || null;
         const productRange = productPhotoCount > 1 ? 'Reference Images 2 and 3' : 'Reference Image 2';
@@ -1026,7 +1029,7 @@ Preserve fielmente qualquer logomarca, estampa ou acabamento original da peça. 
           image: editImageInput,
           prompt: effectivePrompt,
           quality: OPENAI_IMAGE_QUALITY,
-          input_fidelity: OPENAI_IMAGE_FIDELITY,
+          ...(isAnaMariaGallery3Img ? {} : { input_fidelity: OPENAI_IMAGE_FIDELITY }),
           size: chosenImageSize,
         });
 

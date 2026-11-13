@@ -1756,176 +1756,13 @@ Condense este prompt mantendo 80% do foco e do espaço na preservação fiel de 
   }
 });
 
-app.post('/api/anamaria-group-colors', async (req, res) => {
-  try {
-    const { photos, productName } = req.body as { photos?: string[]; productName?: string };
-    const photoList = Array.isArray(photos) ? photos.filter(Boolean).slice(0, 10) : [];
-    if (photoList.length === 0) {
-      return res.status(400).json({ success: false, error: 'Nenhuma foto fornecida.' });
-    }
-    if (photoList.length === 1) {
-      return res.json({
-        success: true,
-        groups: [{ colorName: 'Cor 1', photoIndices: [0] }],
-      });
-    }
-
-    const normalizeGroups = (raw: unknown): Array<{ colorName: string; photoIndices: number[] }> => {
-      const seen = new Set<number>();
-      const out: Array<{ colorName: string; photoIndices: number[] }> = [];
-      const arr = Array.isArray(raw) ? raw : [];
-      for (const item of arr) {
-        if (!item || typeof item !== 'object') continue;
-        const rec = item as Record<string, unknown>;
-        const rawIndices = Array.isArray(rec.photoIndices) ? rec.photoIndices : [];
-        const indices: number[] = [];
-        for (const idx of rawIndices) {
-          const n = Number(idx);
-          if (Number.isInteger(n) && n >= 0 && n < photoList.length && !seen.has(n)) {
-            seen.add(n);
-            indices.push(n);
-          }
-        }
-        if (indices.length > 0) {
-          const colorName = typeof rec.colorName === 'string' && rec.colorName.trim()
-            ? rec.colorName.trim().slice(0, 40)
-            : `Cor ${out.length + 1}`;
-          out.push({ colorName, photoIndices: indices });
-        }
-      }
-      const missing: number[] = [];
-      for (let i = 0; i < photoList.length; i++) {
-        if (!seen.has(i)) missing.push(i);
-      }
-      if (missing.length > 0) {
-        if (out.length === 0) {
-          out.push({ colorName: 'Cor Principal', photoIndices: missing });
-        } else {
-          for (const m of missing) {
-            out.push({ colorName: `Cor ${out.length + 1}`, photoIndices: [m] });
-          }
-        }
-      }
-      return out.length > 0
-        ? out
-        : [{ colorName: 'Cor Principal', photoIndices: photoList.map((_, i) => i) }];
-    };
-
-    const parseJsonGroups = (text: string) => {
-      const match = text.match(/\{[\s\S]*\}/) || text.match(/\[[\s\S]*\]/);
-      if (!match) return null;
-      try {
-        const parsed = JSON.parse(match[0]);
-        const rawGroups = Array.isArray(parsed) ? parsed : parsed?.groups;
-        if (Array.isArray(rawGroups) && rawGroups.length > 0) {
-          return normalizeGroups(rawGroups);
-        }
-      } catch {
-        return null;
-      }
-      return null;
-    };
-
-    const groupingPrompt = `Você recebeu ${photoList.length} imagens numeradas de índice 0 a ${photoList.length - 1} do produto${productName ? ` "${productName}"` : ''}.
-Sua tarefa é IDENTIFICAR A COR EXATA da peça de roupa em CADA imagem individualmente e AGRUPAR os índices por COR / ESTAMPA:
-- REGRAS CRÍTICAS DE SEPARAÇÃO DE CORES:
-  1. Para cada imagem de 0 a ${photoList.length - 1}, observe apenas a COR/ESTAMPA principal do vestido/conjunto/peça anunciada (ignore cor da parede, chão, pele ou cabelo).
-  2. Se as imagens mostram CORES DIFERENTES da peça (ex: preto, branco, rosa, vermelho, verde, azul, bege, vinho, marrom, amarelo, etc., ou tons claramente distintos como off-white vs bege, azul claro vs azul marinho, rosa bebê vs pink), COLOQUE EM GRUPOS SEPARADOS (um grupo por cor), na ordem em que cada cor aparece pela primeira vez (0, 1, 2...).
-  3. SOMENTE coloque dois ou mais índices no MESMO grupo se você tiver certeza absoluta de que mostram EXATAMENTE A MESMA COR da peça (ex: frente e costas do mesmo vestido preto).
-  4. Garanta que TODOS os índices de 0 a ${photoList.length - 1} apareçam exatamente uma vez (nenhum faltando, nenhum repetido).
-
-Responda APENAS JSON válido neste formato exato:
-{"groups":[{"colorName":"Preto","photoIndices":[0]},{"colorName":"Rosa","photoIndices":[1]}]}`;
-
-    const cleanUrls = photoList.map((p) =>
-      p.startsWith('data:') || p.startsWith('http') ? p : `data:image/jpeg;base64,${p}`
-    );
-
-    if (openAIProvider && openAIProvider.isConfigured()) {
-      const client = (openAIProvider as any).getClient();
-      for (const visionModel of ['gpt-4o-mini', 'gpt-4o']) {
-        try {
-          const contentParts: any[] = [];
-          cleanUrls.forEach((url, idx) => {
-            contentParts.push({ type: 'text', text: `Imagem índice ${idx}:` });
-            contentParts.push({ type: 'image_url', image_url: { url, detail: 'high' } });
-          });
-          contentParts.push({ type: 'text', text: groupingPrompt });
-
-          const completion = await client.chat.completions.create({
-            model: visionModel,
-            max_tokens: 550,
-            temperature: 0.1,
-            response_format: { type: 'json_object' },
-            messages: [{ role: 'user', content: contentParts }],
-          });
-          const rawText = completion.choices[0]?.message?.content?.trim() || '';
-          const groups = parseJsonGroups(rawText);
-          if (groups) {
-            console.log(`🎨 [AnaMaria Colors] ${photoList.length} fotos agrupadas em ${groups.length} cor(es) via ${visionModel}:`, groups.map((g) => `${g.colorName}[${g.photoIndices.join(',')}]`).join(' | '));
-            return res.json({ success: true, groups });
-          }
-        } catch (err: any) {
-          console.warn(`⚠️ [AnaMaria Colors] OpenAI ${visionModel} falhou:`, err?.message || err);
-        }
-      }
-    }
-
-    const parsedImgs = cleanUrls.map((p) => parseInlineImage(p));
-    if (parsedImgs.every(Boolean)) {
-      for (let keyIdx = 0; keyIdx < GEMINI_CANDIDATE_KEYS.length; keyIdx++) {
-        const candidateKey = GEMINI_CANDIDATE_KEYS[keyIdx];
-        const client = getGenAI(candidateKey);
-        for (const gModel of ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash']) {
-          try {
-            const parts: any[] = [];
-            parsedImgs.forEach((inlineData, idx) => {
-              parts.push({ text: `Imagem índice ${idx}:` });
-              parts.push({ inlineData });
-            });
-            parts.push({ text: groupingPrompt });
-
-            const geminiRes = await client.models.generateContent({
-              model: gModel,
-              contents: parts,
-            });
-            const rawText =
-              geminiRes.text?.trim() ||
-              geminiRes.candidates?.[0]?.content?.parts?.find((p: any) => p.text)?.text?.trim() ||
-              '';
-            const groups = parseJsonGroups(rawText);
-            if (groups) {
-              console.log(`🎨 [AnaMaria Colors] ${photoList.length} fotos agrupadas em ${groups.length} cor(es) via ${gModel}`);
-              return res.json({ success: true, groups });
-            }
-          } catch (gemErr: any) {
-            const errStr = String(gemErr?.message || gemErr);
-            if (errStr.includes('PERMISSION_DENIED') || errStr.includes('billing') || errStr.includes('403')) {
-              rotateGeminiKey();
-              break;
-            }
-          }
-        }
-      }
-    }
-
-    return res.json({
-      success: true,
-      fallback: true,
-      groups: [{ colorName: 'Cor Principal', photoIndices: photoList.map((_, i) => i) }],
-    });
-  } catch (err: any) {
-    console.error('Erro na rota anamaria-group-colors:', err);
-    return res.status(500).json({ success: false, error: err?.message || 'Erro ao agrupar cores.' });
-  }
-});
-
 app.post('/api/anamaria-inspect-dress', async (req, res) => {
   try {
     const { photoBase64, productName } = req.body as { photoBase64?: string; productName?: string };
     if (!photoBase64) {
       return res.json({
         success: true,
+        garmentCategory: 'other',
         lengthCategory: 'unknown',
         hasSingleSideSlit: false,
         slitLegWearer: 'none',
@@ -1941,6 +1778,19 @@ app.post('/api/anamaria-inspect-dress', async (req, res) => {
       if (!match) return null;
       try {
         const parsed = JSON.parse(match[0]);
+        const catRaw = String(parsed.garmentCategory || '').toLowerCase();
+        const garmentCategory: 'dress' | 'upper' | 'lower' | 'sleepwear' | 'fitness' | 'other' =
+          catRaw === 'dress' || catRaw === 'vestido' || catRaw === 'jumpsuit'
+            ? 'dress'
+            : catRaw === 'upper' || catRaw === 'top' || catRaw === 'blouse'
+            ? 'upper'
+            : catRaw === 'lower' || catRaw === 'bottom' || catRaw === 'pants' || catRaw === 'skirt'
+            ? 'lower'
+            : catRaw === 'sleepwear' || catRaw === 'lingerie'
+            ? 'sleepwear'
+            : catRaw === 'fitness' || catRaw === 'gym'
+            ? 'fitness'
+            : 'other';
         const lenRaw = String(parsed.lengthCategory || '').toLowerCase();
         const lengthCategory =
           lenRaw === 'curto' || lenRaw === 'mini'
@@ -1958,55 +1808,58 @@ app.post('/api/anamaria-inspect-dress', async (req, res) => {
         const hasSingleSideSlit = Boolean(
           parsed.hasSingleSideSlit && (slitLegWearer === 'left' || slitLegWearer === 'right')
         );
-        return { lengthCategory, hasSingleSideSlit, slitLegWearer };
+        return { garmentCategory, lengthCategory, hasSingleSideSlit, slitLegWearer };
       } catch {
         return null;
       }
     };
 
-    const inspectPrompt = `Inspect this dress/garment photo${productName ? ` ("${productName}")` : ''} and answer strictly in valid JSON with TWO critical attributes:
-1. "lengthCategory":
-   - "curto": hem ends above the knees (mini/short dress).
-   - "midi": hem ends around the knees or mid-calf/shin, leaving ankles and footwear/feet clearly visible.
-   - "longo": hem reaches all the way down to the ankles/floor/covering feet (maxi/floor-length dress).
-2. Leg slit detection ("hasSingleSideSlit" & "slitLegWearer"):
-   - Carefully examine whether the skirt of the dress has a side/front thigh-high leg slit.
-   - IMPORTANT perspective rule: report "slitLegWearer" strictly from the WEARER'S own anatomical body perspective (facing front toward camera/viewer: a slit on the viewer's RIGHT side is the wearer's LEFT leg = "left"; a slit on the viewer's LEFT side is the wearer's RIGHT leg = "right").
-   - If the dress has ONLY ONE side slit on ONE leg (asymmetrical single slit), set "hasSingleSideSlit": true and "slitLegWearer": "left" or "right".
-   - If the dress has symmetrical slits on BOTH legs, set "hasSingleSideSlit": false and "slitLegWearer": "both".
-   - If there is NO leg slit, set "hasSingleSideSlit": false and "slitLegWearer": "none".
+    const inspectPrompt = `Inspect this garment photo${productName ? ` ("${productName}")` : ''} and answer strictly in valid JSON with THREE attributes:
+1. "garmentCategory":
+   - "dress": dress, gown, chemise, or full-body jumpsuit/romper.
+   - "upper": blouse, shirt, top, cropped, jacket, or upper-body piece only.
+   - "lower": pants, jeans, shorts, or skirt only.
+   - "sleepwear": nightgown, baby doll, pajamas, robe, or lingerie.
+   - "fitness": gym/workout activewear set or legging.
+   - "other": any other item.
+2. "lengthCategory" (for dresses/skirts):
+   - "curto": hem ends above the knees (mini/short).
+   - "midi": hem ends around the knees or mid-calf/shin, leaving ankles and footwear clearly visible.
+   - "longo": hem reaches all the way down to the ankles/floor/covering feet (maxi/floor-length).
+   - "unknown": if not a dress/skirt.
+3. Leg slit detection ("hasSingleSideSlit" & "slitLegWearer"):
+   - Report "slitLegWearer" strictly from the WEARER'S own anatomical perspective (viewer's RIGHT side = wearer's "left"; viewer's LEFT side = wearer's "right").
+   - If ONLY ONE side slit on ONE leg, set "hasSingleSideSlit": true and "slitLegWearer": "left" or "right".
+   - Otherwise set "hasSingleSideSlit": false and "slitLegWearer": "none" (or "both" if double slit).
 
 Respond ONLY valid JSON:
-{"lengthCategory":"midi","hasSingleSideSlit":true,"slitLegWearer":"left"}`;
+{"garmentCategory":"dress","lengthCategory":"midi","hasSingleSideSlit":true,"slitLegWearer":"left"}`;
 
     if (openAIProvider && openAIProvider.isConfigured()) {
-      const client = (openAIProvider as any).getClient();
-      for (const visionModel of ['gpt-4o-mini', 'gpt-4o']) {
-        try {
-          const completion = await client.chat.completions.create({
-            model: visionModel,
-            max_tokens: 180,
-            temperature: 0.1,
-            response_format: { type: 'json_object' },
-            messages: [
-              {
-                role: 'user',
-                content: [
-                  { type: 'image_url', image_url: { url: cleanUrl, detail: 'high' } },
-                  { type: 'text', text: inspectPrompt },
-                ],
-              },
-            ],
-          });
-          const rawText = completion.choices[0]?.message?.content?.trim() || '';
-          const parsed = parseInspection(rawText);
-          if (parsed) {
-            console.log(`👗 [AnaMaria DressInspect] via ${visionModel}:`, parsed);
-            return res.json({ success: true, ...parsed });
-          }
-        } catch (err: any) {
-          console.warn(`⚠️ [AnaMaria DressInspect] OpenAI ${visionModel} falhou:`, err?.message || err);
+      try {
+        const client = (openAIProvider as any).getClient();
+        const completion = await client.chat.completions.create({
+          model: 'gpt-4o-mini',
+          max_tokens: 120,
+          temperature: 0,
+          response_format: { type: 'json_object' },
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'image_url', image_url: { url: cleanUrl, detail: 'low' } },
+                { type: 'text', text: inspectPrompt },
+              ],
+            },
+          ],
+        });
+        const rawText = completion.choices[0]?.message?.content?.trim() || '';
+        const parsed = parseInspection(rawText);
+        if (parsed) {
+          return res.json({ success: true, ...parsed });
         }
+      } catch (err: any) {
+        console.warn('⚠️ [AnaMaria DressInspect] OpenAI gpt-4o-mini falhou:', err?.message || err);
       }
     }
 
@@ -2014,24 +1867,20 @@ Respond ONLY valid JSON:
     if (parsedInline) {
       for (let keyIdx = 0; keyIdx < GEMINI_CANDIDATE_KEYS.length; keyIdx++) {
         const client = getGenAI(GEMINI_CANDIDATE_KEYS[keyIdx]);
-        for (const gModel of ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash']) {
-          try {
-            const gemRes = await client.models.generateContent({
-              model: gModel,
-              contents: [{ inlineData: parsedInline }, { text: inspectPrompt }],
-            });
-            const rawText = gemRes.text?.trim() || gemRes.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
-            const parsed = parseInspection(rawText);
-            if (parsed) {
-              console.log(`👗 [AnaMaria DressInspect] via ${gModel}:`, parsed);
-              return res.json({ success: true, ...parsed });
-            }
-          } catch (gemErr: any) {
-            const errStr = String(gemErr?.message || gemErr);
-            if (errStr.includes('PERMISSION_DENIED') || errStr.includes('billing') || errStr.includes('403')) {
-              rotateGeminiKey();
-              break;
-            }
+        try {
+          const gemRes = await client.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: [{ inlineData: parsedInline }, { text: inspectPrompt }],
+          });
+          const rawText = gemRes.text?.trim() || gemRes.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+          const parsed = parseInspection(rawText);
+          if (parsed) {
+            return res.json({ success: true, ...parsed });
+          }
+        } catch (gemErr: any) {
+          const errStr = String(gemErr?.message || gemErr);
+          if (errStr.includes('PERMISSION_DENIED') || errStr.includes('billing') || errStr.includes('403')) {
+            rotateGeminiKey();
           }
         }
       }
@@ -2040,6 +1889,7 @@ Respond ONLY valid JSON:
     return res.json({
       success: true,
       fallback: true,
+      garmentCategory: 'other',
       lengthCategory: 'unknown',
       hasSingleSideSlit: false,
       slitLegWearer: 'none',
@@ -2049,6 +1899,7 @@ Respond ONLY valid JSON:
     return res.json({
       success: true,
       fallback: true,
+      garmentCategory: 'other',
       lengthCategory: 'unknown',
       hasSingleSideSlit: false,
       slitLegWearer: 'none',
@@ -2337,7 +2188,7 @@ function toDataUri(b64?: string): string | undefined {
 }
 
 const SCENARIO_RELIGHT_INTEGRATION_DIRECTIVE =
-  '[ILUMINAÇÃO DO CENÁRIO SOBERANA & INTEGRAÇÃO SEM CONTORNO BRANCO]: Quem manda 100% na luz, temperatura de cor, brilho e contraste é o CENÁRIO (nunca a foto da modelo ou do produto). Reilumine pele, rosto, cabelos e roupa para obedecer exatamente à iluminação ambiente do cômodo, com light-wrap óptico suave nas bordas, sombra de contato natural no piso e ZERO linha/borda branca de recorte ou aspecto de colagem/montagem (no white halo, no cutout edges, seamless edge light-wrap).';
+  '[FOTOGRAFIA ÚNICA NATIVA NO CÔMODO, PERSPECTIVA 3D & ZERO HALO DE RECORTE]: Renderize como uma única foto real capturada em exposição única dentro do cômodo do CENÁRIO (nunca como montagem ou recorte colado). Alinhe a perspectiva 3D, a altura do horizonte e a escala corporal ao plano real do piso do quarto, plantando os pés/calçado no chão com sombra de contato escura sob a sola/salto e sombra direcional suave no piso. Quem manda 100% na luz, temperatura de cor (quente/fria), contraste e reflexos nas peles/tecidos é o CENÁRIO (descarte totalmente a luz/parede branca original da foto da modelo), com transição sub-pixel suave nos fios de cabelo, ombros e braços (no white halo, no cutout edges, seamless optical light-wrap).';
 
 async function generateImageWithKling(params: {
   prompt: string;
@@ -2352,7 +2203,6 @@ async function generateImageWithKling(params: {
   selectedMasterId?: string;
   bodyType?: string;
   scenarioPhotoBase64?: string;
-  modelType?: 'seedream_5_0_pro' | 'seedream_4_5';
   modelScenarioSource?: 'model' | 'gallery';
 }): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
   const apiKey = (process.env.KLING_API_KEY || '').trim();
@@ -2382,17 +2232,30 @@ async function generateImageWithKling(params: {
     params.selectedMasterId === 'pov_blusinhas_13k' ||
     Boolean(params.prompt && params.prompt.includes('PRESERVAÇÃO INTEGRAL DO CENÁRIO POV'));
 
-  // NOVO: No Kling 3.0 Omni, NENHUMA predefinição corporal rígida adicional é injetada.
-  // QUEM MANDA É O PROMPT DA MESTRA ESCOLHIDO. Removemos qualquer sobreposição externa de corpo, cintura ou quadril.
   const hasModelRefKling = Boolean(params.modelReferenceBase64 && params.modelReferenceBase64.length > 50);
   const isBagKling = isBagProduct(params.prompt, undefined, undefined);
-
-  const isUpperPiecePromptKling = Boolean(
+  const isFitnessKling = Boolean(
     params.prompt &&
+      /\b(fitness|academia|treino|gym|legging|suplex|dry\s*fit|esportiv)\b/i.test(params.prompt)
+  );
+  const isSleepwearKling = Boolean(
+    params.prompt &&
+      /\b(camisola|baby\s*doll|babydoll|pijama|sleepwear|homewear|lingerie|robe)\b/i.test(params.prompt)
+  );
+  const isDressOrOnePieceKling = Boolean(
+    params.prompt &&
+      (/\b(vestido|vestidos|dress|dresses|macac[aã]o|macaquinho|jumpsuit|chemise|tubinho)\b/i.test(params.prompt) ||
+        params.prompt.includes('PEÇA ÚNICA') ||
+        params.prompt.includes('VESTIDO'))
+  );
+  const isUpperPieceKling = Boolean(
+    !isDressOrOnePieceKling &&
+      !isSleepwearKling &&
+      params.prompt &&
       (/\b(blusa|blusinha|blusinhas|blusas|rendada|rendado|cropped|top|regata|camisa|camiseta|t-shirt|tshirt|casaco|jaqueta|blazer|moletom|sueter|suéter|cardiga|cardigã|bata)\b/i.test(params.prompt) ||
         params.prompt.includes('PEÇA SUPERIOR'))
   );
-  const upperJeansKlingHeader = isUpperPiecePromptKling && !params.prompt.includes('VESTIDO')
+  const upperJeansKlingHeader = isUpperPieceKling
     ? '[REGRA OBRIGATÓRIA — BLUSA COM CALÇA JEANS E TÊNIS]: Como o produto é uma blusa/peça superior, a modelo DEVE obrigatoriamente vestir CALÇA JEANS clássica de cintura alta e TÊNIS nos pés (PROIBIDO ficar sem calça, de calcinha ou desvestida na parte de baixo). Look 100% completo com calça jeans e tênis casual.\n\n'
     : '';
   let headerKling = upperJeansKlingHeader + (!isBagKling
@@ -2402,52 +2265,48 @@ async function generateImageWithKling(params: {
     if (isPovModeKling) {
       headerKling = '[MODO POV: Preservar 100% do cenário POV da cama da Imagem 1; produtos da Imagem 2 manipulados apenas pelas duas mãos limpas sem tatuagens sobre a cama. PROIBIDO corpo, rosto ou espelho!]\n\n';
     } else if (hasModelRefKling) {
-      const isDressOrOnePieceKling = Boolean(
-        params.prompt &&
-          (/\b(vestido|vestidos|dress|dresses|macac[aã]o|macaquinho|camisola|jumpsuit)\b/i.test(params.prompt) ||
-            params.prompt.includes('PEÇA ÚNICA') ||
-            params.prompt.includes('VESTIDO'))
-      );
-      const isUpperPieceKling = Boolean(
-        params.prompt &&
-          (/\b(blusa|blusinha|blusinhas|blusas|rendada|rendado|cropped|top|regata|camisa|camiseta|t-shirt|tshirt|casaco|jaqueta|blazer|moletom|sueter|suéter|cardiga|cardigã|bata)\b/i.test(params.prompt) ||
-            params.prompt.includes('PEÇA SUPERIOR') ||
-            params.prompt.includes('BLUSA'))
-      );
       const clothingDirectiveKling = isDressOrOnePieceKling
-        ? 'A modelo veste EXCLUSIVAMENTE o vestido de <<<image_1>>> com pernas limpas naturais. TERMINANTEMENTE PROIBIDO calça jeans, calça ou shorts sob o vestido. REGRA CRÍTICA DE COMPRIMENTO (VESTIDO LONGO / SAIA LONGA): Se o vestido for longo até o chão cobrindo o calçado na foto de referência, MANTENHA A BARRA LONGA ATÉ O CHÃO cobrindo os pés. NÃO É OBRIGATÓRIO APARECER CALÇADO e é TERMINANTEMENTE PROIBIDO encurtar o vestido para mostrar calçado.'
-        : (isUpperPieceKling
-            ? 'A modelo veste a blusa anunciada com máxima fidelidade 1:1 combinada OBRIGATORIAMENTE com CALÇA JEANS feminina clássica de cintura alta e TÊNIS casual nos pés. É TERMINANTEMENTE PROIBIDO a modelo ficar sem calça, de calcinha, com pernas despidas ou nua na parte de baixo! Look 100% completo com calça jeans e tênis.'
-            : 'Se o produto for vestido, veste apenas o vestido; se for blusa, veste calça jeans e tênis; se for calça, veste blusa combinando.');
+        ? 'A modelo veste EXCLUSIVAMENTE o vestido de <<<image_2>>> com pernas limpas naturais. TERMINANTEMENTE PROIBIDO calça jeans, calça ou shorts sob o vestido. REGRA CRÍTICA DE COMPRIMENTO: Reproduza 1:1 o comprimento exato da barra de <<<image_2>>> (se curto/midi mostrando tornozelos e pés, mantenha os pés visíveis com SANDÁLIA DE FESTA ELEGANTE DE SALTO FINO; se longo até o chão cobrindo os pés em <<<image_2>>>, mantenha a barra longa até o chão cobrindo os pés).'
+        : isUpperPieceKling
+        ? 'A modelo veste a blusa de <<<image_2>>> com máxima fidelidade 1:1 combinada OBRIGATORIAMENTE com CALÇA JEANS feminina clássica de cintura alta e TÊNIS casual nos pés. É TERMINANTEMENTE PROIBIDO a modelo ficar sem calça, de calcinha, com pernas despidas ou nua na parte de baixo!'
+        : 'A modelo veste a peça de <<<image_2>>> com máxima fidelidade 1:1 (se vestido ou peça única, veste exclusivamente o vestido sem calça por baixo).';
+
+      const footwearDirectiveKling = isFitnessKling
+        ? 'CALÇADO NOS PÉS: Tênis esportivo feminino moderno combinando com o look fitness.'
+        : isSleepwearKling
+        ? 'CALÇADO NOS PÉS: Chinelo de dedo branco feminino delicado com detalhes finos nas tiras (substitua qualquer tênis de <<<image_1>>>).'
+        : isUpperPieceKling
+        ? 'CALÇADO NOS PÉS: Tênis casual feminino moderno combinando com a calça jeans.'
+        : 'CALÇADO OBRIGATÓRIO NOS PÉS (SANDÁLIA DE FESTA ELEGANTE — PROIBIDO TÊNIS): Substitua e descarte qualquer tênis ou sapato original que a modelo esteja calçando em <<<image_1>>>! Quando os pés estiverem visíveis, ela DEVE calçar obrigatoriamente uma SANDÁLIA DE FESTA ELEGANTE DE SALTO FINO E TIRAS DELICADAS que combine em cor e sofisticação com o vestido de <<<image_2>>> (se o vestido de <<<image_2>>> for longo até o chão cobrindo os pés, mantenha a barra longa até o chão). É TERMINANTEMENTE PROIBIDO usar tênis, sapatênis ou calçado esportivo com vestido!';
 
       const isModelScenarioKling = (params.modelScenarioSource || 'model') === 'model';
       if (isModelScenarioKling) {
         headerKling =
           '[REGRA SOBERANA DE COMPOSIÇÃO 2 IMAGENS KLING OMNI]:\n' +
-          '1. MODELO E CENÁRIO BASE (<<<image_1>>>): A mulher gerada DEVE SER RIGOROSAMENTE A MESMA MODELO de <<<image_1>>> (reproduzir 100% o mesmo rosto, olhos, boca, cabelos, biotipo, curvas femininas, tom de pele e enquadramento diante do espelho de <<<image_1>>>). Preservar 100% o cômodo, paredes, piso, portas e espelho de <<<image_1>>> intactos. Se em <<<image_1>>> o rosto da modelo aparece (visível total ou parcialmente), PRESERVE O MESMO ROSTO de <<<image_1>>> (PROIBIDO cortar ou esconder a cabeça se o rosto aparece em <<<image_1>>>!). Se o rosto estiver coberto pelo celular ou fora do enquadramento em <<<image_1>>>, mantenha exatamente o mesmo corte original da imagem. Única alteração: trocar a roupa dela pela de <<<image_2>>>.\n' +
-          '2. PRODUTO / ROUPA (<<<image_2>>>): Extrair EXCLUSIVAMENTE a roupa e tecido de <<<image_2>>> com máxima fidelidade 1:1 e vestir na modelo de <<<image_1>>>. É TERMINANTEMENTE PROIBIDO copiar, misturar ou fundir o rosto, a cabeça, o cabelo, a pele, o corpo ou a pose da pessoa da foto de produto (<<<image_2>>>)! Ignore 100% a pessoa de <<<image_2>>> (ZERO mistura com o rosto da foto de produto). É TERMINANTEMENTE PROIBIDO COPIAR TATUAGENS OU MARCAS DA PELE DA PESSOA DE <<<image_2>>>! A modelo gerada DEVE TER PELE 100% LIMPA E LISA, ZERO TATUAGENS em todo o corpo (braços, pernas, mãos, colo e pescoço totalmente livres de tatuagens).\n' +
-          `3. LOOK: ${clothingDirectiveKling} Calçado harmonioso que combine 100% com a peça (se os pés estiverem visíveis; se for vestido longo ou saia longa cobrindo os pés, preserve a barra longa até o chão cobrindo o calçado, sem jamais encurtar o vestido para forçar mostrar o calçado; NÃO é obrigatório aparecer calçado em peças longas): se academia/fitness -> tênis esportivo moderno; se camisola, baby doll, roupa de dormir ou ficar em casa -> chinelo de dedo branco com detalhes delicados nas tiras; se roupa de festa, vestido de festa ou social -> sapato ou sandália de festa elegante; se vestido casual -> sandália feminina elegante que harmonize com a peça.\n` +
+          '1. MODELO E CENÁRIO BASE (<<<image_1>>>): A mulher gerada DEVE SER RIGOROSAMENTE A MESMA MODELO de <<<image_1>>> (reproduzir 100% o mesmo rosto, olhos, boca, cabelos, biotipo, curvas femininas, tom de pele e enquadramento diante do espelho de <<<image_1>>>). Preservar 100% o cômodo, paredes, piso, portas e espelho de <<<image_1>>> intactos. Se em <<<image_1>>> o rosto da modelo aparece (visível total ou parcialmente), PRESERVE O MESMO ROSTO de <<<image_1>>> (PROIBIDO cortar ou esconder a cabeça se o rosto aparece em <<<image_1>>>!). Se o rosto estiver coberto pelo celular ou fora do enquadramento em <<<image_1>>>, mantenha exatamente o mesmo corte original da imagem. Única alteração: trocar a roupa e o calçado dela pelos de <<<image_2>>>.\n' +
+          '2. PRODUTO / ROUPA (<<<image_2>>>): Extrair EXCLUSIVAMENTE a roupa e tecido de <<<image_2>>> com máxima fidelidade 1:1 e vestir na modelo de <<<image_1>>>. É TERMINANTEMENTE PROIBIDO copiar, misturar ou fundir o rosto, a cabeça, o cabelo, a pele, o corpo ou a pose da pessoa da foto de produto (<<<image_2>>>)! Ignore 100% a pessoa de <<<image_2>>> (ZERO mistura com o rosto da foto de produto). É TERMINANTEMENTE PROIBIDO COPIAR TATUAGENS OU MARCAS DA PELE DA PESSOA DE <<<image_2>>>! A modelo gerada DEVE TER PELE 100% LIMPA E LISA, ZERO TATUAGENS em todo o corpo.\n' +
+          `3. LOOK & CALÇADO: ${clothingDirectiveKling} ${footwearDirectiveKling}\n` +
           '4. MÁXIMA NITIDEZ & FOCO CRISTALINO (8K): Textura de pele humana real com poros visíveis, acabamento fosco suave sob luz ambiente natural sem oleosidade excessiva. PELE 100% LIMPA, ZERO TATUAGENS, ZERO BORRÃO, ZERO DESFOQUE.\n' +
           `5. INTEGRAÇÃO DE LUZ: ${SCENARIO_RELIGHT_INTEGRATION_DIRECTIVE}\n\n`;
       } else {
         headerKling =
-          '[REGRA SOBERANA DE COMPOSIÇÃO 3 IMAGENS KLING OMNI]:\n' +
-          '1. MODELO (<<<image_1>>>): A mulher gerada DEVE SER RIGOROSAMENTE A MESMA MODELO de <<<image_1>>> (reproduzir 100% o mesmo rosto, olhos, boca, expressão, cabelos, biotipo, curvas femininas e tom de pele de <<<image_1>>>). Se em <<<image_1>>> o rosto aparece, PRESERVE O MESMO ROSTO. Se estiver coberto ou cortado, mantenha exatamente o mesmo corte. Mesma pose diante do espelho.\n' +
-          '2. PRODUTO / ROUPA (<<<image_2>>>): Extrair EXCLUSIVAMENTE a roupa e tecido de <<<image_2>>> 1:1 e vestir na modelo de <<<image_1>>>. É TERMINANTEMENTE PROIBIDO copiar ou mesclar o rosto, cabeça, corpo ou pessoa de <<<image_2>>>! TERMINANTEMENTE PROIBIDO COPIAR TATUAGENS DA PESSOA DE <<<image_2>>>! Pele 100% limpa, ZERO TATUAGENS.\n' +
-          '3. CENÁRIO (<<<image_3>>>): Preservar 100% o ambiente real de <<<image_3>>> (paredes, piso, espelho e iluminação intactos).\n' +
-          `4. LOOK: ${clothingDirectiveKling} Calçado harmonioso que combine com a peça (se os pés estiverem visíveis; se for vestido longo cobrindo os pés, preserve a barra longa até o chão sem forçar mostrar calçado).\n` +
+          '[FOTOGRAFIA ÚNICA NATIVA 3 IMAGENS KLING OMNI]:\n' +
+          '1. IDENTIDADE DA MODELO (<<<image_1>>>): A mulher fotografada DEVE SER RIGOROSAMENTE A MESMA MODELO de <<<image_1>>> (mesmo rosto, olhos, boca, expressão, cabelos, biotipo, curvas femininas, tom de pele e postura de selfie de <<<image_1>>>). Se em <<<image_1>>> o rosto aparece, PRESERVE O MESMO ROSTO; se estiver coberto pelo celular, mantenha o mesmo corte. DESCARTE 100% o quarto, a parede branca de fundo, a iluminação original, a roupa antiga e o tênis/sapato antigo de <<<image_1>>>.\n' +
+          '2. PRODUTO / ROUPA (<<<image_2>>>): Vestir a modelo exclusivamente com a roupa e tecido de <<<image_2>>> 1:1. É TERMINANTEMENTE PROIBIDO copiar ou mesclar o rosto, cabeça, corpo ou tatuagens da pessoa de <<<image_2>>>! Pele 100% limpa, ZERO TATUAGENS.\n' +
+          '3. CENÁRIO E LUZ REAL (<<<image_3>>>): Fotografe a modelo fisicamente em pé sobre o piso real dentro do cômodo exato de <<<image_3>>> (preservando 100% paredes, piso, cortinas, portas e iluminação de <<<image_3>>>).\n' +
+          `4. LOOK & CALÇADO: ${clothingDirectiveKling} ${footwearDirectiveKling}\n` +
           '5. MÁXIMA NITIDEZ & PELE REALISTA: Textura de pele humana real com poros visíveis, acabamento fosco suave sob iluminação difusa interior. PROIBIDO aspecto oleoso. ZERO TATUAGENS, ZERO BORRÃO.\n' +
-          `6. INTEGRAÇÃO DE LUZ E BORDAS: ${SCENARIO_RELIGHT_INTEGRATION_DIRECTIVE}\n\n`;
+          `6. INTEGRAÇÃO ÓPTICA E SOMBRAS NO PISO: ${SCENARIO_RELIGHT_INTEGRATION_DIRECTIVE}\n\n`;
       }
     } else {
       headerKling = allowsFace
-        ? '[REGRA SOBERANA DE ENQUADRAMENTO E CENÁRIO]:\n1. CENÁRIO: Preservar 100% o ambiente real da foto anexada na Imagem 1 (paredes, piso, espelho e iluminação intactos).\n2. ROSTO E MIRROR-SELFIE: Modelo em pé segurando smartphone moderno apontado para o espelho, rosto natural expressivo visível e corpo inteiro até os pés.\n3. FIDELIDADE 1:1: Reproduzir a roupa das fotos de produto anexadas com máxima fidelidade. Zero tatuagens.\n' +
+        ? '[REGRA SOBERANA DE ENQUADRAMENTO E CENÁRIO]:\n1. CENÁRIO: Preservar 100% o ambiente real da foto anexada na Imagem 1 (paredes, piso, espelho e iluminação intactos).\n2. ROSTO E MIRROR-SELFIE: Modelo em pé segurando smartphone moderno apontado para o espelho, rosto natural expressivo visível e corpo inteiro até os pés.\n3. FIDELIDADE 1:1: Reproduzir a roupa das fotos de produto anexadas com máxima fidelidade e sandália de festa elegante nos pés (se vestido). Zero tatuagens.\n' +
           `4. INTEGRAÇÃO DE LUZ E BORDAS: ${SCENARIO_RELIGHT_INTEGRATION_DIRECTIVE}\n\n`
         : '[REGRA SOBERANA ABSOLUTA — MIRROR-SELFIE COM SMARTPHONE & CORTE NO QUEIXO]:\n' +
           '1. ENQUADRAMENTO E CORTE RIGOROSO DO QUEIXO PARA BAIXO: É TERMINANTEMENTE PROIBIDO MOSTRAR O ROSTO, OLHOS, NARIZ OU BOCA. O enquadramento é estritamente da ponta do queixo para baixo até os pés no piso (ou até a barra do vestido longo cobrindo os pés, caso a peça seja longa até o chão).\n' +
           '2. SMARTPHONE OBRIGATÓRIO NA MÃO: A modelo segura um smartphone moderno verticalmente com uma das mãos na altura do peito/queixo, tirando uma foto no espelho de corpo inteiro. Mãos com anéis finos e pulseiras douradas delicadas nos pulsos.\n' +
           '3. CENÁRIO INTEGRALMENTE PRESERVADO (IMAGEM 1): O cômodo, piso, paredes, portas e espelho DEVEM ser idênticos ao cenário da Imagem 1 anexada.\n' +
-          '4. LOOK COMPLETO (PROIBIDO NUDEZ): Se o produto for blusa/peça superior, a modelo veste calça jeans feminina clássica de cintura alta; se for peça inferior, veste blusa combinando. Corpo com curvas femininas naturais conforme o biotipo da Mestra.\n' +
+          '4. LOOK COMPLETO (PROIBIDO NUDEZ): Se o produto for vestido, veste exclusivamente o vestido com sandália de festa elegante nos pés; se for blusa/peça superior, veste calça jeans feminina clássica de cintura alta; se for peça inferior, veste blusa combinando. Corpo com curvas femininas naturais conforme o biotipo da Mestra.\n' +
           '5. PELE REALISTA & NATURAL (SEM OLEOSIDADE): Textura de pele humana real com poros visíveis, acabamento fosco suave sob iluminação difusa interior. PROIBIDO aspecto oleoso, pele plastificada, pele encerada, brilho excessivo de óleo, pele de boneca de cera ou porcelana artificial.\n' +
           `6. INTEGRAÇÃO DE LUZ E BORDAS: ${SCENARIO_RELIGHT_INTEGRATION_DIRECTIVE}\n\n`;
     }
@@ -2455,23 +2314,35 @@ async function generateImageWithKling(params: {
     headerKling = `${englishFidelityHeader}${IMAGE_REFERENCE_FIDELITY_HEADER}`;
   }
 
-  let klingPrompt = (headerKling ? `${headerKling}\n\n${params.prompt}` : params.prompt).trim();
+  const alignedBodyPromptKling = hasModelRefKling
+    ? params.prompt
+        .replace(/\bFoto 1\b/gi, '<<<IMAGE_2_PROD>>>')
+        .replace(/\bFoto 2\b/gi, '<<<IMAGE_1_MOD>>>')
+        .replace(/\bFoto 3\b/gi, '<<<image_3>>>')
+        .replace(/<<<IMAGE_2_PROD>>>/g, '<<<image_2>>>')
+        .replace(/<<<IMAGE_1_MOD>>>/g, '<<<image_1>>>')
+    : params.prompt;
+
+  let klingPrompt = (headerKling ? `${headerKling}\n\n${alignedBodyPromptKling}` : alignedBodyPromptKling).trim();
 
   // Limite estrito oficial de 2.500 caracteres da API Kling Omni
   if (klingPrompt.length > 2500) {
-    console.warn(`[Kling Omni] Prompt com ${klingPrompt.length} caracteres excede o limite oficial de 2.500 caracteres da API.`);
-    klingPrompt = compactPromptToLimit(params.prompt, 2490, headerKling);
+    klingPrompt = compactPromptToLimit(alignedBodyPromptKling, 2490, headerKling);
   }
 
-  // Negative prompt estritamente focado em qualidade/artefatos — SEM tokens de corpo para que quem mande seja 100% o prompt da Mestra
+  // Negative prompt estritamente focado em qualidade/artefatos + bloqueio de tênis quando for vestido
   const bagNegativeTokens = !isBagKling ? ', bag, bags, handbag, handbags, purse, purses, tote bag, shoulder bag, backpack, clutch, crossbody bag, sacola, bolsa, bolsas' : '';
+  const noSneakerTokensKling =
+    params.isAnaMariaMode && !isFitnessKling && !isUpperPieceKling
+      ? ', sneakers, tennis shoes, athletic shoes, running shoes, trainers, gym shoes, sporty shoes, boots, tênis, sapatênis, calçado esportivo'
+      : '';
   const negativePrompt = (params.isAnaMariaMode
     ? (hasModelRefKling
-        ? 'white halo, white outline, white fringe, cutout edge, sticker paste effect, mismatched lighting, copying face from image 2, copying person from image 2, blending person from image 2, model from product photo, mixing face of product photo, tattoos on skin from image 2, tattoos on skin, tattoo, body ink, skin ink, arm tattoo, leg tattoo, chest tattoo, wrist tattoo, hand tattoo, ink on skin, drawing on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, low quality, 3d render, cartoon, illustration, jeans with dress, pants under dress, oily skin, greasy skin, shining skin, wet skin, oil sheen, plastic skin, wax skin, wax doll, porcelain skin, fake skin, heavy airbrushing, artificial gloss'
+        ? 'white halo, white outline, white fringe, cutout edge, sticker paste effect, floating feet, mismatched lighting, copying face from image 2, copying person from image 2, blending person from image 2, model from product photo, mixing face of product photo, tattoos on skin from image 2, tattoos on skin, tattoo, body ink, skin ink, arm tattoo, leg tattoo, chest tattoo, wrist tattoo, hand tattoo, ink on skin, drawing on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, low quality, 3d render, cartoon, illustration, jeans with dress, pants under dress, oily skin, greasy skin, shining skin, wet skin, oil sheen, plastic skin, wax skin, wax doll, porcelain skin, fake skin, heavy airbrushing, artificial gloss'
         : (allowsFace
             ? 'white halo, white outline, cutout edge, mismatched lighting, tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, deformed face, bad eyes, low quality, 3d render, cartoon, illustration'
             : 'white halo, white outline, cutout edge, mismatched lighting, face, head, eyes, eyebrows, nose, lips, mouth, teeth, smile, chin up, portrait, headshot, selfie with face, looking at camera, visible face, jeans with dress, pants under dress, sideways pose, profile angle, no smartphone, empty hands, without phone, naked, pantless, topless, no pants, underwear only, skinny, emaciated, boyish torso, flat hips, oily skin, greasy skin, shining skin, wet skin, oil sheen, plastic skin, wax skin, wax doll, porcelain skin, fake skin, heavy airbrushing, artificial gloss, tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, low quality, 3d render, cartoon, illustration'))
-    : 'original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry') + bagNegativeTokens + ', pantless, no pants, underwear only, bottomless, bare legs under top, naked bottom, topless, naked, panties only, without pants';
+    : 'original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry') + bagNegativeTokens + noSneakerTokensKling + ', pantless, no pants, underwear only, bottomless, bare legs under top, naked bottom, topless, naked, panties only, without pants';
 
   const payload: any = {
     model_name: 'kling-v3-omni',
@@ -2580,11 +2451,18 @@ async function generateImageWithKling(params: {
   return { success: false, error: 'Tempo limite excedido na geração do Kling Image 3.0 Omni (timeout 120s).' };
 }
 
+const galleryModelMemoryCache = new Map<string, string>();
+const galleryScenarioMemoryCache = new Map<string, string>();
+
 function getGalleryModelBase64(modelNum?: number | string, presentationMode?: string): string | undefined {
   if (modelNum === undefined || modelNum === null || modelNum === '') return undefined;
   const numStr = String(modelNum).trim();
-  const baseDir = path.join(process.cwd(), 'public', 'models', 'gallery');
   const preferredFolder = presentationMode === 'com_rosto' || presentationMode === 'pov' ? 'com_rosto' : 'sem_rosto';
+  const cacheKey = `${preferredFolder}:${numStr}`;
+  const cached = galleryModelMemoryCache.get(cacheKey);
+  if (cached) return cached;
+
+  const baseDir = path.join(process.cwd(), 'public', 'models', 'gallery');
   const secondaryFolder = preferredFolder === 'com_rosto' ? 'sem_rosto' : 'com_rosto';
   const candidates = [
     path.join(baseDir, preferredFolder, `${numStr}.png`),
@@ -2597,7 +2475,9 @@ function getGalleryModelBase64(modelNum?: number | string, presentationMode?: st
       if (fs.existsSync(filePath)) {
         const buf = fs.readFileSync(filePath);
         const mime = filePath.endsWith('.jpg') ? 'image/jpeg' : 'image/png';
-        return `data:${mime};base64,${buf.toString('base64')}`;
+        const dataUri = `data:${mime};base64,${buf.toString('base64')}`;
+        galleryModelMemoryCache.set(cacheKey, dataUri);
+        return dataUri;
       }
     }
   } catch (err) {
@@ -2612,12 +2492,18 @@ function getGalleryScenarioBase64(
   presentationMode?: string
 ): string | undefined {
   const cleanId = scenarioId ? String(scenarioId).trim() : '';
+  const cacheKey = `${presentationMode || ''}:${cleanId}:${scenarioNum ?? ''}`;
+  const cached = galleryScenarioMemoryCache.get(cacheKey);
+  if (cached) return cached;
+
   if (presentationMode === 'pov' || /^cenario_pov_/i.test(cleanId)) {
     const povNum = cleanId.replace(/^cenario_pov_/i, '') || String(scenarioNum || '1').trim();
     const povPath = path.join(process.cwd(), 'public', 'scenarios', 'pov', `${povNum}.png`);
     try {
       if (fs.existsSync(povPath)) {
-        return `data:image/png;base64,${fs.readFileSync(povPath).toString('base64')}`;
+        const dataUri = `data:image/png;base64,${fs.readFileSync(povPath).toString('base64')}`;
+        galleryScenarioMemoryCache.set(cacheKey, dataUri);
+        return dataUri;
       }
     } catch {}
     return undefined;
@@ -2630,7 +2516,9 @@ function getGalleryScenarioBase64(
     const idPath = path.join(process.cwd(), 'public', 'scenarios', 'gallery', `${idFileNum}.png`);
     try {
       if (fs.existsSync(idPath)) {
-        return `data:image/png;base64,${fs.readFileSync(idPath).toString('base64')}`;
+        const dataUri = `data:image/png;base64,${fs.readFileSync(idPath).toString('base64')}`;
+        galleryScenarioMemoryCache.set(cacheKey, dataUri);
+        return dataUri;
       }
     } catch {}
   }
@@ -2648,7 +2536,9 @@ function getGalleryScenarioBase64(
     try {
       if (fs.existsSync(filePath)) {
         const buf = fs.readFileSync(filePath);
-        return `data:image/png;base64,${buf.toString('base64')}`;
+        const dataUri = `data:image/png;base64,${buf.toString('base64')}`;
+        galleryScenarioMemoryCache.set(cacheKey, dataUri);
+        return dataUri;
       }
     } catch (err) {
       console.warn('Erro ao carregar cenário da galeria no backend:', err);
@@ -2687,7 +2577,6 @@ async function generateImageWithSeedream(params: {
   selectedMasterId?: string;
   bodyType?: string;
   scenarioPhotoBase64?: string;
-  modelType?: 'seedream_5_0_pro' | 'seedream_4_5';
   modelScenarioSource?: 'model' | 'gallery';
 }): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
   let apiKey = (
@@ -2738,21 +2627,15 @@ async function generateImageWithSeedream(params: {
     params.selectedMasterId === 'pov_blusinhas_13k' ||
     Boolean(params.prompt && params.prompt.includes('PRESERVAÇÃO INTEGRAL DO CENÁRIO POV'));
 
-  // AUDITORIA E ISOLAMENTO SEEDREAM 5.0 PRO / SEEDREAM 4.5:
+  // AUDITORIA E ISOLAMENTO SEEDREAM 5.0 PRO:
   // O gerador Seedream NÃO introduz características corporais próprias, presets ou prompts ocultos.
   // A descrição física e biotipo da modelo vêm 100% e exclusivamente do prompt selecionado no Item 9.
-  // O header técnico apenas mapeia as referências visuais (Imagem 1 = cenário, Imagem 2+ = produto/tecido 1:1),
-  // proibindo expressamente copiar a modelo/manequim da foto de produto na Imagem 2+.
   const hasModelRefSeedream = Boolean(params.modelReferenceBase64 && params.modelReferenceBase64.length > 50);
   const isUpperPieceSeedream = Boolean(
     params.prompt &&
       (/\b(blusa|blusinha|blusinhas|blusas|rendada|rendado|cropped|top|regata|camisa|camiseta|t-shirt|tshirt|casaco|jaqueta|blazer|moletom|sueter|suéter|cardiga|cardigã|bata)\b/i.test(params.prompt) ||
         params.prompt.includes('PEÇA SUPERIOR'))
   );
-  const isBagSeedream = isBagProduct(params.prompt, undefined, undefined);
-  const bagDirectiveSeedream = !isBagSeedream
-    ? '[PROIBIDO BOLSAS]: A modelo NÃO deve usar, segurar ou carregar qualquer tipo de bolsa, bolsa de ombro, bolsa tiracolo, clutch ou mochila. / NO BAGS: No handbags, no purses, no shoulder bags, no backpacks.\n'
-    : '';
 
   const allowsFaceSeedream =
     params.presentationMode === 'com_rosto' ||
@@ -2810,27 +2693,26 @@ async function generateImageWithSeedream(params: {
     } else if (hasModelRefSeedream) {
       const isModelScenarioSeedream = (params.modelScenarioSource || 'model') === 'model';
       const modelPreserveDirectiveSeedream =
-        '[PRESERVAÇÃO INTEGRAL DE ROSTO, POSE E ENQUADRAMENTO DA FOTO 2 (MODELO 1:1)]:\n' +
-        '- A modelo gerada DEVE SER A MESMA MULHER DA FOTO 2. Se a Foto 2 mostra o rosto da modelo (visível total ou parcialmente), o rosto DEVE APARECER IDENTICAMENTE, reproduzindo 100% a mesma face, olhos, nariz, boca e cabelos da mulher da Foto 2 (PROIBIDO cortar o rosto ou a cabeça se ela aparece na Foto 2!). Se o rosto estiver coberto pelo celular ou cortado no enquadramento da Foto 2, mantenha exatamente o mesmo corte original da Foto 2.\n' +
-        '- POSE E ENQUADRAMENTO: Manter rigorosamente a mesma pose diante do espelho, mesmos braços e mesmo ângulo da Foto 2.\n' +
+        '[IDENTIDADE E ROSTO DA FOTO 2 (MODELO 1:1)]:\n' +
+        '- A modelo fotografada DEVE SER A MESMA MULHER DA FOTO 2. Se a Foto 2 mostra o rosto da modelo (visível total ou parcialmente), o rosto DEVE APARECER IDENTICAMENTE, reproduzindo 100% a mesma face, olhos, nariz, boca e cabelos da mulher da Foto 2 (PROIBIDO cortar o rosto ou a cabeça se ela aparece na Foto 2!). Se o rosto estiver coberto pelo celular ou cortado no enquadramento da Foto 2, mantenha exatamente o mesmo corte original da Foto 2.\n' +
         '- ISOLAMENTO DA FOTO 1 (PRODUTO): Extrair EXCLUSIVAMENTE a roupa e tecido da Foto 1; é TERMINANTEMENTE PROIBIDO copiar, mesclar ou misturar o rosto ou a pessoa da Foto 1! ZERO mistura com a pessoa da Foto 1. É TERMINANTEMENTE PROIBIDO copiar tatuagens, marcas corporais ou desenhos da pessoa da Foto 1. A modelo DEVE ter pele 100% limpa, ZERO TATUAGENS no corpo todo.\n' +
-        '- CALÇADO: Calçado harmonioso que combine 100% com a peça (se os pés estiverem visíveis; se for vestido longo ou saia longa cobrindo os pés, preserve a barra longa até o chão cobrindo o calçado, sem jamais encurtar o vestido para forçar mostrar o calçado; NÃO é obrigatório aparecer calçado em peças longas): se academia/fitness -> tênis esportivo moderno; se camisola, baby doll, roupa de dormir ou ficar em casa -> chinelo de dedo branco com detalhes delicados nas tiras; se roupa de festa, vestido de festa ou social -> sapato ou sandália de festa elegante; se vestido casual -> sandália feminina elegante que harmonize com a peça.\n';
+        '- CALÇADO: Substitua qualquer sapato/tênis original da Foto 2 por calçado que combine 100% com a peça (se os pés estiverem visíveis; se for vestido longo cobrindo os pés, preserve a barra longa até o chão): se vestido -> sandália feminina de festa elegante de salto fino e tiras delicadas (PROIBIDO tênis com vestido); se academia/fitness -> tênis esportivo moderno; se camisola, baby doll ou roupa de dormir -> chinelo de dedo branco delicado.\n';
 
       if (isModelScenarioSeedream) {
         headerSeedream =
           `${modelPreserveDirectiveSeedream}${naturalSkinSeedream}` +
           '[MAPA TÉCNICO DE REFERÊNCIA 2 IMAGENS — PRESERVAÇÃO INTEGRAL DE MODELO E CENÁRIO]:\n' +
           '- Foto 1 (PRODUTO): É a roupa que a modelo DEVE vestir com máxima fidelidade 1:1 (PROIBIDO copiar rosto, pessoa ou pose da Foto 1).\n' +
-          '- Foto 2 (MODELO E CENÁRIO BASE ABSOLUTO): A imagem gerada DEVE SER RIGOROSAMENTE A MESMA MULHER DA FOTO 2, NA MESMA POSE E DENTRO DO MESMO CÔMODO DA FOTO 2. Preserve 100% o rosto (se visível na Foto 2), corpo, curvas, biotipo, cabelos, pose e TODO O CENÁRIO DE FUNDO da Foto 2 (paredes, piso, espelho, portas e iluminação intactos). Única alteração: trocar a roupa dela pela roupa da Foto 1 (e calçado que combine harmoniosamente).\n' +
+          '- Foto 2 (MODELO E CENÁRIO BASE ABSOLUTO): A imagem gerada DEVE SER RIGOROSAMENTE A MESMA MULHER DA FOTO 2, NA MESMA POSE E DENTRO DO MESMO CÔMODO DA FOTO 2. Preserve 100% o rosto (se visível na Foto 2), corpo, curvas, biotipo, cabelos, pose e TODO O CENÁRIO DE FUNDO da Foto 2 (paredes, piso, espelho, portas e iluminação intactos). Única alteração: trocar a roupa dela pela roupa da Foto 1 e o calçado.\n' +
           `${SCENARIO_RELIGHT_INTEGRATION_DIRECTIVE}\n` +
           `${clothingDirectiveSeedream}\n\n`;
       } else {
         headerSeedream =
           `${modelPreserveDirectiveSeedream}${naturalSkinSeedream}` +
-          '[MAPA TÉCNICO DE REFERÊNCIA 3 IMAGENS]:\n' +
+          '[FOTOGRAFIA ÚNICA NATIVA 3 IMAGENS — INTEGRAÇÃO ÓPTICA E GEOMÉTRICA]:\n' +
           '- Foto 1 (PRODUTO): É a roupa que a modelo DEVE vestir com máxima fidelidade 1:1 (PROIBIDO copiar rosto, pessoa ou pose da Foto 1).\n' +
-          '- Foto 2 (MODELO): É literalmente a modelo da imagem. Preserve 100% o mesmo rosto (se visível na Foto 2), corpo, curvas, biotipo, cabelos e mesma pose diante do espelho da Foto 2. DESCONSIDERE a roupa, o cenário e a iluminação original da Foto 2!\n' +
-          '- Foto 3 (CENÁRIO): É o cômodo real fixo intacto onde a modelo deve estar inserida diante do espelho.\n' +
+          '- Foto 2 (IDENTIDADE E POSTURA DA MODELO): Preserve 100% o mesmo rosto (se visível na Foto 2), corpo, curvas, biotipo, cabelos e postura de selfie da Foto 2. DESCARTE 100% a roupa antiga, o tênis antigo, o cenário antigo e a iluminação/parede branca original da Foto 2!\n' +
+          '- Foto 3 (CENÁRIO E CAMPO DE LUZ SOBERANO): Fotografe a mulher fisicamente em pé sobre o piso real dentro do cômodo exato da Foto 3 em uma única exposição de câmera, alinhando perspectiva 3D, escala e sombras reais no chão.\n' +
           `${SCENARIO_RELIGHT_INTEGRATION_DIRECTIVE}\n` +
           `${clothingDirectiveSeedream}\n\n`;
       }
@@ -2846,10 +2728,9 @@ async function generateImageWithSeedream(params: {
   }
 
   const payload: any = {
-    model: params.modelType === 'seedream_4_5' ? 'seedream-4-5-251128' : 'dola-seedream-5-0-pro-260628',
+    model: 'dola-seedream-5-0-pro-260628',
     prompt: refImages.length > 0 ? `${headerSeedream}${params.prompt}` : params.prompt,
     size: '1440x2560',
-    ...(params.modelType === 'seedream_4_5' ? { sequential_image_generation: 'disabled' } : {}),
     response_format: 'url',
     watermark: false,
   };
@@ -2946,11 +2827,17 @@ function getFalKey(): string {
   return 'fal_sk_3b8aaba3fd8d43e1a14108cc27e6b4ae:e4a8a5787f308a8a2cb95276e202144a';
 }
 
+const falUploadCache = new Map<string, string>();
+
 async function uploadReferenceToFal(img: string): Promise<string | null> {
   if (!img || img.length < 10) return null;
   if (img.startsWith('http://') || img.startsWith('https://')) {
     return img;
   }
+  const cacheKey = `${img.length}:${img.slice(0, 80)}:${img.slice(-80)}`;
+  const cachedUrl = falUploadCache.get(cacheKey);
+  if (cachedUrl) return cachedUrl;
+
   const falKey = getFalKey();
   if (falKey) fal.config({ credentials: falKey });
 
@@ -2981,6 +2868,13 @@ async function uploadReferenceToFal(img: string): Promise<string | null> {
       ? new File([buffer], `reference_${Date.now()}.${ext}`, { type: mimeType })
       : new Blob([buffer], { type: mimeType });
     const uploadedUrl = await fal.storage.upload(blob as any);
+    if (uploadedUrl) {
+      if (falUploadCache.size > 120) {
+        const firstKey = falUploadCache.keys().next().value;
+        if (firstKey) falUploadCache.delete(firstKey);
+      }
+      falUploadCache.set(cacheKey, uploadedUrl);
+    }
     return uploadedUrl;
   } catch (err: any) {
     console.warn('[Fal Storage Upload Error]:', err?.message || err);
@@ -2994,14 +2888,8 @@ async function prepareFalImageUrls(rawImages: (string | undefined)[]): Promise<s
     fal.config({ credentials: falKey });
   }
   const validImages = rawImages.filter((img): img is string => typeof img === 'string' && img.length > 50);
-  const urls: string[] = [];
-  for (const img of validImages) {
-    const url = await uploadReferenceToFal(img);
-    if (url) {
-      urls.push(url);
-    }
-  }
-  return urls;
+  const uploaded = await Promise.all(validImages.map((img) => uploadReferenceToFal(img)));
+  return uploaded.filter((u): u is string => Boolean(u));
 }
 
 async function generateImageWithKlingO3Fal(params: {
@@ -3041,32 +2929,62 @@ async function generateImageWithKlingO3Fal(params: {
     };
   }
 
+  const isFitnessO3 = Boolean(
+    params.prompt &&
+      /\b(fitness|academia|treino|gym|legging|suplex|dry\s*fit|esportiv)\b/i.test(params.prompt)
+  );
+  const isSleepwearO3 = Boolean(
+    params.prompt &&
+      /\b(camisola|baby\s*doll|babydoll|pijama|sleepwear|homewear|lingerie|robe)\b/i.test(params.prompt)
+  );
+  const isDressKlingO3 = Boolean(
+    params.prompt &&
+      (/\b(vestido|vestidos|dress|dresses|macac[aã]o|macaquinho|jumpsuit|chemise|tubinho)\b/i.test(params.prompt) ||
+        params.prompt.includes('PEÇA ÚNICA') ||
+        params.prompt.includes('VESTIDO'))
+  );
+  const isUpperPieceO3 = Boolean(
+    !isDressKlingO3 &&
+      !isSleepwearO3 &&
+      params.prompt &&
+      (/\b(blusa|blusinha|blusinhas|blusas|rendada|rendado|cropped|top|regata|camisa|camiseta|t-shirt|tshirt|casaco|jaqueta|blazer|moletom|sueter|suéter|cardiga|cardigã|bata)\b/i.test(params.prompt) ||
+        params.prompt.includes('PEÇA SUPERIOR'))
+  );
+
   let promptKlingO3 = params.prompt;
   if (params.modelReferenceBase64) {
-    const isDressKlingO3 = Boolean(
-      params.prompt &&
-        (/\b(vestido|vestidos|dress|dresses|macac[aã]o|macaquinho|camisola|jumpsuit)\b/i.test(params.prompt) ||
-          params.prompt.includes('PEÇA ÚNICA') ||
-          params.prompt.includes('VESTIDO'))
-    );
-    const isUpperPieceO3 = Boolean(
-      params.prompt &&
-        (/\b(blusa|blusinha|blusinhas|blusas|rendada|rendado|cropped|top|regata|camisa|camiseta|t-shirt|tshirt|casaco|jaqueta|blazer|moletom|sueter|suéter|cardiga|cardigã|bata)\b/i.test(params.prompt) ||
-          params.prompt.includes('PEÇA SUPERIOR'))
-    );
+    const alignedPromptO3 = params.prompt
+      .replace(/\bFoto 1\b/gi, '<<<IMAGE_2_PROD>>>')
+      .replace(/\bFoto 2\b/gi, '<<<IMAGE_1_MOD>>>')
+      .replace(/\bFoto 3\b/gi, '<<<image_3>>>')
+      .replace(/<<<IMAGE_2_PROD>>>/g, '<<<image_2>>>')
+      .replace(/<<<IMAGE_1_MOD>>>/g, '<<<image_1>>>');
+
     const dressRuleO3 = isDressKlingO3
-      ? 'The model wears EXCLUSIVELY the dress from <<<image_1>>> (STRICTLY PROHIBITED jeans or pants under dress).'
-      : (isUpperPieceO3 ? 'The model wears the top/blouse with MANDATORY classic high-waisted blue denim jeans and casual sneakers on her feet (STRICTLY PROHIBITED pantless, underwear only or bare legs on bottom).' : 'If top, wear classic blue jeans and sneakers; if dress, wear ONLY the dress.');
+      ? 'The model wears EXCLUSIVELY the dress from <<<image_2>>> (STRICTLY PROHIBITED jeans or pants under dress). Match the exact hemline length of <<<image_2>>> 1:1 (if short/midi showing ankles and feet, keep feet visible; if floor-length covering feet, keep floor-length).'
+      : isUpperPieceO3
+      ? 'The model wears the top/blouse from <<<image_2>>> with MANDATORY classic high-waisted blue denim jeans and casual sneakers on her feet (STRICTLY PROHIBITED pantless, underwear only or bare legs on bottom).'
+      : 'The model wears the exact garment from <<<image_2>>> (if dress, wear ONLY the dress; if top, wear classic blue jeans and sneakers).';
+
+    const footwearRuleO3 = isFitnessO3
+      ? 'FOOTWEAR: Modern athletic sneakers matching the fitness outfit.'
+      : isSleepwearO3
+      ? 'FOOTWEAR: Delicate white flip-flops on her feet (replace any shoes from <<<image_1>>>).'
+      : isUpperPieceO3
+      ? 'FOOTWEAR: Clean casual sneakers matching the blue jeans.'
+      : 'MANDATORY FOOTWEAR REPLACEMENT (PARTY SANDALS — NO SNEAKERS): Completely replace and discard any sneakers or shoes worn in <<<image_1>>>! When her feet are visible, she MUST wear ELEGANT HIGH-HEEL PARTY SANDALS (strappy dress sandals) matching the color and elegance of the dress in <<<image_2>>> (if the dress in <<<image_2>>> is floor-length covering the feet, keep the full floor-length hem). STRICTLY FORBIDDEN to wear sneakers, tennis shoes, athletic shoes, or casual trainers with a dress!';
+
     const isModelScenarioO3 = (params.modelScenarioSource || 'model') === 'model';
-    const lightWrapRuleEn = 'CRITICAL LIGHTING & EDGE INTEGRATION: The scenario room dictates 100% of lighting, color temperature, brightness, and shadows; relight the woman and garment to match the room with realistic floor contact shadows, soft optical edge light-wrap, and ZERO white outline, halo, or cutout/pasted look. ';
+    const lightWrapRuleEn =
+      'SINGLE-EXPOSURE NATIVE PHOTOGRAPHY & 3D FLOOR GROUNDING: Render as a single real-world photograph captured inside the scenario room (never a cutout or pasted montage). Align 3D perspective, camera horizon, and body scale to the floor plane. The scenario room dictates 100% of lighting, Kelvin color temperature, and shadows; relight the woman and garment to match the room with dark sole/heel contact occlusion, soft directional floor shadows, optical edge light-wrap, and ZERO white outline or halo. ';
     const headerKlingO3 = isModelScenarioO3
       ? '<<<image_1>>> is the PRIMARY MODEL AND ROOM BASE: The generated image MUST feature 100% the exact same woman, same body, curves, facial features, hair, skin, exact same pose and framing from <<<image_1>>>. If <<<image_1>>> shows her face, KEEP HER EXACT SAME FACE from <<<image_1>>>; do NOT crop her head or face if shown in <<<image_1>>>! Preserve 100% the exact same room and background setting from <<<image_1>>>. ' +
-        '[MANDATORY 100% GARMENT REPLICATION]: <<<image_2>>> is STRICTLY the PRODUCT GARMENT. Replace her clothes with the EXACT SAME clothing item shown in <<<image_2>>> with 100% fidelity: exact same fabric, weave, pattern, print, color shade, neckline, straps, seams, hemlines, and details without altering! 100% DISREGARD the person, head, face, skin, tattoos, and pose in <<<image_2>>>! NEVER blend or copy the person from <<<image_2>>>! Clean unblemished skin, ZERO tattoos on body. ' +
-        `${lightWrapRuleEn}${dressRuleO3} Footwear harmonization (when feet are visible; if maxi/floor-length dress covers feet, keep the long dress touching the floor and keep footwear naturally hidden under the hem; never shorten long dresses to expose shoes): if fitness/workout wear -> athletic sneakers; if nightgown, baby doll, sleepwear or loungewear -> white flip-flops with delicate strap details; if evening/party dress or formal/social wear -> elegant high-heel sandals or dress shoes matching the outfit; if casual dress -> elegant feminine sandals. Crystal-clear optical focus, 8k high definition, ultra-sharp realistic smartphone photo, no blur, no oil sheen. `
-      : '<<<image_1>>> is the PRIMARY MODEL: The generated image MUST feature 100% the exact same woman, same body, curves, facial features, hair, skin, exact same pose and framing from <<<image_1>>>. If <<<image_1>>> shows her face, KEEP HER EXACT SAME FACE from <<<image_1>>>. ' +
-        '[MANDATORY 100% GARMENT REPLICATION]: <<<image_2>>> is STRICTLY the PRODUCT GARMENT. Replace her clothes with the EXACT SAME clothing item shown in <<<image_2>>> with 100% fidelity: exact same fabric, weave, pattern, print, color shade, neckline, straps, seams, hemlines, and details! 100% DISREGARD the person, head, face, skin, tattoos, and pose in <<<image_2>>>! NEVER copy the person from <<<image_2>>>! Clean unblemished skin, ZERO tattoos on body. ' +
-        `<<<image_3>>> is the SCENARIO ROOM: place her standing in this room. ${lightWrapRuleEn}${dressRuleO3} Footwear harmonizes with outfit (if feet are visible; if floor-length dress covers feet, preserve full length covering feet without forcing shoes). Crystal-clear optical focus, 8k high definition, ultra-sharp smartphone photo, no blur. `;
-    promptKlingO3 = compactPromptToLimit(params.prompt, 2450, headerKlingO3);
+        '[MANDATORY 100% GARMENT & FOOTWEAR REPLICATION]: <<<image_2>>> is STRICTLY the PRODUCT GARMENT. Replace her clothes with the EXACT SAME clothing item shown in <<<image_2>>> with 100% fidelity: exact same fabric, weave, pattern, print, color shade, neckline, straps, seams, hemlines, and details without altering! 100% DISREGARD the person, head, face, skin, tattoos, and pose in <<<image_2>>>! NEVER blend or copy the person from <<<image_2>>>! Clean unblemished skin, ZERO tattoos on body. ' +
+        `${lightWrapRuleEn}${dressRuleO3} ${footwearRuleO3} Crystal-clear optical focus, 8k high definition, ultra-sharp realistic smartphone photo, no blur, no oil sheen. `
+      : '<<<image_1>>> is the MODEL IDENTITY & POSE: The photographed woman MUST feature 100% the exact same face (if shown in <<<image_1>>>, keep her exact face), hair, skin tone, body curves, and mirror-selfie posture from <<<image_1>>>. Completely DISCARD <<<image_1>>>\'s old room, bright background wall, old lighting, old clothes, and old sneakers/shoes! ' +
+        '[MANDATORY 100% GARMENT REPLICATION]: <<<image_2>>> is STRICTLY the PRODUCT GARMENT. Dress her in the EXACT SAME clothing item shown in <<<image_2>>> with 100% fidelity: exact same fabric, weave, pattern, print, color shade, neckline, straps, seams, hemlines, and details! 100% DISREGARD the person, head, face, skin, tattoos, and pose in <<<image_2>>>! Clean unblemished skin, ZERO tattoos on body. ' +
+        `<<<image_3>>> is the REAL SCENARIO ROOM: Photograph her physically standing on the floor inside this exact room. ${lightWrapRuleEn}${dressRuleO3} ${footwearRuleO3} Crystal-clear optical focus, 8k high definition, ultra-sharp smartphone photo, no blur. `;
+    promptKlingO3 = compactPromptToLimit(alignedPromptO3, 2450, headerKlingO3);
   } else if (params.isAnaMariaMode) {
     promptKlingO3 = compactPromptToLimit(params.prompt, 2450, `${SCENARIO_RELIGHT_INTEGRATION_DIRECTIVE}\n`);
   }
@@ -3078,13 +2996,20 @@ async function generateImageWithKlingO3Fal(params: {
     promptKlingO3 = compactPromptToLimit(promptKlingO3, 2450, '');
   }
 
+  const noSneakerNegativeO3 =
+    !isFitnessO3 && !isUpperPieceO3
+      ? ', sneakers, tennis shoes, athletic shoes, running shoes, trainers, gym shoes, sporty shoes, boots, tênis, sapatênis'
+      : '';
+
   try {
     const inputPayload: any = {
       prompt: promptKlingO3,
       image_urls: imageUrls,
-      negative_prompt: params.modelReferenceBase64
-        ? 'white halo, white outline, white fringe, cutout edge, sticker paste effect, mismatched lighting, copying person from image 2, copying face from image 2, blending person from image 2, model from product photo, mixing face of product photo, altering clothing, redesigning garment, wrong fabric, wrong pattern, wrong dress, different clothes, tattoos on skin from image 2, tattoos on skin, tattoo, body ink, skin ink, arm tattoo, leg tattoo, chest tattoo, wrist tattoo, hand tattoo, ink on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, low quality, 3d render, cartoon, illustration, jeans with dress, pants under dress, oily skin, greasy skin, shining skin, wet skin, oil sheen, plastic skin, wax skin, wax doll'
-        : 'white halo, white outline, cutout edge, sticker paste effect, mismatched lighting, face, head, eyes, eyebrows, nose, lips, mouth, teeth, smile, chin up, portrait, headshot, selfie with face, looking at camera, visible face, jeans with dress, pants under dress, sideways pose, profile angle, deformed, blurry',
+      negative_prompt:
+        (params.modelReferenceBase64
+          ? 'white halo, white outline, white fringe, cutout edge, sticker paste effect, floating feet, mismatched lighting, copying person from image 2, copying face from image 2, blending person from image 2, model from product photo, mixing face of product photo, altering clothing, redesigning garment, wrong fabric, wrong pattern, wrong dress, different clothes, tattoos on skin from image 2, tattoos on skin, tattoo, body ink, skin ink, arm tattoo, leg tattoo, chest tattoo, wrist tattoo, hand tattoo, ink on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, low quality, 3d render, cartoon, illustration, jeans with dress, pants under dress, oily skin, greasy skin, shining skin, wet skin, oil sheen, plastic skin, wax skin, wax doll'
+          : 'white halo, white outline, cutout edge, sticker paste effect, mismatched lighting, face, head, eyes, eyebrows, nose, lips, mouth, teeth, smile, chin up, portrait, headshot, selfie with face, looking at camera, visible face, jeans with dress, pants under dress, sideways pose, profile angle, deformed, blurry') +
+        noSneakerNegativeO3,
       resolution: params.resolution || '2K',
       aspect_ratio: params.aspectRatio || '9:16',
       output_format: 'png',
@@ -3120,167 +3045,6 @@ async function generateImageWithKlingO3Fal(params: {
       detailMsg = detail;
     }
     const errorMsg = detailMsg || err?.message || 'Erro durante a geração no Kling O3 Omni via fal.ai.';
-    return {
-      success: false,
-      error: errorMsg,
-    };
-  }
-}
-
-async function generateImageWithFlux2ProEdit(params: {
-  prompt: string;
-  imageReferenceBase64?: string;
-  modelReferenceBase64?: string;
-  referenceImages?: (string | undefined)[];
-  modelScenarioSource?: 'model' | 'gallery';
-}): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
-  const falKey = getFalKey();
-  if (!falKey) {
-    return {
-      success: false,
-      error: 'Chave da fal.ai não configurada no ambiente.',
-    };
-  }
-  fal.config({ credentials: falKey });
-
-  const rawRefs = (params.referenceImages && params.referenceImages.length > 0
-    ? params.referenceImages
-    : [params.imageReferenceBase64]
-  ).filter((img): img is string => typeof img === 'string' && img.length > 50);
-
-  if (rawRefs.length === 0) {
-    const fallbackB64 = getGalleryScenarioBase64(0);
-    if (fallbackB64) rawRefs.push(fallbackB64);
-  }
-
-  const imageUrls = await prepareFalImageUrls(rawRefs);
-  if (imageUrls.length === 0) {
-    return {
-      success: false,
-      error: 'É necessário ao menos 1 imagem de referência para o FLUX 2 Pro Edit na fal.ai.',
-    };
-  }
-
-  let promptFlux = params.prompt;
-  if (params.modelReferenceBase64) {
-    const isDressFlux = Boolean(
-      params.prompt &&
-        (/\b(vestido|vestidos|dress|dresses|macac[aã]o|macaquinho|camisola|jumpsuit)\b/i.test(params.prompt) ||
-          params.prompt.includes('PEÇA ÚNICA') ||
-          params.prompt.includes('VESTIDO'))
-    );
-    const isUpperPieceFlux = Boolean(
-      params.prompt &&
-        (/\b(blusa|blusinha|blusinhas|blusas|rendada|rendado|cropped|top|regata|camisa|camiseta|t-shirt|tshirt|casaco|jaqueta|blazer|moletom|sueter|suéter|cardiga|cardigã|bata)\b/i.test(params.prompt) ||
-          params.prompt.includes('PEÇA SUPERIOR'))
-    );
-    const slitMatchFlux = params.prompt.match(/\[(?:ASSIMETRIA OBRIGATÓRIA DE FENDA ÚNICA|CRITICAL ANTI-SYMMETRY SINGLE-SLIT LOCK)[^\]]*\][^\n]*/i);
-    const lengthMatchFlux = params.prompt.match(/\[COMPRIMENTO REAL DETECTADO[^\]]*\][^\n]*/i);
-    const extractedCriticalDirectives = [lengthMatchFlux?.[0], slitMatchFlux?.[0]].filter(Boolean).join(' ');
-    const isExplicitMidiOrShortFlux = Boolean(
-      params.prompt &&
-        (params.prompt.includes('VESTIDO MIDI') ||
-          params.prompt.includes('VESTIDO CURTO') ||
-          /\b(midi|curto|curta|mini)\b/i.test(params.prompt))
-    );
-
-    const dressRuleFlux = isDressFlux
-      ? isExplicitMidiOrShortFlux
-        ? 'The model wears EXCLUSIVELY the dress from Photo 2 (strictly NO jeans or pants under dress). CRITICAL LENGTH MANDATE: Preserve the EXACT MIDI or SHORT hemline height from Photo 2 keeping ankles and shoes clearly visible; NEVER lengthen a midi/short dress to the floor!'
-        : 'The model wears EXCLUSIVELY the dress from Photo 2 (strictly NO jeans or pants under dress). CRITICAL LENGTH MANDATE: Match the EXACT hemline height from Photo 2 1:1 (if short/midi showing ankles and shoes, keep shoes visible and NEVER lengthen to floor; if floor-length maxi covering feet, keep floor-length).'
-      : (isUpperPieceFlux ? 'The model wears the top/blouse from Photo 2 with MANDATORY classic blue denim jeans and casual sneakers on her feet (STRICTLY FORBIDDEN pantless, underwear only or bare legs on bottom).' : 'If top, wear classic blue jeans and sneakers; if dress, wear ONLY the dress.');
-    const isModelScenarioFlux = (params.modelScenarioSource || 'model') === 'model';
-    const fluxRelightRule = 'CRITICAL LIGHTING & EDGE INTEGRATION: The scenario room dictates 100% of ambient lighting, color temperature, brightness, and shadows; relight the model and garment to match the room with realistic floor contact shadows, soft edge light-wrap, and ZERO white outline, white halo, or pasted cutout look. ';
-    const headerFlux = isModelScenarioFlux
-      ? 'Photo 1 is the MODEL AND ROOM BASE: preserve 100% the exact same woman, same body, curves, hair, skin, exact same pose and framing from Photo 1. If Photo 1 shows her face, KEEP HER EXACT SAME FACE, eyes, lips, and facial expression from Photo 1; do NOT crop or cut her face if shown in Photo 1! Preserve 100% the exact same room/background setting from Photo 1. ' +
-        'Photo 2 is the PRODUCT: replace her clothes with the exact garment from Photo 2 with 100% fidelity. 100% ignore the person, face, and tattoos in Photo 2; DO NOT blend or copy the face or tattoos from Photo 2. Clean unblemished skin, ZERO tattoos. ' +
-        `${extractedCriticalDirectives ? `${extractedCriticalDirectives} ` : ''}` +
-        `${fluxRelightRule}${dressRuleFlux} Footwear harmonization matched to outfit (if fitness/workout wear -> athletic sneakers; if nightgown, baby doll or loungewear -> white flip-flops; if evening/party dress or formal wear -> elegant high-heel sandals; if casual dress -> elegant feminine sandals). CRITICAL SHARPNESS & OPTICAL CLARITY: Crystal-clear tack-sharp focus, 8k high definition, ultra-sharp facial features, sharp fabric weave and texture, zero blur, NO BLUR, realistic modern smartphone photography. `
-      : 'Photo 1 is the MODEL: preserve 100% the exact same woman, same body, curves, hair, skin, exact same pose and framing from Photo 1. If Photo 1 shows her face, KEEP HER EXACT SAME FACE, eyes, lips, and facial expression from Photo 1. ' +
-        'Photo 2 is the PRODUCT: replace her clothes with the exact garment from Photo 2 with 100% fidelity. 100% ignore the person, face, and tattoos in Photo 2; DO NOT blend or copy the face or tattoos from Photo 2. Clean unblemished skin, ZERO tattoos. ' +
-        `${extractedCriticalDirectives ? `${extractedCriticalDirectives} ` : ''}` +
-        `Photo 3 is the SCENARIO ROOM: place her standing in this room. ${fluxRelightRule}${dressRuleFlux} Footwear harmonizes with outfit. CRITICAL SHARPNESS & OPTICAL CLARITY: Crystal-clear tack-sharp focus, 8k high definition, sharp fabric weave and texture, zero blur, NO BLUR, realistic modern smartphone photography. `;
-    promptFlux = compactPromptToLimit(params.prompt, 2450, headerFlux);
-  } else {
-    promptFlux = compactPromptToLimit(params.prompt, 2450, `${SCENARIO_RELIGHT_INTEGRATION_DIRECTIVE}\n`);
-  }
-
-  // Sanitização anti-content-checker e otimização para catálogo comercial
-  promptFlux = sanitizePromptForOpenAISafety(promptFlux);
-
-  if (promptFlux.length > 2450) {
-    promptFlux = compactPromptToLimit(promptFlux, 2450, '');
-  }
-
-  try {
-    const inputPayload: any = {
-      prompt: promptFlux,
-      image_urls: imageUrls,
-      image_size: { width: 1080, height: 1920 },
-      safety_tolerance: '5',
-      enable_safety_checker: true,
-      output_format: 'png',
-    };
-
-    const result: any = await fal.subscribe('fal-ai/flux-2-pro/edit', {
-      input: inputPayload,
-      logs: true,
-      onQueueUpdate: (update) => {
-        if (update.status === 'IN_PROGRESS' && update.logs) {
-          update.logs.map((log: any) => log.message).forEach(console.log);
-        }
-      },
-    });
-
-    const generatedUrl = result?.data?.images?.[0]?.url;
-    if (!generatedUrl) {
-      return {
-        success: false,
-        error: 'Nenhuma imagem retornada pelo FLUX 2 Pro Edit na fal.ai.',
-      };
-    }
-
-    return { success: true, imageUrl: generatedUrl };
-  } catch (err: any) {
-    console.error('[FLUX 2 Pro Edit fal.ai Error]:', err);
-    const detail = err?.body?.detail || err?.data?.detail;
-    let detailMsg = '';
-    if (Array.isArray(detail)) {
-      detailMsg = detail.map((d: any) => `${d.loc ? d.loc.join('.') + ': ' : ''}${d.msg || JSON.stringify(d)}`).join('; ');
-    } else if (typeof detail === 'string') {
-      detailMsg = detail;
-    }
-
-    const errText = `${detailMsg} ${err?.message || ''}`;
-    // Retry automático se o content checker da fal.ai disparar falso positivo
-    if (/content checker|flagged|safety/i.test(errText)) {
-      console.warn('[FLUX 2 Pro Edit] Alerta de content checker detectado. Executando retry com prompt comercial editorial sanitizado...');
-      try {
-        const isModelScenarioFlux = (params.modelScenarioSource || 'model') === 'model';
-        const fallbackPrompt = isModelScenarioFlux
-          ? 'Photo 1 is the model and room base: preserve 100% the exact same woman, same face (if shown in Photo 1, preserve the same face from Photo 1), body, curves, hair, exact same pose, framing, and 100% the exact same room setting from Photo 1. Photo 2 is the product: replace her clothes with the exact commercial apparel from Photo 2, seamlessly relit to match Photo 1 ambient lighting with zero white outline or cutout edges. 100% ignore the person in Photo 2. High quality smartphone mirror selfie catalog photography, fully dressed, footwear matching outfit, sharp focus.'
-          : 'Photo 1 is the model: preserve 100% the exact same woman, same face (if shown in Photo 1, preserve the same face from Photo 1), body, curves, hair, exact same pose and framing from Photo 1. Photo 2 is the product: replace her clothes with the exact commercial apparel from Photo 2. 100% ignore the person in Photo 2. Photo 3 is the room interior: place her standing in this room; Photo 3 room dictates 100% of lighting, color temperature, and shadows on the model and clothes with natural floor contact shadows, smooth edge light-wrap, and ZERO white outline or pasted cutout halo. High quality smartphone mirror selfie catalog photography, fully dressed, footwear matching outfit, sharp focus.';
-
-        const retryResult: any = await fal.subscribe('fal-ai/flux-2-pro/edit', {
-          input: {
-            prompt: fallbackPrompt,
-            image_urls: imageUrls,
-            image_size: 'portrait_16_9',
-            safety_tolerance: '5',
-            enable_safety_checker: true,
-            output_format: 'png',
-          },
-        });
-        const retryUrl = retryResult?.data?.images?.[0]?.url;
-        if (retryUrl) {
-          return { success: true, imageUrl: retryUrl };
-        }
-      } catch (retryErr: any) {
-        console.error('[FLUX 2 Pro Edit fal.ai Retry Error]:', retryErr);
-      }
-    }
-
-    const errorMsg = detailMsg || err?.message || 'Erro durante a geração no FLUX 2 Pro Edit via fal.ai.';
     return {
       success: false,
       error: errorMsg,
@@ -3461,9 +3225,15 @@ app.post('/api/generate-scene-image', async (req, res) => {
       : scenarioPhotoBase64;
 
     const generateModelViaPrompt = Boolean(req.body?.generateModelViaPrompt);
+    const isLockedGeneratedBase = Boolean(req.body?.isLockedGeneratedBase);
     let effectiveModelReferenceBase64 = modelReferenceBase64;
     if (generateModelViaPrompt) {
       effectiveModelReferenceBase64 = undefined;
+    } else if (isAnaMariaMode && selectedModelGalleryNumber && !isLockedGeneratedBase) {
+      const diskModel = getGalleryModelBase64(selectedModelGalleryNumber, presentationMode);
+      if (diskModel) {
+        effectiveModelReferenceBase64 = diskModel;
+      }
     } else if (isAnaMariaMode && (!effectiveModelReferenceBase64 || effectiveModelReferenceBase64.length < 50)) {
       if (selectedModelGalleryNumber) {
         effectiveModelReferenceBase64 = getGalleryModelBase64(selectedModelGalleryNumber, presentationMode);
@@ -3564,30 +3334,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
       return res.json(klingO3Result);
     }
 
-    if (requestedImageModel === 'flux_2_pro_edit') {
-      let fluxRefs = orderedRefs;
-      if (hasGalleryModel && effectiveModelReferenceBase64) {
-        // FLUX 2 Pro Edit: image_urls[0] é o canvas base que recebe as edições.
-        // Colocamos a MODELO da galeria como imagem 0 para preservar 100% sua identidade, pose e cenário!
-        const productRef = productPhotoBase64 || (orderedRefs[0] !== effectiveModelReferenceBase64 ? orderedRefs[0] : undefined);
-        if (isModelScenario) {
-          fluxRefs = [effectiveModelReferenceBase64, productRef].filter((img): img is string => Boolean(img && img.length > 50));
-        } else {
-          const scenarioRef = effectiveScenarioPhotoBase64 || orderedRefs[orderedRefs.length - 1];
-          fluxRefs = [effectiveModelReferenceBase64, productRef, scenarioRef].filter((img): img is string => Boolean(img && img.length > 50));
-        }
-      }
-      const fluxResult = await generateImageWithFlux2ProEdit({
-        prompt: effectivePrompt,
-        imageReferenceBase64: effectiveModelReferenceBase64 || productPhotoBase64 || effectiveScenarioPhotoBase64,
-        modelReferenceBase64: effectiveModelReferenceBase64,
-        referenceImages: fluxRefs,
-        modelScenarioSource,
-      });
-      return res.json(fluxResult);
-    }
-
-    if (requestedImageModel === 'seedream_4_5' || requestedImageModel === 'seedream_5_0_pro') {
+    if (requestedImageModel === 'seedream_5_0_pro') {
       const seedreamResult = await generateImageWithSeedream({
         prompt: effectivePrompt,
         imageReferenceBase64: productPhotoBase64 || effectiveModelReferenceBase64 || effectiveScenarioPhotoBase64,
@@ -3599,7 +3346,6 @@ app.post('/api/generate-scene-image', async (req, res) => {
         selectedMasterId,
         bodyType,
         scenarioPhotoBase64: effectiveScenarioPhotoBase64,
-        modelType: requestedImageModel === 'seedream_4_5' ? 'seedream_4_5' : 'seedream_5_0_pro',
         modelScenarioSource,
       });
       return res.json(seedreamResult);
