@@ -517,6 +517,10 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           selectedScenarioNumber: undefined,
           selectedScenarioUrl: undefined,
           selectedScenarioBase64: undefined,
+          modelScenarioSource:
+            prev.selectedModelGalleryId || prev.selectedModelGalleryNumber
+              ? 'model'
+              : prev.modelScenarioSource,
         };
       }
       return {
@@ -538,6 +542,10 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       selectedScenarioNumber: undefined,
       selectedScenarioUrl: undefined,
       selectedScenarioBase64: undefined,
+      modelScenarioSource:
+        prev.selectedModelGalleryId || prev.selectedModelGalleryNumber
+          ? 'model'
+          : prev.modelScenarioSource,
     }));
   };
 

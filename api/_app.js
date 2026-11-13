@@ -284,6 +284,7 @@ var OPENAI_REASONING_EFFORT = "medium";
 var OPENAI_AUDIO_MODEL = "gpt-transcribe";
 var OPENAI_IMAGE_MODEL = "gpt-image-2.5-sunburst";
 var OPENAI_IMAGE_QUALITY = "high";
+var OPENAI_IMAGE_FIDELITY = "high";
 var OPENAI_IMAGE_SIZE = "1024x1792";
 var OPENAI_AUDIT_MODEL = "gpt-5.6-luna";
 var OPENAI_PRICING = {
@@ -907,9 +908,9 @@ Retorne estritamente um JSON estruturado:
 - Reference Image 1 defines the EXACT bed, bedspread/sheets, texture, and lighting for this 90-degree top-down first-person POV shot.
 - Keep 100% of the bed surface and fabric from Reference Image 1 intact.
 - Show ONLY two human hands entering from the bottom edge of the frame holding/presenting the product units on top of this exact bed.
-- STRICTLY FORBIDDEN: Do NOT show any woman standing, torso, legs, face, head, or mirror.` : `CRITICAL SCENARIO AND BACKGROUND ANCHOR (EXACT ROOM REPLICATION):
-- The attached scenario reference image defines the EXACT room and interior architecture.
-- Place the model standing directly inside this EXACT architectural setting holding the smartphone in front of the mirror. Do NOT create or invent a different room, do NOT change the walls or floor.` : "";
+- STRICTLY FORBIDDEN: Do NOT show any woman standing, torso, legs, face, head, or mirror.` : `CRITICAL SCENARIO AND BACKGROUND ANCHOR (REFERENCE IMAGE 1 = EXACT IMMUTABLE ROOM):
+- Reference Image 1 defines the EXACT room, walls, floor, curtains, doors, furniture, lighting, and perspective.
+- Reference Image 1 is ALREADY photographed from the mirror's viewpoint looking into the room. Place the model standing naturally in the foreground inside this EXACT background from Reference Image 1. STRICTLY FORBIDDEN: DO NOT invent, redraw, or generate a "similar" room, and do NOT alter walls, curtains, doors, or floor.` : "";
     const lowerInstructions = (additionalInstructions || "").toLowerCase();
     const isBlackRequested = /\b(negra|negro|preta|preto|afro|afrodescendente|pele preta|pele negra|pele escura|retinta|modelo negra|modelo preta|mulher negra|mulher preta|mulher de pele preta|black woman|dark skin|dark-skinned black woman)\b/i.test(lowerInstructions);
     const isAsianRequested = /\b(japonesa|asiatica|asiática|oriental|asian)\b/i.test(lowerInstructions);
@@ -1010,29 +1011,54 @@ ${prompt}` : prompt;
         const productRangeLabel = productPhotoCount > 1 ? `${productStartIdx} and ${productStartIdx + 1}` : `${productStartIdx}`;
         const allowsFace = presentationMode === "com_rosto" || cleanPrompt && (cleanPrompt.includes("MODO COM ROSTO") || cleanPrompt.includes("ROSTO E ENQUADRAMENTO \u2014 MODO COM ROSTO") || cleanPrompt.includes("o rosto da modelo DEVE aparecer"));
         const framingSection = allowsFace ? `[FRAMING & FACE PRESERVATION \u2014 GALLERY MODEL UGC (REFERENCE IMAGE ${modelIdx})]:
-- Preserve 100% the exact same woman, face, eyes, nose, lips, hair, skin tone, and body curves shown in Reference Image ${modelIdx} (the gallery model).
-- Modern smartphone held naturally taking the mirror selfie inside the room from Reference Image ${scenarioIdx}. Zero tattoos anywhere on the skin.` : `[FRAMING & MIRROR SELFIE POSE PRESERVATION \u2014 GALLERY MODEL (REFERENCE IMAGE ${modelIdx})]:
+- Preserve 100% the exact same woman, face, eyes, nose, lips, hair, skin tone, expression, and body curves shown in Reference Image ${modelIdx} (the gallery model).
+- Modern smartphone held naturally in her hand at chest/face level in a vertical mirror selfie pose. Zero tattoos anywhere on the skin.` : `[FRAMING & MIRROR SELFIE POSE PRESERVATION \u2014 GALLERY MODEL (REFERENCE IMAGE ${modelIdx})]:
 - Preserve 100% the exact same woman, body silhouette, skin tone, hair, and mirror-selfie pose holding the smartphone in front of her face as shown in Reference Image ${modelIdx} (the gallery model).
 - Strictly keep her face hidden/covered by the smartphone/chin-down crop matching Reference Image ${modelIdx}. Zero tattoos anywhere on the skin.`;
-        const alignedCleanPrompt = cleanPrompt.replace(/Foto 1\b/gi, `Reference Image ${productRangeLabel}`).replace(/Foto 2\b/gi, `Reference Image ${modelIdx}`).replace(/Foto 3\b/gi, `Reference Image ${scenarioIdx}`);
-        effectivePrompt = `[STRICT EDIT DIRECTIVE - IMMUTABLE BASE ROOM SCENARIO (REFERENCE IMAGE ${scenarioIdx}) + GALLERY MODEL (REFERENCE IMAGE ${modelIdx}) + GARMENT COLOR (REFERENCE IMAGE ${productRangeLabel}) - MODO ANA MARIA]:
-- REFERENCE IMAGE ${scenarioIdx} (BASE ROOM CANVAS \u2014 100% UNCHANGED PIXEL-FOR-PIXEL ARCHITECTURE): You are editing directly onto Reference Image ${scenarioIdx}. KEEP 100% of the exact room, walls, floor texture/tiles, doors, furniture, mirror frame, window, objects, reflections, ambient lighting, shadows, and camera angle from Reference Image ${scenarioIdx} COMPLETELY INTACT. STRICTLY FORBIDDEN: DO NOT invent, redraw, swap, or generate a "similar" room! Every architectural feature of Reference Image ${scenarioIdx} MUST stay identical!
-- REFERENCE IMAGE ${modelIdx} (EXACT GALLERY MODEL WOMAN): Extract ONLY the exact woman from Reference Image ${modelIdx} (exact face, eyes, nose, mouth, hair, skin tone, nails, body silhouette, curves, and natural smartphone mirror-selfie pose) and place her standing naturally in front of the mirror INSIDE Reference Image ${scenarioIdx}. 100% IGNORE AND DISCARD the old background/room and old clothing from Reference Image ${modelIdx}.
-- REFERENCE IMAGE ${productRangeLabel} (GARMENT & EXACT COLOR ONLY): Dress the woman from Reference Image ${modelIdx} in the EXACT garment shown in Reference Image ${productRangeLabel} (1:1 exact color/shade/print, cut, neckline, straps, fabric texture, length, and single-side slit if present). 100% IGNORE any person, face, body, or background from Reference Image ${productRangeLabel}.
-- RESULT: The exact room of Reference Image ${scenarioIdx}, containing the exact woman of Reference Image ${modelIdx}, wearing the exact garment of Reference Image ${productRangeLabel}, taking a 9:16 vertical mirror selfie. Zero tattoos.
+        const preservedDirectives = [
+          userEthnicityDirectivesOpenAI,
+          correctionPrompt && `CRITICAL QUALITY OVERRIDE: ${correctionPrompt.trim()}`,
+          additionalInstructions && `USER DIRECTIVE: ${additionalInstructions.trim()}`,
+          ...prompt.split("\n").filter(
+            (line) => /(\[COMPRIMENTO REAL DETECTADO|\[ASSIMETRIA OBRIGATÓRIA|\[CRITICAL ANTI-SYMMETRY|\[REGRA MANDATÓRIA|REGRA CRÍTICA DE COMPRIMENTO|ATENÇÃO À COR EXCLUSIVA|Calçado nos pés:|PROIBIDO BOLSAS|PRODUTO DA FOTO 1|PEÇA INFERIOR|CALÇA JEANS)/i.test(
+              line
+            )
+          ).map(
+            (line) => line.replace(/Foto 1\b/gi, `Reference Image ${productRangeLabel}`).replace(/Foto 2\b/gi, `Reference Image ${modelIdx}`).replace(/Foto 3\b/gi, `Reference Image ${scenarioIdx}`)
+          )
+        ].filter(Boolean).join("\n");
+        effectivePrompt = `[STRICT IN-PLACE CANVAS COMPOSITE \u2014 LOCK REFERENCE IMAGE ${scenarioIdx} PIXEL-FOR-PIXEL]:
+You are performing a high-fidelity composite edit directly onto Reference Image ${scenarioIdx} (the base canvas image).
+
+1. REFERENCE IMAGE ${scenarioIdx} (IMMUTABLE BASE ROOM CANVAS \u2014 DO NOT MODIFY ARCHITECTURE):
+- KEEP 100% of Reference Image ${scenarioIdx} EXACTLY AS IT IS behind the model: exact room geometry, walls, baseboards, doorway/doorframe, curtains (exact orange/color, folds, fabric), doors, handles, floor planks/tiles, background items, shadows, ambient lighting, and camera angle.
+- PERSPECTIVE RULE: Reference Image ${scenarioIdx} is ALREADY shot from the mirror's vantage point looking straight into the room. DO NOT add or draw a mirror frame, DO NOT rotate the room, DO NOT invent/redraw a "similar" room, and DO NOT replace any wall, door, floor, or curtain from Reference Image ${scenarioIdx}!
+
+2. REFERENCE IMAGE ${modelIdx} (GALLERY MODEL IDENTITY & POSE ONLY \u2014 DISCARD HER OLD ROOM):
+- Extract ONLY the woman from Reference Image ${modelIdx} (exact face, eyes, nose, lips, hair, skin tone, body curves, and smartphone-holding mirror selfie pose) and composite her standing naturally centered on the floor in the foreground of Reference Image ${scenarioIdx} with realistic contact shadows on Reference Image ${scenarioIdx}'s floor.
+- 100% DISCARD AND IGNORE the bedroom, bed, door, walls, background, and old clothing of Reference Image ${modelIdx}. Do NOT bring any part of Reference Image ${modelIdx}'s room into Reference Image ${scenarioIdx}.
+
+3. REFERENCE IMAGE ${productRangeLabel} (EXACT GARMENT & COLOR ONLY \u2014 DISCARD ANY PERSON/BACKGROUND):
+- Dress the woman from Reference Image ${modelIdx} exclusively in the EXACT garment shown in Reference Image ${productRangeLabel}: 1:1 exact color/shade/print, cut, neckline, straps, fabric texture, exact hemline length (never lengthen midi/short dresses to the floor), and single-side slit if present.
+- Harmonious matching footwear if feet are visible (or keep floor-length dress covering feet if it is floor-length in Reference Image ${productRangeLabel}).
+- 100% IGNORE any person, face, body, tattoos, or background in Reference Image ${productRangeLabel}.
 
 ${framingSection}
+${preservedDirectives ? `
+[GARMENT & USER CONSTRAINTS]:
+${preservedDirectives}` : ""}
 
-${alignedCleanPrompt}`;
+PHOTOGRAPHIC REALISM: Sharp flagship smartphone photo (iPhone 16 Pro), natural skin texture with pores, natural lighting matching Reference Image ${scenarioIdx}, zero tattoos, zero handbags unless the product is a bag.`;
       } else if (isAnaMariaModel2Img) {
         baseImageFile = imageFiles[0] || null;
         const productRange = productPhotoCount > 1 ? "Reference Images 2 and 3" : "Reference Image 2";
+        const aligned2ImgCleanPrompt = cleanPrompt.replace(/Foto 1\b/gi, productRange).replace(/Foto 2\b/gi, "Reference Image 1");
         effectivePrompt = `[STRICT 2-IMAGE EDIT DIRECTIVE - GALLERY MODEL & ROOM BASE + EXACT PRODUCT CLOTHING]:
 - REFERENCE IMAGE 1 (MODEL & ROOM BASE \u2014 KEEP IDENTICAL): Preserve 100% the exact same woman (same face if visible or same phone covering face, same hair, skin tone, body curves, pose, hands) and the EXACT same room/background/mirror/lighting from Reference Image 1.
 - ${productRange.toUpperCase()} (GARMENT & EXACT COLOR ONLY): Dress the woman from Reference Image 1 in the EXACT garment shown in ${productRange}, replicating 1:1 its exact color/shade/print, cut, neckline, straps, fabric texture, and length (and harmonious matching footwear if feet are visible; if long dress covers feet, keep it long). 100% IGNORE any person/background in ${productRange}.
 - Zero tattoos anywhere on the skin. Preserve sharp iPhone 16 Pro optical clarity.
 
-${cleanPrompt}`;
+${aligned2ImgCleanPrompt}`;
       } else if (isAnaMariaMode && scenarioPhotoBase64) {
         if (isPovMode) {
           effectivePrompt = `[CRITICAL POV EDIT DIRECTIVE - FIRST-PERSON HANDS ON BED - MODO ANA MARIA POV]:
@@ -1216,6 +1242,7 @@ Preserve fielmente qualquer logomarca, estampa ou acabamento original da pe\xE7a
           image: editImageInput,
           prompt: effectivePrompt,
           quality: OPENAI_IMAGE_QUALITY,
+          input_fidelity: OPENAI_IMAGE_FIDELITY,
           size: chosenImageSize
         });
         const b642 = editResponse.data?.[0]?.b64_json;

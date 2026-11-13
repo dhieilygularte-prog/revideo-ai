@@ -817,9 +817,9 @@ ${noBagDirectivePt}${noBagDirectiveEn}
 - POSE OBRIGATÓRIA DA FOTO 2: A modelo mantém a mesma pose e mesma atitude diante do espelho da Foto 2.
 - DESCONSIDERAR A ROUPA E O CENÁRIO DA FOTO 2: É TERMINANTEMENTE PROIBIDO copiar a roupa que a modelo veste na Foto 2 e PROIBIDO usar o cenário de fundo da Foto 2.
 
-3. FOTO 3 (CENÁRIO INDEPENDENTE DA GALERIA):
-- A modelo da Foto 2, vestindo a roupa da Foto 1 de frente para o espelho, está em pé diante do espelho dentro do cômodo da Foto 3.
-- Preserve integralmente o cenário real da Foto 3: piso, paredes, portas, espelho e iluminação natural sem alterar nem redesenhar.
+3. FOTO 3 (CENÁRIO INDEPENDENTE DA GALERIA — BASE ARQUITETÔNICA FIXA):
+- O ponto de vista da câmera da Foto 3 JÁ É o reflexo do espelho olhando para dentro do cômodo. Posicione a modelo da Foto 2 (vestindo a roupa da Foto 1) em pé no primeiro plano sobre o piso da Foto 3, sem adicionar moldura de espelho extra nem alterar o ambiente.
+- Preserve integralmente 100% do cenário real da Foto 3: piso, paredes, rodapés, cortinas (cor e caimento exatos), portas, iluminação natural e enquadramento sem alterar, redesenhar nem inventar um cômodo parecido.
 
 Qualidade fotográfica autêntica de smartphone moderno, textura de pele humana real com poros visíveis, acabamento fosco suave sem brilho excessivo de óleo, sem aspecto de cera ou plástico. ZERO tatuagens.`;
     }
