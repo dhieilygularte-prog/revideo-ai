@@ -39,6 +39,7 @@ import {
   saveAnaMariaResult,
 } from './anaMariaPipeline';
 import { resolveHeadlineAndHashtags } from './anaMariaBank';
+import { getMasterPromptById } from './masterPromptsData';
 import { VideoFidelityAuditor } from '../produtos2/VideoFidelityAuditor';
 import { AIProfile } from '../config/aiProfiles';
 
@@ -408,6 +409,11 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
           videoPromptLimit: result.videoPromptLimit,
           selectedScenarioId: result.selectedScenarioId,
           selectedScenarioNumber: result.selectedScenarioNumber,
+          selectedModelGalleryId: result.selectedModelGalleryId,
+          selectedModelGalleryNumber: result.selectedModelGalleryNumber,
+          selectedModelGalleryUrl: result.selectedModelGalleryUrl,
+          modelScenarioSource: result.modelScenarioSource,
+          generateModelViaPrompt: result.generateModelViaPrompt,
         },
         tweakPrompt: customInstruction || imageTweakText,
         aiProfile,
@@ -446,6 +452,11 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
           videoPromptLimit: result.videoPromptLimit,
           selectedScenarioId: result.selectedScenarioId,
           selectedScenarioNumber: result.selectedScenarioNumber,
+          selectedModelGalleryId: result.selectedModelGalleryId,
+          selectedModelGalleryNumber: result.selectedModelGalleryNumber,
+          selectedModelGalleryUrl: result.selectedModelGalleryUrl,
+          modelScenarioSource: result.modelScenarioSource,
+          generateModelViaPrompt: result.generateModelViaPrompt,
         },
         imageModelOverride: 'seedream_5_0_pro',
         aiProfile,
@@ -924,6 +935,36 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                   Arquivo no pacote:{' '}
                   <span className="font-mono text-white">
                     {getMasterPromptFileName(result)}
+                  </span>
+                </p>
+                <p className="text-[11px] text-zinc-300 mt-1 font-medium">
+                  Modo de Apresentação:{' '}
+                  <span className="text-white font-semibold">
+                    {result.presentationMode === 'pov'
+                      ? 'Modo POV'
+                      : result.presentationMode === 'com_rosto'
+                      ? 'Com Rosto (UGC)'
+                      : 'Mirror Selfie'}
+                  </span>
+                  {', Modelo: '}
+                  <span className="text-white font-semibold">
+                    {result.generateModelViaPrompt
+                      ? 'Via Prompt'
+                      : result.selectedModelGalleryNumber !== undefined
+                      ? result.selectedModelGalleryNumber
+                      : 'Automática'}
+                  </span>
+                  {', Cenário: '}
+                  <span className="text-white font-semibold">
+                    {result.presentationMode === 'pov' ||
+                    result.generateModelViaPrompt ||
+                    result.modelScenarioSource === 'gallery'
+                      ? result.selectedScenarioNumber ?? 'Automático'
+                      : 'Da Modelo'}
+                  </span>
+                  {', Prompt: '}
+                  <span className="text-white font-semibold">
+                    {getMasterPromptById(result.selectedMasterId).shortName.replace(/^(\d+)\.\s*/, '$1- ')}
                   </span>
                 </p>
               </div>
