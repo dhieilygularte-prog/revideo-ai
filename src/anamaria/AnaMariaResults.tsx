@@ -549,6 +549,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
         timestamp: res.timestamp,
         imageUrl: res.imageUrl,
         imageModel: res.imageModel,
+        generateModelViaPrompt: res.generateModelViaPrompt,
         selectedModelGalleryId: res.selectedModelGalleryId,
         selectedModelGalleryNumber: res.selectedModelGalleryNumber,
         selectedModelGalleryUrl: res.selectedModelGalleryUrl,

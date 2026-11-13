@@ -942,20 +942,54 @@ ${prompt}` : prompt;
         const cleanB64 = dataUrl.replace(/^data:image\/[a-zA-Z0-9+.-]+;base64,/i, "").replace(/[\r\n\s]/g, "");
         return new File([Buffer.from(cleanB64, "base64")], `${baseName}.${ext}`, { type: mime });
       };
-      if (scenarioPhotoBase64) {
+      const isAnaMariaGallery3Img = Boolean(isAnaMariaMode && modelReferenceBase64 && scenarioPhotoBase64 && !isPovMode);
+      const isAnaMariaModel2Img = Boolean(isAnaMariaMode && modelReferenceBase64 && !scenarioPhotoBase64 && !isPovMode);
+      if (isAnaMariaGallery3Img) {
+        allPhotos.slice(0, 2).forEach((photoStr, idx) => {
+          try {
+            if (photoStr && typeof photoStr === "string") {
+              imageFiles.push(toImageFile(photoStr, `reference_product_${idx + 1}`));
+            }
+          } catch {
+          }
+        });
+        try {
+          imageFiles.push(toImageFile(modelReferenceBase64, "reference_gallery_model"));
+        } catch {
+        }
         try {
           imageFiles.push(toImageFile(scenarioPhotoBase64, "reference_scenario_background"));
         } catch {
         }
-      }
-      allPhotos.slice(0, 4).forEach((photoStr, idx) => {
+      } else if (isAnaMariaModel2Img) {
         try {
-          if (photoStr && typeof photoStr === "string") {
-            imageFiles.push(toImageFile(photoStr, `reference_${idx + 1}`));
-          }
-        } catch (e) {
+          imageFiles.push(toImageFile(modelReferenceBase64, "reference_gallery_model"));
+        } catch {
         }
-      });
+        allPhotos.slice(0, 2).forEach((photoStr, idx) => {
+          try {
+            if (photoStr && typeof photoStr === "string") {
+              imageFiles.push(toImageFile(photoStr, `reference_product_${idx + 1}`));
+            }
+          } catch {
+          }
+        });
+      } else {
+        if (scenarioPhotoBase64) {
+          try {
+            imageFiles.push(toImageFile(scenarioPhotoBase64, "reference_scenario_background"));
+          } catch {
+          }
+        }
+        allPhotos.slice(0, 4).forEach((photoStr, idx) => {
+          try {
+            if (photoStr && typeof photoStr === "string") {
+              imageFiles.push(toImageFile(photoStr, `reference_${idx + 1}`));
+            }
+          } catch (e) {
+          }
+        });
+      }
       let baseImageFile = null;
       let effectivePrompt = cleanPrompt;
       const hasLingerie = /\b(lingerie|suti[aã]|calcinha|babydoll|baby doll|camisola|transpar[eê]ncia|sensual)\b/i.test(prompt) || /\b(lingerie|suti[aã]|calcinha|babydoll|baby doll|camisola|transpar[eê]ncia|sensual)\b/i.test(additionalInstructions || "");
@@ -967,7 +1001,36 @@ ${prompt}` : prompt;
       const userRequestedSlimOpenAI = /\b(?:magra|magrinha|corpo\s+de\s+modelo|modelo\s+magra|sem\s+curvas|esguia|slim|skinny|slender)\b/i.test(
         additionalInstructions || ""
       );
-      if (isAnaMariaMode && scenarioPhotoBase64) {
+      const productPhotoCount = Math.min(allPhotos.filter(Boolean).length, 2);
+      if (isAnaMariaGallery3Img) {
+        baseImageFile = imageFiles[0] || null;
+        const modelIdx = productPhotoCount + 1;
+        const scenarioIdx = productPhotoCount + 2;
+        const allowsFace = presentationMode === "com_rosto" || cleanPrompt && (cleanPrompt.includes("MODO COM ROSTO") || cleanPrompt.includes("ROSTO E ENQUADRAMENTO \u2014 MODO COM ROSTO") || cleanPrompt.includes("o rosto da modelo DEVE aparecer"));
+        const framingSection = allowsFace ? `[FRAMING & FACE PRESERVATION \u2014 GALLERY MODEL UGC]:
+- Preserve 100% the exact same woman, face, eyes, nose, lips, hair, skin tone, and body curves shown in Reference Image ${modelIdx} (the gallery model).
+- Modern smartphone held naturally taking the mirror selfie. Zero tattoos anywhere on the skin.` : `[FRAMING & MIRROR SELFIE POSE PRESERVATION \u2014 GALLERY MODEL]:
+- Preserve 100% the exact same woman, body silhouette, skin tone, hair, and mirror-selfie pose holding the smartphone in front of her face as shown in Reference Image ${modelIdx} (the gallery model).
+- Strictly keep her face hidden/covered by the smartphone/chin-down crop matching Reference Image ${modelIdx}. Zero tattoos anywhere on the skin.`;
+        effectivePrompt = `[STRICT 3-IMAGE COMPOSITION DIRECTIVE - GALLERY MODEL + NEW GARMENT COLOR + NEW GALLERY SCENARIO - MODO ANA MARIA]:
+- REFERENCE IMAGE ${productPhotoCount === 1 ? "1" : "1 and 2"} (GARMENT & EXACT COLOR ONLY): Extract EXCLUSIVELY the garment/dress/outfit design, cut, fabric texture, details, and the EXACT COLOR/PRINT shown here. 100% IGNORE any person, face, body, or background from Reference Image ${productPhotoCount === 1 ? "1" : "1 and 2"}.
+- REFERENCE IMAGE ${modelIdx} (EXACT GALLERY MODEL WOMAN): You MUST use the EXACT woman from Reference Image ${modelIdx} (same body silhouette, curves, skin tone, hair, nails, and natural mirror-selfie pose). DO NOT generate a random woman from text prompt and DO NOT keep her old outfit or old room from Reference Image ${modelIdx}.
+- REFERENCE IMAGE ${scenarioIdx} (EXACT GALLERY ROOM SCENARIO): Place the woman from Reference Image ${modelIdx} standing in front of the mirror INSIDE this EXACT room/interior from Reference Image ${scenarioIdx}. Preserve 100% of the walls, floor, mirror, doors, lighting, and background of Reference Image ${scenarioIdx}.
+- RESULT: The exact woman from Reference Image ${modelIdx}, dressed in the exact garment and exact color from Reference Image ${productPhotoCount === 1 ? "1" : "1 and 2"}, standing inside the exact room from Reference Image ${scenarioIdx} taking a vertical 9:16 mirror selfie. Zero tattoos.
+
+${framingSection}
+
+${cleanPrompt}`;
+      } else if (isAnaMariaModel2Img) {
+        baseImageFile = imageFiles[0] || null;
+        const productRange = productPhotoCount > 1 ? "Reference Images 2 and 3" : "Reference Image 2";
+        effectivePrompt = `[STRICT 2-IMAGE EDIT DIRECTIVE - GALLERY MODEL & ROOM BASE + EXACT PRODUCT CLOTHING]:
+- REFERENCE IMAGE 1 (MODEL & ROOM BASE \u2014 KEEP IDENTICAL): Preserve 100% the exact same woman (same face if visible or same phone covering face, same hair, skin tone, body curves, pose, hands) and the EXACT same room/background/mirror/lighting from Reference Image 1.
+- ${productRange.toUpperCase()} (GARMENT & EXACT COLOR ONLY): Dress the woman from Reference Image 1 in the EXACT garment shown in ${productRange}, replicating 1:1 its exact color/shade/print, cut, neckline, straps, fabric texture, and length (and harmonious matching footwear if feet are visible; if long dress covers feet, keep it long). 100% IGNORE any person/background in ${productRange}.
+- Zero tattoos anywhere on the skin. Preserve sharp iPhone 16 Pro optical clarity.
+
+${cleanPrompt}`;
+      } else if (isAnaMariaMode && scenarioPhotoBase64) {
         if (isPovMode) {
           effectivePrompt = `[CRITICAL POV EDIT DIRECTIVE - FIRST-PERSON HANDS ON BED - MODO ANA MARIA POV]:
 You are editing the base POV bed scenario photograph (Reference Image 1).
@@ -1029,7 +1092,7 @@ ${framingSection}
 ${cleanPrompt}`;
         }
       }
-      if (modelReferenceBase64 && !isCloneMode && !isStoryboardGrid) {
+      if (modelReferenceBase64 && !isCloneMode && !isStoryboardGrid && !isAnaMariaGallery3Img && !isAnaMariaModel2Img) {
         baseImageFile = toImageFile(modelReferenceBase64, "imagem_1_base");
         const swatchStr = productPhotoBase64 || productPhotosBase64[0];
         let garmentSpec = "";
@@ -1141,7 +1204,7 @@ Preserve fielmente qualquer logomarca, estampa ou acabamento original da pe\xE7a
       }
       effectivePrompt = sanitizePromptForOpenAISafety(effectivePrompt);
       if (baseImageFile) {
-        const editImageInput = isAnaMariaMode && scenarioPhotoBase64 && imageFiles.length > 1 ? imageFiles : referenceFrameBase64 ? baseImageFile : !modelReferenceBase64 && imageFiles.length > 1 ? imageFiles : baseImageFile;
+        const editImageInput = (isAnaMariaGallery3Img || isAnaMariaModel2Img || isAnaMariaMode && scenarioPhotoBase64) && imageFiles.length > 1 ? imageFiles : referenceFrameBase64 ? baseImageFile : !modelReferenceBase64 && imageFiles.length > 1 ? imageFiles : baseImageFile;
         const editResponse = await client.images.edit({
           model: OPENAI_IMAGE_MODEL,
           image: editImageInput,
@@ -3568,14 +3631,15 @@ app.post("/api/anamaria-group-colors", async (req, res) => {
       return null;
     };
     const groupingPrompt = `Voc\xEA recebeu ${photoList.length} imagens numeradas de \xEDndice 0 a ${photoList.length - 1} do produto${productName ? ` "${productName}"` : ""}.
-Sua tarefa \xE9 AGRUPAR os \xEDndices por COR / ESTAMPA DA PE\xC7A PRINCIPAL DO PRODUTO:
-- Se duas ou mais fotos mostram a MESMA COR (ex: frente, costas, zoom, detalhe lateral da mesma pe\xE7a na mesma cor), COLOQUE NO MESMO GRUPO.
-- Se fotos mostram a pe\xE7a em CORES OU ESTAMPAS DIFERENTES (ex: uma preta, uma branca, uma rosa, uma verde, etc.), SEPARE EM GRUPOS DISTINTOS (1 grupo para cada cor), na ordem em que as cores aparecem pela primeira vez (0, 1, 2...).
-- Ignore a cor do fundo/cen\xE1rio ou tom de pele da modelo; foque SOMENTE na cor/estampa da pe\xE7a anunciada.
-- Garanta que TODOS os \xEDndices de 0 a ${photoList.length - 1} apare\xE7am exatamente uma vez.
+Sua tarefa \xE9 IDENTIFICAR A COR EXATA da pe\xE7a de roupa em CADA imagem individualmente e AGRUPAR os \xEDndices por COR / ESTAMPA:
+- REGRAS CR\xCDTICAS DE SEPARA\xC7\xC3O DE CORES:
+  1. Para cada imagem de 0 a ${photoList.length - 1}, observe apenas a COR/ESTAMPA principal do vestido/conjunto/pe\xE7a anunciada (ignore cor da parede, ch\xE3o, pele ou cabelo).
+  2. Se as imagens mostram CORES DIFERENTES da pe\xE7a (ex: preto, branco, rosa, vermelho, verde, azul, bege, vinho, marrom, amarelo, etc., ou tons claramente distintos como off-white vs bege, azul claro vs azul marinho, rosa beb\xEA vs pink), COLOQUE EM GRUPOS SEPARADOS (um grupo por cor), na ordem em que cada cor aparece pela primeira vez (0, 1, 2...).
+  3. SOMENTE coloque dois ou mais \xEDndices no MESMO grupo se voc\xEA tiver certeza absoluta de que mostram EXATAMENTE A MESMA COR da pe\xE7a (ex: frente e costas do mesmo vestido preto).
+  4. Garanta que TODOS os \xEDndices de 0 a ${photoList.length - 1} apare\xE7am exatamente uma vez (nenhum faltando, nenhum repetido).
 
 Responda APENAS JSON v\xE1lido neste formato exato:
-{"groups":[{"colorName":"Preto","photoIndices":[0,1]},{"colorName":"Rosa","photoIndices":[2]}]}`;
+{"groups":[{"colorName":"Preto","photoIndices":[0]},{"colorName":"Rosa","photoIndices":[1]}]}`;
     const cleanUrls = photoList.map(
       (p) => p.startsWith("data:") || p.startsWith("http") ? p : `data:image/jpeg;base64,${p}`
     );
@@ -3586,19 +3650,20 @@ Responda APENAS JSON v\xE1lido neste formato exato:
           const contentParts = [];
           cleanUrls.forEach((url, idx) => {
             contentParts.push({ type: "text", text: `Imagem \xEDndice ${idx}:` });
-            contentParts.push({ type: "image_url", image_url: { url, detail: "low" } });
+            contentParts.push({ type: "image_url", image_url: { url, detail: "high" } });
           });
           contentParts.push({ type: "text", text: groupingPrompt });
           const completion = await client.chat.completions.create({
             model: visionModel,
-            max_tokens: 450,
+            max_tokens: 550,
             temperature: 0.1,
+            response_format: { type: "json_object" },
             messages: [{ role: "user", content: contentParts }]
           });
           const rawText = completion.choices[0]?.message?.content?.trim() || "";
           const groups = parseJsonGroups(rawText);
           if (groups) {
-            console.log(`\u{1F3A8} [AnaMaria Colors] ${photoList.length} fotos agrupadas em ${groups.length} cor(es) via ${visionModel}`);
+            console.log(`\u{1F3A8} [AnaMaria Colors] ${photoList.length} fotos agrupadas em ${groups.length} cor(es) via ${visionModel}:`, groups.map((g) => `${g.colorName}[${g.photoIndices.join(",")}]`).join(" | "));
             return res.json({ success: true, groups });
           }
         } catch (err) {
@@ -4040,14 +4105,25 @@ ${params.prompt}` : params.prompt).trim();
   }
   return { success: false, error: "Tempo limite excedido na gera\xE7\xE3o do Kling Image 3.0 Omni (timeout 120s)." };
 }
-function getGalleryModelBase64(modelNum) {
+function getGalleryModelBase64(modelNum, presentationMode) {
   if (modelNum === void 0 || modelNum === null || modelNum === "") return void 0;
   const numStr = String(modelNum).trim();
-  const filePath = path.join(process.cwd(), "public", "models", "gallery", `${numStr}.png`);
+  const baseDir = path.join(process.cwd(), "public", "models", "gallery");
+  const preferredFolder = presentationMode === "com_rosto" || presentationMode === "pov" ? "com_rosto" : "sem_rosto";
+  const secondaryFolder = preferredFolder === "com_rosto" ? "sem_rosto" : "com_rosto";
+  const candidates = [
+    path.join(baseDir, preferredFolder, `${numStr}.png`),
+    path.join(baseDir, preferredFolder, `${numStr}.jpg`),
+    path.join(baseDir, `${numStr}.png`),
+    path.join(baseDir, secondaryFolder, `${numStr}.png`)
+  ];
   try {
-    if (fs.existsSync(filePath)) {
-      const buf = fs.readFileSync(filePath);
-      return `data:image/png;base64,${buf.toString("base64")}`;
+    for (const filePath of candidates) {
+      if (fs.existsSync(filePath)) {
+        const buf = fs.readFileSync(filePath);
+        const mime = filePath.endsWith(".jpg") ? "image/jpeg" : "image/png";
+        return `data:${mime};base64,${buf.toString("base64")}`;
+      }
     }
   } catch (err) {
     console.warn("Erro ao carregar modelo da galeria no backend:", err);
@@ -4612,7 +4688,7 @@ ${prompt}`;
       effectiveModelReferenceBase64 = void 0;
     } else if (isAnaMariaMode && (!effectiveModelReferenceBase64 || effectiveModelReferenceBase64.length < 50)) {
       if (selectedModelGalleryNumber) {
-        effectiveModelReferenceBase64 = getGalleryModelBase64(selectedModelGalleryNumber);
+        effectiveModelReferenceBase64 = getGalleryModelBase64(selectedModelGalleryNumber, presentationMode);
       }
     }
     const hasGalleryModel = Boolean(effectiveModelReferenceBase64 && effectiveModelReferenceBase64.length > 50);

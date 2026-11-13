@@ -124,11 +124,13 @@ let prewarmedRandomScenario =
 export async function compressImageForFastTransfer(
   srcUrlOrBase64: string,
   maxDimension = 864,
-  quality = 0.85
+  quality = 0.85,
+  forceCompress = false
 ): Promise<string> {
   if (typeof window === 'undefined' || !srcUrlOrBase64) return srcUrlOrBase64;
-  // Se for JPEG já otimizado (< 350 KB em base64), retorna direto para 0ms de espera
+  // Se for JPEG já otimizado (< 350 KB em base64), retorna direto para 0ms de espera (exceto se forceCompress=true)
   if (
+    !forceCompress &&
     srcUrlOrBase64.startsWith('data:image/jpeg;base64,') &&
     srcUrlOrBase64.length < 350_000
   ) {
@@ -331,6 +333,63 @@ export async function resolveModelBase64(form: AnaMariaFormState): Promise<strin
   return undefined;
 }
 
+async function sampleCenterRgbFromDataUrl(src: string): Promise<[number, number, number] | null> {
+  if (typeof window === 'undefined' || !src) return null;
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      try {
+        const size = 32;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return resolve(null);
+        ctx.drawImage(img, 0, 0, size, size);
+        const data = ctx.getImageData(8, 8, 16, 16).data;
+        let r = 0, g = 0, b = 0, count = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i + 3] < 128) continue;
+          r += data[i];
+          g += data[i + 1];
+          b += data[i + 2];
+          count++;
+        }
+        if (count === 0) return resolve(null);
+        resolve([r / count, g / count, b / count]);
+      } catch {
+        resolve(null);
+      }
+    };
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
+
+async function groupPhotosByCanvasColorFallback(photos: string[]): Promise<AnaMariaColorGroup[]> {
+  const samples = await Promise.all(photos.map((p) => sampleCenterRgbFromDataUrl(p)));
+  const groups: Array<{ colorName: string; photoIndices: number[]; rgb: [number, number, number] | null }> = [];
+  photos.forEach((_, idx) => {
+    const rgb = samples[idx];
+    if (!rgb) {
+      groups.push({ colorName: `Cor ${groups.length + 1}`, photoIndices: [idx], rgb: null });
+      return;
+    }
+    const existing = groups.find((g) => {
+      if (!g.rgb) return false;
+      const dist = Math.hypot(rgb[0] - g.rgb[0], rgb[1] - g.rgb[1], rgb[2] - g.rgb[2]);
+      return dist <= 36;
+    });
+    if (existing) {
+      existing.photoIndices.push(idx);
+    } else {
+      groups.push({ colorName: `Cor ${groups.length + 1}`, photoIndices: [idx], rgb });
+    }
+  });
+  return groups.map(({ colorName, photoIndices }) => ({ colorName, photoIndices }));
+}
+
 export async function classifyProductColorGroups(
   photos: string[],
   productName?: string
@@ -343,24 +402,25 @@ export async function classifyProductColorGroups(
 
   try {
     const thumbs = await Promise.all(
-      validPhotos.map((p) => compressImageForFastTransfer(p, 384, 0.7))
+      validPhotos.map((p) => compressImageForFastTransfer(p, 384, 0.72, true))
     );
     const res = await postJson<{
       success: boolean;
+      fallback?: boolean;
       groups?: AnaMariaColorGroup[];
     }>('/api/anamaria-group-colors', {
       photos: thumbs,
       productName,
     }, 0);
 
-    if (res?.success && Array.isArray(res.groups) && res.groups.length > 0) {
+    if (res?.success && !res?.fallback && Array.isArray(res.groups) && res.groups.length > 0) {
       return res.groups;
     }
   } catch (err) {
-    console.warn('Falha ao agrupar cores das fotos de referência, mantendo grupo único:', err);
+    console.warn('Falha ao agrupar cores via servidor, aplicando agrupamento visual local:', err);
   }
 
-  return [{ colorName: 'Cor Principal', photoIndices: validPhotos.map((_, idx) => idx) }];
+  return groupPhotosByCanvasColorFallback(validPhotos);
 }
 
 export function getActiveColorGroupPhotos(
@@ -833,6 +893,7 @@ export async function generateAnaMariaNewColor(params: {
   selectedScenarioId?: string;
   selectedScenarioNumber?: number;
   modelScenarioSource: 'gallery' | 'model';
+  generateModelViaPrompt: boolean;
   colorGroups: AnaMariaColorGroup[];
   activeColorGroupIndex: number;
   timestamp: number;
@@ -843,19 +904,21 @@ export async function generateAnaMariaNewColor(params: {
     throw new Error('As fotos de referência não estão mais em memória. Gere o produto novamente na Página 1.');
   }
 
+  // Se havia apenas 1 grupo mas existem 2+ fotos na memória, tenta reclassificar caso a primeira tentativa tenha falhado
   const colorGroups =
-    result.colorGroups && result.colorGroups.length > 0
+    result.colorGroups && (result.colorGroups.length > 1 || photos.length <= 1)
       ? result.colorGroups
       : await classifyProductColorGroups(photos, result.productName);
 
   const currentIdx = typeof result.activeColorGroupIndex === 'number' ? result.activeColorGroupIndex : 0;
   const nextColorIdx = (currentIdx + 1) % Math.max(colorGroups.length, 1);
+  const prevColorGroup = colorGroups[currentIdx];
   const nextColorGroup = colorGroups[nextColorIdx];
   const activeColorPhotos = getActiveColorGroupPhotos(photos, colorGroups, nextColorIdx);
 
   const activeMode = result.presentationMode || 'mirror_selfie';
 
-  // Escolhe OUTRO cenário diferente do atual
+  // Escolhe OUTRO cenário diferente do atual da galeria
   const scenarioPool = activeMode === 'pov' ? POV_SCENARIO_GALLERY_ITEMS : SCENARIO_GALLERY_ITEMS;
   const otherScenarios = scenarioPool.filter(
     (s) => s.id !== result.selectedScenarioId && s.number !== result.selectedScenarioNumber
@@ -864,23 +927,16 @@ export async function generateAnaMariaNewColor(params: {
   const chosenScenario =
     scenarioCandidates[Math.floor(Math.random() * scenarioCandidates.length)] || scenarioPool[0];
 
-  // Escolhe OUTRA modelo diferente da atual (dentro da galeria do mesmo modo de apresentação)
-  let nextModelId: string | undefined;
-  let nextModelNumber: number | undefined;
-  let nextModelUrl: string | undefined;
-  if (!result.generateModelViaPrompt) {
-    const modelGallery = getModelGalleryForMode(activeMode);
-    const otherModels = modelGallery.filter(
-      (m) => m.id !== result.selectedModelGalleryId && m.number !== result.selectedModelGalleryNumber
-    );
-    const modelCandidates = otherModels.length > 0 ? otherModels : modelGallery;
-    const chosenModel = modelCandidates[Math.floor(Math.random() * modelCandidates.length)];
-    if (chosenModel) {
-      nextModelId = chosenModel.id;
-      nextModelNumber = chosenModel.number;
-      nextModelUrl = chosenModel.fullUrl;
-    }
-  }
+  // SEMPRE escolhe OUTRA modelo da galeria do modo ativo (jamais gera via prompt nesta função)
+  const modelGallery = getModelGalleryForMode(activeMode);
+  const otherModels = modelGallery.filter(
+    (m) => m.id !== result.selectedModelGalleryId && m.number !== result.selectedModelGalleryNumber
+  );
+  const modelCandidates = otherModels.length > 0 ? otherModels : modelGallery;
+  const chosenModel = modelCandidates[Math.floor(Math.random() * modelCandidates.length)] || modelGallery[0];
+  const nextModelId = chosenModel?.id;
+  const nextModelNumber = chosenModel?.number;
+  const nextModelUrl = chosenModel?.fullUrl;
 
   const nextForm: AnaMariaFormState = {
     productName: result.productName,
@@ -899,13 +955,13 @@ export async function generateAnaMariaNewColor(params: {
     selectedModelGalleryNumber: nextModelNumber,
     selectedModelGalleryUrl: nextModelUrl,
     modelScenarioSource: 'gallery',
-    generateModelViaPrompt: result.generateModelViaPrompt,
+    generateModelViaPrompt: false,
   };
 
   const { prompt: basePrompt } = buildAnaMariaImagePrompt(nextForm, 'hall_espelho');
   const effectivePrompt =
     colorGroups.length > 1 && nextColorGroup?.colorName
-      ? `${basePrompt}\n\nATENÇÃO À COR EXCLUSIVA: Reproduza EXCLUSIVAMENTE a peça na cor "${nextColorGroup.colorName}" conforme a foto de referência ativa.`
+      ? `${basePrompt}\n\nATENÇÃO À COR EXCLUSIVA DA NOVA VARIAÇÃO: Reproduza EXCLUSIVAMENTE a peça na cor "${nextColorGroup.colorName}" conforme a foto de referência ativa.${prevColorGroup?.colorName && prevColorGroup.colorName !== nextColorGroup.colorName ? ` NÃO utilize a cor anterior "${prevColorGroup.colorName}".` : ''}`
       : basePrompt;
 
   const [activeScenarioBase64, activeModelBase64, { primaryPhoto, supplementaryPhotos }] = await Promise.all([
@@ -924,7 +980,7 @@ export async function generateAnaMariaNewColor(params: {
       modelReferenceBase64: activeModelBase64,
       selectedModelGalleryId: nextModelId,
       selectedModelGalleryNumber: nextModelNumber,
-      generateModelViaPrompt: Boolean(result.generateModelViaPrompt),
+      generateModelViaPrompt: false,
       modelScenarioSource: 'gallery',
       isAnaMariaMode: true,
       presentationMode: activeMode,
@@ -948,6 +1004,7 @@ export async function generateAnaMariaNewColor(params: {
     selectedScenarioId: chosenScenario?.id,
     selectedScenarioNumber: chosenScenario?.number,
     modelScenarioSource: 'gallery',
+    generateModelViaPrompt: false,
     colorGroups,
     activeColorGroupIndex: nextColorIdx,
     timestamp: Date.now(),

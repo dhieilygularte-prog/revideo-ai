@@ -1827,14 +1827,15 @@ app.post('/api/anamaria-group-colors', async (req, res) => {
     };
 
     const groupingPrompt = `Você recebeu ${photoList.length} imagens numeradas de índice 0 a ${photoList.length - 1} do produto${productName ? ` "${productName}"` : ''}.
-Sua tarefa é AGRUPAR os índices por COR / ESTAMPA DA PEÇA PRINCIPAL DO PRODUTO:
-- Se duas ou mais fotos mostram a MESMA COR (ex: frente, costas, zoom, detalhe lateral da mesma peça na mesma cor), COLOQUE NO MESMO GRUPO.
-- Se fotos mostram a peça em CORES OU ESTAMPAS DIFERENTES (ex: uma preta, uma branca, uma rosa, uma verde, etc.), SEPARE EM GRUPOS DISTINTOS (1 grupo para cada cor), na ordem em que as cores aparecem pela primeira vez (0, 1, 2...).
-- Ignore a cor do fundo/cenário ou tom de pele da modelo; foque SOMENTE na cor/estampa da peça anunciada.
-- Garanta que TODOS os índices de 0 a ${photoList.length - 1} apareçam exatamente uma vez.
+Sua tarefa é IDENTIFICAR A COR EXATA da peça de roupa em CADA imagem individualmente e AGRUPAR os índices por COR / ESTAMPA:
+- REGRAS CRÍTICAS DE SEPARAÇÃO DE CORES:
+  1. Para cada imagem de 0 a ${photoList.length - 1}, observe apenas a COR/ESTAMPA principal do vestido/conjunto/peça anunciada (ignore cor da parede, chão, pele ou cabelo).
+  2. Se as imagens mostram CORES DIFERENTES da peça (ex: preto, branco, rosa, vermelho, verde, azul, bege, vinho, marrom, amarelo, etc., ou tons claramente distintos como off-white vs bege, azul claro vs azul marinho, rosa bebê vs pink), COLOQUE EM GRUPOS SEPARADOS (um grupo por cor), na ordem em que cada cor aparece pela primeira vez (0, 1, 2...).
+  3. SOMENTE coloque dois ou mais índices no MESMO grupo se você tiver certeza absoluta de que mostram EXATAMENTE A MESMA COR da peça (ex: frente e costas do mesmo vestido preto).
+  4. Garanta que TODOS os índices de 0 a ${photoList.length - 1} apareçam exatamente uma vez (nenhum faltando, nenhum repetido).
 
 Responda APENAS JSON válido neste formato exato:
-{"groups":[{"colorName":"Preto","photoIndices":[0,1]},{"colorName":"Rosa","photoIndices":[2]}]}`;
+{"groups":[{"colorName":"Preto","photoIndices":[0]},{"colorName":"Rosa","photoIndices":[1]}]}`;
 
     const cleanUrls = photoList.map((p) =>
       p.startsWith('data:') || p.startsWith('http') ? p : `data:image/jpeg;base64,${p}`
@@ -1847,20 +1848,21 @@ Responda APENAS JSON válido neste formato exato:
           const contentParts: any[] = [];
           cleanUrls.forEach((url, idx) => {
             contentParts.push({ type: 'text', text: `Imagem índice ${idx}:` });
-            contentParts.push({ type: 'image_url', image_url: { url, detail: 'low' } });
+            contentParts.push({ type: 'image_url', image_url: { url, detail: 'high' } });
           });
           contentParts.push({ type: 'text', text: groupingPrompt });
 
           const completion = await client.chat.completions.create({
             model: visionModel,
-            max_tokens: 450,
+            max_tokens: 550,
             temperature: 0.1,
+            response_format: { type: 'json_object' },
             messages: [{ role: 'user', content: contentParts }],
           });
           const rawText = completion.choices[0]?.message?.content?.trim() || '';
           const groups = parseJsonGroups(rawText);
           if (groups) {
-            console.log(`🎨 [AnaMaria Colors] ${photoList.length} fotos agrupadas em ${groups.length} cor(es) via ${visionModel}`);
+            console.log(`🎨 [AnaMaria Colors] ${photoList.length} fotos agrupadas em ${groups.length} cor(es) via ${visionModel}:`, groups.map((g) => `${g.colorName}[${g.photoIndices.join(',')}]`).join(' | '));
             return res.json({ success: true, groups });
           }
         } catch (err: any) {
@@ -2435,14 +2437,25 @@ async function generateImageWithKling(params: {
   return { success: false, error: 'Tempo limite excedido na geração do Kling Image 3.0 Omni (timeout 120s).' };
 }
 
-function getGalleryModelBase64(modelNum?: number | string): string | undefined {
+function getGalleryModelBase64(modelNum?: number | string, presentationMode?: string): string | undefined {
   if (modelNum === undefined || modelNum === null || modelNum === '') return undefined;
   const numStr = String(modelNum).trim();
-  const filePath = path.join(process.cwd(), 'public', 'models', 'gallery', `${numStr}.png`);
+  const baseDir = path.join(process.cwd(), 'public', 'models', 'gallery');
+  const preferredFolder = presentationMode === 'com_rosto' || presentationMode === 'pov' ? 'com_rosto' : 'sem_rosto';
+  const secondaryFolder = preferredFolder === 'com_rosto' ? 'sem_rosto' : 'com_rosto';
+  const candidates = [
+    path.join(baseDir, preferredFolder, `${numStr}.png`),
+    path.join(baseDir, preferredFolder, `${numStr}.jpg`),
+    path.join(baseDir, `${numStr}.png`),
+    path.join(baseDir, secondaryFolder, `${numStr}.png`),
+  ];
   try {
-    if (fs.existsSync(filePath)) {
-      const buf = fs.readFileSync(filePath);
-      return `data:image/png;base64,${buf.toString('base64')}`;
+    for (const filePath of candidates) {
+      if (fs.existsSync(filePath)) {
+        const buf = fs.readFileSync(filePath);
+        const mime = filePath.endsWith('.jpg') ? 'image/jpeg' : 'image/png';
+        return `data:${mime};base64,${buf.toString('base64')}`;
+      }
     }
   } catch (err) {
     console.warn('Erro ao carregar modelo da galeria no backend:', err);
@@ -3220,7 +3233,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
       effectiveModelReferenceBase64 = undefined;
     } else if (isAnaMariaMode && (!effectiveModelReferenceBase64 || effectiveModelReferenceBase64.length < 50)) {
       if (selectedModelGalleryNumber) {
-        effectiveModelReferenceBase64 = getGalleryModelBase64(selectedModelGalleryNumber);
+        effectiveModelReferenceBase64 = getGalleryModelBase64(selectedModelGalleryNumber, presentationMode);
       }
     }
 

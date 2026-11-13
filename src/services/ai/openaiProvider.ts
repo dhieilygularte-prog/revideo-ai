@@ -629,23 +629,56 @@ Retorne estritamente um JSON estruturado:
         return new File([Buffer.from(cleanB64, 'base64')], `${baseName}.${ext}`, { type: mime });
       };
 
-      // Adiciona foto de cenário como primeira referência se fornecida
-      if (scenarioPhotoBase64) {
-        try {
-          imageFiles.push(toImageFile(scenarioPhotoBase64, 'reference_scenario_background'));
-        } catch {}
-      }
+      // No Modo Ana Maria com Modelo da Galeria, enviamos explicitamente:
+      // - Modo 3 Imagens (modelScenarioSource === 'gallery'): [Produto, Modelo da Galeria, Cenário da Galeria]
+      // - Modo 2 Imagens (cenário da própria modelo): [Modelo da Galeria, Produto]
+      const isAnaMariaGallery3Img = Boolean(isAnaMariaMode && modelReferenceBase64 && scenarioPhotoBase64 && !isPovMode);
+      const isAnaMariaModel2Img = Boolean(isAnaMariaMode && modelReferenceBase64 && !scenarioPhotoBase64 && !isPovMode);
 
-      // Converte até 4 fotos de referência mais relevantes para envio com seu MIME real
-      allPhotos.slice(0, 4).forEach((photoStr, idx) => {
+      if (isAnaMariaGallery3Img) {
+        allPhotos.slice(0, 2).forEach((photoStr, idx) => {
+          try {
+            if (photoStr && typeof photoStr === 'string') {
+              imageFiles.push(toImageFile(photoStr, `reference_product_${idx + 1}`));
+            }
+          } catch {}
+        });
         try {
-          if (photoStr && typeof photoStr === 'string') {
-            imageFiles.push(toImageFile(photoStr, `reference_${idx + 1}`));
-          }
-        } catch (e) {
-          // ignore invalid buffer
+          imageFiles.push(toImageFile(modelReferenceBase64!, 'reference_gallery_model'));
+        } catch {}
+        try {
+          imageFiles.push(toImageFile(scenarioPhotoBase64!, 'reference_scenario_background'));
+        } catch {}
+      } else if (isAnaMariaModel2Img) {
+        try {
+          imageFiles.push(toImageFile(modelReferenceBase64!, 'reference_gallery_model'));
+        } catch {}
+        allPhotos.slice(0, 2).forEach((photoStr, idx) => {
+          try {
+            if (photoStr && typeof photoStr === 'string') {
+              imageFiles.push(toImageFile(photoStr, `reference_product_${idx + 1}`));
+            }
+          } catch {}
+        });
+      } else {
+        // Adiciona foto de cenário como primeira referência se fornecida
+        if (scenarioPhotoBase64) {
+          try {
+            imageFiles.push(toImageFile(scenarioPhotoBase64, 'reference_scenario_background'));
+          } catch {}
         }
-      });
+
+        // Converte até 4 fotos de referência mais relevantes para envio com seu MIME real
+        allPhotos.slice(0, 4).forEach((photoStr, idx) => {
+          try {
+            if (photoStr && typeof photoStr === 'string') {
+              imageFiles.push(toImageFile(photoStr, `reference_${idx + 1}`));
+            }
+          } catch (e) {
+            // ignore invalid buffer
+          }
+        });
+      }
 
       let baseImageFile: File | null = null;
       let effectivePrompt = cleanPrompt;
@@ -669,7 +702,46 @@ Retorne estritamente um JSON estruturado:
           additionalInstructions || ''
         );
 
-      if (isAnaMariaMode && scenarioPhotoBase64) {
+      const productPhotoCount = Math.min(allPhotos.filter(Boolean).length, 2);
+
+      if (isAnaMariaGallery3Img) {
+        baseImageFile = imageFiles[0] || null;
+        const modelIdx = productPhotoCount + 1;
+        const scenarioIdx = productPhotoCount + 2;
+        const allowsFace =
+          presentationMode === 'com_rosto' ||
+          (cleanPrompt &&
+            (cleanPrompt.includes('MODO COM ROSTO') ||
+              cleanPrompt.includes('ROSTO E ENQUADRAMENTO — MODO COM ROSTO') ||
+              cleanPrompt.includes('o rosto da modelo DEVE aparecer')));
+
+        const framingSection = allowsFace
+          ? `[FRAMING & FACE PRESERVATION — GALLERY MODEL UGC]:
+- Preserve 100% the exact same woman, face, eyes, nose, lips, hair, skin tone, and body curves shown in Reference Image ${modelIdx} (the gallery model).
+- Modern smartphone held naturally taking the mirror selfie. Zero tattoos anywhere on the skin.`
+          : `[FRAMING & MIRROR SELFIE POSE PRESERVATION — GALLERY MODEL]:
+- Preserve 100% the exact same woman, body silhouette, skin tone, hair, and mirror-selfie pose holding the smartphone in front of her face as shown in Reference Image ${modelIdx} (the gallery model).
+- Strictly keep her face hidden/covered by the smartphone/chin-down crop matching Reference Image ${modelIdx}. Zero tattoos anywhere on the skin.`;
+
+        effectivePrompt = `[STRICT 3-IMAGE COMPOSITION DIRECTIVE - GALLERY MODEL + NEW GARMENT COLOR + NEW GALLERY SCENARIO - MODO ANA MARIA]:
+- REFERENCE IMAGE ${productPhotoCount === 1 ? '1' : '1 and 2'} (GARMENT & EXACT COLOR ONLY): Extract EXCLUSIVELY the garment/dress/outfit design, cut, fabric texture, details, and the EXACT COLOR/PRINT shown here. 100% IGNORE any person, face, body, or background from Reference Image ${productPhotoCount === 1 ? '1' : '1 and 2'}.
+- REFERENCE IMAGE ${modelIdx} (EXACT GALLERY MODEL WOMAN): You MUST use the EXACT woman from Reference Image ${modelIdx} (same body silhouette, curves, skin tone, hair, nails, and natural mirror-selfie pose). DO NOT generate a random woman from text prompt and DO NOT keep her old outfit or old room from Reference Image ${modelIdx}.
+- REFERENCE IMAGE ${scenarioIdx} (EXACT GALLERY ROOM SCENARIO): Place the woman from Reference Image ${modelIdx} standing in front of the mirror INSIDE this EXACT room/interior from Reference Image ${scenarioIdx}. Preserve 100% of the walls, floor, mirror, doors, lighting, and background of Reference Image ${scenarioIdx}.
+- RESULT: The exact woman from Reference Image ${modelIdx}, dressed in the exact garment and exact color from Reference Image ${productPhotoCount === 1 ? '1' : '1 and 2'}, standing inside the exact room from Reference Image ${scenarioIdx} taking a vertical 9:16 mirror selfie. Zero tattoos.
+
+${framingSection}
+
+${cleanPrompt}`;
+      } else if (isAnaMariaModel2Img) {
+        baseImageFile = imageFiles[0] || null;
+        const productRange = productPhotoCount > 1 ? 'Reference Images 2 and 3' : 'Reference Image 2';
+        effectivePrompt = `[STRICT 2-IMAGE EDIT DIRECTIVE - GALLERY MODEL & ROOM BASE + EXACT PRODUCT CLOTHING]:
+- REFERENCE IMAGE 1 (MODEL & ROOM BASE — KEEP IDENTICAL): Preserve 100% the exact same woman (same face if visible or same phone covering face, same hair, skin tone, body curves, pose, hands) and the EXACT same room/background/mirror/lighting from Reference Image 1.
+- ${productRange.toUpperCase()} (GARMENT & EXACT COLOR ONLY): Dress the woman from Reference Image 1 in the EXACT garment shown in ${productRange}, replicating 1:1 its exact color/shade/print, cut, neckline, straps, fabric texture, and length (and harmonious matching footwear if feet are visible; if long dress covers feet, keep it long). 100% IGNORE any person/background in ${productRange}.
+- Zero tattoos anywhere on the skin. Preserve sharp iPhone 16 Pro optical clarity.
+
+${cleanPrompt}`;
+      } else if (isAnaMariaMode && scenarioPhotoBase64) {
         if (isPovMode) {
           effectivePrompt = `[CRITICAL POV EDIT DIRECTIVE - FIRST-PERSON HANDS ON BED - MODO ANA MARIA POV]:
 You are editing the base POV bed scenario photograph (Reference Image 1).
@@ -751,7 +823,7 @@ ${cleanPrompt}`;
       // Se temos referência de modelo mestre:
       // Em Modo Ania (!isCloneMode && !isStoryboardGrid): é uma EDIÇÃO LOCALIZADA com trava de quarto/pose via client.images.edit
       // Em Modo Clonagem ou Storyboard 3x3 (Produtos 2.0): NÃO substituímos o prompt por troca de roupa! Mantemos o prompt completo e as fotos reais do produto!
-      if (modelReferenceBase64 && !isCloneMode && !isStoryboardGrid) {
+      if (modelReferenceBase64 && !isCloneMode && !isStoryboardGrid && !isAnaMariaGallery3Img && !isAnaMariaModel2Img) {
         // 1ª imagem = IMAGEM 1 GERADA (base absoluta)
         baseImageFile = toImageFile(modelReferenceBase64, 'imagem_1_base');
 
@@ -885,7 +957,7 @@ Preserve fielmente qualquer logomarca, estampa ou acabamento original da peça. 
 
       // Se temos arquivo de imagem de base válido para edição, usamos client.images.edit
       if (baseImageFile) {
-        const editImageInput: any = (isAnaMariaMode && scenarioPhotoBase64 && imageFiles.length > 1)
+        const editImageInput: any = ((isAnaMariaGallery3Img || isAnaMariaModel2Img || (isAnaMariaMode && scenarioPhotoBase64)) && imageFiles.length > 1)
           ? imageFiles
           : (referenceFrameBase64
             ? baseImageFile
