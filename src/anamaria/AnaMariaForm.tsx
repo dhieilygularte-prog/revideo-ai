@@ -1475,33 +1475,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             )}
           </button>
 
-          {/* Botão 2: Modo POV */}
-          <button
-            type="button"
-            onClick={() => handleSelectPresentationMode('pov')}
-            className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
-              activeMode === 'pov' ? activeOptionButtonClass : inactiveOptionButtonClass
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <Hand
-                className={`w-4 h-4 shrink-0 ${
-                  activeMode === 'pov' ? checkIconColorClass : 'text-zinc-500'
-                }`}
-              />
-              <div>
-                <span className="text-xs font-bold block uppercase">Modo POV</span>
-                <span className="text-[10px] block text-zinc-400">
-                  Mãos & 2 Peças na Cama
-                </span>
-              </div>
-            </div>
-            {activeMode === 'pov' && (
-              <Check className={`w-4 h-4 stroke-[3] ${checkIconColorClass}`} />
-            )}
-          </button>
-
-          {/* Botão 3: Com Rosto (UGC) */}
+          {/* Botão 2: Com Rosto (UGC) */}
           <button
             type="button"
             onClick={() => handleSelectPresentationMode('com_rosto')}
@@ -1523,6 +1497,32 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               </div>
             </div>
             {activeMode === 'com_rosto' && (
+              <Check className={`w-4 h-4 stroke-[3] ${checkIconColorClass}`} />
+            )}
+          </button>
+
+          {/* Botão 3: Modo POV */}
+          <button
+            type="button"
+            onClick={() => handleSelectPresentationMode('pov')}
+            className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
+              activeMode === 'pov' ? activeOptionButtonClass : inactiveOptionButtonClass
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <Hand
+                className={`w-4 h-4 shrink-0 ${
+                  activeMode === 'pov' ? checkIconColorClass : 'text-zinc-500'
+                }`}
+              />
+              <div>
+                <span className="text-xs font-bold block uppercase">Modo POV</span>
+                <span className="text-[10px] block text-zinc-400">
+                  Mãos & 2 Peças na Cama
+                </span>
+              </div>
+            </div>
+            {activeMode === 'pov' && (
               <Check className={`w-4 h-4 stroke-[3] ${checkIconColorClass}`} />
             )}
           </button>
@@ -1843,23 +1843,6 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
 
               <button
                 type="button"
-                onClick={() => handleSelectPresentationMode('pov')}
-                className={`px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all cursor-pointer border ${
-                  activeMode === 'pov'
-                    ? 'bg-[#26150b] border-orange-500 text-orange-400 shadow-md shadow-orange-950/50'
-                    : 'bg-[#141416] border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700'
-                }`}
-              >
-                <span
-                  className={`w-2 h-2 rounded-full ${
-                    activeMode === 'pov' ? 'bg-orange-500' : 'bg-pink-500'
-                  }`}
-                />
-                <span>POV</span>
-              </button>
-
-              <button
-                type="button"
                 onClick={() => handleSelectPresentationMode('com_rosto')}
                 className={`px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all cursor-pointer border ${
                   activeMode === 'com_rosto'
@@ -1873,6 +1856,23 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                   }`}
                 />
                 <span>Com Rosto (UGC)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSelectPresentationMode('pov')}
+                className={`px-3.5 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-all cursor-pointer border ${
+                  activeMode === 'pov'
+                    ? 'bg-[#26150b] border-orange-500 text-orange-400 shadow-md shadow-orange-950/50'
+                    : 'bg-[#141416] border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700'
+                }`}
+              >
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    activeMode === 'pov' ? 'bg-orange-500' : 'bg-pink-500'
+                  }`}
+                />
+                <span>POV</span>
               </button>
             </div>
 
