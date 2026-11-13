@@ -24,6 +24,7 @@ import {
   Smile,
   RefreshCw,
   Wand2,
+  Palette,
 } from 'lucide-react';
 import {
   AnaMariaFormState,
@@ -89,7 +90,9 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     }
   }, [form.presentationMode, form.influencer, form.imageModel, onChange]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const extraFileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isDraggingExtra, setIsDraggingExtra] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isIdentifyingProduct, setIsIdentifyingProduct] = useState(false);
   const [autoIdentifiedBadge, setAutoIdentifiedBadge] = useState(false);
@@ -342,32 +345,39 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     }
   };
 
-  const handleFiles = async (files: FileList | File[]) => {
+  const processProductFiles = async (files: FileList | File[], targetField: 'same' | 'extra') => {
     const validFiles = Array.from(files).filter((file) => file.type.startsWith('image/'));
     if (validFiles.length === 0) return;
 
-    const remainingSlots = 10 - form.referencePhotos.length;
+    const currentFieldPhotos =
+      targetField === 'same' ? form.referencePhotos : form.extraColorPhotos || [];
+    const remainingSlots = 10 - currentFieldPhotos.length;
     if (remainingSlots <= 0) return;
 
     const filesToProcess = validFiles.slice(0, remainingSlots);
-    const wasEmptyBefore = form.referencePhotos.length === 0;
+    const totalExisting = form.referencePhotos.length + (form.extraColorPhotos?.length || 0);
+    const wasEmptyBefore = totalExisting === 0;
     if (filesToProcess[0]) {
       lastUploadedFileNameRef.current = filesToProcess[0].name || '';
     }
     setIsUploading(true);
 
     try {
-      // Otimização de alta fidelidade (1080px, qualidade 0.88) para fidelidade total de texturas sem lentidão de upload
       const b64Promises = filesToProcess.map((file) => compressAndResizeImage(file, 1080, 0.88));
       const newPhotos = await Promise.all(b64Promises);
 
-      onChange((prev) => ({
-        ...prev,
-        referencePhotos: [...prev.referencePhotos, ...newPhotos].slice(0, 10),
-      }));
+      onChange((prev) =>
+        targetField === 'same'
+          ? {
+              ...prev,
+              referencePhotos: [...prev.referencePhotos, ...newPhotos].slice(0, 10),
+            }
+          : {
+              ...prev,
+              extraColorPhotos: [...(prev.extraColorPhotos || []), ...newPhotos].slice(0, 10),
+            }
+      );
 
-      // Identifica automaticamente a peça da foto caso o campo esteja vazio,
-      // se tinha sido auto-identificado anteriormente ou se for o primeiro anexo
       if (filesToProcess[0] && (wasEmptyBefore || !form.productName.trim() || autoIdentifiedBadge || !hasUserManuallyEditedNameRef.current)) {
         const fName = filesToProcess[0].name;
         compressAndResizeImage(filesToProcess[0], 512, 0.75)
@@ -381,16 +391,33 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     }
   };
 
+  const handleFiles = (files: FileList | File[]) => processProductFiles(files, 'same');
+  const handleExtraColorFiles = (files: FileList | File[]) => processProductFiles(files, 'extra');
+
   const handleRemovePhoto = (index: number) => {
     onChange((prev) => {
       const nextPhotos = prev.referencePhotos.filter((_, i) => i !== index);
-      if (nextPhotos.length === 0) {
+      if (nextPhotos.length === 0 && (prev.extraColorPhotos?.length || 0) === 0) {
         hasUserManuallyEditedNameRef.current = false;
         setAutoIdentifiedBadge(false);
       }
       return {
         ...prev,
         referencePhotos: nextPhotos,
+      };
+    });
+  };
+
+  const handleRemoveExtraColorPhoto = (index: number) => {
+    onChange((prev) => {
+      const nextExtra = (prev.extraColorPhotos || []).filter((_, i) => i !== index);
+      if (nextExtra.length === 0 && prev.referencePhotos.length === 0) {
+        hasUserManuallyEditedNameRef.current = false;
+        setAutoIdentifiedBadge(false);
+      }
+      return {
+        ...prev,
+        extraColorPhotos: nextExtra,
       };
     });
   };
@@ -403,6 +430,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       return {
         ...prev,
         referencePhotos: [],
+        extraColorPhotos: [],
         productName: '',
         selectedMasterId:
           !prev.isManualMasterSelection && modeNow !== 'pov'
@@ -542,8 +570,11 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     });
   };
 
+  const extraColorPhotos = form.extraColorPhotos || [];
+  const totalProductPhotos = form.referencePhotos.length + extraColorPhotos.length;
+
   const canSubmit =
-    form.referencePhotos.length > 0 &&
+    totalProductPhotos > 0 &&
     !isProcessing &&
     !isUploading &&
     !isRecordingMic;
@@ -626,26 +657,26 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             <ImageIcon className={`w-5 h-5 ${sectionIconColorClass}`} />
             <div>
               <h2 className="text-sm font-bold text-white uppercase tracking-wide">
-                1. Fotos de Referência da Peça (Até 10 fotos)
+                1. Fotos de Referência da Peça
               </h2>
               <p className="text-[11px] text-zinc-400">
-                Anexe fotos de frente, costas, detalhes do tecido e caimento. Ao anexar a foto, o app identifica automaticamente o tipo de peça no campo 2!
+                Use o Campo 1 para vários ângulos da MESMA cor (detalhes) e o Campo 2 para adicionar CORES DIFERENTES da mesma peça (usadas em &quot;Gerar em nova cor&quot;).
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <span
               className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${
-                form.referencePhotos.length > 0
+                totalProductPhotos > 0
                   ? isAmetista
                     ? 'bg-purple-500/20 text-[#d4ff59] border-purple-400/40'
                     : 'bg-orange-500/20 text-amber-300 border-orange-500/40'
                   : 'bg-zinc-900 text-zinc-400 border-zinc-800'
               }`}
             >
-              {form.referencePhotos.length}/10 fotos
+              {totalProductPhotos} foto{totalProductPhotos === 1 ? '' : 's'}
             </span>
-            {form.referencePhotos.length > 0 && (
+            {totalProductPhotos > 0 && (
               <button
                 type="button"
                 onClick={handleClearAllPhotos}
@@ -658,7 +689,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           </div>
         </div>
 
-        {/* Zona de Upload Drag & Drop */}
+        {/* Inputs ocultos para os 2 campos */}
         <input
           ref={fileInputRef}
           type="file"
@@ -670,98 +701,213 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             e.target.value = '';
           }}
         />
+        <input
+          ref={extraFileInputRef}
+          type="file"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            if (e.target.files) handleExtraColorFiles(e.target.files);
+            e.target.value = '';
+          }}
+        />
 
-        {form.referencePhotos.length < 10 && (
-          <div
-            onDragOver={(e) => {
-              e.preventDefault();
-              setIsDragging(true);
-            }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setIsDragging(false);
-              if (e.dataTransfer.files) handleFiles(e.dataTransfer.files);
-            }}
-            onClick={() => fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-xl p-6 sm:p-8 text-center cursor-pointer transition-all ${
-              isDragging
-                ? isAmetista
-                  ? 'border-[#d4ff59] bg-purple-500/15'
-                  : 'border-amber-400 bg-orange-500/10'
-                : isAmetista
-                ? 'border-purple-500/30 hover:border-purple-400/60 hover:bg-[#1b112c]/60 bg-[#0e0817]/50'
-                : 'border-zinc-800 hover:border-orange-500/50 hover:bg-zinc-900/60 bg-zinc-900/30'
-            }`}
-          >
-            <div className="flex flex-col items-center gap-2">
-              <div
-                className={`w-12 h-12 rounded-xl flex items-center justify-center border ${
-                  isAmetista
-                    ? 'bg-purple-500/15 border-purple-400/40 text-[#d4ff59]'
-                    : 'bg-orange-500/15 border-orange-500/40 text-orange-400'
-                }`}
-              >
-                <Upload className="w-6 h-6" />
+        {/* Grid de 2 Campos Explícitos: Campo 1 (Mesma Cor / Ângulos) + Campo 2 (Cores Diferentes) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* CAMPO 1: MESMA COR / MÚLTIPLOS ÂNGULOS */}
+          <div className="space-y-3 p-3.5 rounded-xl border border-zinc-800/80 bg-[#0b0713]/60">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="text-xs font-extrabold text-white uppercase tracking-wide">
+                  1A. Mesma Cor (Vários Ângulos / Detalhes)
+                </p>
+                <p className="text-[11px] text-zinc-400">
+                  Fotos extras aqui mostram detalhes da <strong className="text-zinc-200">mesma cor</strong> (frente, costas, decote) em uma única imagem.
+                </p>
               </div>
-              <p className="text-xs sm:text-sm font-bold text-zinc-200">
-                Arraste as fotos da peça aqui ou clique para selecionar
-              </p>
-              <p className="text-[11px] text-zinc-500">
-                Suporta PNG, JPG, WEBP (até 10 fotos): envie vários ângulos da mesma cor ou várias cores da mesma peça para usar "Gerar em nova cor".
-              </p>
+              <span className="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-700 text-[11px] font-bold text-zinc-300 shrink-0">
+                {form.referencePhotos.length}/10
+              </span>
             </div>
-          </div>
-        )}
 
-        {/* Grade de Fotos Anexadas */}
-        {form.referencePhotos.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-3 pt-2">
-            {form.referencePhotos.map((photo, index) => (
+            {form.referencePhotos.length < 10 && (
               <div
-                key={index}
-                className={`relative group rounded-xl overflow-hidden border bg-zinc-900 aspect-[9/16] max-h-48 flex items-center justify-center ${
-                  isAmetista ? 'border-purple-400/40' : 'border-orange-500/40'
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setIsDragging(false);
+                  if (e.dataTransfer.files) handleFiles(e.dataTransfer.files);
+                }}
+                onClick={() => fileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all ${
+                  isDragging
+                    ? isAmetista
+                      ? 'border-[#d4ff59] bg-purple-500/15'
+                      : 'border-amber-400 bg-orange-500/10'
+                    : isAmetista
+                    ? 'border-purple-500/30 hover:border-purple-400/60 hover:bg-[#1b112c]/60 bg-[#0e0817]/50'
+                    : 'border-zinc-800 hover:border-orange-500/50 hover:bg-zinc-900/60 bg-zinc-900/30'
                 }`}
               >
-                <img
-                  src={photo}
-                  alt={`Referência ${index + 1}`}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-2">
-                  <div className="flex justify-between items-center">
-                    <span className="px-1.5 py-0.5 rounded bg-zinc-900/90 text-white text-[10px] font-bold">
-                      #{index + 1}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRemovePhoto(index);
-                      }}
-                      className="w-6 h-6 rounded-full bg-rose-600/90 hover:bg-rose-500 text-white flex items-center justify-center transition-all cursor-pointer"
-                      title="Remover foto"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
+                <div className="flex flex-col items-center gap-1.5">
+                  <div
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center border ${
+                      isAmetista
+                        ? 'bg-purple-500/15 border-purple-400/40 text-[#d4ff59]'
+                        : 'bg-orange-500/15 border-orange-500/40 text-orange-400'
+                    }`}
+                  >
+                    <Upload className="w-5 h-5" />
                   </div>
-                  {index === 0 && (
-                    <span
-                      className={`px-1.5 py-0.5 rounded text-zinc-950 text-[9px] font-black uppercase text-center ${
-                        isAmetista ? 'bg-[#d4ff59]' : 'bg-orange-500'
-                      }`}
-                    >
-                      Foto Principal
-                    </span>
-                  )}
+                  <p className="text-xs font-bold text-zinc-200">
+                    Adicionar fotos na mesma cor (ângulos)
+                  </p>
+                  <p className="text-[11px] text-zinc-500">PNG, JPG ou WEBP</p>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
+            )}
 
-        {form.referencePhotos.length === 0 && (
+            {form.referencePhotos.length > 0 && (
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5 pt-1">
+                {form.referencePhotos.map((photo, index) => (
+                  <div
+                    key={index}
+                    className={`relative group rounded-xl overflow-hidden border bg-zinc-900 aspect-[9/16] max-h-40 flex items-center justify-center ${
+                      isAmetista ? 'border-purple-400/40' : 'border-orange-500/40'
+                    }`}
+                  >
+                    <img
+                      src={photo}
+                      alt={`Ângulo ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between p-1.5">
+                      <div className="flex justify-between items-center">
+                        <span className="px-1.5 py-0.5 rounded bg-zinc-900/90 text-white text-[10px] font-bold">
+                          #{index + 1}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemovePhoto(index);
+                          }}
+                          className="w-5 h-5 rounded-full bg-rose-600/90 hover:bg-rose-500 text-white flex items-center justify-center transition-all cursor-pointer"
+                          title="Remover foto"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                      {index === 0 && (
+                        <span
+                          className={`px-1 py-0.5 rounded text-zinc-950 text-[9px] font-black uppercase text-center ${
+                            isAmetista ? 'bg-[#d4ff59]' : 'bg-orange-500'
+                          }`}
+                        >
+                          Principal
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* CAMPO 2: CORES DIFERENTES (PARA "GERAR EM NOVA COR") */}
+          <div className="space-y-3 p-3.5 rounded-xl border border-sky-500/30 bg-sky-950/15">
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <p className="text-xs font-extrabold text-sky-300 uppercase tracking-wide flex items-center gap-1.5">
+                  <Palette className="w-3.5 h-3.5 text-sky-400" />
+                  <span>1B. Outras Cores (Gerar em Nova Cor)</span>
+                </p>
+                <p className="text-[11px] text-zinc-400">
+                  Cada foto anexada aqui será tratada como uma <strong className="text-sky-200">cor diferente</strong> ao clicar no botão <strong className="text-sky-300">Gerar em nova cor</strong>.
+                </p>
+              </div>
+              <span className="px-2 py-0.5 rounded bg-sky-950/60 border border-sky-500/35 text-[11px] font-bold text-sky-200 shrink-0">
+                {extraColorPhotos.length}/10
+              </span>
+            </div>
+
+            {extraColorPhotos.length < 10 && (
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDraggingExtra(true);
+                }}
+                onDragLeave={() => setIsDraggingExtra(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setIsDraggingExtra(false);
+                  if (e.dataTransfer.files) handleExtraColorFiles(e.dataTransfer.files);
+                }}
+                onClick={() => extraFileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all ${
+                  isDraggingExtra
+                    ? 'border-sky-400 bg-sky-500/15'
+                    : 'border-sky-500/35 hover:border-sky-400/70 hover:bg-sky-950/35 bg-[#09121e]/50'
+                }`}
+              >
+                <div className="flex flex-col items-center gap-1.5">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center border bg-sky-500/15 border-sky-400/40 text-sky-300">
+                    <Palette className="w-5 h-5" />
+                  </div>
+                  <p className="text-xs font-bold text-sky-100">
+                    Adicionar fotos em outras cores da peça
+                  </p>
+                  <p className="text-[11px] text-zinc-400">
+                    Ex.: preto, rosa, verde, branco (pode usar só este campo se quiser)
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {extraColorPhotos.length > 0 && (
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5 pt-1">
+                {extraColorPhotos.map((photo, index) => {
+                  const colorNum = form.referencePhotos.length > 0 ? index + 2 : index + 1;
+                  return (
+                    <div
+                      key={index}
+                      className="relative group rounded-xl overflow-hidden border border-sky-400/45 bg-zinc-900 aspect-[9/16] max-h-40 flex items-center justify-center"
+                    >
+                      <img
+                        src={photo}
+                        alt={`Cor ${colorNum}`}
+                        className="w-full h-full object-cover"
+                      />
+                      <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-sky-600/95 text-white text-[9px] font-black uppercase shadow">
+                        Cor {colorNum}
+                      </span>
+                      <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex justify-end p-1.5">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveExtraColorPhoto(index);
+                          }}
+                          className="w-5 h-5 rounded-full bg-rose-600/90 hover:bg-rose-500 text-white flex items-center justify-center transition-all cursor-pointer"
+                          title="Remover cor"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {totalProductPhotos === 0 && (
           <div
             className={`p-3 rounded-xl text-xs flex items-center gap-2 border ${
               isAmetista
@@ -786,14 +932,15 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            {form.referencePhotos.length > 0 && (
+            {totalProductPhotos > 0 && (
               <button
                 type="button"
                 disabled={isIdentifyingProduct}
                 onClick={() => {
-                  if (form.referencePhotos[0]) {
+                  const firstAny = form.referencePhotos[0] || extraColorPhotos[0];
+                  if (firstAny) {
                     hasUserManuallyEditedNameRef.current = false;
-                    autoIdentifyGarmentFromPhoto(form.referencePhotos[0], true, lastUploadedFileNameRef.current);
+                    autoIdentifyGarmentFromPhoto(firstAny, true, lastUploadedFileNameRef.current);
                   }
                 }}
                 className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${

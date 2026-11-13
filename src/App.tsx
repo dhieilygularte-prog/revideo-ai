@@ -1247,7 +1247,9 @@ export default function App() {
 
   // ─── MODO ANA MARIA HANDLERS ──────────────────────────────────────────────
   const handleStartAnaMaria = async () => {
-    if (!anaMariaForm.referencePhotos || anaMariaForm.referencePhotos.length === 0) {
+    const totalAnaMariaPhotos =
+      (anaMariaForm.referencePhotos?.length || 0) + (anaMariaForm.extraColorPhotos?.length || 0);
+    if (totalAnaMariaPhotos === 0) {
       alert('Por favor, anexe ao menos 1 foto da peça.');
       return;
     }
@@ -1299,6 +1301,7 @@ export default function App() {
     setAnaMariaForm({
       productName: '',
       referencePhotos: [],
+      extraColorPhotos: [],
       influencer: 'Mulher',
       bodyType: 'normal',
       presentationMode: 'mirror_selfie',

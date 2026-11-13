@@ -42,7 +42,8 @@ export interface AnaMariaAudit {
 
 export interface AnaMariaFormState {
   productName: string;
-  referencePhotos: string[]; // até 10 fotos do mesmo produto
+  referencePhotos: string[]; // até 10 fotos da mesma cor em múltiplos ângulos e detalhes
+  extraColorPhotos?: string[]; // fotos em cores diferentes para "Gerar em nova cor"
   influencer: AnaMariaInfluencer; // Padrão: 'Mulher'
   bodyType: AnaMariaBodyType; // Padrão: 'normal'
   additionalInstructions: string; // Prioridade máxima
@@ -68,6 +69,12 @@ export interface AnaMariaColorGroup {
   photoIndices: number[];
 }
 
+export interface AnaMariaDressInspection {
+  lengthCategory: 'curto' | 'midi' | 'longo' | 'unknown';
+  hasSingleSideSlit: boolean;
+  slitLegWearer: 'left' | 'right' | 'both' | 'center' | 'none';
+}
+
 export interface AnaMariaResultState {
   id: string;
   timestamp: number;
@@ -76,6 +83,7 @@ export interface AnaMariaResultState {
   referencePhotos: string[];
   colorGroups?: AnaMariaColorGroup[];
   activeColorGroupIndex?: number;
+  dressInspection?: AnaMariaDressInspection;
   influencer: AnaMariaInfluencer;
   bodyType: AnaMariaBodyType;
   additionalInstructions: string;

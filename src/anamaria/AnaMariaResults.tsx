@@ -36,6 +36,7 @@ import {
   regenerateAnaMariaImage,
   regenerateAnaMariaNewScenario,
   generateAnaMariaNewColor,
+  generateAnaMariaSameModelNewColor,
   getActiveColorGroupPhotos,
   refineAnaMariaVideoPrompt,
   generateAnaMariaCompactPrompt,
@@ -140,6 +141,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
   const [isRegeneratingImage, setIsRegeneratingImage] = useState(false);
   const [isSwitchingScenario, setIsSwitchingScenario] = useState(false);
   const [isGeneratingNewColor, setIsGeneratingNewColor] = useState(false);
+  const [isGeneratingSameModelNewColor, setIsGeneratingSameModelNewColor] = useState(false);
 
   // Microfone para alteração da imagem (Item 8)
   const [isImageMicRecording, setIsImageMicRecording] = useState(false);
@@ -531,18 +533,21 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
     }
   };
 
-  // Gerar em Nova Cor: escolhe ciclicamente a próxima cor, outra modelo e outro cenário mantendo o mesmo prompt e textos
-  const handleGenerateNewColor = async () => {
+  // Variações de cor:
+  // keepSameModelAndScenario = false ("Gerar em nova cor"): nova cor + outra modelo + outro cenário (mesmo modo de apresentação e mesmos prompts/textos)
+  // keepSameModelAndScenario = true ("GERAR IGUAL EM NOVA COR"): nova cor + mesma modelo + mesmo cenário anteriores (mesmos prompts/textos)
+  const handleColorVariation = async (keepSameModelAndScenario: boolean) => {
     if (!result.referencePhotos || result.referencePhotos.length === 0) {
       alert('Nenhuma foto de referência encontrada na memória deste resultado.');
       return;
     }
+    const setLoading = keepSameModelAndScenario ? setIsGeneratingSameModelNewColor : setIsGeneratingNewColor;
     try {
-      setIsGeneratingNewColor(true);
-      const res = await generateAnaMariaNewColor({
-        result,
-        aiProfile,
-      });
+      setLoading(true);
+      const generator = keepSameModelAndScenario
+        ? generateAnaMariaSameModelNewColor
+        : generateAnaMariaNewColor;
+      const res = await generator({ result, aiProfile });
 
       const updatedResult: AnaMariaResultState = {
         ...result,
@@ -564,9 +569,9 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
       setHasDownloadedImageOnce(false);
       setDownloadedImage(false);
     } catch (err: any) {
-      alert(`Falha ao gerar em nova cor: ${err?.message || err}`);
+      alert(`Falha ao gerar variação de cor: ${err?.message || err}`);
     } finally {
-      setIsGeneratingNewColor(false);
+      setLoading(false);
     }
   };
 
@@ -662,7 +667,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
           {/* Trocar Cenário */}
           <button
             type="button"
-            disabled={isSwitchingScenario || isRegeneratingImage || isGeneratingNewColor}
+            disabled={isSwitchingScenario || isRegeneratingImage || isGeneratingNewColor || isGeneratingSameModelNewColor}
             onClick={handleSwitchScenario}
             className={`px-4 py-2 text-zinc-200 hover:text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-sm border ${
               isAmetista
@@ -678,13 +683,25 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
           {/* Gerar em nova cor */}
           <button
             type="button"
-            disabled={isGeneratingNewColor || isSwitchingScenario || isRegeneratingImage}
-            onClick={handleGenerateNewColor}
+            disabled={isGeneratingNewColor || isGeneratingSameModelNewColor || isSwitchingScenario || isRegeneratingImage}
+            onClick={() => handleColorVariation(false)}
             className="px-4 py-2 bg-sky-600 hover:bg-sky-500 disabled:opacity-60 text-white text-xs font-black rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-sky-950/50 border border-sky-400/50"
-            title="Escolhe a próxima cor das fotos de referência na memória, com outra modelo e outro cenário, mantendo o mesmo prompt e textos"
+            title="Escolhe a próxima cor das fotos de referência, outra modelo da galeria e outro cenário da galeria, mantendo o mesmo modo de apresentação e mesmos prompts/textos"
           >
             <Palette className={`w-4 h-4 text-white ${isGeneratingNewColor ? 'animate-spin' : ''}`} />
             <span>{isGeneratingNewColor ? 'Gerando nova cor...' : 'Gerar em nova cor'}</span>
+          </button>
+
+          {/* GERAR IGUAL EM NOVA COR */}
+          <button
+            type="button"
+            disabled={isGeneratingSameModelNewColor || isGeneratingNewColor || isSwitchingScenario || isRegeneratingImage}
+            onClick={() => handleColorVariation(true)}
+            className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-60 text-white text-xs font-black rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-cyan-950/50 border border-cyan-400/50"
+            title="Mantém exatamente a mesma modelo e mesmo cenário da imagem anterior, alterando apenas a cor da roupa para a próxima cor de referência"
+          >
+            <Copy className={`w-4 h-4 text-white ${isGeneratingSameModelNewColor ? 'animate-spin' : ''}`} />
+            <span>{isGeneratingSameModelNewColor ? 'Gerando igual...' : 'GERAR IGUAL EM NOVA COR'}</span>
           </button>
         </div>
 

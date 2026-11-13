@@ -1920,6 +1920,142 @@ Responda APENAS JSON válido neste formato exato:
   }
 });
 
+app.post('/api/anamaria-inspect-dress', async (req, res) => {
+  try {
+    const { photoBase64, productName } = req.body as { photoBase64?: string; productName?: string };
+    if (!photoBase64) {
+      return res.json({
+        success: true,
+        lengthCategory: 'unknown',
+        hasSingleSideSlit: false,
+        slitLegWearer: 'none',
+      });
+    }
+
+    const cleanUrl = photoBase64.startsWith('data:') || photoBase64.startsWith('http')
+      ? photoBase64
+      : `data:image/jpeg;base64,${photoBase64}`;
+
+    const parseInspection = (rawText: string) => {
+      const match = rawText.match(/\{[\s\S]*\}/);
+      if (!match) return null;
+      try {
+        const parsed = JSON.parse(match[0]);
+        const lenRaw = String(parsed.lengthCategory || '').toLowerCase();
+        const lengthCategory =
+          lenRaw === 'curto' || lenRaw === 'mini'
+            ? 'curto'
+            : lenRaw === 'midi'
+            ? 'midi'
+            : lenRaw === 'longo' || lenRaw === 'maxi'
+            ? 'longo'
+            : 'unknown';
+        const slitLegRaw = String(parsed.slitLegWearer || 'none').toLowerCase();
+        const slitLegWearer =
+          slitLegRaw === 'left' || slitLegRaw === 'right' || slitLegRaw === 'both' || slitLegRaw === 'center'
+            ? slitLegRaw
+            : 'none';
+        const hasSingleSideSlit = Boolean(
+          parsed.hasSingleSideSlit && (slitLegWearer === 'left' || slitLegWearer === 'right')
+        );
+        return { lengthCategory, hasSingleSideSlit, slitLegWearer };
+      } catch {
+        return null;
+      }
+    };
+
+    const inspectPrompt = `Inspect this dress/garment photo${productName ? ` ("${productName}")` : ''} and answer strictly in valid JSON with TWO critical attributes:
+1. "lengthCategory":
+   - "curto": hem ends above the knees (mini/short dress).
+   - "midi": hem ends around the knees or mid-calf/shin, leaving ankles and footwear/feet clearly visible.
+   - "longo": hem reaches all the way down to the ankles/floor/covering feet (maxi/floor-length dress).
+2. Leg slit detection ("hasSingleSideSlit" & "slitLegWearer"):
+   - Carefully examine whether the skirt of the dress has a side/front thigh-high leg slit.
+   - IMPORTANT perspective rule: report "slitLegWearer" strictly from the WEARER'S own anatomical body perspective (facing front toward camera/viewer: a slit on the viewer's RIGHT side is the wearer's LEFT leg = "left"; a slit on the viewer's LEFT side is the wearer's RIGHT leg = "right").
+   - If the dress has ONLY ONE side slit on ONE leg (asymmetrical single slit), set "hasSingleSideSlit": true and "slitLegWearer": "left" or "right".
+   - If the dress has symmetrical slits on BOTH legs, set "hasSingleSideSlit": false and "slitLegWearer": "both".
+   - If there is NO leg slit, set "hasSingleSideSlit": false and "slitLegWearer": "none".
+
+Respond ONLY valid JSON:
+{"lengthCategory":"midi","hasSingleSideSlit":true,"slitLegWearer":"left"}`;
+
+    if (openAIProvider && openAIProvider.isConfigured()) {
+      const client = (openAIProvider as any).getClient();
+      for (const visionModel of ['gpt-4o-mini', 'gpt-4o']) {
+        try {
+          const completion = await client.chat.completions.create({
+            model: visionModel,
+            max_tokens: 180,
+            temperature: 0.1,
+            response_format: { type: 'json_object' },
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  { type: 'image_url', image_url: { url: cleanUrl, detail: 'high' } },
+                  { type: 'text', text: inspectPrompt },
+                ],
+              },
+            ],
+          });
+          const rawText = completion.choices[0]?.message?.content?.trim() || '';
+          const parsed = parseInspection(rawText);
+          if (parsed) {
+            console.log(`👗 [AnaMaria DressInspect] via ${visionModel}:`, parsed);
+            return res.json({ success: true, ...parsed });
+          }
+        } catch (err: any) {
+          console.warn(`⚠️ [AnaMaria DressInspect] OpenAI ${visionModel} falhou:`, err?.message || err);
+        }
+      }
+    }
+
+    const parsedInline = parseInlineImage(cleanUrl);
+    if (parsedInline) {
+      for (let keyIdx = 0; keyIdx < GEMINI_CANDIDATE_KEYS.length; keyIdx++) {
+        const client = getGenAI(GEMINI_CANDIDATE_KEYS[keyIdx]);
+        for (const gModel of ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash']) {
+          try {
+            const gemRes = await client.models.generateContent({
+              model: gModel,
+              contents: [{ inlineData: parsedInline }, { text: inspectPrompt }],
+            });
+            const rawText = gemRes.text?.trim() || gemRes.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+            const parsed = parseInspection(rawText);
+            if (parsed) {
+              console.log(`👗 [AnaMaria DressInspect] via ${gModel}:`, parsed);
+              return res.json({ success: true, ...parsed });
+            }
+          } catch (gemErr: any) {
+            const errStr = String(gemErr?.message || gemErr);
+            if (errStr.includes('PERMISSION_DENIED') || errStr.includes('billing') || errStr.includes('403')) {
+              rotateGeminiKey();
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    return res.json({
+      success: true,
+      fallback: true,
+      lengthCategory: 'unknown',
+      hasSingleSideSlit: false,
+      slitLegWearer: 'none',
+    });
+  } catch (err: any) {
+    console.error('Erro na rota anamaria-inspect-dress:', err);
+    return res.json({
+      success: true,
+      fallback: true,
+      lengthCategory: 'unknown',
+      hasSingleSideSlit: false,
+      slitLegWearer: 'none',
+    });
+  }
+});
+
 app.post('/api/detect-dominant-color', async (req, res) => {
   try {
     const { photoBase64, productName, productMode, mode, fileName, aiProfile: _aiProfile } = req.body;
@@ -2590,8 +2726,25 @@ async function generateImageWithSeedream(params: {
         params.prompt.includes('VESTIDO'))
   );
 
+  const isExplicitMidiOrShortSeedream = Boolean(
+    params.prompt &&
+      (params.prompt.includes('VESTIDO MIDI') ||
+        params.prompt.includes('VESTIDO CURTO') ||
+        (/\b(midi|curto|curta|mini)\b/i.test(params.prompt) &&
+          !/\b(vestido longo|comprimento longo|maxi|at[eé] o ch[aã]o)\b/i.test(params.prompt)))
+  );
+  const isExplicitLongDressSeedream = Boolean(
+    !isExplicitMidiOrShortSeedream &&
+      params.prompt &&
+      (params.prompt.includes('VESTIDO LONGO') || /\b(vestido longo|saia longa|maxi)\b/i.test(params.prompt))
+  );
+
   const clothingDirectiveSeedream = isDressOrOnePieceSeedream
-    ? '[REGRA DE VESTUÁRIO: VESTIDO / PEÇA ÚNICA]: A modelo veste EXCLUSIVAMENTE o vestido da Foto 1 cobrindo o corpo com máxima fidelidade e pernas limpas naturais. REGRA CRÍTICA DE COMPRIMENTO (VESTIDO LONGO / SAIA LONGA): Se o produto for vestido longo ou saia longa que cubra os pés/calçado na foto de referência, MANTENHA O COMPRIMENTO LONGO EXATO ATÉ O CHÃO cobrindo os pés. NÃO É OBRIGATÓRIO APARECER O CALÇADO! É TERMINANTEMENTE PROIBIDO encurtar o vestido ou subir a barra para forçar mostrar o calçado. É TERMINANTEMENTE PROIBIDO ADICIONAR CALÇA JEANS, CALÇA, SHORTS OU BERMUDA POR BAIXO DO VESTIDO.\n'
+    ? isExplicitMidiOrShortSeedream
+      ? '[REGRA DE VESTUÁRIO E COMPRIMENTO EXATO]: A modelo veste EXCLUSIVAMENTE o vestido da Foto 1 cobrindo o corpo com pernas limpas naturais (PROIBIDO calça jeans/shorts por baixo). ATENÇÃO CRÍTICA AO COMPRIMENTO: Preserve EXATAMENTE a mesma altura da barra da Foto 1 (vestido curto/midi acima dos tornozelos, deixando tornozelos e calçado 100% visíveis; É TERMINANTEMENTE PROIBIDO alongar o vestido até o chão ou cobrir os sapatos!).\n'
+      : isExplicitLongDressSeedream
+      ? '[REGRA DE VESTUÁRIO: VESTIDO LONGO]: A modelo veste EXCLUSIVAMENTE o vestido da Foto 1 (PROIBIDO calça jeans/shorts por baixo). Mantenha o comprimento longo exato até os tornozelos/chão igual à Foto 1.\n'
+      : '[REGRA DE VESTUÁRIO: VESTIDO / PEÇA ÚNICA]: A modelo veste EXCLUSIVAMENTE o vestido da Foto 1 cobrindo o corpo com máxima fidelidade e pernas limpas naturais (PROIBIDO calça jeans/shorts por baixo). REGRA CRÍTICA DE COMPRIMENTO 1:1: Reproduza EXATAMENTE a altura da barra mostrada na Foto 1 — se na Foto 1 for curto ou midi deixando tornozelos e sapatos visíveis, MANTENHA curto/midi mostrando os sapatos (PROIBIDO alongar até o chão!). Só cubra os pés se na Foto 1 o vestido for literalmente longo até o chão.\n'
     : (isUpperPieceSeedream
         ? '[REGRA OBRIGATÓRIA DE LOOK COMPLETO — BLUSA COM CALÇA JEANS E TÊNIS]: Como o produto anunciado é uma blusa/peça superior, a modelo DEVE OBRIGATORIAMENTE vestir CALÇA JEANS feminina de cintura alta e TÊNIS nos pés. É TERMINANTEMENTE PROIBIDO a modelo ficar sem calça, de calcinha, com pernas despidas ou nua na parte de baixo! Look 100% vestido e comercial com calça jeans azul e tênis casual nos pés.\n'
         : '[REGRA DE LOOK COMPLETO]: Se o produto for vestido/macacão, veste EXCLUSIVAMENTE o vestido (PROIBIDO calça jeans sob vestido); se for blusa avulsa, veste calça jeans feminina cintura alta e tênis nos pés (PROIBIDO ficar sem calça); se for peça inferior, veste blusa neutra combinando.\n');
@@ -2964,17 +3117,31 @@ async function generateImageWithFlux2ProEdit(params: {
         (/\b(blusa|blusinha|blusinhas|blusas|rendada|rendado|cropped|top|regata|camisa|camiseta|t-shirt|tshirt|casaco|jaqueta|blazer|moletom|sueter|suéter|cardiga|cardigã|bata)\b/i.test(params.prompt) ||
           params.prompt.includes('PEÇA SUPERIOR'))
     );
+    const slitMatchFlux = params.prompt.match(/\[(?:ASSIMETRIA OBRIGATÓRIA DE FENDA ÚNICA|CRITICAL ANTI-SYMMETRY SINGLE-SLIT LOCK)[^\]]*\][^\n]*/i);
+    const lengthMatchFlux = params.prompt.match(/\[COMPRIMENTO REAL DETECTADO[^\]]*\][^\n]*/i);
+    const extractedCriticalDirectives = [lengthMatchFlux?.[0], slitMatchFlux?.[0]].filter(Boolean).join(' ');
+    const isExplicitMidiOrShortFlux = Boolean(
+      params.prompt &&
+        (params.prompt.includes('VESTIDO MIDI') ||
+          params.prompt.includes('VESTIDO CURTO') ||
+          /\b(midi|curto|curta|mini)\b/i.test(params.prompt))
+    );
+
     const dressRuleFlux = isDressFlux
-      ? 'The model wears EXCLUSIVELY the dress from Photo 2 (strictly NO jeans or pants under dress). CRITICAL LENGTH MANDATE: If the dress is floor-length / maxi / long covering the feet in the reference photo, PRESERVE THE FULL FLOOR-LENGTH DRESS TOUCHING THE FLOOR AND COVERING THE FEET. Footwear is NOT mandatory to be visible; DO NOT SHORTEN or raise the hemline of long dresses to show shoes.'
+      ? isExplicitMidiOrShortFlux
+        ? 'The model wears EXCLUSIVELY the dress from Photo 2 (strictly NO jeans or pants under dress). CRITICAL LENGTH MANDATE: Preserve the EXACT MIDI or SHORT hemline height from Photo 2 keeping ankles and shoes clearly visible; NEVER lengthen a midi/short dress to the floor!'
+        : 'The model wears EXCLUSIVELY the dress from Photo 2 (strictly NO jeans or pants under dress). CRITICAL LENGTH MANDATE: Match the EXACT hemline height from Photo 2 1:1 (if short/midi showing ankles and shoes, keep shoes visible and NEVER lengthen to floor; if floor-length maxi covering feet, keep floor-length).'
       : (isUpperPieceFlux ? 'The model wears the top/blouse from Photo 2 with MANDATORY classic blue denim jeans and casual sneakers on her feet (STRICTLY FORBIDDEN pantless, underwear only or bare legs on bottom).' : 'If top, wear classic blue jeans and sneakers; if dress, wear ONLY the dress.');
     const isModelScenarioFlux = (params.modelScenarioSource || 'model') === 'model';
     const headerFlux = isModelScenarioFlux
       ? 'Photo 1 is the MODEL AND ROOM BASE: preserve 100% the exact same woman, same body, curves, hair, skin, exact same pose and framing from Photo 1. If Photo 1 shows her face, KEEP HER EXACT SAME FACE, eyes, lips, and facial expression from Photo 1; do NOT crop or cut her face if shown in Photo 1! Preserve 100% the exact same room/background setting from Photo 1. ' +
         'Photo 2 is the PRODUCT: replace her clothes with the exact garment from Photo 2 with 100% fidelity. 100% ignore the person, face, and tattoos in Photo 2; DO NOT blend or copy the face or tattoos from Photo 2. Clean unblemished skin, ZERO tattoos. ' +
-        `${dressRuleFlux} Footwear harmonization (when feet are visible; if maxi/floor-length dress covers feet, keep the long dress touching the floor and keep footwear naturally hidden under the hem; never shorten long dresses to expose shoes): if fitness/workout wear -> athletic sneakers; if nightgown, baby doll, sleepwear or loungewear -> white flip-flops with delicate strap details; if evening/party dress or formal/social wear -> elegant high-heel sandals or dress shoes matching the outfit; if casual dress -> elegant feminine sandals. CRITICAL SHARPNESS & OPTICAL CLARITY: Crystal-clear tack-sharp focus, 8k high definition, ultra-sharp facial features (eyes, eyelashes, lips), sharp fabric weave and texture, zero blur, NO BLUR, NO DEFOCUS, NO SOFT FOCUS, crisp realistic modern smartphone photography, high optical contrast. `
+        `${extractedCriticalDirectives ? `${extractedCriticalDirectives} ` : ''}` +
+        `${dressRuleFlux} Footwear harmonization matched to outfit (if fitness/workout wear -> athletic sneakers; if nightgown, baby doll or loungewear -> white flip-flops; if evening/party dress or formal wear -> elegant high-heel sandals; if casual dress -> elegant feminine sandals). CRITICAL SHARPNESS & OPTICAL CLARITY: Crystal-clear tack-sharp focus, 8k high definition, ultra-sharp facial features, sharp fabric weave and texture, zero blur, NO BLUR, realistic modern smartphone photography. `
       : 'Photo 1 is the MODEL: preserve 100% the exact same woman, same body, curves, hair, skin, exact same pose and framing from Photo 1. If Photo 1 shows her face, KEEP HER EXACT SAME FACE, eyes, lips, and facial expression from Photo 1. ' +
         'Photo 2 is the PRODUCT: replace her clothes with the exact garment from Photo 2 with 100% fidelity. 100% ignore the person, face, and tattoos in Photo 2; DO NOT blend or copy the face or tattoos from Photo 2. Clean unblemished skin, ZERO tattoos. ' +
-        `Photo 3 is the SCENARIO ROOM: place her standing in this room. ${dressRuleFlux} Footwear harmonizes with outfit (if feet are visible; if floor-length dress covers feet, preserve full length covering feet without forcing shoes). CRITICAL SHARPNESS & OPTICAL CLARITY: Crystal-clear tack-sharp focus, 8k high definition, ultra-sharp facial features (eyes, eyelashes, lips), sharp fabric weave and texture, zero blur, NO BLUR, NO DEFOCUS, NO SOFT FOCUS, crisp realistic modern smartphone photography, high optical contrast. `;
+        `${extractedCriticalDirectives ? `${extractedCriticalDirectives} ` : ''}` +
+        `Photo 3 is the SCENARIO ROOM: place her standing in this room. ${dressRuleFlux} Footwear harmonizes with outfit. CRITICAL SHARPNESS & OPTICAL CLARITY: Crystal-clear tack-sharp focus, 8k high definition, sharp fabric weave and texture, zero blur, NO BLUR, realistic modern smartphone photography. `;
     promptFlux = compactPromptToLimit(params.prompt, 2450, headerFlux);
   }
 
