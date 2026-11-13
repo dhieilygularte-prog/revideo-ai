@@ -4,6 +4,7 @@ import {
   AnaMariaAudit,
   AnaMariaImageModel,
   AnaMariaMasterId,
+  AnaMariaColorGroup,
 } from './types';
 import {
   buildAnaMariaImagePrompt,
@@ -330,6 +331,53 @@ export async function resolveModelBase64(form: AnaMariaFormState): Promise<strin
   return undefined;
 }
 
+export async function classifyProductColorGroups(
+  photos: string[],
+  productName?: string
+): Promise<AnaMariaColorGroup[]> {
+  const validPhotos = (photos || []).filter(Boolean).slice(0, 10);
+  if (validPhotos.length === 0) return [];
+  if (validPhotos.length === 1) {
+    return [{ colorName: 'Cor 1', photoIndices: [0] }];
+  }
+
+  try {
+    const thumbs = await Promise.all(
+      validPhotos.map((p) => compressImageForFastTransfer(p, 384, 0.7))
+    );
+    const res = await postJson<{
+      success: boolean;
+      groups?: AnaMariaColorGroup[];
+    }>('/api/anamaria-group-colors', {
+      photos: thumbs,
+      productName,
+    }, 0);
+
+    if (res?.success && Array.isArray(res.groups) && res.groups.length > 0) {
+      return res.groups;
+    }
+  } catch (err) {
+    console.warn('Falha ao agrupar cores das fotos de referência, mantendo grupo único:', err);
+  }
+
+  return [{ colorName: 'Cor Principal', photoIndices: validPhotos.map((_, idx) => idx) }];
+}
+
+export function getActiveColorGroupPhotos(
+  photos: string[],
+  colorGroups?: AnaMariaColorGroup[],
+  activeIndex = 0
+): string[] {
+  const safePhotos = (photos || []).filter(Boolean);
+  if (!colorGroups || colorGroups.length <= 1) {
+    return safePhotos;
+  }
+  const safeIdx = ((activeIndex % colorGroups.length) + colorGroups.length) % colorGroups.length;
+  const group = colorGroups[safeIdx];
+  const groupPhotos = (group?.photoIndices || []).map((i) => safePhotos[i]).filter(Boolean);
+  return groupPhotos.length > 0 ? groupPhotos : safePhotos;
+}
+
 async function prepareProductPhotosForPayload(photos: string[]): Promise<{
   primaryPhoto: string;
   supplementaryPhotos: string[];
@@ -530,7 +578,22 @@ export async function runAnaMariaPipeline(
 
   // O Prompt Enxuto NÃO é gerado automaticamente; só é gerado sob demanda quando o usuário toca em GERAR PROMPT ENXUTO.
 
-  // 2. Preparação em paralelo do Cenário + Fotos de Referência compactadas (~300 KB total)
+  // 2. Agrupamento de cores (para suportar múltiplas cores ou múltiplos ângulos da mesma cor)
+  onProgress('image_generation', 40);
+  if (form.referencePhotos.length >= 2) {
+    onStatusMessage(`Identificando cores e ângulos entre as ${form.referencePhotos.length} fotos da peça...`);
+  }
+  const colorGroups = await classifyProductColorGroups(form.referencePhotos, form.productName);
+  const activeColorGroupIndex = 0;
+  const activeColorGroup = colorGroups[activeColorGroupIndex];
+  const activeColorPhotos = getActiveColorGroupPhotos(form.referencePhotos, colorGroups, activeColorGroupIndex);
+
+  const effectiveImagePrompt =
+    colorGroups.length > 1 && activeColorGroup?.colorName
+      ? `${imagePrompt}\n\nATENÇÃO À COR EXCLUSIVA: Reproduza EXCLUSIVAMENTE a peça na cor "${activeColorGroup.colorName}" conforme a foto de referência ativa.`
+      : imagePrompt;
+
+  // 3. Preparação em paralelo do Cenário + Fotos de Referência da cor ativa compactadas
   onProgress('image_generation', 45);
   const modelNameLabel =
     form.imageModel === 'seedream_5_0_pro'
@@ -545,12 +608,16 @@ export async function runAnaMariaPipeline(
       ? 'FLUX 2 Pro Edit — fal.ai'
       : 'OpenAI';
   const scenarioMsg = form.selectedScenarioNumber ? ` no Cenário ${form.selectedScenarioNumber}` : '';
-  onStatusMessage(`Gerando imagem vertical 9:16${scenarioMsg} no ${modelNameLabel}...`);
+  const colorMsg =
+    colorGroups.length > 1 && activeColorGroup?.colorName
+      ? ` (Cor 1/${colorGroups.length}: ${activeColorGroup.colorName})`
+      : '';
+  onStatusMessage(`Gerando imagem vertical 9:16${scenarioMsg}${colorMsg} no ${modelNameLabel}...`);
 
   const [activeScenarioBase64, activeModelBase64, { primaryPhoto, supplementaryPhotos }] = await Promise.all([
     resolveScenarioBase64(form),
     resolveModelBase64(form),
-    prepareProductPhotosForPayload(form.referencePhotos),
+    prepareProductPhotosForPayload(activeColorPhotos),
   ]);
 
   const { imageUrl: generatedImageUrl, usedModel } = await generateSceneImageWithFallback({
@@ -560,7 +627,7 @@ export async function runAnaMariaPipeline(
         'OpenAI retornou erro — mudando automaticamente para SeaDream 5.0 Pro e gerando novamente...'
       ),
     payload: {
-      prompt: imagePrompt,
+      prompt: effectiveImagePrompt,
       productPhotoBase64: primaryPhoto,
       productPhotosBase64: supplementaryPhotos,
       scenarioPhotoBase64: activeScenarioBase64,
@@ -611,6 +678,8 @@ export async function runAnaMariaPipeline(
     imageUrl: generatedImageUrl,
     productName: form.productName,
     referencePhotos: form.referencePhotos,
+    colorGroups,
+    activeColorGroupIndex,
     influencer: form.influencer,
     bodyType: form.bodyType,
     additionalInstructions: form.additionalInstructions,
@@ -744,6 +813,145 @@ export async function regenerateAnaMariaNewScenario(params: {
   });
 
   return { imageUrl: highResUrl, room: nextRoom, imageModel: usedModel };
+}
+
+/**
+ * Gerar em Nova Cor:
+ * Seleciona ciclicamente a próxima cor disponível das fotos de referência (Cor 1 -> Cor 2 -> ... -> Cor N -> Cor 1),
+ * mantendo exatamente o mesmo produto, mesmo modo de apresentação e mesmos prompts/textos,
+ * porém escolhendo outro cenário da galeria e outra modelo da galeria do modo ativo.
+ */
+export async function generateAnaMariaNewColor(params: {
+  result: AnaMariaResultState;
+  aiProfile?: AIProfile;
+}): Promise<{
+  imageUrl: string;
+  imageModel: AnaMariaImageModel;
+  selectedModelGalleryId?: string;
+  selectedModelGalleryNumber?: number;
+  selectedModelGalleryUrl?: string;
+  selectedScenarioId?: string;
+  selectedScenarioNumber?: number;
+  modelScenarioSource: 'gallery' | 'model';
+  colorGroups: AnaMariaColorGroup[];
+  activeColorGroupIndex: number;
+  timestamp: number;
+}> {
+  const { result, aiProfile = 'openai' } = params;
+  const photos = (result.referencePhotos || []).filter(Boolean);
+  if (photos.length === 0) {
+    throw new Error('As fotos de referência não estão mais em memória. Gere o produto novamente na Página 1.');
+  }
+
+  const colorGroups =
+    result.colorGroups && result.colorGroups.length > 0
+      ? result.colorGroups
+      : await classifyProductColorGroups(photos, result.productName);
+
+  const currentIdx = typeof result.activeColorGroupIndex === 'number' ? result.activeColorGroupIndex : 0;
+  const nextColorIdx = (currentIdx + 1) % Math.max(colorGroups.length, 1);
+  const nextColorGroup = colorGroups[nextColorIdx];
+  const activeColorPhotos = getActiveColorGroupPhotos(photos, colorGroups, nextColorIdx);
+
+  const activeMode = result.presentationMode || 'mirror_selfie';
+
+  // Escolhe OUTRO cenário diferente do atual
+  const scenarioPool = activeMode === 'pov' ? POV_SCENARIO_GALLERY_ITEMS : SCENARIO_GALLERY_ITEMS;
+  const otherScenarios = scenarioPool.filter(
+    (s) => s.id !== result.selectedScenarioId && s.number !== result.selectedScenarioNumber
+  );
+  const scenarioCandidates = otherScenarios.length > 0 ? otherScenarios : scenarioPool;
+  const chosenScenario =
+    scenarioCandidates[Math.floor(Math.random() * scenarioCandidates.length)] || scenarioPool[0];
+
+  // Escolhe OUTRA modelo diferente da atual (dentro da galeria do mesmo modo de apresentação)
+  let nextModelId: string | undefined;
+  let nextModelNumber: number | undefined;
+  let nextModelUrl: string | undefined;
+  if (!result.generateModelViaPrompt) {
+    const modelGallery = getModelGalleryForMode(activeMode);
+    const otherModels = modelGallery.filter(
+      (m) => m.id !== result.selectedModelGalleryId && m.number !== result.selectedModelGalleryNumber
+    );
+    const modelCandidates = otherModels.length > 0 ? otherModels : modelGallery;
+    const chosenModel = modelCandidates[Math.floor(Math.random() * modelCandidates.length)];
+    if (chosenModel) {
+      nextModelId = chosenModel.id;
+      nextModelNumber = chosenModel.number;
+      nextModelUrl = chosenModel.fullUrl;
+    }
+  }
+
+  const nextForm: AnaMariaFormState = {
+    productName: result.productName,
+    referencePhotos: activeColorPhotos,
+    influencer: result.influencer,
+    bodyType: result.bodyType,
+    additionalInstructions: result.additionalInstructions,
+    imageModel: result.imageModel,
+    videoPromptLimit: result.videoPromptLimit,
+    presentationMode: activeMode,
+    selectedMasterId: result.selectedMasterId,
+    selectedScenarioId: chosenScenario?.id,
+    selectedScenarioNumber: chosenScenario?.number,
+    selectedScenarioUrl: chosenScenario?.fullUrl,
+    selectedModelGalleryId: nextModelId,
+    selectedModelGalleryNumber: nextModelNumber,
+    selectedModelGalleryUrl: nextModelUrl,
+    modelScenarioSource: 'gallery',
+    generateModelViaPrompt: result.generateModelViaPrompt,
+  };
+
+  const { prompt: basePrompt } = buildAnaMariaImagePrompt(nextForm, 'hall_espelho');
+  const effectivePrompt =
+    colorGroups.length > 1 && nextColorGroup?.colorName
+      ? `${basePrompt}\n\nATENÇÃO À COR EXCLUSIVA: Reproduza EXCLUSIVAMENTE a peça na cor "${nextColorGroup.colorName}" conforme a foto de referência ativa.`
+      : basePrompt;
+
+  const [activeScenarioBase64, activeModelBase64, { primaryPhoto, supplementaryPhotos }] = await Promise.all([
+    resolveScenarioBase64(nextForm),
+    resolveModelBase64(nextForm),
+    prepareProductPhotosForPayload(activeColorPhotos),
+  ]);
+
+  const { imageUrl: highResUrl, usedModel } = await generateSceneImageWithFallback({
+    requestedModel: result.imageModel,
+    payload: {
+      prompt: effectivePrompt,
+      productPhotoBase64: primaryPhoto,
+      productPhotosBase64: supplementaryPhotos,
+      scenarioPhotoBase64: activeScenarioBase64,
+      modelReferenceBase64: activeModelBase64,
+      selectedModelGalleryId: nextModelId,
+      selectedModelGalleryNumber: nextModelNumber,
+      generateModelViaPrompt: Boolean(result.generateModelViaPrompt),
+      modelScenarioSource: 'gallery',
+      isAnaMariaMode: true,
+      presentationMode: activeMode,
+      selectedMasterId: result.selectedMasterId,
+      selectedScenarioNumber: chosenScenario?.number,
+      selectedScenarioId: chosenScenario?.id,
+      influencer: result.influencer,
+      aspectRatio: '9:16',
+      bodyType: result.bodyType,
+      aiProfile,
+      additionalInstructions: result.additionalInstructions,
+    },
+  });
+
+  return {
+    imageUrl: highResUrl,
+    imageModel: usedModel,
+    selectedModelGalleryId: nextModelId,
+    selectedModelGalleryNumber: nextModelNumber,
+    selectedModelGalleryUrl: nextModelUrl,
+    selectedScenarioId: chosenScenario?.id,
+    selectedScenarioNumber: chosenScenario?.number,
+    modelScenarioSource: 'gallery',
+    colorGroups,
+    activeColorGroupIndex: nextColorIdx,
+    timestamp: Date.now(),
+  };
 }
 
 /**

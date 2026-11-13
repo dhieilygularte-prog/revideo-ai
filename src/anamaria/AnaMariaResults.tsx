@@ -23,6 +23,7 @@ import {
   CheckCircle2,
   Plus,
   Scissors,
+  Palette,
 } from 'lucide-react';
 import { AnaMariaResultState, AnaMariaAuditColorStatus, AnaMariaTheme } from './types';
 import {
@@ -34,6 +35,8 @@ import {
 import {
   regenerateAnaMariaImage,
   regenerateAnaMariaNewScenario,
+  generateAnaMariaNewColor,
+  getActiveColorGroupPhotos,
   refineAnaMariaVideoPrompt,
   generateAnaMariaCompactPrompt,
   saveAnaMariaResult,
@@ -136,6 +139,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
   const [imageTweakText, setImageTweakText] = useState('');
   const [isRegeneratingImage, setIsRegeneratingImage] = useState(false);
   const [isSwitchingScenario, setIsSwitchingScenario] = useState(false);
+  const [isGeneratingNewColor, setIsGeneratingNewColor] = useState(false);
 
   // Microfone para alteração da imagem (Item 8)
   const [isImageMicRecording, setIsImageMicRecording] = useState(false);
@@ -396,10 +400,15 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
   const handleRegenerateImage = async (customInstruction?: string) => {
     try {
       setIsRegeneratingImage(true);
+      const activePhotos = getActiveColorGroupPhotos(
+        result.referencePhotos,
+        result.colorGroups,
+        result.activeColorGroupIndex || 0
+      );
       const res = await regenerateAnaMariaImage({
         form: {
           productName: result.productName,
-          referencePhotos: result.referencePhotos,
+          referencePhotos: activePhotos,
           influencer: result.influencer,
           bodyType: result.bodyType,
           presentationMode: result.presentationMode,
@@ -439,10 +448,15 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
   const handleRegenerateWithSeaDream = async () => {
     try {
       setIsRegeneratingImage(true);
+      const activePhotos = getActiveColorGroupPhotos(
+        result.referencePhotos,
+        result.colorGroups,
+        result.activeColorGroupIndex || 0
+      );
       const res = await regenerateAnaMariaImage({
         form: {
           productName: result.productName,
-          referencePhotos: result.referencePhotos,
+          referencePhotos: activePhotos,
           influencer: result.influencer,
           bodyType: result.bodyType,
           presentationMode: result.presentationMode,
@@ -481,10 +495,15 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
   const handleSwitchScenario = async () => {
     try {
       setIsSwitchingScenario(true);
+      const activePhotos = getActiveColorGroupPhotos(
+        result.referencePhotos,
+        result.colorGroups,
+        result.activeColorGroupIndex || 0
+      );
       const res = await regenerateAnaMariaNewScenario({
         form: {
           productName: result.productName,
-          referencePhotos: result.referencePhotos,
+          referencePhotos: activePhotos,
           influencer: result.influencer,
           bodyType: result.bodyType,
           presentationMode: result.presentationMode,
@@ -509,6 +528,44 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
       alert(`Falha ao trocar cenário: ${err?.message || err}`);
     } finally {
       setIsSwitchingScenario(false);
+    }
+  };
+
+  // Gerar em Nova Cor: escolhe ciclicamente a próxima cor, outra modelo e outro cenário mantendo o mesmo prompt e textos
+  const handleGenerateNewColor = async () => {
+    if (!result.referencePhotos || result.referencePhotos.length === 0) {
+      alert('Nenhuma foto de referência encontrada na memória deste resultado.');
+      return;
+    }
+    try {
+      setIsGeneratingNewColor(true);
+      const res = await generateAnaMariaNewColor({
+        result,
+        aiProfile,
+      });
+
+      const updatedResult: AnaMariaResultState = {
+        ...result,
+        timestamp: res.timestamp,
+        imageUrl: res.imageUrl,
+        imageModel: res.imageModel,
+        selectedModelGalleryId: res.selectedModelGalleryId,
+        selectedModelGalleryNumber: res.selectedModelGalleryNumber,
+        selectedModelGalleryUrl: res.selectedModelGalleryUrl,
+        selectedScenarioId: res.selectedScenarioId,
+        selectedScenarioNumber: res.selectedScenarioNumber,
+        modelScenarioSource: res.modelScenarioSource,
+        colorGroups: res.colorGroups,
+        activeColorGroupIndex: res.activeColorGroupIndex,
+      };
+      onUpdateResult(updatedResult);
+      saveAnaMariaResult(updatedResult);
+      setHasDownloadedImageOnce(false);
+      setDownloadedImage(false);
+    } catch (err: any) {
+      alert(`Falha ao gerar em nova cor: ${err?.message || err}`);
+    } finally {
+      setIsGeneratingNewColor(false);
     }
   };
 
@@ -604,7 +661,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
           {/* Trocar Cenário */}
           <button
             type="button"
-            disabled={isSwitchingScenario || isRegeneratingImage}
+            disabled={isSwitchingScenario || isRegeneratingImage || isGeneratingNewColor}
             onClick={handleSwitchScenario}
             className={`px-4 py-2 text-zinc-200 hover:text-white text-xs font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-sm border ${
               isAmetista
@@ -615,6 +672,18 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
           >
             <Home className={`w-4 h-4 ${accentIconClass} ${isSwitchingScenario ? 'animate-spin' : ''}`} />
             <span>{isSwitchingScenario ? 'Trocando cenário...' : 'Trocar Cenário'}</span>
+          </button>
+
+          {/* Gerar em nova cor */}
+          <button
+            type="button"
+            disabled={isGeneratingNewColor || isSwitchingScenario || isRegeneratingImage}
+            onClick={handleGenerateNewColor}
+            className="px-4 py-2 bg-sky-600 hover:bg-sky-500 disabled:opacity-60 text-white text-xs font-black rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow-md shadow-sky-950/50 border border-sky-400/50"
+            title="Escolhe a próxima cor das fotos de referência na memória, com outra modelo e outro cenário, mantendo o mesmo prompt e textos"
+          >
+            <Palette className={`w-4 h-4 text-white ${isGeneratingNewColor ? 'animate-spin' : ''}`} />
+            <span>{isGeneratingNewColor ? 'Gerando nova cor...' : 'Gerar em nova cor'}</span>
           </button>
         </div>
 
@@ -966,6 +1035,15 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                   <span className="text-white font-semibold">
                     {getMasterPromptById(result.selectedMasterId).shortName.replace(/^(\d+)\.\s*/, '$1- ')}
                   </span>
+                  {result.colorGroups && result.colorGroups.length > 1 && (
+                    <>
+                      {', Cor: '}
+                      <span className="text-sky-300 font-semibold">
+                        {result.colorGroups[result.activeColorGroupIndex || 0]?.colorName || 'Cor'}{' '}
+                        ({(result.activeColorGroupIndex || 0) + 1}/{result.colorGroups.length})
+                      </span>
+                    </>
+                  )}
                 </p>
               </div>
 

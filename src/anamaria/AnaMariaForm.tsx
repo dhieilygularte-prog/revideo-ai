@@ -708,7 +708,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                 Arraste as fotos da peça aqui ou clique para selecionar
               </p>
               <p className="text-[11px] text-zinc-500">
-                Suporta PNG, JPG, WEBP. Você pode anexar até 10 fotos da peça para máxima fidelidade.
+                Suporta PNG, JPG, WEBP (até 10 fotos): envie vários ângulos da mesma cor ou várias cores da mesma peça para usar "Gerar em nova cor".
               </p>
             </div>
           </div>

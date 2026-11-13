@@ -1756,6 +1756,168 @@ Condense este prompt mantendo 80% do foco e do espaço na preservação fiel de 
   }
 });
 
+app.post('/api/anamaria-group-colors', async (req, res) => {
+  try {
+    const { photos, productName } = req.body as { photos?: string[]; productName?: string };
+    const photoList = Array.isArray(photos) ? photos.filter(Boolean).slice(0, 10) : [];
+    if (photoList.length === 0) {
+      return res.status(400).json({ success: false, error: 'Nenhuma foto fornecida.' });
+    }
+    if (photoList.length === 1) {
+      return res.json({
+        success: true,
+        groups: [{ colorName: 'Cor 1', photoIndices: [0] }],
+      });
+    }
+
+    const normalizeGroups = (raw: unknown): Array<{ colorName: string; photoIndices: number[] }> => {
+      const seen = new Set<number>();
+      const out: Array<{ colorName: string; photoIndices: number[] }> = [];
+      const arr = Array.isArray(raw) ? raw : [];
+      for (const item of arr) {
+        if (!item || typeof item !== 'object') continue;
+        const rec = item as Record<string, unknown>;
+        const rawIndices = Array.isArray(rec.photoIndices) ? rec.photoIndices : [];
+        const indices: number[] = [];
+        for (const idx of rawIndices) {
+          const n = Number(idx);
+          if (Number.isInteger(n) && n >= 0 && n < photoList.length && !seen.has(n)) {
+            seen.add(n);
+            indices.push(n);
+          }
+        }
+        if (indices.length > 0) {
+          const colorName = typeof rec.colorName === 'string' && rec.colorName.trim()
+            ? rec.colorName.trim().slice(0, 40)
+            : `Cor ${out.length + 1}`;
+          out.push({ colorName, photoIndices: indices });
+        }
+      }
+      const missing: number[] = [];
+      for (let i = 0; i < photoList.length; i++) {
+        if (!seen.has(i)) missing.push(i);
+      }
+      if (missing.length > 0) {
+        if (out.length === 0) {
+          out.push({ colorName: 'Cor Principal', photoIndices: missing });
+        } else {
+          for (const m of missing) {
+            out.push({ colorName: `Cor ${out.length + 1}`, photoIndices: [m] });
+          }
+        }
+      }
+      return out.length > 0
+        ? out
+        : [{ colorName: 'Cor Principal', photoIndices: photoList.map((_, i) => i) }];
+    };
+
+    const parseJsonGroups = (text: string) => {
+      const match = text.match(/\{[\s\S]*\}/) || text.match(/\[[\s\S]*\]/);
+      if (!match) return null;
+      try {
+        const parsed = JSON.parse(match[0]);
+        const rawGroups = Array.isArray(parsed) ? parsed : parsed?.groups;
+        if (Array.isArray(rawGroups) && rawGroups.length > 0) {
+          return normalizeGroups(rawGroups);
+        }
+      } catch {
+        return null;
+      }
+      return null;
+    };
+
+    const groupingPrompt = `Você recebeu ${photoList.length} imagens numeradas de índice 0 a ${photoList.length - 1} do produto${productName ? ` "${productName}"` : ''}.
+Sua tarefa é AGRUPAR os índices por COR / ESTAMPA DA PEÇA PRINCIPAL DO PRODUTO:
+- Se duas ou mais fotos mostram a MESMA COR (ex: frente, costas, zoom, detalhe lateral da mesma peça na mesma cor), COLOQUE NO MESMO GRUPO.
+- Se fotos mostram a peça em CORES OU ESTAMPAS DIFERENTES (ex: uma preta, uma branca, uma rosa, uma verde, etc.), SEPARE EM GRUPOS DISTINTOS (1 grupo para cada cor), na ordem em que as cores aparecem pela primeira vez (0, 1, 2...).
+- Ignore a cor do fundo/cenário ou tom de pele da modelo; foque SOMENTE na cor/estampa da peça anunciada.
+- Garanta que TODOS os índices de 0 a ${photoList.length - 1} apareçam exatamente uma vez.
+
+Responda APENAS JSON válido neste formato exato:
+{"groups":[{"colorName":"Preto","photoIndices":[0,1]},{"colorName":"Rosa","photoIndices":[2]}]}`;
+
+    const cleanUrls = photoList.map((p) =>
+      p.startsWith('data:') || p.startsWith('http') ? p : `data:image/jpeg;base64,${p}`
+    );
+
+    if (openAIProvider && openAIProvider.isConfigured()) {
+      const client = (openAIProvider as any).getClient();
+      for (const visionModel of ['gpt-4o-mini', 'gpt-4o']) {
+        try {
+          const contentParts: any[] = [];
+          cleanUrls.forEach((url, idx) => {
+            contentParts.push({ type: 'text', text: `Imagem índice ${idx}:` });
+            contentParts.push({ type: 'image_url', image_url: { url, detail: 'low' } });
+          });
+          contentParts.push({ type: 'text', text: groupingPrompt });
+
+          const completion = await client.chat.completions.create({
+            model: visionModel,
+            max_tokens: 450,
+            temperature: 0.1,
+            messages: [{ role: 'user', content: contentParts }],
+          });
+          const rawText = completion.choices[0]?.message?.content?.trim() || '';
+          const groups = parseJsonGroups(rawText);
+          if (groups) {
+            console.log(`🎨 [AnaMaria Colors] ${photoList.length} fotos agrupadas em ${groups.length} cor(es) via ${visionModel}`);
+            return res.json({ success: true, groups });
+          }
+        } catch (err: any) {
+          console.warn(`⚠️ [AnaMaria Colors] OpenAI ${visionModel} falhou:`, err?.message || err);
+        }
+      }
+    }
+
+    const parsedImgs = cleanUrls.map((p) => parseInlineImage(p));
+    if (parsedImgs.every(Boolean)) {
+      for (let keyIdx = 0; keyIdx < GEMINI_CANDIDATE_KEYS.length; keyIdx++) {
+        const candidateKey = GEMINI_CANDIDATE_KEYS[keyIdx];
+        const client = getGenAI(candidateKey);
+        for (const gModel of ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash']) {
+          try {
+            const parts: any[] = [];
+            parsedImgs.forEach((inlineData, idx) => {
+              parts.push({ text: `Imagem índice ${idx}:` });
+              parts.push({ inlineData });
+            });
+            parts.push({ text: groupingPrompt });
+
+            const geminiRes = await client.models.generateContent({
+              model: gModel,
+              contents: parts,
+            });
+            const rawText =
+              geminiRes.text?.trim() ||
+              geminiRes.candidates?.[0]?.content?.parts?.find((p: any) => p.text)?.text?.trim() ||
+              '';
+            const groups = parseJsonGroups(rawText);
+            if (groups) {
+              console.log(`🎨 [AnaMaria Colors] ${photoList.length} fotos agrupadas em ${groups.length} cor(es) via ${gModel}`);
+              return res.json({ success: true, groups });
+            }
+          } catch (gemErr: any) {
+            const errStr = String(gemErr?.message || gemErr);
+            if (errStr.includes('PERMISSION_DENIED') || errStr.includes('billing') || errStr.includes('403')) {
+              rotateGeminiKey();
+              break;
+            }
+          }
+        }
+      }
+    }
+
+    return res.json({
+      success: true,
+      fallback: true,
+      groups: [{ colorName: 'Cor Principal', photoIndices: photoList.map((_, i) => i) }],
+    });
+  } catch (err: any) {
+    console.error('Erro na rota anamaria-group-colors:', err);
+    return res.status(500).json({ success: false, error: err?.message || 'Erro ao agrupar cores.' });
+  }
+});
+
 app.post('/api/detect-dominant-color', async (req, res) => {
   try {
     const { photoBase64, productName, productMode, mode, fileName, aiProfile: _aiProfile } = req.body;

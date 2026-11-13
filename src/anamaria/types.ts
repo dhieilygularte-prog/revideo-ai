@@ -63,12 +63,19 @@ export interface AnaMariaFormState {
   generateModelViaPrompt?: boolean; // Se verdadeiro, gera a modelo puramente via prompt (sem foto de referência da modelo)
 }
 
+export interface AnaMariaColorGroup {
+  colorName: string;
+  photoIndices: number[];
+}
+
 export interface AnaMariaResultState {
   id: string;
   timestamp: number;
   imageUrl: string;
   productName: string;
   referencePhotos: string[];
+  colorGroups?: AnaMariaColorGroup[];
+  activeColorGroupIndex?: number;
   influencer: AnaMariaInfluencer;
   bodyType: AnaMariaBodyType;
   additionalInstructions: string;
