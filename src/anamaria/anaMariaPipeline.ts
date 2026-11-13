@@ -248,7 +248,7 @@ export async function combineTwoPhotosSideBySide(
         ctx.drawImage(img1, 0, 0, drawW1, totalH);
         ctx.drawImage(img2, drawW1, 0, totalW - drawW1, totalH);
 
-        const combinedDataUrl = canvas.toDataURL('image/jpeg', 0.86);
+        const combinedDataUrl = canvas.toDataURL('image/jpeg', 0.92);
         resolve(combinedDataUrl);
       } catch {
         resolve(photo1);
@@ -443,11 +443,11 @@ async function prepareProductPhotosForPayload(photos: string[]): Promise<{
     return preparedProductPhotoCache.get(cacheKey)!;
   }
   const optimizedPhotos = await Promise.all(
-    validPhotos.map((p) => compressImageForFastTransfer(p, 1024, 0.88))
+    validPhotos.map((p) => compressImageForFastTransfer(p, 1280, 0.92))
   );
   let result: { primaryPhoto: string; supplementaryPhotos: string[] };
   if (optimizedPhotos.length >= 2) {
-    const combined = await combineTwoPhotosSideBySide(optimizedPhotos[0], optimizedPhotos[1], 1024);
+    const combined = await combineTwoPhotosSideBySide(optimizedPhotos[0], optimizedPhotos[1], 1280);
     result = {
       primaryPhoto: combined,
       supplementaryPhotos: [],

@@ -189,7 +189,7 @@ export function detectShoeCategory(
       category: 'C_OUTRO',
       name: 'Sapato ou Sandália de Festa Elegante que Combina com a Roupa',
       description:
-        'Sapato refinado de salto ou sandália feminina de festa sofisticada com tiras elegantes que combine e harmonize 100% com o vestido de festa ou roupa social.',
+        'Sapato refinado de salto ou sandália feminina de festa sofisticada com tiras elegantes que combine e harmonize 100% com o vestido de festa ou roupa social (visível apenas se o comprimento original da peça deixar os pés expostos; NUNCA encurte a barra da peça para mostrar o calçado).',
     };
   }
 
@@ -203,19 +203,13 @@ export function detectShoeCategory(
     };
   }
 
-  // 4. Vestidos em geral (tubinho, midi, longo casual, festa, etc.) -> Sandália de festa elegante que harmonize com o vestido
+  // 4. Vestidos em geral -> Sandália de festa elegante (respeitando 100% o comprimento original da peça sem jamais encurtar a barra)
   if (isDress) {
-    const isLongDress =
-      dressInspection?.lengthCategory === 'longo' ||
-      /\b(longo|longa|maxi|arrastando|ch[aã]o|floor)\b/i.test(combined);
     return {
       category: 'C_OUTRO',
-      name: isLongDress
-        ? 'Sandália de Festa Elegante sob a Barra Longa (se visível)'
-        : 'Sandália de Festa Elegante que Combina com o Vestido',
-      description: isLongDress
-        ? 'Sandália feminina de festa elegante de salto fino que harmoniza com o vestido longo (PROIBIDO tênis). REGRA DE COMPRIMENTO: Se o vestido for longo até o chão cobrindo o calçado, preserve a barra longa cobrindo os pés; NÃO é obrigatório aparecer calçado e é proibido encurtar o vestido longo.'
-        : 'Sandália feminina de festa elegante de salto fino e tiras delicadas que combine perfeitamente com a cor, caimento e proposta do vestido (TERMINANTEMENTE PROIBIDO usar tênis ou calçado esportivo com vestido).',
+      name: 'Sandália de Festa Elegante que Combina com o Vestido (se os pés ficarem visíveis pelo comprimento original da peça)',
+      description:
+        'Sandália feminina de festa elegante de salto fino e tiras delicadas que combine perfeitamente com a cor e proposta do vestido (PROIBIDO usar tênis com vestido). REGRA INVIOLÁVEL DA PARTE INFERIOR DA PEÇA: Preserve 100% o comprimento, o formato da saia, as costuras e a estampa da parte de baixo do vestido exatamente como na foto de referência; se o vestido for longo cobrindo os pés, mantenha a barra até o chão cobrindo os pés e JAMAIS encurte ou corte a barra da peça para exibir o calçado.',
     };
   }
 
@@ -596,26 +590,13 @@ function buildDressLengthAndSlitDirectives(
   videoSlitRule: string;
 } {
   const combined = `${productName} ${additionalInstructions}`.toLowerCase();
-  const isDressContext = /\b(vestido|vestidos|dress|dresses|chemise|tubinho|midi)\b/i.test(combined);
+  const isDressContext = /\b(vestido|vestidos|dress|dresses|chemise|tubinho|midi|longo)\b/i.test(combined);
   if (!isDressContext && !dressInspection) {
     return { imageLengthRule: '', imageSlitRule: '', videoSlitRule: '' };
   }
 
-  let lengthCat: 'curto' | 'midi' | 'longo' | 'unknown' = dressInspection?.lengthCategory || 'unknown';
-  if (lengthCat === 'unknown') {
-    if (/\bmidi\b/i.test(combined)) lengthCat = 'midi';
-    else if (/\b(curto|curta|mini|acima do joelho)\b/i.test(combined)) lengthCat = 'curto';
-    else if (/\b(longo|longa|maxi|ch[aã]o)\b/i.test(combined)) lengthCat = 'longo';
-  }
-
   const imageLengthRule =
-    lengthCat === 'midi'
-      ? '[COMPRIMENTO REAL DETECTADO NA FOTO — VESTIDO MIDI]: O vestido tem comprimento MIDI exato (entre abaixo do joelho e a meia canela/panturrilha), deixando tornozelos e sapatos/sandálias 100% VISÍVEIS. É TERMINANTEMENTE PROIBIDO alongar este vestido até o chão ou cobrir os pés/calçado!'
-      : lengthCat === 'curto'
-      ? '[COMPRIMENTO REAL DETECTADO NA FOTO — VESTIDO CURTO]: O vestido tem comprimento CURTO acima do joelho, deixando pernas, tornozelos e sapatos 100% VISÍVEIS. É TERMINANTEMENTE PROIBIDO alongar para midi ou longo!'
-      : lengthCat === 'longo'
-      ? '[COMPRIMENTO REAL DETECTADO NA FOTO — VESTIDO LONGO]: Preserve o comprimento longo exato até os tornozelos/chão igual à referência (se na foto de referência cobrir os pés, mantenha cobrindo sem encurtar).'
-      : '- REGRA CRÍTICA DE COMPRIMENTO 1:1: Reproduza EXATAMENTE a altura real da barra mostrada na Foto 1 — se na Foto 1 for curto ou midi deixando tornozelos e sapatos visíveis, MANTENHA curto/midi mostrando sapatos (PROIBIDO alongar até o chão!). Só cubra os pés se na Foto 1 o vestido for literalmente longo até o chão.';
+    '- PRESERVAÇÃO 1:1 INTEGRAL DO COMPRIMENTO, COSTURAS, ESTAMPA E PARTE INFERIOR DA PEÇA: Reproduza 100% da construção original da peça do topo até a barra inferior exatamente como na foto de referência do produto. É TERMINANTEMENTE PROIBIDO encurtar a peça, comer ou cortar a parte de baixo do vestido/saia, alterar o formato da barra, mudar babados/recortes inferiores, modificar linhas de costura ou alterar o padrão de estampa e textura em qualquer parte da peça (nem em cima nem embaixo).';
 
   let imageSlitRule = '';
   let videoSlitRule = '';
@@ -631,8 +612,8 @@ function buildDressLengthAndSlitDirectives(
     const viewerSideEn = isLeft ? "viewer's RIGHT side" : "viewer's LEFT side";
 
     imageSlitRule =
-      `[ASSIMETRIA OBRIGATÓRIA DE FENDA ÚNICA — REGRA ANTI-SIMETRIA FLUX]: O vestido possui APENAS UMA ÚNICA FENDA LATERAL localizada exclusivamente na ${wearerLegPt} da modelo. A ${otherLegPt} DEVE permanecer 100% COBERTA por tecido contínuo fechado sem nenhuma fenda! É TERMINANTEMENTE PROIBIDO gerar fenda dupla simétrica nas duas pernas.\n` +
-      `[CRITICAL ANTI-SYMMETRY SINGLE-SLIT LOCK FOR FLUX]: The dress has ONLY ONE SINGLE asymmetric side slit exclusively on the model's ${wearerLegEn} (${viewerSideEn}). The opposite leg (${otherLegEn}) MUST stay 100% CLOSED solid continuous fabric with ZERO slit — strictly ONE slit on ONLY ONE leg, NO symmetrical double slits!`;
+      `[ASSIMETRIA OBRIGATÓRIA DE FENDA ÚNICA]: O vestido possui APENAS UMA ÚNICA FENDA LATERAL localizada exclusivamente na ${wearerLegPt} da modelo. A ${otherLegPt} DEVE permanecer 100% COBERTA por tecido contínuo fechado sem nenhuma fenda! É TERMINANTEMENTE PROIBIDO gerar fenda dupla simétrica nas duas pernas.\n` +
+      `[CRITICAL ANTI-SYMMETRY SINGLE-SLIT LOCK]: The dress has ONLY ONE SINGLE asymmetric side slit exclusively on the model's ${wearerLegEn} (${viewerSideEn}). The opposite leg (${otherLegEn}) MUST stay 100% CLOSED solid continuous fabric with ZERO slit — strictly ONE slit on ONLY ONE leg, NO symmetrical double slits!`;
 
     videoSlitRule =
       `**PRESERVAÇÃO OBRIGATÓRIA DE FENDA ÚNICA ASSIMÉTRICA (REGRA ANTI-SIMETRIA DE VÍDEO):**\n` +
@@ -854,10 +835,11 @@ ${
       // MODO PADRÃO (2 FOTOS): Preserva 100% da Modelo E 100% do Cenário da Foto 2, trocando apenas a roupa pelo Produto (Foto 1)
       galleryModelPrompt = `${resolvedPriorityBlock || priorityOverrideBlock}FOTOGRAFIA COMERCIAL VERTICAL 9:16 (1080x1920) COMBINANDO RIGOROSAMENTE AS 2 FOTOS DE REFERÊNCIA:
 
-1. FOTO 1 (PRODUTO — PEÇA DE ROUPA):
-- Vestir a modelo com a roupa da Foto 1 com máxima fidelidade 1:1 (mesma cor exata, tonalidade, textura do tecido, caimento, modelagem, decote, mangas e detalhes reais da peça).
+1. FOTO 1 (PRODUTO — PEÇA DE ROUPA COM FIDELIDADE 100% DE CIMA A BAIXO):
+- Vestir a modelo com a roupa da Foto 1 com fidelidade absoluta 1:1 do topo até a barra inferior (mesma cor exata, mesmo padrão de estampa sem alterar os desenhos, mesma textura do tecido, mesmas linhas de costura, recortes, babados, pregas, caimento, formato da saia/barra, comprimento exato da peça, decote, alças e mangas).
+- PROIBIÇÃO TOTAL DE ALTERAR OU ENCURTAR A PEÇA: É TERMINANTEMENTE PROIBIDO encurtar a peça, comer ou cortar a parte de baixo do vestido/saia, mudar o formato da barra, omitir costuras ou modificar a estampa/textura em qualquer parte da peça (nem na parte de cima nem na parte de baixo).
 ${garmentTypeInstruction}
-- Calçado nos pés: ${shoeInfo.name} (${shoeInfo.description}), substituindo qualquer sapato/tênis original da Foto 2 para compor um visual 100% harmonioso e elegante com a peça (se os pés estiverem visíveis; respeite rigorosamente o comprimento exato da barra na Foto 1 sem jamais alongar vestidos curtos/midi nem encurtar vestidos longos).
+- Calçado nos pés: ${shoeInfo.name} (${shoeInfo.description}), substituindo qualquer sapato/tênis original da Foto 2 caso os pés fiquem visíveis pelo comprimento original da peça (NUNCA encurte ou levante a barra da peça da Foto 1 para mostrar os pés/calçado!).
 - REGRA CRÍTICA DE ISOLAMENTO TOTAL DA FOTO 1: Da Foto 1 (produto), extraia RIGOROSAMENTE apenas a peça de roupa e tecido. É TERMINANTEMENTE PROIBIDO copiar, mesclar ou misturar o rosto, a cabeça, o cabelo, a pele ou a pose da pessoa da Foto 1! Ignore 100% a pessoa da Foto 1 (ZERO mistura com o rosto da Foto 1). É TERMINANTEMENTE PROIBIDO copiar tatuagens, marcas corporais ou desenhos da pessoa da Foto 1. A modelo gerada deve ter PELE 100% LIMPA, ZERO TATUAGENS em todo o corpo (braços, mãos, pernas, colo e pescoço totalmente livres de tatuagens).
 ${noBagDirectivePt}${noBagDirectiveEn}
 
@@ -866,7 +848,7 @@ ${noBagDirectivePt}${noBagDirectiveEn}
 - PRESERVAÇÃO INTEGRAL DE BIOTIPO E IDENTIDADE: reproduza com fidelidade 100% o mesmo corpo, curvas, biotipo, quadris, cintura, pernas, tom de pele natural com poros reais e cabelos (mesma cor, corte e textura da foto da modelo).
 - PRESERVAÇÃO INTEGRAL DO CENÁRIO DA FOTO 2 (CENÁRIO DA MODELO): O cômodo de fundo, paredes, piso, espelho, portas, móveis e iluminação natural DEVEM ser 100% preservados e idênticos aos da Foto 2. NÃO altere nem redesenhe o ambiente da Foto 2.
 - PRESERVAÇÃO INTEGRAL DE ROSTO, POSE E ENQUADRAMENTO DA FOTO 2: Mantenha RIGOROSAMENTE o mesmo enquadramento, mesmo ângulo, mesma pose e mesma cabeça/rosto da Foto 2. Se na Foto 2 o rosto da modelo aparece (total ou parcialmente), o rosto DEVE APARECER IDENTICAMENTE, com a mesma face, olhos, nariz, boca, cabelo e expressão da mulher da Foto 2 (PROIBIDO cortar a cabeça ou o queixo se o rosto aparece na Foto 2!). Se na Foto 2 o rosto estiver encoberto pelo celular ou cortado no enquadramento, mantenha o mesmo corte original da Foto 2.
-- ÚNICA MUDANÇA PERMITIDA: Substituir as roupas e o calçado que a modelo veste na Foto 2 pela roupa da Foto 1 e pelo calçado indicado (${shoeInfo.name}).
+- ÚNICA MUDANÇA PERMITIDA: Substituir as roupas e o calçado que a modelo veste na Foto 2 pela peça completa da Foto 1 (preservando 100% da parte superior e 100% da parte inferior/barra da Foto 1 sem encurtar) e pelo calçado indicado (${shoeInfo.name}).
 - REILUMINAÇÃO & ZERO BORDA DE RECORTE: A roupa e o calçado trocados devem assumir 100% a iluminação, temperatura de cor e sombras do cômodo da Foto 2, sem contorno branco ou aspecto colado.
 
 Qualidade fotográfica autêntica de smartphone moderno, textura de pele humana real com poros visíveis, acabamento fosco suave sem brilho excessivo de óleo, sem aspecto de cera ou plástico. ZERO tatuagens.`;
@@ -874,10 +856,11 @@ Qualidade fotográfica autêntica de smartphone moderno, textura de pele humana 
       // MODO CENÁRIO DA GALERIA (3 FOTOS): Modelo da Foto 2 fotografada nativamente dentro do Cenário Independente da Foto 3
       galleryModelPrompt = `${resolvedPriorityBlock || priorityOverrideBlock}FOTOGRAFIA COMERCIAL REALISTA VERTICAL 9:16 (1080x1920) EM EXPOSIÇÃO ÚNICA NATIVA:
 
-1. FOTO 1 (PRODUTO — PEÇA DE ROUPA):
-- Vestir a modelo com a roupa da Foto 1 com máxima fidelidade 1:1 (mesma cor exata, tonalidade, textura do tecido, caimento, modelagem, decote, mangas e detalhes reais da peça).
+1. FOTO 1 (PRODUTO — PEÇA DE ROUPA COM FIDELIDADE 100% DE CIMA A BAIXO):
+- Vestir a modelo com a roupa da Foto 1 com fidelidade absoluta 1:1 do topo até a barra inferior (mesma cor exata, mesmo padrão de estampa sem alterar os desenhos, mesma textura do tecido, mesmas linhas de costura, recortes, babados, pregas, caimento, formato da saia/barra, comprimento exato da peça, decote, alças e mangas).
+- PROIBIÇÃO TOTAL DE ALTERAR OU ENCURTAR A PEÇA: É TERMINANTEMENTE PROIBIDO encurtar a peça, comer ou cortar a parte de baixo do vestido/saia, mudar o formato da barra, omitir costuras ou modificar a estampa/textura em qualquer parte da peça (nem na parte de cima nem na parte de baixo).
 ${garmentTypeInstruction}
-- Calçado nos pés: ${shoeInfo.name} (${shoeInfo.description}), descartando qualquer tênis ou sapato original da Foto 2 (se os pés estiverem visíveis; respeite rigorosamente o comprimento exato da barra na Foto 1 sem jamais alongar vestidos curtos/midi nem encurtar vestidos longos).
+- Calçado nos pés: ${shoeInfo.name} (${shoeInfo.description}), descartando qualquer tênis ou sapato original da Foto 2 caso os pés fiquem visíveis pelo comprimento original da peça (NUNCA encurte ou levante a barra da peça da Foto 1 para mostrar os pés/calçado!).
 - REGRA CRÍTICA DE ISOLAMENTO TOTAL DA FOTO 1: Da Foto 1 (produto), use APENAS a peça de roupa e tecido. Ignore 100% o rosto, cabeça, corpo, tatuagens ou fundo da pessoa da Foto 1. PELE 100% LIMPA, ZERO TATUAGENS.
 ${noBagDirectivePt}${noBagDirectiveEn}
 
@@ -927,19 +910,19 @@ ${accessoriesSectionText}
 ${isBag ? "O produto anunciado é uma bolsa: a modelo pode apresentar/usar a bolsa de referência." : "A modelo NÃO DEVE estar usando, segurando ou carregando NENHUM tipo de bolsa, bolsa tiracolo, bolsa de mão, bolsa de ombro, carteira, sacola, clutch ou mochila. Mãos e ombros completamente livres de bolsas. Bolsas só podem aparecer se a bolsa for o produto de referência anunciado.\nCRITICAL CONSTRAINT (NO BAGS): The model must NOT wear, carry or hold any handbag, purse, tote bag, shoulder bag, backpack, clutch or crossbody bag. Hands and shoulders must remain 100% free of bags."}
 
 
-## 7. REGRA UNIVERSAL DE CALÇADO (HARMONIA COM A ROUPA & RESPEITO AO COMPRIMENTO)
-Calçado nos pés: **${shoeInfo.name}** (se os pés estiverem visíveis).
+## 7. REGRA UNIVERSAL DE CALÇADO (HARMONIA COM A ROUPA & PROIBIÇÃO DE ENCURTAR A PEÇA)
+Calçado nos pés: **${shoeInfo.name}** (visível somente se o comprimento original da peça na foto de referência deixar os pés à mostra).
 Especificação do calçado: ${shoeInfo.description}.
-(Observação: Esta regra universal harmoniza com o look respeitando rigorosamente a altura real da barra da referência: se na foto de referência for vestido curto ou midi deixando tornozelos e sapatos visíveis, mantenha curto/midi mostrando o calçado sem alongar até o chão; se for peça longa que cubra os pés na referência, mantenha até o chão cobrindo os pés). Enquadrar o corpo inteiro naturalmente diante do espelho.
+(REGRA INVIOLÁVEL: O comprimento, formato da barra, costuras e estampa da parte inferior da peça seguem 100% a foto de referência do produto. NUNCA encurte, corte ou suba a barra da peça para mostrar os pés ou o calçado!). Enquadrar o corpo inteiro naturalmente diante do espelho.
 
 ## 7.1. REGRA DE LOOK COMPLETO E PEÇAS COMPLEMENTARES (LOOK COMERCIAL COMPLETO)
 ${complementaryInfo.directiveTextPt}
 ${complementaryInfo.directiveTextEn}
 
-## 8. FIDELIDADE ABSOLUTA E SOBERANA AO PRODUTO ANEXADO (1:1 — ZERO INVENÇÃO DE DETALHES)
+## 8. FIDELIDADE ABSOLUTA E SOBERANA AO PRODUTO ANEXADO (1:1 DE CIMA A BAIXO — ZERO ALTERAÇÃO DE COSTURAS, ESTAMPA OU COMPRIMENTO)
 A foto da peça anexada pelo usuário é a referência soberana e inviolável da roupa (venda real TikTok Shop).
-Reproduza a roupa 1:1 com máxima fidelidade: mesma cor exata, tonalidade, textura do tecido, modelagem, comprimento exato da barra, decote, alças, mangas, barra, rendas, transparências, costuras, botões, recortes e estampas.
-${imageLengthRule ? `${imageLengthRule}\n` : ''}${imageSlitRule ? `${imageSlitRule}\n` : ''}É TERMINANTEMENTE PROIBIDO inventar detalhes inexistentes na peça (não adicionar rendas, babados, laços, botões, fendas, costuras ou estampas que não existam na foto real) e proibido omitir detalhes reais da peça.
+Reproduza a roupa 1:1 com máxima fidelidade em TODA a sua extensão (tanto na parte superior quanto na parte inferior): mesma cor exata, tonalidade, mesmo padrão de estampa (mesmos motivos, escala e posição da estampa), mesma textura do tecido, modelagem, formato da saia e da barra, comprimento exato da peça sem encurtar nem alongar, decote, alças, mangas, rendas, transparências, linhas de costura, babados, pregas, botões e recortes.
+${imageLengthRule ? `${imageLengthRule}\n` : ''}${imageSlitRule ? `${imageSlitRule}\n` : ''}É TERMINANTEMENTE PROIBIDO encurtar a peça, comer/cortar a parte de baixo do vestido, alterar costuras, mudar a estampa ou modificar o formato da peça em qualquer parte dela.
 A roupa deve vestir anatomicamente o corpo ${isPlusSize ? 'genuinamente PLUS SIZE' : 'do(a) modelo'} sem jamais redesenhar ou descaracterizar o produto.`;
 
   return {

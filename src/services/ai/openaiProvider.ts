@@ -773,8 +773,8 @@ Generate a single, cohesive, unedited real-world mirror-selfie photograph captur
 - 100% DISCARD AND IGNORE the bedroom, bed, door, walls, bright white wall edge-glow, studio/frontal lighting, old clothing, and old footwear of Reference Image ${modelIdx}.
 
 3. REFERENCE IMAGE ${productRangeLabel} (EXACT GARMENT & COLOR ONLY — DISCARD ANY PERSON/BACKGROUND):
-- She wears the EXACT garment shown in Reference Image ${productRangeLabel}: 1:1 exact color/shade/print, cut, neckline, straps, fabric texture, exact hemline length (never lengthen midi/short dresses to the floor), and single-side slit if present, physically shaded by Reference Image ${scenarioIdx}'s ambient room light.
-- Harmonious matching footwear planted firmly on Reference Image ${scenarioIdx}'s floor if feet are visible (elegant high-heel party sandals for dresses; or keep floor-length dress covering feet if floor-length in Reference Image ${productRangeLabel}).
+- She wears the EXACT garment shown in Reference Image ${productRangeLabel}: 1:1 exact color/shade/print pattern, fabric texture, seams, stitching, pleats/ruffles, cut, neckline, straps, and exact full-length hemline from top to bottom (NEVER shorten the garment, NEVER crop/eat the bottom of the dress, and NEVER alter seams, print, texture, or shape anywhere on the top or bottom of the garment), physically shaded by Reference Image ${scenarioIdx}'s ambient room light.
+- Harmonious matching footwear planted firmly on Reference Image ${scenarioIdx}'s floor if her feet are left visible by the garment's true original length in Reference Image ${productRangeLabel} (elegant high-heel party sandals for dresses; never shorten the dress hem to reveal shoes).
 - 100% IGNORE any person, face, body, tattoos, or background in Reference Image ${productRangeLabel}.
 
 ${scenarioRelightAndEdgeBlendDirective}

@@ -2660,28 +2660,17 @@ async function generateImageWithSeedream(params: {
         params.prompt.includes('VESTIDO'))
   );
 
-  const isExplicitMidiOrShortSeedream = Boolean(
-    params.prompt &&
-      (params.prompt.includes('VESTIDO MIDI') ||
-        params.prompt.includes('VESTIDO CURTO') ||
-        (/\b(midi|curto|curta|mini)\b/i.test(params.prompt) &&
-          !/\b(vestido longo|comprimento longo|maxi|at[eé] o ch[aã]o)\b/i.test(params.prompt)))
-  );
-  const isExplicitLongDressSeedream = Boolean(
-    !isExplicitMidiOrShortSeedream &&
-      params.prompt &&
-      (params.prompt.includes('VESTIDO LONGO') || /\b(vestido longo|saia longa|maxi)\b/i.test(params.prompt))
-  );
+  const garmentFullLockSeedream =
+    '[TRAVA INVIOLÁVEL 1:1 DE CIMA A BAIXO DA PEÇA (COSTURAS, ESTAMPA, TEXTURA, FORMATO E COMPRIMENTO INTEGRAL)]:\n' +
+    '- A peça de roupa da Foto 1 DEVE ser reproduzida com fidelidade 100% idêntica do topo (decote, alças, mangas, busto) até a extremidade inferior da barra (cintura, quadril, saia, recortes, babados, pregas, costuras e bainha).\n' +
+    '- É TERMINANTEMENTE PROIBIDO encurtar a peça, comer ou cortar a parte de baixo do vestido/roupa, subir a barra, mudar o formato da saia/barra, alterar ou omitir linhas de costura, ou modificar o padrão de estampa, textura e tecido em NENHUMA parte da peça (nem em cima nem embaixo)!\n' +
+    '- O comprimento real da peça na Foto 1 é SOBERANO: se na Foto 1 o vestido/peça desce até os tornozelos ou até o chão, ele DEVE descer exatamente até os tornozelos/chão na imagem gerada (NUNCA encurte o vestido para mostrar pernas ou calçado; e se a modelo da Foto 2 estiver usando roupa mais curta ou calça, ignore 100% o comprimento da roupa antiga da Foto 2 e estenda a peça da Foto 1 em seu comprimento completo real!).\n';
 
   const clothingDirectiveSeedream = isDressOrOnePieceSeedream
-    ? isExplicitMidiOrShortSeedream
-      ? '[REGRA DE VESTUÁRIO E COMPRIMENTO EXATO]: A modelo veste EXCLUSIVAMENTE o vestido da Foto 1 cobrindo o corpo com pernas limpas naturais (PROIBIDO calça jeans/shorts por baixo). ATENÇÃO CRÍTICA AO COMPRIMENTO: Preserve EXATAMENTE a mesma altura da barra da Foto 1 (vestido curto/midi acima dos tornozelos, deixando tornozelos e calçado 100% visíveis; É TERMINANTEMENTE PROIBIDO alongar o vestido até o chão ou cobrir os sapatos!).\n'
-      : isExplicitLongDressSeedream
-      ? '[REGRA DE VESTUÁRIO: VESTIDO LONGO]: A modelo veste EXCLUSIVAMENTE o vestido da Foto 1 (PROIBIDO calça jeans/shorts por baixo). Mantenha o comprimento longo exato até os tornozelos/chão igual à Foto 1.\n'
-      : '[REGRA DE VESTUÁRIO: VESTIDO / PEÇA ÚNICA]: A modelo veste EXCLUSIVAMENTE o vestido da Foto 1 cobrindo o corpo com máxima fidelidade e pernas limpas naturais (PROIBIDO calça jeans/shorts por baixo). REGRA CRÍTICA DE COMPRIMENTO 1:1: Reproduza EXATAMENTE a altura da barra mostrada na Foto 1 — se na Foto 1 for curto ou midi deixando tornozelos e sapatos visíveis, MANTENHA curto/midi mostrando os sapatos (PROIBIDO alongar até o chão!). Só cubra os pés se na Foto 1 o vestido for literalmente longo até o chão.\n'
+    ? `${garmentFullLockSeedream}[REGRA DE VESTUÁRIO — VESTIDO / PEÇA ÚNICA]: A modelo veste EXCLUSIVAMENTE o vestido/peça única da Foto 1 cobrindo o corpo com todos os seus detalhes originais de cima a baixo (PROIBIDO calça jeans/shorts por baixo). O calçado (sandália de festa elegante, proibido tênis) só aparece se o comprimento real original da Foto 1 deixar os pés visíveis — JAMAIS encurte a barra do vestido!\n`
     : (isUpperPieceSeedream
-        ? '[REGRA OBRIGATÓRIA DE LOOK COMPLETO — BLUSA COM CALÇA JEANS E TÊNIS]: Como o produto anunciado é uma blusa/peça superior, a modelo DEVE OBRIGATORIAMENTE vestir CALÇA JEANS feminina de cintura alta e TÊNIS nos pés. É TERMINANTEMENTE PROIBIDO a modelo ficar sem calça, de calcinha, com pernas despidas ou nua na parte de baixo! Look 100% vestido e comercial com calça jeans azul e tênis casual nos pés.\n'
-        : '[REGRA DE LOOK COMPLETO]: Se o produto for vestido/macacão, veste EXCLUSIVAMENTE o vestido (PROIBIDO calça jeans sob vestido); se for blusa avulsa, veste calça jeans feminina cintura alta e tênis nos pés (PROIBIDO ficar sem calça); se for peça inferior, veste blusa neutra combinando.\n');
+        ? `${garmentFullLockSeedream}[REGRA OBRIGATÓRIA DE LOOK COMPLETO — BLUSA COM CALÇA JEANS E TÊNIS]: Como o produto anunciado é uma blusa/peça superior, a modelo DEVE OBRIGATORIAMENTE vestir CALÇA JEANS feminina de cintura alta e TÊNIS nos pés. É TERMINANTEMENTE PROIBIDO a modelo ficar sem calça, de calcinha, com pernas despidas ou nua na parte de baixo! Look 100% vestido e comercial com calça jeans azul e tênis casual nos pés.\n`
+        : `${garmentFullLockSeedream}[REGRA DE LOOK COMPLETO]: Se o produto for vestido/macacão, veste EXCLUSIVAMENTE o vestido em seu comprimento e formato 100% originais sem encurtar (PROIBIDO calça jeans sob vestido); se for blusa avulsa, veste calça jeans feminina cintura alta e tênis nos pés (PROIBIDO ficar sem calça); se for peça inferior, veste blusa neutra combinando.\n`);
 
   const frontalPoseDirectiveSeedream =
     '[POSE OBRIGATÓRIA DE FRENTE]: A modelo deve estar POSICIONADA RIGOROSAMENTE DE FRENTE PARA O ESPELHO (front-facing), de corpo inteiro de frente. Da Foto de produto (Foto 1), extraia EXCLUSIVAMENTE a roupa e o tecido; É TERMINANTEMENTE PROIBIDO copiar pose de lado, de perfil ou ângulo da pessoa da foto de produto!\n';
@@ -2695,8 +2684,8 @@ async function generateImageWithSeedream(params: {
       const modelPreserveDirectiveSeedream =
         '[IDENTIDADE E ROSTO DA FOTO 2 (MODELO 1:1)]:\n' +
         '- A modelo fotografada DEVE SER A MESMA MULHER DA FOTO 2. Se a Foto 2 mostra o rosto da modelo (visível total ou parcialmente), o rosto DEVE APARECER IDENTICAMENTE, reproduzindo 100% a mesma face, olhos, nariz, boca e cabelos da mulher da Foto 2 (PROIBIDO cortar o rosto ou a cabeça se ela aparece na Foto 2!). Se o rosto estiver coberto pelo celular ou cortado no enquadramento da Foto 2, mantenha exatamente o mesmo corte original da Foto 2.\n' +
-        '- ISOLAMENTO DA FOTO 1 (PRODUTO): Extrair EXCLUSIVAMENTE a roupa e tecido da Foto 1; é TERMINANTEMENTE PROIBIDO copiar, mesclar ou misturar o rosto ou a pessoa da Foto 1! ZERO mistura com a pessoa da Foto 1. É TERMINANTEMENTE PROIBIDO copiar tatuagens, marcas corporais ou desenhos da pessoa da Foto 1. A modelo DEVE ter pele 100% limpa, ZERO TATUAGENS no corpo todo.\n' +
-        '- CALÇADO: Substitua qualquer sapato/tênis original da Foto 2 por calçado que combine 100% com a peça (se os pés estiverem visíveis; se for vestido longo cobrindo os pés, preserve a barra longa até o chão): se vestido -> sandália feminina de festa elegante de salto fino e tiras delicadas (PROIBIDO tênis com vestido); se academia/fitness -> tênis esportivo moderno; se camisola, baby doll ou roupa de dormir -> chinelo de dedo branco delicado.\n';
+        '- ISOLAMENTO DA FOTO 1 (PRODUTO): Extrair EXCLUSIVAMENTE a peça de roupa completa e tecido da Foto 1 (preservando 100% o padrão de estampa, textura, costuras, recortes, formato e comprimento integral de cima a baixo sem encurtar a barra); é TERMINANTEMENTE PROIBIDO copiar, mesclar ou misturar o rosto ou a pessoa da Foto 1! ZERO mistura com a pessoa da Foto 1. É TERMINANTEMENTE PROIBIDO copiar tatuagens, marcas corporais ou desenhos da pessoa da Foto 1. A modelo DEVE ter pele 100% limpa, ZERO TATUAGENS no corpo todo.\n' +
+        '- CALÇADO (SEM ENCURTAR A PEÇA): Substitua qualquer sapato/tênis original da Foto 2 por calçado que combine 100% com a peça APENAS quando o comprimento original da peça na Foto 1 deixar os pés visíveis (NUNCA encurte ou coma a parte de baixo do vestido para mostrar os pés!): se vestido -> sandália feminina de festa elegante de salto fino e tiras delicadas (PROIBIDO tênis com vestido); se academia/fitness -> tênis esportivo moderno; se camisola, baby doll ou roupa de dormir -> chinelo de dedo branco delicado.\n';
 
       if (isModelScenarioSeedream) {
         headerSeedream =
