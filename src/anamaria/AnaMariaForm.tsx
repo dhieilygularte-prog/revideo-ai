@@ -42,6 +42,7 @@ import {
   AnaMariaMasterPromptItem,
   getMasterPromptById,
   getDefaultMasterForMode,
+  resolveMasterPromptByProductName,
 } from './masterPromptsData';
 import { preloadScenarioUrl, prewarmDefaultScenarios } from './anaMariaPipeline';
 import {
@@ -108,9 +109,6 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const selectedModelItem =
     !form.generateModelViaPrompt && (form.selectedModelGalleryId || form.selectedModelGalleryNumber)
       ? currentModelGallery.find(
-          (m) => m.id === form.selectedModelGalleryId || m.number === form.selectedModelGalleryNumber
-        ) ||
-        getModelGalleryForMode(activeMode === 'com_rosto' ? 'mirror_selfie' : 'com_rosto').find(
           (m) => m.id === form.selectedModelGalleryId || m.number === form.selectedModelGalleryNumber
         )
       : undefined;
@@ -310,9 +308,14 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           if (!force && hasUserManuallyEditedNameRef.current && prev.productName.trim().length > 0) {
             return prev;
           }
+          const modeNow = prev.presentationMode || 'mirror_selfie';
           return {
             ...prev,
             productName: resolvedName,
+            selectedMasterId:
+              !prev.isManualMasterSelection && modeNow !== 'pov'
+                ? resolveMasterPromptByProductName(resolvedName)
+                : prev.selectedMasterId,
           };
         });
         setAutoIdentifiedBadge(true);
@@ -321,10 +324,17 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       console.warn('Falha silenciosa ao identificar peça via IA, tentando fallback local:', err);
       const fallbackLocal = extractGarmentFromFileName(targetFileName);
       if (fallbackLocal) {
-        onChange((prev) => ({
-          ...prev,
-          productName: fallbackLocal,
-        }));
+        onChange((prev) => {
+          const modeNow = prev.presentationMode || 'mirror_selfie';
+          return {
+            ...prev,
+            productName: fallbackLocal,
+            selectedMasterId:
+              !prev.isManualMasterSelection && modeNow !== 'pov'
+                ? resolveMasterPromptByProductName(fallbackLocal)
+                : prev.selectedMasterId,
+          };
+        });
         setAutoIdentifiedBadge(true);
       }
     } finally {
@@ -388,17 +398,24 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const handleClearAllPhotos = () => {
     hasUserManuallyEditedNameRef.current = false;
     setAutoIdentifiedBadge(false);
-    onChange((prev) => ({
-      ...prev,
-      referencePhotos: [],
-      productName: '',
-    }));
+    onChange((prev) => {
+      const modeNow = prev.presentationMode || 'mirror_selfie';
+      return {
+        ...prev,
+        referencePhotos: [],
+        productName: '',
+        selectedMasterId:
+          !prev.isManualMasterSelection && modeNow !== 'pov'
+            ? resolveMasterPromptByProductName('')
+            : prev.selectedMasterId,
+      };
+    });
   };
 
   /**
    * Seleção automática do gerador de imagem:
-   * - POV ou Homem → OpenAI
-   * - Ao sair de POV/Homem (Mulher em Mirror Selfie / Com Rosto) → SeaDream 5.0 Pro
+   * - OpenAI é o padrão em todos os modos (fallback automático para SeaDream 5.0 Pro caso dê erro).
+   * - POV ou Homem também garantem OpenAI.
    * O usuário continua podendo trocar manualmente o gerador depois.
    */
   const resolveAutoImageModel = (
@@ -406,11 +423,9 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     nextMode: AnaMariaPresentationMode | undefined,
     nextInfluencer: AnaMariaFormState['influencer']
   ): AnaMariaFormState['imageModel'] => {
-    const wasOpenAiCase = prev.presentationMode === 'pov' || prev.influencer === 'Homem';
     const isOpenAiCase = nextMode === 'pov' || nextInfluencer === 'Homem';
     if (isOpenAiCase) return 'openai';
-    if (wasOpenAiCase) return 'seedream_5_0_pro';
-    return prev.imageModel;
+    return prev.imageModel || 'openai';
   };
 
   const handleSelectInfluencer = (nextInfluencer: AnaMariaFormState['influencer']) => {
@@ -426,39 +441,40 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       POV_SCENARIO_GALLERY_ITEMS.forEach((s) => preloadScenarioUrl(s.fullUrl));
     }
     onChange((prev) => {
+      const prevMode = prev.presentationMode || 'mirror_selfie';
       const currentMaster = getMasterPromptById(prev.selectedMasterId);
       const isMasterCompatible = currentMaster.categories.includes(newMode);
-      const nextMaster = isMasterCompatible
-        ? currentMaster
-        : getDefaultMasterForMode(newMode);
 
-      const wasPov = prev.presentationMode === 'pov';
+      const nextMaster =
+        prev.isManualMasterSelection && isMasterCompatible
+          ? currentMaster
+          : getDefaultMasterForMode(newMode, prev.productName);
+
+      const nextIsManual =
+        isMasterCompatible ? Boolean(prev.isManualMasterSelection) : false;
+
+      const wasPov = prevMode === 'pov';
       const willBePov = newMode === 'pov';
       const shouldResetScenario = wasPov !== willBePov;
+      const modeChanged = prevMode !== newMode;
 
-      // Sincroniza a modelo selecionada para a URL da galeria do novo modo
-      const targetGallery = getModelGalleryForMode(newMode);
-      let updatedModelUrl = prev.selectedModelGalleryUrl;
-      let updatedModelId = prev.selectedModelGalleryId;
-      if (prev.selectedModelGalleryNumber) {
-        const matchingModel = targetGallery.find((m) => m.number === prev.selectedModelGalleryNumber);
-        if (matchingModel) {
-          updatedModelUrl = matchingModel.fullUrl;
-          updatedModelId = matchingModel.id;
-        }
-      }
-
+      // Ao trocar de modo de apresentação (ex.: Mirror Selfie -> Com Rosto UGC),
+      // desmarca qualquer modelo da galeria anterior para que o app sorteie
+      // randomicamente uma modelo da nova galeria (a menos que o usuário marque uma depois).
       return {
         ...prev,
         presentationMode: newMode,
         imageModel: resolveAutoImageModel(prev, newMode, prev.influencer),
         selectedMasterId: nextMaster.id,
+        isManualMasterSelection: nextIsManual,
         selectedScenarioId: shouldResetScenario ? undefined : prev.selectedScenarioId,
         selectedScenarioNumber: shouldResetScenario ? undefined : prev.selectedScenarioNumber,
         selectedScenarioUrl: shouldResetScenario ? undefined : prev.selectedScenarioUrl,
         selectedScenarioBase64: shouldResetScenario ? undefined : prev.selectedScenarioBase64,
-        selectedModelGalleryId: updatedModelId,
-        selectedModelGalleryUrl: updatedModelUrl,
+        selectedModelGalleryId: modeChanged ? undefined : prev.selectedModelGalleryId,
+        selectedModelGalleryNumber: modeChanged ? undefined : prev.selectedModelGalleryNumber,
+        selectedModelGalleryUrl: modeChanged ? undefined : prev.selectedModelGalleryUrl,
+        selectedModelGalleryBase64: modeChanged ? undefined : prev.selectedModelGalleryBase64,
       };
     });
   };
@@ -503,7 +519,11 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     }
     onChange((prev) => {
       const currentMode = prev.presentationMode || 'mirror_selfie';
-      const nextMode = item.primaryCategory;
+      const nextMode: AnaMariaPresentationMode = item.isPov
+        ? 'pov'
+        : currentMode === 'pov'
+        ? 'mirror_selfie'
+        : currentMode;
       const wasPov = currentMode === 'pov';
       const willBePov = nextMode === 'pov';
       const shouldResetScenario = wasPov !== willBePov;
@@ -513,6 +533,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         presentationMode: nextMode,
         imageModel: resolveAutoImageModel(prev, nextMode, prev.influencer),
         selectedMasterId: item.id,
+        isManualMasterSelection: true,
         selectedScenarioId: shouldResetScenario ? undefined : prev.selectedScenarioId,
         selectedScenarioNumber: shouldResetScenario ? undefined : prev.selectedScenarioNumber,
         selectedScenarioUrl: shouldResetScenario ? undefined : prev.selectedScenarioUrl,
@@ -827,7 +848,17 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               hasUserManuallyEditedNameRef.current = true;
               setAutoIdentifiedBadge(false);
             }
-            onChange((prev) => ({ ...prev, productName: val }));
+            onChange((prev) => {
+              const modeNow = prev.presentationMode || 'mirror_selfie';
+              return {
+                ...prev,
+                productName: val,
+                selectedMasterId:
+                  !prev.isManualMasterSelection && modeNow !== 'pov'
+                    ? resolveMasterPromptByProductName(val)
+                    : prev.selectedMasterId,
+              };
+            });
           }}
           placeholder="Ex: Camisola, Conjunto Fitness, Vestido Longo, Calça Jeans, Bermuda, Camiseta..."
           className={`w-full px-4 py-2.5 rounded-xl text-white placeholder-zinc-500 text-sm focus:outline-none transition-colors ${
@@ -1007,7 +1038,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                 6. Gerador de Imagem
               </h3>
             </div>
-            <span className="text-[10px] text-zinc-400">Padrão: SeaDream 5.0 Pro</span>
+            <span className="text-[10px] text-zinc-400">Padrão: OpenAI</span>
           </div>
 
           <div className="space-y-2">
@@ -1020,7 +1051,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                   : inactiveOptionButtonClass
               }`}
             >
-              <span>SeaDream 5.0 Pro (Padrão)</span>
+              <span>SeaDream 5.0 Pro</span>
               {form.imageModel === 'seedream_5_0_pro' && (
                 <Check className={`w-4 h-4 stroke-[3] ${checkIconColorClass}`} />
               )}
@@ -1095,7 +1126,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                   : inactiveOptionButtonClass
               }`}
             >
-              <span>OpenAI</span>
+              <span>OpenAI (Padrão)</span>
               {form.imageModel === 'openai' && (
                 <Check className={`w-4 h-4 stroke-[3] ${checkIconColorClass}`} />
               )}
@@ -1261,7 +1292,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               <div>
                 <span className="text-xs font-bold block uppercase">Com Rosto (UGC)</span>
                 <span className="text-[10px] block text-zinc-400">
-                  Rosto visível · Estilo Catza
+                  Rosto visível · Galeria UGC
                 </span>
               </div>
             </div>
@@ -1337,7 +1368,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               <p className="text-[11px] sm:text-xs text-zinc-300 mt-1">
                 {isPovMode
                   ? 'Opcional: escolha entre o Cenário POV 1 (colcha branca e manta rosé) ou Cenário POV 2 (lençol rosa). Se não escolher, o app sorteará automaticamente!'
-                  : 'Opcional: escolha qualquer um dos 24 cenários. Se não escolher, o app sorteará automaticamente (ou usará o Cenário 24 para Mestra Catza)!'}
+                  : 'Opcional: escolha qualquer um dos 24 cenários. Se não escolher, o app sorteará automaticamente!'}
               </p>
             </div>
           </div>

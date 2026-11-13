@@ -46,10 +46,11 @@ export interface AnaMariaFormState {
   influencer: AnaMariaInfluencer; // Padrão: 'Mulher'
   bodyType: AnaMariaBodyType; // Padrão: 'normal'
   additionalInstructions: string; // Prioridade máxima
-  imageModel: AnaMariaImageModel; // Padrão: 'seedream_5_0_pro'
+  imageModel: AnaMariaImageModel; // Padrão: 'openai'
   videoPromptLimit: AnaMariaVideoPromptLimit; // Padrão: 'unlimited'
   presentationMode?: AnaMariaPresentationMode; // Padrão: 'mirror_selfie'
   selectedMasterId?: AnaMariaMasterId; // Padrão: 'mestra_ana_maria'
+  isManualMasterSelection?: boolean; // true se usuário clicou manualmente na galeria de prompts
   selectedScenarioId?: string; // ID do cenário escolhido da vitrine (ex.: 'cenario_0')
   selectedScenarioNumber?: number; // Número do cenário escolhido (1 a 24)
   selectedScenarioUrl?: string; // URL da imagem cheia

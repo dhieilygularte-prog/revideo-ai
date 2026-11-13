@@ -851,78 +851,59 @@ export function getConciseMovementForMaster(
   switch (masterId) {
     case 'mestra_ana_maria':
       return isMale
-        ? `**CRONOGRAMA DE MOVIMENTOS (10s CONTÍNUOS — MESTRA ANA MARIA):**
-- 0s–1.5s: Postura frontal diante do espelho segurando o smartphone; aproxima-se fisicamente um pouco do espelho (sem zoom digital).
-- 1.5s–2.7s: Próximo ao espelho, com a mão livre puxa suavemente para fora a lateral/cós demonstrando elasticidade sem exagerar.
-- 2.7s–3.3s: Solta naturalmente o tecido; a peça retorna imediatamente ao caimento original.
-- 3.3s–4.8s: Gira suavemente cerca de 40–60 graus de lado mostrando o caimento lateral com o celular cobrindo o rosto.
-- 4.8s–5.8s: Retorna à posição frontal recuando suavemente à distância original do espelho.
-- 5.8s–7s: De frente para o espelho, desliza a mão livre pela parte superior/peitoral em gesto natural.
-- 7s–8.5s: Gira de lado novamente mostrando cintura, quadril e silhueta lateral.
-- 8.5s–10s: Retorna à posição frontal diante do espelho e relaxa a mão livre.`
-        : `**CRONOGRAMA DE MOVIMENTOS (10s CONTÍNUOS — MESTRA ANA MARIA):**
-- 0s–1.5s: Postura frontal diante do espelho segurando o smartphone; aproxima-se fisicamente um pouco do espelho (sem zoom digital).
-- 1.5s–2.7s: Próxima ao espelho, com a mão livre puxa suavemente para fora a lateral/cós do shorts demonstrando elasticidade sem exagerar.
-- 2.7s–3.3s: Solta naturalmente o tecido; o shorts retorna imediatamente ao formato original.
-- 3.3s–4.8s: Gira suavemente cerca de 40–60 graus de lado mostrando o caimento lateral com o celular cobrindo o rosto.
-- 4.8s–5.8s: Retorna à posição frontal recuando suavemente à distância original do espelho.
-- 5.8s–7s: De frente para o espelho, desliza a mão livre pela parte superior/peito em gesto delicado sem puxar a blusa.
-- 7s–8.5s: Gira de lado novamente mostrando cintura, quadril e silhueta lateral.
-- 8.5s–10s: Retorna à posição frontal diante do espelho e relaxa a mão livre.`;
+        ? `**MOVEMENT CHOREOGRAPHY (10s CONTINUOUS — 01. CONJUNTO THAI):**
+- 0.0–1.8s: From the first frame, free hand gently pulls ONLY the bottom hem of the upper top outward away from the abdomen to show elasticity/drape (never pulling the bottom garment).
+- 1.8–3.0s: Gradually releases the top hem and prepares to rotate.
+- 3.0–5.2s: Pronounced 80–90° side turn showing complete side silhouette.
+- 5.2–6.8s: Smooth, complete return to direct frontal mirror-facing position.
+- 6.8–8.3s: Free hand sweeps continuously across waist and front abdomen over the fabric.
+- 8.3–10.0s: Hand lowers near hip/upper lower piece presenting fit with subtle weight transfer.`
+        : `**MOVEMENT CHOREOGRAPHY (10s CONTINUOUS — 01. CONJUNTO THAI):**
+- 0.0–1.8s: From the very first frame, free hand pulls ONLY the bottom hem of the TOP (blouse) gently outward from the abdomen to demonstrate elasticity and fit. NEVER touch or pull the skirt.
+- 1.8–3.0s: Gradually releases the top hem back to place while shifting weight to turn.
+- 3.0–5.2s: Pronounced 80–90° side turn presenting a genuine full side silhouette of top and skirt; brief hold.
+- 5.2–6.8s: Smooth, complete return back to direct frontal mirror-facing position.
+- 6.8–8.3s: Free hand makes a deliberate continuous sweep across the waist and front abdomen.
+- 8.3–10.0s: Free hand moves near hip/upper skirt presenting fit with subtle weight transfer until final frame.`;
 
     case 'mestra_iara':
       return isMale
-        ? `**CRONOGRAMA DE MOVIMENTOS (10s CONTÍNUOS — MESTRA IARA):**
-- 0s–1.5s (Elasticidade): Mão livre na lateral segura o tecido e puxa para fora demonstrando elasticidade; solta suavemente.
-- 1.5s–3.5s (Demonstração frontal): Retorna a mão ao abdômen e desliza para cima até o peitoral em alisamento suave.
-- 3.5s–6.5s (Giro lateral): Rotação gradual em 3/4 até perfil lateral com pequenos ajustes nos pés e discreta transferência de peso.
-- 6.5s–7.5s (Retorno frontal): Gira suavemente de volta para a posição frontal, deslizando a palma sobre a frente da peça.
-- 7.5s–10s (Pose final): Pequenos ajustes de postura, toque suave no quadril e sutil pose 3/4 finalizando com elegância diante do espelho.`
-        : `**CRONOGRAMA DE MOVIMENTOS (10s CONTÍNUOS — MESTRA IARA):**
-- 0s–1.5s (Elasticidade): Com a mão livre na lateral da peça, segura delicadamente o tecido e puxa para fora; solta suavemente.
-- 1.5s–3.5s (Demonstração frontal): Retorna a mão ao abdômen e desliza lentamente para cima até o busto em alisamento suave do tecido.
-- 3.5s–6.5s (Giro lateral): Inicia rotação gradual em 3/4 até alcançar perfil lateral com pequenos ajustes nos pés e discreta transferência de peso.
-- 6.5s–7.5s (Retorno frontal): Gira o corpo de volta para a posição frontal, deslizando a palma sobre a parte frontal da peça.
-- 7.5s–10s (Pose final): Permanece de frente, realizando pequenos ajustes naturais de postura, toque no quadril e sutil pose 3/4 finalizando com elegância.`;
+        ? `**MOVEMENT CHOREOGRAPHY (10s CONTINUOUS — 02. CALÇA THAI):**
+- 0.0–0.6s: Relaxed frontal mirror stance, legs close together, one foot slightly ahead.
+- 0.6–2.0s: Free hand moves to outer thigh, gently pinches and pulls trouser fabric horizontally outward to show width and drape, then releases and transitions to lateral waistband.
+- 2.0–4.0s: Hand glides down upper thigh, brushes front thigh, sweeps gently to front waistband/abdomen and relaxes to side.
+- 4.5–6.5s: Subtle weight shift, small lateral foot step opening stance with natural wide-leg fabric sway.
+- 6.5–10.0s: Smooth hip/torso rotation into a 3/4 side-and-rear silhouette presentation with natural final hold.`
+        : `**MOVEMENT CHOREOGRAPHY (10s CONTINUOUS — 02. CALÇA THAI):**
+- 0.0–0.6s: Natural frontal mirror stance, legs close, one foot slightly ahead.
+- 0.6–2.0s: Free hand reaches outer thigh, pinches/pulls lateral trouser fabric horizontally outward showing wide fit and drape, then releases upward toward lateral waistband.
+- 2.0–4.0s: Hand glides down upper thigh, brushes front thigh, moves smoothly across front waistband/abdomen and relaxes alongside body.
+- 4.5–6.5s: Controlled weight shift and small lateral step creating an open balanced stance as wide trouser legs sway naturally.
+- 6.5–10.0s: Smooth torso and hip rotation into a 3/4 side and slightly rearward presentation showing side/rear trouser drape until final frame.`;
 
     case 'mestra_duda':
-      return isMale
-        ? `**CRONOGRAMA DE MOVIMENTOS (10s CONTÍNUOS — MESTRA DUDA):**
-- 0s–3s: Demonstração da peça com a mão livre tocando a parte frontal superior e deslizando suavemente para baixo pelo tecido.
-- 3s–6s: A mão percorre cintura e quadril mostrando a modelagem e o ajuste anatômico da roupa.
-- 6s–8.5s: Pequena rotação suave do corpo em 3/4 com discreta transferência de peso entre as pernas, apresentando o caimento lateral.
-- 8.5s–10s: Retorno suave para a posição frontal com pequenos gestos naturais apresentando os detalhes da peça diante do espelho.`
-        : `**CRONOGRAMA DE MOVIMENTOS (10s CONTÍNUOS — MESTRA DUDA):**
-- 0s–3s: Demonstração da peça com a mão livre tocando delicadamente a parte frontal superior e deslizando suavemente para baixo pelo tecido.
-- 3s–6s: A mão percorre suavemente a cintura, quadril e laterais, demonstrando a modelagem justa e o caimento do tecido.
-- 6s–8.5s: Pequena rotação suave do corpo em 3/4 com discreta transferência de peso entre as pernas, apresentando o caimento lateral da roupa.
-- 8.5s–10s: Retorno suave para a posição frontal com pequenos gestos naturais apresentando os detalhes e finalizando em pose relaxada diante do espelho.`;
+      return `**MOVEMENT CHOREOGRAPHY (10s CONTINUOUS — 03. VESTIDO THAI):**
+- 0.0–2.0s: Starts frontal with one leg visibly bent at knee ahead, free hand on upper thigh; knee gradually straightens as hand descends and legs return closer together.
+- 2.0–3.8s: Subtle foot adjustment; free hand approaches and glides along upper lateral skirt fabric showing texture and fit.
+- 3.8–6.2s: Advances one leg clearly forward then diagonally outward with natural weight transfer onto supporting leg.
+- 6.2–8.2s: Free hand glides down skirt then grasps upper thigh fabric and pulls gently HORIZONTALLY SIDEWAYS a few cm (NEVER lift dress or raise hemline), releasing naturally.
+- 8.2–10.0s: Final natural frontal presentation with slight hip/foot adjustment and relaxed dress drape.`;
 
     case 'mestra_nay':
-      return isMale
-        ? `**CRONOGRAMA DE MOVIMENTOS (10s CONTÍNUOS — MESTRA NAY):**
-- 0s–2s: Postura natural diante do espelho; a mão livre sobe até o peitoral.
-- 2s–4s: Apoia a palma sobre o tecido e inicia deslizamento contínuo para baixo em direção ao abdômen.
-- 4s–7s: Deslizamento contínuo descendente passando pelo abdômen, cintura, quadril e coxa, demonstrando caimento e ajuste.
-- 7s–10s: Afasta suavemente a mão do tecido, com pequenas transferências de peso entre as pernas e orientação predominantemente frontal.`
-        : `**CRONOGRAMA DE MOVIMENTOS (10s CONTÍNUOS — MESTRA NAY):**
-- 0s–2s: Postura natural diante do espelho; a mão livre sobe suavemente até a região superior/colo da peça.
-- 2s–4s: Apoia delicadamente a palma sobre o tecido e inicia deslizamento contínuo para baixo em direção ao abdômen.
-- 4s–7s: Deslizamento contínuo descendente passando pelo abdômen inferior, cintura, quadril e parte superior da coxa, demonstrando caimento e ajuste.
-- 7s–10s: Afasta suavemente a mão do tecido, com pequenas transferências de peso entre as pernas e orientação predominantemente frontal diante do espelho.`;
+      return `**MOVEMENT CHOREOGRAPHY (10s CONTINUOUS — 04. SAIA THAI):**
+- 0.0–1.2s: Initial crossed-leg frontal stance, hips displaced; quick foot adjustment transferring body weight visibly onto opposite leg.
+- 1.2–3.3s: Free hand rises to waistband, moves across belt/buckle/front waist, then descends naturally along skirt side.
+- 3.3–5.8s: Decisive alternating weight transfer between legs, quick outward lateral foot step opening stance with natural skirt swing, then second weight shift back.
+- 5.8–8.3s: Hand glides down upper skirt, then grasps skirt fabric at upper thigh and pulls clearly OUTWARD and slightly sideways (not touching waist or lifting hem), releasing naturally.
+- 8.3–10.0s: Final visible weight transfer settling into an asymmetrical frontal stance.`;
 
     case 'mestra_catza':
-      return isMale
-        ? `**CRONOGRAMA DE MOVIMENTOS (10s CONTÍNUOS — MESTRA CATZA):**
-- 0s–3s: Mão livre sobe até a parte superior da peça, tocando peitoral, decote e acabamentos sob o flash do smartphone.
-- 3s–6s: Deslizamento suave da mão da parte superior até a cintura e abdômen, demonstrando o ajuste do tecido no corpo.
-- 6s–8s: Toques sutis no quadril e laterais com transferência suave de peso entre as pernas em pose diagonal/3/4 elegante.
-- 8s–10s: Pose final estável diante do espelho valorizando a peça, com movimentos espontâneos e naturais.`
-        : `**CRONOGRAMA DE MOVIMENTOS (10s CONTÍNUOS — MESTRA CATZA):**
-- 0s–3s: A mão livre sobe até a parte superior da peça, tocando delicadamente colo, decote e acabamentos frontais sob iluminação com flash do smartphone.
-- 3s–6s: Deslizamento suave da mão da parte superior até a cintura e abdômen, demonstrando o ajuste anatômico do tecido no corpo.
-- 6s–8s: Toques sutis no quadril e laterais com transferência suave de peso entre as pernas em pose diagonal/3/4 elegante.
-- 8s–10s: Pose final estável diante do espelho valorizando a peça, com movimentos espontâneos e naturais.`;
+      return `**MOVEMENT CHOREOGRAPHY (10s CONTINUOUS — 05. MACACÃO THAI):**
+- 0.0–2.3s: Asymmetrical stance with visible leg weight transfer; free hand glides along upper thigh then performs a gentle outward pull on jumpsuit fabric at upper thigh and releases.
+- 2.3–5.0s: Hand moves visibly up from thigh to abdomen, glides horizontally across waist/abdomen, then descends over hip and upper thigh.
+- 5.0–7.3s: Clear alternating weight transfer onto opposite leg, foot repositioning with second weight transfer, hand moves to lower jumpsuit area.
+- 7.3–8.5s: Second gentle outward fabric pull at upper thigh, brief hold, natural release.
+- 8.5–10.0s: Pronounced 70–90° side turn showing complete side silhouette of the jumpsuit through final frame.`;
 
     case 'pov_cinta_85k':
       return `**CRONOGRAMA DE MOVIMENTOS (10s POV EM PRIMEIRA PESSOA — 85K):**
@@ -1022,8 +1003,8 @@ ${movementsBlock}
     executionBlock,
   ];
   const baseLength = baseSections.join('\n\n').length;
-  // Margem de segurança para garantir estritamente <= 2.480 caracteres e nunca cortar o final
-  const maxUserChars = Math.max(0, 2480 - baseLength - 40);
+  // Margem de segurança para garantir estritamente <= 2.450 caracteres e nunca cortar o final
+  const maxUserChars = Math.max(0, 2430 - baseLength - 40);
 
   const userBlock = (hasUserInstructions && maxUserChars > 30)
     ? `**INSTRUÇÕES DO USUÁRIO:**\n"${userInstructionsText.length > maxUserChars ? userInstructionsText.slice(0, maxUserChars - 4) + '...' : userInstructionsText}"`
@@ -1048,13 +1029,11 @@ ${movementsBlock}
 
   let concise = sections.join('\n\n').trim();
 
-  // Caso exceda 2.500 caracteres, encontra a última frase completa antes do limite (NUNCA corta no meio de palavras ou blocos)
-  if (concise.length > 2500) {
-    const sub = concise.slice(0, 2490);
+  // Caso exceda 2.450 caracteres, encontra a última frase completa antes do limite (NUNCA corta no meio de palavras ou blocos)
+  if (concise.length > 2450) {
+    const sub = concise.slice(0, 2445);
     const lastPeriod = Math.max(sub.lastIndexOf('.'), sub.lastIndexOf('\n'));
-    if (lastPeriod > 1800) {
-      concise = sub.slice(0, lastPeriod + 1).trim();
-    }
+    concise = lastPeriod > 1500 ? sub.slice(0, lastPeriod + 1).trim() : sub.trim();
   }
 
   return concise;
@@ -1127,7 +1106,14 @@ Adapte toda a execução para o modelo masculino da imagem de referência, prese
 
   // 3. Regra de Enquadramento e Fidelidade da Imagem Original:
   // Preserva rigorosamente o enquadramento, ângulo e rosto da imagem de referência inicial
-  if (!master.isPov && master.id !== 'mestra_ana_maria') {
+  if (!master.isPov) {
+    if (mode === 'com_rosto') {
+      base = base
+        .replace(/The reference camera angle is BELOW THE CHIN\./gi, 'The reference camera angle preserves the EXACT framing from the attached model photograph (VISIBLE FACE IN MIRROR).')
+        .replace(/Original crop below the chin\./gi, 'Original framing preserving the model face as shown in the reference photograph.')
+        .replace(/below-chin framing/gi, 'exact reference mirror framing (preserving visible face)')
+        .replace(/BELOW THE CHIN/g, 'PER THE ATTACHED REFERENCE PHOTOGRAPH');
+    }
     // Remove qualquer texto legado de restrição absoluta de rosto ou lábios caso venha no template base
     base = base
       .replace(/\*\*REGRA SUPERIOR INEGOCIÁVEL DE ENQUADRAMENTO[^\n]*\*\*[\s\S]*?(?=\n\n|$)/gi, '')

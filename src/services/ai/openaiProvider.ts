@@ -713,12 +713,10 @@ ${cleanPrompt}`;
 
           const allowsFace =
             presentationMode === 'com_rosto' ||
-            selectedMasterId === 'mestra_catza' ||
             (cleanPrompt &&
               (cleanPrompt.includes('MODO COM ROSTO') ||
                 cleanPrompt.includes('ROSTO E ENQUADRAMENTO — MODO COM ROSTO') ||
-                cleanPrompt.includes('o rosto da modelo DEVE aparecer') ||
-                cleanPrompt.includes('MESTRA CATZA')));
+                cleanPrompt.includes('o rosto da modelo DEVE aparecer')));
 
           const framingSection = allowsFace
             ? `[FRAMING & FACE DIRECTIVE — MODO COM ROSTO / UGC]:

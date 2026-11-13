@@ -217,13 +217,14 @@ export default function App() {
     bodyType: 'normal',
     presentationMode: 'mirror_selfie',
     selectedMasterId: 'mestra_ana_maria',
+    isManualMasterSelection: false,
     selectedModelGalleryId: undefined,
     selectedModelGalleryNumber: undefined,
     selectedModelGalleryUrl: undefined,
     generateModelViaPrompt: false,
     modelScenarioSource: 'model',
     additionalInstructions: '',
-    imageModel: 'seedream_5_0_pro',
+    imageModel: 'openai',
     videoPromptLimit: 'unlimited',
   });
 
@@ -1267,6 +1268,9 @@ export default function App() {
       );
 
       setAnaMariaResult(res);
+      if (res.imageModel && res.imageModel !== anaMariaForm.imageModel) {
+        setAnaMariaForm((prev) => ({ ...prev, imageModel: res.imageModel }));
+      }
       setAnaMariaPage('results');
       playCompletionSound(1);
     } catch (err: any) {
@@ -1299,13 +1303,14 @@ export default function App() {
       bodyType: 'normal',
       presentationMode: 'mirror_selfie',
       selectedMasterId: 'mestra_ana_maria',
+      isManualMasterSelection: false,
       selectedModelGalleryId: undefined,
       selectedModelGalleryNumber: undefined,
       selectedModelGalleryUrl: undefined,
       generateModelViaPrompt: false,
       modelScenarioSource: 'model',
       additionalInstructions: '',
-      imageModel: 'seedream_5_0_pro',
+      imageModel: 'openai',
       videoPromptLimit: 'unlimited',
     });
     setAnaMariaResult(null);

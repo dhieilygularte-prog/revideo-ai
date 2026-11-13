@@ -3,11 +3,12 @@ import {
   AnaMariaResultState,
   AnaMariaAudit,
   AnaMariaImageModel,
+  AnaMariaMasterId,
 } from './types';
 import {
   buildAnaMariaImagePrompt,
   buildAnaMariaVideoPrompt,
-  detectComplementaryGarment,
+  buildAnaMariaConciseVideoPrompt,
   AnaMariaRoomType,
 } from './anaMariaPrompts';
 import { resolveHeadlineAndHashtags } from './anaMariaBank';
@@ -15,7 +16,7 @@ import { AIProfile } from '../config/aiProfiles';
 import { PREFERRED_SCENARIO_BASE64 } from './assets/scenarioImage';
 import { SCENARIO_GALLERY_ITEMS, POV_SCENARIO_GALLERY_ITEMS } from './scenarioGalleryData';
 import { MODEL_GALLERY_ITEMS, getModelGalleryForMode } from './modelGalleryData';
-import { getMasterPromptById } from './masterPromptsData';
+import { getMasterPromptById, resolveMasterPromptByProductName } from './masterPromptsData';
 
 export interface AnaMariaPipelineCallbacks {
   onProgress?: (stepName: string, percent: number) => void;
@@ -360,17 +361,11 @@ async function prepareProductPhotosForPayload(photos: string[]): Promise<{
 export function ensureAnaMariaModelAndScenario(rawForm: AnaMariaFormState): AnaMariaFormState {
   let form = { ...rawForm };
 
-  const complementaryInfo = detectComplementaryGarment(
-    form.productName,
-    form.additionalInstructions,
-    form.influencer
-  );
-  const isUpperOnly = complementaryInfo.type === 'upper_only';
-
-  // Se o produto for uma peça que fica acima da cintura (blusa, blusinha, cropped, camiseta, jaqueta...),
-  // usa por padrão o prompt "01. MESTRA CATZA — COM ROSTO & FLASH DIRETO NO ESPELHO" (mestra_catza)
-  if (isUpperOnly && (!form.selectedMasterId || form.selectedMasterId === 'mestra_ana_maria')) {
-    form.selectedMasterId = 'mestra_catza';
+  // Seleciona automaticamente o prompt de movimento de acordo com o nome da peça,
+  // a menos que o usuário tenha selecionado manualmente outro prompt na galeria ou esteja em modo POV.
+  const initialMode = form.presentationMode || 'mirror_selfie';
+  if (initialMode !== 'pov' && !form.isManualMasterSelection) {
+    form.selectedMasterId = resolveMasterPromptByProductName(form.productName);
   }
 
   const master = getMasterPromptById(form.selectedMasterId);
@@ -393,15 +388,7 @@ export function ensureAnaMariaModelAndScenario(rawForm: AnaMariaFormState): AnaM
     form.selectedScenarioId.startsWith('cenario_pov_') ||
     (!form.selectedScenarioUrl && !form.selectedScenarioBase64)
   ) {
-    if (master.id === 'mestra_catza' && master.preferredScenarioId) {
-      const catzaScenario = SCENARIO_GALLERY_ITEMS.find((s) => s.id === master.preferredScenarioId);
-      if (catzaScenario) {
-        form.selectedScenarioId = catzaScenario.id;
-        form.selectedScenarioNumber = catzaScenario.number;
-        form.selectedScenarioUrl = catzaScenario.fullUrl;
-        form.selectedScenarioBase64 = undefined;
-      }
-    } else if (SCENARIO_GALLERY_ITEMS && SCENARIO_GALLERY_ITEMS.length > 0) {
+    if (SCENARIO_GALLERY_ITEMS && SCENARIO_GALLERY_ITEMS.length > 0) {
       const chosenScenario =
         prewarmedRandomScenario ||
         SCENARIO_GALLERY_ITEMS[Math.floor(Math.random() * SCENARIO_GALLERY_ITEMS.length)] ||
@@ -427,18 +414,21 @@ export function ensureAnaMariaModelAndScenario(rawForm: AnaMariaFormState): AnaM
     form.selectedModelGalleryNumber = undefined;
     form.selectedModelGalleryUrl = undefined;
     form.selectedModelGalleryBase64 = undefined;
-  } else if (!form.selectedModelGalleryId && !form.selectedModelGalleryNumber) {
-    const targetModelGallery = getModelGalleryForMode(form.presentationMode);
-    // Se o produto for peça da parte de cima, dá preferência à modelo 5 (Mestra Catza)
-    if (isUpperOnly) {
-      const model5 = targetModelGallery.find((m) => m.number === 5) || targetModelGallery[4];
-      if (model5) {
-        form.selectedModelGalleryId = model5.id;
-        form.selectedModelGalleryNumber = model5.number;
-        form.selectedModelGalleryUrl = model5.fullUrl;
-        form.selectedModelGalleryBase64 = undefined;
-      }
-    } else if (targetModelGallery && targetModelGallery.length > 0) {
+  } else {
+    const targetModelGallery = getModelGalleryForMode(activeMode);
+    // Garante que uma modelo selecionada realmente pertence à galeria do modo ativo (UGC vs Sem Rosto)
+    const matchingExisting = form.selectedModelGalleryId
+      ? targetModelGallery.find((m) => m.id === form.selectedModelGalleryId)
+      : undefined;
+
+    if (!matchingExisting) {
+      form.selectedModelGalleryId = undefined;
+      form.selectedModelGalleryNumber = undefined;
+      form.selectedModelGalleryUrl = undefined;
+      form.selectedModelGalleryBase64 = undefined;
+    }
+
+    if (!form.selectedModelGalleryId && !form.selectedModelGalleryNumber && targetModelGallery.length > 0) {
       const chosenModel = targetModelGallery[Math.floor(Math.random() * targetModelGallery.length)];
       form.selectedModelGalleryId = chosenModel.id;
       form.selectedModelGalleryNumber = chosenModel.number;
@@ -451,6 +441,50 @@ export function ensureAnaMariaModelAndScenario(rawForm: AnaMariaFormState): AnaM
 }
 
 export const ensureAnaMariaScenario = ensureAnaMariaModelAndScenario;
+
+/**
+ * Executa a chamada de geração de imagem com fallback automático:
+ * quando imageModel é 'openai' e ocorre erro, alterna automaticamente para 'seedream_5_0_pro' e tenta novamente.
+ */
+async function generateSceneImageWithFallback(params: {
+  payload: Record<string, any>;
+  requestedModel: AnaMariaImageModel;
+  onFallback?: () => void;
+}): Promise<{ imageUrl: string; usedModel: AnaMariaImageModel }> {
+  try {
+    const imgData = await postJson<{ success: boolean; imageUrl: string; error?: string }>(
+      '/api/generate-scene-image',
+      {
+        ...params.payload,
+        imageModel: params.requestedModel,
+      }
+    );
+    if (!imgData || !imgData.imageUrl) {
+      throw new Error(imgData?.error || 'Não foi possível obter a imagem gerada do servidor.');
+    }
+    return { imageUrl: imgData.imageUrl, usedModel: params.requestedModel };
+  } catch (err) {
+    if (params.requestedModel === 'openai') {
+      console.warn(
+        '[AnaMaria] Erro na geração com OpenAI; alternando automaticamente para SeaDream 5.0 Pro:',
+        err
+      );
+      params.onFallback?.();
+      const fallbackData = await postJson<{ success: boolean; imageUrl: string; error?: string }>(
+        '/api/generate-scene-image',
+        {
+          ...params.payload,
+          imageModel: 'seedream_5_0_pro',
+        }
+      );
+      if (!fallbackData || !fallbackData.imageUrl) {
+        throw new Error(fallbackData?.error || 'Falha no fallback automático com SeaDream 5.0 Pro.');
+      }
+      return { imageUrl: fallbackData.imageUrl, usedModel: 'seedream_5_0_pro' };
+    }
+    throw err;
+  }
+}
 
 /**
  * Pipeline principal do Modo Ana Maria (otimizado para execução rápida <25s sem perda de qualidade)
@@ -494,16 +528,7 @@ export async function runAnaMariaPipeline(
     hasSelectedScenario: Boolean(form.selectedScenarioId),
   });
 
-  const conciseVideoPrompt = buildAnaMariaVideoPrompt({
-    productName: form.productName,
-    influencer: form.influencer,
-    bodyType: form.bodyType,
-    presentationMode: activeMode,
-    selectedMasterId: form.selectedMasterId,
-    limit: '2500',
-    additionalInstructions: form.additionalInstructions,
-    hasSelectedScenario: Boolean(form.selectedScenarioId),
-  });
+  // O Prompt Enxuto NÃO é gerado automaticamente; só é gerado sob demanda quando o usuário toca em GERAR PROMPT ENXUTO.
 
   // 2. Preparação em paralelo do Cenário + Fotos de Referência compactadas (~300 KB total)
   onProgress('image_generation', 45);
@@ -528,9 +553,13 @@ export async function runAnaMariaPipeline(
     prepareProductPhotosForPayload(form.referencePhotos),
   ]);
 
-  const imgData = await postJson<{ success: boolean; imageUrl: string; error?: string }>(
-    '/api/generate-scene-image',
-    {
+  const { imageUrl: generatedImageUrl, usedModel } = await generateSceneImageWithFallback({
+    requestedModel: form.imageModel,
+    onFallback: () =>
+      onStatusMessage(
+        'OpenAI retornou erro — mudando automaticamente para SeaDream 5.0 Pro e gerando novamente...'
+      ),
+    payload: {
       prompt: imagePrompt,
       productPhotoBase64: primaryPhoto,
       productPhotosBase64: supplementaryPhotos,
@@ -547,18 +576,11 @@ export async function runAnaMariaPipeline(
       selectedScenarioId: form.selectedScenarioId,
       influencer: form.influencer,
       aspectRatio: '9:16',
-      imageModel: form.imageModel,
       bodyType: form.bodyType,
       aiProfile,
       additionalInstructions: form.additionalInstructions,
-    }
-  );
-
-  if (!imgData || !imgData.imageUrl) {
-    throw new Error(imgData?.error || 'Não foi possível obter a imagem gerada do servidor.');
-  }
-
-  const generatedImageUrl = imgData.imageUrl;
+    },
+  });
 
   onProgress('completed', 100);
   onStatusMessage('Geração concluída com sucesso!');
@@ -592,7 +614,7 @@ export async function runAnaMariaPipeline(
     influencer: form.influencer,
     bodyType: form.bodyType,
     additionalInstructions: form.additionalInstructions,
-    imageModel: form.imageModel,
+    imageModel: usedModel,
     videoPromptLimit: form.videoPromptLimit,
     presentationMode: activeMode,
     selectedMasterId: form.selectedMasterId || 'mestra_ana_maria',
@@ -605,7 +627,7 @@ export async function runAnaMariaPipeline(
     generateModelViaPrompt: form.generateModelViaPrompt,
     imagePrompt,
     videoPrompt,
-    conciseVideoPrompt,
+    conciseVideoPrompt: undefined,
     headline,
     hashtags,
     shoeCategory,
@@ -645,9 +667,9 @@ export async function regenerateAnaMariaImage(params: {
     prepareProductPhotosForPayload(effectiveForm.referencePhotos),
   ]);
 
-  const imgData = await postJson<{ success: boolean; imageUrl: string; error?: string }>(
-    '/api/generate-scene-image',
-    {
+  const { imageUrl: highResUrl, usedModel } = await generateSceneImageWithFallback({
+    requestedModel: effectiveImageModel,
+    payload: {
       prompt,
       productPhotoBase64: primaryPhoto,
       productPhotosBase64: supplementaryPhotos,
@@ -657,23 +679,16 @@ export async function regenerateAnaMariaImage(params: {
       selectedModelGalleryNumber: effectiveForm.selectedModelGalleryNumber,
       modelScenarioSource: effectiveForm.modelScenarioSource || 'model',
       isAnaMariaMode: true,
-      presentationMode: form.presentationMode,de: form.presentationMode,
+      presentationMode: form.presentationMode,
       selectedMasterId: form.selectedMasterId,
       selectedScenarioNumber: effectiveForm.selectedScenarioNumber,
       selectedScenarioId: effectiveForm.selectedScenarioId,
       aspectRatio: '9:16',
-      imageModel: effectiveImageModel,
       bodyType: effectiveForm.bodyType,
       aiProfile,
       additionalInstructions: effectiveForm.additionalInstructions,
-    }
-  );
-
-  if (!imgData || !imgData.imageUrl) {
-    throw new Error(imgData?.error || 'Falha ao refazer a imagem.');
-  }
-
-  const highResUrl = imgData.imageUrl;
+    },
+  });
 
   const audit: AnaMariaAudit = {
     score: 96,
@@ -688,7 +703,7 @@ export async function regenerateAnaMariaImage(params: {
     issues: ['Peça refeita com alta fidelidade, cenário fixo e enquadramento do queixo para baixo.'],
   };
 
-  return { imageUrl: highResUrl, audit, imageModel: effectiveImageModel };
+  return { imageUrl: highResUrl, audit, imageModel: usedModel };
 }
 
 const ALTERNATIVE_ROOMS: AnaMariaRoomType[] = ['quarto', 'sala', 'closet'];
@@ -703,7 +718,7 @@ export async function regenerateAnaMariaNewScenario(params: {
   form: AnaMariaFormState;
   currentRoom?: AnaMariaRoomType;
   aiProfile?: AIProfile;
-}): Promise<{ imageUrl: string; room: AnaMariaRoomType }> {
+}): Promise<{ imageUrl: string; room: AnaMariaRoomType; imageModel: AnaMariaImageModel }> {
   const { form, currentRoom, aiProfile = 'openai' } = params;
 
   const availableRooms = ALTERNATIVE_ROOMS.filter((r) => r !== currentRoom);
@@ -712,9 +727,9 @@ export async function regenerateAnaMariaNewScenario(params: {
   const { prompt } = buildAnaMariaImagePrompt(form, nextRoom);
   const { primaryPhoto, supplementaryPhotos } = await prepareProductPhotosForPayload(form.referencePhotos);
 
-  const imgData = await postJson<{ success: boolean; imageUrl: string; error?: string }>(
-    '/api/generate-scene-image',
-    {
+  const { imageUrl: highResUrl, usedModel } = await generateSceneImageWithFallback({
+    requestedModel: form.imageModel,
+    payload: {
       prompt,
       productPhotoBase64: primaryPhoto,
       productPhotosBase64: supplementaryPhotos,
@@ -722,20 +737,61 @@ export async function regenerateAnaMariaNewScenario(params: {
       presentationMode: form.presentationMode,
       selectedMasterId: form.selectedMasterId,
       aspectRatio: '9:16',
-      imageModel: form.imageModel,
       bodyType: form.bodyType,
       aiProfile,
       additionalInstructions: form.additionalInstructions,
-    }
-  );
+    },
+  });
 
-  if (!imgData || !imgData.imageUrl) {
-    throw new Error(imgData?.error || 'Falha ao gerar nova imagem com cenário trocado.');
+  return { imageUrl: highResUrl, room: nextRoom, imageModel: usedModel };
+}
+
+/**
+ * Gera sob demanda o Prompt Enxuto (<= 2.450 caracteres com espaços),
+ * priorizando 80% na preservação dos movimentos do prompt original.
+ */
+export async function generateAnaMariaCompactPrompt(params: {
+  videoPrompt: string;
+  productName?: string;
+  influencer?: AnaMariaFormState['influencer'];
+  bodyType?: AnaMariaFormState['bodyType'];
+  presentationMode?: AnaMariaFormState['presentationMode'];
+  selectedMasterId?: AnaMariaMasterId;
+  additionalInstructions?: string;
+  hasSelectedScenario?: boolean;
+  aiProfile?: AIProfile;
+}): Promise<string> {
+  const cleanOriginal = (params.videoPrompt || '').replace(/^🎥 PROMPT DE VÍDEO[^\n]*\n+/i, '').trim();
+  const master = getMasterPromptById(params.selectedMasterId);
+
+  try {
+    const res = await postJson<{ success: boolean; compactPrompt?: string; error?: string }>(
+      '/api/anamaria-compact-prompt',
+      {
+        videoPrompt: cleanOriginal,
+        productName: params.productName,
+        masterShortName: master.shortName,
+        aiProfile: params.aiProfile || 'openai',
+      },
+      0
+    );
+    if (res?.compactPrompt && res.compactPrompt.trim().length > 0) {
+      const compact = res.compactPrompt.trim();
+      return compact.length <= 2450 ? compact : compact.slice(0, 2450).trim();
+    }
+  } catch (err) {
+    console.warn('Falha ao compactar prompt via servidor, usando compactação local:', err);
   }
 
-  const highResUrl = imgData.imageUrl;
-
-  return { imageUrl: highResUrl, room: nextRoom };
+  return buildAnaMariaConciseVideoPrompt({
+    productName: params.productName || '',
+    influencer: params.influencer,
+    bodyType: params.bodyType,
+    presentationMode: params.presentationMode,
+    selectedMasterId: params.selectedMasterId,
+    additionalInstructions: params.additionalInstructions,
+    hasSelectedScenario: params.hasSelectedScenario,
+  });
 }
 
 /**

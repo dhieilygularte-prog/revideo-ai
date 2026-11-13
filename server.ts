@@ -1670,6 +1670,92 @@ function simplifyToSingleColorWord(raw: string): string {
   return firstWord.charAt(0).toUpperCase() + firstWord.slice(1).toLowerCase();
 }
 
+app.post('/api/anamaria-compact-prompt', async (req, res) => {
+  try {
+    const { videoPrompt, productName, masterShortName, aiProfile } = req.body || {};
+    const original = (videoPrompt || '').trim();
+    if (!original) {
+      return res.status(400).json({ success: false, error: 'Prompt original não fornecido.' });
+    }
+
+    const enforceMaxChars2450 = (text: string): string => {
+      const clean = text.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
+      if (clean.length <= 2450) return clean;
+      const sub = clean.slice(0, 2445);
+      const cutAt = Math.max(sub.lastIndexOf('\n'), sub.lastIndexOf('. '));
+      return (cutAt > 1400 ? sub.slice(0, cutAt + 1) : sub).trim().slice(0, 2450).trim();
+    };
+
+    const systemPrompt = `Você é um engenheiro especialista em prompts de vídeo (Kling / Veo 3.1 / Flow) para TikTok Shop.
+Sua missão é criar uma versão ENXUTA do prompt original fornecido pelo usuário.
+
+REGRAS OBRIGATÓRIAS E INVIOLÁVEIS:
+1. TAMANHO ESTRITO: O texto final DEVE ter NO MÁXIMO 2.450 caracteres COM ESPAÇOS (alvo ideal: entre 2.050 e 2.420 caracteres com espaços — NUNCA ultrapasse 2.450 caracteres).
+2. PRIORIDADE DE 80% NOS MOVIMENTOS: Aproximadamente 80% do conteúdo do prompt enxuto deve ser dedicado a preservar com máxima fidelidade a coreografia, sequência temporal (segundos), gestos das mãos, puxadas de tecido, movimentos de pernas/pés, trocas de peso, rotações de tronco/quadril e regras específicas de movimento do prompt original.
+3. Os 20% restantes devem condensar de forma objetiva: trava de câmera/enquadramento (conforme foto de referência), fidelidade 1:1 da peça de roupa${productName ? ` (${productName})` : ''}, posição fixa do celular, silêncio absoluto (sem fala) e eventuais instruções personalizadas do usuário presentes no original.
+4. Preserve exatamente o idioma predominante dos blocos de movimento do prompt original (mantenha a clareza técnica dos movimentos sem cortar etapas).
+5. Retorne EXCLUSIVAMENTE o texto final do prompt enxuto, sem introduções, sem comentários, sem contagem de caracteres e sem crases de markdown.`;
+
+    const userMessage = `MESTRE / MODELO: ${masterShortName || 'Modo Ana Maria'}
+PRODUTO: ${productName || 'Peça de vestuário'}
+
+PROMPT ORIGINAL LONGO (${original.length} caracteres):
+"""
+${original}
+"""
+
+Condense este prompt mantendo 80% do foco e do espaço na preservação fiel de TODOS os movimentos e coreografia do original, com limite máximo absoluto de 2.450 caracteres incluindo espaços.`;
+
+    const activeProfile = aiProfile || getRequestAIProfile(req);
+    if (activeProfile === 'openai' && openAIProvider.isConfigured()) {
+      try {
+        const client = (openAIProvider as any).getClient();
+        const completion = await client.chat.completions.create({
+          model: OPENAI_BRAIN_MODEL,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userMessage },
+          ],
+        });
+        const generated = completion.choices[0]?.message?.content?.trim();
+        if (generated) {
+          return res.json({ success: true, compactPrompt: enforceMaxChars2450(generated) });
+        }
+      } catch (err: any) {
+        console.warn('Erro ao gerar prompt enxuto via OpenAI:', err?.message || err);
+      }
+    }
+
+    if (process.env.GEMINI_API_KEY) {
+      try {
+        const geminiRes = await getGenAI().models.generateContent({
+          model: GEMINI_VISION_FAST_MODEL || 'gemini-3.8-flash-lite',
+          contents: {
+            parts: [{ text: `${systemPrompt}\n\n${userMessage}` }],
+          },
+        });
+        const geminiText = geminiRes.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+        if (geminiText) {
+          return res.json({ success: true, compactPrompt: enforceMaxChars2450(geminiText) });
+        }
+      } catch (gemErr: any) {
+        console.warn('Erro ao gerar prompt enxuto via Gemini:', gemErr?.message || gemErr);
+      }
+    }
+
+    // Fallback determinístico focado na seção de movimentos do prompt original
+    const movMatch = original.match(/##\s*1\.\s*(?:EXACT\s+)?MOVEMENT\s+CHOREOGRAPHY[\s\S]*?(?=\n##\s*[3-9]\.|\n###\s*[3-9]\.|$)/i);
+    const header = 'Create a 10s ultra-realistic 9:16 mirror-selfie showcase video matching the exact reference photo angle, smartphone lock, 1:1 garment fidelity, and total silence (NO speech).\n\n';
+    const movSection = movMatch ? movMatch[0] : original;
+    const footer = '\n\nLOCK: Keep camera stationary, exact framing/crop, 1:1 garment fidelity, natural physics, zero speech/text.';
+    const combined = enforceMaxChars2450(header + movSection.slice(0, 2450 - header.length - footer.length) + footer);
+    return res.json({ success: true, compactPrompt: combined });
+  } catch (err: any) {
+    console.error('Erro na rota anamaria-compact-prompt:', err);
+    return res.status(500).json({ success: false, error: err?.message || 'Erro ao gerar prompt enxuto.' });
+  }
+});
+
 app.post('/api/detect-dominant-color', async (req, res) => {
   try {
     const { photoBase64, productName, productMode, mode, fileName, aiProfile: _aiProfile } = req.body;
@@ -1980,13 +2066,11 @@ async function generateImageWithKling(params: {
 
   const allowsFace =
     params.presentationMode === 'com_rosto' ||
-    params.selectedMasterId === 'mestra_catza' ||
     Boolean(
       params.prompt &&
         (params.prompt.includes('MODO COM ROSTO') ||
           params.prompt.includes('ROSTO E ENQUADRAMENTO — MODO COM ROSTO') ||
-          params.prompt.includes('o rosto da modelo DEVE aparecer') ||
-          params.prompt.includes('MESTRA CATZA'))
+          params.prompt.includes('o rosto da modelo DEVE aparecer'))
     );
 
   const isPovModeKling =
@@ -2310,13 +2394,11 @@ async function generateImageWithSeedream(params: {
 
   const allowsFaceSeedream =
     params.presentationMode === 'com_rosto' ||
-    params.selectedMasterId === 'mestra_catza' ||
     Boolean(
       params.prompt &&
         (params.prompt.includes('MODO COM ROSTO') ||
           params.prompt.includes('ROSTO E ENQUADRAMENTO — MODO COM ROSTO') ||
-          params.prompt.includes('o rosto da modelo DEVE aparecer') ||
-          params.prompt.includes('MESTRA CATZA'))
+          params.prompt.includes('o rosto da modelo DEVE aparecer'))
     );
 
   const faceDirectiveSeedream = allowsFaceSeedream

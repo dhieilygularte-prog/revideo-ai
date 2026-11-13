@@ -22,6 +22,7 @@ import {
   Cpu,
   CheckCircle2,
   Plus,
+  Scissors,
 } from 'lucide-react';
 import { AnaMariaResultState, AnaMariaAuditColorStatus, AnaMariaTheme } from './types';
 import {
@@ -34,11 +35,11 @@ import {
   regenerateAnaMariaImage,
   regenerateAnaMariaNewScenario,
   refineAnaMariaVideoPrompt,
+  generateAnaMariaCompactPrompt,
   saveAnaMariaResult,
 } from './anaMariaPipeline';
 import { resolveHeadlineAndHashtags } from './anaMariaBank';
 import { VideoFidelityAuditor } from '../produtos2/VideoFidelityAuditor';
-import { buildAnaMariaConciseVideoPrompt } from './anaMariaPrompts';
 import { AIProfile } from '../config/aiProfiles';
 
 interface AnaMariaResultsProps {
@@ -115,6 +116,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
   // Estados de destaque azul ativo ao copiar/baixar (itens 6, 7 e 14)
   const [copiedPrompt, setCopiedPrompt] = useState(false);
   const [copiedConcisePrompt, setCopiedConcisePrompt] = useState(false);
+  const [isGeneratingCompactPrompt, setIsGeneratingCompactPrompt] = useState(false);
   const [hasCopiedPromptOnce, setHasCopiedPromptOnce] = useState(false);
 
   const [copiedHashtags, setCopiedHashtags] = useState(false);
@@ -265,20 +267,39 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
     } catch {}
   };
 
-  const handleCopyConcisePrompt = async () => {
+  const handleGenerateCompactPrompt = async () => {
+    if (isGeneratingCompactPrompt) return;
     try {
-      const concise =
-        result.conciseVideoPrompt ||
-        buildAnaMariaConciseVideoPrompt({
-          productName: result.productName,
-          influencer: result.influencer,
-          bodyType: result.bodyType,
-          presentationMode: result.presentationMode,
-          selectedMasterId: result.selectedMasterId,
-          additionalInstructions: result.additionalInstructions,
-          hasSelectedScenario: Boolean(result.selectedScenarioId),
-        });
-      await navigator.clipboard.writeText(concise.trim());
+      setIsGeneratingCompactPrompt(true);
+      setCopiedConcisePrompt(false);
+      const compact = await generateAnaMariaCompactPrompt({
+        videoPrompt: cleanVideoPrompt,
+        productName: result.productName,
+        influencer: result.influencer,
+        bodyType: result.bodyType,
+        presentationMode: result.presentationMode,
+        selectedMasterId: result.selectedMasterId,
+        additionalInstructions: result.additionalInstructions,
+        hasSelectedScenario: Boolean(result.selectedScenarioId),
+        aiProfile,
+      });
+      const updated: AnaMariaResultState = {
+        ...result,
+        conciseVideoPrompt: compact,
+      };
+      onUpdateResult(updated);
+      saveAnaMariaResult(updated);
+    } catch (err: any) {
+      alert(`Falha ao gerar prompt enxuto: ${err?.message || err}`);
+    } finally {
+      setIsGeneratingCompactPrompt(false);
+    }
+  };
+
+  const handleCopyConcisePrompt = async () => {
+    if (!result.conciseVideoPrompt) return;
+    try {
+      await navigator.clipboard.writeText(result.conciseVideoPrompt.trim());
       setCopiedConcisePrompt(true);
       setTimeout(() => setCopiedConcisePrompt(false), 2500);
     } catch (err) {
@@ -395,6 +416,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
       onUpdateResult({
         ...result,
         imageUrl: res.imageUrl,
+        imageModel: res.imageModel,
         audit: res.audit || result.audit,
       });
       setImageTweakText('');
@@ -468,6 +490,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
       onUpdateResult({
         ...result,
         imageUrl: res.imageUrl,
+        imageModel: res.imageModel,
       });
       setHasDownloadedImageOnce(false);
       setDownloadedImage(false);
@@ -492,6 +515,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
       onUpdateResult({
         ...result,
         videoPrompt: refined,
+        conciseVideoPrompt: undefined,
       });
       setPromptCorrectionText('');
       setHasCopiedPromptOnce(false);
@@ -904,8 +928,61 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                 </p>
               </div>
 
-              {/* Botão Copiar Prompt e Link Discreto Copiar Prompt Enxuto */}
-              <div className="flex flex-col items-end gap-1.5">
+              {/* Botão Copiar Prompt + Botão Sob Demanda GERAR PROMPT ENXUTO / Amarelo COPIAR PROMPT ENXUTO */}
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {!result.conciseVideoPrompt ? (
+                  <button
+                    type="button"
+                    disabled={isGeneratingCompactPrompt}
+                    onClick={handleGenerateCompactPrompt}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer border shadow-md ${
+                      isGeneratingCompactPrompt
+                        ? 'bg-zinc-800 border-zinc-700 text-zinc-400 cursor-wait'
+                        : 'bg-zinc-900 hover:bg-zinc-800 border-amber-400/60 text-amber-300'
+                    }`}
+                    title="Gerar versão enxuta do prompt (até 2.450 caracteres com espaços) priorizando 80% os movimentos originais"
+                  >
+                    <Scissors className={`w-3.5 h-3.5 ${isGeneratingCompactPrompt ? 'animate-spin' : ''}`} />
+                    <span>
+                      {isGeneratingCompactPrompt ? 'Gerando Enxuto...' : 'GERAR PROMPT ENXUTO'}
+                    </span>
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={handleCopyConcisePrompt}
+                      className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer shadow-lg border ${
+                        copiedConcisePrompt
+                          ? 'bg-emerald-500 text-white border-emerald-300 ring-2 ring-emerald-300'
+                          : 'bg-amber-400 hover:bg-amber-300 text-zinc-950 border-amber-200 ring-2 ring-amber-400/40'
+                      }`}
+                      title={`Copiar prompt enxuto pronto (${result.conciseVideoPrompt.length}/2450 caracteres)`}
+                    >
+                      {copiedConcisePrompt ? (
+                        <>
+                          <Check className="w-4 h-4" />
+                          <span>PROMPT ENXUTO COPIADO!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-4 h-4" />
+                          <span>COPIAR PROMPT ENXUTO ({result.conciseVideoPrompt.length})</span>
+                        </>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isGeneratingCompactPrompt}
+                      onClick={handleGenerateCompactPrompt}
+                      className="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-amber-300 transition-colors cursor-pointer"
+                      title="Regenerar prompt enxuto"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isGeneratingCompactPrompt ? 'animate-spin' : ''}`} />
+                    </button>
+                  </div>
+                )}
+
                 <button
                   type="button"
                   onClick={handleCopyPrompt}
@@ -931,26 +1008,10 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                     </>
                   )}
                 </button>
-
-                <button
-                  type="button"
-                  onClick={handleCopyConcisePrompt}
-                  className="text-xs text-sky-400 hover:text-sky-300 underline underline-offset-2 font-medium transition-colors cursor-pointer flex items-center gap-1"
-                  title="Copiar versão enxuta do prompt (até 2.500 caracteres) focada em movimentos e fidelidade 1:1 à peça"
-                >
-                  {copiedConcisePrompt ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 text-emerald-400" />
-                      <span className="text-emerald-400 font-semibold">prompt enxuto copiado ✓</span>
-                    </>
-                  ) : (
-                    <span>copiar prompt enxuto</span>
-                  )}
-                </button>
               </div>
             </div>
 
-            {/* Prompt limpo sem o cabeçalho 🎥 PROMPT DE VÍDEO... */}
+            {/* Prompt limpo sem o cabeçalho 🎥 PROMPT DE VÍDEO... (prompt original longo permanece sempre visível) */}
             <textarea
               rows={16}
               value={cleanVideoPrompt}
@@ -958,7 +1019,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                 const val = e.target.value;
                 setHasCopiedPromptOnce(false);
                 setCopiedPrompt(false);
-                onUpdateResult({ ...result, videoPrompt: val });
+                onUpdateResult({ ...result, videoPrompt: val, conciseVideoPrompt: undefined });
               }}
               className={`w-full p-3.5 rounded-xl text-xs font-mono leading-relaxed focus:outline-none resize-y select-all ${
                 hasCopiedPromptOnce

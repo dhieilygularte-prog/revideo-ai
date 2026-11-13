@@ -1002,7 +1002,7 @@ ${cleanPrompt}`;
 - CRITICAL ISOLATION RULE: Reference Image 2+ is ONLY for the garment/clothing design. DO NOT copy the body shape of the catalog model or mannequin in Reference Image 2+!
 - The woman MUST have EXACTLY the body, skin tone, hair, nails and accessories defined in the selected Mestra's specification below (section "PADR\xC3O CORPORAL E PELE"), with realistic anatomical proportions.
 - STRICTLY FORBIDDEN: straight/boyish torso without waist definition, or any body that contradicts the Mestra's specification.`;
-          const allowsFace = presentationMode === "com_rosto" || selectedMasterId === "mestra_catza" || cleanPrompt && (cleanPrompt.includes("MODO COM ROSTO") || cleanPrompt.includes("ROSTO E ENQUADRAMENTO \u2014 MODO COM ROSTO") || cleanPrompt.includes("o rosto da modelo DEVE aparecer") || cleanPrompt.includes("MESTRA CATZA"));
+          const allowsFace = presentationMode === "com_rosto" || cleanPrompt && (cleanPrompt.includes("MODO COM ROSTO") || cleanPrompt.includes("ROSTO E ENQUADRAMENTO \u2014 MODO COM ROSTO") || cleanPrompt.includes("o rosto da modelo DEVE aparecer"));
           const framingSection = allowsFace ? `[FRAMING & FACE DIRECTIVE \u2014 MODO COM ROSTO / UGC]:
 - The model's natural, harmonious face and expression MUST appear clearly in the mirror reflection.
 - Expressive, authentic, natural makeup, dark neat eyebrows, long hair naturally falling over shoulders.
@@ -3424,6 +3424,86 @@ function simplifyToSingleColorWord(raw) {
   const firstWord = clean.split(/\s+/)[0] || clean;
   return firstWord.charAt(0).toUpperCase() + firstWord.slice(1).toLowerCase();
 }
+app.post("/api/anamaria-compact-prompt", async (req, res) => {
+  try {
+    const { videoPrompt, productName, masterShortName, aiProfile } = req.body || {};
+    const original = (videoPrompt || "").trim();
+    if (!original) {
+      return res.status(400).json({ success: false, error: "Prompt original n\xE3o fornecido." });
+    }
+    const enforceMaxChars2450 = (text) => {
+      const clean = text.replace(/^```[a-zA-Z]*\n?/, "").replace(/\n?```$/, "").trim();
+      if (clean.length <= 2450) return clean;
+      const sub = clean.slice(0, 2445);
+      const cutAt = Math.max(sub.lastIndexOf("\n"), sub.lastIndexOf(". "));
+      return (cutAt > 1400 ? sub.slice(0, cutAt + 1) : sub).trim().slice(0, 2450).trim();
+    };
+    const systemPrompt = `Voc\xEA \xE9 um engenheiro especialista em prompts de v\xEDdeo (Kling / Veo 3.1 / Flow) para TikTok Shop.
+Sua miss\xE3o \xE9 criar uma vers\xE3o ENXUTA do prompt original fornecido pelo usu\xE1rio.
+
+REGRAS OBRIGAT\xD3RIAS E INVIOL\xC1VEIS:
+1. TAMANHO ESTRITO: O texto final DEVE ter NO M\xC1XIMO 2.450 caracteres COM ESPA\xC7OS (alvo ideal: entre 2.050 e 2.420 caracteres com espa\xE7os \u2014 NUNCA ultrapasse 2.450 caracteres).
+2. PRIORIDADE DE 80% NOS MOVIMENTOS: Aproximadamente 80% do conte\xFAdo do prompt enxuto deve ser dedicado a preservar com m\xE1xima fidelidade a coreografia, sequ\xEAncia temporal (segundos), gestos das m\xE3os, puxadas de tecido, movimentos de pernas/p\xE9s, trocas de peso, rota\xE7\xF5es de tronco/quadril e regras espec\xEDficas de movimento do prompt original.
+3. Os 20% restantes devem condensar de forma objetiva: trava de c\xE2mera/enquadramento (conforme foto de refer\xEAncia), fidelidade 1:1 da pe\xE7a de roupa${productName ? ` (${productName})` : ""}, posi\xE7\xE3o fixa do celular, sil\xEAncio absoluto (sem fala) e eventuais instru\xE7\xF5es personalizadas do usu\xE1rio presentes no original.
+4. Preserve exatamente o idioma predominante dos blocos de movimento do prompt original (mantenha a clareza t\xE9cnica dos movimentos sem cortar etapas).
+5. Retorne EXCLUSIVAMENTE o texto final do prompt enxuto, sem introdu\xE7\xF5es, sem coment\xE1rios, sem contagem de caracteres e sem crases de markdown.`;
+    const userMessage = `MESTRE / MODELO: ${masterShortName || "Modo Ana Maria"}
+PRODUTO: ${productName || "Pe\xE7a de vestu\xE1rio"}
+
+PROMPT ORIGINAL LONGO (${original.length} caracteres):
+"""
+${original}
+"""
+
+Condense este prompt mantendo 80% do foco e do espa\xE7o na preserva\xE7\xE3o fiel de TODOS os movimentos e coreografia do original, com limite m\xE1ximo absoluto de 2.450 caracteres incluindo espa\xE7os.`;
+    const activeProfile = aiProfile || getRequestAIProfile(req);
+    if (activeProfile === "openai" && openAIProvider.isConfigured()) {
+      try {
+        const client = openAIProvider.getClient();
+        const completion = await client.chat.completions.create({
+          model: OPENAI_BRAIN_MODEL,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userMessage }
+          ]
+        });
+        const generated = completion.choices[0]?.message?.content?.trim();
+        if (generated) {
+          return res.json({ success: true, compactPrompt: enforceMaxChars2450(generated) });
+        }
+      } catch (err) {
+        console.warn("Erro ao gerar prompt enxuto via OpenAI:", err?.message || err);
+      }
+    }
+    if (process.env.GEMINI_API_KEY) {
+      try {
+        const geminiRes = await getGenAI().models.generateContent({
+          model: GEMINI_VISION_FAST_MODEL || "gemini-3.8-flash-lite",
+          contents: {
+            parts: [{ text: `${systemPrompt}
+
+${userMessage}` }]
+          }
+        });
+        const geminiText = geminiRes.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+        if (geminiText) {
+          return res.json({ success: true, compactPrompt: enforceMaxChars2450(geminiText) });
+        }
+      } catch (gemErr) {
+        console.warn("Erro ao gerar prompt enxuto via Gemini:", gemErr?.message || gemErr);
+      }
+    }
+    const movMatch = original.match(/##\s*1\.\s*(?:EXACT\s+)?MOVEMENT\s+CHOREOGRAPHY[\s\S]*?(?=\n##\s*[3-9]\.|\n###\s*[3-9]\.|$)/i);
+    const header = "Create a 10s ultra-realistic 9:16 mirror-selfie showcase video matching the exact reference photo angle, smartphone lock, 1:1 garment fidelity, and total silence (NO speech).\n\n";
+    const movSection = movMatch ? movMatch[0] : original;
+    const footer = "\n\nLOCK: Keep camera stationary, exact framing/crop, 1:1 garment fidelity, natural physics, zero speech/text.";
+    const combined = enforceMaxChars2450(header + movSection.slice(0, 2450 - header.length - footer.length) + footer);
+    return res.json({ success: true, compactPrompt: combined });
+  } catch (err) {
+    console.error("Erro na rota anamaria-compact-prompt:", err);
+    return res.status(500).json({ success: false, error: err?.message || "Erro ao gerar prompt enxuto." });
+  }
+});
 app.post("/api/detect-dominant-color", async (req, res) => {
   try {
     const { photoBase64, productName, productMode, mode, fileName, aiProfile: _aiProfile } = req.body;
@@ -3665,8 +3745,8 @@ async function generateImageWithKling(params) {
     };
   }
   const englishFidelityHeader = params.imageReferenceBase64 ? "CRITICAL PRODUCT ISOLATION: Reproduce ONLY the clothing/garment 1:1 from the reference image. DO NOT copy the person, face, hair, body, tattoos, or background from the reference photo. Generate a completely NEW model and NEW setting as described below:\n" : "";
-  const allowsFace = params.presentationMode === "com_rosto" || params.selectedMasterId === "mestra_catza" || Boolean(
-    params.prompt && (params.prompt.includes("MODO COM ROSTO") || params.prompt.includes("ROSTO E ENQUADRAMENTO \u2014 MODO COM ROSTO") || params.prompt.includes("o rosto da modelo DEVE aparecer") || params.prompt.includes("MESTRA CATZA"))
+  const allowsFace = params.presentationMode === "com_rosto" || Boolean(
+    params.prompt && (params.prompt.includes("MODO COM ROSTO") || params.prompt.includes("ROSTO E ENQUADRAMENTO \u2014 MODO COM ROSTO") || params.prompt.includes("o rosto da modelo DEVE aparecer"))
   );
   const isPovModeKling = params.presentationMode === "pov" || params.selectedMasterId === "pov_cinta_85k" || params.selectedMasterId === "pov_blusinhas_13k" || Boolean(params.prompt && params.prompt.includes("PRESERVA\xC7\xC3O INTEGRAL DO CEN\xC1RIO POV"));
   const hasModelRefKling = Boolean(params.modelReferenceBase64 && params.modelReferenceBase64.length > 50);
@@ -3881,8 +3961,8 @@ async function generateImageWithSeedream(params) {
   );
   const isBagSeedream = isBagProduct(params.prompt, void 0, void 0);
   const bagDirectiveSeedream = !isBagSeedream ? "[PROIBIDO BOLSAS]: A modelo N\xC3O deve usar, segurar ou carregar qualquer tipo de bolsa, bolsa de ombro, bolsa tiracolo, clutch ou mochila. / NO BAGS: No handbags, no purses, no shoulder bags, no backpacks.\n" : "";
-  const allowsFaceSeedream = params.presentationMode === "com_rosto" || params.selectedMasterId === "mestra_catza" || Boolean(
-    params.prompt && (params.prompt.includes("MODO COM ROSTO") || params.prompt.includes("ROSTO E ENQUADRAMENTO \u2014 MODO COM ROSTO") || params.prompt.includes("o rosto da modelo DEVE aparecer") || params.prompt.includes("MESTRA CATZA"))
+  const allowsFaceSeedream = params.presentationMode === "com_rosto" || Boolean(
+    params.prompt && (params.prompt.includes("MODO COM ROSTO") || params.prompt.includes("ROSTO E ENQUADRAMENTO \u2014 MODO COM ROSTO") || params.prompt.includes("o rosto da modelo DEVE aparecer"))
   );
   const faceDirectiveSeedream = allowsFaceSeedream ? "[ENQUADRAMENTO: Rosto expressivo vis\xEDvel naturalmente no espelho diante da c\xE2mera].\n" : "[CORTE OBRIGAT\xD3RIO NA BASE DO QUEIXO \u2014 ZERO ROSTO]: CORTAR RIGOROSAMENTE DA BASE DO QUEIXO PARA BAIXO. \xC9 TERMINANTEMENTE PROIBIDO MOSTRAR OLHOS, NARIZ, BOCA, L\xC1BIOS, DENTES OU CABE\xC7A. O smartphone moderno fica posicionado na altura do queixo e o rosto fica 100% FORA do enquadramento. Exibir apenas a ponta inferior do queixo, pesco\xE7o, colo e corpo inteiro at\xE9 os p\xE9s no piso (ou at\xE9 a barra do vestido longo cobrindo os p\xE9s, caso a pe\xE7a seja longa at\xE9 o ch\xE3o).\n";
   const naturalSkinSeedream = "[M\xC1XIMA NITIDEZ & DEFINI\xC7\xC3O \xD3PTICA CRISTALINA]: Textura de pele humana real ultra-n\xEDtida com poros vis\xEDveis, acabamento fosco sob ilumina\xE7\xE3o realista sem oleosidade excessiva. Foco perfeito nos olhos, cabelo, pele e trama do tecido, ZERO desfoque (NO BLUR, ZERO BORR\xC3O). PELE 100% LIMPA E LISA, ZERO TATUAGENS em todo o corpo (bra\xE7os, m\xE3os, pernas, colo e pesco\xE7o livres de qualquer tatuagem ou tinta na pele).\n";
