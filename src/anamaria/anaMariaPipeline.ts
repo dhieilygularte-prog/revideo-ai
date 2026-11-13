@@ -14,7 +14,7 @@ import { resolveHeadlineAndHashtags } from './anaMariaBank';
 import { AIProfile } from '../config/aiProfiles';
 import { PREFERRED_SCENARIO_BASE64 } from './assets/scenarioImage';
 import { SCENARIO_GALLERY_ITEMS, POV_SCENARIO_GALLERY_ITEMS } from './scenarioGalleryData';
-import { MODEL_GALLERY_ITEMS } from './modelGalleryData';
+import { MODEL_GALLERY_ITEMS, getModelGalleryForMode } from './modelGalleryData';
 import { getMasterPromptById } from './masterPromptsData';
 
 export interface AnaMariaPipelineCallbacks {
@@ -308,8 +308,10 @@ export async function resolveModelBase64(form: AnaMariaFormState): Promise<strin
   if (form.selectedModelGalleryBase64 && form.selectedModelGalleryBase64.length > 50) {
     return compressImageForFastTransfer(form.selectedModelGalleryBase64, 800, 0.84);
   }
+  const fallbackFolder = form.presentationMode === 'com_rosto' ? 'com_rosto' : 'sem_rosto';
   const url =
     form.selectedModelGalleryUrl ||
+    (form.selectedModelGalleryNumber ? `/models/gallery/${fallbackFolder}/${form.selectedModelGalleryNumber}.png` : undefined) ||
     (form.selectedModelGalleryNumber ? `/models/gallery/${form.selectedModelGalleryNumber}.png` : undefined);
   if (url) {
     const cached = modelBase64Cache.get(url);
@@ -426,17 +428,18 @@ export function ensureAnaMariaModelAndScenario(rawForm: AnaMariaFormState): AnaM
     form.selectedModelGalleryUrl = undefined;
     form.selectedModelGalleryBase64 = undefined;
   } else if (!form.selectedModelGalleryId && !form.selectedModelGalleryNumber) {
+    const targetModelGallery = getModelGalleryForMode(form.presentationMode);
     // Se o produto for peça da parte de cima, dá preferência à modelo 5 (Mestra Catza)
     if (isUpperOnly) {
-      const model5 = MODEL_GALLERY_ITEMS.find((m) => m.number === 5) || MODEL_GALLERY_ITEMS[4];
+      const model5 = targetModelGallery.find((m) => m.number === 5) || targetModelGallery[4];
       if (model5) {
         form.selectedModelGalleryId = model5.id;
         form.selectedModelGalleryNumber = model5.number;
         form.selectedModelGalleryUrl = model5.fullUrl;
         form.selectedModelGalleryBase64 = undefined;
       }
-    } else if (MODEL_GALLERY_ITEMS && MODEL_GALLERY_ITEMS.length > 0) {
-      const chosenModel = MODEL_GALLERY_ITEMS[Math.floor(Math.random() * MODEL_GALLERY_ITEMS.length)];
+    } else if (targetModelGallery && targetModelGallery.length > 0) {
+      const chosenModel = targetModelGallery[Math.floor(Math.random() * targetModelGallery.length)];
       form.selectedModelGalleryId = chosenModel.id;
       form.selectedModelGalleryNumber = chosenModel.number;
       form.selectedModelGalleryUrl = chosenModel.fullUrl;

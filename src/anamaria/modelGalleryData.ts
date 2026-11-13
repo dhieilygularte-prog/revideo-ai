@@ -8,7 +8,14 @@ export interface AnaMariaModelItem {
   fullUrl: string;
 }
 
-export const MODEL_GALLERY_ITEMS: AnaMariaModelItem[] = [
+/**
+ * Galeria Oficial de Modelos para o Modo "COM ROSTO (UGC)"
+ * - Total de 25 modelos (1 a 25)
+ * - Modelo 15 atualizada com saia poá marrom e batom vermelho
+ * - Modelo 25 adicionada com vestido marrom e fenda lateral
+ * - Rosto totalmente visível em todas as fotos (estilo UGC)
+ */
+export const MODEL_GALLERY_COM_ROSTO: AnaMariaModelItem[] = [
   {
     id: 'modelo_1_ana_maria',
     number: 1,
@@ -16,7 +23,7 @@ export const MODEL_GALLERY_ITEMS: AnaMariaModelItem[] = [
     title: '01. Mestra Ana Maria',
     description: 'Silhueta curvilínea ampulheta, cintura fina marcada, quadris e glúteos volumosos, cabelos castanho-claros com mechas iluminadas.',
     file: '1.png',
-    fullUrl: '/models/gallery/1.png',
+    fullUrl: '/models/gallery/com_rosto/1.png',
   },
   {
     id: 'modelo_2_iara',
@@ -25,7 +32,7 @@ export const MODEL_GALLERY_ITEMS: AnaMariaModelItem[] = [
     title: '02. Mestra Iara',
     description: 'Biotipo atlético e curvilíneo, pernas torneadas, cabelos escuros naturais e postura confiante.',
     file: '2.png',
-    fullUrl: '/models/gallery/2.png',
+    fullUrl: '/models/gallery/com_rosto/2.png',
   },
   {
     id: 'modelo_3_duda',
@@ -34,7 +41,7 @@ export const MODEL_GALLERY_ITEMS: AnaMariaModelItem[] = [
     title: '03. Mestra Duda Vip',
     description: 'Silhueta delicada e feminina, cintura desenhada, quadris proporcionais e postura selfie no espelho.',
     file: '3.png',
-    fullUrl: '/models/gallery/3.png',
+    fullUrl: '/models/gallery/com_rosto/3.png',
   },
   {
     id: 'modelo_4_nay',
@@ -43,7 +50,7 @@ export const MODEL_GALLERY_ITEMS: AnaMariaModelItem[] = [
     title: '04. Mestra Nay',
     description: 'Curvas bem marcadas, presença autêntica de selfie no espelho e visual moderno.',
     file: '4.png',
-    fullUrl: '/models/gallery/4.png',
+    fullUrl: '/models/gallery/com_rosto/4.png',
   },
   {
     id: 'modelo_5_catza',
@@ -52,7 +59,7 @@ export const MODEL_GALLERY_ITEMS: AnaMariaModelItem[] = [
     title: '05. Mestra Catza',
     description: 'Presença de alto impacto, cabelos escuros, estilo sofisticado com iluminação contrastante.',
     file: '5.png',
-    fullUrl: '/models/gallery/5.png',
+    fullUrl: '/models/gallery/com_rosto/5.png',
   },
   {
     id: 'modelo_6_ana_ruiva',
@@ -61,7 +68,7 @@ export const MODEL_GALLERY_ITEMS: AnaMariaModelItem[] = [
     title: '06. Ana Ruiva',
     description: 'Cabelos ruivos acobreados naturais, silhueta feminina elegante e postura confiante no espelho.',
     file: '6.png',
-    fullUrl: '/models/gallery/6.png',
+    fullUrl: '/models/gallery/com_rosto/6.png',
   },
   {
     id: 'modelo_7_dorameira',
@@ -70,7 +77,7 @@ export const MODEL_GALLERY_ITEMS: AnaMariaModelItem[] = [
     title: '07. Dorameira Aeroporto',
     description: 'Visual jovem asiático moderno estilo dorameira, estética delicada, urbana e autêntica.',
     file: '7.png',
-    fullUrl: '/models/gallery/7.png',
+    fullUrl: '/models/gallery/com_rosto/7.png',
   },
   {
     id: 'modelo_8_ana_em_forma',
@@ -79,7 +86,7 @@ export const MODEL_GALLERY_ITEMS: AnaMariaModelItem[] = [
     title: '08. Ana Em Forma',
     description: 'Biotipo atlético e tonificado, postura fitness moderna com pernas torneadas e abdômen firme.',
     file: '8.png',
-    fullUrl: '/models/gallery/8.png',
+    fullUrl: '/models/gallery/com_rosto/8.png',
   },
   {
     id: 'modelo_9_evangelica',
@@ -88,7 +95,7 @@ export const MODEL_GALLERY_ITEMS: AnaMariaModelItem[] = [
     title: '09. Evangélica Delicada',
     description: 'Estética modesta e sofisticada, caimento impecável de alfaiataria/vestidos e postura graciosa.',
     file: '9.png',
-    fullUrl: '/models/gallery/9.png',
+    fullUrl: '/models/gallery/com_rosto/9.png',
   },
   {
     id: 'modelo_10_gordinha_real',
@@ -97,7 +104,7 @@ export const MODEL_GALLERY_ITEMS: AnaMariaModelItem[] = [
     title: '10. Gordinha Real',
     description: 'Biotipo plus size genuíno e natural, curvas reais, quadris largos e identificação popular imediata.',
     file: '10.png',
-    fullUrl: '/models/gallery/10.png',
+    fullUrl: '/models/gallery/com_rosto/10.png',
   },
   {
     id: 'modelo_11_inocente_sexy',
@@ -106,7 +113,7 @@ export const MODEL_GALLERY_ITEMS: AnaMariaModelItem[] = [
     title: '11. Inocente Sexy',
     description: 'Charme espontâneo e jovem, silhueta harmoniosa e presença descontraída de selfie.',
     file: '11.png',
-    fullUrl: '/models/gallery/11.png',
+    fullUrl: '/models/gallery/com_rosto/11.png',
   },
   {
     id: 'modelo_12_loira_mulherao',
@@ -115,7 +122,7 @@ export const MODEL_GALLERY_ITEMS: AnaMariaModelItem[] = [
     title: '12. Loira Mulherão',
     description: 'Presença imponente e marcante, cabelos loiros volumosos e curvas curvilíneas expressivas.',
     file: '12.png',
-    fullUrl: '/models/gallery/12.png',
+    fullUrl: '/models/gallery/com_rosto/12.png',
   },
   {
     id: 'modelo_13_tranca',
@@ -124,7 +131,7 @@ export const MODEL_GALLERY_ITEMS: AnaMariaModelItem[] = [
     title: '13. Trança',
     description: 'Tranças afro longas e estilosas, atitude autêntica, beleza negra radiante e visual moderno.',
     file: '13.png',
-    fullUrl: '/models/gallery/13.png',
+    fullUrl: '/models/gallery/com_rosto/13.png',
   },
   {
     id: 'modelo_14_cacheada_jovem',
@@ -133,16 +140,16 @@ export const MODEL_GALLERY_ITEMS: AnaMariaModelItem[] = [
     title: '14. Cacheada Jovem',
     description: 'Cachos volumosos e naturais, energia vibrante e silhueta jovem com curvas suaves.',
     file: '14.png',
-    fullUrl: '/models/gallery/14.png',
+    fullUrl: '/models/gallery/com_rosto/14.png',
   },
   {
     id: 'modelo_15_mulher_chic',
     number: 15,
     name: 'Mulher Chic',
     title: '15. Mulher Chic',
-    description: 'Porte refinado de alta costura, elegância discreta, postura ereta e estética clean sofisticada.',
+    description: 'Porte refinado de alta costura, saia poá marrom com cinto clássico, batom vermelho e estética clean sofisticada.',
     file: '15.png',
-    fullUrl: '/models/gallery/15.png',
+    fullUrl: '/models/gallery/com_rosto/15.png',
   },
   {
     id: 'modelo_16_mulher_comum',
@@ -151,7 +158,7 @@ export const MODEL_GALLERY_ITEMS: AnaMariaModelItem[] = [
     title: '16. Mulher Comum',
     description: 'Beleza brasileira autêntica e acessível, silhueta natural do dia a dia e altíssima conversão.',
     file: '16.png',
-    fullUrl: '/models/gallery/16.png',
+    fullUrl: '/models/gallery/com_rosto/16.png',
   },
   {
     id: 'modelo_17_nerd_sexy',
@@ -160,7 +167,7 @@ export const MODEL_GALLERY_ITEMS: AnaMariaModelItem[] = [
     title: '17. Nerd Sexy',
     description: 'Visual moderno com óculos estilosos de armação marcante, charme despojado e curvas definidas.',
     file: '17.png',
-    fullUrl: '/models/gallery/17.png',
+    fullUrl: '/models/gallery/com_rosto/17.png',
   },
   {
     id: 'modelo_18_estudante_sexy',
@@ -169,7 +176,7 @@ export const MODEL_GALLERY_ITEMS: AnaMariaModelItem[] = [
     title: '18. Estudante Sexy',
     description: 'Estilo universitário moderno, atitude jovem descontraída e visual casual com frescor.',
     file: '18.png',
-    fullUrl: '/models/gallery/18.png',
+    fullUrl: '/models/gallery/com_rosto/18.png',
   },
   {
     id: 'modelo_19_roqueirinha',
@@ -178,7 +185,7 @@ export const MODEL_GALLERY_ITEMS: AnaMariaModelItem[] = [
     title: '19. Roqueirinha',
     description: 'Personalidade marcante, estilo rocker moderno com atitude autêntica e presença forte.',
     file: '19.png',
-    fullUrl: '/models/gallery/19.png',
+    fullUrl: '/models/gallery/com_rosto/19.png',
   },
   {
     id: 'modelo_20_ruiva_delicada',
@@ -187,7 +194,7 @@ export const MODEL_GALLERY_ITEMS: AnaMariaModelItem[] = [
     title: '20. Ruiva Delicada',
     description: 'Ruivo suave natural, traços harmoniosos, porte delicado e caimento leve em todas as peças.',
     file: '20.png',
-    fullUrl: '/models/gallery/20.png',
+    fullUrl: '/models/gallery/com_rosto/20.png',
   },
   {
     id: 'modelo_21_senhora_chic',
@@ -196,7 +203,7 @@ export const MODEL_GALLERY_ITEMS: AnaMariaModelItem[] = [
     title: '21. Senhora Chic',
     description: 'Mulher madura de alta classe (50+ anos), elegância refinada, postura impecável e caimento nobre.',
     file: '21.png',
-    fullUrl: '/models/gallery/21.png',
+    fullUrl: '/models/gallery/com_rosto/21.png',
   },
   {
     id: 'modelo_22_senhora_simples',
@@ -205,7 +212,7 @@ export const MODEL_GALLERY_ITEMS: AnaMariaModelItem[] = [
     title: '22. Senhora Simples',
     description: 'Mulher madura autêntica e acolhedora (50+ anos), simpatia natural e biotipo real do cotidiano.',
     file: '22.png',
-    fullUrl: '/models/gallery/22.png',
+    fullUrl: '/models/gallery/com_rosto/22.png',
   },
   {
     id: 'modelo_23_morena_cacheada',
@@ -214,7 +221,7 @@ export const MODEL_GALLERY_ITEMS: AnaMariaModelItem[] = [
     title: '23. Morena Cacheada',
     description: 'Cabelos escuros cacheados volumosos, olhar marcante, silhueta curvilínea e estilo urbano descontraído.',
     file: '23.png',
-    fullUrl: '/models/gallery/23.png',
+    fullUrl: '/models/gallery/com_rosto/23.png',
   },
   {
     id: 'modelo_24_loira_fitness',
@@ -223,6 +230,257 @@ export const MODEL_GALLERY_ITEMS: AnaMariaModelItem[] = [
     title: '24. Loira Fitness',
     description: 'Biotipo fitness atlético e tonificado, pernas e abdômen definidos, cabelos ondulados loiros e visual esportivo vibrante.',
     file: '24.png',
-    fullUrl: '/models/gallery/24.png',
+    fullUrl: '/models/gallery/com_rosto/24.png',
+  },
+  {
+    id: 'modelo_25_morena_cacheada',
+    number: 25,
+    name: 'Morena Cacheada Rev',
+    title: '25. Morena Cacheada Rev',
+    description: 'Cabelos ondulados volumosos com mechas quentes, vestido marrom elegante com fenda lateral e sorriso cativante diante do espelho.',
+    file: '25.png',
+    fullUrl: '/models/gallery/com_rosto/25.png',
   },
 ];
+
+/**
+ * Galeria Oficial de Modelos para o Modo "Mirror Selfie (Padrão) / SEM ROSTO"
+ * - Total de 24 modelos (1 a 23, e 25)
+ * - Todas com celular cobrindo naturalmente o rosto diante do espelho
+ * - Nenhuma foto com rosto UGC permanece nesta galeria
+ */
+export const MODEL_GALLERY_SEM_ROSTO: AnaMariaModelItem[] = [
+  {
+    id: 'modelo_sem_rosto_1_ana_maria',
+    number: 1,
+    name: 'Mestra Ana Maria',
+    title: '01. Mestra Ana Maria',
+    description: 'Silhueta curvilínea ampulheta, cintura fina marcada, quadris e glúteos volumosos em selfie clássica no espelho com celular cobrindo o rosto.',
+    file: '1.png',
+    fullUrl: '/models/gallery/sem_rosto/1.png',
+  },
+  {
+    id: 'modelo_sem_rosto_2_iara',
+    number: 2,
+    name: 'Mestra Iara',
+    title: '02. Mestra Iara',
+    description: 'Biotipo atlético e curvilíneo, pernas torneadas, cabelos escuros naturais e postura confiante no espelho.',
+    file: '2.png',
+    fullUrl: '/models/gallery/sem_rosto/2.png',
+  },
+  {
+    id: 'modelo_sem_rosto_3_duda',
+    number: 3,
+    name: 'Mestra Duda Vip',
+    title: '03. Mestra Duda Vip',
+    description: 'Silhueta delicada e feminina, cintura desenhada, quadris proporcionais e postura selfie no espelho.',
+    file: '3.png',
+    fullUrl: '/models/gallery/sem_rosto/3.png',
+  },
+  {
+    id: 'modelo_sem_rosto_4_nay',
+    number: 4,
+    name: 'Mestra Nay',
+    title: '04. Mestra Nay',
+    description: 'Curvas bem marcadas, presença autêntica de selfie no espelho e visual moderno sem rosto.',
+    file: '4.png',
+    fullUrl: '/models/gallery/sem_rosto/4.png',
+  },
+  {
+    id: 'modelo_sem_rosto_5_catza',
+    number: 5,
+    name: 'Mestra Catza',
+    title: '05. Mestra Catza',
+    description: 'Presença de alto impacto, enquadramento focado na parte superior e cintura no espelho.',
+    file: '5.png',
+    fullUrl: '/models/gallery/sem_rosto/5.png',
+  },
+  {
+    id: 'modelo_sem_rosto_6_ana_ruiva',
+    number: 6,
+    name: 'Ana Ruiva',
+    title: '06. Ana Ruiva',
+    description: 'Cabelos ruivos acobreados naturais, silhueta feminina elegante e postura confiante no espelho.',
+    file: '6.png',
+    fullUrl: '/models/gallery/sem_rosto/6.png',
+  },
+  {
+    id: 'modelo_sem_rosto_7_dorameira',
+    number: 7,
+    name: 'Dorameira Aeroporto',
+    title: '07. Dorameira Aeroporto',
+    description: 'Visual jovem moderno estilo dorameira, estética delicada, urbana e autêntica diante do espelho.',
+    file: '7.png',
+    fullUrl: '/models/gallery/sem_rosto/7.png',
+  },
+  {
+    id: 'modelo_sem_rosto_8_ana_em_forma',
+    number: 8,
+    name: 'Ana Em Forma',
+    title: '08. Ana Em Forma',
+    description: 'Biotipo atlético e tonificado, postura fitness moderna com pernas torneadas e abdômen firme.',
+    file: '8.png',
+    fullUrl: '/models/gallery/sem_rosto/8.png',
+  },
+  {
+    id: 'modelo_sem_rosto_9_evangelica',
+    number: 9,
+    name: 'Evangélica Delicada',
+    title: '09. Evangélica Delicada',
+    description: 'Estética modesta e sofisticada, caimento impecável de alfaiataria/vestidos no espelho.',
+    file: '9.png',
+    fullUrl: '/models/gallery/sem_rosto/9.png',
+  },
+  {
+    id: 'modelo_sem_rosto_10_gordinha_real',
+    number: 10,
+    name: 'Gordinha Real',
+    title: '10. Gordinha Real',
+    description: 'Biotipo plus size genuíno e natural, curvas reais, quadris largos e identificação popular imediata.',
+    file: '10.png',
+    fullUrl: '/models/gallery/sem_rosto/10.png',
+  },
+  {
+    id: 'modelo_sem_rosto_11_inocente_sexy',
+    number: 11,
+    name: 'Inocente Sexy',
+    title: '11. Inocente Sexy',
+    description: 'Charme espontâneo e jovem, silhueta harmoniosa e presença descontraída de selfie.',
+    file: '11.png',
+    fullUrl: '/models/gallery/sem_rosto/11.png',
+  },
+  {
+    id: 'modelo_sem_rosto_12_loira_mulherao',
+    number: 12,
+    name: 'Loira Mulherão',
+    title: '12. Loira Mulherão',
+    description: 'Presença imponente e marcante, cabelos loiros volumosos e curvas curvilíneas expressivas.',
+    file: '12.png',
+    fullUrl: '/models/gallery/sem_rosto/12.png',
+  },
+  {
+    id: 'modelo_sem_rosto_13_tranca',
+    number: 13,
+    name: 'Trança',
+    title: '13. Trança',
+    description: 'Tranças afro longas e estilosas, atitude autêntica, beleza negra radiante e visual moderno.',
+    file: '13.png',
+    fullUrl: '/models/gallery/sem_rosto/13.png',
+  },
+  {
+    id: 'modelo_sem_rosto_14_cacheada_jovem',
+    number: 14,
+    name: 'Cacheada Jovem',
+    title: '14. Cacheada Jovem',
+    description: 'Cachos volumosos e naturais, energia vibrante e silhueta jovem com curvas suaves no espelho.',
+    file: '14.png',
+    fullUrl: '/models/gallery/sem_rosto/14.png',
+  },
+  {
+    id: 'modelo_sem_rosto_15_mulher_chic',
+    number: 15,
+    name: 'Mulher Chic',
+    title: '15. Mulher Chic',
+    description: 'Porte refinado de alta costura, elegância discreta, saia poá com cinto clássico e celular cobrindo o rosto.',
+    file: '15.png',
+    fullUrl: '/models/gallery/sem_rosto/15.png',
+  },
+  {
+    id: 'modelo_sem_rosto_16_mulher_comum',
+    number: 16,
+    name: 'Mulher Comum',
+    title: '16. Mulher Comum',
+    description: 'Beleza brasileira autêntica e acessível, silhueta natural do dia a dia e altíssima conversão.',
+    file: '16.png',
+    fullUrl: '/models/gallery/sem_rosto/16.png',
+  },
+  {
+    id: 'modelo_sem_rosto_17_nerd_sexy',
+    number: 17,
+    name: 'Nerd Sexy',
+    title: '17. Nerd Sexy',
+    description: 'Visual moderno despojado com curvas definidas e selfie no espelho.',
+    file: '17.png',
+    fullUrl: '/models/gallery/sem_rosto/17.png',
+  },
+  {
+    id: 'modelo_sem_rosto_18_estudante_sexy',
+    number: 18,
+    name: 'Estudante Sexy',
+    title: '18. Estudante Sexy',
+    description: 'Estilo universitário moderno, atitude jovem descontraída e visual casual com frescor.',
+    file: '18.png',
+    fullUrl: '/models/gallery/sem_rosto/18.png',
+  },
+  {
+    id: 'modelo_sem_rosto_19_roqueirinha',
+    number: 19,
+    name: 'Roqueirinha',
+    title: '19. Roqueirinha',
+    description: 'Personalidade marcante, estilo rocker moderno com atitude autêntica e presença forte no espelho.',
+    file: '19.png',
+    fullUrl: '/models/gallery/sem_rosto/19.png',
+  },
+  {
+    id: 'modelo_sem_rosto_20_ruiva_delicada',
+    number: 20,
+    name: 'Ruiva Delicada',
+    title: '20. Ruiva Delicada',
+    description: 'Ruivo suave natural, traços harmoniosos, porte delicado e caimento leve em todas as peças.',
+    file: '20.png',
+    fullUrl: '/models/gallery/sem_rosto/20.png',
+  },
+  {
+    id: 'modelo_sem_rosto_21_senhora_chic',
+    number: 21,
+    name: 'Senhora Chic',
+    title: '21. Senhora Chic',
+    description: 'Mulher madura de alta classe (50+ anos), elegância refinada, postura impecável e caimento nobre.',
+    file: '21.png',
+    fullUrl: '/models/gallery/sem_rosto/21.png',
+  },
+  {
+    id: 'modelo_sem_rosto_22_senhora_simples',
+    number: 22,
+    name: 'Senhora Simples',
+    title: '22. Senhora Simples',
+    description: 'Mulher madura autêntica e acolhedora (50+ anos), simpatia natural e biotipo real do cotidiano.',
+    file: '22.png',
+    fullUrl: '/models/gallery/sem_rosto/22.png',
+  },
+  {
+    id: 'modelo_sem_rosto_23_loira_cacheada',
+    number: 23,
+    name: 'Loira Cacheada',
+    title: '23. Loira Cacheada',
+    description: 'Cabelos loiros cacheados volumosos, olhar marcante, silhueta curvilínea e estilo descontraído no espelho.',
+    file: '23.png',
+    fullUrl: '/models/gallery/sem_rosto/23.png',
+  },
+  {
+    id: 'modelo_sem_rosto_25_morena_cacheada',
+    number: 25,
+    name: 'Morena Cacheada',
+    title: '25. Morena Cacheada',
+    description: 'Cabelos ondulados volumosos com mechas quentes, vestido marrom elegante com fenda lateral e celular cobrindo o rosto.',
+    file: '25.png',
+    fullUrl: '/models/gallery/sem_rosto/25.png',
+  },
+];
+
+/**
+ * Retorna a galeria de modelos correspondente ao Modo de Apresentação ativo:
+ * - 'com_rosto' → MODEL_GALLERY_COM_ROSTO (25 modelos com rosto UGC)
+ * - 'mirror_selfie' (Padrão) → MODEL_GALLERY_SEM_ROSTO (24 modelos com celular cobrindo o rosto)
+ * - 'pov' → MODEL_GALLERY_COM_ROSTO (rosto visível)
+ */
+export function getModelGalleryForMode(mode?: string): AnaMariaModelItem[] {
+  if (mode === 'com_rosto' || mode === 'pov') {
+    return MODEL_GALLERY_COM_ROSTO;
+  }
+  // Padrão: Mirror Selfie (sem rosto)
+  return MODEL_GALLERY_SEM_ROSTO;
+}
+
+// Retrocompatibilidade para arquivos legados
+export const MODEL_GALLERY_ITEMS: AnaMariaModelItem[] = MODEL_GALLERY_SEM_ROSTO;

@@ -46,6 +46,9 @@ import {
 import { preloadScenarioUrl, prewarmDefaultScenarios } from './anaMariaPipeline';
 import {
   MODEL_GALLERY_ITEMS,
+  MODEL_GALLERY_COM_ROSTO,
+  MODEL_GALLERY_SEM_ROSTO,
+  getModelGalleryForMode,
   AnaMariaModelItem,
 } from './modelGalleryData';
 import { UserCheck } from 'lucide-react';
@@ -97,9 +100,17 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const [isPromptsGalleryExpanded, setIsPromptsGalleryExpanded] = useState(false);
   const [isModelGalleryExpanded, setIsModelGalleryExpanded] = useState(false);
 
+  const isAmetista = theme === 'ametista';
+  const activeMode: AnaMariaPresentationMode = form.presentationMode || 'mirror_selfie';
+  const activeMaster = getMasterPromptById(form.selectedMasterId);
+  const currentModelGallery = getModelGalleryForMode(activeMode);
+
   const selectedModelItem =
     !form.generateModelViaPrompt && (form.selectedModelGalleryId || form.selectedModelGalleryNumber)
-      ? MODEL_GALLERY_ITEMS.find(
+      ? currentModelGallery.find(
+          (m) => m.id === form.selectedModelGalleryId || m.number === form.selectedModelGalleryNumber
+        ) ||
+        getModelGalleryForMode(activeMode === 'com_rosto' ? 'mirror_selfie' : 'com_rosto').find(
           (m) => m.id === form.selectedModelGalleryId || m.number === form.selectedModelGalleryNumber
         )
       : undefined;
@@ -139,10 +150,6 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const [playingVideoId, setPlayingVideoId] = useState<string | null>(null);
   const recognitionRef = useRef<any>(null);
   const streamRef = useRef<MediaStream | null>(null);
-
-  const isAmetista = theme === 'ametista';
-  const activeMode: AnaMariaPresentationMode = form.presentationMode || 'mirror_selfie';
-  const activeMaster = getMasterPromptById(form.selectedMasterId);
   const isPovMode = activeMode === 'pov';
   const activeScenarioList = isPovMode ? POV_SCENARIO_GALLERY_ITEMS : SCENARIO_GALLERY_ITEMS;
 
@@ -429,6 +436,18 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       const willBePov = newMode === 'pov';
       const shouldResetScenario = wasPov !== willBePov;
 
+      // Sincroniza a modelo selecionada para a URL da galeria do novo modo
+      const targetGallery = getModelGalleryForMode(newMode);
+      let updatedModelUrl = prev.selectedModelGalleryUrl;
+      let updatedModelId = prev.selectedModelGalleryId;
+      if (prev.selectedModelGalleryNumber) {
+        const matchingModel = targetGallery.find((m) => m.number === prev.selectedModelGalleryNumber);
+        if (matchingModel) {
+          updatedModelUrl = matchingModel.fullUrl;
+          updatedModelId = matchingModel.id;
+        }
+      }
+
       return {
         ...prev,
         presentationMode: newMode,
@@ -438,6 +457,8 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         selectedScenarioNumber: shouldResetScenario ? undefined : prev.selectedScenarioNumber,
         selectedScenarioUrl: shouldResetScenario ? undefined : prev.selectedScenarioUrl,
         selectedScenarioBase64: shouldResetScenario ? undefined : prev.selectedScenarioBase64,
+        selectedModelGalleryId: updatedModelId,
+        selectedModelGalleryUrl: updatedModelUrl,
       };
     });
   };
@@ -1770,7 +1791,16 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                       : 'bg-amber-400 text-zinc-950'
                   }`}
                 >
-                  {MODEL_GALLERY_ITEMS.length} MODELOS
+                  {currentModelGallery.length} MODELOS
+                </span>
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                    activeMode === 'com_rosto'
+                      ? 'bg-purple-950/70 text-purple-300 border-purple-500/50'
+                      : 'bg-emerald-950/70 text-emerald-300 border-emerald-500/50'
+                  }`}
+                >
+                  {activeMode === 'com_rosto' ? 'Galeria Com Rosto (UGC)' : 'Galeria Mirror Selfie (Sem Rosto)'}
                 </span>
                 <span
                   className={`px-2 py-0.5 rounded-full text-[10px] font-bold hidden sm:inline-block ${
@@ -1879,14 +1909,14 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             <div className="flex flex-wrap items-center justify-between gap-3 pb-2 border-b border-zinc-800">
               <div>
                 <span className="text-xs font-bold text-zinc-300 uppercase tracking-wider">
-                  Selecione uma modelo da galeria (${MODEL_GALLERY_ITEMS.length} opções disponíveis)
+                  Selecione uma modelo da galeria (${currentModelGallery.length} opções disponíveis)
                 </span>
                 <p className="text-[11px] text-zinc-400 mt-0.5">
                   {form.generateModelViaPrompt
                     ? '✨ Modo Gerar via Prompt ATIVO: Uma modelo exclusiva será gerada via IA por descrição textual (sem usar foto fixa), com joias delicadas e calçado combinando.'
                     : selectedModelItem
                     ? 'Por padrão ("Cenário da Modelo"), a modelo e o cenário dela são preservados 100% idênticos, trocando apenas a roupa pelo seu produto.'
-                    : '🎲 Modo Automático: Como nenhuma modelo foi selecionada, o app escolherá aleatoriamente uma das 24 modelos e um dos cenários da galeria a cada geração.'}
+                    : `🎲 Modo Automático: Como nenhuma modelo foi selecionada, o app escolherá aleatoriamente uma das ${currentModelGallery.length} modelos e um dos cenários da galeria a cada geração.`}
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -1918,9 +1948,9 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               </div>
             </div>
 
-            {/* Grid com as 5 modelos */}
+            {/* Grid com as modelos */}
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3.5">
-              {MODEL_GALLERY_ITEMS.map((item) => {
+              {currentModelGallery.map((item) => {
                 const isSelected = selectedModelItem?.id === item.id;
                 return (
                   <div
