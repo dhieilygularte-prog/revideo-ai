@@ -2260,7 +2260,7 @@ export function resolveMasterPromptByProductName(productName?: string): AnaMaria
   if (/\bvestid(o|os|inho|inhos)\b/.test(norm)) {
     return 'mestra_duda';
   }
-  if (/\bmacac(ao|oes|o|os|inho|inhos|a|inha)\b|\bjumpsuit\b/.test(norm)) {
+  if (/\bmacac(ao|oes|o|os|a|as)\b|\bmacaquinh(o|os|a|as)\b|\bjumpsuit\b/.test(norm)) {
     return 'mestra_catza';
   }
   if (/\bsaia(s)?\b/.test(norm)) {
