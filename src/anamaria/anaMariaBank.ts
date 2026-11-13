@@ -48,7 +48,7 @@ export const PRODUCT_HEADLINES_GROUPED: Record<
     items: [
       {
         headline: 'Amo comprar depois do hype, tipo olha o preço desse vestido ✨',
-        hashtags: '#vestido #vestidos #vestidofeminino #pangeia #modafeminina',
+        hashtags: '#vestido #vestidos #vestidofeminino #modafeminina',
         flowerSymbol: '✨',
         sourceProduct: 'Vestido',
       },
@@ -66,7 +66,7 @@ export const PRODUCT_HEADLINES_GROUPED: Record<
       },
       {
         headline: 'Compra o vestido e a autoestima junto 🌸',
-        hashtags: '#vestido #vestidos #vestidofeminino #pangeia #achadinhos',
+        hashtags: '#vestido #vestidos #vestidofeminino #achadinhos',
         flowerSymbol: '🌸',
         sourceProduct: 'Vestido',
       },
@@ -78,13 +78,13 @@ export const PRODUCT_HEADLINES_GROUPED: Record<
       },
       {
         headline: 'Esse vestido lindo está tão barato ✨🖤',
-        hashtags: '#vestido #vestidos #vestidofeminino #pangeia',
+        hashtags: '#vestido #vestidos #vestidofeminino',
         flowerSymbol: '🖤',
         sourceProduct: 'Vestido',
       },
       {
         headline: 'Esse vestido perfeito está tão barato 🖤',
-        hashtags: '#vestido #vestidos #pangeia',
+        hashtags: '#vestido #vestidos',
         flowerSymbol: '🖤',
         sourceProduct: 'Vestido',
       },
@@ -126,7 +126,7 @@ export const PRODUCT_HEADLINES_GROUPED: Record<
       },
       {
         headline: 'Look junino LINDO garantido sem gastar muito 😍',
-        hashtags: '#vestido #vestidos #vestidofeminino #pangeia #fyp',
+        hashtags: '#vestido #vestidos #vestidofeminino #fyp',
         flowerSymbol: '😍',
         sourceProduct: 'Vestido',
       },
@@ -144,19 +144,19 @@ export const PRODUCT_HEADLINES_GROUPED: Record<
       },
       {
         headline: 'Não dá pra se vestir bem pagando pouco? Paguei menos de $30 nesse vestido 💜',
-        hashtags: '#vestido #vestidos #vestidofeminino #pangeia #foryou',
+        hashtags: '#vestido #vestidos #vestidofeminino #foryou',
         flowerSymbol: '💜',
         sourceProduct: 'Vestido',
       },
       {
         headline: 'O caimento desse vestido no corpo é surreal ✨🖤🤍',
-        hashtags: '#vestido #vestidos #vestidofeminino #pangeia #tiktokshop',
+        hashtags: '#vestido #vestidos #vestidofeminino #tiktokshop',
         flowerSymbol: '🤍',
         sourceProduct: 'Vestido',
       },
       {
         headline: 'O vestido que toda garota deveria ter 😚',
-        hashtags: '#vestido #vestidos #vestidofeminino #pangeia #look',
+        hashtags: '#vestido #vestidos #vestidofeminino #look',
         flowerSymbol: '😚',
         sourceProduct: 'Vestido',
       },
@@ -168,12 +168,12 @@ export const PRODUCT_HEADLINES_GROUPED: Record<
       },
       {
         headline: 'POV: vc encontro o vestido balone mas perfeito 💛',
-        hashtags: '#vestido #vestidos #vestidofeminino #pangeia #outfit',
+        hashtags: '#vestido #vestidos #vestidofeminino #outfit',
         flowerSymbol: '💛',
         sourceProduct: 'Vestido',
       },
       {
-        headline: 'Que vestido divo é esse da Pangeia 🤎',
+        headline: 'Que vestido divo é esse 🤎',
         hashtags: '#vestido #vestidos #vestidofeminino #achadinhos',
         flowerSymbol: '🤎',
         sourceProduct: 'Vestido',
@@ -210,7 +210,7 @@ export const PRODUCT_HEADLINES_GROUPED: Record<
       },
       {
         headline: 'Simplesmente encontrei o vestido perfeito 💋🖤',
-        hashtags: '#vestido #vestidos #vestidofeminino #pangeia #moda',
+        hashtags: '#vestido #vestidos #vestidofeminino #moda',
         flowerSymbol: '🖤',
         sourceProduct: 'Vestido',
       },
@@ -234,7 +234,7 @@ export const PRODUCT_HEADLINES_GROUPED: Record<
       },
       {
         headline: 'Vestido rosinha 🖤',
-        hashtags: '#vestido #vestidos #vestidofeminino #pangeia #girls',
+        hashtags: '#vestido #vestidos #vestidofeminino #girls',
         flowerSymbol: '🖤',
         sourceProduct: 'Vestido',
       },
@@ -270,7 +270,7 @@ export const PRODUCT_HEADLINES_GROUPED: Record<
       },
       {
         headline: 'Amo comprar depois do hype, tipo olha o preço desse vestido ✿',
-        hashtags: '#vestido #vestidos #vestidofeminino #pangeia #modafeminina',
+        hashtags: '#vestido #vestidos #vestidofeminino #modafeminina',
         flowerSymbol: '✿',
         sourceProduct: 'Vestido',
       },
@@ -282,7 +282,7 @@ export const PRODUCT_HEADLINES_GROUPED: Record<
       },
       {
         headline: 'O vestido que toda garota deveria ter 🎀',
-        hashtags: '#vestido #vestidos #pangeia',
+        hashtags: '#vestido #vestidos',
         flowerSymbol: '🎀',
         sourceProduct: 'Vestido',
       },
@@ -294,19 +294,19 @@ export const PRODUCT_HEADLINES_GROUPED: Record<
       },
       {
         headline: 'Sem acreditar que esse vestido perfeito está quase de graça 💋',
-        hashtags: '#vestido #vestidos #vestidofeminino #pangeia',
+        hashtags: '#vestido #vestidos #vestidofeminino',
         flowerSymbol: '💋',
         sourceProduct: 'Vestido',
       },
       {
         headline: 'Vestido rosinha ❤',
-        hashtags: '#vestido #vestidos #vestidofeminino #pangeia #achadinhos',
+        hashtags: '#vestido #vestidos #vestidofeminino #achadinhos',
         flowerSymbol: '❤',
         sourceProduct: 'Vestido',
       },
       {
         headline: 'Simplesmente encontrei o vestido perfeito 💋🖤',
-        hashtags: '#vestido #vestidos #vestidofeminino #pangeia #foryou',
+        hashtags: '#vestido #vestidos #vestidofeminino #foryou',
         flowerSymbol: '🖤',
         sourceProduct: 'Vestido',
       },
@@ -318,7 +318,7 @@ export const PRODUCT_HEADLINES_GROUPED: Record<
       },
       {
         headline: 'Esse vestido vale cada centavo 💜',
-        hashtags: '#vestido #vestidos #vestidofeminino #pangeia #tiktokshop',
+        hashtags: '#vestido #vestidos #vestidofeminino #tiktokshop',
         flowerSymbol: '💜',
         sourceProduct: 'Vestido',
       },
@@ -335,7 +335,7 @@ export const PRODUCT_HEADLINES_GROUPED: Record<
         sourceProduct: 'Vestido',
       },
       {
-        headline: 'Que vestido divo é esse da Pangeia 💙',
+        headline: 'Que vestido divo é esse 💙',
         hashtags: '#vestido #vestidos #vestidofeminino #achadinhos',
         flowerSymbol: '💙',
         sourceProduct: 'Vestido',
@@ -360,7 +360,7 @@ export const PRODUCT_HEADLINES_GROUPED: Record<
       },
       {
         headline: 'POV: vc encontro o vestido balone mas perfeito 🥺',
-        hashtags: '#vestido #vestidos #vestidofeminino #pangeia #look',
+        hashtags: '#vestido #vestidos #vestidofeminino #look',
         flowerSymbol: '🥺',
         sourceProduct: 'Vestido',
       },
@@ -372,7 +372,7 @@ export const PRODUCT_HEADLINES_GROUPED: Record<
       },
       {
         headline: 'Não dá pra se vestir bem pagando pouco? Paguei menos de $30 nesse vestido 🤍',
-        hashtags: '#vestido #vestidos #vestidofeminino #pangeia #outfit',
+        hashtags: '#vestido #vestidos #vestidofeminino #outfit',
         flowerSymbol: '🤍',
         sourceProduct: 'Vestido',
       },
@@ -862,7 +862,7 @@ export const PRODUCT_HEADLINES_GROUPED: Record<
         sourceProduct: 'Blusa / bata / body',
       },
       {
-        headline: 'Essa blusa linda da Pangeia está tão barata ❤',
+        headline: 'Essa blusa linda está tão barata ❤',
         hashtags: '#blusa #bata #body #amarelomanteiga',
         flowerSymbol: '❤',
         sourceProduct: 'Blusa / bata / body',
@@ -874,7 +874,7 @@ export const PRODUCT_HEADLINES_GROUPED: Record<
         sourceProduct: 'Blusa / bata / body',
       },
       {
-        headline: 'Essa blusinha da Pangeia é simplesmente perfeita 💗',
+        headline: 'Essa blusinha é simplesmente perfeita 💗',
         hashtags: '#blusa #fyp #foryou #modafeminina #achadinhos',
         flowerSymbol: '💗',
         sourceProduct: 'Blusinha',
@@ -928,7 +928,7 @@ export const PRODUCT_HEADLINES_GROUPED: Record<
         sourceProduct: 'Blusinha',
       },
       {
-        headline: 'Essa blusa linda da Pangeia está tão barata ✿',
+        headline: 'Essa blusa linda está tão barata ✿',
         hashtags: '#blusa #bata #body #amarelomanteiga',
         flowerSymbol: '✿',
         sourceProduct: 'Blusa / bata / body',
@@ -1028,7 +1028,7 @@ export const PRODUCT_HEADLINES_GROUPED: Record<
         sourceProduct: 'Blusa / bata / body',
       },
       {
-        headline: 'Essa blusa linda da Pangeia está tão barata ❤',
+        headline: 'Essa blusa linda está tão barata ❤',
         hashtags: '#blusa #bata #body #amarelomanteiga',
         flowerSymbol: '❤',
         sourceProduct: 'Blusa / bata / body',
@@ -1094,7 +1094,7 @@ export const PRODUCT_HEADLINES_GROUPED: Record<
         sourceProduct: 'Lingerie',
       },
       {
-        headline: 'Essa blusa linda da Pangeia está tão barata ✿',
+        headline: 'Essa blusa linda está tão barata ✿',
         hashtags: '#blusa #bata #body #amarelomanteiga',
         flowerSymbol: '✿',
         sourceProduct: 'Blusa / bata / body',
