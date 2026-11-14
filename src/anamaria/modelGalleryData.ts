@@ -241,6 +241,15 @@ export const MODEL_GALLERY_COM_ROSTO: AnaMariaModelItem[] = [
     file: '25.png',
     fullUrl: '/models/gallery/com_rosto/25.png',
   },
+  {
+    id: 'modelo_26_catza_corpo',
+    number: 26,
+    name: 'Catza Corpo',
+    title: '26. Catza Corpo',
+    description: 'Corpo inteiro com rosto visível, cabelos pretos longos, flash do celular ligado no espelho e silhueta curvilínea de alto impacto.',
+    file: '26.png',
+    fullUrl: '/models/gallery/com_rosto/26.png?v=2',
+  },
 ];
 
 /**
@@ -289,11 +298,11 @@ export const MODEL_GALLERY_SEM_ROSTO: AnaMariaModelItem[] = [
   {
     id: 'modelo_sem_rosto_5_catza',
     number: 5,
-    name: 'Mestra Catza',
-    title: '05. Mestra Catza',
-    description: 'Presença de alto impacto, enquadramento focado na parte superior e cintura no espelho.',
+    name: 'Catza Vip',
+    title: '05. Catza Vip',
+    description: 'Corpo inteiro sem rosto (corte no queixo), flash do celular ligado no espelho e silhueta curvilínea de alto impacto.',
     file: '5.png',
-    fullUrl: '/models/gallery/sem_rosto/5.png',
+    fullUrl: '/models/gallery/sem_rosto/5.png?v=2',
   },
   {
     id: 'modelo_sem_rosto_6_ana_ruiva',
@@ -465,6 +474,15 @@ export const MODEL_GALLERY_SEM_ROSTO: AnaMariaModelItem[] = [
     description: 'Cabelos ondulados volumosos com mechas quentes, vestido marrom elegante com fenda lateral e celular cobrindo o rosto.',
     file: '25.png',
     fullUrl: '/models/gallery/sem_rosto/25.png',
+  },
+  {
+    id: 'modelo_sem_rosto_26_thaaay',
+    number: 26,
+    name: 'Modelo 26 Thaaay',
+    title: '26. Modelo 26 Thaaay',
+    description: 'Silhueta curvilínea definida, corpo inteiro sem rosto com corte no queixo, joias douradas delicadas e postura imponente diante do espelho.',
+    file: '26.png',
+    fullUrl: '/models/gallery/sem_rosto/26.png?v=2',
   },
 ];
 

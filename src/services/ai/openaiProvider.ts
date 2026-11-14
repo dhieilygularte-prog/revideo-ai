@@ -722,20 +722,28 @@ Retorne estritamente um JSON estruturado:
           productPhotoCount > 1
             ? `${productStartIdx} and ${productStartIdx + 1}`
             : `${productStartIdx}`;
-        const allowsFace =
-          presentationMode === 'com_rosto' ||
-          (cleanPrompt &&
-            (cleanPrompt.includes('MODO COM ROSTO') ||
-              cleanPrompt.includes('ROSTO E ENQUADRAMENTO — MODO COM ROSTO') ||
-              cleanPrompt.includes('o rosto da modelo DEVE aparecer')));
+        const allowsFace = presentationMode === 'com_rosto';
+        const isScenario24OpenAI = Boolean(
+          prompt &&
+            (prompt.includes('CENÁRIO 24') ||
+              prompt.includes('Cenário 24') ||
+              prompt.includes('cenario_24'))
+        );
+        const scenario24FlashOpenAI = isScenario24OpenAI
+          ? `\n[MANDATORY SCENARIO 24 RULE — SMARTPHONE CAMERA FLASH ALWAYS ON]:\n- In Scenario 24, the rear LED camera flash on the model's smartphone MUST be actively TURNED ON and shining with a bright white glowing starburst flare in the mirror reflection, casting warm direct front-flash illumination onto the model and garment against the darker warm ambient room of Scenario 24, REGARDLESS of which model was selected!`
+          : '';
 
         const framingSection = allowsFace
           ? `[FRAMING & FACE PRESERVATION — GALLERY MODEL UGC (REFERENCE IMAGE ${modelIdx})]:
 - Preserve 100% the exact same woman, face, eyes, nose, lips, hair, skin tone, expression, and body curves shown in Reference Image ${modelIdx} (the gallery model).
 - Modern smartphone held naturally in her hand at chest/face level in a vertical mirror selfie pose. Zero tattoos anywhere on the skin.`
-          : `[FRAMING & MIRROR SELFIE POSE PRESERVATION — GALLERY MODEL (REFERENCE IMAGE ${modelIdx})]:
-- Preserve 100% the exact same woman, body silhouette, skin tone, hair, and mirror-selfie pose holding the smartphone in front of her face as shown in Reference Image ${modelIdx} (the gallery model).
-- Strictly keep her face hidden/covered by the smartphone/chin-down crop matching Reference Image ${modelIdx}. Zero tattoos anywhere on the skin.`;
+          : `[STRICT NO-FACE / FACELESS MIRROR SELFIE LOCK — GALLERY MODEL (REFERENCE IMAGE ${modelIdx})]:
+- Preserve 100% the exact same woman from Reference Image ${modelIdx}: exact same body silhouette, bust, waist, hips, thighs, legs, skin tone, hair color/length/texture falling on shoulders, hands/jewelry, and mirror-selfie posture.
+- STRICTLY NO VISIBLE FACE: It is strictly FORBIDDEN to show or invent eyes, nose, forehead, or an uncovered face! Keep the exact faceless framing of Reference Image ${modelIdx} (cropped strictly at the base of the chin from chin-down to the floor, or face 100% covered behind the smartphone exactly as in Reference Image ${modelIdx}). Zero tattoos anywhere on the skin.`;
+
+        const modelIdentitySection = allowsFace
+          ? `- Photograph the exact same woman from Reference Image ${modelIdx} (same face, eyes, nose, lips, hair, skin tone, body curves, and smartphone mirror-selfie posture) physically standing centered on the floor inside Reference Image ${scenarioIdx}, aligned to Reference Image ${scenarioIdx}'s 3D perspective, horizon line, and room scale.`
+          : `- Photograph the exact same faceless woman from Reference Image ${modelIdx} (100% identical body curves, waist, hips, bust, legs, skin tone, hair strands on shoulders, hands, and chin-down/phone-covered faceless framing — NEVER reveal or invent a face!) physically standing centered on the floor inside Reference Image ${scenarioIdx}, aligned to Reference Image ${scenarioIdx}'s 3D perspective, horizon line, and room scale.`;
 
         // Extrai apenas diretivas críticas de peça, comprimento, fenda, cor exclusiva, bolsas e instruções do usuário,
         // evitando reenviar o bloco invertido "1. Foto 1 (Produto) / 2. Foto 2 (Modelo) / 3. Foto 3 (Cenário)" que confunde a ordem [1=Cenário, 2=Modelo, 3=Produto].
@@ -746,7 +754,7 @@ Retorne estritamente um JSON estruturado:
           ...(prompt
             .split('\n')
             .filter((line) =>
-              /(\[COMPRIMENTO REAL DETECTADO|\[ASSIMETRIA OBRIGATÓRIA|\[CRITICAL ANTI-SYMMETRY|\[REGRA MANDATÓRIA|REGRA CRÍTICA DE COMPRIMENTO|ATENÇÃO À COR EXCLUSIVA|Calçado nos pés:|PROIBIDO BOLSAS|PRODUTO DA FOTO 1|PEÇA INFERIOR|CALÇA JEANS)/i.test(
+              /(\[COMPRIMENTO REAL DETECTADO|\[ASSIMETRIA OBRIGATÓRIA|\[CRITICAL ANTI-SYMMETRY|\[REGRA MANDATÓRIA|\[REGRA OBRIGATÓRIA DO CENÁRIO 24|REGRA CRÍTICA DE COMPRIMENTO|ATENÇÃO À COR EXCLUSIVA|Calçado nos pés:|PROIBIDO BOLSAS|PRODUTO DA FOTO 1|PEÇA INFERIOR|CALÇA JEANS)/i.test(
                 line
               )
             )
@@ -769,7 +777,7 @@ Generate a single, cohesive, unedited real-world mirror-selfie photograph captur
 - PHYSICAL ROOM INTERACTION: Allow the woman's physical presence inside Reference Image ${scenarioIdx} to naturally interact with the room's light — casting realistic contact occlusion and soft directional shadows onto Reference Image ${scenarioIdx}'s floor and subtle ambient depth against the room behind her.
 
 2. REFERENCE IMAGE ${modelIdx} (WOMAN'S IDENTITY, BODY & POSTURE ONLY — DISCARD HER OLD ROOM, SHOES & LIGHTING):
-- Photograph the exact same woman from Reference Image ${modelIdx} (same face, eyes, nose, lips, hair, skin tone, body curves, and smartphone mirror-selfie posture) physically standing centered on the floor inside Reference Image ${scenarioIdx}, aligned to Reference Image ${scenarioIdx}'s 3D perspective, horizon line, and room scale.
+${modelIdentitySection}
 - 100% DISCARD AND IGNORE the bedroom, bed, door, walls, bright white wall edge-glow, studio/frontal lighting, old clothing, and old footwear of Reference Image ${modelIdx}.
 
 3. REFERENCE IMAGE ${productRangeLabel} (EXACT GARMENT & COLOR ONLY — DISCARD ANY PERSON/BACKGROUND):
@@ -777,7 +785,7 @@ Generate a single, cohesive, unedited real-world mirror-selfie photograph captur
 - Harmonious matching footwear planted firmly on Reference Image ${scenarioIdx}'s floor if her feet are left visible by the garment's true original length in Reference Image ${productRangeLabel} (elegant high-heel party sandals for dresses; never shorten the dress hem to reveal shoes).
 - 100% IGNORE any person, face, body, tattoos, or background in Reference Image ${productRangeLabel}.
 
-${scenarioRelightAndEdgeBlendDirective}
+${scenarioRelightAndEdgeBlendDirective}${scenario24FlashOpenAI}
 
 ${framingSection}
 ${preservedDirectives ? `\n[GARMENT & USER CONSTRAINTS]:\n${preservedDirectives}` : ''}
@@ -1029,7 +1037,7 @@ Preserve fielmente qualquer logomarca, estampa ou acabamento original da peça. 
           image: editImageInput,
           prompt: effectivePrompt,
           quality: OPENAI_IMAGE_QUALITY,
-          ...(isAnaMariaGallery3Img ? {} : { input_fidelity: OPENAI_IMAGE_FIDELITY }),
+          input_fidelity: OPENAI_IMAGE_FIDELITY,
           size: chosenImageSize,
         });
 

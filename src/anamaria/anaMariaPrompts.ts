@@ -786,14 +786,28 @@ Os lábios, a boca, o nariz e os olhos devem ficar 100% FORA do enquadramento em
 - PERSPECTIVA 3D, ESCALA E ANCORAGEM FÍSICA NO PISO: Alinhe a escala corporal, a altura do horizonte da câmera, a distância focal e a perspectiva dos pés ao plano geométrico real do piso e rodapés do CENÁRIO. Os pés/calçado (ou a barra longa) apoiam-se firmemente no chão, projetando sombra de contato escura sob a sola/salto, oclusão de ambiente nos tornozelos/barra e sombra projetada suave no piso coerente com a direção da luz do quarto.
 - REILUMINAÇÃO FÍSICA GLOBAL & TRANSIÇÃO ÓPTICA DE BORDAS: Descarte 100% a iluminação de estúdio ou parede clara da foto original da modelo/produto. Reilumine pele, rosto, cabelos e tecido obedecendo exclusivamente à luz ambiente, temperatura de cor (quente/fria), contraste, reflexos indiretos das paredes/cortinas e grão óptico da câmera do CENÁRIO, com fusão sub-pixel orgânica nos fios de cabelo, ombros e braços (ZERO linha branca, ZERO halo claro, ZERO borda dura de máscara).`;
 
+  const isScenario24Active =
+    form.selectedScenarioId === 'cenario_24' ||
+    Number(form.selectedScenarioNumber) === 24 ||
+    ((form.modelScenarioSource || 'model') === 'model' &&
+      hasGalleryModel &&
+      (Number(form.selectedModelGalleryNumber) === 5 ||
+        form.selectedModelGalleryId === 'modelo_5_catza' ||
+        form.selectedModelGalleryId === 'modelo_sem_rosto_5_catza' ||
+        form.selectedModelGalleryId === 'modelo_26_catza_corpo'));
+
+  const scenario24FlashRulePt = isScenario24Active
+    ? `\n- [REGRA OBRIGATÓRIA DO CENÁRIO 24 — FLASH DO CELULAR SEMPRE LIGADO]: Na imagem gerada no Cenário 24, o FLASH DA CÂMERA TRASEIRA DO CELULAR da modelo DEVE ESTAR SEMPRE LIGADO E BRILHANDO INTENSAMENTE no espelho (ponto luminoso branco intenso com estrela de luz / bright glowing camera flash starburst on the back of the smartphone), iluminando a modelo e a roupa com luz frontal quente de flash contra o ambiente mais escuro do Cenário 24, INDEPENDENTEMENTE de qual modelo foi escolhida!`
+    : '';
+
   const scenarioSection = hasSelectedScenario
     ? `## 4. PRESERVAÇÃO INTEGRAL DO CENÁRIO INDEPENDENTE (${scenarioTitle.toUpperCase()})
 A foto de cenário anexada é a autoridade visual absoluta do ambiente e da iluminação.
 Preserve integralmente todo o cômodo da foto de referência: piso, paredes, portas, cama/móveis, cortinas e arquitetura.
 NÃO redesenhe e NÃO gere um ambiente diferente. Fotografe ${isMale ? 'o modelo' : 'a modelo'} fisicamente presente e em pé sobre o piso real dentro deste exato cômodo em uma única captura óptica natural.
-${scenarioRelightRulePt}`
+${scenarioRelightRulePt}${scenario24FlashRulePt}`
     : `## 4. CENÁRIO RESIDENCIAL E AMBIENTE
-${scenarioText}`;
+${scenarioText}${scenario24FlashRulePt}`;
 
   const phonePostureSection = `## 5. SMARTPHONE, ILUMINAÇÃO E POSTURA (${master.shortName.toUpperCase()})
 ${
@@ -801,7 +815,7 @@ ${
     ? 'O modelo segura um smartphone moderno com uma das mãos diante do espelho de corpo inteiro.'
     : (userPhoneDirectivePt || 'A modelo segura um smartphone moderno com uma das mãos diante do espelho de corpo inteiro (respeitando eventual cor de celular solicitada nas instruções adicionais).')
 }
-${master.lightingAndCameraText}
+${master.lightingAndCameraText}${scenario24FlashRulePt}
 ${
   isPlusSize
     ? `Postura natural em pé diante do espelho, valorizando com autenticidade a estrutura corporal genuinamente PLUS SIZE PESADA (manequim 50-54, peso corporal evidente, coxas hiper-grossas que se tocam sem vão, celulites naturais visíveis nas coxas, quadris muito largos, abdômen arredondado macio e braços roliços carnudos), com o braço livre relaxado ou tocando levemente a lateral sem esconder detalhes da roupa.`
@@ -829,6 +843,14 @@ ${
       : '- Reproduza com máxima fidelidade 1:1 o look completo da Foto 1 (se for vestido ou peça única, veste exclusivamente o vestido sem nenhuma calça por baixo e com sandália de festa elegante nos pés).' +
         (dressDetailDirective ? `\n${dressDetailDirective}` : '');
 
+    const galleryFaceFramingRule2Img = isFaceVisible
+      ? '- PRESERVAÇÃO INTEGRAL DE ROSTO, POSE E ENQUADRAMENTO DA FOTO 2 (MODO COM ROSTO UGC): Mantenha RIGOROSAMENTE o mesmo enquadramento, mesmo ângulo, mesma pose e mesmo rosto da Foto 2. O rosto da modelo DEVE APARECER IDENTICAMENTE, com a mesma face, olhos, nariz, boca, cabelo e expressão da mulher da Foto 2 (PROIBIDO cortar a cabeça ou esconder o rosto!).'
+      : '- PROIBIÇÃO ABSOLUTA DE MOSTRAR ROSTO — ENQUADRAMENTO SEM ROSTO DA FOTO 2 (MODO MIRROR SELFIE SEM ROSTO): Neste modo SEM ROSTO, é TERMINANTEMENTE PROIBIDO mostrar o rosto, olhos, nariz ou testa da modelo! Mantenha RIGOROSAMENTE o enquadramento sem rosto da Foto 2 (corte exato na altura da base do queixo para baixo ou rosto 100% oculto pelo celular exatamente como na Foto 2 — NUNCA desenhe ou revele cabeça ou rosto descoberto acima do queixo ou do celular!).';
+
+    const galleryFaceFramingRule3Img = isFaceVisible
+      ? '- PRESERVAÇÃO INTEGRAL DA MODELO COM ROSTO DA FOTO 2 (MODO COM ROSTO UGC): A mulher fotografada DEVE SER RIGOROSAMENTE A MESMA MODELO DA FOTO 2, reproduzindo 100% a mesma identidade facial (mesmo rosto, olhos, nariz, boca e expressão da Foto 2), mesmos cabelos, mesmo tom de pele, mesmas curvas corporais e mesma postura de selfie da Foto 2.'
+      : '- PRESERVAÇÃO INTEGRAL DA MODELO DA FOTO 2 & PROIBIÇÃO ABSOLUTA DE ROSTO (MODO MIRROR SELFIE SEM ROSTO): A mulher fotografada DEVE SER RIGOROSAMENTE A MESMA MODELO SELECIONADA NA FOTO 2 (reproduza 100% o mesmo corpo, mesmas curvas, mesmo quadril, mesma cintura, mesmo busto, mesmas pernas, mesmo tom de pele, mesmos cabelos caindo nos ombros, mesmas mãos/acessórios e mesma postura de selfie da Foto 2). REGRA SOBERANA SEM ROSTO: É TERMINANTEMENTE PROIBIDO mostrar o rosto, olhos, nariz ou testa na imagem gerada! Mantenha o enquadramento sem rosto da Foto 2 (corte na altura da base do queixo para baixo ou rosto 100% encoberto pelo celular exatamente como na Foto 2 — NUNCA invente ou mostre rosto descoberto!).';
+
     let galleryModelPrompt = '';
 
     if (isModelScenario) {
@@ -847,9 +869,9 @@ ${noBagDirectivePt}${noBagDirectiveEn}
 - A modelo gerada DEVE SER RIGOROSAMENTE A MESMA MULHER DA FOTO 2, NA MESMA POSE DIANTE DO ESPELHO E DENTRO DO MESMO CÔMODO/CENÁRIO DA FOTO 2.
 - PRESERVAÇÃO INTEGRAL DE BIOTIPO E IDENTIDADE: reproduza com fidelidade 100% o mesmo corpo, curvas, biotipo, quadris, cintura, pernas, tom de pele natural com poros reais e cabelos (mesma cor, corte e textura da foto da modelo).
 - PRESERVAÇÃO INTEGRAL DO CENÁRIO DA FOTO 2 (CENÁRIO DA MODELO): O cômodo de fundo, paredes, piso, espelho, portas, móveis e iluminação natural DEVEM ser 100% preservados e idênticos aos da Foto 2. NÃO altere nem redesenhe o ambiente da Foto 2.
-- PRESERVAÇÃO INTEGRAL DE ROSTO, POSE E ENQUADRAMENTO DA FOTO 2: Mantenha RIGOROSAMENTE o mesmo enquadramento, mesmo ângulo, mesma pose e mesma cabeça/rosto da Foto 2. Se na Foto 2 o rosto da modelo aparece (total ou parcialmente), o rosto DEVE APARECER IDENTICAMENTE, com a mesma face, olhos, nariz, boca, cabelo e expressão da mulher da Foto 2 (PROIBIDO cortar a cabeça ou o queixo se o rosto aparece na Foto 2!). Se na Foto 2 o rosto estiver encoberto pelo celular ou cortado no enquadramento, mantenha o mesmo corte original da Foto 2.
+${galleryFaceFramingRule2Img}
 - ÚNICA MUDANÇA PERMITIDA: Substituir as roupas e o calçado que a modelo veste na Foto 2 pela peça completa da Foto 1 (preservando 100% da parte superior e 100% da parte inferior/barra da Foto 1 sem encurtar) e pelo calçado indicado (${shoeInfo.name}).
-- REILUMINAÇÃO & ZERO BORDA DE RECORTE: A roupa e o calçado trocados devem assumir 100% a iluminação, temperatura de cor e sombras do cômodo da Foto 2, sem contorno branco ou aspecto colado.
+- REILUMINAÇÃO & ZERO BORDA DE RECORTE: A roupa e o calçado trocados devem assumir 100% a iluminação, temperatura de cor e sombras do cômodo da Foto 2, sem contorno branco ou aspecto colado.${scenario24FlashRulePt}
 
 Qualidade fotográfica autêntica de smartphone moderno, textura de pele humana real com poros visíveis, acabamento fosco suave sem brilho excessivo de óleo, sem aspecto de cera ou plástico. ZERO tatuagens.`;
     } else {
@@ -865,13 +887,13 @@ ${garmentTypeInstruction}
 ${noBagDirectivePt}${noBagDirectiveEn}
 
 2. FOTO 2 (IDENTIDADE E POSTURA DA MODELO — DESCARTE TOTAL DA LUZ E DO QUARTO ANTIGO):
-- A mulher fotografada possui 100% a mesma identidade facial (mesmo rosto, olhos, boca e expressão se visíveis na Foto 2; ou mesmo corte com celular cobrindo o rosto se não visível na Foto 2), mesmos cabelos, mesmo tom de pele, mesmas curvas corporais e mesma postura de selfie da Foto 2.
+${galleryFaceFramingRule3Img}
 - DESCARTE ABSOLUTO DO QUARTO, DA LUZ E DAS BORDAS DA FOTO 2: É TERMINANTEMENTE PROIBIDO trazer a iluminação frontal/estúdio, o contraste, o brilho de parede branca nos contornos do cabelo/ombros, a roupa antiga, o tênis antigo ou qualquer elemento do quarto da Foto 2.
 
 3. FOTO 3 (CENÁRIO REAL E CAMPO DE LUZ SOBERANO — INTEGRAÇÃO ÓPTICA E GEOMÉTRICA 3D):
 - Fotografe a mulher fisicamente em pé sobre o piso real dentro do cômodo exato da Foto 3 (que já está no ponto de vista do espelho olhando para dentro do quarto — NÃO adicione moldura de espelho extra).
 - Preserve 100% a arquitetura real da Foto 3: piso, paredes, rodapés, cortinas (cor e dobras exatas), portas e móveis, permitindo que a presença física da modelo interaja naturalmente com a luz do quarto (projetando sombras reais no piso e oclusão de ambiente).
-${scenarioRelightRulePt}
+${scenarioRelightRulePt}${scenario24FlashRulePt}
 
 Qualidade fotográfica autêntica de smartphone moderno (iPhone 16 Pro) em captura única real, textura de pele humana com poros visíveis, grão e nitidez óptica unificados entre modelo e cômodo. ZERO tatuagens.`;
     }

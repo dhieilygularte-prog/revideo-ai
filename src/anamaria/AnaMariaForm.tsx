@@ -1572,7 +1572,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               <p className="text-[11px] sm:text-xs text-zinc-300 mt-1">
                 {isPovMode
                   ? 'Opcional: escolha entre o Cenário POV 1 (colcha branca e manta rosé) ou Cenário POV 2 (lençol rosa). Se não escolher, o app sorteará automaticamente!'
-                  : 'Opcional: escolha qualquer um dos 24 cenários. Se não escolher, o app sorteará automaticamente!'}
+                  : 'Opcional: escolha qualquer um dos 25 cenários. Se não escolher, o app sorteará automaticamente!'}
               </p>
             </div>
           </div>

@@ -2280,10 +2280,23 @@ async function generateImageWithKling(params: {
         : 'CALÇADO OBRIGATÓRIO NOS PÉS (SANDÁLIA DE FESTA ELEGANTE — PROIBIDO TÊNIS): Substitua e descarte qualquer tênis ou sapato original que a modelo esteja calçando em <<<image_1>>>! Quando os pés estiverem visíveis, ela DEVE calçar obrigatoriamente uma SANDÁLIA DE FESTA ELEGANTE DE SALTO FINO E TIRAS DELICADAS que combine em cor e sofisticação com o vestido de <<<image_2>>> (se o vestido de <<<image_2>>> for longo até o chão cobrindo os pés, mantenha a barra longa até o chão). É TERMINANTEMENTE PROIBIDO usar tênis, sapatênis ou calçado esportivo com vestido!';
 
       const isModelScenarioKling = (params.modelScenarioSource || 'model') === 'model';
+      const isScenario24Kling = Boolean(
+        params.prompt &&
+          (params.prompt.includes('CENÁRIO 24') ||
+            params.prompt.includes('Cenário 24') ||
+            params.prompt.includes('cenario_24'))
+      );
+      const flashRuleKling = isScenario24Kling
+        ? ' [FLASH DO CELULAR SEMPRE LIGADO NO CENÁRIO 24]: O flash traseiro da câmera do smartphone da modelo DEVE estar OBRIGATORIAMENTE LIGADO e brilhando intensamente com ponto de luz branca/estrela luminosa no espelho, iluminando frontalmente a modelo e a roupa contra o fundo mais escuro do Cenário 24, independentemente da modelo escolhida!'
+        : '';
+      const faceRuleKling = allowsFace
+        ? 'O rosto da modelo de <<<image_1>>> DEVE APARECER IDENTICAMENTE, reproduzindo 100% a mesma face, olhos, nariz, boca, expressão e cabelos de <<<image_1>>> (PROIBIDO cortar a cabeça ou esconder o rosto!).'
+        : 'PROIBIÇÃO ABSOLUTA DE MOSTRAR ROSTO (MODO MIRROR SELFIE SEM ROSTO): É TERMINANTEMENTE PROIBIDO mostrar o rosto, olhos, nariz ou testa! Mantenha RIGOROSAMENTE o enquadramento sem rosto de <<<image_1>>> (corte exato na altura da base do queixo para baixo ou rosto 100% oculto pelo celular exatamente como em <<<image_1>>> — NUNCA desenhe ou revele cabeça/rosto descoberto!).';
+
       if (isModelScenarioKling) {
         headerKling =
           '[REGRA SOBERANA DE COMPOSIÇÃO 2 IMAGENS KLING OMNI]:\n' +
-          '1. MODELO E CENÁRIO BASE (<<<image_1>>>): A mulher gerada DEVE SER RIGOROSAMENTE A MESMA MODELO de <<<image_1>>> (reproduzir 100% o mesmo rosto, olhos, boca, cabelos, biotipo, curvas femininas, tom de pele e enquadramento diante do espelho de <<<image_1>>>). Preservar 100% o cômodo, paredes, piso, portas e espelho de <<<image_1>>> intactos. Se em <<<image_1>>> o rosto da modelo aparece (visível total ou parcialmente), PRESERVE O MESMO ROSTO de <<<image_1>>> (PROIBIDO cortar ou esconder a cabeça se o rosto aparece em <<<image_1>>>!). Se o rosto estiver coberto pelo celular ou fora do enquadramento em <<<image_1>>>, mantenha exatamente o mesmo corte original da imagem. Única alteração: trocar a roupa e o calçado dela pelos de <<<image_2>>>.\n' +
+          `1. MODELO E CENÁRIO BASE (<<<image_1>>>): A mulher gerada DEVE SER RIGOROSAMENTE A MESMA MODELO de <<<image_1>>> (reproduzir 100% os mesmos cabelos, biotipo, curvas femininas, quadril, cintura, tom de pele e enquadramento diante do espelho de <<<image_1>>>). ${faceRuleKling} Preservar 100% o cômodo, paredes, piso, portas e espelho de <<<image_1>>> intactos. Única alteração: trocar a roupa e o calçado dela pelos de <<<image_2>>>.${flashRuleKling}\n` +
           '2. PRODUTO / ROUPA (<<<image_2>>>): Extrair EXCLUSIVAMENTE a roupa e tecido de <<<image_2>>> com máxima fidelidade 1:1 e vestir na modelo de <<<image_1>>>. É TERMINANTEMENTE PROIBIDO copiar, misturar ou fundir o rosto, a cabeça, o cabelo, a pele, o corpo ou a pose da pessoa da foto de produto (<<<image_2>>>)! Ignore 100% a pessoa de <<<image_2>>> (ZERO mistura com o rosto da foto de produto). É TERMINANTEMENTE PROIBIDO COPIAR TATUAGENS OU MARCAS DA PELE DA PESSOA DE <<<image_2>>>! A modelo gerada DEVE TER PELE 100% LIMPA E LISA, ZERO TATUAGENS em todo o corpo.\n' +
           `3. LOOK & CALÇADO: ${clothingDirectiveKling} ${footwearDirectiveKling}\n` +
           '4. MÁXIMA NITIDEZ & FOCO CRISTALINO (8K): Textura de pele humana real com poros visíveis, acabamento fosco suave sob luz ambiente natural sem oleosidade excessiva. PELE 100% LIMPA, ZERO TATUAGENS, ZERO BORRÃO, ZERO DESFOQUE.\n' +
@@ -2291,7 +2304,7 @@ async function generateImageWithKling(params: {
       } else {
         headerKling =
           '[FOTOGRAFIA ÚNICA NATIVA 3 IMAGENS KLING OMNI]:\n' +
-          '1. IDENTIDADE DA MODELO (<<<image_1>>>): A mulher fotografada DEVE SER RIGOROSAMENTE A MESMA MODELO de <<<image_1>>> (mesmo rosto, olhos, boca, expressão, cabelos, biotipo, curvas femininas, tom de pele e postura de selfie de <<<image_1>>>). Se em <<<image_1>>> o rosto aparece, PRESERVE O MESMO ROSTO; se estiver coberto pelo celular, mantenha o mesmo corte. DESCARTE 100% o quarto, a parede branca de fundo, a iluminação original, a roupa antiga e o tênis/sapato antigo de <<<image_1>>>.\n' +
+          `1. IDENTIDADE DA MODELO (<<<image_1>>>): A mulher fotografada DEVE SER RIGOROSAMENTE A MESMA MODELO de <<<image_1>>> (mesmos cabelos, biotipo, curvas femininas, quadril, cintura, busto, pernas, tom de pele e postura de selfie de <<<image_1>>>). ${faceRuleKling} DESCARTE 100% o quarto, a parede branca de fundo, a iluminação original, a roupa antiga e o tênis/sapato antigo de <<<image_1>>>.${flashRuleKling}\n` +
           '2. PRODUTO / ROUPA (<<<image_2>>>): Vestir a modelo exclusivamente com a roupa e tecido de <<<image_2>>> 1:1. É TERMINANTEMENTE PROIBIDO copiar ou mesclar o rosto, cabeça, corpo ou tatuagens da pessoa de <<<image_2>>>! Pele 100% limpa, ZERO TATUAGENS.\n' +
           '3. CENÁRIO E LUZ REAL (<<<image_3>>>): Fotografe a modelo fisicamente em pé sobre o piso real dentro do cômodo exato de <<<image_3>>> (preservando 100% paredes, piso, cortinas, portas e iluminação de <<<image_3>>>).\n' +
           `4. LOOK & CALÇADO: ${clothingDirectiveKling} ${footwearDirectiveKling}\n` +
@@ -2336,13 +2349,17 @@ async function generateImageWithKling(params: {
     params.isAnaMariaMode && !isFitnessKling && !isUpperPieceKling
       ? ', sneakers, tennis shoes, athletic shoes, running shoes, trainers, gym shoes, sporty shoes, boots, tênis, sapatênis, calçado esportivo'
       : '';
+  const noFaceNegativeKling =
+    params.isAnaMariaMode && !allowsFace
+      ? ', face, visible face, uncovered face, eyes, eyebrows, nose, forehead, portrait, headshot, selfie with face, looking at camera'
+      : '';
   const negativePrompt = (params.isAnaMariaMode
     ? (hasModelRefKling
         ? 'white halo, white outline, white fringe, cutout edge, sticker paste effect, floating feet, mismatched lighting, copying face from image 2, copying person from image 2, blending person from image 2, model from product photo, mixing face of product photo, tattoos on skin from image 2, tattoos on skin, tattoo, body ink, skin ink, arm tattoo, leg tattoo, chest tattoo, wrist tattoo, hand tattoo, ink on skin, drawing on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, low quality, 3d render, cartoon, illustration, jeans with dress, pants under dress, oily skin, greasy skin, shining skin, wet skin, oil sheen, plastic skin, wax skin, wax doll, porcelain skin, fake skin, heavy airbrushing, artificial gloss'
         : (allowsFace
             ? 'white halo, white outline, cutout edge, mismatched lighting, tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, deformed face, bad eyes, low quality, 3d render, cartoon, illustration'
             : 'white halo, white outline, cutout edge, mismatched lighting, face, head, eyes, eyebrows, nose, lips, mouth, teeth, smile, chin up, portrait, headshot, selfie with face, looking at camera, visible face, jeans with dress, pants under dress, sideways pose, profile angle, no smartphone, empty hands, without phone, naked, pantless, topless, no pants, underwear only, skinny, emaciated, boyish torso, flat hips, oily skin, greasy skin, shining skin, wet skin, oil sheen, plastic skin, wax skin, wax doll, porcelain skin, fake skin, heavy airbrushing, artificial gloss, tattoos on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, low quality, 3d render, cartoon, illustration'))
-    : 'original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry') + bagNegativeTokens + noSneakerTokensKling + ', pantless, no pants, underwear only, bottomless, bare legs under top, naked bottom, topless, naked, panties only, without pants';
+    : 'original model from reference photo, tattoos on skin, same face, same background, identical setting, duplicate person, watermark, deformed, blurry') + noFaceNegativeKling + bagNegativeTokens + noSneakerTokensKling + ', pantless, no pants, underwear only, bottomless, bare legs under top, naked bottom, topless, naked, panties only, without pants';
 
   const payload: any = {
     model_name: 'kling-v3-omni',
@@ -2510,7 +2527,21 @@ function getGalleryScenarioBase64(
   }
 
   // Em SCENARIO_GALLERY_ITEMS: cenario_X aponta sempre para '<X>.png'
-  // (números 1..14 correspondem aos arquivos 0..13.png; números 15..24 correspondem a 15..24.png)
+  // (números 1..14 correspondem aos arquivos 0..13.png; números 15..25 correspondem a 15..25.png)
+  // Para o Cenário 24 em modo sem rosto (mirror_selfie), usa 24_sem_rosto.png (enquadramento do queixo para baixo sem teto)
+  const isScenario24Lookup =
+    cleanId.toLowerCase() === 'cenario_24' || Number(String(scenarioNum ?? '').trim()) === 24;
+  if (isScenario24Lookup && presentationMode !== 'com_rosto') {
+    const semRosto24Path = path.join(process.cwd(), 'public', 'scenarios', 'gallery', '24_sem_rosto.png');
+    try {
+      if (fs.existsSync(semRosto24Path)) {
+        const dataUri = `data:image/png;base64,${fs.readFileSync(semRosto24Path).toString('base64')}`;
+        galleryScenarioMemoryCache.set(cacheKey, dataUri);
+        return dataUri;
+      }
+    } catch {}
+  }
+
   if (/^cenario_\d+$/i.test(cleanId)) {
     const idFileNum = cleanId.replace(/^cenario_/i, '');
     const idPath = path.join(process.cwd(), 'public', 'scenarios', 'gallery', `${idFileNum}.png`);
@@ -2681,9 +2712,22 @@ async function generateImageWithSeedream(params: {
       headerSeedream = '[MAPA POV: Imagem 1 = Cenário POV Cama intacto; Imagem 2 = Produto 1:1 manipulado apenas pelas duas mãos limpas sem tatuagens sobre a cama. PROIBIDO corpo/rosto/espelho].\n\n';
     } else if (hasModelRefSeedream) {
       const isModelScenarioSeedream = (params.modelScenarioSource || 'model') === 'model';
+      const isScenario24Seedream = Boolean(
+        params.prompt &&
+          (params.prompt.includes('CENÁRIO 24') ||
+            params.prompt.includes('Cenário 24') ||
+            params.prompt.includes('cenario_24'))
+      );
+      const flashRuleSeedream = isScenario24Seedream
+        ? '- [REGRA OBRIGATÓRIA DO CENÁRIO 24 — FLASH DO CELULAR SEMPRE LIGADO]: Na imagem gerada no Cenário 24, o FLASH DA CÂMERA TRASEIRA DO CELULAR da modelo DEVE ESTAR SEMPRE LIGADO E BRILHANDO INTENSAMENTE no espelho (ponto luminoso branco intenso com estrela de luz), iluminando frontalmente a modelo e a peça de roupa contra o fundo mais escuro do Cenário 24, independentemente de qual modelo foi escolhida!\n'
+        : '';
+      const faceFramingRuleSeedream = allowsFace
+        ? '- A modelo fotografada DEVE SER A MESMA MULHER DA FOTO 2. O rosto da modelo da Foto 2 DEVE APARECER IDENTICAMENTE, reproduzindo 100% a mesma face, olhos, nariz, boca, expressão e cabelos da mulher da Foto 2 (PROIBIDO cortar o rosto ou a cabeça!).\n'
+        : '- A modelo fotografada DEVE SER RIGOROSAMENTE A MESMA MULHER DA FOTO 2 (mesmo corpo, mesmas curvas, mesmo quadril, mesma cintura, mesmo busto, mesmas pernas, mesmo tom de pele, mesmos cabelos caindo nos ombros e mesma postura de selfie da Foto 2). PROIBIÇÃO ABSOLUTA DE MOSTRAR ROSTO (MODO MIRROR SELFIE SEM ROSTO): É TERMINANTEMENTE PROIBIDO mostrar ou inventar o rosto, olhos, nariz ou testa! Mantenha RIGOROSAMENTE o enquadramento sem rosto da Foto 2 (corte exato na altura da base do queixo para baixo ou rosto 100% oculto pelo celular exatamente como na Foto 2 — NUNCA desenhe cabeça ou rosto descoberto!).\n';
       const modelPreserveDirectiveSeedream =
-        '[IDENTIDADE E ROSTO DA FOTO 2 (MODELO 1:1)]:\n' +
-        '- A modelo fotografada DEVE SER A MESMA MULHER DA FOTO 2. Se a Foto 2 mostra o rosto da modelo (visível total ou parcialmente), o rosto DEVE APARECER IDENTICAMENTE, reproduzindo 100% a mesma face, olhos, nariz, boca e cabelos da mulher da Foto 2 (PROIBIDO cortar o rosto ou a cabeça se ela aparece na Foto 2!). Se o rosto estiver coberto pelo celular ou cortado no enquadramento da Foto 2, mantenha exatamente o mesmo corte original da Foto 2.\n' +
+        '[IDENTIDADE E ENQUADRAMENTO DA FOTO 2 (MODELO 1:1)]:\n' +
+        faceFramingRuleSeedream +
+        flashRuleSeedream +
         '- ISOLAMENTO DA FOTO 1 (PRODUTO): Extrair EXCLUSIVAMENTE a peça de roupa completa e tecido da Foto 1 (preservando 100% o padrão de estampa, textura, costuras, recortes, formato e comprimento integral de cima a baixo sem encurtar a barra); é TERMINANTEMENTE PROIBIDO copiar, mesclar ou misturar o rosto ou a pessoa da Foto 1! ZERO mistura com a pessoa da Foto 1. É TERMINANTEMENTE PROIBIDO copiar tatuagens, marcas corporais ou desenhos da pessoa da Foto 1. A modelo DEVE ter pele 100% limpa, ZERO TATUAGENS no corpo todo.\n' +
         '- CALÇADO (SEM ENCURTAR A PEÇA): Substitua qualquer sapato/tênis original da Foto 2 por calçado que combine 100% com a peça APENAS quando o comprimento original da peça na Foto 1 deixar os pés visíveis (NUNCA encurte ou coma a parte de baixo do vestido para mostrar os pés!): se vestido -> sandália feminina de festa elegante de salto fino e tiras delicadas (PROIBIDO tênis com vestido); se academia/fitness -> tênis esportivo moderno; se camisola, baby doll ou roupa de dormir -> chinelo de dedo branco delicado.\n';
 
@@ -2692,7 +2736,7 @@ async function generateImageWithSeedream(params: {
           `${modelPreserveDirectiveSeedream}${naturalSkinSeedream}` +
           '[MAPA TÉCNICO DE REFERÊNCIA 2 IMAGENS — PRESERVAÇÃO INTEGRAL DE MODELO E CENÁRIO]:\n' +
           '- Foto 1 (PRODUTO): É a roupa que a modelo DEVE vestir com máxima fidelidade 1:1 (PROIBIDO copiar rosto, pessoa ou pose da Foto 1).\n' +
-          '- Foto 2 (MODELO E CENÁRIO BASE ABSOLUTO): A imagem gerada DEVE SER RIGOROSAMENTE A MESMA MULHER DA FOTO 2, NA MESMA POSE E DENTRO DO MESMO CÔMODO DA FOTO 2. Preserve 100% o rosto (se visível na Foto 2), corpo, curvas, biotipo, cabelos, pose e TODO O CENÁRIO DE FUNDO da Foto 2 (paredes, piso, espelho, portas e iluminação intactos). Única alteração: trocar a roupa dela pela roupa da Foto 1 e o calçado.\n' +
+          '- Foto 2 (MODELO E CENÁRIO BASE ABSOLUTO): A imagem gerada DEVE SER RIGOROSAMENTE A MESMA MULHER DA FOTO 2, NA MESMA POSE E DENTRO DO MESMO CÔMODO DA FOTO 2. Preserve 100% o corpo, curvas, biotipo, cabelos, pose, enquadramento e TODO O CENÁRIO DE FUNDO da Foto 2 (paredes, piso, espelho, portas e iluminação intactos). Única alteração: trocar a roupa dela pela roupa da Foto 1 e o calçado.\n' +
           `${SCENARIO_RELIGHT_INTEGRATION_DIRECTIVE}\n` +
           `${clothingDirectiveSeedream}\n\n`;
       } else {
@@ -2700,7 +2744,7 @@ async function generateImageWithSeedream(params: {
           `${modelPreserveDirectiveSeedream}${naturalSkinSeedream}` +
           '[FOTOGRAFIA ÚNICA NATIVA 3 IMAGENS — INTEGRAÇÃO ÓPTICA E GEOMÉTRICA]:\n' +
           '- Foto 1 (PRODUTO): É a roupa que a modelo DEVE vestir com máxima fidelidade 1:1 (PROIBIDO copiar rosto, pessoa ou pose da Foto 1).\n' +
-          '- Foto 2 (IDENTIDADE E POSTURA DA MODELO): Preserve 100% o mesmo rosto (se visível na Foto 2), corpo, curvas, biotipo, cabelos e postura de selfie da Foto 2. DESCARTE 100% a roupa antiga, o tênis antigo, o cenário antigo e a iluminação/parede branca original da Foto 2!\n' +
+          '- Foto 2 (IDENTIDADE E POSTURA DA MODELO): Preserve 100% a mesma mulher da Foto 2 (mesmo corpo, curvas, biotipo, cabelos, tom de pele, postura de selfie e regra de rosto/corte acima). DESCARTE 100% a roupa antiga, o tênis antigo, o cenário antigo e a iluminação/parede branca original da Foto 2!\n' +
           '- Foto 3 (CENÁRIO E CAMPO DE LUZ SOBERANO): Fotografe a mulher fisicamente em pé sobre o piso real dentro do cômodo exato da Foto 3 em uma única exposição de câmera, alinhando perspectiva 3D, escala e sombras reais no chão.\n' +
           `${SCENARIO_RELIGHT_INTEGRATION_DIRECTIVE}\n` +
           `${clothingDirectiveSeedream}\n\n`;
@@ -2889,6 +2933,7 @@ async function generateImageWithKlingO3Fal(params: {
   aspectRatio?: string;
   resolution?: string;
   isAnaMariaMode?: boolean;
+  presentationMode?: string;
   modelScenarioSource?: 'model' | 'gallery';
 }): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
   const falKey = getFalKey();
@@ -2964,13 +3009,26 @@ async function generateImageWithKlingO3Fal(params: {
       : 'MANDATORY FOOTWEAR REPLACEMENT (PARTY SANDALS — NO SNEAKERS): Completely replace and discard any sneakers or shoes worn in <<<image_1>>>! When her feet are visible, she MUST wear ELEGANT HIGH-HEEL PARTY SANDALS (strappy dress sandals) matching the color and elegance of the dress in <<<image_2>>> (if the dress in <<<image_2>>> is floor-length covering the feet, keep the full floor-length hem). STRICTLY FORBIDDEN to wear sneakers, tennis shoes, athletic shoes, or casual trainers with a dress!';
 
     const isModelScenarioO3 = (params.modelScenarioSource || 'model') === 'model';
+    const allowsFaceO3 = params.presentationMode === 'com_rosto';
+    const isScenario24O3 = Boolean(
+      params.prompt &&
+        (params.prompt.includes('CENÁRIO 24') ||
+          params.prompt.includes('Cenário 24') ||
+          params.prompt.includes('cenario_24'))
+    );
+    const flashRuleO3 = isScenario24O3
+      ? ' [MANDATORY SCENARIO 24 RULE — SMARTPHONE CAMERA FLASH ALWAYS ON]: The rear LED camera flash on the model\'s smartphone MUST be actively TURNED ON and shining with a bright glowing white starburst flare in the mirror reflection, casting warm direct front-flash illumination onto the model and garment against the darker warm room of Scenario 24, regardless of which model was selected! '
+      : '';
+    const faceRuleO3 = allowsFaceO3
+      ? 'Keep her exact same visible face, eyes, nose, lips, expression, and hair from <<<image_1>>> (do NOT crop her head or hide her face!).'
+      : 'STRICT NO-FACE / FACELESS MIRROR SELFIE LOCK (MODO SEM ROSTO): It is strictly FORBIDDEN to show or invent eyes, nose, forehead, or an uncovered face! Keep the exact faceless framing of <<<image_1>>> (cropped strictly at the base of the chin from chin-down to the feet, or face 100% covered behind the smartphone exactly as in <<<image_1>>>).';
     const lightWrapRuleEn =
       'SINGLE-EXPOSURE NATIVE PHOTOGRAPHY & 3D FLOOR GROUNDING: Render as a single real-world photograph captured inside the scenario room (never a cutout or pasted montage). Align 3D perspective, camera horizon, and body scale to the floor plane. The scenario room dictates 100% of lighting, Kelvin color temperature, and shadows; relight the woman and garment to match the room with dark sole/heel contact occlusion, soft directional floor shadows, optical edge light-wrap, and ZERO white outline or halo. ';
     const headerKlingO3 = isModelScenarioO3
-      ? '<<<image_1>>> is the PRIMARY MODEL AND ROOM BASE: The generated image MUST feature 100% the exact same woman, same body, curves, facial features, hair, skin, exact same pose and framing from <<<image_1>>>. If <<<image_1>>> shows her face, KEEP HER EXACT SAME FACE from <<<image_1>>>; do NOT crop her head or face if shown in <<<image_1>>>! Preserve 100% the exact same room and background setting from <<<image_1>>>. ' +
+      ? `<<<image_1>>> is the PRIMARY MODEL AND ROOM BASE: The generated image MUST feature 100% the exact same woman, same body, curves, waist, hips, hair, skin tone, exact same pose and framing from <<<image_1>>>. ${faceRuleO3} Preserve 100% the exact same room and background setting from <<<image_1>>>.${flashRuleO3} ` +
         '[MANDATORY 100% GARMENT & FOOTWEAR REPLICATION]: <<<image_2>>> is STRICTLY the PRODUCT GARMENT. Replace her clothes with the EXACT SAME clothing item shown in <<<image_2>>> with 100% fidelity: exact same fabric, weave, pattern, print, color shade, neckline, straps, seams, hemlines, and details without altering! 100% DISREGARD the person, head, face, skin, tattoos, and pose in <<<image_2>>>! NEVER blend or copy the person from <<<image_2>>>! Clean unblemished skin, ZERO tattoos on body. ' +
         `${lightWrapRuleEn}${dressRuleO3} ${footwearRuleO3} Crystal-clear optical focus, 8k high definition, ultra-sharp realistic smartphone photo, no blur, no oil sheen. `
-      : '<<<image_1>>> is the MODEL IDENTITY & POSE: The photographed woman MUST feature 100% the exact same face (if shown in <<<image_1>>>, keep her exact face), hair, skin tone, body curves, and mirror-selfie posture from <<<image_1>>>. Completely DISCARD <<<image_1>>>\'s old room, bright background wall, old lighting, old clothes, and old sneakers/shoes! ' +
+      : `<<<image_1>>> is the MODEL IDENTITY & POSE: The photographed woman MUST feature 100% the exact same woman from <<<image_1>>> (same body silhouette, curves, waist, hips, bust, legs, skin tone, hair strands on shoulders, hands, and mirror-selfie posture). ${faceRuleO3} Completely DISCARD <<<image_1>>>'s old room, bright background wall, old lighting, old clothes, and old sneakers/shoes!${flashRuleO3} ` +
         '[MANDATORY 100% GARMENT REPLICATION]: <<<image_2>>> is STRICTLY the PRODUCT GARMENT. Dress her in the EXACT SAME clothing item shown in <<<image_2>>> with 100% fidelity: exact same fabric, weave, pattern, print, color shade, neckline, straps, seams, hemlines, and details! 100% DISREGARD the person, head, face, skin, tattoos, and pose in <<<image_2>>>! Clean unblemished skin, ZERO tattoos on body. ' +
         `<<<image_3>>> is the REAL SCENARIO ROOM: Photograph her physically standing on the floor inside this exact room. ${lightWrapRuleEn}${dressRuleO3} ${footwearRuleO3} Crystal-clear optical focus, 8k high definition, ultra-sharp smartphone photo, no blur. `;
     promptKlingO3 = compactPromptToLimit(alignedPromptO3, 2450, headerKlingO3);
@@ -2989,6 +3047,10 @@ async function generateImageWithKlingO3Fal(params: {
     !isFitnessO3 && !isUpperPieceO3
       ? ', sneakers, tennis shoes, athletic shoes, running shoes, trainers, gym shoes, sporty shoes, boots, tênis, sapatênis'
       : '';
+  const noFaceNegativeO3 =
+    params.isAnaMariaMode && params.presentationMode !== 'com_rosto'
+      ? ', face, visible face, uncovered face, eyes, eyebrows, nose, forehead, portrait, headshot, selfie with face, looking at camera'
+      : '';
 
   try {
     const inputPayload: any = {
@@ -2998,6 +3060,7 @@ async function generateImageWithKlingO3Fal(params: {
         (params.modelReferenceBase64
           ? 'white halo, white outline, white fringe, cutout edge, sticker paste effect, floating feet, mismatched lighting, copying person from image 2, copying face from image 2, blending person from image 2, model from product photo, mixing face of product photo, altering clothing, redesigning garment, wrong fabric, wrong pattern, wrong dress, different clothes, tattoos on skin from image 2, tattoos on skin, tattoo, body ink, skin ink, arm tattoo, leg tattoo, chest tattoo, wrist tattoo, hand tattoo, ink on skin, deformed hands, extra fingers, bad anatomy, blurry, watermark, low quality, 3d render, cartoon, illustration, jeans with dress, pants under dress, oily skin, greasy skin, shining skin, wet skin, oil sheen, plastic skin, wax skin, wax doll'
           : 'white halo, white outline, cutout edge, sticker paste effect, mismatched lighting, face, head, eyes, eyebrows, nose, lips, mouth, teeth, smile, chin up, portrait, headshot, selfie with face, looking at camera, visible face, jeans with dress, pants under dress, sideways pose, profile angle, deformed, blurry') +
+        noFaceNegativeO3 +
         noSneakerNegativeO3,
       resolution: params.resolution || '2K',
       aspect_ratio: params.aspectRatio || '9:16',
@@ -3318,6 +3381,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
         aspectRatio: req.body.aspectRatio || '9:16',
         resolution: '2K',
         isAnaMariaMode,
+        presentationMode,
         modelScenarioSource,
       });
       return res.json(klingO3Result);

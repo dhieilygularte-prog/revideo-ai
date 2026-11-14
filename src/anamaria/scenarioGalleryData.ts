@@ -199,6 +199,14 @@ export const SCENARIO_GALLERY_ITEMS: AnaMariaScenarioItem[] = [
     "title": "Cenário 24 (Catza)",
     "thumbUrl": "/scenarios/gallery/thumbnails/24.webp",
     "fullUrl": "/scenarios/gallery/24.png"
+  },
+  {
+    "id": "cenario_25",
+    "file": "25.png",
+    "number": 25,
+    "title": "Cenário 25",
+    "thumbUrl": "/scenarios/gallery/thumbnails/25.webp",
+    "fullUrl": "/scenarios/gallery/25.png"
   }
 ];
 
