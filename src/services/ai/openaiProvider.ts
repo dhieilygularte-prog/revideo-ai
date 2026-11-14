@@ -1037,7 +1037,6 @@ Preserve fielmente qualquer logomarca, estampa ou acabamento original da peça. 
           image: editImageInput,
           prompt: effectivePrompt,
           quality: OPENAI_IMAGE_QUALITY,
-          input_fidelity: OPENAI_IMAGE_FIDELITY,
           size: chosenImageSize,
         });
 

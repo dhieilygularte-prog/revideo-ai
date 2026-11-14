@@ -2721,7 +2721,7 @@ async function generateImageWithSeedream(params: {
       const flashRuleSeedream = isScenario24Seedream
         ? '- [REGRA OBRIGATÓRIA DO CENÁRIO 24 — FLASH DO CELULAR SEMPRE LIGADO]: Na imagem gerada no Cenário 24, o FLASH DA CÂMERA TRASEIRA DO CELULAR da modelo DEVE ESTAR SEMPRE LIGADO E BRILHANDO INTENSAMENTE no espelho (ponto luminoso branco intenso com estrela de luz), iluminando frontalmente a modelo e a peça de roupa contra o fundo mais escuro do Cenário 24, independentemente de qual modelo foi escolhida!\n'
         : '';
-      const faceFramingRuleSeedream = allowsFace
+      const faceFramingRuleSeedream = allowsFaceSeedream
         ? '- A modelo fotografada DEVE SER A MESMA MULHER DA FOTO 2. O rosto da modelo da Foto 2 DEVE APARECER IDENTICAMENTE, reproduzindo 100% a mesma face, olhos, nariz, boca, expressão e cabelos da mulher da Foto 2 (PROIBIDO cortar o rosto ou a cabeça!).\n'
         : '- A modelo fotografada DEVE SER RIGOROSAMENTE A MESMA MULHER DA FOTO 2 (mesmo corpo, mesmas curvas, mesmo quadril, mesma cintura, mesmo busto, mesmas pernas, mesmo tom de pele, mesmos cabelos caindo nos ombros e mesma postura de selfie da Foto 2). PROIBIÇÃO ABSOLUTA DE MOSTRAR ROSTO (MODO MIRROR SELFIE SEM ROSTO): É TERMINANTEMENTE PROIBIDO mostrar ou inventar o rosto, olhos, nariz ou testa! Mantenha RIGOROSAMENTE o enquadramento sem rosto da Foto 2 (corte exato na altura da base do queixo para baixo ou rosto 100% oculto pelo celular exatamente como na Foto 2 — NUNCA desenhe cabeça ou rosto descoberto!).\n';
       const modelPreserveDirectiveSeedream =
