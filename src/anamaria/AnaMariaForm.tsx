@@ -29,8 +29,10 @@ import {
 import {
   AnaMariaFormState,
   AnaMariaPresentationMode,
+  AnaMariaShoeOption,
   AnaMariaTheme,
 } from './types';
+import { resolveAutoShoeOptionByProductName } from './anaMariaPrompts';
 import { compressAndResizeImage } from '../ania/aniaLibrary';
 import { ProgressBar } from '../components/ProgressBar';
 import {
@@ -100,6 +102,12 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const lastUploadedFileNameRef = useRef<string>('');
 
   const [isRecordingMic, setIsRecordingMic] = useState(false);
+  const [isRecordingShoeMic, setIsRecordingShoeMic] = useState(false);
+  const [approvalWarning, setApprovalWarning] = useState<string>('');
+  const productNameSectionRef = useRef<HTMLDivElement>(null);
+  const shoeSectionRef = useRef<HTMLDivElement>(null);
+  const shoeRecognitionRef = useRef<any>(null);
+  const shoeStreamRef = useRef<MediaStream | null>(null);
   const [isGalleryExpanded, setIsGalleryExpanded] = useState(false);
   const [isPromptsGalleryExpanded, setIsPromptsGalleryExpanded] = useState(false);
   const [isModelGalleryExpanded, setIsModelGalleryExpanded] = useState(false);
@@ -231,6 +239,76 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     }
   };
 
+  const stopShoeMicrophone = () => {
+    if (shoeRecognitionRef.current) {
+      try {
+        shoeRecognitionRef.current.stop();
+      } catch {}
+      shoeRecognitionRef.current = null;
+    }
+    if (shoeStreamRef.current) {
+      try {
+        shoeStreamRef.current.getTracks().forEach((t) => t.stop());
+      } catch {}
+      shoeStreamRef.current = null;
+    }
+    setIsRecordingShoeMic(false);
+  };
+
+  const toggleShoeMic = async () => {
+    if (isRecordingShoeMic) {
+      stopShoeMicrophone();
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      shoeStreamRef.current = stream;
+
+      const SpeechRecognition =
+        (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+      if (SpeechRecognition) {
+        const rec = new SpeechRecognition();
+        shoeRecognitionRef.current = rec;
+        rec.lang = 'pt-BR';
+        rec.continuous = true;
+        rec.interimResults = false;
+
+        rec.onresult = (event: any) => {
+          let transcript = '';
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            if (event.results[i].isFinal) {
+              transcript += event.results[i][0].transcript + ' ';
+            }
+          }
+          if (transcript.trim()) {
+            setApprovalWarning('');
+            onChange((prev) => {
+              const nextText = prev.customShoeText
+                ? `${prev.customShoeText.trim()} ${transcript.trim()}`
+                : transcript.trim();
+              return {
+                ...prev,
+                selectedShoeOption: 'outro',
+                customShoeText: nextText,
+                isShoeTypeApproved: Boolean(nextText.trim().length > 0),
+              };
+            });
+          }
+        };
+
+        rec.onerror = () => stopShoeMicrophone();
+        rec.onend = () => setIsRecordingShoeMic(false);
+
+        rec.start();
+        setIsRecordingShoeMic(true);
+      }
+    } catch {
+      stopShoeMicrophone();
+    }
+  };
+
   // Heurística local instantânea para extração do nome da peça caso ocorra falha de rede ou IA
   const extractGarmentFromFileName = (rawName?: string): string | null => {
     if (!rawName || typeof rawName !== 'string') return null;
@@ -241,35 +319,37 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       .replace(/[_\-]+/g, ' ');
 
     if ((s.includes('macacao') || s.includes('macaquinho')) && (s.includes('assimetrico') || s.includes('short') || s.includes('bermuda') || s.includes('blusa') || s.includes('cropped') || s.includes('top'))) {
-      return 'Conjunto Alfaiataria';
+      return 'Conjunto';
     }
     if (s.includes('conjunto')) {
-      if (s.includes('fitness') || s.includes('academia') || s.includes('treino')) return 'Conjunto Fitness';
-      if (s.includes('pantalona') || s.includes('linho') || s.includes('alfaiataria')) return 'Conjunto Alfaiataria';
-      return 'Conjunto Alfaiataria';
+      if (s.includes('fitness') || s.includes('academia') || s.includes('treino')) return 'Conjunto de Academia';
+      return 'Conjunto';
     }
-    if (s.includes('macaquinho')) return 'Macaquinho Alfaiataria';
+    if (s.includes('academia') || s.includes('fitness') || s.includes('treino')) {
+      return 'Roupa de Academia';
+    }
+    if (s.includes('macaquinho')) return 'Macaquinho';
     if (s.includes('macacao')) {
-      if (s.includes('longo') || s.includes('pantalona') || s.includes('flare')) return 'Macacão Longo';
-      return 'Conjunto Alfaiataria';
+      return 'Macacão';
     }
     if (s.includes('vestido')) {
-      if (s.includes('longo')) return 'Vestido Longo';
-      if (s.includes('midi')) return 'Vestido Midi';
-      if (s.includes('curto')) return 'Vestido Curto';
       return 'Vestido';
     }
     if (s.includes('baby doll') || s.includes('babydoll') || s.includes('camisola')) return 'Camisola Baby Doll';
     if (s.includes('bermuda') || s.includes('shorts') || s.includes('short')) {
       if (s.includes('jeans')) return 'Short Jeans';
-      return 'Bermuda Alfaiataria';
+      return 'Bermuda';
     }
-    if (s.includes('calca')) {
+    if (s.includes('calca') || s.includes('pantalona')) {
+      if (s.includes('pantalona') || s.includes('wide') || s.includes('folgada') || s.includes('larga')) return 'Calça Pantalona';
       if (s.includes('jeans')) return 'Calça Jeans';
-      if (s.includes('pantalona')) return 'Calça Pantalona';
-      return 'Calça Alfaiataria';
+      if (s.includes('social') || s.includes('alfaiataria')) return 'Calça Social';
+      return 'Calça Social';
     }
-    if (s.includes('saia')) return 'Saia Midi';
+    if (s.includes('saia')) {
+      if (s.includes('couro')) return 'Saia Couro';
+      return 'Saia';
+    }
     if (s.includes('biquini') || s.includes('maio')) return 'Biquíni Cortininha';
     if (s.includes('body')) return 'Body Poliamida';
     if (s.includes('cinta')) return 'Cinta Modeladora';
@@ -279,8 +359,9 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   };
 
   /**
-   * Identifica automaticamente o nome da peça (ex: Camisola, Camiseta, Calça, Bermuda, Conjunto)
-   * assim que o usuário adiciona a primeira foto, sem jamais sobrescrever o que o usuário digitar.
+   * Identifica automaticamente o nome da peça (ex: Calça Pantalona, Saia Couro, Vestido, Conjunto)
+   * assim que o usuário adiciona a primeira foto, preenchendo também o Tipo de Calçado automaticamente
+   * e aguardando o clique do usuário em APROVAR.
    */
   const autoIdentifyGarmentFromPhoto = async (photoBase64: string, force = false, fileName?: string) => {
     if (!photoBase64) return;
@@ -312,9 +393,16 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             return prev;
           }
           const modeNow = prev.presentationMode || 'mirror_selfie';
+          const autoShoe = resolveAutoShoeOptionByProductName(
+            resolvedName,
+            prev.additionalInstructions
+          );
           return {
             ...prev,
             productName: resolvedName,
+            isProductNameApproved: false,
+            selectedShoeOption: autoShoe,
+            isShoeTypeApproved: false,
             selectedMasterId:
               !prev.isManualMasterSelection && modeNow !== 'pov'
                 ? resolveMasterPromptByProductName(resolvedName)
@@ -329,9 +417,16 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       if (fallbackLocal) {
         onChange((prev) => {
           const modeNow = prev.presentationMode || 'mirror_selfie';
+          const autoShoe = resolveAutoShoeOptionByProductName(
+            fallbackLocal,
+            prev.additionalInstructions
+          );
           return {
             ...prev,
             productName: fallbackLocal,
+            isProductNameApproved: false,
+            selectedShoeOption: autoShoe,
+            isShoeTypeApproved: false,
             selectedMasterId:
               !prev.isManualMasterSelection && modeNow !== 'pov'
                 ? resolveMasterPromptByProductName(fallbackLocal)
@@ -397,13 +492,23 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const handleRemovePhoto = (index: number) => {
     onChange((prev) => {
       const nextPhotos = prev.referencePhotos.filter((_, i) => i !== index);
-      if (nextPhotos.length === 0 && (prev.extraColorPhotos?.length || 0) === 0) {
+      const allCleared = nextPhotos.length === 0 && (prev.extraColorPhotos?.length || 0) === 0;
+      if (allCleared) {
         hasUserManuallyEditedNameRef.current = false;
         setAutoIdentifiedBadge(false);
       }
       return {
         ...prev,
         referencePhotos: nextPhotos,
+        ...(allCleared
+          ? {
+              productName: '',
+              isProductNameApproved: false,
+              selectedShoeOption: undefined,
+              customShoeText: '',
+              isShoeTypeApproved: false,
+            }
+          : {}),
       };
     });
   };
@@ -411,13 +516,23 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const handleRemoveExtraColorPhoto = (index: number) => {
     onChange((prev) => {
       const nextExtra = (prev.extraColorPhotos || []).filter((_, i) => i !== index);
-      if (nextExtra.length === 0 && prev.referencePhotos.length === 0) {
+      const allCleared = nextExtra.length === 0 && prev.referencePhotos.length === 0;
+      if (allCleared) {
         hasUserManuallyEditedNameRef.current = false;
         setAutoIdentifiedBadge(false);
       }
       return {
         ...prev,
         extraColorPhotos: nextExtra,
+        ...(allCleared
+          ? {
+              productName: '',
+              isProductNameApproved: false,
+              selectedShoeOption: undefined,
+              customShoeText: '',
+              isShoeTypeApproved: false,
+            }
+          : {}),
       };
     });
   };
@@ -425,6 +540,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const handleClearAllPhotos = () => {
     hasUserManuallyEditedNameRef.current = false;
     setAutoIdentifiedBadge(false);
+    setApprovalWarning('');
     onChange((prev) => {
       const modeNow = prev.presentationMode || 'mirror_selfie';
       return {
@@ -432,6 +548,10 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         referencePhotos: [],
         extraColorPhotos: [],
         productName: '',
+        isProductNameApproved: false,
+        selectedShoeOption: undefined,
+        customShoeText: '',
+        isShoeTypeApproved: false,
         selectedMasterId:
           !prev.isManualMasterSelection && modeNow !== 'pov'
             ? resolveMasterPromptByProductName('')
@@ -581,11 +701,22 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const extraColorPhotos = form.extraColorPhotos || [];
   const totalProductPhotos = form.referencePhotos.length + extraColorPhotos.length;
 
+  const isNameReady = Boolean(form.productName.trim().length > 0 && form.isProductNameApproved);
+  const isShoeReady = Boolean(
+    form.selectedShoeOption &&
+      form.isShoeTypeApproved &&
+      (form.selectedShoeOption !== 'outro' ||
+        Boolean(form.customShoeText && form.customShoeText.trim().length > 0))
+  );
+
   const canSubmit =
     totalProductPhotos > 0 &&
+    isNameReady &&
+    isShoeReady &&
     !isProcessing &&
     !isUploading &&
-    !isRecordingMic;
+    !isRecordingMic &&
+    !isRecordingShoeMic;
   const isInstructionsFilled = Boolean(
     form.additionalInstructions && form.additionalInstructions.trim().length > 0
   );
@@ -596,6 +727,10 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const sectionCardClass = isAmetista
     ? 'rounded-2xl border border-purple-500/35 bg-[#140d21]/95 backdrop-blur-sm shadow-[0_4px_24px_rgba(124,58,237,0.12)]'
     : 'rounded-2xl border border-orange-500/25 bg-[#111113]/95 backdrop-blur-sm shadow-xl';
+
+  // Destaque azul idêntico ao copiar prompt quando o usuário aprova ou seleciona ativamente Nome da Peça / Tipo de Calçado
+  const copiedBlueSectionClass =
+    'rounded-2xl border border-sky-400/75 bg-[#0c223b]/95 backdrop-blur-sm shadow-[0_0_25px_rgba(56,189,248,0.2)] transition-all duration-300';
 
   const activeOptionButtonClass = isAmetista
     ? 'bg-[#221538] border-purple-400/60 text-white shadow-sm ring-1 ring-purple-400/25 font-bold'
@@ -991,6 +1126,51 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                 );
               })}
             </div>
+
+            {/* ─── MODO ECLÉTICO (SIM POR PADRÃO) LOGO APÓS CONFIGURAÇÕES DAS VÁRIAS CORES ─── */}
+            <div className="pt-2 border-t border-sky-500/20">
+              {(() => {
+                const isEclecticYes = form.eclecticMode !== false;
+                return (
+                  <div className="p-3.5 rounded-xl border border-sky-400/35 bg-[#090f1c]/95 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-black text-sky-300 uppercase tracking-wider">
+                        MODO ECLÉTICO:
+                      </p>
+                      <p className="text-[11px] text-zinc-300 mt-0.5 leading-relaxed">
+                        {isEclecticYes
+                          ? 'Sim (Padrão): prioriza de forma randômica as modelos 13, 01, 27, 25, 22, 18, 10, 15, 14 e 12 conforme a quantidade de cores adicionadas (1 de cada cor).'
+                          : 'Não: funciona da forma normal sem priorizar a lista eclética.'}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 shrink-0 min-w-[180px]">
+                      <button
+                        type="button"
+                        onClick={() => onChange((prev) => ({ ...prev, eclecticMode: true }))}
+                        className={`py-2 px-4 rounded-lg text-xs font-black border transition-all cursor-pointer ${
+                          isEclecticYes
+                            ? 'bg-sky-600 border-sky-400 text-white shadow-sm'
+                            : 'bg-zinc-900/80 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700'
+                        }`}
+                      >
+                        Sim
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onChange((prev) => ({ ...prev, eclecticMode: false }))}
+                        className={`py-2 px-4 rounded-lg text-xs font-black border transition-all cursor-pointer ${
+                          !isEclecticYes
+                            ? 'bg-sky-600 border-sky-400 text-white shadow-sm'
+                            : 'bg-zinc-900/80 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700'
+                        }`}
+                      >
+                        Não
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
           </div>
         )}
 
@@ -1008,17 +1188,20 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         )}
       </div>
 
-      {/* ─── CARD 2: NOME DA PEÇA / PRODUTO (IDENTIFICAÇÃO AUTOMÁTICA + EDITÁVEL PELO USUÁRIO) ─── */}
-      <div className={`${sectionCardClass} p-5 sm:p-6 space-y-3`}>
-        <div className={`flex flex-wrap items-center justify-between gap-2 border-b pb-2.5 ${isAmetista ? 'border-purple-500/20' : 'border-zinc-800/80'}`}>
+      {/* ─── CARD 2: NOME DA PEÇA / PRODUTO (IDENTIFICAÇÃO AUTOMÁTICA + APROVAÇÃO OBRIGATÓRIA) ─── */}
+      <div
+        ref={productNameSectionRef}
+        className={`${isNameReady ? copiedBlueSectionClass : sectionCardClass} p-5 sm:p-6 space-y-3`}
+      >
+        <div className={`flex flex-wrap items-center justify-between gap-2 border-b pb-2.5 ${isNameReady ? 'border-sky-400/30' : isAmetista ? 'border-purple-500/20' : 'border-zinc-800/80'}`}>
           <div className="flex items-center gap-2">
-            <Layers className={`w-4 h-4 ${sectionIconColorClass}`} />
+            <Layers className={`w-4 h-4 ${isNameReady ? 'text-sky-300' : sectionIconColorClass}`} />
             <h2 className="text-sm font-bold text-white uppercase tracking-wide">
               2. Nome da Peça / Tipo de Roupa (Define Calçado, Headline e Hashtags)
             </h2>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {totalProductPhotos > 0 && (
               <button
                 type="button"
@@ -1053,7 +1236,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                 <RefreshCw className="w-3 h-3 animate-spin" />
                 <span>Identificando peça pela foto...</span>
               </span>
-            ) : autoIdentifiedBadge && form.productName.trim() ? (
+            ) : autoIdentifiedBadge && form.productName.trim() && !form.isProductNameApproved ? (
               <span
                 className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 ${
                   isAmetista
@@ -1062,45 +1245,302 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                 }`}
               >
                 <Sparkles className="w-3 h-3" />
-                <span>Identificado automaticamente</span>
+                <span>Identificado automaticamente — Clique em APROVAR</span>
               </span>
             ) : null}
+
+            {form.productName.trim().length > 0 && !form.isProductNameApproved && (
+              <button
+                type="button"
+                onClick={() => {
+                  setApprovalWarning('');
+                  onChange((prev) => ({
+                    ...prev,
+                    isProductNameApproved: true,
+                    selectedShoeOption:
+                      prev.selectedShoeOption ||
+                      resolveAutoShoeOptionByProductName(
+                        prev.productName,
+                        prev.additionalInstructions
+                      ),
+                  }));
+                }}
+                className="px-4 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-lg shadow-emerald-950/50 transition-all cursor-pointer animate-pulse"
+              >
+                <Check className="w-4 h-4 stroke-[3]" />
+                <span>APROVAR</span>
+              </button>
+            )}
+
+            {isNameReady && (
+              <span className="px-3 py-1 rounded-xl bg-sky-500/25 border border-sky-300/60 text-sky-200 font-black text-xs uppercase tracking-wider flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-sky-300" />
+                <span>APROVADO ✓</span>
+              </span>
+            )}
           </div>
         </div>
-        <p className="text-xs text-zinc-400 leading-relaxed">
-          Ao anexar a imagem da peça acima, o app identifica e preenche automaticamente o nome (ex.: Camisola, Camiseta, Calça, Bermuda, Conjunto). Se preferir, você pode editar livremente — o que estiver escrito aqui será sempre o nome soberano usado pelo app.
+        <p className="text-xs text-zinc-300 leading-relaxed">
+          Ao anexar a imagem da peça, a IA identifica o tipo de roupa automaticamente. Toque em <strong>APROVAR</strong> (ou edite o nome abaixo) para confirmar o nome do produto e liberar a geração do vídeo.
         </p>
-        <input
-          type="text"
-          value={form.productName}
-          onChange={(e) => {
-            const val = e.target.value;
-            if (!val.trim()) {
-              hasUserManuallyEditedNameRef.current = false;
-              setAutoIdentifiedBadge(false);
-            } else {
-              hasUserManuallyEditedNameRef.current = true;
-              setAutoIdentifiedBadge(false);
-            }
-            onChange((prev) => {
-              const modeNow = prev.presentationMode || 'mirror_selfie';
-              return {
-                ...prev,
-                productName: val,
-                selectedMasterId:
-                  !prev.isManualMasterSelection && modeNow !== 'pov'
-                    ? resolveMasterPromptByProductName(val)
-                    : prev.selectedMasterId,
-              };
-            });
-          }}
-          placeholder="Ex: Camisola, Conjunto Fitness, Vestido Longo, Calça Jeans, Bermuda, Camiseta..."
-          className={`w-full px-4 py-2.5 rounded-xl text-white placeholder-zinc-500 text-sm focus:outline-none transition-colors ${
-            isAmetista
-              ? 'bg-[#0e0817]/90 border border-purple-400/30 focus:border-[#d4ff59]'
-              : 'bg-zinc-900/90 border border-zinc-700/80 focus:border-orange-500'
-          }`}
-        />
+        <div className="flex flex-col sm:flex-row gap-2.5">
+          <input
+            type="text"
+            value={form.productName}
+            onChange={(e) => {
+              const val = e.target.value;
+              setApprovalWarning('');
+              if (!val.trim()) {
+                hasUserManuallyEditedNameRef.current = false;
+                setAutoIdentifiedBadge(false);
+              } else {
+                hasUserManuallyEditedNameRef.current = true;
+                setAutoIdentifiedBadge(false);
+              }
+              onChange((prev) => {
+                const modeNow = prev.presentationMode || 'mirror_selfie';
+                const hasText = Boolean(val.trim().length > 0);
+                const autoShoe = hasText
+                  ? resolveAutoShoeOptionByProductName(val, prev.additionalInstructions)
+                  : undefined;
+                return {
+                  ...prev,
+                  productName: val,
+                  isProductNameApproved: hasText,
+                  selectedShoeOption: prev.isShoeTypeApproved
+                    ? prev.selectedShoeOption
+                    : autoShoe,
+                  selectedMasterId:
+                    !prev.isManualMasterSelection && modeNow !== 'pov'
+                      ? resolveMasterPromptByProductName(val)
+                      : prev.selectedMasterId,
+                };
+              });
+            }}
+            placeholder="Ex: Calça Pantalona, Saia Couro, Calça Jeans, Conjunto de Academia, Vestido, Conjunto..."
+            className={`w-full px-4 py-2.5 rounded-xl text-white placeholder-zinc-500 text-sm focus:outline-none transition-colors ${
+              isNameReady
+                ? 'bg-[#081729]/90 border border-sky-400/60 focus:border-sky-300'
+                : isAmetista
+                ? 'bg-[#0e0817]/90 border border-purple-400/30 focus:border-[#d4ff59]'
+                : 'bg-zinc-900/90 border border-zinc-700/80 focus:border-orange-500'
+            }`}
+          />
+          {form.productName.trim().length > 0 && !form.isProductNameApproved && (
+            <button
+              type="button"
+              onClick={() => {
+                setApprovalWarning('');
+                onChange((prev) => ({
+                  ...prev,
+                  isProductNameApproved: true,
+                  selectedShoeOption:
+                    prev.selectedShoeOption ||
+                    resolveAutoShoeOptionByProductName(
+                      prev.productName,
+                      prev.additionalInstructions
+                    ),
+                }));
+              }}
+              className="shrink-0 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50 transition-all cursor-pointer"
+            >
+              <Check className="w-4 h-4 stroke-[3]" />
+              <span>APROVAR</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ─── NOVO ITEM LOGO APÓS NOME DA PEÇA: TIPO DE CALÇADO (AUTO-SELECIONADO + APROVAÇÃO OBRIGATÓRIA) ─── */}
+      <div
+        ref={shoeSectionRef}
+        className={`${isShoeReady ? copiedBlueSectionClass : sectionCardClass} p-5 sm:p-6 space-y-3.5`}
+      >
+        <div className={`flex flex-wrap items-center justify-between gap-2 border-b pb-2.5 ${isShoeReady ? 'border-sky-400/30' : isAmetista ? 'border-purple-500/20' : 'border-zinc-800/80'}`}>
+          <div className="flex items-center gap-2">
+            <Sparkles className={`w-4 h-4 ${isShoeReady ? 'text-sky-300' : sectionIconColorClass}`} />
+            <h2 className="text-sm font-bold text-white uppercase tracking-wide">
+              Tipo de Calçado (Selecionado Automaticamente de Acordo com a Peça)
+            </h2>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {form.selectedShoeOption &&
+              form.selectedShoeOption !== 'outro' &&
+              !form.isShoeTypeApproved && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setApprovalWarning('');
+                    onChange((prev) => ({
+                      ...prev,
+                      isShoeTypeApproved: true,
+                    }));
+                  }}
+                  className="px-4 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-lg shadow-emerald-950/50 transition-all cursor-pointer animate-pulse"
+                >
+                  <Check className="w-4 h-4 stroke-[3]" />
+                  <span>APROVAR</span>
+                </button>
+              )}
+
+            {isShoeReady && (
+              <span className="px-3 py-1 rounded-xl bg-sky-500/25 border border-sky-300/60 text-sky-200 font-black text-xs uppercase tracking-wider flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-sky-300" />
+                <span>APROVADO ✓</span>
+              </span>
+            )}
+          </div>
+        </div>
+
+        <p className="text-xs text-zinc-300 leading-relaxed">
+          Após identificar o nome da peça, o app pré-seleciona automaticamente o calçado ideal. Toque em <strong>APROVAR</strong> para confirmar a sugestão automática ou clique diretamente em um dos botões abaixo (ou em <strong>Outro</strong> para digitar/ditar).
+        </p>
+
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+          {(
+            [
+              {
+                id: 'sandalia_salto' as AnaMariaShoeOption,
+                label: 'Sandália de Salto',
+                sub: 'Vestido, saia, conjunto, macacão',
+              },
+              {
+                id: 'sandalia_flatform' as AnaMariaShoeOption,
+                label: 'Sandália Flatform',
+                sub: 'Calça social folgada / pantalona',
+              },
+              {
+                id: 'scarpin' as AnaMariaShoeOption,
+                label: 'Scarpin',
+                sub: 'Saia couro, calça jeans, calça social',
+              },
+              {
+                id: 'tenis' as AnaMariaShoeOption,
+                label: 'Tênis',
+                sub: 'Academia, conjunto fitness, cinta',
+              },
+              {
+                id: 'outro' as AnaMariaShoeOption,
+                label: 'Outro',
+                sub: 'Escrever ou ditar calçado',
+              },
+            ] as const
+          ).map((opt) => {
+            const isSelected = form.selectedShoeOption === opt.id;
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => {
+                  setApprovalWarning('');
+                  onChange((prev) => {
+                    const isOutro = opt.id === 'outro';
+                    const readyIfOutro = Boolean(
+                      prev.customShoeText && prev.customShoeText.trim().length > 0
+                    );
+                    return {
+                      ...prev,
+                      selectedShoeOption: opt.id,
+                      isShoeTypeApproved: isOutro ? readyIfOutro : true,
+                    };
+                  });
+                }}
+                className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1 ${
+                  isSelected
+                    ? isShoeReady
+                      ? 'bg-sky-600/35 border-sky-300 text-white ring-1 ring-sky-300/50 font-bold shadow-md'
+                      : activeOptionButtonClass
+                    : inactiveOptionButtonClass
+                }`}
+              >
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-xs font-extrabold text-white">{opt.label}</span>
+                  {isSelected && (
+                    <Check
+                      className={`w-3.5 h-3.5 shrink-0 ${
+                        isShoeReady ? 'text-sky-300' : checkIconColorClass
+                      }`}
+                    />
+                  )}
+                </div>
+                <span className="text-[10px] text-zinc-400 leading-tight">{opt.sub}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {form.selectedShoeOption === 'outro' && (
+          <div className="pt-1 space-y-2">
+            <label className="block text-xs font-bold text-sky-200">
+              Digite ou dite pelo microfone o tipo de calçado desejado:
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={form.customShoeText || ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setApprovalWarning('');
+                  onChange((prev) => ({
+                    ...prev,
+                    selectedShoeOption: 'outro',
+                    customShoeText: val,
+                    isShoeTypeApproved: Boolean(val.trim().length > 0),
+                  }));
+                }}
+                placeholder="Ex: Bota de cano curto preta, Rasteirinha dourada, Mule de couro..."
+                className="flex-1 px-4 py-2.5 rounded-xl bg-[#081729]/90 border border-sky-400/50 text-white placeholder-zinc-400 text-sm focus:outline-none focus:border-sky-300"
+              />
+              <button
+                type="button"
+                onClick={toggleShoeMic}
+                className={`px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition-all cursor-pointer ${
+                  isRecordingShoeMic
+                    ? 'bg-rose-600 border-rose-400 text-white animate-pulse'
+                    : 'bg-zinc-800 hover:bg-zinc-700 border-zinc-600 text-zinc-200'
+                }`}
+                title="Ditar tipo de calçado por voz"
+              >
+                {isRecordingShoeMic ? (
+                  <>
+                    <Square className="w-4 h-4 fill-white" />
+                    <span>Parar</span>
+                  </>
+                ) : (
+                  <>
+                    <Mic className="w-4 h-4 text-sky-400" />
+                    <span>Ditar</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {form.selectedShoeOption &&
+          form.selectedShoeOption !== 'outro' &&
+          !form.isShoeTypeApproved && (
+            <div className="flex items-center justify-between gap-3 pt-1">
+              <span className="text-xs text-amber-300 font-semibold">
+                Calçado selecionado automaticamente pelo app. Clique em APROVAR ou escolha outro botão acima:
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setApprovalWarning('');
+                  onChange((prev) => ({
+                    ...prev,
+                    isShoeTypeApproved: true,
+                  }));
+                }}
+                className="shrink-0 px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-lg shadow-emerald-950/50 transition-all cursor-pointer"
+              >
+                <Check className="w-4 h-4 stroke-[3]" />
+                <span>APROVAR CALÇADO</span>
+              </button>
+            </div>
+          )}
       </div>
 
       {/* ─── CARD 3 & 4: INFLUENCIADOR & TIPO DE CORPO ─── */}
@@ -2258,18 +2698,56 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         />
       )}
 
-      {/* ─── BOTÃO DE AÇÃO: GERAR VÍDEO (MESMA COR DO MODO PRODUTOS 2.0) ─── */}
-      <div className="pt-2">
+      {/* ─── BOTÃO DE AÇÃO: GERAR VÍDEO (BLOQUEADO ATÉ APROVAR NOME DA PEÇA E TIPO DE CALÇADO) ─── */}
+      <div className="pt-2 space-y-3">
+        {approvalWarning && (
+          <div className="p-3.5 rounded-xl bg-amber-500/15 border border-amber-400/60 text-amber-200 text-xs sm:text-sm font-bold flex items-center gap-2.5 animate-pulse shadow-lg">
+            <AlertCircle className="w-5 h-5 shrink-0 text-amber-400" />
+            <span>{approvalWarning}</span>
+          </div>
+        )}
+
         <button
           type="button"
-          disabled={!canSubmit}
           onClick={() => {
-            if (!canSubmit || isRecordingMic) return;
+            if (isProcessing || isUploading || isRecordingMic || isRecordingShoeMic) return;
+            if (totalProductPhotos === 0) {
+              setApprovalWarning('Por favor, anexe ao menos 1 foto do produto antes de gerar o vídeo.');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+              return;
+            }
+            if (!isNameReady) {
+              setApprovalWarning(
+                'Você precisa tocar no botão APROVAR (ou editar ativamente) o Nome do Produto para liberar o botão Gerar Vídeo!'
+              );
+              productNameSectionRef.current?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+              });
+              return;
+            }
+            if (!isShoeReady) {
+              setApprovalWarning(
+                form.selectedShoeOption === 'outro'
+                  ? 'Digite ou dite o tipo de calçado no campo "Outro" (ou escolha um dos botões de calçado) para liberar o botão Gerar Vídeo!'
+                  : 'Você precisa tocar no botão APROVAR no Tipo de Calçado (ou escolher um dos botões de calçado) para liberar o botão Gerar Vídeo!'
+              );
+              shoeSectionRef.current?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+              });
+              return;
+            }
+            setApprovalWarning('');
             onSubmit();
           }}
-          className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-sky-600 hover:from-emerald-500 hover:via-teal-500 hover:to-sky-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black text-sm sm:text-base shadow-xl shadow-emerald-950/50 flex items-center justify-center gap-3 transition-all cursor-pointer"
+          className={`w-full py-4 px-6 rounded-2xl font-black text-sm sm:text-base flex items-center justify-center gap-3 transition-all ${
+            canSubmit
+              ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-sky-600 hover:from-emerald-500 hover:via-teal-500 hover:to-sky-500 text-white shadow-xl shadow-emerald-950/50 cursor-pointer'
+              : 'bg-zinc-800/90 border border-zinc-700 text-zinc-400 opacity-60 cursor-not-allowed'
+          }`}
         >
-          {isRecordingMic ? (
+          {isRecordingMic || isRecordingShoeMic ? (
             <>
               <Square className="w-5 h-5 fill-rose-400 text-rose-400 animate-pulse" />
               <span>Gravação de voz ativa — Pare o microfone (⏹) para liberar o botão</span>
@@ -2286,10 +2764,20 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           )}
         </button>
 
-        {isRecordingMic && (
+        {totalProductPhotos > 0 && (!isNameReady || !isShoeReady) && !isProcessing && (
+          <p className="text-center text-xs text-amber-300/90 font-semibold">
+            {!isNameReady && !isShoeReady
+              ? '🔒 Para liberar o botão Gerar Vídeo, aprove o Nome da Peça e o Tipo de Calçado acima.'
+              : !isNameReady
+              ? '🔒 Para liberar o botão Gerar Vídeo, toque em APROVAR no Nome da Peça acima.'
+              : '🔒 Para liberar o botão Gerar Vídeo, toque em APROVAR no Tipo de Calçado acima.'}
+          </p>
+        )}
+
+        {(isRecordingMic || isRecordingShoeMic) && (
           <p className="text-center text-xs text-amber-300 font-semibold flex items-center justify-center gap-1.5 mt-2 animate-pulse">
             <Mic className="w-3.5 h-3.5 animate-bounce text-rose-400" />
-            Ditado de voz ativo nas instruções adicionais. Pause a gravação no microfone para liberar a geração do vídeo.
+            Ditado de voz ativo. Pause a gravação no microfone para liberar a geração do vídeo.
           </p>
         )}
       </div>

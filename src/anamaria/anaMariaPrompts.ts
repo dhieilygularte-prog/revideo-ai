@@ -3,6 +3,7 @@ import {
   AnaMariaInfluencer,
   AnaMariaBodyType,
   AnaMariaShoeCategory,
+  AnaMariaShoeOption,
   AnaMariaVideoPromptLimit,
   AnaMariaPresentationMode,
   AnaMariaMasterId,
@@ -57,179 +58,164 @@ export const UNIVERSAL_GOLDEN_ACCESSORIES_ENGLISH_BLOCK = `[MANDATORY FEMININE D
 - STRICT PROHIBITIONS: NO bulky watches, NO chunky bracelets, NO oversized statement jewelry. Accessories must look like real, refined, delicate fine jewelry harmonizing with the outfit.
 - STRICT NO BAGS MANDATE: The model must NOT wear, carry or hold any bag, purse, handbag, tote bag, shoulder bag, backpack or clutch. Hands and shoulders must be 100% free of bags.`;
 
+export const KLING_FIXED_VIDEO_PROMPT =
+  'Vídeo vertical 9:16 realista em frente ao espelho, mantendo 100% a mesma modelo, o mesmo cenário e a mesma peça de roupa fiel à imagem inicial, com movimentos naturais, fluidos e elegantes mostrando o caimento da peça em silêncio absoluto.';
+
+export const SHOE_CONTRAST_COLOR_RULE_PT =
+  'REGRA DE COR DO CALÇADO (CONTRASTE OBRIGATÓRIO QUANDO PRÓXIMO À PEÇA): O calçado NUNCA pode ser da mesma cor da peça de roupa que fica próxima ou encostando nele (ex.: se a calça/peça longa for branca ou off-white, o calçado NÃO pode ser branco e deve ter outra cor contrastante e harmônica como caramelo, nude amendoado, preto, marrom ou dourado; se a peça próxima ao pé for preta ou escura, o calçado deve ter cor clara contrastante como branco, off-white, nude claro, prata ou dourado). Se a peça for mais curta e não chegar perto do calçado, não há restrição. A cor fixa é sempre a da imagem de referência do produto; a cor do calçado é que se adapta para contrastar e combinar.';
+
+export const SHOE_CONTRAST_COLOR_RULE_EN =
+  '[MANDATORY FOOTWEAR COLOR CONTRAST RULE]: The footwear MUST NEVER be the same color as the clothing piece right next to or touching it (e.g., if pants/sweatpants/long skirt are white or off-white, the shoes MUST NOT be white and must be a contrasting harmonious color such as tan, caramel, black, brown, or gold; if the bottom garment near the feet is black or dark, the shoes must be a contrasting light color such as white, off-white, light nude, silver, or gold). If the garment is short and does not reach near the shoes, there is no restriction. The reference garment color is 100% fixed; only the shoe color adapts.';
+
+/**
+ * Seleciona automaticamente uma das 4 opções de calçado (nunca 'outro') com base no NOME DA PEÇA:
+ * - Calça social ou pantalona, calça social folgada -> 'sandalia_flatform'
+ * - Saia couro, calça jeans, calça social -> 'scarpin'
+ * - Roupa de academia, conjunto de academia, cinta modeladora -> 'tenis'
+ * - Vestido, saia, conjunto, macacão -> 'sandalia_salto'
+ */
+export function resolveAutoShoeOptionByProductName(
+  productName: string,
+  additionalInstructions: string = '',
+  dressInspection?: AnaMariaDressInspection
+): Exclude<AnaMariaShoeOption, 'outro'> {
+  const combined = `${productName} ${additionalInstructions}`.toLowerCase();
+  const inspectedCat = dressInspection?.garmentCategory;
+
+  // 1. Roupa de academia, conjunto de academia, cinta modeladora -> Tênis
+  if (
+    inspectedCat === 'fitness' ||
+    /\b(academia|conjunto\s+de\s+academia|roupa\s+de\s+academia|fitness|treino|gym|legging|cinta\s+modeladora|cinta|esportiv|suplex|dry\s*fit|dryfit|bermuda\s+academia|short\s+academia|top\s+academia|macac[aã]o\s+fitness|macaquinho\s+fitness)\b/i.test(
+      combined
+    )
+  ) {
+    return 'tenis';
+  }
+
+  // Verifica se é conjunto (exceto conjunto de academia que já caiu acima)
+  const isConjunto =
+    /\b(conjunto|conjuntinho)\b/i.test(combined) ||
+    /\b(cal[cç]a|bermuda|short|shorts|saia)\s+(?:e|com|\+)\s+(?:blusa|blusinha|top|cropped|camisa|regata|jaqueta|colete)\b/i.test(
+      combined
+    ) ||
+    /\b(blusa|blusinha|top|cropped|camisa|regata|jaqueta|colete)\s+(?:e|com|\+)\s+(?:cal[cç]a|bermuda|short|shorts|saia)\b/i.test(
+      combined
+    ) ||
+    /\bbermuda\s+e\s+saia\b/i.test(combined);
+
+  // 2. Calça social ou pantalona, calça social folgada -> Sandália Flatform
+  if (
+    !isConjunto &&
+    /\b(pantalona|cal[cç]a\s+social\s+folgada|cal[cç]a\s+folgada|cal[cç]a\s+social\s+ou\s+pantalona|cal[cç]a\s+pantalona|wide\s*leg|palazzo|pantacourt|cal[cç]a\s+larga|cal[cç]a\s+de\s+linho|cal[cç]a\s+linho|cal[cç]a\s+alfaiataria\s+folgada|cal[cç]a\s+alfaiataria\s+larga)\b/i.test(
+      combined
+    )
+  ) {
+    return 'sandalia_flatform';
+  }
+
+  // 3. Saia couro, calça jeans, calça social -> Scarpin
+  if (
+    !isConjunto &&
+    /\b(saia\s+couro|saia\s+de\s+couro|saia\s+em\s+couro|cal[cç]a\s+jeans|jeans|cal[cç]a\s+social|cal[cç]a\s+alfaiataria|cal[cç]a\s+flare|cal[cç]a\s+skinny|cal[cç]a\s+reta|cal[cç]a\s+sarja|cal[cç]a\s+cargo)\b/i.test(
+      combined
+    )
+  ) {
+    return 'scarpin';
+  }
+
+  // 4. Vestido, saia, conjunto, macacão -> Sandália de Salto (Modelo Delicado)
+  if (
+    isConjunto ||
+    inspectedCat === 'dress' ||
+    /\b(vestido|vestidos|dress|saia|macac[aã]o|macaquinho|jumpsuit|chemise|tubinho)\b/i.test(
+      combined
+    )
+  ) {
+    return 'sandalia_salto';
+  }
+
+  // 5. Outros tipos de peças (ex.: moletom, camiseta, short casual, blusa, etc.)
+  if (/\b(moletom|jogger|camiseta|t-shirt|tshirt|short\s+jeans|bermuda\s+jeans)\b/i.test(combined)) {
+    return 'tenis';
+  }
+
+  return 'sandalia_salto';
+}
+
 export function detectShoeCategory(
   productName: string,
   additionalInstructions: string = '',
   influencer: AnaMariaInfluencer = 'Mulher',
-  dressInspection?: AnaMariaDressInspection
+  dressInspection?: AnaMariaDressInspection,
+  selectedShoeOption?: AnaMariaShoeOption,
+  customShoeText?: string
 ): { category: AnaMariaShoeCategory; description: string; name: string } {
   const combined = `${productName} ${additionalInstructions}`.toLowerCase();
   const isMale = influencer === 'Homem';
-  const inspectedCat = dressInspection?.garmentCategory;
-  const inspectedIsDress =
-    inspectedCat === 'dress' ||
-    (dressInspection?.lengthCategory !== undefined &&
-      dressInspection.lengthCategory !== 'unknown' &&
-      inspectedCat !== 'upper' &&
-      inspectedCat !== 'lower');
 
-  // 1. Roupas Fitness / Academia / Esportivas / Treino -> SEMPRE TÊNIS
-  const isFitness =
-    inspectedCat === 'fitness' ||
-    /\b(fitness|academia|treino|gym|legging|macacao fitness|macacão fitness|macaquinho fitness|esportiv|suplex|poliamida fitness|anarruga fitness|top fitness|conjunto fitness|short fitness|bermuda academia|camiseta treino|dry fit|dryfit)\b/i.test(
-      combined
-    );
+  // Se o usuário selecionou 'outro' e digitou o calçado personalizado
+  if (selectedShoeOption === 'outro' && customShoeText && customShoeText.trim().length > 0) {
+    const customTrimmed = customShoeText.trim();
+    const isCustomTenis = /\b(t[eê]nis|sneaker)\b/i.test(customTrimmed);
+    const isCustomChinelo = /\b(chinelo|rasteirinha|flatform|slide)\b/i.test(customTrimmed);
+    return {
+      category: isCustomTenis ? 'B_TENIS' : isCustomChinelo ? 'A_CHINELO' : 'C_OUTRO',
+      name: customTrimmed,
+      description: `${customTrimmed} combinando de forma harmônica com a roupa da modelo. ${SHOE_CONTRAST_COLOR_RULE_PT}`,
+    };
+  }
 
-  // 2. Camisola, Baby Doll, Roupa de Dormir, Pijama ou Roupa de Ficar em Casa -> CHINELO DE DEDO BRANCO COM DETALHES
-  const isSleepwearOrHomewear =
-    inspectedCat === 'sleepwear' ||
-    /\b(camisola|baby doll|babydoll|pijama|dormir|sleepwear|homewear|ficar em casa|roupa de casa|lingerie|robe)\b/i.test(
-      combined
-    );
+  // Se há opção explícita (ou resolvida automaticamente para Mulher)
+  const resolvedOption: Exclude<AnaMariaShoeOption, 'outro'> =
+    selectedShoeOption && selectedShoeOption !== 'outro'
+      ? selectedShoeOption
+      : resolveAutoShoeOptionByProductName(productName, additionalInstructions, dressInspection);
 
-  // 3. Roupa de Festa, Vestido de Festa, Social, Gala, Casamento, Formatura -> SAPATO OU SANDÁLIA DE FESTA ELEGANTE
-  const isPartyOrSocial =
-    /\b(festa|vestido de festa|gala|formatura|social|casamento|cocktail|baile|madrinha|evento|alfaiataria|blazer|terno|fino|elegante)\b/i.test(
-      combined
-    );
-
-  // Peças únicas (vestidos, macacões, camisolas, babydolls, pijamas) NÃO são peças superiores avulsas
-  const isOnePieceForShoes =
-    inspectedIsDress ||
-    /\b(vestido|vestidos|dress|dresses|macac[aã]o|macaquinho|camisola|baby\s*doll|babydoll|jumpsuit|chemise|tubinho|pijama completo|robe)\b/i.test(
-      combined
-    );
-  const isDress =
-    inspectedIsDress ||
-    /\b(vestido|vestidos|dress|dresses|longo|midi|chemise|tubinho)\b/i.test(combined);
-
-  // 3.1. Blusas, Blusinhas, Croppeds ou Peças Superiores -> SEMPRE TÊNIS (combinando com a Calça Jeans obrigatória)
-  const isUpperPieceForShoes =
-    !isOnePieceForShoes &&
-    (inspectedCat === 'upper' ||
-      /\b(blusa|blusinha|blusinhas|blusas|rendada|rendado|cropped|top|regata|camisa|camiseta|t-shirt|tshirt|casaco|jaqueta|blazer|moletom|sueter|suéter|cardiga|cardigã|bata|cropped rendad[oa]|blusa rendad[oa])\b/i.test(
-        combined
-      ));
-
-  // 4. Calças (para mulher: calça = tênis casual branco ou harmonioso; para homem: social = sapato social, demais = tênis)
-  const isPants =
-    !isOnePieceForShoes &&
-    (inspectedCat === 'lower' ||
-      /\b(calca|calça|jeans|jogger|cargo|pantacourt|pantalona|sarja)\b/i.test(combined));
-
-  if (isMale) {
+  if (isMale && !selectedShoeOption) {
+    const isFitness =
+      dressInspection?.garmentCategory === 'fitness' ||
+      /\b(fitness|academia|treino|gym|esportiv|dry\s*fit)\b/i.test(combined);
     if (isFitness) {
       return {
         category: 'B_TENIS',
         name: 'Tênis Esportivo Masculino',
-        description:
-          'Tênis masculino esportivo moderno de cano baixo, design limpo e anatômico, cores sóbrias (branco ou preto/cinza neutro) compatíveis com roupa de academia/treino, solado esportivo estruturado e meia esportiva discreta.',
+        description: `Tênis masculino esportivo moderno de cano baixo, solado estruturado. ${SHOE_CONTRAST_COLOR_RULE_PT}`,
       };
     }
+    return {
+      category: 'B_TENIS',
+      name: 'Calçado Masculino Harmonioso',
+      description: `Calçado masculino moderno que combine com a roupa do modelo. ${SHOE_CONTRAST_COLOR_RULE_PT}`,
+    };
+  }
 
-    if (isPartyOrSocial) {
-      return {
-        category: 'C_OUTRO',
-        name: 'Sapato Social Masculino Elegante',
-        description:
-          'Sapato social masculino de couro legítimo com acabamento fosco/acetinado elegante (preto ou marrom café conforme a peça), bico levemente arredondado e solado clássico alinhado à roupa social/festa.',
-      };
-    }
-
-    if (isPants) {
-      return {
-        category: 'B_TENIS',
-        name: 'Tênis Casual Masculino',
-        description:
-          'Tênis casual masculino de cano baixo, design minimalista e versátil que combina perfeitamente com a calça, acabamento impecável e solado reto.',
-      };
-    }
-
-    if (isSleepwearOrHomewear) {
+  switch (resolvedOption) {
+    case 'sandalia_flatform':
       return {
         category: 'A_CHINELO',
-        name: 'Chinelo Masculino de Casa',
-        description:
-          'Chinelo masculino tradicional de dedo ou slide discreto em tom neutro (branco, preto ou marinho), solado plano e visual autêntico e confortável de casa.',
+        name: 'Sandália feminina flatform de dedo com tiras largas cruzadas e plataforma branca',
+        description: `Sandália feminina flatform de dedo com tiras largas cruzadas sobre o peito do pé e plataforma elevada (deixando os dedos aparentes com acabamento moderno e elegante, em tom branco/off-white ou em cor contrastante harmônica caso a barra da calça que encosta no calçado seja branca/clara). ${SHOE_CONTRAST_COLOR_RULE_PT}`,
       };
-    }
-
-    return {
-      category: 'C_OUTRO',
-      name: 'Calçado Masculino Harmonioso',
-      description:
-        'Calçado masculino moderno e harmonioso que combine perfeitamente com a proposta e estilo da peça anunciada.',
-    };
+    case 'scarpin':
+      return {
+        category: 'C_OUTRO',
+        name: 'Scarpin feminino de bico fino com salto baixo e delicado',
+        description: `Scarpin feminino fechado na frente de bico fino triangular alongado com salto baixo e delicado, design clássico e elegante que combina perfeitamente com a peça. ${SHOE_CONTRAST_COLOR_RULE_PT}`,
+      };
+    case 'tenis':
+      return {
+        category: 'B_TENIS',
+        name: 'Tênis casual feminino branco, estilo urbano, com solado baixo',
+        description: `Tênis casual feminino estilo urbano com solado baixo reto (na cor branca quando a peça próxima aos pés for escura/colorida ou peça curta, mas OBRIGATORIAMENTE em outra cor contrastante e harmônica — como preto, caramelo, nude escuro ou cinza chumbo — caso a calça/peça que chega próximo ao calçado seja branca ou off-white). ${SHOE_CONTRAST_COLOR_RULE_PT}`,
+      };
+    case 'sandalia_salto':
+    default:
+      return {
+        category: 'C_OUTRO',
+        name: 'SANDÁLIA DE SALTO FEMININA — MODELO DELICADO',
+        description: `Sandália de salto feminina — modelo delicado, aberta na frente exibindo os dedos, com tiras finas horizontais delicadas sobre os dedos e o peito do pé, salto fino elegante e acabamento sofisticado. REGRA INVIOLÁVEL DA PARTE INFERIOR DA PEÇA: Preserve 100% o comprimento original da peça; NUNCA encurte a barra para exibir o calçado. ${SHOE_CONTRAST_COLOR_RULE_PT}`,
+      };
   }
-
-  // REGRAS PARA MULHER (CAMADA UNIVERSAL SOBERANA):
-  // 1. Academia / Fitness -> SEMPRE TÊNIS
-  if (isFitness) {
-    return {
-      category: 'B_TENIS',
-      name: 'Tênis Esportivo Feminino Harmonioso',
-      description:
-        'Tênis esportivo feminino moderno de cano baixo (branco ou em tom coordenado), design anatômico impecável, solado esportivo e meias discretas, combinando 100% com a roupa de academia/fitness.',
-    };
-  }
-
-  // 2. Camisola, Baby Doll, Roupa de Dormir ou Roupa de Ficar em Casa -> CHINELO DE DEDO BRANCO COM DETALHES
-  if (isSleepwearOrHomewear) {
-    return {
-      category: 'A_CHINELO',
-      name: 'Chinelo de Dedo Branco Feminino com Detalhes Delicados',
-      description:
-        'Chinelo de dedo branco feminino delicado com detalhes refinados nas tiras, deixando o calçado charmoso, bonito e sofisticado, harmonizando perfeitamente com a camisola, baby doll ou roupa de ficar em casa.',
-    };
-  }
-
-  // 3. Roupa de Festa, Vestido de Festa ou Social -> SAPATO OU SANDÁLIA DE FESTA ELEGANTE
-  if (isPartyOrSocial) {
-    return {
-      category: 'C_OUTRO',
-      name: 'Sapato ou Sandália de Festa Elegante que Combina com a Roupa',
-      description:
-        'Sapato refinado de salto ou sandália feminina de festa sofisticada com tiras elegantes que combine e harmonize 100% com o vestido de festa ou roupa social (visível apenas se o comprimento original da peça deixar os pés expostos; NUNCA encurte a barra da peça para mostrar o calçado).',
-    };
-  }
-
-  // 3.2. Para Mulher: Blusa, Blusinha ou Peça Superior -> TÊNIS FEMININO CASUAL (combinando com a Calça Jeans)
-  if (isUpperPieceForShoes && !isDress && !isSleepwearOrHomewear && !isPartyOrSocial) {
-    return {
-      category: 'B_TENIS',
-      name: 'Tênis Casual Feminino Moderno (combinando com a Calça Jeans)',
-      description:
-        'Tênis casual feminino moderno de cano baixo (branco ou neutro claro), design anatômico elegante e solado reto, combinando perfeitamente com a calça jeans clássica e a blusa anunciada.',
-    };
-  }
-
-  // 4. Vestidos em geral -> Sandália de festa elegante (respeitando 100% o comprimento original da peça sem jamais encurtar a barra)
-  if (isDress) {
-    return {
-      category: 'C_OUTRO',
-      name: 'Sandália de Festa Elegante que Combina com o Vestido (se os pés ficarem visíveis pelo comprimento original da peça)',
-      description:
-        'Sandália feminina de festa elegante de salto fino e tiras delicadas que combine perfeitamente com a cor e proposta do vestido (PROIBIDO usar tênis com vestido). REGRA INVIOLÁVEL DA PARTE INFERIOR DA PEÇA: Preserve 100% o comprimento, o formato da saia, as costuras e a estampa da parte de baixo do vestido exatamente como na foto de referência; se o vestido for longo cobrindo os pés, mantenha a barra até o chão cobrindo os pés e JAMAIS encurte ou corte a barra da peça para exibir o calçado.',
-    };
-  }
-
-  // 5. Calças casuais / jeans -> Tênis casual moderno ou calçado elegante harmonioso
-  if (isPants) {
-    return {
-      category: 'B_TENIS',
-      name: 'Tênis Casual Feminino Harmonioso',
-      description:
-        'Tênis casual feminino moderno de cano baixo ou calçado alinhado que harmonize perfeitamente com a calça e componha um look comercial moderno e elegante.',
-    };
-  }
-
-  // 6. Demais roupas femininas -> Sandália elegante que SEMPRE combina com a roupa e contexto
-  return {
-    category: 'C_OUTRO',
-    name: 'Sandália de Festa ou Calçado Elegante que Combina com a Peça',
-    description:
-      'Sandália feminina elegante de salto e tiras delicadas que combine 100% em estilo, cor e contexto com a peça anunciada na foto de referência (PROIBIDO tênis esportivo em vestidos ou looks sociais).',
-  };
 }
 
 export interface ComplementaryGarmentInfo {
@@ -239,10 +225,13 @@ export interface ComplementaryGarmentInfo {
 }
 
 /**
- * REGRA UNIVERSAL DE PEÇAS COMPLEMENTARES E LOOK COMPLETO
- * Garante que a modelo NUNCA fique nua ou desvestida na parte inferior ou superior.
- * Se anexar blusa/top -> adiciona calça jeans/inferior que combina.
- * Se anexar calça/short -> adiciona blusa/superior que combina.
+ * REGRA UNIVERSAL DE PEÇAS COMPLEMENTARES E CONTRASTE OBRIGATÓRIO DE COR (MODO ANA MARIA)
+ * - Quando a peça gerada for da parte de baixo (calça, bermuda, saia, short), a parte de cima criada pelo app
+ *   DEVE SEMPRE ser em COR CONTRASTANTE mas que combine e fique harmônica (para o robô do TikTok não confundir uma peça com a outra).
+ * - Quando a peça gerada for da parte de cima (blusa, top, cropped, camisa, jaqueta, etc.), a parte de baixo criada pelo app
+ *   DEVE SEMPRE ser em COR CONTRASTANTE mas que combine e fique harmônica.
+ * - Porém, quando for um CONJUNTO (ex: bermuda e saia, calça e blusinha, calça e top, calça e blusa, bermuda e blusa, conjunto de academia, etc.)
+ *   ou peça de corpo inteiro (vestido, macacão), AMBAS as peças são reproduzidas 100% como na imagem de referência (mesmas cores exatas da foto de referência).
  */
 export function detectComplementaryGarment(
   productName: string,
@@ -260,20 +249,33 @@ export function detectComplementaryGarment(
       inspectedCat !== 'upper' &&
       inspectedCat !== 'lower');
 
+  // Detecta CONJUNTO explicitamente (ex: "conjunto", "calça e blusinha", "calça e top", "calça e blusa", "bermuda e blusa", "bermuda e saia", etc.)
+  const isConjunto =
+    /\b(conjunto|conjuntinho)\b/i.test(combined) ||
+    /\b(cal[cç]a|bermuda|short|shorts|saia)\s+(?:e|com|\+)\s+(?:blusa|blusinha|top|cropped|camisa|regata|jaqueta|colete|casaco|blazer)\b/i.test(
+      combined
+    ) ||
+    /\b(blusa|blusinha|top|cropped|camisa|regata|jaqueta|colete|casaco|blazer)\s+(?:e|com|\+)\s+(?:cal[cç]a|bermuda|short|shorts|saia)\b/i.test(
+      combined
+    ) ||
+    /\bbermuda\s+e\s+saia\b/i.test(combined);
+
   const isFullBody =
+    isConjunto ||
     inspectedIsDress ||
-    /\b(vestido|longo|midi|macacao|macacão|macaquinho|jumpsuit|conjunto|pijama completo|robe e pijama|terno completo)\b/i.test(
+    /\b(vestido|longo|midi|macacao|macacão|macaquinho|jumpsuit|pijama completo|robe e pijama|terno completo)\b/i.test(
       combined
     );
   const isLingerie =
-    inspectedCat === 'sleepwear' ||
-    /\b(lingerie|suti[aã]|calcinha|babydoll|baby doll|camisola|corselet|cinta modeladora|body de renda)\b/i.test(
-      combined
-    );
+    !isConjunto &&
+    (inspectedCat === 'sleepwear' ||
+      /\b(lingerie|suti[aã]|calcinha|babydoll|baby doll|camisola|corselet|cinta modeladora|body de renda)\b/i.test(
+        combined
+      ));
   const isUpper =
     !isFullBody &&
     (inspectedCat === 'upper' ||
-      /\b(blusa|blusinha|blusinhas|blusas|camisa|camiseta|cropped|top|regata|t-shirt|tshirt|casaco|jaqueta|blazer|moletom|sueter|suéter|cardiga|cardigã|cropped rendad[oa]|blusa rendad[oa]|bata|rendada|rendado)\b/i.test(
+      /\b(blusa|blusinha|blusinhas|blusas|camisa|camiseta|cropped|top|regata|t-shirt|tshirt|casaco|jaqueta|blazer|moletom|sueter|suéter|cardiga|cardigã|cropped rendad[oa]|blusa rendad[oa]|bata|rendada|rendado|colete)\b/i.test(
         combined
       ));
   const isLower =
@@ -286,8 +288,12 @@ export function detectComplementaryGarment(
   if (isFullBody) {
     return {
       type: 'full_body',
-      directiveTextPt: 'O produto anunciado é uma peça de corpo inteiro (vestido/macacão/conjunto). A modelo veste o look completo conforme as fotos de referência.',
-      directiveTextEn: 'The advertised product is a full-body garment (dress/jumpsuit/set). The model wears the full garment according to the reference photos.',
+      directiveTextPt: isConjunto
+        ? `REGRA DE CONJUNTO COMPLETO (FIDELIDADE 100% NAS DUAS PEÇAS): O produto anunciado (${productName}) é um CONJUNTO. Reproduza AMBAS as peças (parte de cima e parte de baixo) EXATAMENTE como estão na imagem de referência, mantendo 100% as mesmas cores, tecidos, recortes e detalhes da foto de referência.`
+        : 'O produto anunciado é uma peça de corpo inteiro (vestido/macacão). A modelo veste exclusivamente a peça completa conforme as fotos de referência, mantendo 100% a cor e comprimento originais.',
+      directiveTextEn: isConjunto
+        ? `[FULL MATCHING SET - 1:1 EXACT REPRODUCTION OF BOTH PIECES]: The advertised product (${productName}) is a two-piece set (conjunto). Reproduce BOTH top and bottom pieces 100% identically to the reference image, keeping the exact colors, fabric, cut, and details from the reference photo.`
+        : 'The advertised product is a full-body garment (dress/jumpsuit). The model wears the exact full garment according to the reference photos.',
     };
   }
 
@@ -295,14 +301,14 @@ export function detectComplementaryGarment(
     if (isMale) {
       return {
         type: 'upper_only',
-        directiveTextPt: `REGRA DE LOOK COMERCIAL COMPLETO (PARTE INFERIOR COMPLEMENTAR):\nComo o produto anunciado é uma peça superior (${productName}), o modelo veste obrigatoriamente calça jeans masculina clássica de corte reto ou calça casual escura alinhada para compor um look comercial elegante de catálogo.`,
-        directiveTextEn: `[MANDATORY COMPLEMENTARY BOTTOM GARMENT - COMMERCIAL LOOK]: The advertised product is an upper garment (${productName}). The model wears matching classic straight-cut dark blue denim jeans. Full complete commercial catalog outfit required.`,
+        directiveTextPt: `REGRA DE PARTE DE BAIXO EM COR CONTRASTANTE HARMÔNICA (SEPARAÇÃO VISUAL PARA O ROBÔ DO TIKTOK):\nComo o produto anunciado é uma peça da parte de cima (${productName}), a peça superior deve ter EXATAMENTE a cor e detalhes da imagem de referência (1:1), enquanto a calça complementar criada pelo app DEVE SEMPRE ser em COR CONTRASTANTE que combine e fique harmônica (NUNCA da mesma cor da peça de cima: se a blusa/camisa for clara/branca, use calça escura preta/marinho/jeans escuro; se a peça de cima for preta/escura, use calça clara bege/off-white/jeans claro).`,
+        directiveTextEn: `[MANDATORY CONTRASTING BOTTOM GARMENT]: The advertised product is an upper garment (${productName}). Keep the upper garment 100% in its exact reference color, and dress the model in pants of a CONTRASTING YET HARMONIOUS COLOR (NEVER the same color as the top, so top and bottom have clear visual separation).`,
       };
     }
     return {
       type: 'upper_only',
-      directiveTextPt: `REGRA DE LOOK COMERCIAL COMPLETO (PARTE INFERIOR COMPLEMENTAR & TÊNIS OBRIGATÓRIOS — PROIBIDO NUDEZ EMBAIXO):\nComo o produto anunciado na foto de referência é exclusivamente uma peça superior (${productName}), a modelo veste OBRIGATORIAMENTE uma CALÇA JEANS feminina clássica de cintura alta em tom azul tradicional (ou jeans claro clássico) com caimento impecável E TÊNIS casual moderno nos pés. É TERMINANTEMENTE PROIBIDO a modelo ficar sem calça, de calcinha, com pernas despidas ou nua na parte de baixo! A blusa/peça superior anunciada é o foco principal (fidelidade 1:1), e a calça jeans com tênis completam o look comercial 100% vestido e realista.`,
-      directiveTextEn: `[MANDATORY COMPLEMENTARY JEANS AND SNEAKERS - STRICTLY NO LOWER-BODY NUDITY]: The advertised product in the reference photo is strictly an upper-body piece (${productName}). The model MUST wear complementary bottom clothing: stylish classic high-waisted blue denim jeans, and CASUAL SNEAKERS on her feet. STRICTLY FORBIDDEN FOR THE MODEL TO BE PANTLESS, IN UNDERWEAR ONLY, BARE-LEGGED WITHOUT PANTS, OR NUDE ON THE LOWER BODY! The model is 100% fully dressed in a complete commercial mirror-selfie outfit: reference blouse + classic blue denim jeans + casual sneakers.`,
+      directiveTextPt: `REGRA OBRIGATÓRIA DE PARTE DE BAIXO EM COR CONTRASTANTE E HARMÔNICA (PROIBIDO NUDEZ E PROIBIDO MESMA COR DA BLUSA):\nComo o produto anunciado na foto de referência é uma peça da parte de cima (${productName}), a peça superior deve ser reproduzida com fidelidade 1:1 na EXATA COR da foto de referência, e a parte de baixo criada pelo app (calça feminina elegante / calça jeans de cintura alta) DEVE SEMPRE SER EM COR CONTRASTANTE MAS QUE COMBINE E FIQUE HARMÔNICA com a peça de cima (para que o robô de análise de vídeo do TikTok jamais confunda uma peça como continuação da outra!).\n- Se a peça de cima (blusa/top/cropped/camisa/jaqueta) for ESCURA (preta, marrom café, azul-marinho, vinho, verde escuro, etc.), a calça de baixo deve ser CLARA CONTRASTANTE (off-white, bege claro, creme ou jeans azul claro).\n- Se a peça de cima for CLARA (branca, off-white, bege, creme, rosa bebê, etc.), a calça de baixo deve ser ESCURA CONTRASTANTE (jeans azul escuro índigo, preta, marrom escuro ou grafite).\n- NUNCA gere a parte de baixo da mesma cor da parte de cima! É TERMINANTEMENTE PROIBIDO a modelo ficar sem calça ou de calcinha na parte de baixo.`,
+      directiveTextEn: `[MANDATORY CONTRASTING BOTTOM GARMENT - CLEAR VISUAL SEPARATION BETWEEN TOP AND BOTTOM]: The advertised product in the reference photo is strictly an upper-body piece (${productName}). Keep the upper piece 100% in its exact reference color, and dress the model in complementary high-waisted pants/jeans in a CONTRASTING YET HARMONIOUS COLOR (NEVER the same color as the upper garment, so TikTok's AI video analysis never confuses top and bottom as a single continuous garment! If the top is dark/black/navy/brown -> use contrasting light off-white, cream, light beige, or light-wash blue jeans; if the top is white/off-white/light -> use contrasting dark indigo jeans, black, or espresso pants). STRICTLY NO LOWER-BODY NUDITY.`,
     };
   }
 
@@ -310,29 +316,29 @@ export function detectComplementaryGarment(
     if (isMale) {
       return {
         type: 'lower_only',
-        directiveTextPt: `REGRA DE LOOK COMERCIAL COMPLETO (PARTE SUPERIOR COMPLEMENTAR):\nComo o produto anunciado é uma peça inferior (${productName}), o modelo veste camiseta básica masculina de manga curta em tom neutro (branca ou preta) com caimento limpo para compor um visual completo de catálogo comercial.`,
-        directiveTextEn: `[MANDATORY COMPLEMENTARY TOP GARMENT]: The advertised product is a bottom garment (${productName}). The model wears a matching clean neutral crew-neck t-shirt (white or black). Complete commercial outfit.`,
+        directiveTextPt: `REGRA DE PARTE DE CIMA EM COR CONTRASTANTE HARMÔNICA:\nComo o produto anunciado é uma peça da parte de baixo (${productName}), ela deve manter 100% a cor da foto de referência, e a camiseta masculina na parte de cima DEVE SEMPRE ser em COR CONTRASTANTE e harmônica (se a calça/bermuda for clara, camiseta preta/escura; se for escura, camiseta branca/off-white).`,
+        directiveTextEn: `[MANDATORY CONTRASTING TOP GARMENT]: The advertised product is a bottom garment (${productName}) in its exact reference color. The model wears a crew-neck t-shirt in a CONTRASTING YET HARMONIOUS COLOR (never the same color as the bottom piece).`,
       };
     }
     return {
       type: 'lower_only',
-      directiveTextPt: `REGRA DE LOOK COMERCIAL COMPLETO (PARTE SUPERIOR COMPLEMENTAR):\nComo o produto anunciado na foto de referência é exclusivamente uma peça inferior (${productName}), a modelo veste uma blusa feminina delicada de manga curta ou cropped elegante em tom neutro suave (off-white ou branco) de caimento limpo que harmonize com a peça inferior. A peça inferior anunciada é o foco principal (fidelidade 1:1), e a blusa completa o look comercial realista.`,
-      directiveTextEn: `[MANDATORY COMPLEMENTARY TOP GARMENT]: The advertised product in the reference photo is strictly a bottom piece (${productName}). The model wears a complementary top garment: a clean, elegant neutral white or off-white feminine short-sleeve top/blouse that harmonizes with the bottom piece. Full complete commercial outfit required.`,
+      directiveTextPt: `REGRA OBRIGATÓRIA DE PARTE DE CIMA EM COR CONTRASTANTE E HARMÔNICA (SEPARAÇÃO VISUAL PARA O ROBÔ DO TIKTOK):\nComo o produto anunciado na foto de referência é uma peça da parte de baixo (${productName} — calça, bermuda ou saia), a peça de baixo deve ser reproduzida com fidelidade 1:1 na EXATA COR da imagem de referência, enquanto a peça da parte de cima (blusa feminina elegante ou cropped/top de caimento limpo) criada pelo app para a modelo não ficar nua DEVE SEMPRE SER EM COR CONTRASTANTE MAS QUE COMBINE E FIQUE HARMÔNICA (para que o robô de análise do TikTok nunca confunda uma peça com a outra achando que uma é continuação da outra!).\n- Se a peça de baixo (calça, bermuda ou saia) for CLARA (branca, off-white, bege, areia, creme, jeans claro, etc.), a blusa/top da parte de cima DEVE ser ESCURA CONTRASTANTE e elegante (preta, marrom café/espresso, azul-marinho ou vinho escuro).\n- Se a peça de baixo for ESCURA (preta, jeans escuro, marrom, azul-marinho, verde militar, couro preto/marrom, etc.), a blusa/top da parte de cima DEVE ser CLARA CONTRASTANTE e elegante (branca, off-white, manteiga/creme ou bege claro).\n- Se a peça de baixo for COLORIDA VIVA, escolha um tom neutro contrastante (branco/off-white ou preto) que destaque onde termina a blusa e onde começa a cintura da peça de baixo. NUNCA use a mesma cor da peça de baixo na blusa de cima!`,
+      directiveTextEn: `[MANDATORY CONTRASTING TOP GARMENT - CLEAR VISUAL SEPARATION FOR TIKTOK ANALYSIS]: The advertised product in the reference photo is strictly a lower-body piece (${productName} — pants, shorts/bermuda, or skirt). Reproduce the lower piece 100% in its exact reference color, while the complementary top/blouse created by the app MUST ALWAYS BE IN A CONTRASTING YET HARMONIOUS COLOR (NEVER the same color as the bottom piece, so TikTok's AI video analysis never mistakes top and bottom for a single continuous piece! If the bottom piece is white, off-white, beige, cream, or light -> the top MUST be a contrasting dark color like black, espresso brown, or deep navy; if the bottom piece is black, dark denim, dark brown, or dark -> the top MUST be a contrasting light color like crisp white, off-white, or cream).`,
     };
   }
 
   if (isLingerie) {
     return {
       type: 'lingerie',
-      directiveTextPt: `REGRA DE MODA ÍNTIMA COMPLETA (CONJUNTO ELEGANTE):\nA modelo deve vestir o conjunto coordenado e harmonioso de moda íntima comercial elegante de sleepwear/homewear, com acabamento refinado de renda/cetim, preservando a dignidade estética comercial sem poses explícitas.`,
-      directiveTextEn: `[COORDINATED SLEEPWEAR/LOUNGEWEAR ENSEMBLE]: The model wears a tasteful, coordinated commercial homewear/sleepwear ensemble with delicate lace/satin details, maintaining elegant commercial aesthetic.`,
+      directiveTextPt: `REGRA DE MODA ÍNTIMA / CINTA MODELADORA:\nSe for cinta modeladora ou peça avulsa, mantenha a cor exata da peça de referência e combine as demais peças em tom contrastante harmônico, preservando estética comercial elegante.`,
+      directiveTextEn: `[COORDINATED COMMERCIAL AESTHETIC]: Reproduce the reference piece in its exact reference color with harmonious contrasting complementary styling.`,
     };
   }
 
   return {
     type: 'auto',
-    directiveTextPt: `REGRA DE LOOK COMERCIAL COMPLETO:\nReproduza fielmente a peça mostrada na foto de produto anexada (se for vestido ou peça única, a modelo veste exclusivamente o vestido com sandália de festa elegante nos pés; se for peça avulsa, componha o look comercial completo).`,
-    directiveTextEn: `[FULL OUTFIT MANDATE]: The model wears the exact garment from the product photo (if a dress or one-piece, wear exclusively the dress with elegant party sandals; if a separate piece, wear matching complementary garment for a complete commercial look).`,
+    directiveTextPt: `REGRA DE LOOK COMERCIAL COMPLETO:\nReproduza fielmente a peça mostrada na foto de produto anexada na sua cor exata de referência (se for peça única ou conjunto, reproduza o look completo; se for peça avulsa de cima ou de baixo, a peça complementar criada pelo app deve estar em cor contrastante e harmônica).`,
+    directiveTextEn: `[FULL OUTFIT MANDATE]: Reproduce the exact garment from the product photo in its exact reference color (if a separate top or bottom piece, the complementary piece must be in a contrasting yet harmonious color).`,
   };
 }
 
@@ -641,7 +647,9 @@ export function buildAnaMariaImagePrompt(
     form.productName,
     form.additionalInstructions,
     form.influencer,
-    dressInspection
+    dressInspection,
+    form.selectedShoeOption,
+    form.customShoeText
   );
   const isBag = isBagProduct(form.productName, form.additionalInstructions);
   const noBagDirectivePt = !isBag
@@ -832,15 +840,20 @@ ${
 
     const dressDetailDirective = [imageLengthRule, imageSlitRule].filter(Boolean).join('\n');
     const garmentTypeInstruction = isDressOrOnePiece
-      ? '- O PRODUTO DA FOTO 1 É UM VESTIDO / PEÇA ÚNICA COMPLETA: A modelo veste EXCLUSIVAMENTE o vestido/peça única da Foto 1 com máxima fidelidade 1:1.\n' +
-        '- PROIBIÇÃO ABSOLUTA DE CALÇA, SHORTS OU TÊNIS: É TERMINANTEMENTE PROIBIDO ADICIONAR CALÇA JEANS, CALÇA, SHORTS, BERMUDA OU TÊNIS ESPORTIVO. A modelo veste APENAS o vestido da Foto 1 cobrindo o corpo por completo com pernas limpas naturais e sandália de festa elegante nos pés (se visíveis).' +
+      ? `- O PRODUTO DA FOTO 1 É UM VESTIDO / MACACÃO / CONJUNTO COMPLETO: A modelo veste EXCLUSIVAMENTE a peça/conjunto completo da Foto 1 com máxima fidelidade 1:1 (mesmas cores exatas da foto de referência).\n` +
+        `- ${complementaryInfo.directiveTextPt}\n` +
+        `- Calçado obrigatório nos pés (se visíveis): ${shoeInfo.name} (${shoeInfo.description}).` +
         (dressDetailDirective ? `\n${dressDetailDirective}` : '')
       : isUpperOnly
-      ? '- O PRODUTO DA FOTO 1 É UMA PEÇA SUPERIOR (BLUSA, BLUSINHA, CROPPED OU PARTE DE CIMA): A modelo veste a peça superior da Foto 1 com máxima fidelidade 1:1, combinada OBRIGATORIAMENTE com CALÇA JEANS feminina clássica de cintura alta (azul tradicional) e TÊNIS casual nos pés. É TERMINANTEMENTE PROIBIDO a modelo ficar sem calça, de calcinha, com pernas despidas ou nua na parte de baixo! Look 100% completo, elegante e comercial com blusa + calça jeans + tênis.\n' +
-        '- REGRA DE ENQUADRAMENTO DA CINTURA PARA CIMA (PEÇA SUPERIOR): Como o produto anunciado é uma peça que fica acima da cintura, o enquadramento fotográfico no espelho deve priorizar da cintura para cima (waist-up medium close-up shot), focando diretamente na blusa/peça superior com máxima nitidez de detalhes, decote, caimento e textura.'
+      ? `- O PRODUTO DA FOTO 1 É UMA PEÇA DA PARTE DE CIMA (${form.productName}): A modelo veste a peça superior da Foto 1 com máxima fidelidade 1:1 na EXATA COR da foto de referência, combinada OBRIGATORIAMENTE com uma peça da parte de baixo (calça feminina elegante / calça jeans de cintura alta) em COR CONTRASTANTE MAS QUE COMBINE E FIQUE HARMÔNICA (NUNCA da mesma cor da peça de cima, para que o robô do TikTok jamais confunda uma peça como continuação da outra!).\n` +
+        `- ${complementaryInfo.directiveTextPt}\n` +
+        `- Calçado obrigatório nos pés: ${shoeInfo.name} (${shoeInfo.description}).`
       : isLowerOnly
-      ? '- O PRODUTO DA FOTO 1 É UMA PEÇA INFERIOR: A modelo veste a peça inferior da Foto 1 com máxima fidelidade 1:1, combinada com uma blusa neutra elegante para compor um look comercial elegante de catálogo.'
-      : '- Reproduza com máxima fidelidade 1:1 o look completo da Foto 1 (se for vestido ou peça única, veste exclusivamente o vestido sem nenhuma calça por baixo e com sandália de festa elegante nos pés).' +
+      ? `- O PRODUTO DA FOTO 1 É UMA PEÇA DA PARTE DE BAIXO (${form.productName}): A modelo veste a peça inferior da Foto 1 com máxima fidelidade 1:1 na EXATA COR da foto de referência, combinada OBRIGATORIAMENTE com uma parte de cima (blusa feminina elegante ou top/cropped de caimento limpo) em COR CONTRASTANTE MAS QUE COMBINE E FIQUE HARMÔNICA (NUNCA da mesma cor da peça de baixo, para que o robô do TikTok jamais confunda uma peça como continuação da outra!).\n` +
+        `- ${complementaryInfo.directiveTextPt}\n` +
+        `- Calçado obrigatório nos pés: ${shoeInfo.name} (${shoeInfo.description}).`
+      : `- Reproduza com máxima fidelidade 1:1 o produto da Foto 1 na sua cor exata de referência, com calçado ${shoeInfo.name} (${shoeInfo.description}) nos pés.\n` +
+        `- ${complementaryInfo.directiveTextPt}` +
         (dressDetailDirective ? `\n${dressDetailDirective}` : '');
 
     const galleryFaceFramingRule2Img = isFaceVisible

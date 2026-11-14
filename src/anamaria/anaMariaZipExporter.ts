@@ -275,8 +275,16 @@ export async function exportAnaMariaZip(result: AnaMariaResultState): Promise<vo
   }
 
   // 2. Doc de Hashtags e Headline: "Hastags e Headline - [Nome da Peça] [Hora da Geração].txt"
-  const hashtagsAndHeadlineContent = `HEADLINE:
-${result.headline}
+  const distinctHeadlines =
+    result.headlines && result.headlines.length > 1
+      ? result.headlines
+      : [result.headline];
+  const headlinesBlock =
+    distinctHeadlines.length > 1
+      ? distinctHeadlines.map((h, idx) => `${idx + 1}. ${h}`).join('\n')
+      : result.headline;
+  const hashtagsAndHeadlineContent = `HEADLINE${distinctHeadlines.length > 1 ? 'S' : ''}:
+${headlinesBlock}
 
 HASHTAGS:
 ${result.hashtags}

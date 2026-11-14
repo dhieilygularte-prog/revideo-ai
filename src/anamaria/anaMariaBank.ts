@@ -1588,3 +1588,85 @@ export function resolveHeadlineAndHashtags(params: {
     detectedCategory: category,
   };
 }
+
+/**
+ * Retorna até `count` headlines diferentes (sem repetir iguais) do banco de memória para o produto.
+ * Se a categoria tiver menos que `count` headlines únicas na memória, retorna apenas as diferentes que possui.
+ */
+export function resolveMultipleDistinctHeadlines(params: {
+  productName: string;
+  additionalInstructions?: string;
+  count: number;
+  excludeHeadlines?: string[];
+}): string[] {
+  const normName = normalizeText(params.productName);
+  const normExtra = normalizeText(params.additionalInstructions || '');
+  const combined = `${normName} ${normExtra}`.trim();
+  const category = detectProductCategory(combined);
+  const targetCount = Math.max(1, params.count || 1);
+
+  const formatWithFlower = (text: string, fallbackFlower = '❀'): string => {
+    let h = text.trim();
+    if (
+      !h.includes('❀') &&
+      !h.includes('✨') &&
+      !h.includes('🌸') &&
+      !h.includes('✿') &&
+      !h.includes('💋') &&
+      !h.includes('💛') &&
+      !h.includes('💜') &&
+      !h.includes('💗') &&
+      !h.includes('🎀') &&
+      !h.includes('🖤') &&
+      !h.includes('🤍')
+    ) {
+      h = `${h} ${fallbackFlower}`;
+    }
+    return h.trim();
+  };
+
+  let rawCandidates: string[] = [];
+  if (category !== 'outro' && PRODUCT_HEADLINES_GROUPED[category]) {
+    rawCandidates = PRODUCT_HEADLINES_GROUPED[category].items.map((it) =>
+      formatWithFlower(it.headline, it.flowerSymbol || '❀')
+    );
+  } else {
+    rawCandidates = [
+      'Esse achadinho lindo está tão barato ✨',
+      'O caimento e estilo desse produto é surreal ✨🤍',
+      'Sem acreditar na perfeição disso e no quanto tá custando ✿',
+      'Aquele achadinho que toda garota deveria ter ❀',
+      'Simplesmente encontrei a melhor escolha por esse valor 🌸',
+    ];
+  }
+
+  // Deduplica mantendo apenas headlines únicas (case-insensitive)
+  const seen = new Set<string>();
+  const uniquePool: string[] = [];
+  for (const h of rawCandidates) {
+    const key = h.trim().toLowerCase();
+    if (key && !seen.has(key)) {
+      seen.add(key);
+      uniquePool.push(h.trim());
+    }
+  }
+
+  const excludedSet = new Set(
+    (params.excludeHeadlines || []).map((h) => h.trim().toLowerCase()).filter(Boolean)
+  );
+  const preferred = uniquePool.filter((h) => !excludedSet.has(h.toLowerCase()));
+  const fallback = uniquePool.filter((h) => excludedSet.has(h.toLowerCase()));
+
+  // Embaralha aleatoriamente (Fisher-Yates)
+  const shuffle = (arr: string[]): string[] => {
+    const copy = [...arr];
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  };
+
+  const ordered = [...shuffle(preferred), ...shuffle(fallback)];
+  return ordered.slice(0, Math.min(targetCount, uniquePool.length));
+}

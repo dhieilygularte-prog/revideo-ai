@@ -14,7 +14,10 @@ import {
   buildAnaMariaConciseVideoPrompt,
   AnaMariaRoomType,
 } from './anaMariaPrompts';
-import { resolveHeadlineAndHashtags } from './anaMariaBank';
+import {
+  resolveHeadlineAndHashtags,
+  resolveMultipleDistinctHeadlines,
+} from './anaMariaBank';
 import { AIProfile } from '../config/aiProfiles';
 import { SCENARIO_GALLERY_ITEMS, POV_SCENARIO_GALLERY_ITEMS } from './scenarioGalleryData';
 import { getModelGalleryForMode } from './modelGalleryData';
@@ -542,7 +545,14 @@ export function ensureAnaMariaModelAndScenario(rawForm: AnaMariaFormState): AnaM
     }
 
     if (!form.selectedModelGalleryId && !form.selectedModelGalleryNumber && targetModelGallery.length > 0) {
-      const chosenModel = targetModelGallery[Math.floor(Math.random() * targetModelGallery.length)];
+      const hasMultiple = Boolean(form.extraColorPhotos && form.extraColorPhotos.length > 0);
+      const isEclectic = hasMultiple && form.eclecticMode !== false;
+      const prioritySet = new Set([13, 1, 27, 25, 22, 18, 10, 15, 14, 12]);
+      const priorityCandidates = isEclectic
+        ? targetModelGallery.filter((m) => prioritySet.has(Number(m.number)))
+        : [];
+      const activePool = priorityCandidates.length > 0 ? priorityCandidates : targetModelGallery;
+      const chosenModel = activePool[Math.floor(Math.random() * activePool.length)];
       form.selectedModelGalleryId = chosenModel.id;
       form.selectedModelGalleryNumber = chosenModel.number;
       form.selectedModelGalleryUrl = chosenModel.fullUrl;
@@ -623,17 +633,34 @@ function pickDistinctGalleryScenario(
   return candidates[Math.floor(Math.random() * candidates.length)] || pool[0];
 }
 
+export const ECLECTIC_PRIORITY_MODEL_NUMBERS = [13, 1, 27, 25, 22, 18, 10, 15, 14, 12];
+
 function pickDistinctGalleryModel(
   activeMode: 'mirror_selfie' | 'pov' | 'com_rosto',
   excludeIds: Set<string>,
   excludeNumbers: Set<number>,
   lastId?: string,
-  lastNumber?: number
+  lastNumber?: number,
+  eclecticMode = false
 ) {
   const pool = getModelGalleryForMode(activeMode);
-  let candidates = pool.filter(
+  const unused = pool.filter(
     (m) => !excludeIds.has(m.id) && !excludeNumbers.has(m.number)
   );
+
+  if (eclecticMode) {
+    const prioritySet = new Set<number>(ECLECTIC_PRIORITY_MODEL_NUMBERS);
+    const unusedPriority = unused.filter((m) => prioritySet.has(Number(m.number)));
+    if (unusedPriority.length > 0) {
+      return unusedPriority[Math.floor(Math.random() * unusedPriority.length)];
+    }
+    const unusedRemaining = unused.filter((m) => !prioritySet.has(Number(m.number)));
+    if (unusedRemaining.length > 0) {
+      return unusedRemaining[Math.floor(Math.random() * unusedRemaining.length)];
+    }
+  }
+
+  let candidates = unused;
   if (candidates.length === 0) {
     candidates = pool.filter((m) => m.id !== lastId && m.number !== lastNumber);
   }
@@ -919,12 +946,14 @@ export async function runAnaMariaPipeline(
       let nextGenerateViaPrompt = Boolean(form0.generateModelViaPrompt);
 
       if (!sameModelForAllColors) {
+        const isEclectic = rawForm.eclecticMode !== false;
         const chosenModel = pickDistinctGalleryModel(
           activeMode,
           usedModelIds,
           usedModelNumbers,
           lastModelId,
-          lastModelNumber
+          lastModelNumber,
+          isEclectic
         );
         if (chosenModel) {
           nextModelId = chosenModel.id;
@@ -1048,6 +1077,20 @@ export async function runAnaMariaPipeline(
 
   const activeColorGroupIndex = generatedImages[generatedImages.length - 1]?.colorGroupIndex ?? 0;
 
+  // Quando várias cores da peça são geradas, gera também uma headline diferente para cada peça (sem repetir iguais caso haja menos na memória)
+  const distinctHeadlines =
+    generatedImages.length > 1
+      ? resolveMultipleDistinctHeadlines({
+          productName: form0.productName,
+          additionalInstructions: form0.additionalInstructions,
+          count: generatedImages.length,
+        })
+      : [headline];
+
+  generatedImages.forEach((imgItem, idx) => {
+    imgItem.headline = distinctHeadlines[idx] || distinctHeadlines[0] || headline;
+  });
+
   const result: AnaMariaResultState = {
     id: `anamaria_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
     timestamp: firstGen.item.timestamp,
@@ -1057,6 +1100,7 @@ export async function runAnaMariaPipeline(
     sameModelForAllColors,
     sameScenarioForAllColors,
     generateOneColorAtATime,
+    eclecticMode: rawForm.eclecticMode !== false,
     productName: form0.productName,
     referencePhotos: allPhotos,
     colorGroups,
@@ -1079,10 +1123,13 @@ export async function runAnaMariaPipeline(
     imagePrompt: firstGen.imagePrompt,
     videoPrompt,
     conciseVideoPrompt: undefined,
-    headline,
+    headline: distinctHeadlines[0] || headline,
+    headlines: distinctHeadlines,
     hashtags,
     shoeCategory: firstGen.shoeCategory,
     shoeDescription: firstGen.shoeDescription,
+    selectedShoeOption: form0.selectedShoeOption,
+    customShoeText: form0.customShoeText,
     audit: firstGen.item.audit,
   };
 
@@ -1233,25 +1280,38 @@ async function generateAnaMariaColorVariation(params: {
   }
 
   const colorGroups =
-    result.colorGroups && result.colorGroups.length > 0
+    result.colorGroups && result.colorGroups.length > 1
       ? result.colorGroups
+      : photos.length > 1
+      ? photos.map((_, i) => ({
+          colorName: i === 0 ? 'Cor Principal' : `Cor ${i + 1}`,
+          photoIndices: [i],
+        }))
       : [{ colorName: 'Cor Principal', photoIndices: photos.map((_, i) => i) }];
 
-  const currentIdx = typeof result.activeColorGroupIndex === 'number' ? result.activeColorGroupIndex : 0;
-  const nextColorIdx = (currentIdx + 1) % Math.max(colorGroups.length, 1);
-  const prevColorGroup = colorGroups[currentIdx];
-  const nextColorGroup = colorGroups[nextColorIdx];
-  const activeColorPhotos = getActiveColorGroupPhotos(photos, colorGroups, nextColorIdx);
-
-  const activeMode = result.presentationMode || 'mirror_selfie';
   const refImg =
     baseImageItem ||
     (result.generatedImages && result.generatedImages.length > 0
       ? result.generatedImages[result.generatedImages.length - 1]
       : undefined);
 
-  const keepModel = keepSameModelAndScenario || Boolean(result.sameModelForAllColors);
-  const keepScenario = keepSameModelAndScenario || Boolean(result.sameScenarioForAllColors);
+  const currentIdx =
+    typeof refImg?.colorGroupIndex === 'number'
+      ? refImg.colorGroupIndex
+      : typeof result.activeColorGroupIndex === 'number'
+      ? result.activeColorGroupIndex
+      : 0;
+  const nextColorIdx = (currentIdx + 1) % Math.max(colorGroups.length, 1);
+  const prevColorGroup = colorGroups[currentIdx];
+  const nextColorGroup = colorGroups[nextColorIdx];
+  const activeColorPhotos = getActiveColorGroupPhotos(photos, colorGroups, nextColorIdx);
+
+  const activeMode = result.presentationMode || 'mirror_selfie';
+
+  // Se keepSameModelAndScenario === true ("GERAR IGUAL EM NOVA COR"), mantém a mesma modelo e o mesmo cenário.
+  // Se keepSameModelAndScenario === false ("GERAR COM NOVA MODELO E CENÁRIO"), gera sempre com uma nova modelo e um novo cenário.
+  const keepModel = keepSameModelAndScenario;
+  const keepScenario = keepSameModelAndScenario;
 
   const refScenarioId = refImg?.selectedScenarioId ?? result.selectedScenarioId;
   const refScenarioNumber = refImg?.selectedScenarioNumber ?? result.selectedScenarioNumber;
@@ -1272,10 +1332,16 @@ async function generateAnaMariaColorVariation(params: {
   )?.fullUrl;
 
   if (!keepScenario) {
-    const usedSIds = new Set<string>(refScenarioId ? [refScenarioId] : []);
-    const usedSNums = new Set<number>(
-      typeof refScenarioNumber === 'number' ? [refScenarioNumber] : []
-    );
+    const usedSIds = new Set<string>();
+    const usedSNums = new Set<number>();
+    if (refScenarioId) usedSIds.add(refScenarioId);
+    if (typeof refScenarioNumber === 'number') usedSNums.add(refScenarioNumber);
+    for (const prevItem of result.generatedImages || []) {
+      if (prevItem.selectedScenarioId) usedSIds.add(prevItem.selectedScenarioId);
+      if (typeof prevItem.selectedScenarioNumber === 'number') {
+        usedSNums.add(prevItem.selectedScenarioNumber);
+      }
+    }
     const chosenScenario = pickDistinctGalleryScenario(
       activeMode,
       usedSIds,
@@ -1294,16 +1360,23 @@ async function generateAnaMariaColorVariation(params: {
   let effectiveGenerateViaPrompt = refGenerateViaPrompt;
 
   if (!keepModel) {
-    const usedMIds = new Set<string>(refModelId ? [refModelId] : []);
-    const usedMNums = new Set<number>(
-      typeof refModelNumber === 'number' ? [refModelNumber] : []
-    );
+    const usedMIds = new Set<string>();
+    const usedMNums = new Set<number>();
+    if (refModelId) usedMIds.add(refModelId);
+    if (typeof refModelNumber === 'number') usedMNums.add(refModelNumber);
+    for (const prevItem of result.generatedImages || []) {
+      if (prevItem.selectedModelGalleryId) usedMIds.add(prevItem.selectedModelGalleryId);
+      if (typeof prevItem.selectedModelGalleryNumber === 'number') {
+        usedMNums.add(prevItem.selectedModelGalleryNumber);
+      }
+    }
     const chosenModel = pickDistinctGalleryModel(
       activeMode,
       usedMIds,
       usedMNums,
       refModelId,
-      refModelNumber
+      refModelNumber,
+      result.eclecticMode !== false
     );
     nextModelId = chosenModel?.id;
     nextModelNumber = chosenModel?.number;
@@ -1338,6 +1411,8 @@ async function generateAnaMariaColorVariation(params: {
     selectedModelGalleryUrl: nextModelUrl,
     modelScenarioSource: effectiveSource,
     generateModelViaPrompt: overrideModelBase64 ? false : effectiveGenerateViaPrompt,
+    selectedShoeOption: result.selectedShoeOption,
+    customShoeText: result.customShoeText,
   };
 
   const gen = await executeColorImageGeneration({

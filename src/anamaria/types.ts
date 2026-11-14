@@ -9,6 +9,12 @@ export type AnaMariaImageModel =
   | 'openai';
 export type AnaMariaVideoPromptLimit = 'unlimited' | '5000' | '2500';
 export type AnaMariaShoeCategory = 'A_CHINELO' | 'B_TENIS' | 'C_OUTRO';
+export type AnaMariaShoeOption =
+  | 'sandalia_salto'
+  | 'sandalia_flatform'
+  | 'scarpin'
+  | 'tenis'
+  | 'outro';
 export type AnaMariaPresentationMode = 'mirror_selfie' | 'pov' | 'com_rosto';
 export type AnaMariaTheme = 'fogo' | 'ametista';
 export type AnaMariaMasterId =
@@ -63,6 +69,11 @@ export interface AnaMariaFormState {
   sameModelForAllColors?: boolean; // Padrão: false (Não) -> gera cada cor com uma modelo diferente da galeria
   sameScenarioForAllColors?: boolean; // Padrão: false (Não) -> a cada nova cor escolhe um novo cenário da galeria
   generateOneColorAtATime?: boolean; // Padrão: false (Não) -> gera todas as cores anexadas de uma vez
+  eclecticMode?: boolean; // Padrão: true (Sim) -> prioriza as modelos 13, 01, 27, 25, 22, 18, 10, 15, 14 e 12 de forma randômica
+  isProductNameApproved?: boolean; // true quando o usuário aprova ou edita ativamente o nome da peça
+  selectedShoeOption?: AnaMariaShoeOption; // Calçado selecionado automaticamente pelo app ou ativamente pelo usuário
+  customShoeText?: string; // Texto personalizado quando selectedShoeOption === 'outro'
+  isShoeTypeApproved?: boolean; // true quando o usuário aprova ou seleciona ativamente o calçado
 }
 
 export interface AnaMariaColorGroup {
@@ -84,6 +95,7 @@ export interface AnaMariaGeneratedImageItem {
   colorGroupIndex: number;
   colorName: string;
   timestamp: number;
+  headline?: string;
   selectedScenarioId?: string;
   selectedScenarioNumber?: number;
   selectedModelGalleryId?: string;
@@ -91,6 +103,7 @@ export interface AnaMariaGeneratedImageItem {
   selectedModelGalleryUrl?: string;
   modelScenarioSource?: 'model' | 'gallery';
   generateModelViaPrompt?: boolean;
+  eclecticMode?: boolean;
   audit?: AnaMariaAudit;
 }
 
@@ -103,6 +116,7 @@ export interface AnaMariaResultState {
   sameModelForAllColors?: boolean;
   sameScenarioForAllColors?: boolean;
   generateOneColorAtATime?: boolean;
+  eclecticMode?: boolean;
   productName: string;
   referencePhotos: string[];
   colorGroups?: AnaMariaColorGroup[];
@@ -126,9 +140,12 @@ export interface AnaMariaResultState {
   videoPrompt: string;
   conciseVideoPrompt?: string;
   headline: string;
+  headlines?: string[];
   hashtags: string;
   shoeCategory: AnaMariaShoeCategory;
   shoeDescription: string;
+  selectedShoeOption?: AnaMariaShoeOption;
+  customShoeText?: string;
   audit?: AnaMariaAudit;
   tokenUsage?: TokenUsageStats;
 }

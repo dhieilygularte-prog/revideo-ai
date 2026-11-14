@@ -1031,7 +1031,7 @@ ${prompt}` : prompt;
           correctionPrompt && `CRITICAL QUALITY OVERRIDE: ${correctionPrompt.trim()}`,
           additionalInstructions && `USER DIRECTIVE: ${additionalInstructions.trim()}`,
           ...prompt.split("\n").filter(
-            (line) => /(\[COMPRIMENTO REAL DETECTADO|\[ASSIMETRIA OBRIGATÓRIA|\[CRITICAL ANTI-SYMMETRY|\[REGRA MANDATÓRIA|\[REGRA OBRIGATÓRIA DO CENÁRIO 24|REGRA CRÍTICA DE COMPRIMENTO|ATENÇÃO À COR EXCLUSIVA|Calçado nos pés:|PROIBIDO BOLSAS|PRODUTO DA FOTO 1|PEÇA INFERIOR|CALÇA JEANS)/i.test(
+            (line) => /(\[COMPRIMENTO REAL DETECTADO|\[ASSIMETRIA OBRIGATÓRIA|\[CRITICAL ANTI-SYMMETRY|\[REGRA MANDATÓRIA|\[REGRA OBRIGATÓRIA DO CENÁRIO 24|REGRA CRÍTICA DE COMPRIMENTO|ATENÇÃO À COR EXCLUSIVA|Calçado nos pés:|Calçado obrigatório nos pés|REGRA DE COR DO CALÇADO|COR CONTRASTANTE|REGRA DE CONJUNTO COMPLETO|PROIBIDO BOLSAS|PRODUTO DA FOTO 1|PEÇA INFERIOR|CALÇA JEANS)/i.test(
               line
             )
           ).map(
@@ -2259,24 +2259,22 @@ function extractGarmentNameFromFileName(rawName) {
   if (!rawName || typeof rawName !== "string") return null;
   const s = rawName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[_\-]+/g, " ");
   if ((s.includes("macacao") || s.includes("macaquinho")) && (s.includes("assimetrico") || s.includes("short") || s.includes("bermuda") || s.includes("blusa") || s.includes("cropped") || s.includes("top"))) {
-    return "Conjunto Alfaiataria";
+    return "Conjunto";
   }
   if (s.includes("conjunto")) {
-    if (s.includes("fitness") || s.includes("academia") || s.includes("treino")) return "Conjunto Fitness";
-    if (s.includes("pantalona") || s.includes("linho") || s.includes("alfaiataria")) return "Conjunto Alfaiataria";
-    return "Conjunto Alfaiataria";
+    if (s.includes("fitness") || s.includes("academia") || s.includes("treino")) return "Conjunto de Academia";
+    return "Conjunto";
+  }
+  if (s.includes("academia") || s.includes("fitness") || s.includes("treino")) {
+    return "Roupa de Academia";
   }
   if (s.includes("macaquinho")) {
-    return "Macaquinho Alfaiataria";
+    return "Macaquinho";
   }
   if (s.includes("macacao")) {
-    if (s.includes("longo") || s.includes("pantalona") || s.includes("flare")) return "Macac\xE3o Longo";
-    return "Conjunto Alfaiataria";
+    return "Macac\xE3o";
   }
   if (s.includes("vestido")) {
-    if (s.includes("longo")) return "Vestido Longo";
-    if (s.includes("midi")) return "Vestido Midi";
-    if (s.includes("curto")) return "Vestido Curto";
     return "Vestido";
   }
   if (s.includes("baby doll") || s.includes("babydoll") || s.includes("camisola")) {
@@ -2284,15 +2282,17 @@ function extractGarmentNameFromFileName(rawName) {
   }
   if (s.includes("bermuda") || s.includes("shorts") || s.includes("short")) {
     if (s.includes("jeans")) return "Short Jeans";
-    return "Bermuda Alfaiataria";
+    return "Bermuda";
   }
-  if (s.includes("calca")) {
+  if (s.includes("calca") || s.includes("pantalona")) {
+    if (s.includes("pantalona") || s.includes("wide") || s.includes("folgada") || s.includes("larga")) return "Cal\xE7a Pantalona";
     if (s.includes("jeans")) return "Cal\xE7a Jeans";
-    if (s.includes("pantalona")) return "Cal\xE7a Pantalona";
-    return "Cal\xE7a Alfaiataria";
+    if (s.includes("social") || s.includes("alfaiataria")) return "Cal\xE7a Social";
+    return "Cal\xE7a Social";
   }
   if (s.includes("saia")) {
-    return "Saia Midi";
+    if (s.includes("couro")) return "Saia Couro";
+    return "Saia";
   }
   if (s.includes("biquini") || s.includes("maio")) {
     return "Biqu\xEDni Cortininha";
@@ -3747,26 +3747,24 @@ app.post("/api/detect-dominant-color", async (req, res) => {
     if (mode === "identify_garment") {
       const identifyPrompt = `Analise a foto deste item de vestu\xE1rio e informe o NOME COMERCIAL ESPEC\xCDFICO da pe\xE7a em portugu\xEAs para cat\xE1logo de moda e TikTok Shop.
 
+CATEGORIAS PRIORIT\xC1RIAS OBRIGAT\xD3RIAS (USE EXATAMENTE ESTES TERMOS SE CORRESPONDEREM \xC0 PE\xC7A):
+- Cal\xE7as largas / pantalonas / sociais folgadas: "Cal\xE7a Pantalona", "Cal\xE7a Social Folgada" ou "Cal\xE7a Social ou Pantalona".
+- Cal\xE7as estruturadas / jeans / sociais retas: "Cal\xE7a Jeans" ou "Cal\xE7a Social".
+- Saias: se for de couro ou courino use "Saia Couro"; demais saias use "Saia".
+- Academia / Fitness / Cinta: "Roupa de Academia", "Conjunto de Academia" ou "Cinta Modeladora".
+- Vestidos / Macac\xF5es / Conjuntos: "Vestido", "Conjunto" ou "Macac\xE3o".
+
 DISTIN\xC7\xC3O CR\xCDTICA ENTRE CONJUNTO E MACAC\xC3O / MACAQUINHO (LEI INEGOCI\xC1VEL):
 - CONJUNTO (2 Pe\xE7as Independentes):
-  Se o visual for composto por DUAS pe\xE7as (uma parte de cima independente como blusa, cropped, top ou camisa + uma parte de baixo independente como shorts, bermuda, cal\xE7a ou saia), \xC9 OBRIGATORIAMENTE UM "CONJUNTO" (ex: "Conjunto Alfaiataria", "Conjunto Feminino", "Conjunto Cropped e Shorts", "Conjunto Blusa e Bermuda", "Conjunto Pantalona").
-  * Mesmo que sejam da mesma cor e mesmo tecido: se a blusa sobrep\xF5e o c\xF3s do shorts/cal\xE7a, ou se o shorts/cal\xE7a possui c\xF3s estruturado pr\xF3prio (passantes, z\xEDper frontal ou bolsos faca), CLASSIFIQUE RIGOROSAMENTE COMO "CONJUNTO" (ex: "Conjunto Alfaiataria"), NUNCA como macac\xE3o!
+  Se o visual for composto por DUAS pe\xE7as (uma parte de cima independente como blusa, cropped, top ou camisa + uma parte de baixo independente como shorts, bermuda, cal\xE7a ou saia), \xC9 OBRIGATORIAMENTE UM "Conjunto" (ou "Conjunto de Academia" se for fitness).
+  * Mesmo que sejam da mesma cor e mesmo tecido: se a blusa sobrep\xF5e o c\xF3s do shorts/cal\xE7a, ou se o shorts/cal\xE7a possui c\xF3s estruturado pr\xF3prio, CLASSIFIQUE RIGOROSAMENTE COMO "Conjunto", NUNCA como macac\xE3o!
 - MACAC\xC3O / MACAQUINHO (Pe\xE7a \xDAnica Inteiri\xE7a):
-  \xC9 uma pe\xE7a \xDANICA e cont\xEDnua, onde o topo e a parte inferior s\xE3o costurados juntos em uma s\xF3 pe\xE7a sem separa\xE7\xE3o:
-  * Se for curto com shorts inteiri\xE7o: "Macaquinho Alfaiataria", "Macaquinho Feminino" ou "Macaquinho Fitness".
-  * Se for longo com cal\xE7a inteiri\xE7a: "Macac\xE3o Longo", "Macac\xE3o Flare" ou "Macac\xE3o Pantalona".
-  * S\xF3 use Macac\xE3o/Macaquinho se voc\xEA tiver certeza absoluta de que N\xC3O h\xE1 blusa separada! Na d\xFAvida entre Conjunto e Macaquinho, prefira "Conjunto Alfaiataria" ou "Conjunto Feminino".
+  \xC9 uma pe\xE7a \xDANICA e cont\xEDnua, onde o topo e a parte inferior s\xE3o costurados juntos em uma s\xF3 pe\xE7a sem separa\xE7\xE3o ("Macac\xE3o" ou "Macaquinho").
 
 DEMAIS CATEGORIAS DE MODA:
-- Vestido: "Vestido Longo", "Vestido Midi", "Vestido Curto", "Vestido Tubinho", "Vestido Canelado", "Vestido Acetinado".
-- Cal\xE7a: "Cal\xE7a Linho", "Cal\xE7a Jeans", "Cal\xE7a Pantalona", "Cal\xE7a Wide Leg", "Cal\xE7a Alfaiataria".
-- Short/Bermuda: "Bermuda Alfaiataria", "Short Jeans", "Short Alfaiataria", "Short Saia", "Bermuda Linho".
-- Blusa/Camisa: "Camiseta Oversized", "Cropped Canelado", "Blusa Tricot", "Camisa Social".
-- Baby Doll / Pijama: "Camisola Baby Doll", "Baby Doll Rendado", "Pijama Americano", "Pijama de Cetim".
-- Body / Lingerie: "Body Poliamida", "Body Rendado", "Conjunto de Lingerie".
-- Praia: "Biqu\xEDni Cortininha", "Sa\xEDda de Praia", "Mai\xF4 Engana-Mam\xE3e".
-- Cinta: "Cinta Modeladora", "Cinta Abdominal".
-- Fitness: "Conjunto Fitness", "Top Fitness", "Macaquinho Fitness".
+- Short/Bermuda avulso: "Bermuda", "Short Jeans", "Short Alfaiataria".
+- Blusa/Camisa/Top avulso: "Blusa Feminina", "Top Cropped", "Camisa Social", "Camiseta Oversized", "Jaqueta".
+- Baby Doll / Pijama: "Camisola Baby Doll", "Pijama".
 
 REGRAS FINAIS:
 1. Responda APENAS o nome comercial espec\xEDfico da pe\xE7a (1 a 3 palavras, iniciais mai\xFAsculas), sem ponto final, sem aspas e sem explica\xE7\xF5es.`;
@@ -3997,14 +3995,14 @@ async function generateImageWithKling(params) {
   const isUpperPieceKling = Boolean(
     !isDressOrOnePieceKling && !isSleepwearKling && params.prompt && (/\b(blusa|blusinha|blusinhas|blusas|rendada|rendado|cropped|top|regata|camisa|camiseta|t-shirt|tshirt|casaco|jaqueta|blazer|moletom|sueter|suéter|cardiga|cardigã|bata)\b/i.test(params.prompt) || params.prompt.includes("PE\xC7A SUPERIOR"))
   );
-  const upperJeansKlingHeader = isUpperPieceKling ? "[REGRA OBRIGAT\xD3RIA \u2014 BLUSA COM CAL\xC7A JEANS E T\xCANIS]: Como o produto \xE9 uma blusa/pe\xE7a superior, a modelo DEVE obrigatoriamente vestir CAL\xC7A JEANS cl\xE1ssica de cintura alta e T\xCANIS nos p\xE9s (PROIBIDO ficar sem cal\xE7a, de calcinha ou desvestida na parte de baixo). Look 100% completo com cal\xE7a jeans e t\xEAnis casual.\n\n" : "";
+  const upperJeansKlingHeader = isUpperPieceKling ? "[REGRA OBRIGAT\xD3RIA \u2014 PE\xC7A DE CIMA COM PARTE DE BAIXO EM COR CONTRASTANTE HARM\xD4NICA]: Como o produto \xE9 uma pe\xE7a da parte de cima, a pe\xE7a superior mant\xE9m 100% a cor exata da refer\xEAncia, e a cal\xE7a da parte de baixo DEVE SEMPRE ser em COR CONTRASTANTE que combine e fique harm\xF4nica (NUNCA da mesma cor da parte de cima, para separar visualmente as duas pe\xE7as). Proibido ficar sem cal\xE7a na parte de baixo.\n\n" : "";
   let headerKling = upperJeansKlingHeader + (!isBagKling ? "[REGRA MANDAT\xD3RIA \u2014 PROIBIDO BOLSAS]: A modelo N\xC3O deve usar, segurar ou carregar nenhuma bolsa, bolsa tiracolo, bolsa de ombro, clutch ou mochila. M\xE3os livres sem bolsas. / NO BAGS: The model must not hold, wear or carry any handbag, purse, tote bag, shoulder bag, backpack or clutch.\n\n" : "");
   if (params.isAnaMariaMode) {
     if (isPovModeKling) {
       headerKling = "[MODO POV: Preservar 100% do cen\xE1rio POV da cama da Imagem 1; produtos da Imagem 2 manipulados apenas pelas duas m\xE3os limpas sem tatuagens sobre a cama. PROIBIDO corpo, rosto ou espelho!]\n\n";
     } else if (hasModelRefKling) {
-      const clothingDirectiveKling = isDressOrOnePieceKling ? "A modelo veste EXCLUSIVAMENTE o vestido de <<<image_2>>> com pernas limpas naturais. TERMINANTEMENTE PROIBIDO cal\xE7a jeans, cal\xE7a ou shorts sob o vestido. REGRA CR\xCDTICA DE COMPRIMENTO: Reproduza 1:1 o comprimento exato da barra de <<<image_2>>> (se curto/midi mostrando tornozelos e p\xE9s, mantenha os p\xE9s vis\xEDveis com SAND\xC1LIA DE FESTA ELEGANTE DE SALTO FINO; se longo at\xE9 o ch\xE3o cobrindo os p\xE9s em <<<image_2>>>, mantenha a barra longa at\xE9 o ch\xE3o cobrindo os p\xE9s)." : isUpperPieceKling ? "A modelo veste a blusa de <<<image_2>>> com m\xE1xima fidelidade 1:1 combinada OBRIGATORIAMENTE com CAL\xC7A JEANS feminina cl\xE1ssica de cintura alta e T\xCANIS casual nos p\xE9s. \xC9 TERMINANTEMENTE PROIBIDO a modelo ficar sem cal\xE7a, de calcinha, com pernas despidas ou nua na parte de baixo!" : "A modelo veste a pe\xE7a de <<<image_2>>> com m\xE1xima fidelidade 1:1 (se vestido ou pe\xE7a \xFAnica, veste exclusivamente o vestido sem cal\xE7a por baixo).";
-      const footwearDirectiveKling = isFitnessKling ? "CAL\xC7ADO NOS P\xC9S: T\xEAnis esportivo feminino moderno combinando com o look fitness." : isSleepwearKling ? "CAL\xC7ADO NOS P\xC9S: Chinelo de dedo branco feminino delicado com detalhes finos nas tiras (substitua qualquer t\xEAnis de <<<image_1>>>)." : isUpperPieceKling ? "CAL\xC7ADO NOS P\xC9S: T\xEAnis casual feminino moderno combinando com a cal\xE7a jeans." : "CAL\xC7ADO OBRIGAT\xD3RIO NOS P\xC9S (SAND\xC1LIA DE FESTA ELEGANTE \u2014 PROIBIDO T\xCANIS): Substitua e descarte qualquer t\xEAnis ou sapato original que a modelo esteja cal\xE7ando em <<<image_1>>>! Quando os p\xE9s estiverem vis\xEDveis, ela DEVE cal\xE7ar obrigatoriamente uma SAND\xC1LIA DE FESTA ELEGANTE DE SALTO FINO E TIRAS DELICADAS que combine em cor e sofistica\xE7\xE3o com o vestido de <<<image_2>>> (se o vestido de <<<image_2>>> for longo at\xE9 o ch\xE3o cobrindo os p\xE9s, mantenha a barra longa at\xE9 o ch\xE3o). \xC9 TERMINANTEMENTE PROIBIDO usar t\xEAnis, sapat\xEAnis ou cal\xE7ado esportivo com vestido!";
+      const clothingDirectiveKling = isDressOrOnePieceKling ? "A modelo veste EXCLUSIVAMENTE a pe\xE7a/conjunto de <<<image_2>>> com 100% de fidelidade nas cores e comprimento originais de <<<image_2>>>." : isUpperPieceKling ? "A modelo veste a pe\xE7a superior de <<<image_2>>> com m\xE1xima fidelidade 1:1 na sua cor exata de refer\xEAncia, combinada OBRIGATORIAMENTE com uma parte de baixo (cal\xE7a feminina elegante / cal\xE7a jeans de cintura alta) em COR CONTRASTANTE MAS HARM\xD4NICA (NUNCA da mesma cor da pe\xE7a de cima!)." : "A modelo veste a pe\xE7a inferior de <<<image_2>>> com m\xE1xima fidelidade 1:1 na sua cor exata de refer\xEAncia, combinada OBRIGATORIAMENTE com uma blusa/top na parte de cima em COR CONTRASTANTE MAS HARM\xD4NICA (NUNCA da mesma cor da pe\xE7a de baixo!).";
+      const footwearDirectiveKling = "CAL\xC7ADO OBRIGAT\xD3RIO NOS P\xC9S (RESPEITANDO O TIPO DE CAL\xC7ADO DEFINIDO NO PROMPT E A REGRA DE COR CONTRASTANTE): Substitua qualquer sapato/t\xEAnis original de <<<image_1>>> pelo cal\xE7ado especificado no prompt (Sand\xE1lia Flatform de dedo com tiras largas cruzadas e plataforma branca para cal\xE7a social folgada/pantalona; Scarpin de bico fino com salto baixo e delicado para saia couro, cal\xE7a jeans ou cal\xE7a social; T\xEAnis casual urbano de solado baixo para academia/fitness/cinta modeladora; Sand\xE1lia de salto feminina modelo delicado para vestido, saia, conjunto ou macac\xE3o). REGRA DE COR DO CAL\xC7ADO: O cal\xE7ado NUNCA pode ser da mesma cor da pe\xE7a de roupa que fica pr\xF3xima ou encostando nele \u2014 deve ser em cor contrastante e que combine (ex.: se a cal\xE7a for branca, o cal\xE7ado deve ser de outra cor contrastante e n\xE3o branco).";
       const isModelScenarioKling = (params.modelScenarioSource || "model") === "model";
       const isScenario24Kling = Boolean(
         params.prompt && (params.prompt.includes("CEN\xC1RIO 24") || params.prompt.includes("Cen\xE1rio 24") || params.prompt.includes("cenario_24"))
@@ -4294,9 +4292,9 @@ async function generateImageWithSeedream(params) {
     params.prompt && (/\b(vestido|vestidos|dress|dresses|macac[aã]o|macaquinho|camisola|jumpsuit)\b/i.test(params.prompt) || params.prompt.includes("PE\xC7A \xDANICA") || params.prompt.includes("VESTIDO"))
   );
   const garmentFullLockSeedream = "[TRAVA INVIOL\xC1VEL 1:1 DE CIMA A BAIXO DA PE\xC7A (COSTURAS, ESTAMPA, TEXTURA, FORMATO E COMPRIMENTO INTEGRAL)]:\n- A pe\xE7a de roupa da Foto 1 DEVE ser reproduzida com fidelidade 100% id\xEAntica do topo (decote, al\xE7as, mangas, busto) at\xE9 a extremidade inferior da barra (cintura, quadril, saia, recortes, babados, pregas, costuras e bainha).\n- \xC9 TERMINANTEMENTE PROIBIDO encurtar a pe\xE7a, comer ou cortar a parte de baixo do vestido/roupa, subir a barra, mudar o formato da saia/barra, alterar ou omitir linhas de costura, ou modificar o padr\xE3o de estampa, textura e tecido em NENHUMA parte da pe\xE7a (nem em cima nem embaixo)!\n- O comprimento real da pe\xE7a na Foto 1 \xE9 SOBERANO: se na Foto 1 o vestido/pe\xE7a desce at\xE9 os tornozelos ou at\xE9 o ch\xE3o, ele DEVE descer exatamente at\xE9 os tornozelos/ch\xE3o na imagem gerada (NUNCA encurte o vestido para mostrar pernas ou cal\xE7ado; e se a modelo da Foto 2 estiver usando roupa mais curta ou cal\xE7a, ignore 100% o comprimento da roupa antiga da Foto 2 e estenda a pe\xE7a da Foto 1 em seu comprimento completo real!).\n";
-  const clothingDirectiveSeedream = isDressOrOnePieceSeedream ? `${garmentFullLockSeedream}[REGRA DE VESTU\xC1RIO \u2014 VESTIDO / PE\xC7A \xDANICA]: A modelo veste EXCLUSIVAMENTE o vestido/pe\xE7a \xFAnica da Foto 1 cobrindo o corpo com todos os seus detalhes originais de cima a baixo (PROIBIDO cal\xE7a jeans/shorts por baixo). O cal\xE7ado (sand\xE1lia de festa elegante, proibido t\xEAnis) s\xF3 aparece se o comprimento real original da Foto 1 deixar os p\xE9s vis\xEDveis \u2014 JAMAIS encurte a barra do vestido!
-` : isUpperPieceSeedream ? `${garmentFullLockSeedream}[REGRA OBRIGAT\xD3RIA DE LOOK COMPLETO \u2014 BLUSA COM CAL\xC7A JEANS E T\xCANIS]: Como o produto anunciado \xE9 uma blusa/pe\xE7a superior, a modelo DEVE OBRIGATORIAMENTE vestir CAL\xC7A JEANS feminina de cintura alta e T\xCANIS nos p\xE9s. \xC9 TERMINANTEMENTE PROIBIDO a modelo ficar sem cal\xE7a, de calcinha, com pernas despidas ou nua na parte de baixo! Look 100% vestido e comercial com cal\xE7a jeans azul e t\xEAnis casual nos p\xE9s.
-` : `${garmentFullLockSeedream}[REGRA DE LOOK COMPLETO]: Se o produto for vestido/macac\xE3o, veste EXCLUSIVAMENTE o vestido em seu comprimento e formato 100% originais sem encurtar (PROIBIDO cal\xE7a jeans sob vestido); se for blusa avulsa, veste cal\xE7a jeans feminina cintura alta e t\xEAnis nos p\xE9s (PROIBIDO ficar sem cal\xE7a); se for pe\xE7a inferior, veste blusa neutra combinando.
+  const clothingDirectiveSeedream = isDressOrOnePieceSeedream ? `${garmentFullLockSeedream}[REGRA DE VESTU\xC1RIO \u2014 VESTIDO / PE\xC7A \xDANICA / CONJUNTO]: A modelo veste EXCLUSIVAMENTE a pe\xE7a/conjunto da Foto 1 cobrindo o corpo com todos os seus detalhes e cores originais de cima a baixo (se conjunto, reproduza AMBAS as pe\xE7as 100% id\xEAnticas \xE0 Foto 1). O cal\xE7ado especificado no prompt s\xF3 aparece se o comprimento real original da Foto 1 deixar os p\xE9s vis\xEDveis \u2014 JAMAIS encurte a barra da pe\xE7a!
+` : isUpperPieceSeedream ? `${garmentFullLockSeedream}[REGRA OBRIGAT\xD3RIA \u2014 PE\xC7A DE CIMA COM PARTE DE BAIXO EM COR CONTRASTANTE HARM\xD4NICA]: Como o produto anunciado \xE9 uma pe\xE7a da parte de cima, mantenha a pe\xE7a superior na EXATA COR da Foto 1, e vista a parte de baixo (cal\xE7a feminina elegante / cal\xE7a jeans de cintura alta) SEMPRE EM COR CONTRASTANTE MAS QUE COMBINE E FIQUE HARM\xD4NICA (NUNCA da mesma cor da pe\xE7a de cima!). Proibido ficar sem cal\xE7a na parte de baixo.
+` : `${garmentFullLockSeedream}[REGRA OBRIGAT\xD3RIA \u2014 PE\xC7A DE BAIXO COM PARTE DE CIMA EM COR CONTRASTANTE HARM\xD4NICA]: Se o produto anunciado for uma pe\xE7a da parte de baixo (cal\xE7a, bermuda ou saia), mantenha a pe\xE7a inferior na EXATA COR da Foto 1, e vista a parte de cima (blusa/top/cropped) SEMPRE EM COR CONTRASTANTE MAS QUE COMBINE E FIQUE HARM\xD4NICA (NUNCA da mesma cor da pe\xE7a de baixo!). Se for conjunto, reproduza ambas as pe\xE7as exatamente como na Foto 1.
 `;
   const frontalPoseDirectiveSeedream = "[POSE OBRIGAT\xD3RIA DE FRENTE]: A modelo deve estar POSICIONADA RIGOROSAMENTE DE FRENTE PARA O ESPELHO (front-facing), de corpo inteiro de frente. Da Foto de produto (Foto 1), extraia EXCLUSIVAMENTE a roupa e o tecido; \xC9 TERMINANTEMENTE PROIBIDO copiar pose de lado, de perfil ou \xE2ngulo da pessoa da foto de produto!\n";
   let headerSeedream = "";
@@ -4310,7 +4308,7 @@ async function generateImageWithSeedream(params) {
       );
       const flashRuleSeedream = isScenario24Seedream ? "- [REGRA OBRIGAT\xD3RIA DO CEN\xC1RIO 24 \u2014 FLASH DO CELULAR SEMPRE LIGADO]: Na imagem gerada no Cen\xE1rio 24, o FLASH DA C\xC2MERA TRASEIRA DO CELULAR da modelo DEVE ESTAR SEMPRE LIGADO E BRILHANDO INTENSAMENTE no espelho (ponto luminoso branco intenso com estrela de luz), iluminando frontalmente a modelo e a pe\xE7a de roupa contra o fundo mais escuro do Cen\xE1rio 24, independentemente de qual modelo foi escolhida!\n" : "";
       const faceFramingRuleSeedream = allowsFaceSeedream ? "- A modelo fotografada DEVE SER A MESMA MULHER DA FOTO 2. O rosto da modelo da Foto 2 DEVE APARECER IDENTICAMENTE, reproduzindo 100% a mesma face, olhos, nariz, boca, express\xE3o e cabelos da mulher da Foto 2 (PROIBIDO cortar o rosto ou a cabe\xE7a!).\n" : "- A modelo fotografada DEVE SER RIGOROSAMENTE A MESMA MULHER DA FOTO 2 (mesmo corpo, mesmas curvas, mesmo quadril, mesma cintura, mesmo busto, mesmas pernas, mesmo tom de pele, mesmos cabelos caindo nos ombros e mesma postura de selfie da Foto 2). PROIBI\xC7\xC3O ABSOLUTA DE MOSTRAR ROSTO (MODO MIRROR SELFIE SEM ROSTO): \xC9 TERMINANTEMENTE PROIBIDO mostrar ou inventar o rosto, olhos, nariz ou testa! Mantenha RIGOROSAMENTE o enquadramento sem rosto da Foto 2 (corte exato na altura da base do queixo para baixo ou rosto 100% oculto pelo celular exatamente como na Foto 2 \u2014 NUNCA desenhe cabe\xE7a ou rosto descoberto!).\n";
-      const modelPreserveDirectiveSeedream = "[IDENTIDADE E ENQUADRAMENTO DA FOTO 2 (MODELO 1:1)]:\n" + faceFramingRuleSeedream + flashRuleSeedream + "- ISOLAMENTO DA FOTO 1 (PRODUTO): Extrair EXCLUSIVAMENTE a pe\xE7a de roupa completa e tecido da Foto 1 (preservando 100% o padr\xE3o de estampa, textura, costuras, recortes, formato e comprimento integral de cima a baixo sem encurtar a barra); \xE9 TERMINANTEMENTE PROIBIDO copiar, mesclar ou misturar o rosto ou a pessoa da Foto 1! ZERO mistura com a pessoa da Foto 1. \xC9 TERMINANTEMENTE PROIBIDO copiar tatuagens, marcas corporais ou desenhos da pessoa da Foto 1. A modelo DEVE ter pele 100% limpa, ZERO TATUAGENS no corpo todo.\n- CAL\xC7ADO (SEM ENCURTAR A PE\xC7A): Substitua qualquer sapato/t\xEAnis original da Foto 2 por cal\xE7ado que combine 100% com a pe\xE7a APENAS quando o comprimento original da pe\xE7a na Foto 1 deixar os p\xE9s vis\xEDveis (NUNCA encurte ou coma a parte de baixo do vestido para mostrar os p\xE9s!): se vestido -> sand\xE1lia feminina de festa elegante de salto fino e tiras delicadas (PROIBIDO t\xEAnis com vestido); se academia/fitness -> t\xEAnis esportivo moderno; se camisola, baby doll ou roupa de dormir -> chinelo de dedo branco delicado.\n";
+      const modelPreserveDirectiveSeedream = "[IDENTIDADE E ENQUADRAMENTO DA FOTO 2 (MODELO 1:1)]:\n" + faceFramingRuleSeedream + flashRuleSeedream + "- ISOLAMENTO DA FOTO 1 (PRODUTO): Extrair EXCLUSIVAMENTE a pe\xE7a de roupa completa e tecido da Foto 1 (preservando 100% o padr\xE3o de estampa, textura, costuras, recortes, formato e comprimento integral de cima a baixo sem encurtar a barra); \xE9 TERMINANTEMENTE PROIBIDO copiar, mesclar ou misturar o rosto ou a pessoa da Foto 1! ZERO mistura com a pessoa da Foto 1. \xC9 TERMINANTEMENTE PROIBIDO copiar tatuagens, marcas corporais ou desenhos da pessoa da Foto 1. A modelo DEVE ter pele 100% limpa, ZERO TATUAGENS no corpo todo.\n- CAL\xC7ADO (SEM ENCURTAR A PE\xC7A E EM COR CONTRASTANTE SE PR\xD3XIMO \xC0 ROUPA): Substitua qualquer sapato/t\xEAnis original da Foto 2 pelo cal\xE7ado especificado no prompt APENAS quando o comprimento original da pe\xE7a na Foto 1 deixar os p\xE9s vis\xEDveis (NUNCA encurte ou coma a parte de baixo da pe\xE7a para mostrar os p\xE9s!). O cal\xE7ado NUNCA pode ser da mesma cor da pe\xE7a de roupa que fica pr\xF3xima ou encostando nele \u2014 deve ser em cor contrastante e que combine (ex.: se a cal\xE7a for branca, o cal\xE7ado deve ser de outra cor contrastante e n\xE3o branco).\n";
       if (isModelScenarioSeedream) {
         headerSeedream = `${modelPreserveDirectiveSeedream}${naturalSkinSeedream}[MAPA T\xC9CNICO DE REFER\xCANCIA 2 IMAGENS \u2014 PRESERVA\xC7\xC3O INTEGRAL DE MODELO E CEN\xC1RIO]:
 - Foto 1 (PRODUTO): \xC9 a roupa que a modelo DEVE vestir com m\xE1xima fidelidade 1:1 (PROIBIDO copiar rosto, pessoa ou pose da Foto 1).
@@ -4511,8 +4509,8 @@ async function generateImageWithKlingO3Fal(params) {
   let promptKlingO3 = params.prompt;
   if (params.modelReferenceBase64) {
     const alignedPromptO3 = params.prompt.replace(/\bFoto 1\b/gi, "<<<IMAGE_2_PROD>>>").replace(/\bFoto 2\b/gi, "<<<IMAGE_1_MOD>>>").replace(/\bFoto 3\b/gi, "<<<image_3>>>").replace(/<<<IMAGE_2_PROD>>>/g, "<<<image_2>>>").replace(/<<<IMAGE_1_MOD>>>/g, "<<<image_1>>>");
-    const dressRuleO3 = isDressKlingO3 ? "The model wears EXCLUSIVELY the dress from <<<image_2>>> (STRICTLY PROHIBITED jeans or pants under dress). Match the exact hemline length of <<<image_2>>> 1:1 (if short/midi showing ankles and feet, keep feet visible; if floor-length covering feet, keep floor-length)." : isUpperPieceO3 ? "The model wears the top/blouse from <<<image_2>>> with MANDATORY classic high-waisted blue denim jeans and casual sneakers on her feet (STRICTLY PROHIBITED pantless, underwear only or bare legs on bottom)." : "The model wears the exact garment from <<<image_2>>> (if dress, wear ONLY the dress; if top, wear classic blue jeans and sneakers).";
-    const footwearRuleO3 = isFitnessO3 ? "FOOTWEAR: Modern athletic sneakers matching the fitness outfit." : isSleepwearO3 ? "FOOTWEAR: Delicate white flip-flops on her feet (replace any shoes from <<<image_1>>>)." : isUpperPieceO3 ? "FOOTWEAR: Clean casual sneakers matching the blue jeans." : "MANDATORY FOOTWEAR REPLACEMENT (PARTY SANDALS \u2014 NO SNEAKERS): Completely replace and discard any sneakers or shoes worn in <<<image_1>>>! When her feet are visible, she MUST wear ELEGANT HIGH-HEEL PARTY SANDALS (strappy dress sandals) matching the color and elegance of the dress in <<<image_2>>> (if the dress in <<<image_2>>> is floor-length covering the feet, keep the full floor-length hem). STRICTLY FORBIDDEN to wear sneakers, tennis shoes, athletic shoes, or casual trainers with a dress!";
+    const dressRuleO3 = isDressKlingO3 ? "The model wears EXCLUSIVELY the dress/one-piece/set from <<<image_2>>> keeping 100% the exact reference colors and hemline length of <<<image_2>>> 1:1." : isUpperPieceO3 ? "The model wears the top/blouse from <<<image_2>>> in its exact reference color, paired with complementary pants/jeans in a CONTRASTING YET HARMONIOUS COLOR (NEVER the same color as the top!)." : "The model wears the garment from <<<image_2>>> in its exact reference color (if a bottom piece, pair it with a top/blouse in a CONTRASTING YET HARMONIOUS COLOR \u2014 NEVER the same color as the bottom piece; if a two-piece set, reproduce both pieces 1:1 from <<<image_2>>>).";
+    const footwearRuleO3 = "MANDATORY FOOTWEAR & COLOR CONTRAST RULE: Replace any shoes in <<<image_1>>> with the exact footwear specified in the prompt (flatform thong sandals with wide crossed straps and white platform for loose dress pants/pantalona; pointed-toe low-heel scarpin for leather skirt, jeans, or dress pants; urban low-sole casual sneakers for gym/fitness/shapewear; delicate thin-strap high-heel sandals for dress, skirt, set, or jumpsuit). FOOTWEAR COLOR CONTRAST: The footwear MUST NEVER be the same color as the garment right next to or touching it (e.g., if the pants are white, the shoes must be a contrasting harmonious color and NOT white).";
     const isModelScenarioO3 = (params.modelScenarioSource || "model") === "model";
     const allowsFaceO3 = params.presentationMode === "com_rosto";
     const isScenario24O3 = Boolean(

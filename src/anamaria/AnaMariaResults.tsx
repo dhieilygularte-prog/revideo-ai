@@ -47,7 +47,11 @@ import {
   generateAnaMariaCompactPrompt,
   saveAnaMariaResult,
 } from './anaMariaPipeline';
-import { resolveHeadlineAndHashtags } from './anaMariaBank';
+import {
+  resolveHeadlineAndHashtags,
+  resolveMultipleDistinctHeadlines,
+} from './anaMariaBank';
+import { KLING_FIXED_VIDEO_PROMPT } from './anaMariaPrompts';
 import { getMasterPromptById } from './masterPromptsData';
 import { VideoFidelityAuditor } from '../produtos2/VideoFidelityAuditor';
 import { AIProfile } from '../config/aiProfiles';
@@ -191,10 +195,18 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
     Math.max(imagesList.length - 1, 0)
   );
   const activeImageItem = imagesList[safeSelectedIdx];
+  const canGenerateWithNewModelAndScenario = Boolean(
+    result.referencePhotos && result.referencePhotos.length > 0
+  );
   const canUseNewColorButtons = Boolean(
-    (result.hasMultipleColors !== undefined
-      ? result.hasMultipleColors
-      : (result.colorGroups?.length || 0) >= 2) && (result.colorGroups?.length || 0) >= 2
+    (result.colorGroups?.length || 0) >= 2 ||
+      result.hasMultipleColors ||
+      (result.referencePhotos?.length || 0) >= 2
+  );
+  const [copiedKlingPrompt, setCopiedKlingPrompt] = useState(false);
+  const [copiedHeadlineIndices, setCopiedHeadlineIndices] = useState<Record<number, boolean>>({});
+  const [hasCopiedHeadlineIndices, setHasCopiedHeadlineIndices] = useState<Record<number, boolean>>(
+    {}
   );
 
   // Estados de ajuste de imagem
@@ -375,6 +387,57 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
     }
   };
 
+  const handleCopyKlingFixedPrompt = async () => {
+    try {
+      await navigator.clipboard.writeText(KLING_FIXED_VIDEO_PROMPT);
+      setCopiedKlingPrompt(true);
+      setHasCopiedPromptOnce(true);
+      setTimeout(() => setCopiedKlingPrompt(false), 2500);
+    } catch (err) {
+      console.error('Erro ao copiar prompt Kling:', err);
+    }
+  };
+
+  // Resolve todas as headlines distintas (1 para cada cor gerada, sem repetir iguais se houver menos na memória)
+  const distinctHeadlinesList: string[] = (() => {
+    const rawList: string[] = [];
+    if (result.headlines && result.headlines.length > 0) {
+      rawList.push(...result.headlines);
+    }
+    for (const img of imagesList) {
+      if (img.headline && img.headline.trim()) {
+        rawList.push(img.headline.trim());
+      }
+    }
+    if (rawList.length === 0 && result.headline) {
+      rawList.push(result.headline);
+    }
+    const seen = new Set<string>();
+    const deduped: string[] = [];
+    for (const h of rawList) {
+      const k = h.trim().toLowerCase();
+      if (k && !seen.has(k)) {
+        seen.add(k);
+        deduped.push(h.trim());
+      }
+    }
+    return deduped.length > 0 ? deduped : [result.headline];
+  })();
+
+  const handleCopySpecificHeadline = async (text: string, idx: number) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedHeadlineIndices((prev) => ({ ...prev, [idx]: true }));
+      setHasCopiedHeadlineIndices((prev) => ({ ...prev, [idx]: true }));
+      setCopiedHeadline(true);
+      setHasCopiedHeadlineOnce(true);
+      setTimeout(() => {
+        setCopiedHeadlineIndices((prev) => ({ ...prev, [idx]: false }));
+        setCopiedHeadline(false);
+      }, 2500);
+    } catch {}
+  };
+
   const handleCopyHashtags = async () => {
     try {
       await navigator.clipboard.writeText(result.hashtags);
@@ -386,7 +449,11 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
 
   const handleCopyHeadline = async () => {
     try {
-      await navigator.clipboard.writeText(result.headline);
+      const textToCopy =
+        distinctHeadlinesList.length > 1
+          ? distinctHeadlinesList.join('\n')
+          : result.headline;
+      await navigator.clipboard.writeText(textToCopy);
       setCopiedHeadline(true);
       setHasCopiedHeadlineOnce(true);
       setTimeout(() => setCopiedHeadline(false), 2500);
@@ -394,9 +461,8 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
   };
 
   /**
-   * Refaz instantaneamente a Headline e as Hashtags sorteando uma nova opção
-   * exclusiva do banco de memória agrupado para a categoria deste produto,
-   * garantindo que nunca repita a headline atual se houver alternativas.
+   * Refaz instantaneamente a Headline (ou todas as N headlines distintas quando há várias cores)
+   * e as Hashtags sorteando novas opções exclusivas do banco de memória agrupado para a categoria deste produto.
    */
   const handleRemixHeadlinesAndHashtags = () => {
     try {
@@ -410,9 +476,27 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
         excludeHashtags: result.hashtags,
       });
 
+      const targetCount = Math.max(1, imagesList.length);
+      const nextHeadlines =
+        targetCount > 1
+          ? resolveMultipleDistinctHeadlines({
+              productName: result.productName,
+              additionalInstructions: result.additionalInstructions,
+              count: targetCount,
+              excludeHeadlines: distinctHeadlinesList,
+            })
+          : [remix.headline];
+
+      const nextGeneratedImages = result.generatedImages?.map((img, i) => ({
+        ...img,
+        headline: nextHeadlines[i] || nextHeadlines[0] || remix.headline,
+      }));
+
       const updatedResult: AnaMariaResultState = {
         ...result,
-        headline: remix.headline,
+        headline: nextHeadlines[0] || remix.headline,
+        headlines: nextHeadlines,
+        generatedImages: nextGeneratedImages,
         hashtags: remix.hashtags,
       };
 
@@ -424,6 +508,8 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
       setCopiedHeadline(false);
       setHasCopiedHashtagsOnce(false);
       setHasCopiedHeadlineOnce(false);
+      setCopiedHeadlineIndices({});
+      setHasCopiedHeadlineIndices({});
 
       setTimeout(() => {
         setIsRemixing(false);
@@ -516,6 +602,8 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
           selectedModelGalleryUrl: activeImageItem.selectedModelGalleryUrl ?? result.selectedModelGalleryUrl,
           modelScenarioSource: activeImageItem.modelScenarioSource ?? result.modelScenarioSource,
           generateModelViaPrompt: activeImageItem.generateModelViaPrompt ?? result.generateModelViaPrompt,
+          selectedShoeOption: result.selectedShoeOption,
+          customShoeText: result.customShoeText,
         },
         tweakPrompt: customInstruction || imageTweakText,
         dressInspection: result.dressInspection,
@@ -565,6 +653,8 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
           selectedModelGalleryUrl: activeImageItem.selectedModelGalleryUrl ?? result.selectedModelGalleryUrl,
           modelScenarioSource: activeImageItem.modelScenarioSource ?? result.modelScenarioSource,
           generateModelViaPrompt: activeImageItem.generateModelViaPrompt ?? result.generateModelViaPrompt,
+          selectedShoeOption: result.selectedShoeOption,
+          customShoeText: result.customShoeText,
         },
         imageModelOverride: 'seedream_5_0_pro',
         dressInspection: result.dressInspection,
@@ -608,6 +698,8 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
           videoPromptLimit: result.videoPromptLimit,
           selectedScenarioId: activeImageItem.selectedScenarioId ?? result.selectedScenarioId,
           selectedScenarioNumber: activeImageItem.selectedScenarioNumber ?? result.selectedScenarioNumber,
+          selectedShoeOption: result.selectedShoeOption,
+          customShoeText: result.customShoeText,
         },
         aiProfile,
       });
@@ -626,11 +718,14 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
     }
   };
 
-  // Variações de cor:
-  // A ordem das cores continua sempre em sequência (Cor 1 -> Cor 2 -> ... -> Cor N -> Cor 1),
-  // independentemente de o usuário clicar em "Gerar em nova cor" ou "GERAR IGUAL EM NOVA COR".
+  // Variações de cor / Nova Modelo e Cenário:
+  // - keepSameModelAndScenario === true ("GERAR IGUAL EM NOVA COR"): mantém a mesma modelo e mesmo cenário, trocando para outra cor anexada nas referências.
+  // - keepSameModelAndScenario === false ("GERAR COM NOVA MODELO E CENÁRIO"): gera com uma nova modelo e um novo cenário.
   const handleColorVariation = async (keepSameModelAndScenario: boolean) => {
-    if (!canUseNewColorButtons) {
+    if (keepSameModelAndScenario && !canUseNewColorButtons) {
+      return;
+    }
+    if (!keepSameModelAndScenario && !canGenerateWithNewModelAndScenario) {
       return;
     }
     if (!result.referencePhotos || result.referencePhotos.length === 0) {
@@ -650,12 +745,27 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
       });
 
       const nextImages = [...imagesList, res.newImageItem];
+      const nextHeadlines = resolveMultipleDistinctHeadlines({
+        productName: result.productName,
+        additionalInstructions: result.additionalInstructions,
+        count: nextImages.length,
+      });
+      // Preserva as headlines já existentes e adiciona uma nova diferente caso haja no banco
+      const mergedHeadlines = [...distinctHeadlinesList];
+      for (const cand of nextHeadlines) {
+        if (mergedHeadlines.length >= nextImages.length) break;
+        if (!mergedHeadlines.some((h) => h.toLowerCase() === cand.toLowerCase())) {
+          mergedHeadlines.push(cand);
+        }
+      }
+
       const updatedResult: AnaMariaResultState = {
         ...result,
         timestamp: res.timestamp,
         imageUrl: res.imageUrl,
         imageModel: res.imageModel,
         generatedImages: nextImages,
+        headlines: mergedHeadlines,
         generateModelViaPrompt: res.generateModelViaPrompt,
         selectedModelGalleryId: res.selectedModelGalleryId,
         selectedModelGalleryNumber: res.selectedModelGalleryNumber,
@@ -673,7 +783,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
       setHasDownloadedImageOnce(false);
       setDownloadedImage(false);
     } catch (err: any) {
-      alert(`Falha ao gerar variação de cor: ${err?.message || err}`);
+      alert(`Falha ao gerar variação: ${err?.message || err}`);
     } finally {
       setLoading(false);
     }
@@ -756,9 +866,61 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
         </button>
       </div>
 
-      {/* ─── BOTÕES DE AÇÃO SUPERIORES (PADRÃO PRODUTOS 2.0 - ITENS 1 E 12) ─── */}
+      {/* ─── BOTÕES DE AÇÃO SUPERIORES (GERAR COM NOVA MODELO E CENÁRIO + GERAR IGUAL EM NOVA COR À ESQUERDA) ─── */}
       <div className={`flex flex-wrap items-center justify-between gap-3 pb-2 border-b ${isAmetista ? 'border-purple-500/20' : 'border-zinc-800'}`}>
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* GERAR COM NOVA MODELO E CENÁRIO (à esquerda do botão GERAR IGUAL EM NOVA COR) */}
+          <button
+            type="button"
+            disabled={
+              !canGenerateWithNewModelAndScenario ||
+              isGeneratingNewColor ||
+              isGeneratingSameModelNewColor ||
+              isSwitchingScenario ||
+              isRegeneratingImage
+            }
+            onClick={() => handleColorVariation(false)}
+            className={`px-4 py-2 text-white text-xs font-black rounded-xl flex items-center gap-2 transition-all shadow-md border ${
+              !canGenerateWithNewModelAndScenario
+                ? 'bg-zinc-800/70 border-zinc-700/60 text-zinc-400 opacity-50 cursor-not-allowed shadow-none'
+                : 'bg-sky-600 hover:bg-sky-500 disabled:opacity-60 cursor-pointer shadow-sky-950/50 border-sky-400/50'
+            }`}
+            title="Gera uma nova foto com uma nova modelo e um novo cenário da galeria"
+          >
+            <Palette className={`w-4 h-4 text-white ${isGeneratingNewColor ? 'animate-spin' : ''}`} />
+            <span>
+              {isGeneratingNewColor
+                ? 'Gerando nova modelo e cenário...'
+                : 'GERAR COM NOVA MODELO E CENÁRIO'}
+            </span>
+          </button>
+
+          {/* GERAR IGUAL EM NOVA COR (à esquerda, logo ao lado de GERAR COM NOVA MODELO E CENÁRIO) */}
+          <button
+            type="button"
+            disabled={
+              !canUseNewColorButtons ||
+              isGeneratingSameModelNewColor ||
+              isGeneratingNewColor ||
+              isSwitchingScenario ||
+              isRegeneratingImage
+            }
+            onClick={() => handleColorVariation(true)}
+            className={`px-4 py-2 text-white text-xs font-black rounded-xl flex items-center gap-2 transition-all shadow-md border ${
+              !canUseNewColorButtons
+                ? 'bg-zinc-800/70 border-zinc-700/60 text-zinc-400 opacity-50 cursor-not-allowed shadow-none'
+                : 'bg-cyan-600 hover:bg-cyan-500 disabled:opacity-60 cursor-pointer shadow-cyan-950/50 border-cyan-400/50'
+            }`}
+            title={
+              !canUseNewColorButtons
+                ? 'Indisponível: adicione outra cor do produto nas referências para usar esta função'
+                : 'Gera uma foto com a mesma modelo no mesmo cenário, usando a outra cor da roupa anexada nas referências diferente da anterior'
+            }
+          >
+            <Copy className={`w-4 h-4 text-white ${isGeneratingSameModelNewColor ? 'animate-spin' : ''}`} />
+            <span>{isGeneratingSameModelNewColor ? 'Gerando igual...' : 'GERAR IGUAL EM NOVA COR'}</span>
+          </button>
+
           {/* NOVO PRODUTO */}
           <button
             type="button"
@@ -801,58 +963,6 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
           >
             <Home className={`w-4 h-4 ${accentIconClass} ${isSwitchingScenario ? 'animate-spin' : ''}`} />
             <span>{isSwitchingScenario ? 'Trocando cenário...' : 'Trocar Cenário'}</span>
-          </button>
-
-          {/* Gerar em nova cor */}
-          <button
-            type="button"
-            disabled={
-              !canUseNewColorButtons ||
-              isGeneratingNewColor ||
-              isGeneratingSameModelNewColor ||
-              isSwitchingScenario ||
-              isRegeneratingImage
-            }
-            onClick={() => handleColorVariation(false)}
-            className={`px-4 py-2 text-white text-xs font-black rounded-xl flex items-center gap-2 transition-all shadow-md border ${
-              !canUseNewColorButtons
-                ? 'bg-zinc-800/70 border-zinc-700/60 text-zinc-400 opacity-50 cursor-not-allowed shadow-none'
-                : 'bg-sky-600 hover:bg-sky-500 disabled:opacity-60 cursor-pointer shadow-sky-950/50 border-sky-400/50'
-            }`}
-            title={
-              !canUseNewColorButtons
-                ? 'Indisponível: adicione 2 ou mais cores no campo 1B (Várias Cores) para usar esta função'
-                : 'Escolhe a próxima cor em sequência das fotos de referência, outra modelo e outro cenário da galeria'
-            }
-          >
-            <Palette className={`w-4 h-4 text-white ${isGeneratingNewColor ? 'animate-spin' : ''}`} />
-            <span>{isGeneratingNewColor ? 'Gerando nova cor...' : 'Gerar em nova cor'}</span>
-          </button>
-
-          {/* GERAR IGUAL EM NOVA COR */}
-          <button
-            type="button"
-            disabled={
-              !canUseNewColorButtons ||
-              isGeneratingSameModelNewColor ||
-              isGeneratingNewColor ||
-              isSwitchingScenario ||
-              isRegeneratingImage
-            }
-            onClick={() => handleColorVariation(true)}
-            className={`px-4 py-2 text-white text-xs font-black rounded-xl flex items-center gap-2 transition-all shadow-md border ${
-              !canUseNewColorButtons
-                ? 'bg-zinc-800/70 border-zinc-700/60 text-zinc-400 opacity-50 cursor-not-allowed shadow-none'
-                : 'bg-cyan-600 hover:bg-cyan-500 disabled:opacity-60 cursor-pointer shadow-cyan-950/50 border-cyan-400/50'
-            }`}
-            title={
-              !canUseNewColorButtons
-                ? 'Indisponível: adicione 2 ou mais cores no campo 1B (Várias Cores) para usar esta função'
-                : 'Mantém exatamente a mesma modelo e mesmo cenário da imagem selecionada, avançando para a próxima cor em sequência'
-            }
-          >
-            <Copy className={`w-4 h-4 text-white ${isGeneratingSameModelNewColor ? 'animate-spin' : ''}`} />
-            <span>{isGeneratingSameModelNewColor ? 'Gerando igual...' : 'GERAR IGUAL EM NOVA COR'}</span>
           </button>
         </div>
 
@@ -1272,61 +1382,8 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                 </p>
               </div>
 
-              {/* Botão Copiar Prompt + Botão Sob Demanda GERAR PROMPT ENXUTO / Amarelo COPIAR PROMPT ENXUTO */}
-              <div className="flex flex-wrap items-center justify-end gap-2">
-                {!result.conciseVideoPrompt ? (
-                  <button
-                    type="button"
-                    disabled={isGeneratingCompactPrompt}
-                    onClick={handleGenerateCompactPrompt}
-                    className={`px-3.5 py-2 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer border shadow-md ${
-                      isGeneratingCompactPrompt
-                        ? 'bg-zinc-800 border-zinc-700 text-zinc-400 cursor-wait'
-                        : 'bg-zinc-900 hover:bg-zinc-800 border-amber-400/60 text-amber-300'
-                    }`}
-                    title="Gerar versão enxuta do prompt (até 2.450 caracteres com espaços) priorizando 80% os movimentos originais"
-                  >
-                    <Scissors className={`w-3.5 h-3.5 ${isGeneratingCompactPrompt ? 'animate-spin' : ''}`} />
-                    <span>
-                      {isGeneratingCompactPrompt ? 'Gerando Enxuto...' : 'GERAR PROMPT ENXUTO'}
-                    </span>
-                  </button>
-                ) : (
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={handleCopyConcisePrompt}
-                      className={`px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer shadow-lg border ${
-                        copiedConcisePrompt
-                          ? 'bg-emerald-500 text-white border-emerald-300 ring-2 ring-emerald-300'
-                          : 'bg-amber-400 hover:bg-amber-300 text-zinc-950 border-amber-200 ring-2 ring-amber-400/40'
-                      }`}
-                      title={`Copiar prompt enxuto pronto (${result.conciseVideoPrompt.length}/2450 caracteres)`}
-                    >
-                      {copiedConcisePrompt ? (
-                        <>
-                          <Check className="w-4 h-4" />
-                          <span>PROMPT ENXUTO COPIADO!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-4 h-4" />
-                          <span>COPIAR PROMPT ENXUTO ({result.conciseVideoPrompt.length})</span>
-                        </>
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      disabled={isGeneratingCompactPrompt}
-                      onClick={handleGenerateCompactPrompt}
-                      className="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-amber-300 transition-colors cursor-pointer"
-                      title="Regenerar prompt enxuto"
-                    >
-                      <RefreshCw className={`w-3.5 h-3.5 ${isGeneratingCompactPrompt ? 'animate-spin' : ''}`} />
-                    </button>
-                  </div>
-                )}
-
+              {/* Botão Copiar Prompt alinhado à direita + link discreto "Copiar prompt Kling" logo embaixo */}
+              <div className="flex flex-col items-end gap-1.5">
                 <button
                   type="button"
                   onClick={handleCopyPrompt}
@@ -1352,6 +1409,22 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                     </>
                   )}
                 </button>
+
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={handleCopyKlingFixedPrompt}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleCopyKlingFixedPrompt();
+                    }
+                  }}
+                  className="text-[11px] text-sky-400 hover:text-sky-300 underline underline-offset-2 cursor-pointer select-none transition-colors pr-0.5 font-medium"
+                  title="Copiar prompt fixo para o Kling"
+                >
+                  {copiedKlingPrompt ? 'Prompt Kling copiado ✓' : 'Copiar prompt Kling'}
+                </span>
               </div>
             </div>
 
@@ -1517,7 +1590,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
           </button>
         </div>
 
-        {/* 1º Card (ACIMA): Texto do Vídeo */}
+        {/* 1º Card (ACIMA): Texto do Vídeo (1 Headline ou N Headlines diferentes quando há várias cores) */}
         <div
           className={`p-4 sm:p-5 rounded-2xl transition-all duration-300 space-y-3 ${
             hasCopiedHeadlineOnce ? copiedBlueSectionClass : defaultSectionClass
@@ -1527,7 +1600,11 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
             <div className="flex items-center gap-2">
               <Smile className={`w-4 h-4 ${accentIconClass}`} />
               <h3 className="text-xs font-black text-white uppercase tracking-wide flex items-center gap-2">
-                <span>Texto do Vídeo</span>
+                <span>
+                  {distinctHeadlinesList.length > 1
+                    ? `Textos do Vídeo (${distinctHeadlinesList.length} Headlines Diferentes)`
+                    : 'Texto do Vídeo'}
+                </span>
                 {hasCopiedHeadlineOnce && (
                   <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3 text-sky-300" /> COPIADO ✓
@@ -1556,24 +1633,79 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                 ) : (
                   <>
                     <Copy className="w-3.5 h-3.5" />
-                    <span>Copiar Texto do Vídeo</span>
+                    <span>
+                      {distinctHeadlinesList.length > 1
+                        ? 'Copiar Todas as Headlines'
+                        : 'Copiar Texto do Vídeo'}
+                    </span>
                   </>
                 )}
               </button>
             </div>
           </div>
 
-          <div
-            className={`p-3.5 rounded-xl text-sm font-semibold select-all transition-all leading-relaxed ${
-              hasCopiedHeadlineOnce
-                ? 'bg-slate-950/90 border border-sky-400/60 text-white'
-                : isAmetista
-                ? 'bg-[#0e0817]/95 border border-purple-500/25 text-white'
-                : 'bg-zinc-900/95 border border-zinc-800 text-white'
-            }`}
-          >
-            {result.headline}
-          </div>
+          {distinctHeadlinesList.length > 1 ? (
+            <div className="space-y-2.5">
+              {distinctHeadlinesList.map((headlineItem, idx) => {
+                const isThisCopied = Boolean(copiedHeadlineIndices[idx]);
+                const hasCopiedThis = Boolean(hasCopiedHeadlineIndices[idx]);
+                return (
+                  <div
+                    key={idx}
+                    className={`p-3 rounded-xl text-sm font-semibold flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all leading-relaxed ${
+                      hasCopiedThis
+                        ? 'bg-slate-950/90 border border-sky-400/70 text-white'
+                        : isAmetista
+                        ? 'bg-[#0e0817]/95 border border-purple-500/25 text-white'
+                        : 'bg-zinc-900/95 border border-zinc-800 text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 select-all">
+                      <span className="shrink-0 px-2 py-0.5 rounded-md bg-sky-500/20 border border-sky-400/40 text-[10px] font-black text-sky-300 uppercase">
+                        Headline {idx + 1}
+                      </span>
+                      <span>{headlineItem}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleCopySpecificHeadline(headlineItem, idx)}
+                      className={`shrink-0 py-1.5 px-3 rounded-lg text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer ${
+                        hasCopiedThis || isThisCopied
+                          ? 'bg-sky-500 hover:bg-sky-400 text-white border border-sky-300'
+                          : isAmetista
+                          ? 'bg-purple-500/25 hover:bg-purple-500/40 text-purple-100 border border-purple-400/40'
+                          : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700'
+                      }`}
+                    >
+                      {isThisCopied ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-white" />
+                          <span>Copiado!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>Copiar</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div
+              className={`p-3.5 rounded-xl text-sm font-semibold select-all transition-all leading-relaxed ${
+                hasCopiedHeadlineOnce
+                  ? 'bg-slate-950/90 border border-sky-400/60 text-white'
+                  : isAmetista
+                  ? 'bg-[#0e0817]/95 border border-purple-500/25 text-white'
+                  : 'bg-zinc-900/95 border border-zinc-800 text-white'
+              }`}
+            >
+              {result.headline}
+            </div>
+          )}
         </div>
 
         {/* 2º Card (ABAIXO): Descrição/Hastags */}
