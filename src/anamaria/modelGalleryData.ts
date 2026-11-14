@@ -250,6 +250,15 @@ export const MODEL_GALLERY_COM_ROSTO: AnaMariaModelItem[] = [
     file: '26.png',
     fullUrl: '/models/gallery/com_rosto/26.png?v=2',
   },
+  {
+    id: 'modelo_27_senhora_preta',
+    number: 27,
+    name: 'Senhora Preta',
+    title: '27. Senhora Preta',
+    description: 'Mulher negra madura elegante com cabelos cacheados volumosos, sorriso simpático, corpo inteiro e postura confiante diante do espelho.',
+    file: '27.png',
+    fullUrl: '/models/gallery/com_rosto/27.png',
+  },
 ];
 
 /**
@@ -483,6 +492,15 @@ export const MODEL_GALLERY_SEM_ROSTO: AnaMariaModelItem[] = [
     description: 'Silhueta curvilínea definida, corpo inteiro sem rosto com corte no queixo, joias douradas delicadas e postura imponente diante do espelho.',
     file: '26.png',
     fullUrl: '/models/gallery/sem_rosto/26.png?v=2',
+  },
+  {
+    id: 'modelo_sem_rosto_27_senhora_preta',
+    number: 27,
+    name: 'Senhora Preta',
+    title: '27. Senhora Preta',
+    description: 'Mulher negra madura elegante, corpo inteiro sem rosto com corte no queixo, curvas femininas reais e postura natural diante do espelho.',
+    file: '27.png',
+    fullUrl: '/models/gallery/sem_rosto/27.png',
   },
 ];
 
