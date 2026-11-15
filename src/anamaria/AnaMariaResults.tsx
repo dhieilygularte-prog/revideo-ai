@@ -451,7 +451,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
     try {
       const textToCopy =
         distinctHeadlinesList.length > 1
-          ? distinctHeadlinesList.join('\n')
+          ? distinctHeadlinesList.join('\n\n')
           : result.headline;
       await navigator.clipboard.writeText(textToCopy);
       setCopiedHeadline(true);
@@ -1664,7 +1664,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                       <span className="shrink-0 px-2 py-0.5 rounded-md bg-sky-500/20 border border-sky-400/40 text-[10px] font-black text-sky-300 uppercase">
                         Headline {idx + 1}
                       </span>
-                      <span>{headlineItem}</span>
+                      <span className="whitespace-pre-line">{headlineItem}</span>
                     </div>
                     <button
                       type="button"
@@ -1695,7 +1695,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
             </div>
           ) : (
             <div
-              className={`p-3.5 rounded-xl text-sm font-semibold select-all transition-all leading-relaxed ${
+              className={`p-3.5 rounded-xl text-sm font-semibold select-all transition-all leading-relaxed whitespace-pre-line ${
                 hasCopiedHeadlineOnce
                   ? 'bg-slate-950/90 border border-sky-400/60 text-white'
                   : isAmetista

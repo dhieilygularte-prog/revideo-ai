@@ -47,345 +47,159 @@ export const PRODUCT_HEADLINES_GROUPED: Record<
     label: 'Vestidos (Curtos, Midis, Longos, Elegantes)',
     items: [
       {
-        headline: 'Amo comprar depois do hype, tipo olha o preço desse vestido ✨',
-        hashtags: '#vestido #vestidos #vestidofeminino #modafeminina',
-        flowerSymbol: '✨',
+        headline: 'Pov : você achou seu look\nDe Ano Novo e Natal\n✨🤍❤️🎄',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Vestido',
       },
       {
-        headline: 'Como assim esse vestido divo está quase de graça 🎀',
-        hashtags: '#vestido #modafeminina #achadinhos',
-        flowerSymbol: '🎀',
+        headline: 'Qualquer mulher arrasa\ncom um vestido desse\n✨',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Vestido',
       },
       {
-        headline: 'Como assim esse vestido está por esse valor ✿',
-        hashtags: '#fyp #foryou #vestido',
-        flowerSymbol: '✿',
+        headline: 'Loucura como esse vestido\né perfeito\n🌸🤍',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Vestido',
       },
       {
-        headline: 'Compra o vestido e a autoestima junto 🌸',
-        hashtags: '#vestido #vestidos #vestidofeminino #achadinhos',
-        flowerSymbol: '🌸',
+        headline: 'Pov : você encontrou o look\nPERFEITO pro NATAL\n❤️✨🎄',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Vestido',
       },
       {
-        headline: 'Esse vestido lindo está muito barato ✨🎀',
-        hashtags: '#vestido #vestidos #vestidofeminino',
-        flowerSymbol: '🎀',
+        headline: 'Loucura como esse vestido\né simplesmente Lindo\n✨❤️',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Vestido',
       },
       {
-        headline: 'Esse vestido lindo está tão barato ✨🖤',
-        hashtags: '#vestido #vestidos #vestidofeminino',
-        flowerSymbol: '🖤',
+        headline: 'A sensação de um vestido\nque te deixa super elegante\n✨',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Vestido',
       },
       {
-        headline: 'Esse vestido perfeito está tão barato 🖤',
-        hashtags: '#vestido #vestidos',
-        flowerSymbol: '🖤',
+        headline: 'Achei o vestido perfeito\nPro natal\n❤️✨🎄',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Vestido',
       },
       {
-        headline: 'Esse vestido vale cada centavo 💋',
-        hashtags: '#vestido #modafeminina #fyp #foryou',
-        flowerSymbol: '💋',
+        headline: 'Loucura como esse\nvestido é lindo\n✨❤️',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Vestido',
       },
       {
-        headline: 'Esse vestido é tão 💋💋',
-        hashtags: '#modafeminina #achadinhos #tiktokshop #look',
-        flowerSymbol: '💋',
+        headline: 'O vestido que faz qualquer\nmulher arassar\n❤️✨',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Vestido',
       },
       {
-        headline: 'Eu amei e já quero outras cores✨',
-        hashtags: '#vestido #vestidos #modafeminina',
-        flowerSymbol: '✨',
+        headline: 'Essa vestido\ntá QUASE de graça\n✨',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Vestido',
       },
       {
-        headline: 'Já pode compra pra Natal ou está cedo✨❤️',
-        hashtags: '#vestido #vestidos #achadinhos',
-        flowerSymbol: '️',
+        headline: 'Esse vestido perfeito\ntoda mulher devia\nter um\n✨❤️',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Vestido',
       },
       {
-        headline: 'Já tá podendo comprar o look pro ano novo? ❤',
-        hashtags: '#vestido #vestidos #fyp',
-        flowerSymbol: '❤',
+        headline: 'Esse vestido longo super lindo\ntá muito barato\n✨❤️',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Vestido',
       },
       {
-        headline: 'Logo hj que não tenho R$13 ✿',
-        hashtags: '#vestido #vestidos #vestidofeminino #modafeminina',
-        flowerSymbol: '✿',
+        headline: 'A perfeição desse vestidinho\nfaz qualquer mulher arrasar\n🌸🤍',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Vestido',
       },
       {
-        headline: 'Look junino LINDO garantido sem gastar muito 😍',
-        hashtags: '#vestido #vestidos #vestidofeminino #fyp',
-        flowerSymbol: '😍',
+        headline: 'Já achei meu vestido\nPERFEITO pro Natal\n🎄❤️✨',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Vestido',
       },
       {
-        headline: 'Loucura como esse vestidinho é lindo 💗',
-        hashtags: '#vestido #vestidos #foryou',
-        flowerSymbol: '💗',
+        headline: 'Sim esse vestidinho PERFEITO\ntá muito barato\n✨❤️',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Vestido',
       },
       {
-        headline: 'Ninguém diz que foi baratinho esse vestido ✨🤍',
-        hashtags: '#fyp #foryou',
-        flowerSymbol: '🤍',
+        headline: 'Surreal como esse vestidinho\nlindo tá quase de graça\n✨❤️',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Vestido',
       },
       {
-        headline: 'Não dá pra se vestir bem pagando pouco? Paguei menos de $30 nesse vestido 💜',
-        hashtags: '#vestido #vestidos #vestidofeminino #foryou',
-        flowerSymbol: '💜',
+        headline: 'Loucura como esse Vestidinho\nPerfeito tá tão barato\n❤️✨',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Vestido',
       },
       {
-        headline: 'O caimento desse vestido no corpo é surreal ✨🖤🤍',
-        hashtags: '#vestido #vestidos #vestidofeminino #tiktokshop',
-        flowerSymbol: '🤍',
+        headline: 'esse vestido lindo\nperfeito tá muito baratinho\n✨🌸',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Vestido',
       },
       {
-        headline: 'O vestido que toda garota deveria ter 😚',
-        hashtags: '#vestido #vestidos #vestidofeminino #look',
-        flowerSymbol: '😚',
+        headline: 'Surreal como esse vestido\nlindo tá quase de graça\n✨❤️',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Vestido',
       },
       {
-        headline: 'Pov: sem acredita que comprei esse vestido super baratinho ✨😍',
-        hashtags: '#modafeminina #achadinhos #vestido #tiktokshop',
-        flowerSymbol: '😍',
+        headline: 'Loucura como esse vestido\nPERFEITO tá quase de graça\n❤️✨',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Vestido',
       },
       {
-        headline: 'POV: vc encontro o vestido balone mas perfeito 💛',
-        hashtags: '#vestido #vestidos #vestidofeminino #outfit',
-        flowerSymbol: '💛',
+        headline: 'Sim, toda mulher devia ter\num vestido longo lindo desse\n✨❤️',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Vestido',
       },
       {
-        headline: 'Que vestido divo é esse 🤎',
-        hashtags: '#vestido #vestidos #vestidofeminino #achadinhos',
-        flowerSymbol: '🤎',
+        headline: 'Esse vestido PERFEITO\nTá quase de graça\n❤️✨',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Vestido',
       },
       {
-        headline: 'Sem acreditar na perfeição desse vestido e no quanto ele está custando 💙',
-        hashtags: '#vestido #vestidos #tiktokshop',
-        flowerSymbol: '💙',
+        headline: 'Toda mulher devia ter\num vestido\nlindo desse\n🌸💮🩵',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Vestido',
       },
       {
-        headline: 'Sem acreditar que comprei esse vestido divo por 23,00$ 💔',
-        hashtags: '#modafeminina #tiktokshop #vestido #look',
-        flowerSymbol: '💔',
+        headline: 'Surreal o valor\ndesse vestido longo\nlindíssimo\n✨✨',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Vestido',
       },
       {
-        headline: 'Sem acreditar que esse vestido perfeito está quase de graça 🌞',
-        hashtags: '#vestido #vestidos #vestidofeminino #fyp',
-        flowerSymbol: '🌞',
+        headline: 'Não acredito\no valor desse\nVestido perfeito\n✨🌸',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Vestido',
       },
       {
-        headline: 'SIM esse vestido perfeito está quase de graça 🥺',
-        hashtags: '#vestido #modafeminina #fyp #look',
-        flowerSymbol: '🥺',
-        sourceProduct: 'Vestido',
-      },
-      {
-        headline: 'Sim, esse vestido perfeito está praticamente de graça ✿',
-        hashtags: '#vestido #vestidos #vestidofeminino #tiktokshop',
-        flowerSymbol: '✿',
-        sourceProduct: 'Vestido',
-      },
-      {
-        headline: 'Simplesmente encontrei o vestido perfeito 💋🖤',
-        hashtags: '#vestido #vestidos #vestidofeminino #moda',
-        flowerSymbol: '🖤',
-        sourceProduct: 'Vestido',
-      },
-      {
-        headline: 'Um vestido que fala mais que mil palavras 🌸',
-        hashtags: '#vestido #fy #foryou',
-        flowerSymbol: '🌸',
-        sourceProduct: 'Vestido',
-      },
-      {
-        headline: 'Vestido para o ano novo ✨',
-        hashtags: '#vestido #vestidos #look',
-        flowerSymbol: '✨',
-        sourceProduct: 'Vestido',
-      },
-      {
-        headline: 'Vestido perfeito 🎀',
-        hashtags: '#vestido #vestidos #outfit',
-        flowerSymbol: '🎀',
-        sourceProduct: 'Vestido',
-      },
-      {
-        headline: 'Vestido rosinha 🖤',
-        hashtags: '#vestido #vestidos #vestidofeminino #girls',
-        flowerSymbol: '🖤',
-        sourceProduct: 'Vestido',
-      },
-      {
-        headline: 'Loucura como esse vestido é perfeito 💋',
-        hashtags: '#vestido #vestidofeminino #vestidolongo',
-        flowerSymbol: '💋',
-        sourceProduct: 'Vestido longo',
-      },
-      {
-        headline: 'O vestido que entrega perfeição ✨❤️',
-        hashtags: '#vestido #vestidofeminino #vestidolongo #modafeminina',
-        flowerSymbol: '️',
-        sourceProduct: 'Vestido longo',
-      },
-      {
-        headline: 'Esse vestido midi é simplesmente lindo e barato ⋆🌸⋆',
-        hashtags: '#modafeminina #vestidomidi #achadinhos #roupasfemininas',
-        flowerSymbol: '🌸',
-        sourceProduct: 'Vestido midi',
-      },
-      {
-        headline: 'Esse vestido tem o caimento perfeito 🤍',
-        hashtags: '#vestido #vestidos #moda',
-        flowerSymbol: '🤍',
-        sourceProduct: 'Vestido',
-      },
-      {
-        headline: 'Logo hoje que esse vestido perfeito tá no precinho 🌞',
-        hashtags: '#vestido #vestidos #girls',
-        flowerSymbol: '🌞',
-        sourceProduct: 'Vestido',
-      },
-      {
-        headline: 'Amo comprar depois do hype, tipo olha o preço desse vestido ✿',
-        hashtags: '#vestido #vestidos #vestidofeminino #modafeminina',
-        flowerSymbol: '✿',
-        sourceProduct: 'Vestido',
-      },
-      {
-        headline: 'Esse vestido lindo está muito barato ✨',
-        hashtags: '#vestido #vestidos #vestidofeminino',
-        flowerSymbol: '✨',
-        sourceProduct: 'Vestido',
-      },
-      {
-        headline: 'O vestido que toda garota deveria ter 🎀',
-        hashtags: '#vestido #vestidos',
-        flowerSymbol: '🎀',
-        sourceProduct: 'Vestido',
-      },
-      {
-        headline: 'O vestido que toda garota deveria ter 🖤',
-        hashtags: '#modafeminina #vestido #fyp',
-        flowerSymbol: '🖤',
-        sourceProduct: 'Vestido',
-      },
-      {
-        headline: 'Sem acreditar que esse vestido perfeito está quase de graça 💋',
-        hashtags: '#vestido #vestidos #vestidofeminino',
-        flowerSymbol: '💋',
-        sourceProduct: 'Vestido',
-      },
-      {
-        headline: 'Vestido rosinha ❤',
-        hashtags: '#vestido #vestidos #vestidofeminino #achadinhos',
-        flowerSymbol: '❤',
-        sourceProduct: 'Vestido',
-      },
-      {
-        headline: 'Simplesmente encontrei o vestido perfeito 💋🖤',
-        hashtags: '#vestido #vestidos #vestidofeminino #foryou',
-        flowerSymbol: '🖤',
-        sourceProduct: 'Vestido',
-      },
-      {
-        headline: 'Sem acreditar na perfeição desse vestido e no quanto ele está custando 💗',
-        hashtags: '#vestido #vestidos #modafeminina',
-        flowerSymbol: '💗',
-        sourceProduct: 'Vestido',
-      },
-      {
-        headline: 'Esse vestido vale cada centavo 💜',
-        hashtags: '#vestido #vestidos #vestidofeminino #tiktokshop',
-        flowerSymbol: '💜',
-        sourceProduct: 'Vestido',
-      },
-      {
-        headline: 'Esse vestido perfeito está tão barato 💛',
-        hashtags: '#vestido #vestidos #achadinhos',
-        flowerSymbol: '💛',
-        sourceProduct: 'Vestido',
-      },
-      {
-        headline: 'Esse vestido vale cada centavo 🤎',
-        hashtags: '#vestido #vestidos #vestidofeminino #modafeminina',
-        flowerSymbol: '🤎',
-        sourceProduct: 'Vestido',
-      },
-      {
-        headline: 'Que vestido divo é esse 💙',
-        hashtags: '#vestido #vestidos #vestidofeminino #achadinhos',
-        flowerSymbol: '💙',
-        sourceProduct: 'Vestido',
-      },
-      {
-        headline: 'Um vestido que fala mais que mil palavras 💔',
-        hashtags: '#vestido #fy #foryou',
-        flowerSymbol: '💔',
-        sourceProduct: 'Vestido',
-      },
-      {
-        headline: 'O vestido que toda garota deveria ter 🌞',
-        hashtags: '#fyp #foryou #look #vestido',
-        flowerSymbol: '🌞',
-        sourceProduct: 'Vestido',
-      },
-      {
-        headline: 'Esse vestido lindo está muito barato ✨🎀',
-        hashtags: '#vestido #vestidos #fyp',
-        flowerSymbol: '🎀',
-        sourceProduct: 'Vestido',
-      },
-      {
-        headline: 'POV: vc encontro o vestido balone mas perfeito 🥺',
-        hashtags: '#vestido #vestidos #vestidofeminino #look',
-        flowerSymbol: '🥺',
-        sourceProduct: 'Vestido',
-      },
-      {
-        headline: 'Já pode compra pra Natal ou está cedo✨❤️',
-        hashtags: '#vestido #vestidos #foryou',
-        flowerSymbol: '️',
-        sourceProduct: 'Vestido',
-      },
-      {
-        headline: 'Não dá pra se vestir bem pagando pouco? Paguei menos de $30 nesse vestido 🤍',
-        hashtags: '#vestido #vestidos #vestidofeminino #outfit',
-        flowerSymbol: '🤍',
-        sourceProduct: 'Vestido',
-      },
-      {
-        headline: 'Esse vestido tem o caimento perfeito 🤍',
-        hashtags: '#vestido #modafeminina #achadinhos',
-        flowerSymbol: '🤍',
-        sourceProduct: 'Vestido',
-      },
-      {
-        headline: 'Logo hoje que esse vestido perfeito tá no precinho 🖤',
-        hashtags: '#vestido #vestidos #tiktokshop',
-        flowerSymbol: '🖤',
+        headline: 'Loucura como esse vestido\nPERFEITO tá tão barato\n❤️✨',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Vestido',
       },
     ],
@@ -394,165 +208,105 @@ export const PRODUCT_HEADLINES_GROUPED: Record<
     label: 'Conjuntos Casuais, Moletom e Sociais',
     items: [
       {
-        headline: 'A melhor época pra comprar look de ano novo 🌞',
-        hashtags: '#conjunto #modafeminina #achadinhos',
-        flowerSymbol: '🌞',
+        headline: 'Loucura como esse conjunto\nperfeito tá muito barato\n✨❤️',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Conjunto',
       },
       {
-        headline: 'Conjuntinho amarelo manteiga 🥺',
-        hashtags: '#conjunto #modafeminina #fyp',
-        flowerSymbol: '🥺',
+        headline: 'Loucura como esse\nConjunto é PERFEITO\n❤️✨',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Conjunto',
       },
       {
-        headline: 'Esse conjuntinho lindo está tão barato 💛',
-        hashtags: '#conjunto #modafeminina #foryou',
-        flowerSymbol: '💛',
+        headline: 'Essa conjunto tricot\nPerfeita tá muito barato\n✨❤️',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Conjunto',
       },
       {
-        headline: 'Esse conjunto está muito barato ✿',
-        hashtags: '#fyp #foryou',
-        flowerSymbol: '✿',
+        headline: 'Loucura como esse\nConjunto é PERFEITO\n✨❤️',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Conjunto',
       },
       {
-        headline: 'Na minha opinião toda garota deveria ter um um conjunto desse 🤍',
-        hashtags: '#conjunto #modafeminina #achadinhos #fyp #foryou',
-        flowerSymbol: '🤍',
+        headline: 'Essa conjunto\nperfeito tá muito barato\n✨',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Conjunto',
       },
       {
-        headline: 'na minha opinião toda garota devia ter um conjuntinho desse ✨💛',
-        hashtags: '#conjunto #modafeminina #achadinhos #fyp #tiktokshop',
-        flowerSymbol: '💛',
+        headline: 'Toda mulher devia ter um\nConjunto maravilhoso desse\n✨❤️',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Conjunto',
       },
       {
-        headline: 'pov: o conjunto já é lindo, e o preço deixo melhor ainda ✿',
-        hashtags: '#conjunto #modafeminina #tiktokshop',
-        flowerSymbol: '✿',
+        headline: 'O conjunto perfeito\nque toda mulher devia ter\n✨',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Conjunto',
       },
       {
-        headline: 'Que conjunto mais lindo 🌸',
-        hashtags: '#conjunto #modafeminina #look',
-        flowerSymbol: '🌸',
+        headline: 'Loucura o quanto esse conjunto\né PERFEITO\n✨❤️',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Conjunto',
       },
       {
-        headline: 'Tem mesmo esse pano grossinho ✨',
-        hashtags: '#conjunto #modafeminina #outfit',
-        flowerSymbol: '✨',
+        headline: 'Toda mulher arrasa com um\nconjunto lindo desse',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Conjunto',
       },
       {
-        headline: 'Esse conjunto é tão feminino 💗',
-        hashtags: '#conjunto #modafeminina #moda',
-        flowerSymbol: '💗',
+        headline: 'loucura como esse conjunto\né tão PERFEITO\n❤️✨',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Conjunto',
       },
       {
-        headline: 'Esse conjunto é tão perfeito e elegante 🤎',
-        hashtags: '#conjunto #modafeminina #girls',
-        flowerSymbol: '🤎',
+        headline: 'Surreal como esse conjuntinho\nlindo tá quase de graça\n✨❤️',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Conjunto',
       },
       {
-        headline: 'Esse conjuntinho é tão lindo 🤎',
-        hashtags: '#conjunto #modafeminina #roupasfemininas',
-        flowerSymbol: '🤎',
+        headline: 'Qualquer mulher arrasa\ncom um conjunto fitness\ndesse ✨🤍',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Conjunto',
       },
       {
-        headline: 'Esse conjunto é tão perfeito, tá tão barato 💔',
-        hashtags: '#conjunto #modafeminina #fy',
-        flowerSymbol: '💔',
+        headline: 'Loucura como esse conjunto\nÉ PERFEITO\n❤️✨',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Conjunto',
       },
       {
-        headline: 'Esse conjunto de moletom é perfeito 🤎',
-        hashtags: '#conjunto #modafeminina #paravoce',
-        flowerSymbol: '🤎',
-        sourceProduct: 'Conjunto de moletom',
-      },
-      {
-        headline: 'Esse conjunto é perfeito e tem o caimento maravilhoso ❤️',
-        hashtags: '#conjunto #achadinhos #fyp',
-        flowerSymbol: '️',
+        headline: 'Sim, toda mulher devia ter\num conjunto pft desse\n✨❤️',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Conjunto',
       },
       {
-        headline: 'Esse conjunto tem o caimento perfeito e tá no precinho 🤎',
-        hashtags: '#conjunto #achadinhos #foryou',
-        flowerSymbol: '🤎',
+        headline: 'Esse conjunto tá\nquase de graça\n✨',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Conjunto',
       },
       {
-        headline: 'Esse conjunto está muito barato 🤎',
-        hashtags: '#fyp #foryou',
-        flowerSymbol: '🤎',
+        headline: 'Loucura como esse conjunto\né PERFEITO\n❤️✨',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Conjunto',
       },
       {
-        headline: 'Na minha opinião toda garota deveria ter um um conjunto desse 💙',
-        hashtags: '#conjunto #modafeminina #achadinhos #fyp #foryou',
-        flowerSymbol: '💙',
-        sourceProduct: 'Conjunto',
-      },
-      {
-        headline: 'pov: o conjunto já é lindo, e o preço deixo melhor ainda 💔',
-        hashtags: '#achadinhos #modafeminina #conjunto',
-        flowerSymbol: '💔',
-        sourceProduct: 'Conjunto',
-      },
-      {
-        headline: 'A melhor época pra comprar look de ano novo 🌞',
-        hashtags: '#conjunto #modafeminina #fyp',
-        flowerSymbol: '🌞',
-        sourceProduct: 'Conjunto',
-      },
-      {
-        headline: 'Esse conjunto é tão feminino 💗',
-        hashtags: '#conjunto #modafeminina #foryou',
-        flowerSymbol: '💗',
-        sourceProduct: 'Conjunto',
-      },
-      {
-        headline: 'Esse conjunto é tão perfeito e elegante 🤎',
-        hashtags: '#conjunto #modafeminina #tiktokshop',
-        flowerSymbol: '🤎',
-        sourceProduct: 'Conjunto',
-      },
-      {
-        headline: 'Esse conjuntinho é tão lindo 🤎',
-        hashtags: '#conjunto #modafeminina #look',
-        flowerSymbol: '🤎',
-        sourceProduct: 'Conjunto',
-      },
-      {
-        headline: 'Esse conjunto é tão perfeito, tá tão barato 🎀',
-        hashtags: '#conjunto #modafeminina #outfit',
-        flowerSymbol: '🎀',
-        sourceProduct: 'Conjunto',
-      },
-      {
-        headline: 'Esse conjunto de moletom é perfeito 🤎',
-        hashtags: '#conjunto #modafeminina #moda',
-        flowerSymbol: '🤎',
-        sourceProduct: 'Conjunto de moletom',
-      },
-      {
-        headline: 'Esse conjunto é perfeito e tem o caimento maravilhoso ❤️',
-        hashtags: '#conjunto #modafeminina #girls',
-        flowerSymbol: '️',
-        sourceProduct: 'Conjunto',
-      },
-      {
-        headline: 'Esse conjunto tem o caimento perfeito e tá no precinho 🤎',
-        hashtags: '#conjunto #modafeminina #roupasfemininas',
-        flowerSymbol: '🤎',
+        headline: 'Loucura como esse conjunto\nÉ PERFEITO\n❤️✨🎄',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Conjunto',
       },
     ],
@@ -662,76 +416,28 @@ export const PRODUCT_HEADLINES_GROUPED: Record<
     label: 'Macacões e Macaquinhos',
     items: [
       {
-        headline: 'O macacão que ganhou meu coração todinho 🎀',
-        hashtags: '#outfit #modafeminina #achadinhos #fyp',
-        flowerSymbol: '🎀',
+        headline: 'Sim, toda mulher devia ter\num macacão pft desse\n✨❤️',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Macacão',
       },
       {
-        headline: 'Esse macacão flare perfeito tá dando o que falar ✿',
-        hashtags: '#fyp #foryou #gym',
-        flowerSymbol: '✿',
-        sourceProduct: 'Macacão flare',
-      },
-      {
-        headline: 'Esse macaquinho lindo está dando o que falar ✿',
-        hashtags: '#fy #modafitness #roupasdeacademia #fyp #gym',
-        flowerSymbol: '✿',
-        sourceProduct: 'Macaquinho',
-      },
-      {
-        headline: 'Esse macaquinho lindo está muito barato ✨💗',
-        hashtags: '#fyp #foryou #gym',
-        flowerSymbol: '💗',
-        sourceProduct: 'Macaquinho',
-      },
-      {
-        headline: 'Esse macaquinho lindo está tão barato ✨',
-        hashtags: '#modafitness #roupasdeacademia #gym',
-        flowerSymbol: '✨',
-        sourceProduct: 'Macaquinho',
-      },
-      {
-        headline: 'Esse macaquinho vido está tão barato 🖤',
-        hashtags: '#lookfitness #modafitness #roupasdeacademia',
-        flowerSymbol: '🖤',
-        sourceProduct: 'Macaquinho',
-      },
-      {
-        headline: 'O macaquinho PERFEITO existe 💋',
-        hashtags: '#macaquinho #modafeminina #academia',
-        flowerSymbol: '💋',
-        sourceProduct: 'Macaquinho',
-      },
-      {
-        headline: 'Um macaquinho lindo desses por esse preço 💙',
-        hashtags: '#macaquinho #lookfitness #modafitness',
-        flowerSymbol: '💙',
-        sourceProduct: 'Macaquinho',
-      },
-      {
-        headline: 'O macacão que ganhou meu coração todinho 🌸',
-        hashtags: '#outfit #modafeminina #achadinhos #fyp',
-        flowerSymbol: '🌸',
+        headline: 'Apaixonada nesse macacão longo\ntoda mulher devia ter\n✨🤎',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Macacão',
       },
       {
-        headline: 'Esse macaquinho lindo está tão barato ✨',
-        hashtags: '#fyp #foryou #gym',
-        flowerSymbol: '✨',
-        sourceProduct: 'Macaquinho',
+        headline: 'Loucura como esse macacão\nPerfeito tá quase de graça\n✨❤️',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
+        sourceProduct: 'Macacão',
       },
       {
-        headline: 'Esse Macaquinho Lindo Está muito Barato 🎀',
-        hashtags: '#macaquinho #lookfitness #modafitness',
-        flowerSymbol: '🎀',
-        sourceProduct: 'Macaquinho',
-      },
-      {
-        headline: 'Um macaquinho lindo desses por esse preço 💙',
-        hashtags: '#lookfitness #modafitness #roupasdeacademia',
-        flowerSymbol: '💙',
-        sourceProduct: 'Macaquinho',
+        headline: 'Esse macacão perfeito\ntoda mulher devia ter\n✨',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
+        sourceProduct: 'Macacão',
       },
     ],
   },
@@ -786,40 +492,124 @@ export const PRODUCT_HEADLINES_GROUPED: Record<
     label: 'Calças (Linho, Jeans, Pantalona, Alfaiataria e Meia-Calça)',
     items: [
       {
-        headline: 'Chocada que essa calça tá quase de graça 🥺',
-        hashtags: '#calçafeminina #modafeminina #achadinhos #fyp #foryou',
-        flowerSymbol: '🥺',
+        headline: 'Essa calça folgada é tão... 🫦✨',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Calça',
       },
       {
-        headline: 'Agora eu entendi pq essa calça tá sempre esgotada 🥺🤍',
-        hashtags: '#calçadelinho #linho #calçafeminina',
-        flowerSymbol: '🤍',
-        sourceProduct: 'Calça de linho',
+        headline: 'Loucura como essa\ncalça jeans é perfeita\n🌸🏵️💮',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
+        sourceProduct: 'Calça',
       },
       {
-        headline: 'Agora sim entendi o motivo dessa calça sempre tá esgotada 🤍',
-        hashtags: '#calçadelinho #linho #modafeminina',
-        flowerSymbol: '🤍',
-        sourceProduct: 'Calça de linho',
+        headline: 'Loucura como essa calça\nFolgada é PERFEITA\n✨❤️',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
+        sourceProduct: 'Calça',
       },
       {
-        headline: 'Meia calça de oncinha das it girls >>> ✿',
-        hashtags: '#modafeminina #achadinhos #fyp #foryou #tiktokshop',
-        flowerSymbol: '✿',
-        sourceProduct: 'Meia-calça',
+        headline: 'Loucura como essa calça\né PERFEITA\n❤️✨',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
+        sourceProduct: 'Calça',
       },
       {
-        headline: 'Agora sim entendi o motivo dessa calça sempre tá esgotada 🤍',
-        hashtags: '#calçadelinho #linho #calçafeminina',
-        flowerSymbol: '🤍',
-        sourceProduct: 'Calça de linho',
+        headline: 'Sério, essa calça aqui\ntá PERFEITA\n✨🥰',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
+        sourceProduct: 'Calça',
       },
       {
-        headline: 'Agora eu entendi pq essa calça tá sempre esgotada 🥺🤍',
-        hashtags: '#calçadelinho #linho #modafeminina',
-        flowerSymbol: '🤍',
-        sourceProduct: 'Calça de linho',
+        headline: 'Toda mulher merece uma\nCalça perfeita dessa\n✨✨',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
+        sourceProduct: 'Calça',
+      },
+      {
+        headline: 'Essa calça perfeita\ntá Quase de graça 🫦',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
+        sourceProduct: 'Calça',
+      },
+      {
+        headline: 'Loucura como essa calça\nPERFEITA tá tão barata\n❤️✨',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
+        sourceProduct: 'Calça',
+      },
+      {
+        headline: 'Loucura como essa calça\nÉ Tão PERFEITA\n❤️✨',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
+        sourceProduct: 'Calça',
+      },
+      {
+        headline: 'Toda mulher arrasa\ncom uma calça dessa\n🌸🏵️💮',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
+        sourceProduct: 'Calça',
+      },
+      {
+        headline: 'Loucura como essa calça\nÉ PERFEITA\n✨❤️',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
+        sourceProduct: 'Calça',
+      },
+      {
+        headline: 'Toda mulher devia ter\nUma calça dessa 🤍',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
+        sourceProduct: 'Calça',
+      },
+      {
+        headline: 'Toda mulher tem que ter\numa calça linda dessa\n❤️✨',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
+        sourceProduct: 'Calça',
+      },
+      {
+        headline: 'Essa calça perfeita\ntá quase de graça\n❤️✨',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
+        sourceProduct: 'Calça',
+      },
+      {
+        headline: 'Essa calça de alfaiataria é\nPERFEITA 🤍',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
+        sourceProduct: 'Calça',
+      },
+      {
+        headline: 'A calça perfeita\nque toda mulher devia ter\n✨❤️',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
+        sourceProduct: 'Calça',
+      },
+      {
+        headline: 'Toda mulher arrasa com uma\nCalça jeans perfeita\ndesse\n✨✨',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
+        sourceProduct: 'Calça',
+      },
+      {
+        headline: 'A calça que faz qualquer\nmulher arassar\n❤️✨',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
+        sourceProduct: 'Calça',
+      },
+      {
+        headline: 'Essa calça de alfaiataria\nperfeita tá tão\nbarata\n✨',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
+        sourceProduct: 'Calça',
+      },
+      {
+        headline: 'Essa calça folgada\né tão... 🫦',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
+        sourceProduct: 'Calça',
       },
     ],
   },
@@ -827,28 +617,40 @@ export const PRODUCT_HEADLINES_GROUPED: Record<
     label: 'Saias (Midi, Mini, Evasê e Saia Pinterest)',
     items: [
       {
-        headline: 'A saia vibe Pinterest e o preço tá surreal ✿',
-        hashtags: '#saia #modafeminina #achadinhos',
-        flowerSymbol: '✿',
+        headline: 'Surreal quanto essa\nSaia longa é linda\n✨',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Saia',
       },
       {
-        headline: 'Sim, essa saia maravilhosa custa menos de 35$ 🌸',
-        hashtags: '#modafeminina #saia #achadinhos #roupasfemininas',
-        flowerSymbol: '🌸',
+        headline: 'Toda mulher devia ter uma\nsaia perfeita dessa 🫦',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Saia',
       },
       {
-        headline: 'Ninguém acredita no valor dessa saia tão >>> 💋💋💋',
-        hashtags: '#modafeminina #corset #achadinhos',
-        flowerSymbol: '💋',
+        headline: 'Loucura como essa saia\nperfeita tá muito barata\n✨❤️',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Saia',
       },
       {
-        headline: 'Tô amando usar essa saída de praia shorts saia 🌞',
-        hashtags: '#saidadepraia #shortsaia #modafeminina #achadinhos',
-        flowerSymbol: '🌞',
-        sourceProduct: 'Short saia / saída de praia',
+        headline: 'A saia longa perfeita que\nnão pode faltar no guarda roupa\n❤️✨',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
+        sourceProduct: 'Saia',
+      },
+      {
+        headline: 'Loucura como essa saia\nÉ PERFEITAA\n❤️✨🎄',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
+        sourceProduct: 'Saia',
+      },
+      {
+        headline: 'Loucura como essa saia\né ✨ PERFEITA ✨\n❤️',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
+        sourceProduct: 'Saia',
       },
     ],
   },
@@ -856,106 +658,16 @@ export const PRODUCT_HEADLINES_GROUPED: Record<
     label: 'Blusas, Batas, Camisetas, Croppeds e Tops',
     items: [
       {
-        headline: 'Blusinha BBB boa, bonita e barata 💋',
-        hashtags: '#blusa #bata #modafeminina #achadinhos #amarelomanteiga',
-        flowerSymbol: '💋',
-        sourceProduct: 'Blusa / bata / body',
-      },
-      {
-        headline: 'Essa blusa linda está tão barata ❤',
-        hashtags: '#blusa #bata #body #amarelomanteiga',
-        flowerSymbol: '❤',
-        sourceProduct: 'Blusa / bata / body',
-      },
-      {
-        headline: 'Esse body custou menos de $25 😍',
-        hashtags: '#blusa #bata #body #modafeminina',
-        flowerSymbol: '😍',
-        sourceProduct: 'Blusa / bata / body',
-      },
-      {
-        headline: 'Essa blusinha é simplesmente perfeita 💗',
-        hashtags: '#blusa #fyp #foryou #modafeminina #achadinhos',
-        flowerSymbol: '💗',
-        sourceProduct: 'Blusinha',
-      },
-      {
-        headline: 'Essa blusinha perfeita tá tão baratinha 💜',
-        hashtags: '#blusa #fyp #foryou',
-        flowerSymbol: '💜',
-        sourceProduct: 'Blusinha',
-      },
-      {
-        headline: 'Pov: hoje o treino foi No estilo WAKE WAKE 🤎',
-        hashtags: '#camisa #modafeminina #achadinhos',
-        flowerSymbol: '🤎',
+        headline: 'Toda mulher arrasa\ncom uma camiseta dessa\n❤️✨',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
         sourceProduct: 'Camiseta',
       },
       {
-        headline: 'SEM ACREDITAR na beleza desse CROPPED e o quanto tá custando ✨🤍',
-        hashtags: '#cropped #blusarenda #modafeminina #achadinhos',
-        flowerSymbol: '🤍',
-        sourceProduct: 'Cropped',
-      },
-      {
-        headline: 'Regata de renda é perfeita 🤍',
-        hashtags: '#cropped #modafeminina #achadinhos',
-        flowerSymbol: '🤍',
-        sourceProduct: 'Cropped de renda',
-      },
-      {
-        headline: 'Essa blusa de tricô é tão quentinha 🥺',
-        hashtags: '#blusatricot #modafeminina #achadinhos',
-        flowerSymbol: '🥺',
-        sourceProduct: 'Blusa de tricô',
-      },
-      {
-        headline: 'Obcecada nesse cropped de renda 🤍',
-        hashtags: '#cropped #blusarenda #modafeminina #fyp',
-        flowerSymbol: '🤍',
-        sourceProduct: 'Cropped de renda',
-      },
-      {
-        headline: 'O caimento desse cropped é surreal! ✿',
-        hashtags: '#cropped #blusarenda #modafeminina',
-        flowerSymbol: '✿',
-        sourceProduct: 'Cropped',
-      },
-      {
-        headline: 'Essa blusinha perfeita tá tão baratinha 😚',
-        hashtags: '#blusa #fyp #foryou',
-        flowerSymbol: '😚',
-        sourceProduct: 'Blusinha',
-      },
-      {
-        headline: 'Essa blusa linda está tão barata ✿',
-        hashtags: '#blusa #bata #body #amarelomanteiga',
-        flowerSymbol: '✿',
-        sourceProduct: 'Blusa / bata / body',
-      },
-      {
-        headline: 'Esse body custou menos de $25 🌸',
-        hashtags: '#blusa #bata #body #modafeminina',
-        flowerSymbol: '🌸',
-        sourceProduct: 'Blusa / bata / body',
-      },
-      {
-        headline: 'Essa blusa de tricô é tão quentinha 💋',
-        hashtags: '#blusatricot #modafeminina #achadinhos',
-        flowerSymbol: '💋',
-        sourceProduct: 'Blusa de tricô',
-      },
-      {
-        headline: 'Obcecada nesse cropped de renda ❤',
-        hashtags: '#cropped #blusarenda #modafeminina #fyp',
-        flowerSymbol: '❤',
-        sourceProduct: 'Cropped de renda',
-      },
-      {
-        headline: 'O caimento desse cropped é surreal! 😍',
-        hashtags: '#cropped #blusarenda #modafeminina',
-        flowerSymbol: '😍',
-        sourceProduct: 'Cropped',
+        headline: 'Surreal como essa\nblusa de renda\né perfeita\n✨',
+        hashtags: '#modafeminina #achadinhos',
+        flowerSymbol: '',
+        sourceProduct: 'Blusa',
       },
     ],
   },
@@ -1414,8 +1126,11 @@ export function detectProductCategory(text: string): ProductCategoryGroup {
   if (/\b(saia|saias|minissaia)\b/.test(norm) && !norm.includes('saida de praia')) {
     return 'saia';
   }
-  // 8. Macaquinho / Macacão
-  if (/\b(macaquinho|macaquinhos|macacao|macacoes|flare|pantacourt)\b/.test(norm)) {
+  // 8. Macaquinho / Macacão (apenas se não for calça)
+  if (
+    (/\b(macaquinho|macaquinhos|macacao|macacoes)\b/.test(norm) ||
+      (!/\b(calca|calcas)\b/.test(norm) && /\b(flare|pantacourt)\b/.test(norm)))
+  ) {
     return 'macaquinho_macacao';
   }
   // 9. Fitness
@@ -1474,7 +1189,6 @@ export function resolveHeadlineAndHashtags(params: {
   const category = detectProductCategory(combined);
 
   let chosenHeadline = '';
-  let chosenHashtags = '';
   let flower = '❀';
 
   if (category !== 'outro' && PRODUCT_HEADLINES_GROUPED[category]) {
@@ -1497,17 +1211,7 @@ export function resolveHeadlineAndHashtags(params: {
     const chosen = pool[randomIndex];
 
     chosenHeadline = chosen.headline;
-    chosenHashtags = chosen.hashtags;
-    flower = chosen.flowerSymbol || '❀';
-
-    // Se as hashtags do item sorteado forem idênticas às atuais e houver outras hashtags no grupo,
-    // seleciona um conjunto alternativo de hashtags de outro item da mesma categoria
-    if (params.excludeHashtags && chosenHashtags.trim() === params.excludeHashtags.trim() && items.length > 1) {
-      const altItem = items.find((it) => it.hashtags.trim() !== params.excludeHashtags?.trim());
-      if (altItem) {
-        chosenHashtags = altItem.hashtags;
-      }
-    }
+    flower = chosen.flowerSymbol ?? '';
   } else {
     // Produto não cadastrado em nenhuma das categorias conhecidas (ex: bolsas, sapatos, acessórios)
     const genericHeadlines = [
@@ -1524,59 +1228,17 @@ export function resolveHeadlineAndHashtags(params: {
       if (filtered.length > 0) pool = filtered;
     }
     chosenHeadline = pool[Math.floor(Math.random() * pool.length)];
-    chosenHashtags = '#fyp #foryou #achadinhos #tiktokshop #produtosvirais';
     flower = '✨';
   }
 
-  // Garantir a presença do símbolo floral no final da headline se ausente
-  let finalHeadline = chosenHeadline.trim();
-  if (!finalHeadline.includes('❀') && !finalHeadline.includes('✨') && !finalHeadline.includes('🌸') && !finalHeadline.includes('✿') && !finalHeadline.includes('💋') && !finalHeadline.includes('💛') && !finalHeadline.includes('💜') && !finalHeadline.includes('💗')) {
-    finalHeadline = `${finalHeadline} ${flower}`;
-  }
+  // Garante o símbolo floral apenas para itens legados que definem flowerSymbol e não possuem emoji
+  const finalHeadline = appendLegacyFlowerIfNeeded(chosenHeadline, flower);
 
-  // Tratamento de hashtags
-  let rawHashtags = (chosenHashtags || '').trim();
-
-  // Ajustes de influenciador masculino vs feminino
-  if (params.influencer === 'Homem') {
-    rawHashtags = rawHashtags
-      .replace(/#modafeminina/gi, '#modamasculina')
-      .replace(/#vestidolongomulher/gi, '#modamasculina')
-      .replace(/#mulher/gi, '#homem')
-      .replace(/#lookfeminino/gi, '#lookmasculino')
-      .replace(/#calçafeminina/gi, '#calçamasculina')
-      .replace(/#pijamafeminino/gi, '#pijamamasculino')
-      .replace(/#roupasfemininas/gi, '#roupasmasculinas');
-    if (!rawHashtags.includes('#modamasculina')) {
-      rawHashtags = `${rawHashtags} #modamasculina`;
-    }
-  }
-
-  // Ajuste de Plus Size
-  if (params.bodyType === 'plus_size') {
-    if (!rawHashtags.includes('#plussize')) {
-      rawHashtags = `${rawHashtags} #plussize #modaplussize`;
-    }
-  }
-
-  // Higieniza para garantir que são apenas hashtags (#tag) separadas por espaço
-  // O TikTok aceita e recomenda até 5 hashtags por publicação para máximo alcance
-  const tagList = Array.from(new Set(rawHashtags.split(/\s+/).filter((t) => t.startsWith('#'))));
-
-  // Se tiver menos de 5 hashtags e pertencer a uma categoria, completa com outras hashtags reais da mesma categoria até 5
-  if (tagList.length < 5 && category !== 'outro' && PRODUCT_HEADLINES_GROUPED[category]) {
-    const allCatTags = PRODUCT_HEADLINES_GROUPED[category].items
-      .flatMap((it) => it.hashtags.split(/\s+/))
-      .filter((t) => t.startsWith('#'));
-    for (const extraTag of allCatTags) {
-      if (tagList.length >= 5) break;
-      if (!tagList.includes(extraTag)) {
-        tagList.push(extraTag);
-      }
-    }
-  }
-
-  const tagsOnly = tagList.slice(0, 5).join(' ');
+  // Regra de Hashtags: SEMPRE apenas 2 hashtags por produto.
+  // - Mulher (padrão): preferencialmente "#modafeminina #achadinhos"
+  // - Homem: "#modamasculina #achadinhos"
+  const primaryHashtag = params.influencer === 'Homem' ? '#modamasculina' : '#modafeminina';
+  const tagsOnly = `${primaryHashtag} #achadinhos`;
 
   // Busca uma entrada correspondente no banco legado para manter retrocompatibilidade
   const matchedEntry = ANA_MARIA_BANK.find((e) => e.category === category) || ANA_MARIA_BANK[0];
@@ -1587,6 +1249,16 @@ export function resolveHeadlineAndHashtags(params: {
     matchedEntry,
     detectedCategory: category,
   };
+}
+
+/**
+ * Anexa símbolo floral apenas para itens legados que definem `flowerSymbol` não vazio e não possuem emoji.
+ */
+function appendLegacyFlowerIfNeeded(text: string, flower = ''): string {
+  const cleaned = text.trim();
+  if (!flower) return cleaned;
+  const hasAnyEmoji = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}❤✨🌸✿❀💋]/u.test(cleaned);
+  return hasAnyEmoji ? cleaned : `${cleaned} ${flower}`.trim();
 }
 
 /**
@@ -1605,30 +1277,10 @@ export function resolveMultipleDistinctHeadlines(params: {
   const category = detectProductCategory(combined);
   const targetCount = Math.max(1, params.count || 1);
 
-  const formatWithFlower = (text: string, fallbackFlower = '❀'): string => {
-    let h = text.trim();
-    if (
-      !h.includes('❀') &&
-      !h.includes('✨') &&
-      !h.includes('🌸') &&
-      !h.includes('✿') &&
-      !h.includes('💋') &&
-      !h.includes('💛') &&
-      !h.includes('💜') &&
-      !h.includes('💗') &&
-      !h.includes('🎀') &&
-      !h.includes('🖤') &&
-      !h.includes('🤍')
-    ) {
-      h = `${h} ${fallbackFlower}`;
-    }
-    return h.trim();
-  };
-
   let rawCandidates: string[] = [];
   if (category !== 'outro' && PRODUCT_HEADLINES_GROUPED[category]) {
     rawCandidates = PRODUCT_HEADLINES_GROUPED[category].items.map((it) =>
-      formatWithFlower(it.headline, it.flowerSymbol || '❀')
+      appendLegacyFlowerIfNeeded(it.headline, it.flowerSymbol ?? '')
     );
   } else {
     rawCandidates = [
