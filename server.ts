@@ -26,7 +26,7 @@ import {
   OPENAI_AUDIT_MODEL,
 } from './src/config/openaiModels';
 import { AIProfile } from './src/config/aiProfiles';
-import { analyzeAnaMariaProductInfo } from './src/anamaria/anaMariaProductInfo';
+import { analyzeAnaMariaProductInfo, normalizeIdentifiedGarmentName } from './src/anamaria/anaMariaProductInfo';
 import { buildAniaPlanningSystemPrompt } from './src/ania/aniaPrompts';
 import { buildProdutos2PlanningSystemPrompt } from './src/produtos2/produtos2Prompts';
 import {
@@ -1674,12 +1674,12 @@ function simplifyToSingleColorWord(raw: string): string {
 
 app.post('/api/anamaria-compact-prompt', async (req, res) => {
   try {
-    const { videoPrompt, productName, productInfo = '', masterShortName, aiProfile } = req.body || {};
+    const { videoPrompt, productName, productInfo = '', fabricType = '', masterShortName, aiProfile } = req.body || {};
     const original = (videoPrompt || '').trim();
     if (!original) {
       return res.status(400).json({ success: false, error: 'Prompt original não fornecido.' });
     }
-    const fabricSpec = analyzeAnaMariaProductInfo(productInfo);
+    const fabricSpec = analyzeAnaMariaProductInfo(productInfo, fabricType);
 
     const enforceMaxChars2450 = (text: string): string => {
       const clean = text.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
@@ -1762,10 +1762,11 @@ Condense este prompt mantendo 80% do foco e do espaço na preservação fiel de 
 
 app.post('/api/anamaria-inspect-dress', async (req, res) => {
   try {
-    const { photoBase64, productName, productInfo = '' } = req.body as {
+    const { photoBase64, productName, productInfo = '', fabricType = '' } = req.body as {
       photoBase64?: string;
       productName?: string;
       productInfo?: string;
+      fabricType?: string;
     };
     if (!photoBase64) {
       return res.json({
@@ -1781,8 +1782,8 @@ app.post('/api/anamaria-inspect-dress', async (req, res) => {
       ? photoBase64
       : `data:image/jpeg;base64,${photoBase64}`;
 
-    const infoSpec = analyzeAnaMariaProductInfo(productInfo);
-    const dressCacheKey = `dress:${productName || ''}:${infoSpec.cleanedText.slice(0, 120)}:${cleanUrl.slice(0, 64)}:${cleanUrl.slice(-64)}:${cleanUrl.length}`;
+    const infoSpec = analyzeAnaMariaProductInfo(productInfo, fabricType);
+    const dressCacheKey = `dress:${productName || ''}:${infoSpec.cleanedText.slice(0, 120)}:${fabricType.slice(0, 60)}:${cleanUrl.slice(0, 64)}:${cleanUrl.slice(-64)}:${cleanUrl.length}`;
     if (!(globalThis as any).__anaMariaVisionCache) {
       (globalThis as any).__anaMariaVisionCache = new Map<string, any>();
     }
@@ -1976,7 +1977,7 @@ CATEGORIAS PRIORITÁRIAS OBRIGATÓRIAS (USE EXATAMENTE ESTES TERMOS SE CORRESPON
 - Calças estruturadas / jeans / sociais retas: "Calça Jeans" ou "Calça Social".
 - Saias: se for de couro ou courino use "Saia Couro"; demais saias use "Saia".
 - Academia / Fitness / Cinta: "Roupa de Academia", "Conjunto de Academia" ou "Cinta Modeladora".
-- Vestidos / Macacões / Conjuntos: "Vestido", "Conjunto" ou "Macacão".
+- Vestidos / Macacões / Conjuntos: "Vestido", "Vestido Longo", "Vestido Midi", "Vestido Curto", "Conjunto" ou "Macacão".
 
 DISTINÇÃO CRÍTICA ENTRE CONJUNTO E MACACÃO / MACAQUINHO (LEI INEGOCIÁVEL):
 - CONJUNTO (2 Peças Independentes):
@@ -1991,7 +1992,8 @@ DEMAIS CATEGORIAS DE MODA:
 - Baby Doll / Pijama: "Camisola Baby Doll", "Pijama".
 
 REGRAS FINAIS:
-1. Responda APENAS o nome comercial específico da peça (1 a 3 palavras, iniciais maiúsculas), sem ponto final, sem aspas e sem explicações.`;
+1. Responda APENAS o nome comercial específico da peça (1 a 3 palavras, iniciais maiúsculas), sem ponto final, sem aspas e sem explicações.
+2. CORREÇÃO ORTOGRÁFICA OBRIGATÓRIA EM PORTUGUÊS: Se as Informações do Produto ou sua leitura inicial contiverem erros de digitação ou português (ex.: "Vestido Londo" -> "Vestido Longo", "Calsa" -> "Calça", "Conjuto" -> "Conjunto", "Saia Mid" -> "Saia Midi", "Macaquino" -> "Macaquinho"), CORRIJA automaticamente a ortografia em português na sua resposta final.`;
 
       const sanitizeIdentifiedGarment = (raw: string): string => {
         let clean = raw
@@ -2004,7 +2006,7 @@ REGRAS FINAIS:
         } else if (/^moda\s*íntima$/i.test(clean) || /^roupa$/i.test(clean) || /^vestuário$/i.test(clean)) {
           clean = 'Camisola Baby Doll';
         }
-        return clean;
+        return normalizeIdentifiedGarmentName(clean);
       };
 
       // 1. Tenta OpenAI se configurado (usando gpt-4o-mini + detail: 'low' para gastar ~85 tokens em vez de ~1100 tokens)
@@ -2080,11 +2082,11 @@ REGRAS FINAIS:
 
       // 3. Fallback inteligente via Informações do Produto ou nome do arquivo caso APIs de visão falhem
       if (productInfoSpec.detectedGarmentHint) {
-        return res.json({ success: true, garmentName: productInfoSpec.detectedGarmentHint });
+        return res.json({ success: true, garmentName: normalizeIdentifiedGarmentName(productInfoSpec.detectedGarmentHint) });
       }
       const fallbackFromFilename = extractGarmentNameFromFileName(fileName);
       if (fallbackFromFilename) {
-        return res.json({ success: true, garmentName: fallbackFromFilename, fallback: true });
+        return res.json({ success: true, garmentName: normalizeIdentifiedGarmentName(fallbackFromFilename), fallback: true });
       }
 
       return res.json({ success: false, error: 'Não foi possível identificar a peça automaticamente' });
@@ -2239,6 +2241,7 @@ const SCENARIO_RELIGHT_INTEGRATION_DIRECTIVE =
 async function generateImageWithKling(params: {
   prompt: string;
   productInfo?: string;
+  fabricType?: string;
   imageReferenceBase64?: string;
   modelReferenceBase64?: string;
   referenceImages?: (string | undefined)[];
@@ -2369,7 +2372,7 @@ async function generateImageWithKling(params: {
     headerKling = `${englishFidelityHeader}${IMAGE_REFERENCE_FIDELITY_HEADER}`;
   }
 
-  const fabricSpecKling = analyzeAnaMariaProductInfo(params.productInfo);
+  const fabricSpecKling = analyzeAnaMariaProductInfo(params.productInfo, params.fabricType);
   if (fabricSpecKling.hasInfo) {
     headerKling = `${fabricSpecKling.compactLineEn}\n${headerKling}`;
   }
@@ -2647,6 +2650,7 @@ function getEffectiveScenarioBase64(
 async function generateImageWithSeedream(params: {
   prompt: string;
   productInfo?: string;
+  fabricType?: string;
   imageReferenceBase64?: string;
   modelReferenceBase64?: string;
   referenceImages?: (string | undefined)[];
@@ -2808,7 +2812,7 @@ async function generateImageWithSeedream(params: {
     headerSeedream = `${IMAGE_REFERENCE_FIDELITY_HEADER}\n\n`;
   }
 
-  const fabricSpecSeedream = analyzeAnaMariaProductInfo(params.productInfo);
+  const fabricSpecSeedream = analyzeAnaMariaProductInfo(params.productInfo, params.fabricType);
   const fabricBlockSeedream = fabricSpecSeedream.hasInfo
     ? `${fabricSpecSeedream.compactLineEn}\n${fabricSpecSeedream.promptBlockPt}\n\n`
     : '';
@@ -2981,6 +2985,7 @@ async function prepareFalImageUrls(rawImages: (string | undefined)[]): Promise<s
 async function generateImageWithKlingO3Fal(params: {
   prompt: string;
   productInfo?: string;
+  fabricType?: string;
   imageReferenceBase64?: string;
   modelReferenceBase64?: string;
   referenceImages?: (string | undefined)[];
@@ -3073,7 +3078,7 @@ async function generateImageWithKlingO3Fal(params: {
       : 'STRICT NO-FACE / FACELESS MIRROR SELFIE LOCK (MODO SEM ROSTO): It is strictly FORBIDDEN to show or invent eyes, nose, forehead, or an uncovered face! Keep the exact faceless framing of <<<image_1>>> (cropped strictly at the base of the chin from chin-down to the feet, or face 100% covered behind the smartphone exactly as in <<<image_1>>>).';
     const lightWrapRuleEn =
       'SINGLE-EXPOSURE NATIVE PHOTOGRAPHY & 3D FLOOR GROUNDING: Render as a single real-world photograph captured inside the scenario room (never a cutout or pasted montage). Align 3D perspective, camera horizon, and body scale to the floor plane. The scenario room dictates 100% of lighting, Kelvin color temperature, and shadows; relight the woman and garment to match the room with dark sole/heel contact occlusion, soft directional floor shadows, optical edge light-wrap, and ZERO white outline or halo. ';
-    const fabricSpecO3 = analyzeAnaMariaProductInfo(params.productInfo);
+    const fabricSpecO3 = analyzeAnaMariaProductInfo(params.productInfo, params.fabricType);
     const fabricPrefixO3 = fabricSpecO3.hasInfo ? `${fabricSpecO3.compactLineEn}\n` : '';
     const headerKlingO3 = isModelScenarioO3
       ? `<<<image_1>>> is the PRIMARY MODEL AND ROOM BASE: The generated image MUST feature 100% the exact same woman, same body, curves, waist, hips, hair, skin tone, exact same pose and framing from <<<image_1>>>. ${faceRuleO3} Preserve 100% the exact same room and background setting from <<<image_1>>>.${flashRuleO3} ` +
@@ -3084,13 +3089,14 @@ async function generateImageWithKlingO3Fal(params: {
         `<<<image_3>>> is the REAL SCENARIO ROOM: Photograph her physically standing on the floor inside this exact room. ${lightWrapRuleEn}${dressRuleO3} ${footwearRuleO3} Crystal-clear optical focus, 8k high definition, ultra-sharp smartphone photo, no blur. `;
     promptKlingO3 = compactPromptToLimit(alignedPromptO3, 2450, `${fabricPrefixO3}${headerKlingO3}`);
   } else if (params.isAnaMariaMode) {
+    const fabricSpecO3Direct = analyzeAnaMariaProductInfo(params.productInfo, params.fabricType);
     promptKlingO3 = compactPromptToLimit(
       params.prompt,
       2450,
-      `${analyzeAnaMariaProductInfo(params.productInfo).compactLineEn ? `${analyzeAnaMariaProductInfo(params.productInfo).compactLineEn}\n` : ''}${SCENARIO_RELIGHT_INTEGRATION_DIRECTIVE}\n`
+      `${fabricSpecO3Direct.compactLineEn ? `${fabricSpecO3Direct.compactLineEn}\n` : ''}${SCENARIO_RELIGHT_INTEGRATION_DIRECTIVE}\n`
     );
-  } else if (params.productInfo) {
-    const fabricSpecO3Fallback = analyzeAnaMariaProductInfo(params.productInfo);
+  } else if (params.productInfo || params.fabricType) {
+    const fabricSpecO3Fallback = analyzeAnaMariaProductInfo(params.productInfo, params.fabricType);
     if (fabricSpecO3Fallback.hasInfo) {
       promptKlingO3 = compactPromptToLimit(promptKlingO3, 2450, `${fabricSpecO3Fallback.compactLineEn}\n`);
     }
@@ -3272,6 +3278,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
       variationName = 'Variação 1',
       productType = 'produto comercial',
       productInfo = '',
+      fabricType = '',
       targetAngle = 'front',
       location,
       actionDescription,
@@ -3418,6 +3425,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
       const klingResult = await generateImageWithKling({
         prompt: effectivePrompt,
         productInfo,
+        fabricType,
         imageReferenceBase64: effectiveModelReferenceBase64 || productPhotoBase64 || effectiveScenarioPhotoBase64,
         modelReferenceBase64: effectiveModelReferenceBase64,
         referenceImages: klingRefs,
@@ -3438,6 +3446,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
       const klingO3Result = await generateImageWithKlingO3Fal({
         prompt: effectivePrompt,
         productInfo,
+        fabricType,
         imageReferenceBase64: effectiveModelReferenceBase64 || productPhotoBase64 || effectiveScenarioPhotoBase64,
         modelReferenceBase64: effectiveModelReferenceBase64,
         referenceImages: klingRefs,
@@ -3454,6 +3463,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
       const seedreamResult = await generateImageWithSeedream({
         prompt: effectivePrompt,
         productInfo,
+        fabricType,
         imageReferenceBase64: productPhotoBase64 || effectiveModelReferenceBase64 || effectiveScenarioPhotoBase64,
         modelReferenceBase64: effectiveModelReferenceBase64,
         referenceImages: orderedRefs,
@@ -3481,6 +3491,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
         const result = await openAIProvider.generateSceneImage({
           prompt: effectivePrompt,
           productInfo,
+          fabricType,
           productPhotoBase64,
           productPhotosBase64,
           modelReferenceBase64: effectiveModelReferenceBase64,
@@ -3803,6 +3814,7 @@ app.post('/api/audit-image-fidelity', async (req, res) => {
       variationName = 'VariaÃ§Ã£o 1',
       role = 'Imagem de ReferÃªncia',
       productInfo = '',
+      fabricType = '',
     } = req.body;
 
     if (!generatedImageBase64) {
@@ -3818,6 +3830,7 @@ app.post('/api/audit-image-fidelity', async (req, res) => {
           variationName,
           role,
           productInfo,
+          fabricType,
         });
         if (result && result.success) {
           return res.json(result);
@@ -3877,7 +3890,7 @@ app.post('/api/audit-image-fidelity', async (req, res) => {
       });
     }
 
-    const fabricSpec = analyzeAnaMariaProductInfo(productInfo);
+    const fabricSpec = analyzeAnaMariaProductInfo(productInfo, fabricType);
     const fabricAuditNote = fabricSpec.hasInfo
       ? `\n\nESPECIFICAÃ‡ÃƒO DE TECIDO INFORMADA PELO USUÃ RIO: "${fabricSpec.cleanedText.slice(0, 260)}" (Tecido: ${fabricSpec.fabricSummaryLabel}). Considere que a foto de referÃªncia pode estar em baixa resoluÃ§Ã£o/embaÃ§ada; se a imagem gerada retratar fielmente e com nitidez a textura real de ${fabricSpec.fabricSummaryLabel} mantendo cor e modelagem da referÃªncia, APROVE sem penalizar pela nitidez extra do tecido. Caso o tecido esteja claramente incompatÃ­vel, reporte para correÃ§Ã£o.`
       : '';

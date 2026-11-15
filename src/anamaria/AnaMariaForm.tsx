@@ -36,7 +36,9 @@ import {
 import { resolveAutoShoeOptionByProductName } from './anaMariaPrompts';
 import {
   analyzeAnaMariaProductInfo,
+  extractFabricFieldSuggestion,
   extractGarmentFromProductInfo,
+  normalizeIdentifiedGarmentName,
 } from './anaMariaProductInfo';
 import { compressAndResizeImage } from '../ania/aniaLibrary';
 import { ProgressBar } from '../components/ProgressBar';
@@ -108,7 +110,9 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [isIdentifyingProduct, setIsIdentifyingProduct] = useState(false);
   const [autoIdentifiedBadge, setAutoIdentifiedBadge] = useState(false);
+  const [autoIdentifiedFabricBadge, setAutoIdentifiedFabricBadge] = useState(false);
   const hasUserManuallyEditedNameRef = useRef<boolean>(false);
+  const hasUserManuallyEditedFabricRef = useRef<boolean>(false);
   const lastUploadedFileNameRef = useRef<string>('');
 
   const [isRecordingMic, setIsRecordingMic] = useState(false);
@@ -118,6 +122,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const productInfoRef = useRef<string>(form.productInfo || '');
   const lastAutoIdentifySignatureRef = useRef<string>('');
   const productNameSectionRef = useRef<HTMLDivElement>(null);
+  const fabricTypeSectionRef = useRef<HTMLDivElement>(null);
   const shoeSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -442,6 +447,9 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       if (!resolvedName && targetFileName) {
         resolvedName = extractGarmentFromFileName(targetFileName);
       }
+      if (resolvedName) {
+        resolvedName = normalizeIdentifiedGarmentName(resolvedName);
+      }
 
       if (resolvedName) {
         onChange((prev) => {
@@ -470,7 +478,10 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       }
     } catch (err) {
       console.warn('Falha silenciosa ao identificar peça via IA, tentando fallback local:', err);
-      const fallbackLocal = extractGarmentFromFileName(targetFileName);
+      const rawFallbackLocal =
+        (effectiveProductInfo ? extractGarmentFromProductInfo(effectiveProductInfo) : null) ||
+        extractGarmentFromFileName(targetFileName);
+      const fallbackLocal = rawFallbackLocal ? normalizeIdentifiedGarmentName(rawFallbackLocal) : null;
       if (fallbackLocal) {
         onChange((prev) => {
           const modeNow = prev.presentationMode || 'mirror_selfie';
@@ -768,9 +779,12 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const extraColorPhotos = form.extraColorPhotos || [];
   const totalProductPhotos = form.referencePhotos.length + extraColorPhotos.length;
 
-  const productInfoAnalysis = analyzeAnaMariaProductInfo(form.productInfo);
+  const productInfoAnalysis = analyzeAnaMariaProductInfo(form.productInfo, form.fabricType);
   const isProductInfoReady = Boolean(form.productInfo && form.productInfo.trim().length > 0);
   const isNameReady = Boolean(form.productName.trim().length > 0 && form.isProductNameApproved);
+  const isFabricReady = Boolean(
+    form.fabricType && form.fabricType.trim().length > 0 && form.isFabricTypeApproved
+  );
   const isShoeReady = Boolean(
     form.selectedShoeOption &&
       form.isShoeTypeApproved &&
@@ -782,6 +796,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     totalProductPhotos > 0 &&
     isProductInfoReady &&
     isNameReady &&
+    isFabricReady &&
     isShoeReady &&
     !isProcessing &&
     !isUploading &&
@@ -1285,16 +1300,25 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {productInfoAnalysis.detectedFabrics.length > 0 && (
+            {(productInfoAnalysis.detectedFabrics.length > 0 || Boolean(form.fabricType?.trim())) && (
               <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
                 <CheckCircle2 className="w-3 h-3" />
-                <span>Tecido: {productInfoAnalysis.fabricSummaryLabel}</span>
+                <span>Tecido: {form.fabricType?.trim() || productInfoAnalysis.fabricSummaryLabel}</span>
               </span>
             )}
             {isProductInfoReady && (
               <button
                 type="button"
-                onClick={() => onChange((prev) => ({ ...prev, productInfo: '' }))}
+                onClick={() => {
+                  hasUserManuallyEditedFabricRef.current = false;
+                  setAutoIdentifiedFabricBadge(false);
+                  onChange((prev) => ({
+                    ...prev,
+                    productInfo: '',
+                    fabricType: '',
+                    isFabricTypeApproved: false,
+                  }));
+                }}
                 className="px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-zinc-800/90 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 flex items-center gap-1 cursor-pointer transition-colors"
                 title="Limpar Informações do Produto"
               >
@@ -1309,8 +1333,8 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           Digite apenas o <strong className="text-white">tecido da peça</strong> (ex: Canelado,
           Viscolinho, Linho, Duna, Alfaiataria, Tricô Modal, Laise, Jeans) ou cole o{' '}
           <strong className="text-white">bloco completo de descrição do produto</strong>. O app usa
-          esse texto para identificar a peça e reproduzir fielmente o tecido na geração das fotos,
-          mesmo se a imagem de referência estiver com baixa qualidade.
+          esse texto para identificar a peça e preencher automaticamente o campo{' '}
+          <strong className="text-white">Tipo de Tecido</strong> abaixo.
         </p>
 
         <textarea
@@ -1318,7 +1342,19 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           value={form.productInfo || ''}
           onChange={(e) => {
             const val = e.target.value;
-            onChange((prev) => ({ ...prev, productInfo: val }));
+            setApprovalWarning('');
+            if (!hasUserManuallyEditedFabricRef.current) {
+              const suggestedFabric = val.trim() ? extractFabricFieldSuggestion(val) : '';
+              setAutoIdentifiedFabricBadge(Boolean(suggestedFabric));
+              onChange((prev) => ({
+                ...prev,
+                productInfo: val,
+                fabricType: suggestedFabric,
+                isFabricTypeApproved: false,
+              }));
+            } else {
+              onChange((prev) => ({ ...prev, productInfo: val }));
+            }
           }}
           placeholder="Ex: Viscolinho&#10;Ou cole aqui todas as informações do produto (tecido, composição, modelagem, forro, botões, detalhes...)"
           className={`w-full rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-500 border outline-none transition-all resize-y min-h-[84px] ${
@@ -1519,6 +1555,162 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             </button>
           )}
         </div>
+      </div>
+
+      {/* ─── NOVO ITEM LOGO APÓS NOME DA PEÇA: TIPO DE TECIDO (AUTO-PREENCHIDO + EDITÁVEL + APROVAÇÃO OBRIGATÓRIA) ─── */}
+      <div
+        ref={fabricTypeSectionRef}
+        className={`${isFabricReady ? copiedBlueSectionClass : sectionCardClass} p-5 sm:p-6 space-y-3`}
+      >
+        <div
+          className={`flex flex-wrap items-center justify-between gap-2 border-b pb-2.5 ${
+            isFabricReady
+              ? 'border-sky-400/30'
+              : isAmetista
+              ? 'border-purple-500/20'
+              : 'border-zinc-800/80'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <Scissors className={`w-4 h-4 ${isFabricReady ? 'text-sky-300' : sectionIconColorClass}`} />
+            <h2 className="text-sm font-bold text-white uppercase tracking-wide">
+              Tipo de Tecido (Baseado nas Informações do Produto)
+            </h2>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {isProductInfoReady && (
+              <button
+                type="button"
+                onClick={() => {
+                  setApprovalWarning('');
+                  hasUserManuallyEditedFabricRef.current = false;
+                  const detected = extractFabricFieldSuggestion(form.productInfo);
+                  setAutoIdentifiedFabricBadge(Boolean(detected));
+                  onChange((prev) => ({
+                    ...prev,
+                    fabricType: detected,
+                    isFabricTypeApproved: false,
+                  }));
+                }}
+                className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                  isAmetista
+                    ? 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-400/30'
+                    : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700'
+                }`}
+                title="Reidentificar o tipo de tecido a partir do campo Informações do Produto"
+              >
+                <Wand2 className="w-3 h-3 text-amber-300" />
+                <span>Identificar do texto</span>
+              </button>
+            )}
+
+            {form.fabricType?.trim() && !form.isFabricTypeApproved && (
+              <span
+                className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 ${
+                  isAmetista
+                    ? 'bg-[#1a1128] text-[#d4ff59] border border-[#d4ff59]/40'
+                    : 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                }`}
+              >
+                <Sparkles className="w-3 h-3" />
+                <span>
+                  {autoIdentifiedFabricBadge
+                    ? 'Identificado automaticamente — Clique em APROVAR'
+                    : 'Preenchido — Clique em APROVAR'}
+                </span>
+              </span>
+            )}
+
+            {form.fabricType?.trim() && !form.isFabricTypeApproved && (
+              <button
+                type="button"
+                onClick={() => {
+                  setApprovalWarning('');
+                  onChange((prev) => ({
+                    ...prev,
+                    isFabricTypeApproved: true,
+                  }));
+                }}
+                className="px-4 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-lg shadow-emerald-950/50 transition-all cursor-pointer animate-pulse"
+              >
+                <Check className="w-4 h-4 stroke-[3]" />
+                <span>APROVAR</span>
+              </button>
+            )}
+
+            {isFabricReady && (
+              <span className="px-3 py-1 rounded-xl bg-sky-500/25 border border-sky-300/60 text-sky-200 font-black text-xs uppercase tracking-wider flex items-center gap-1.5">
+                <CheckCircle2 className="w-3.5 h-3.5 text-sky-300" />
+                <span>APROVADO ✓</span>
+              </span>
+            )}
+          </div>
+        </div>
+
+        <p className="text-xs text-zinc-300 leading-relaxed">
+          Preenchido automaticamente com base no tecido informado ou extraído de{' '}
+          <strong>Informações do Produto</strong>. Você pode editar este campo para corrigir o
+          tecido e clicar em <strong>APROVAR</strong> para confirmar antes de gerar.
+        </p>
+
+        <div className="flex flex-col sm:flex-row gap-2.5">
+          <input
+            type="text"
+            value={form.fabricType || ''}
+            onChange={(e) => {
+              const val = e.target.value;
+              setApprovalWarning('');
+              if (!val.trim()) {
+                hasUserManuallyEditedFabricRef.current = false;
+                setAutoIdentifiedFabricBadge(false);
+              } else {
+                hasUserManuallyEditedFabricRef.current = true;
+                setAutoIdentifiedFabricBadge(false);
+              }
+              onChange((prev) => ({
+                ...prev,
+                fabricType: val,
+                isFabricTypeApproved: Boolean(val.trim().length > 0),
+              }));
+            }}
+            placeholder="Ex: Viscolinho, Tecido Duna, Alfaiataria, Malha Canelada, Crepe, Laise..."
+            className={`w-full px-4 py-2.5 rounded-xl text-white placeholder-zinc-500 text-sm focus:outline-none transition-colors ${
+              isFabricReady
+                ? 'bg-[#081729]/90 border border-sky-400/60 focus:border-sky-300'
+                : isAmetista
+                ? 'bg-[#0e0817]/90 border border-purple-400/30 focus:border-[#d4ff59]'
+                : 'bg-zinc-900/90 border border-zinc-700/80 focus:border-orange-500'
+            }`}
+          />
+
+          {form.fabricType?.trim() && !form.isFabricTypeApproved && (
+            <button
+              type="button"
+              onClick={() => {
+                setApprovalWarning('');
+                onChange((prev) => ({
+                  ...prev,
+                  isFabricTypeApproved: true,
+                }));
+              }}
+              className="shrink-0 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50 transition-all cursor-pointer"
+            >
+              <Check className="w-4 h-4 stroke-[3]" />
+              <span>APROVAR</span>
+            </button>
+          )}
+        </div>
+
+        {isProductInfoReady && !form.fabricType?.trim() && (
+          <div className="flex items-center gap-2 text-xs text-amber-300 font-semibold">
+            <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+            <span>
+              Não identificamos o tecido automaticamente na descrição colada — digite o tipo de
+              tecido acima para confirmar e liberar a geração.
+            </span>
+          </div>
+        )}
       </div>
 
       {/* ─── NOVO ITEM LOGO APÓS NOME DA PEÇA: TIPO DE CALÇADO (AUTO-SELECIONADO + APROVAÇÃO OBRIGATÓRIA) ─── */}
@@ -2906,6 +3098,18 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               });
               return;
             }
+            if (!isFabricReady) {
+              setApprovalWarning(
+                form.fabricType && form.fabricType.trim().length > 0
+                  ? 'Você precisa tocar no botão APROVAR (ou editar ativamente) o Tipo de Tecido para liberar o botão Gerar Vídeo!'
+                  : 'Preencha e aprove o campo "Tipo de Tecido" para liberar o botão Gerar Vídeo!'
+              );
+              fabricTypeSectionRef.current?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+              });
+              return;
+            }
             if (!isShoeReady) {
               setApprovalWarning(
                 form.selectedShoeOption === 'outro'
@@ -2944,15 +3148,27 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           )}
         </button>
 
-        {totalProductPhotos > 0 && (!isProductInfoReady || !isNameReady || !isShoeReady) && !isProcessing && (
+        {totalProductPhotos > 0 && (!isProductInfoReady || !isNameReady || !isFabricReady || !isShoeReady) && !isProcessing && (
           <p className="text-center text-xs text-amber-300/90 font-semibold">
             {!isProductInfoReady
               ? '🔒 Para liberar o botão Gerar Vídeo, preencha o campo obrigatório Informações do Produto acima.'
-              : !isNameReady && !isShoeReady
-              ? '🔒 Para liberar o botão Gerar Vídeo, aprove o Nome da Peça e o Tipo de Calçado acima.'
-              : !isNameReady
-              ? '🔒 Para liberar o botão Gerar Vídeo, toque em APROVAR no Nome da Peça acima.'
-              : '🔒 Para liberar o botão Gerar Vídeo, toque em APROVAR no Tipo de Calçado acima.'}
+              : [
+                  !isNameReady ? 'Nome da Peça' : '',
+                  !isFabricReady ? 'Tipo de Tecido' : '',
+                  !isShoeReady ? 'Tipo de Calçado' : '',
+                ]
+                  .filter(Boolean)
+                  .join(', ')
+                  .replace(/, ([^,]*)$/, ' e $1')
+              ? `🔒 Para liberar o botão Gerar Vídeo, preencha/aprove: ${[
+                  !isNameReady ? 'Nome da Peça' : '',
+                  !isFabricReady ? 'Tipo de Tecido' : '',
+                  !isShoeReady ? 'Tipo de Calçado' : '',
+                ]
+                  .filter(Boolean)
+                  .join(', ')
+                  .replace(/, ([^,]*)$/, ' e $1')}.`
+              : '🔒 Para liberar o botão Gerar Vídeo, aprove os campos obrigatórios acima.'}
           </p>
         )}
 

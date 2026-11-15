@@ -356,6 +356,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
         videoPrompt: cleanVideoPrompt,
         productName: result.productName,
         productInfo: result.productInfo,
+        fabricType: result.fabricType,
         influencer: result.influencer,
         bodyType: result.bodyType,
         presentationMode: result.presentationMode,
@@ -588,6 +589,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
       const res = await regenerateAnaMariaImage({
         form: {
           productInfo: result.productInfo,
+          fabricType: result.fabricType,
           productName: result.productName,
           referencePhotos: activePhotos,
           influencer: result.influencer,
@@ -640,6 +642,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
       const res = await regenerateAnaMariaImage({
         form: {
           productInfo: result.productInfo,
+          fabricType: result.fabricType,
           productName: result.productName,
           referencePhotos: activePhotos,
           influencer: result.influencer,
@@ -691,6 +694,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
       const res = await regenerateAnaMariaNewScenario({
         form: {
           productInfo: result.productInfo,
+          fabricType: result.fabricType,
           productName: result.productName,
           referencePhotos: activePhotos,
           influencer: result.influencer,

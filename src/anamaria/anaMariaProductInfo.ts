@@ -45,7 +45,7 @@ const FABRIC_CATALOG: FabricCatalogEntry[] = [
   {
     id: 'alfaiataria',
     labelPt: 'Alfaiataria',
-    pattern: /\b(alfaiataria|crepe\s+alfaiataria|crepe\s+de\s+alfaiataria|two\s*way|gabardine|marant|sensoriale|oxfordine)\b/i,
+    pattern: /\b(alfaiataria|crepe\s+alfaiataria|crepe\s+de\s+alfaiataria|two\s*way|gabardine|marant|marrant|sensoriale|oxfordine)\b/i,
     visualPromptPt: 'tecido de alfaiataria encorpado e estruturado de trama fina fechada, superfície lisa fosca de acabamento refinado, vincos limpos e caimento elegante que não marca nem amassa',
     visualPromptEn: 'structured tailored suiting fabric with smooth tight fine-grain weave, clean matte medium-weight drape, crisp tailoring seams and structured silhouette',
   },
@@ -136,7 +136,7 @@ const FABRIC_CATALOG: FabricCatalogEntry[] = [
   {
     id: 'crepe',
     labelPt: 'Crepe',
-    pattern: /\b(crepe(\s+georgette|\s+invictus|\s+malha|\s+bubble|\s+sedinha|\s+twill|\s+amanda|\s+scuba)?)\b/i,
+    pattern: /\b(crepe(\s+georgette|\s+invictus|\s+prada|\s+dior|\s+moss|\s+suede|\s+malha|\s+de\s+malha|\s+bubble|\s+sedinha|\s+twill|\s+amanda|\s+scuba)?)\b/i,
     visualPromptPt: 'tecido crepe de textura levemente granulada fosca e toque seco elegante, com caimento fluido encorpado e excelente definição nas costuras',
     visualPromptEn: 'authentic crepe woven fabric with refined fine pebble-grain matte texture, fluid structured drape and clean crisp seams',
   },
@@ -211,9 +211,16 @@ const FABRIC_CATALOG: FabricCatalogEntry[] = [
     visualPromptEn: 'textured woven tweed/jacquard brocade fabric with detailed raised multi-thread weave pattern and refined tailored weight',
   },
   {
+    id: 'zibeline',
+    labelPt: 'Zibeline / Tafetá',
+    pattern: /\b(zibeline|zibelini|tafet[aá]|mikado)\b/i,
+    visualPromptPt: 'tecido estruturado de zibeline / tafetá encorpado com brilho acetinado discreto elegante e volume arquitetônico limpo nas dobras',
+    visualPromptEn: 'structured heavyweight zibeline / taffeta satin-sheen woven fabric with crisp architectural pleats and refined semi-lustrous finish',
+  },
+  {
     id: 'tactel',
     labelPt: 'Tactel / Nylon',
-    pattern: /\b(tactel|nylon|corta\s+vento|poliester|poli[eé]ster|elastano)\b/i,
+    pattern: /\b(tactel|nylon|corta\s+vento)\b/i,
     visualPromptPt: 'tecido leve de fibra sintética/tactel de trama fechada lisa e resistente, acabamento fosco-acetinado sutil e secagem rápida',
     visualPromptEn: 'smooth tightly-woven synthetic/tactel matte weave fabric with crisp lightweight drape',
   },
@@ -307,23 +314,255 @@ function extractConstructionNotes(text: string): string[] {
   return notes;
 }
 
-function extractExplicitFabricPhrase(rawText: string): string | null {
-  const match = rawText.match(
-    /(?:tecido|material|composi[cç][aã]o|confeccionad[oa]\s+em|feit[oa]\s+(?:em|de))\s*[:\-]?\s*([^\n.;|]{2,70})/i
-  );
-  if (match?.[1]) {
-    return match[1].trim();
+function applyReplacementWithCase(match: string, replacementLower: string): string {
+  if (!match) return replacementLower;
+  if (match === match.toUpperCase() && match.length > 1) {
+    return replacementLower.toUpperCase();
   }
-  const compMatch = rawText.match(/\b(\d{1,3}%\s*[a-zA-ZÀ-ÿ]+(?:\s*(?:e|,|\+|\/)?\s*\d{1,3}%\s*[a-zA-ZÀ-ÿ]+)*)/i);
+  const firstChar = match.charAt(0);
+  if (firstChar === firstChar.toUpperCase() && firstChar !== firstChar.toLowerCase()) {
+    return replacementLower.charAt(0).toUpperCase() + replacementLower.slice(1);
+  }
+  return replacementLower;
+}
+
+const PORTUGUESE_FASHION_TYPO_RULES: Array<[RegExp, string]> = [
+  [/\blond([oa]s?)\b/gi, 'long$1'],
+  [/\b(vetido|vestdo|vestidp|vesitdo|vestdio|vestidio)(s?)\b/gi, 'vestido$2'],
+  [/\b(calsa|cauca|calssa|calca)(s?)\b/gi, 'calça$2'],
+  [/\b(pantolona|pantalonha|pantallona)(s?)\b/gi, 'pantalona$2'],
+  [/\b(conjuto|cojunto|congjunto|comjunto)(s?)\b/gi, 'conjunto$2'],
+  [/\b(macaquino|macaqunho|macachinho)(s?)\b/gi, 'macaquinho$2'],
+  [/\bmacacao\b/gi, 'macacão'],
+  [/\b(alfaiatria|alfeiataria|alfaetaria|alfaiatari)\b/gi, 'alfaiataria'],
+  [/\b(viscolino|visculinho|viscolhino)\b/gi, 'viscolinho'],
+  [/\bviscolicra\b/gi, 'viscolycra'],
+  [/\b(calenad|canaled)([oa]s?)\b/gi, 'canelad$2'],
+  [/\b(croped|cropedd|croppd|cropeed|crooped)(s?)\b/gi, 'cropped$2'],
+  [/\bcamizet(a|as|e|es)\b/gi, 'camiset$1'],
+  [/\b(blusina|bluzinha)(s?)\b/gi, 'blusinha$2'],
+  [/\bbluz(a|as)\b/gi, 'blus$1'],
+  [/\bjaqeta(s?)\b/gi, 'jaqueta$1'],
+  [/\b(blaser|bleizer|blaiser)(es|s?)\b/gi, 'blazer$2'],
+  [/\bbiquin[ie](s?)\b/gi, 'biquíni$1'],
+  [/\b(femimino|femenino|femino)\b/gi, 'feminino'],
+  [/\b(femimina|femenina|feminia)\b/gi, 'feminina'],
+  [/\b(acadenia|acdemia)\b/gi, 'academia'],
+  [/\bcrepi\b/gi, 'crepe'],
+  [/\bmussiline\b/gi, 'musseline'],
+  [/\btricolini\b/gi, 'tricoline'],
+  [/\bbengalini\b/gi, 'bengaline'],
+  [/\bpoliester\b/gi, 'poliéster'],
+  [/\balgodao\b/gi, 'algodão'],
+  [/\bjacard\b/gi, 'jacquard'],
+];
+
+const PT_GARMENT_MID_CONTEXT_REGEX =
+  /\b(vestido|saia|macac[aã]o|conjunto|comprimento|modelo|estilo)\s+mid\b/gi;
+
+export function normalizePortugueseFashionText(text: string): string {
+  if (!text) return '';
+  let result = text;
+
+  for (const [regex, replacementTemplate] of PORTUGUESE_FASHION_TYPO_RULES) {
+    result = result.replace(regex, (fullMatch, ...args) => {
+      let resolved = replacementTemplate;
+      for (let i = 0; i < args.length - 2; i++) {
+        const groupVal = typeof args[i] === 'string' ? args[i] : '';
+        resolved = resolved.replace(new RegExp(`\\$${i + 1}`, 'g'), groupVal.toLowerCase());
+      }
+      return applyReplacementWithCase(fullMatch, resolved);
+    });
+  }
+
+  result = result.replace(PT_GARMENT_MID_CONTEXT_REGEX, (fullMatch, prefix: string) => {
+    const midStart = fullMatch.length - 3;
+    const midWord = fullMatch.slice(midStart);
+    return `${prefix} ${applyReplacementWithCase(midWord, 'midi')}`;
+  });
+
+  return result;
+}
+
+const LOWERCASE_PT_WORDS = new Set(['de', 'do', 'da', 'dos', 'das', 'e', 'em', 'com', 'para', 'no', 'na']);
+
+export function normalizeIdentifiedGarmentName(rawName: string): string {
+  const cleaned = (rawName || '')
+    .replace(/["'""'']/g, '')
+    .replace(/\.+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!cleaned) return '';
+
+  let fixed = normalizePortugueseFashionText(cleaned)
+    .replace(/(?<![-])\bmid\b(?![-])/gi, (m) => applyReplacementWithCase(m, 'midi'))
+    .replace(/\bmaio\b/gi, (m) => applyReplacementWithCase(m, 'maiô'));
+
+  fixed = fixed
+    .split(/\s+/)
+    .map((word, idx) => {
+      if (!word) return word;
+      const lower = word.toLowerCase();
+      if (idx > 0 && LOWERCASE_PT_WORDS.has(lower)) {
+        return lower;
+      }
+      if (/^[A-Z0-9]{2,4}$/.test(word)) {
+        return word;
+      }
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    })
+    .join(' ');
+
+  return fixed.trim();
+}
+
+function cleanFabricPhrase(rawPhrase: string): string {
+  return normalizePortugueseFashionText(rawPhrase)
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/\b(?:n[aã]o\s+(?:amassa|encolhe|desbota|marca|fica\s+transparente|d[aá]\s+bolinha)|zero\s+transpar[eê]ncia|super\s+confort[aá]vel|de\s+(?:alta|excelente|[oó]tima)\s+qualidade)\b.*$/i, '')
+    .split(/[.;|\n]/)[0]
+    .replace(/^[\s:\-]+|[\s:\-,]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function stripLiningClauses(rawText: string): string {
+  const lines = (rawText || '')
+    .split(/\n+/)
+    .filter((line) => !/^\s*(?:com\s+|possui\s+)?forro\b/i.test(line));
+  return lines.join('\n').replace(/\b(?:com|possui)\s+forro\s+(?:em|de|100%|\d+%)\s+[^.;|\n]+/gi, ' ');
+}
+
+function extractExplicitFabricPhrase(rawText: string, preferMainClothOnly = false): { phrase: string; isExplicitLabel: boolean } | null {
+  const sourceText = preferMainClothOnly ? stripLiningClauses(rawText) : rawText;
+  const labelMatch = sourceText.match(
+    /(?:tecido(?:\s+principal)?|material|confeccionad[oa]\s+em|feit[oa]\s+(?:em|de)|malha)\s*[:\-]\s*([^\n.;|]{2,70})/i
+  );
+  if (labelMatch?.[1]) {
+    const cleaned = cleanFabricPhrase(labelMatch[1]);
+    if (cleaned.length >= 2) {
+      return { phrase: cleaned, isExplicitLabel: true };
+    }
+  }
+
+  const inlineMatch = sourceText.match(
+    /(?:confeccionad[oa]\s+em|feit[oa]\s+(?:em|de)|no\s+tecido|em\s+tecido)\s+([^\n.,;|]{2,50})/i
+  );
+  if (inlineMatch?.[1]) {
+    const cleaned = cleanFabricPhrase(inlineMatch[1]);
+    if (cleaned.length >= 2) {
+      return { phrase: cleaned, isExplicitLabel: true };
+    }
+  }
+
+  const compMatch = sourceText.match(
+    /\b(\d{1,3}\s*%\s*[a-zA-ZÀ-ÿ]+(?:\s*(?:e|,|\+|\/)?\s*\d{1,3}\s*%\s*[a-zA-ZÀ-ÿ]+)*)/i
+  );
   if (compMatch?.[1]) {
-    return compMatch[1].trim();
+    return { phrase: cleanFabricPhrase(compMatch[1]), isExplicitLabel: false };
   }
   return null;
 }
 
+function capitalizeLeadingChar(value: string): string {
+  if (!value) return '';
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+const PURE_FABRIC_DISQUALIFY_GARMENTS_RX =
+  /\b(vestido|vestdo|cal[cç]a|calsa|pantalona|saia|blusa|blusinha|camisa|camiseta|t-shirt|tshirt|cropped|top|conjunto|conjuto|macac[aã]o|macaquinho|short|shorts|bermuda|body|pijama|camisola|babydoll|jaqueta|blazer|biqu[ií]ni|mai[oô]|cinta|cardigan|casaco|colete|kimono|regata|legging|cal[cç]ado|sand[aá]lia|t[eê]nis|salto|bota|rasteirinha|sapatilha)\b/i;
+
+const PURE_FABRIC_DISQUALIFY_LISTING_RX =
+  /\b(feminin[oa]s?|masculin[oa]s?|lond[oa]|long[oa]|mid|midi|curt[oa]|possui|cont[eé]m|detalhe|decote|fenda|bojo|forro|z[ií]per|bot[oõ]es|bot[aã]o|bolso|cinto|tamanho|tamanhos|veste|medidas|busto|cintura|quadril|comprimento|envio|entrega|modelo|refer[eê]ncia|descri[cç][aã]o|lan[cç]amento|promo[cç][aã]o|tabela)\b/i;
+
+export function extractFabricFieldSuggestion(rawProductInfo?: string): string {
+  const raw = (rawProductInfo || '').trim();
+  if (!raw) return '';
+
+  const normalizedRaw = normalizePortugueseFashionText(raw);
+  const singleLine = normalizedRaw.replace(/[ \t]+/g, ' ').trim();
+  const isSingleLine = !/\n/.test(singleLine);
+
+  // Caso 1: Usuário digitou apenas o tecido sem colar descrição completa -> auto-preenche com a mesma informação
+  if (isSingleLine && singleLine.length <= 70 && !/[•✅✔✓➤►|]|https?:\/\//i.test(singleLine)) {
+    const strippedPrefix = singleLine.replace(/^(?:tecido|material)\s*[:\-]\s*/i, '').replace(/[.!?,;:]+$/g, '').trim();
+    const asciiCheck = strippedPrefix
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+
+    if (
+      strippedPrefix.length >= 2 &&
+      !PURE_FABRIC_DISQUALIFY_GARMENTS_RX.test(strippedPrefix) &&
+      !PURE_FABRIC_DISQUALIFY_GARMENTS_RX.test(asciiCheck) &&
+      !PURE_FABRIC_DISQUALIFY_LISTING_RX.test(strippedPrefix) &&
+      !PURE_FABRIC_DISQUALIFY_LISTING_RX.test(asciiCheck)
+    ) {
+      return capitalizeLeadingChar(strippedPrefix);
+    }
+  }
+
+  // Caso 2: Usuário colou uma descrição de produto -> extrai o tecido principal ignorando linhas de forro
+  const mainClothText = stripLiningClauses(normalizedRaw);
+  const explicit = extractExplicitFabricPhrase(normalizedRaw, true);
+
+  if (
+    explicit?.isExplicitLabel &&
+    explicit.phrase &&
+    explicit.phrase.length <= 48 &&
+    !/^\d{1,3}\s*%/.test(explicit.phrase) &&
+    !/^(?:alta|ótima|otima|excelente|boa)\s+qualidade$/i.test(explicit.phrase)
+  ) {
+    return capitalizeLeadingChar(explicit.phrase);
+  }
+
+  const normMain = mainClothText
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+
+  let detected = FABRIC_CATALOG.filter(
+    (entry) => entry.pattern.test(mainClothText) || entry.pattern.test(normMain)
+  );
+
+  if (detected.length === 0) {
+    const normFull = normalizedRaw
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+    detected = FABRIC_CATALOG.filter(
+      (entry) => entry.pattern.test(normalizedRaw) || entry.pattern.test(normFull)
+    );
+  }
+
+  // Evita duplicidade "Alfaiataria + Crepe" quando o texto diz "Crepe de Alfaiataria"
+  if (detected.length > 1 && /\bcrepe\s+(?:de\s+)?alfaiataria\b/i.test(normMain)) {
+    detected = detected.filter((d) => d.id !== 'crepe');
+  }
+
+  if (detected.length > 0) {
+    return detected.slice(0, 2).map((d) => d.labelPt).join(' + ');
+  }
+
+  if (explicit?.phrase) {
+    return capitalizeLeadingChar(explicit.phrase);
+  }
+
+  // Fallback para fibras genéricas se nenhum tecido específico do catálogo foi citado
+  if (/\bpoli[eé]ster\b/i.test(mainClothText) && /\belastano\b/i.test(mainClothText)) {
+    return 'Poliéster com Elastano';
+  }
+  if (/\bpoli[eé]ster\b/i.test(mainClothText)) {
+    return 'Poliéster';
+  }
+
+  return '';
+}
+
 export function extractGarmentFromProductInfo(rawText?: string): string | null {
   if (!rawText || !rawText.trim()) return null;
-  const s = rawText
+  const fixedRaw = normalizePortugueseFashionText(rawText);
+  const s = fixedRaw
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
@@ -354,10 +593,21 @@ export function extractGarmentFromProductInfo(rawText?: string): string | null {
     return 'Macacão';
   }
   if (/\bvestido\b/.test(s)) {
+    const hasLongo = /\blong[oa]\b/.test(s);
+    const hasMidi = /\bmidi\b/.test(s) || /\bvestido\s+mid\b/.test(s);
+    const hasCurto = /\bcurt[oa]\b/.test(s);
+    const lengthCount = [hasLongo, hasMidi, hasCurto].filter(Boolean).length;
+    if (lengthCount === 1) {
+      if (hasLongo) return 'Vestido Longo';
+      if (hasMidi) return 'Vestido Midi';
+      if (hasCurto) return 'Vestido Curto';
+    }
     return 'Vestido';
   }
   if (/\bsaia\b/.test(s)) {
     if (/\b(couro|courino|pu)\b/.test(s)) return 'Saia Couro';
+    if (/\blong[oa]\b/.test(s) && !/\bcurt[oa]\b/.test(s) && !/\bmidi\b/.test(s)) return 'Saia Longa';
+    if (/\bmidi\b/.test(s) && !/\bcurt[oa]\b/.test(s) && !/\blong[oa]\b/.test(s)) return 'Saia Midi';
     return 'Saia';
   }
   if (/\b(calca|pantalona|wide\s*leg|flare)\b/.test(s)) {
@@ -386,9 +636,14 @@ export function extractGarmentFromProductInfo(rawText?: string): string | null {
   return null;
 }
 
-export function analyzeAnaMariaProductInfo(rawProductInfo?: string): AnalyzedAnaMariaProductInfo {
-  const rawText = (rawProductInfo || '').trim();
-  if (!rawText) {
+export function analyzeAnaMariaProductInfo(
+  rawProductInfo?: string,
+  overrideFabricType?: string
+): AnalyzedAnaMariaProductInfo {
+  const rawText = normalizePortugueseFashionText((rawProductInfo || '').trim());
+  const normalizedOverride = normalizePortugueseFashionText((overrideFabricType || '').trim());
+
+  if (!rawText && !normalizedOverride) {
     return {
       hasInfo: false,
       rawText: '',
@@ -404,25 +659,37 @@ export function analyzeAnaMariaProductInfo(rawProductInfo?: string): AnalyzedAna
     };
   }
 
-  const cleanedText = cleanRawProductInfoText(rawText);
-  const normSearch = rawText
+  const cleanedText = cleanRawProductInfoText(rawText || normalizedOverride);
+  const normSearch = (rawText || '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
 
-  const detectedFabrics = FABRIC_CATALOG.filter(
-    (entry) => entry.pattern.test(rawText) || entry.pattern.test(normSearch)
-  );
+  let detectedFabrics: FabricCatalogEntry[] = [];
+  if (normalizedOverride) {
+    const normOverride = normalizedOverride
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+    detectedFabrics = FABRIC_CATALOG.filter(
+      (entry) => entry.pattern.test(normalizedOverride) || entry.pattern.test(normOverride)
+    );
+  } else {
+    detectedFabrics = FABRIC_CATALOG.filter(
+      (entry) => entry.pattern.test(rawText) || entry.pattern.test(normSearch)
+    );
+  }
 
-  const explicitPhrase = extractExplicitFabricPhrase(rawText);
+  const explicitPhrase = extractExplicitFabricPhrase(rawText, true)?.phrase || null;
   const fallbackShort = rawText.length <= 75 ? rawText.replace(/\s+/g, ' ').trim() : '';
 
   const fabricSummaryLabel =
-    detectedFabrics.length > 0
+    normalizedOverride ||
+    (detectedFabrics.length > 0
       ? detectedFabrics.slice(0, 3).map((f) => f.labelPt).join(' + ')
-      : explicitPhrase || fallbackShort || 'Conforme especificações informadas';
+      : explicitPhrase || fallbackShort || 'Conforme especificações informadas');
 
-  const constructionNotes = extractConstructionNotes(rawText);
+  const constructionNotes = extractConstructionNotes(rawText || normalizedOverride);
   const detectedGarmentHint = extractGarmentFromProductInfo(rawText);
 
   const textureDirectivesPt = detectedFabrics
@@ -435,16 +702,20 @@ export function analyzeAnaMariaProductInfo(rawProductInfo?: string): AnalyzedAna
     .map((f) => `- ${f.labelPt}: ${f.visualPromptEn}.`)
     .join(' ');
 
+  const fabricHeaderPt = normalizedOverride
+    ? `- TECIDO CONFIRMADO PELO USUÁRIO: **${fabricSummaryLabel}**`
+    : `- TECIDO IDENTIFICADO: **${fabricSummaryLabel}**`;
+
   const promptBlockPt = `[TECIDO E INFORMAÇÕES REAIS DO PRODUTO — TEXTURA E CONSTRUÇÃO OBRIGATÓRIAS]:
 - Especificações reais informadas pelo usuário: "${cleanedText}"
-- TECIDO IDENTIFICADO: **${fabricSummaryLabel}**
+${fabricHeaderPt}
 ${textureDirectivesPt ? `${textureDirectivesPt}\n` : ''}${constructionNotes.length > 0 ? `- Detalhes estruturais obrigatórios: ${constructionNotes.join(', ')}.\n` : ''}- REGRA CONTRA FOTO DE REFERÊNCIA COM BAIXA QUALIDADE: Mesmo que a imagem de referência do produto esteja comprimida, desfocada ou com baixa nitidez e não mostre claramente a trama do tecido, você DEVE renderizar fielmente e com nitidez cristalina a textura real, caimento, opacidade/transparência e comportamento físico do tecido especificado acima (**${fabricSummaryLabel}**), preservando 100% a cor exata, estampa e modelagem da foto de referência.`;
 
   const promptBlockEn = `[MANDATORY FABRIC TEXTURE & PRODUCT SPECIFICATION (READ TEXT SPECS TO RENDER EXACT FABRIC EVEN IF REFERENCE PHOTO IS LOW-RES/BLURRY)]:
 - User product info: "${cleanedText}"
-- Exact fabric/material: ${fabricSummaryLabel}. ${textureDirectivesEn}${constructionNotes.length > 0 ? ` Construction details: ${constructionNotes.join(', ')}.` : ''} Even if the uploaded product photo has low resolution, compression, or blur that hides the weave, accurately render this exact fabric grain, drape, opacity, and tactile surface finish while keeping 100% the reference photo's exact color, cut, and pattern.`;
+- Exact ${normalizedOverride ? 'user-confirmed' : 'identified'} fabric/material: ${fabricSummaryLabel}. ${textureDirectivesEn}${constructionNotes.length > 0 ? ` Construction details: ${constructionNotes.join(', ')}.` : ''} Even if the uploaded product photo has low resolution, compression, or blur that hides the weave, accurately render this exact fabric grain, drape, opacity, and tactile surface finish while keeping 100% the reference photo's exact color, cut, and pattern.`;
 
-  const compactLinePt = `[TECIDO E DETALHES DO PRODUTO: ${fabricSummaryLabel}${explicitPhrase && detectedFabrics.length === 0 ? '' : cleanedText && cleanedText.length <= 220 ? ` — ${cleanedText}` : ''}]`;
+  const compactLinePt = `[TECIDO${normalizedOverride ? ' CONFIRMADO' : ''} E DETALHES DO PRODUTO: ${fabricSummaryLabel}${explicitPhrase && detectedFabrics.length === 0 ? '' : cleanedText && cleanedText.length <= 220 && cleanedText.toLowerCase() !== fabricSummaryLabel.toLowerCase() ? ` — ${cleanedText}` : ''}]`;
   const compactLineEn = `[FABRIC: ${fabricSummaryLabel}${textureDirectivesEn ? ` (${textureDirectivesEn})` : ''} | INFO: ${cleanedText.slice(0, 220)}]`;
 
   return {

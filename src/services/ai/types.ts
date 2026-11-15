@@ -34,6 +34,7 @@ export interface GenerateSceneImageParams {
   variationName?: string;
   productType?: string;
   productInfo?: string;
+  fabricType?: string;
   targetAngle?: string;
   location?: string;
   actionDescription?: string;
@@ -66,6 +67,7 @@ export interface AuditFidelityParams {
   variationName?: string;
   role?: string;
   productInfo?: string;
+  fabricType?: string;
 }
 
 export interface AuditFidelityResultResponse {

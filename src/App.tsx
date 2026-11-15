@@ -212,6 +212,8 @@ export default function App() {
 
   const [anaMariaForm, setAnaMariaForm] = useState<AnaMariaFormState>({
     productInfo: '',
+    fabricType: '',
+    isFabricTypeApproved: false,
     productName: '',
     referencePhotos: [],
     extraColorPhotos: [],
@@ -1364,6 +1366,10 @@ export default function App() {
       alert('Preencha o campo obrigatório "Informações do Produto" (tecido ou descrição do produto) antes de gerar.');
       return;
     }
+    if (!anaMariaForm.fabricType?.trim() || !anaMariaForm.isFabricTypeApproved) {
+      alert('Preencha e aprove o campo obrigatório "Tipo de Tecido" antes de gerar.');
+      return;
+    }
     const totalAnaMariaPhotos =
       (anaMariaForm.referencePhotos?.length || 0) + (anaMariaForm.extraColorPhotos?.length || 0);
     if (totalAnaMariaPhotos === 0) {
@@ -1419,6 +1425,8 @@ export default function App() {
   const handleResetAnaMariaForm = () => {
     setAnaMariaForm({
       productInfo: '',
+      fabricType: '',
+      isFabricTypeApproved: false,
       productName: '',
       referencePhotos: [],
       extraColorPhotos: [],
@@ -2561,6 +2569,8 @@ export default function App() {
               setAnaMariaResult(item);
               setAnaMariaForm({
                 productInfo: item.productInfo || '',
+                fabricType: item.fabricType || '',
+                isFabricTypeApproved: Boolean(item.fabricType?.trim()),
                 productName: item.productName,
                 referencePhotos: item.referencePhotos,
                 extraColorPhotos: [],

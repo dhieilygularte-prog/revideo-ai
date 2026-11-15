@@ -530,6 +530,7 @@ Retorne estritamente um JSON estruturado:
       prompt,
       productPhotoBase64,
       productInfo = '',
+      fabricType = '',
       productPhotosBase64 = [],
       modelReferenceBase64,
       referenceFrameBase64,
@@ -610,7 +611,7 @@ Retorne estritamente um JSON estruturado:
       ? `[PRIORITY 1 SOBERANA — ETHNICITY & HAIR MANDATE]:\nThe model MUST be a natural REDHEAD WOMAN with copper-red hair and fair/pale skin with subtle natural freckles.`
       : '';
 
-    const fabricSpec = analyzeAnaMariaProductInfo(productInfo);
+    const fabricSpec = analyzeAnaMariaProductInfo(productInfo, fabricType);
 
     // Prioriza correções de auditoria e instruções adicionais sobre o prompt universal já formatado
     const overrides = [
@@ -1165,10 +1166,11 @@ Preserve fielmente qualquer logomarca, estampa ou acabamento original da peça. 
       variationName = 'VariaÃ§Ã£o 1',
       role = 'Imagem 1',
       productInfo = '',
+      fabricType = '',
     } = params;
 
     const client = this.getClient();
-    const fabricSpec = analyzeAnaMariaProductInfo(productInfo);
+    const fabricSpec = analyzeAnaMariaProductInfo(productInfo, fabricType);
 
     let stepName: CloningStepName = 'auditoria da imagem 1';
     if (role.includes('Imagem 2') || role.includes('3/4')) {

@@ -695,7 +695,7 @@ export function buildAnaMariaImagePrompt(
     form.additionalInstructions && form.additionalInstructions.trim().length > 0
   );
   const userInstructionsText = hasUserInstructions ? form.additionalInstructions.trim() : '';
-  const productInfoSpec = analyzeAnaMariaProductInfo(form.productInfo);
+  const productInfoSpec = analyzeAnaMariaProductInfo(form.productInfo, form.fabricType);
 
   const priorityOverrideBlock = hasUserInstructions
     ? `## PRIORIDADE SOBERANA ABSOLUTA — INSTRUÇÕES ADICIONAIS DO USUÁRIO
@@ -1110,6 +1110,7 @@ export function getConciseMovementForMaster(
 export function buildAnaMariaConciseVideoPrompt(params: {
   productName: string;
   productInfo?: string;
+  fabricType?: string;
   influencer?: AnaMariaInfluencer;
   bodyType?: AnaMariaBodyType;
   presentationMode?: AnaMariaPresentationMode;
@@ -1121,7 +1122,7 @@ export function buildAnaMariaConciseVideoPrompt(params: {
   const master = getMasterPromptById(params.selectedMasterId);
   const isMale = params.influencer === 'Homem';
   const isPlusSize = params.bodyType === 'plus_size';
-  const fabricSpec = analyzeAnaMariaProductInfo(params.productInfo);
+  const fabricSpec = analyzeAnaMariaProductInfo(params.productInfo, params.fabricType);
   const hasUserInstructions = Boolean(
     params.additionalInstructions && params.additionalInstructions.trim().length > 0
   );
@@ -1233,6 +1234,7 @@ ${movementsBlock}
 export function buildAnaMariaVideoPrompt(params: {
   productName: string;
   productInfo?: string;
+  fabricType?: string;
   influencer?: AnaMariaInfluencer;
   bodyType?: AnaMariaBodyType;
   presentationMode?: AnaMariaPresentationMode;
@@ -1254,7 +1256,7 @@ export function buildAnaMariaVideoPrompt(params: {
     params.presentationMode || (master.isPov ? 'pov' : 'mirror_selfie');
   const isMale = params.influencer === 'Homem';
   const isPlusSize = params.bodyType === 'plus_size';
-  const fabricSpec = analyzeAnaMariaProductInfo(params.productInfo);
+  const fabricSpec = analyzeAnaMariaProductInfo(params.productInfo, params.fabricType);
   const hasUserInstructions = Boolean(
     params.additionalInstructions && params.additionalInstructions.trim().length > 0
   );

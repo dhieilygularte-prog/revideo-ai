@@ -510,11 +510,13 @@ export async function inspectDressAttributes(
   photo: string,
   productName?: string,
   presentationMode?: string,
-  productInfo?: string
+  productInfo?: string,
+  fabricType?: string
 ): Promise<AnaMariaDressInspection | undefined> {
   if (!photo || presentationMode === 'pov') return undefined;
   const trimmedName = (productName || '').trim();
   const trimmedInfo = (productInfo || '').trim();
+  const trimmedFabric = (fabricType || '').trim();
   // Se o usuário já informou explicitamente uma peça que não é vestido (ex.: blusa, calça, bolsa), evita gastar chamada e tokens de visão
   const isExplicitlyNotDress =
     trimmedName.length > 0 &&
@@ -525,7 +527,7 @@ export async function inspectDressAttributes(
 
   if (isExplicitlyNotDress) return undefined;
 
-  const cacheKey = `${photo.slice(0, 64)}_${photo.slice(-64)}_${photo.length}_${trimmedName.toLowerCase()}_${trimmedInfo.slice(0, 120).toLowerCase()}`;
+  const cacheKey = `${photo.slice(0, 64)}_${photo.slice(-64)}_${photo.length}_${trimmedName.toLowerCase()}_${trimmedInfo.slice(0, 120).toLowerCase()}_${trimmedFabric.toLowerCase()}`;
   const cached = dressInspectionCache.get(cacheKey);
   if (cached) return cached;
 
@@ -537,7 +539,7 @@ export async function inspectDressAttributes(
       lengthCategory?: AnaMariaDressInspection['lengthCategory'];
       hasSingleSideSlit?: boolean;
       slitLegWearer?: AnaMariaDressInspection['slitLegWearer'];
-    }>('/api/anamaria-inspect-dress', { photoBase64: thumb, productName, productInfo: trimmedInfo }, 0);
+    }>('/api/anamaria-inspect-dress', { photoBase64: thumb, productName, productInfo: trimmedInfo, fabricType: trimmedFabric }, 0);
 
     if (res?.success) {
       const inspection: AnaMariaDressInspection = {
@@ -836,6 +838,7 @@ async function runAnaMariaFidelityAudit(params: {
   bodyType: AnaMariaFormState['bodyType'];
   shoeDescription?: string;
   productInfo?: string;
+  fabricType?: string;
   aiProfile: AIProfile;
 }): Promise<{ audit: AnaMariaAudit; correctionPrompt: string }> {
   const {
@@ -845,6 +848,7 @@ async function runAnaMariaFidelityAudit(params: {
     bodyType,
     shoeDescription = '',
     productInfo = '',
+    fabricType = '',
     aiProfile,
   } = params;
   const fallbackAudit = buildAnaMariaDefaultAudit(bodyType, shoeDescription);
@@ -877,6 +881,7 @@ async function runAnaMariaFidelityAudit(params: {
         variationName: variationName || 'Peça Principal',
         role: `Modo Ana Maria (${variationName || 'Peça Principal'})`,
         productInfo,
+        fabricType,
         aiProfile,
       },
       0
@@ -941,6 +946,7 @@ async function generateAndAuditAnaMariaWithAutoRetry(params: {
   bodyType: AnaMariaFormState['bodyType'];
   shoeDescription?: string;
   productInfo?: string;
+  fabricType?: string;
   aiProfile: AIProfile;
   onFallback?: () => void;
   onRetryStatus?: (msg: string) => void;
@@ -957,6 +963,7 @@ async function generateAndAuditAnaMariaWithAutoRetry(params: {
     bodyType,
     shoeDescription,
     productInfo = payload.productInfo || '',
+    fabricType = payload.fabricType || '',
     aiProfile,
     onFallback,
     onRetryStatus,
@@ -977,6 +984,7 @@ async function generateAndAuditAnaMariaWithAutoRetry(params: {
     bodyType,
     shoeDescription,
     productInfo,
+    fabricType,
     aiProfile,
   });
 
@@ -1014,6 +1022,7 @@ async function generateAndAuditAnaMariaWithAutoRetry(params: {
         bodyType,
         shoeDescription,
         productInfo,
+        fabricType,
         aiProfile,
       });
     } catch (retryErr) {
@@ -1106,12 +1115,14 @@ async function executeColorImageGeneration(params: {
     bodyType: itemForm.bodyType,
     shoeDescription,
     productInfo: itemForm.productInfo,
+    fabricType: itemForm.fabricType,
     aiProfile,
     payload: {
       prompt: effectivePrompt,
       productName: itemForm.productName,
       productType: itemForm.productName,
       productInfo: itemForm.productInfo,
+      fabricType: itemForm.fabricType,
       productPhotoBase64: primaryPhoto,
       productPhotosBase64: supplementaryPhotos,
       scenarioPhotoBase64: activeScenarioBase64,
@@ -1213,7 +1224,7 @@ export async function runAnaMariaPipeline(
   onProgress('prompt_building', 20);
   onStatusMessage(`Analisando detalhes reais da peça (${master.shortName})...`);
   const [dressInspection] = await Promise.all([
-    inspectDressAttributes(firstColorPhotos[0], form0.productName, activeMode, form0.productInfo),
+    inspectDressAttributes(firstColorPhotos[0], form0.productName, activeMode, form0.productInfo, form0.fabricType),
     prepareProductPhotosForPayload(firstColorPhotos),
   ]);
 
@@ -1227,6 +1238,7 @@ export async function runAnaMariaPipeline(
   const videoPrompt = buildAnaMariaVideoPrompt({
     productName: form0.productName,
     productInfo: form0.productInfo,
+    fabricType: form0.fabricType,
     influencer: form0.influencer,
     bodyType: form0.bodyType,
     presentationMode: activeMode,
@@ -1456,6 +1468,7 @@ export async function runAnaMariaPipeline(
     generateOneColorAtATime,
     eclecticMode: rawForm.eclecticMode !== false,
     productInfo: form0.productInfo,
+    fabricType: form0.fabricType,
     productName: form0.productName,
     referencePhotos: allPhotos,
     colorGroups,
@@ -1528,12 +1541,14 @@ export async function regenerateAnaMariaImage(params: {
     bodyType: effectiveForm.bodyType,
     shoeDescription,
     productInfo: effectiveForm.productInfo,
+    fabricType: effectiveForm.fabricType,
     aiProfile,
     payload: {
       prompt,
       productName: effectiveForm.productName,
       productType: effectiveForm.productName,
       productInfo: effectiveForm.productInfo,
+      fabricType: effectiveForm.fabricType,
       productPhotoBase64: primaryPhoto,
       productPhotosBase64: supplementaryPhotos,
       scenarioPhotoBase64: activeScenarioBase64,
@@ -1584,12 +1599,14 @@ export async function regenerateAnaMariaNewScenario(params: {
     bodyType: form.bodyType,
     shoeDescription,
     productInfo: form.productInfo,
+    fabricType: form.fabricType,
     aiProfile,
     payload: {
       prompt,
       productName: form.productName,
       productType: form.productName,
       productInfo: form.productInfo,
+      fabricType: form.fabricType,
       productPhotoBase64: primaryPhoto,
       productPhotosBase64: supplementaryPhotos,
       isAnaMariaMode: false,
@@ -1755,6 +1772,8 @@ async function generateAnaMariaColorVariation(params: {
 
   const nextForm: AnaMariaFormState = {
     productInfo: result.productInfo,
+    fabricType: result.fabricType,
+    isFabricTypeApproved: Boolean(result.fabricType?.trim()),
     productName: result.productName,
     referencePhotos: activeColorPhotos,
     influencer: result.influencer,
@@ -1839,6 +1858,7 @@ export async function generateAnaMariaCompactPrompt(params: {
   videoPrompt: string;
   productName?: string;
   productInfo?: string;
+  fabricType?: string;
   influencer?: AnaMariaFormState['influencer'];
   bodyType?: AnaMariaFormState['bodyType'];
   presentationMode?: AnaMariaFormState['presentationMode'];
@@ -1857,6 +1877,7 @@ export async function generateAnaMariaCompactPrompt(params: {
         videoPrompt: cleanOriginal,
         productName: params.productName,
         productInfo: params.productInfo,
+        fabricType: params.fabricType,
         masterShortName: master.shortName,
         aiProfile: params.aiProfile || 'openai',
       },
@@ -1873,6 +1894,7 @@ export async function generateAnaMariaCompactPrompt(params: {
   return buildAnaMariaConciseVideoPrompt({
     productName: params.productName || '',
     productInfo: params.productInfo,
+    fabricType: params.fabricType,
     influencer: params.influencer,
     bodyType: params.bodyType,
     presentationMode: params.presentationMode,
