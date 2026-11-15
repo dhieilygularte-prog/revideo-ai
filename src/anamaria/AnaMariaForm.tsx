@@ -1330,11 +1330,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         </div>
 
         <p className="text-xs text-zinc-300/90 leading-relaxed">
-          Digite apenas o <strong className="text-white">tecido da peça</strong> (ex: Canelado,
-          Viscolinho, Linho, Duna, Alfaiataria, Tricô Modal, Laise, Jeans) ou cole o{' '}
-          <strong className="text-white">bloco completo de descrição do produto</strong>. O app usa
-          esse texto para identificar a peça e preencher automaticamente o campo{' '}
-          <strong className="text-white">Tipo de Tecido</strong> abaixo.
+          Digite apenas o tecido da peça (ex: Duna) ou cole a descrição do produto.
         </p>
 
         <textarea
@@ -1398,7 +1394,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           <div className="flex items-center gap-2">
             <Layers className={`w-4 h-4 ${isNameReady ? 'text-sky-300' : sectionIconColorClass}`} />
             <h2 className="text-sm font-bold text-white uppercase tracking-wide">
-              2. Nome da Peça / Tipo de Roupa (Define Calçado, Headline e Hashtags)
+              2. Nome da Peça
             </h2>
           </div>
 
@@ -1486,9 +1482,6 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             )}
           </div>
         </div>
-        <p className="text-xs text-zinc-300 leading-relaxed">
-          Ao anexar a imagem da peça, a IA identifica o tipo de roupa automaticamente. Toque em <strong>APROVAR</strong> (ou edite o nome abaixo) para confirmar o nome do produto e liberar a geração do vídeo.
-        </p>
         <div className="flex flex-col sm:flex-row gap-2.5">
           <input
             type="text"
@@ -1574,7 +1567,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           <div className="flex items-center gap-2">
             <Scissors className={`w-4 h-4 ${isFabricReady ? 'text-sky-300' : sectionIconColorClass}`} />
             <h2 className="text-sm font-bold text-white uppercase tracking-wide">
-              Tipo de Tecido (Baseado nas Informações do Produto)
+              Tipo de Tecido
             </h2>
           </div>
 
@@ -1647,12 +1640,6 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             )}
           </div>
         </div>
-
-        <p className="text-xs text-zinc-300 leading-relaxed">
-          Preenchido automaticamente com base no tecido informado ou extraído de{' '}
-          <strong>Informações do Produto</strong>. Você pode editar este campo para corrigir o
-          tecido e clicar em <strong>APROVAR</strong> para confirmar antes de gerar.
-        </p>
 
         <div className="flex flex-col sm:flex-row gap-2.5">
           <input
@@ -2568,9 +2555,6 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                   {MASTER_PROMPTS_GALLERY.length} VÍDEOS MESTRES
                 </span>
               </div>
-              <p className="text-[11px] sm:text-xs text-zinc-300 mt-1">
-                Passe o mouse sobre os vídeos para reproduzir. O prompt selecionado define as características físicas da modelo, joias/acessórios e coreografia de movimentos!
-              </p>
             </div>
           </div>
 
@@ -2849,9 +2833,6 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                   {selectedModelItem ? `Padrão: ${selectedModelItem.name}` : 'Dinâmico via Prompt'}
                 </span>
               </div>
-              <p className="text-[11px] sm:text-xs text-zinc-300 mt-1">
-                A modelo escolhida define 100% o biotipo, curvas, tom de pele, cabelos, pose e ângulo da foto. O app troca apenas a roupa pelo produto (Item 1) + peça complementar e coloca no cenário escolhido (Item 8)!
-              </p>
             </div>
           </div>
 

@@ -155,6 +155,20 @@ const FABRIC_CATALOG: FabricCatalogEntry[] = [
     visualPromptEn: 'ultra-soft supple viscose-elastane jersey / fluity knit with smooth fine matte weave and natural fluid curve-skimming drape',
   },
   {
+    id: 'malha_romantic',
+    labelPt: 'Malha Romantic',
+    pattern: /\b(malha\s+romantic|tecido\s+romantic|romantic)\b/i,
+    visualPromptPt: 'malha romantic encorpada de poliéster com elastano, toque macio e sedoso ao vestir, textura leve com leve elasticidade e caimento estruturado elegante sem marcar',
+    visualPromptEn: 'authentic Brazilian Malha Romantic heavyweight smooth interlock stretch knit fabric with soft silky matte finish and structured fluid drape',
+  },
+  {
+    id: 'malha_montaria',
+    labelPt: 'Malha Montaria / Helanca',
+    pattern: /\b(malha\s+montaria|montaria|helanca|suplex\s+light)\b/i,
+    visualPromptPt: 'malha encorpada de trama firme e estruturada (montaria / helanca) com elasticidade confortável, zero transparência e ajuste limpo ao corpo',
+    visualPromptEn: 'firm structured heavyweight double-knit ponte/montaria/helanca fabric with smooth opaque surface and sculpted supportive fit',
+  },
+  {
     id: 'viscose',
     labelPt: 'Viscose',
     pattern: /\b(viscose|visup|100%\s*viscose)\b/i,
@@ -352,6 +366,9 @@ const PORTUGUESE_FASHION_TYPO_RULES: Array<[RegExp, string]> = [
   [/\bmussiline\b/gi, 'musseline'],
   [/\btricolini\b/gi, 'tricoline'],
   [/\bbengalini\b/gi, 'bengaline'],
+  [/\blecido\b/gi, 'tecido'],
+  [/\b(romantci|romantc|romanric|romantick|romantik)\b/gi, 'romantic'],
+  [/\bcontorto\b/gi, 'conforto'],
   [/\bpoliester\b/gi, 'poliéster'],
   [/\balgodao\b/gi, 'algodão'],
   [/\bjacard\b/gi, 'jacquard'],
@@ -359,6 +376,12 @@ const PORTUGUESE_FASHION_TYPO_RULES: Array<[RegExp, string]> = [
 
 const PT_GARMENT_MID_CONTEXT_REGEX =
   /\b(vestido|saia|macac[aã]o|conjunto|comprimento|modelo|estilo)\s+mid\b/gi;
+
+export function unwrapSoftLineBreaks(text: string): string {
+  return (text || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/([^\n.!?:;])\n([^\n\-•*✔✓✅🔹🔸▪️➤►])/g, '$1 $2');
+}
 
 export function normalizePortugueseFashionText(text: string): string {
   if (!text) return '';
@@ -419,8 +442,8 @@ export function normalizeIdentifiedGarmentName(rawName: string): string {
 function cleanFabricPhrase(rawPhrase: string): string {
   return normalizePortugueseFashionText(rawPhrase)
     .replace(/\([^)]*\)/g, ' ')
-    .replace(/\b(?:n[aã]o\s+(?:amassa|encolhe|desbota|marca|fica\s+transparente|d[aá]\s+bolinha)|zero\s+transpar[eê]ncia|super\s+confort[aá]vel|de\s+(?:alta|excelente|[oó]tima)\s+qualidade)\b.*$/i, '')
-    .split(/[.;|\n]/)[0]
+    .replace(/\b(?:de\s+(?:toque|caimento)|com\s+toque|n[aã]o\s+(?:amassa|encolhe|desbota|marca|fica\s+transparente|d[aá]\s+bolinha)|zero\s+transpar[eê]ncia|super\s+confort[aá]vel|de\s+(?:alta|excelente|[oó]tima)\s+qualidade)\b.*$/i, '')
+    .split(/[,.;|\n]/)[0]
     .replace(/^[\s:\-]+|[\s:\-,]+$/g, '')
     .replace(/\s+/g, ' ')
     .trim();
@@ -434,9 +457,10 @@ function stripLiningClauses(rawText: string): string {
 }
 
 function extractExplicitFabricPhrase(rawText: string, preferMainClothOnly = false): { phrase: string; isExplicitLabel: boolean } | null {
-  const sourceText = preferMainClothOnly ? stripLiningClauses(rawText) : rawText;
+  const unwrapped = unwrapSoftLineBreaks(rawText);
+  const sourceText = preferMainClothOnly ? stripLiningClauses(unwrapped) : unwrapped;
   const labelMatch = sourceText.match(
-    /(?:tecido(?:\s+principal)?|material|confeccionad[oa]\s+em|feit[oa]\s+(?:em|de)|malha)\s*[:\-]\s*([^\n.;|]{2,70})/i
+    /(?:tecido(?:\s+principal)?|material|composi[cç][aã]o)\s*[:\-]\s*([^\n.;|]{2,70})/i
   );
   if (labelMatch?.[1]) {
     const cleaned = cleanFabricPhrase(labelMatch[1]);
@@ -445,8 +469,18 @@ function extractExplicitFabricPhrase(rawText: string, preferMainClothOnly = fals
     }
   }
 
+  const colonDashBulletMatch = sourceText.match(
+    /(?:^|[\n•\-*])\s*tecido\s+([a-zA-ZÀ-ÿ0-9 ]{2,45})(?=\s*[:\-]|$)/im
+  );
+  if (colonDashBulletMatch?.[1]) {
+    const cleaned = cleanFabricPhrase(colonDashBulletMatch[1]);
+    if (cleaned.length >= 2) {
+      return { phrase: cleaned, isExplicitLabel: true };
+    }
+  }
+
   const inlineMatch = sourceText.match(
-    /(?:confeccionad[oa]\s+em|feit[oa]\s+(?:em|de)|no\s+tecido|em\s+tecido)\s+([^\n.,;|]{2,50})/i
+    /(?:confeccionad[oa]\s+(?:em|com)|feit[oa]\s+(?:em|de|com)|no\s+tecido|em\s+tecido)\s+([^\n.,;|]{2,50})/i
   );
   if (inlineMatch?.[1]) {
     const cleaned = cleanFabricPhrase(inlineMatch[1]);
@@ -479,9 +513,10 @@ export function extractFabricFieldSuggestion(rawProductInfo?: string): string {
   const raw = (rawProductInfo || '').trim();
   if (!raw) return '';
 
-  const normalizedRaw = normalizePortugueseFashionText(raw);
+  const unwrappedRaw = unwrapSoftLineBreaks(raw);
+  const normalizedRaw = normalizePortugueseFashionText(unwrappedRaw);
   const singleLine = normalizedRaw.replace(/[ \t]+/g, ' ').trim();
-  const isSingleLine = !/\n/.test(singleLine);
+  const isSingleLine = !/\n/.test(raw.replace(/\r\n/g, '\n'));
 
   // Caso 1: Usuário digitou apenas o tecido sem colar descrição completa -> auto-preenche com a mesma informação
   if (isSingleLine && singleLine.length <= 70 && !/[•✅✔✓➤►|]|https?:\/\//i.test(singleLine)) {
@@ -546,6 +581,17 @@ export function extractFabricFieldSuggestion(rawProductInfo?: string): string {
 
   if (explicit?.phrase) {
     return capitalizeLeadingChar(explicit.phrase);
+  }
+
+  // Fallback para qualquer menção a "Malha <nome>" ou "Malha" genérica
+  const genericMalhaMatch = mainClothText.match(
+    /\bmalha(?:\s+(?!de\b|com\b|em\b|para\b|super\b|leve\b|maci[oa]\b|confort[aá]vel\b|que\b|e\b)[a-zA-ZÀ-ÿ]{3,18})?\b/i
+  );
+  if (genericMalhaMatch?.[0]) {
+    return genericMalhaMatch[0]
+      .split(/\s+/)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(' ');
   }
 
   // Fallback para fibras genéricas se nenhum tecido específico do catálogo foi citado
@@ -659,8 +705,9 @@ export function analyzeAnaMariaProductInfo(
     };
   }
 
+  const unwrappedRawText = unwrapSoftLineBreaks(rawText);
   const cleanedText = cleanRawProductInfoText(rawText || normalizedOverride);
-  const normSearch = (rawText || '')
+  const normSearch = (unwrappedRawText || '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
@@ -676,7 +723,7 @@ export function analyzeAnaMariaProductInfo(
     );
   } else {
     detectedFabrics = FABRIC_CATALOG.filter(
-      (entry) => entry.pattern.test(rawText) || entry.pattern.test(normSearch)
+      (entry) => entry.pattern.test(unwrappedRawText) || entry.pattern.test(normSearch)
     );
   }
 

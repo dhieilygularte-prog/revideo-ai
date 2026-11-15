@@ -414,6 +414,20 @@ var FABRIC_CATALOG = [
     visualPromptEn: "ultra-soft supple viscose-elastane jersey / fluity knit with smooth fine matte weave and natural fluid curve-skimming drape"
   },
   {
+    id: "malha_romantic",
+    labelPt: "Malha Romantic",
+    pattern: /\b(malha\s+romantic|tecido\s+romantic|romantic)\b/i,
+    visualPromptPt: "malha romantic encorpada de poli\xE9ster com elastano, toque macio e sedoso ao vestir, textura leve com leve elasticidade e caimento estruturado elegante sem marcar",
+    visualPromptEn: "authentic Brazilian Malha Romantic heavyweight smooth interlock stretch knit fabric with soft silky matte finish and structured fluid drape"
+  },
+  {
+    id: "malha_montaria",
+    labelPt: "Malha Montaria / Helanca",
+    pattern: /\b(malha\s+montaria|montaria|helanca|suplex\s+light)\b/i,
+    visualPromptPt: "malha encorpada de trama firme e estruturada (montaria / helanca) com elasticidade confort\xE1vel, zero transpar\xEAncia e ajuste limpo ao corpo",
+    visualPromptEn: "firm structured heavyweight double-knit ponte/montaria/helanca fabric with smooth opaque surface and sculpted supportive fit"
+  },
+  {
     id: "viscose",
     labelPt: "Viscose",
     pattern: /\b(viscose|visup|100%\s*viscose)\b/i,
@@ -583,11 +597,17 @@ var PORTUGUESE_FASHION_TYPO_RULES = [
   [/\bmussiline\b/gi, "musseline"],
   [/\btricolini\b/gi, "tricoline"],
   [/\bbengalini\b/gi, "bengaline"],
+  [/\blecido\b/gi, "tecido"],
+  [/\b(romantci|romantc|romanric|romantick|romantik)\b/gi, "romantic"],
+  [/\bcontorto\b/gi, "conforto"],
   [/\bpoliester\b/gi, "poli\xE9ster"],
   [/\balgodao\b/gi, "algod\xE3o"],
   [/\bjacard\b/gi, "jacquard"]
 ];
 var PT_GARMENT_MID_CONTEXT_REGEX = /\b(vestido|saia|macac[aã]o|conjunto|comprimento|modelo|estilo)\s+mid\b/gi;
+function unwrapSoftLineBreaks(text) {
+  return (text || "").replace(/\r\n/g, "\n").replace(/([^\n.!?:;])\n([^\n\-•*✔✓✅🔹🔸▪️➤►])/g, "$1 $2");
+}
 function normalizePortugueseFashionText(text) {
   if (!text) return "";
   let result = text;
@@ -627,16 +647,17 @@ function normalizeIdentifiedGarmentName(rawName) {
   return fixed.trim();
 }
 function cleanFabricPhrase(rawPhrase) {
-  return normalizePortugueseFashionText(rawPhrase).replace(/\([^)]*\)/g, " ").replace(/\b(?:n[aã]o\s+(?:amassa|encolhe|desbota|marca|fica\s+transparente|d[aá]\s+bolinha)|zero\s+transpar[eê]ncia|super\s+confort[aá]vel|de\s+(?:alta|excelente|[oó]tima)\s+qualidade)\b.*$/i, "").split(/[.;|\n]/)[0].replace(/^[\s:\-]+|[\s:\-,]+$/g, "").replace(/\s+/g, " ").trim();
+  return normalizePortugueseFashionText(rawPhrase).replace(/\([^)]*\)/g, " ").replace(/\b(?:de\s+(?:toque|caimento)|com\s+toque|n[aã]o\s+(?:amassa|encolhe|desbota|marca|fica\s+transparente|d[aá]\s+bolinha)|zero\s+transpar[eê]ncia|super\s+confort[aá]vel|de\s+(?:alta|excelente|[oó]tima)\s+qualidade)\b.*$/i, "").split(/[,.;|\n]/)[0].replace(/^[\s:\-]+|[\s:\-,]+$/g, "").replace(/\s+/g, " ").trim();
 }
 function stripLiningClauses(rawText) {
   const lines = (rawText || "").split(/\n+/).filter((line) => !/^\s*(?:com\s+|possui\s+)?forro\b/i.test(line));
   return lines.join("\n").replace(/\b(?:com|possui)\s+forro\s+(?:em|de|100%|\d+%)\s+[^.;|\n]+/gi, " ");
 }
 function extractExplicitFabricPhrase(rawText, preferMainClothOnly = false) {
-  const sourceText = preferMainClothOnly ? stripLiningClauses(rawText) : rawText;
+  const unwrapped = unwrapSoftLineBreaks(rawText);
+  const sourceText = preferMainClothOnly ? stripLiningClauses(unwrapped) : unwrapped;
   const labelMatch = sourceText.match(
-    /(?:tecido(?:\s+principal)?|material|confeccionad[oa]\s+em|feit[oa]\s+(?:em|de)|malha)\s*[:\-]\s*([^\n.;|]{2,70})/i
+    /(?:tecido(?:\s+principal)?|material|composi[cç][aã]o)\s*[:\-]\s*([^\n.;|]{2,70})/i
   );
   if (labelMatch?.[1]) {
     const cleaned = cleanFabricPhrase(labelMatch[1]);
@@ -644,8 +665,17 @@ function extractExplicitFabricPhrase(rawText, preferMainClothOnly = false) {
       return { phrase: cleaned, isExplicitLabel: true };
     }
   }
+  const colonDashBulletMatch = sourceText.match(
+    /(?:^|[\n•\-*])\s*tecido\s+([a-zA-ZÀ-ÿ0-9 ]{2,45})(?=\s*[:\-]|$)/im
+  );
+  if (colonDashBulletMatch?.[1]) {
+    const cleaned = cleanFabricPhrase(colonDashBulletMatch[1]);
+    if (cleaned.length >= 2) {
+      return { phrase: cleaned, isExplicitLabel: true };
+    }
+  }
   const inlineMatch = sourceText.match(
-    /(?:confeccionad[oa]\s+em|feit[oa]\s+(?:em|de)|no\s+tecido|em\s+tecido)\s+([^\n.,;|]{2,50})/i
+    /(?:confeccionad[oa]\s+(?:em|com)|feit[oa]\s+(?:em|de|com)|no\s+tecido|em\s+tecido)\s+([^\n.,;|]{2,50})/i
   );
   if (inlineMatch?.[1]) {
     const cleaned = cleanFabricPhrase(inlineMatch[1]);
@@ -749,8 +779,9 @@ function analyzeAnaMariaProductInfo(rawProductInfo, overrideFabricType) {
       compactLineEn: ""
     };
   }
+  const unwrappedRawText = unwrapSoftLineBreaks(rawText);
   const cleanedText = cleanRawProductInfoText(rawText || normalizedOverride);
-  const normSearch = (rawText || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const normSearch = (unwrappedRawText || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   let detectedFabrics = [];
   if (normalizedOverride) {
     const normOverride = normalizedOverride.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
@@ -759,7 +790,7 @@ function analyzeAnaMariaProductInfo(rawProductInfo, overrideFabricType) {
     );
   } else {
     detectedFabrics = FABRIC_CATALOG.filter(
-      (entry) => entry.pattern.test(rawText) || entry.pattern.test(normSearch)
+      (entry) => entry.pattern.test(unwrappedRawText) || entry.pattern.test(normSearch)
     );
   }
   const explicitPhrase = extractExplicitFabricPhrase(rawText, true)?.phrase || null;
