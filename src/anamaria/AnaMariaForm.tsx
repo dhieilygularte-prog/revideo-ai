@@ -1451,29 +1451,6 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               </span>
             ) : null}
 
-            {form.productName.trim().length > 0 && !form.isProductNameApproved && (
-              <button
-                type="button"
-                onClick={() => {
-                  setApprovalWarning('');
-                  onChange((prev) => ({
-                    ...prev,
-                    isProductNameApproved: true,
-                    selectedShoeOption:
-                      prev.selectedShoeOption ||
-                      resolveAutoShoeOptionByProductName(
-                        prev.productName,
-                        prev.additionalInstructions
-                      ),
-                  }));
-                }}
-                className="px-4 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-lg shadow-emerald-950/50 transition-all cursor-pointer animate-pulse"
-              >
-                <Check className="w-4 h-4 stroke-[3]" />
-                <span>APROVAR</span>
-              </button>
-            )}
-
             {isNameReady && (
               <span className="px-3 py-1 rounded-xl bg-sky-500/25 border border-sky-300/60 text-sky-200 font-black text-xs uppercase tracking-wider flex items-center gap-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5 text-sky-300" />
@@ -1541,7 +1518,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                     ),
                 }));
               }}
-              className="shrink-0 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50 transition-all cursor-pointer"
+              className="shrink-0 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50 transition-all cursor-pointer animate-pulse"
             >
               <Check className="w-4 h-4 stroke-[3]" />
               <span>APROVAR</span>
@@ -1615,23 +1592,6 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               </span>
             )}
 
-            {form.fabricType?.trim() && !form.isFabricTypeApproved && (
-              <button
-                type="button"
-                onClick={() => {
-                  setApprovalWarning('');
-                  onChange((prev) => ({
-                    ...prev,
-                    isFabricTypeApproved: true,
-                  }));
-                }}
-                className="px-4 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-lg shadow-emerald-950/50 transition-all cursor-pointer animate-pulse"
-              >
-                <Check className="w-4 h-4 stroke-[3]" />
-                <span>APROVAR</span>
-              </button>
-            )}
-
             {isFabricReady && (
               <span className="px-3 py-1 rounded-xl bg-sky-500/25 border border-sky-300/60 text-sky-200 font-black text-xs uppercase tracking-wider flex items-center gap-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5 text-sky-300" />
@@ -1681,7 +1641,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                   isFabricTypeApproved: true,
                 }));
               }}
-              className="shrink-0 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50 transition-all cursor-pointer"
+              className="shrink-0 px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs sm:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50 transition-all cursor-pointer animate-pulse"
             >
               <Check className="w-4 h-4 stroke-[3]" />
               <span>APROVAR</span>
@@ -1714,25 +1674,6 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            {form.selectedShoeOption &&
-              form.selectedShoeOption !== 'outro' &&
-              !form.isShoeTypeApproved && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setApprovalWarning('');
-                    onChange((prev) => ({
-                      ...prev,
-                      isShoeTypeApproved: true,
-                    }));
-                  }}
-                  className="px-4 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-lg shadow-emerald-950/50 transition-all cursor-pointer animate-pulse"
-                >
-                  <Check className="w-4 h-4 stroke-[3]" />
-                  <span>APROVAR</span>
-                </button>
-              )}
-
             {isShoeReady && (
               <span className="px-3 py-1 rounded-xl bg-sky-500/25 border border-sky-300/60 text-sky-200 font-black text-xs uppercase tracking-wider flex items-center gap-1.5">
                 <CheckCircle2 className="w-3.5 h-3.5 text-sky-300" />
@@ -1883,7 +1824,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                     isShoeTypeApproved: true,
                   }));
                 }}
-                className="shrink-0 px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-lg shadow-emerald-950/50 transition-all cursor-pointer"
+                className="shrink-0 px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-lg shadow-emerald-950/50 transition-all cursor-pointer animate-pulse"
               >
                 <Check className="w-4 h-4 stroke-[3]" />
                 <span>APROVAR CALÇADO</span>
