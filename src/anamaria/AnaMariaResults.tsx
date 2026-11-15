@@ -110,10 +110,6 @@ function formatImageEngineLabel(imageModel?: string): string {
   switch (imageModel) {
     case 'seedream_5_0_pro':
       return 'SeaDream 5.0 Pro';
-    case 'kling_3_0':
-      return 'Kling Image 3.0 Omni';
-    case 'kling_o3_fal':
-      return 'Kling O3 Omni — fal.ai';
     default:
       return 'OpenAI';
   }

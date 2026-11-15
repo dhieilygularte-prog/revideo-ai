@@ -292,7 +292,7 @@ assert(vidPrompt.includes('Amiga, olha essa calça maravilhosa.'), 'Deve conter 
 assert(vidPrompt.includes('NUNCA virar de costas'), 'Deve proibir virar de costas');
 console.log('  ✓ buildAniaVideoPrompt passou com sucesso!');
 
-// ─── TESTE 11: AI_PROFILES (OpenAI & Gemini Profiles) ──────────────────────
+// ─── TESTE 11: AI_PROFILES (OpenAI Profile) ─────────────────────────────────
 console.log('▶ Teste 11: AI_PROFILES');
 import { AI_PROFILES } from '../src/config/aiProfiles';
 
@@ -301,12 +301,6 @@ assert(AI_PROFILES.openai.brain.model === 'gpt-5.6-terra', 'Cérebro OpenAI gpt-
 assert(AI_PROFILES.openai.transcription.model === 'gpt-transcribe', 'Transcrição OpenAI gpt-transcribe');
 assert(AI_PROFILES.openai.image.model === 'gpt-image-2.5-sunburst', 'Imagem OpenAI gpt-image-2.5-sunburst');
 assert(AI_PROFILES.openai.fidelityAudit.model === 'gpt-5.6-luna', 'Auditoria OpenAI gpt-5.6-luna');
-
-assert(AI_PROFILES.gemini.label === 'Gemini', 'Gemini label correta');
-assert(AI_PROFILES.gemini.brain.model === 'gemini-3.8-flash', 'Cérebro Gemini gemini-3.8-flash');
-assert(AI_PROFILES.gemini.transcription.model === 'gpt-transcribe', 'Transcrição Gemini mantém gpt-transcribe');
-assert(AI_PROFILES.gemini.image.model === 'gemini-3.1-flash-image', 'Imagem Gemini gemini-3.1-flash-image');
-assert(AI_PROFILES.gemini.fidelityAudit.model === 'gpt-5.6-luna', 'Auditoria Gemini mantém gpt-5.6-luna');
 console.log('  ✓ AI_PROFILES passou com sucesso!\n');
 
 console.log('🎉 TODOS OS TESTES UNITÁRIOS PASSARAM COM 100% DE SUCESSO! 🎉');

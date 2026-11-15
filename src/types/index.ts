@@ -94,7 +94,7 @@ export interface TokenUsageStats {
   totalCostUSD?: number;
   totalCalls?: number;
   modelsUsed?: string[];
-  provider?: 'openai' | 'gemini';
+  provider?: 'openai';
   detailedSteps?: Array<{
     id?: string;
     step: string;

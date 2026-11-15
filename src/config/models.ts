@@ -1,23 +1,5 @@
 // ═══ CONFIGURAÇÃO DE MODELOS E REGRAS DE DURAÇÃO ═══
 
-/**
- * Modelo de maior custo-benefício e inteligência da linha Flash para análise de vídeo e estrutura
- * Reduz em até 94% o consumo de créditos mantendo excelente qualidade
- */
-export const GEMINI_VISION_MODEL = 'gemini-3.8-flash';
-
-/** Modelo Flash-Lite ultraeconômico para tarefas leves e áudio */
-export const GEMINI_VISION_FAST_MODEL = 'gemini-3.1-flash-lite';
-
-/**
- * Modelo Flash Image para geração fotorrealista de imagem (Nano Banana 2 / Flash Image)
- * Custa uma fração do preço da linha Pro e gera em altíssima velocidade
- */
-export const GEMINI_IMAGE_MODEL = 'gemini-3.1-flash-image';
-
-/** Modelo alternativo Flash-Lite Image */
-export const GEMINI_IMAGE_FAST_MODEL = 'gemini-3.1-flash-lite-image';
-
 /** Limite máximo de duração de vídeo aceito pelo app (em segundos) */
 export const MAX_VIDEO_DURATION_SECONDS = 40;
 

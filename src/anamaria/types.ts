@@ -4,8 +4,6 @@ export type AnaMariaInfluencer = 'Mulher' | 'Homem';
 export type AnaMariaBodyType = 'normal' | 'plus_size';
 export type AnaMariaImageModel =
   | 'seedream_5_0_pro'
-  | 'kling_3_0'
-  | 'kling_o3_fal'
   | 'openai';
 export type AnaMariaVideoPromptLimit = 'unlimited' | '5000' | '2500';
 export type AnaMariaShoeCategory = 'A_CHINELO' | 'B_TENIS' | 'C_OUTRO';

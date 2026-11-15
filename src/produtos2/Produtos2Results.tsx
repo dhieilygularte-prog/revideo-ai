@@ -236,7 +236,7 @@ export const Produtos2Results: React.FC<Produtos2ResultsProps> = ({
         ...(curr.detailedSteps || []),
         {
           step: stepName,
-          model: usage.model || 'gemini-2.5-flash',
+          model: usage.model || 'gpt-4o-mini',
           costUSD: usage.costUSD || 0.005,
           costBRL: usage.costBRL || 0.03,
           timestamp: new Date().toLocaleTimeString('pt-BR'),

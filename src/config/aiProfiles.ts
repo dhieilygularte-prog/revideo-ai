@@ -4,13 +4,8 @@ import {
   OPENAI_IMAGE_MODEL,
   OPENAI_AUDIT_MODEL,
 } from './openaiModels';
-import {
-  GEMINI_VISION_MODEL,
-  GEMINI_IMAGE_MODEL,
-  GEMINI_VISION_FAST_MODEL,
-} from './models';
 
-export type AIProfile = 'openai' | 'gemini';
+export type AIProfile = 'openai';
 
 export interface AIProfileDetail {
   model: string;
@@ -29,28 +24,6 @@ export interface AIProfileConfig {
 }
 
 export const AI_PROFILES: Record<AIProfile, AIProfileConfig> = {
-  gemini: {
-    id: 'gemini',
-    label: 'Gemini',
-    brain: {
-      model: GEMINI_VISION_MODEL,
-      effort: 'medium',
-      display: 'Gemini 3.8 Flash — Medium / Thinking',
-    },
-    transcription: {
-      model: GEMINI_VISION_FAST_MODEL,
-      mode: 'normal',
-      display: 'Gemini 3.1 Flash Lite',
-    },
-    image: {
-      model: GEMINI_IMAGE_MODEL,
-      display: 'Gemini 3.1 Flash Image',
-    },
-    fidelityAudit: {
-      model: GEMINI_VISION_FAST_MODEL,
-      display: 'Gemini 3.1 Flash Lite',
-    },
-  },
   openai: {
     id: 'openai',
     label: 'OpenAI',

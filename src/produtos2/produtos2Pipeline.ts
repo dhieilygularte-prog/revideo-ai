@@ -92,8 +92,6 @@ function buildProdutos2TokenStats(params: {
   auditUsage?: any;
   aiProfile?: string;
 }): TokenUsageStats {
-  const isGemini = params.aiProfile === 'gemini';
-
   // 1. Falas / Speeches Stage Usage
   let speechPrompt = 0;
   let speechCand = 0;
@@ -133,25 +131,25 @@ function buildProdutos2TokenStats(params: {
   const planPrompt = params.planUsage?.promptTokens || 3400;
   const planCand = params.planUsage?.completionTokens || 1100;
   const planTotal = planPrompt + planCand;
-  const planCostUSD = params.planUsage?.costUSD || (isGemini ? 0.005 : 0.012);
-  const planCostBRL = params.planUsage?.costBRL || (isGemini ? 0.03 : 0.07);
-  const planModel = params.planUsage?.model || (isGemini ? 'gemini-3.8-flash' : 'gpt-4o');
+  const planCostUSD = params.planUsage?.costUSD || 0.012;
+  const planCostBRL = params.planUsage?.costBRL || 0.07;
+  const planModel = params.planUsage?.model || 'gpt-4o';
 
   // 3. Storyboard 3x3 Image Usage
-  const imgPrompt = params.imgUsage?.promptTokens || (isGemini ? 1800 : 2100);
+  const imgPrompt = params.imgUsage?.promptTokens || 2100;
   const imgCand = 0;
   const imgTotal = imgPrompt;
-  const imgCostUSD = params.imgUsage?.costUSD || (isGemini ? 0.014 : 0.028);
-  const imgCostBRL = params.imgUsage?.costBRL || (isGemini ? 0.08 : 0.16);
-  const imgModel = params.imgUsage?.model || (isGemini ? 'gemini-3.1-flash-image' : 'gpt-image-2.5-sunburst');
+  const imgCostUSD = params.imgUsage?.costUSD || 0.028;
+  const imgCostBRL = params.imgUsage?.costBRL || 0.16;
+  const imgModel = params.imgUsage?.model || 'gpt-image-2.5-sunburst';
 
   // 4. Storyboard Audit 9 Quadrantes
   const auditPrompt = params.auditUsage?.promptTokens || 3500;
   const auditCand = params.auditUsage?.completionTokens || 700;
   const auditTotal = auditPrompt + auditCand;
-  const auditCostUSD = params.auditUsage?.costUSD || (isGemini ? 0.005 : 0.011);
-  const auditCostBRL = params.auditUsage?.costBRL || (isGemini ? 0.03 : 0.063);
-  const auditModel = params.auditUsage?.model || (isGemini ? 'gemini-3.8-flash' : 'gpt-5.6-luna');
+  const auditCostUSD = params.auditUsage?.costUSD || 0.011;
+  const auditCostBRL = params.auditUsage?.costBRL || 0.063;
+  const auditModel = params.auditUsage?.model || 'gpt-5.6-luna';
 
   // 5. Veo 3 Prompt & Hashtags
   const veoPromptTokens = 450;
@@ -542,12 +540,12 @@ async function requestStoryboardImageGeneration(params: {
     : undefined;
 
   const defaultImgUsage = {
-    promptTokens: aiProfile === 'gemini' ? 1800 : 2100,
+    promptTokens: 2100,
     completionTokens: 0,
-    totalTokens: aiProfile === 'gemini' ? 1800 : 2100,
-    costUSD: aiProfile === 'gemini' ? 0.014 : 0.028,
-    costBRL: aiProfile === 'gemini' ? 0.08 : 0.16,
-    model: aiProfile === 'gemini' ? 'gemini-3.1-flash-image' : 'gpt-image-2.5-sunburst',
+    totalTokens: 2100,
+    costUSD: 0.028,
+    costBRL: 0.16,
+    model: 'gpt-image-2.5-sunburst',
   };
 
   const cleanGenerationPrompt = sanitizeStoryboardPromptForFidelity(prompt, productName, productInfo);
@@ -705,9 +703,9 @@ export async function auditProdutos2Storyboard(params: {
     promptTokens: 3500,
     completionTokens: 700,
     totalTokens: 4200,
-    costUSD: aiProfile === 'gemini' ? 0.005 : 0.011,
-    costBRL: aiProfile === 'gemini' ? 0.03 : 0.063,
-    model: aiProfile === 'gemini' ? 'gemini-3.8-flash' : 'gpt-5.6-luna',
+    costUSD: 0.011,
+    costBRL: 0.063,
+    model: 'gpt-5.6-luna',
   };
 
   try {
@@ -2534,18 +2532,17 @@ REGRAS ESTRITAS DE PRESERVAÇÃO E EXECUÇÃO:
     }
   }
 
-  const isGemini = aiProfile === 'gemini';
-  const imgPrompt = genRes.usage?.promptTokens || (isGemini ? 1800 : 2100);
-  const imgCostUSD = genRes.usage?.costUSD || (isGemini ? 0.014 : 0.028);
-  const imgCostBRL = genRes.usage?.costBRL || (isGemini ? 0.08 : 0.16);
-  const imgModel = genRes.usage?.model || (isGemini ? 'gemini-3.1-flash-image' : 'gpt-image-2.5-sunburst');
+  const imgPrompt = genRes.usage?.promptTokens || 2100;
+  const imgCostUSD = genRes.usage?.costUSD || 0.028;
+  const imgCostBRL = genRes.usage?.costBRL || 0.16;
+  const imgModel = genRes.usage?.model || 'gpt-image-2.5-sunburst';
 
   const auditPrompt = newAudit.usage?.promptTokens || 3500;
   const auditCand = newAudit.usage?.completionTokens || 700;
   const auditTotal = auditPrompt + auditCand;
-  const auditCostUSD = newAudit.usage?.costUSD || (isGemini ? 0.005 : 0.011);
-  const auditCostBRL = newAudit.usage?.costBRL || (isGemini ? 0.03 : 0.063);
-  const auditModel = newAudit.usage?.model || (isGemini ? 'gemini-3.8-flash' : 'gpt-5.6-luna');
+  const auditCostUSD = newAudit.usage?.costUSD || 0.011;
+  const auditCostBRL = newAudit.usage?.costBRL || 0.063;
+  const auditModel = newAudit.usage?.model || 'gpt-5.6-luna';
 
   const incPromptTokens = imgPrompt + auditPrompt;
   const incCandTokens = auditCand;

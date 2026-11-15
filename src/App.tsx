@@ -403,7 +403,7 @@ export default function App() {
     );
   };
 
-  // Pipeline Execution (Optimized for low tokens with gemini-2.5-flash)
+  // Pipeline Execution
   const handleAnalyzeAndGenerate = async () => {
     if (!videoData) {
       setErrorMessage('Por favor, anexe o vídeo de referência antes de iniciar.');
@@ -419,7 +419,7 @@ export default function App() {
     setErrorMessage(null);
     setCurrentStep('analyzing_video');
     setProgressPercent(15);
-    setStatusMessage('Analisando vídeo com Gemini 2.5 Flash (-94% tokens) e transcrevendo falas...');
+    setStatusMessage('Analisando vídeo com IA e transcrevendo falas...');
 
     try {
       // Step 1: Send video keyframes + audio + variations + additionalInstructions + modelPhoto + productInfo to backend
@@ -2364,41 +2364,21 @@ export default function App() {
             </div>
 
             {/* Error Notification */}
-            {errorMessage && (
+                {errorMessage && (
               <div className="p-4 bg-rose-500/10 border border-rose-500/30 rounded-2xl text-xs text-rose-300 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-start gap-3">
                   <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
                   <div className="space-y-1">
                     <p className="font-bold text-sm">
                       {errorMessage.includes('429') || errorMessage.includes('spending') || errorMessage.includes('Limite')
-                        ? '⚠️ Limite de Gastos Mensal Atingido (Erro 429 - Spend Cap)'
+                        ? '⚠️ Limite de Uso da API Atingido (Erro 429)'
                         : errorMessage.includes('402') || errorMessage.includes('créditos')
-                        ? '⚠️ Créditos Pré-pagos da API Gemini Esgotados (Erro 402)'
+                        ? '⚠️ Créditos Pré-pagos da API Esgotados (Erro 402)'
                         : 'Aviso no Processamento:'}
                     </p>
                     <p className="text-rose-200/90 leading-relaxed max-w-2xl">{errorMessage}</p>
                   </div>
                 </div>
-
-                {errorMessage.includes('429') || errorMessage.includes('spending') || errorMessage.includes('Limite') ? (
-                  <a
-                    href="https://ai.studio/spend"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="px-4 py-2 bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-500 hover:to-rose-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shrink-0 shadow-lg cursor-pointer"
-                  >
-                    <span>Ajustar Limite no AI Studio (/spend)</span>
-                  </a>
-                ) : (errorMessage.includes('402') || errorMessage.includes('créditos')) ? (
-                  <a
-                    href="https://ai.studio/projects"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-colors shrink-0 shadow-lg cursor-pointer"
-                  >
-                    <span>Recarregar Créditos no AI Studio</span>
-                  </a>
-                ) : null}
               </div>
             )}
 
@@ -2579,7 +2559,7 @@ export default function App() {
                 presentationMode: item.presentationMode || 'mirror_selfie',
                 selectedMasterId: item.selectedMasterId || 'mestra_ana_maria',
                 additionalInstructions: item.additionalInstructions,
-                imageModel: item.imageModel,
+                imageModel: item.imageModel === 'seedream_5_0_pro' ? 'seedream_5_0_pro' : 'openai',
                 videoPromptLimit: item.videoPromptLimit,
                 selectedScenarioId: item.selectedScenarioId,
                 selectedScenarioNumber: item.selectedScenarioNumber,

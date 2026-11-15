@@ -1,6 +1,6 @@
 import { VideoAnalysisResult, FidelityAuditResult } from '../../types';
 
-export type AIProviderType = 'gemini' | 'openai';
+export type AIProviderType = 'openai';
 
 export interface FrameInput {
   time: number;

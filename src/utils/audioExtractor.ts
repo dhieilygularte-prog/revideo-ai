@@ -27,7 +27,7 @@ export async function extractAudioFromVideoFile(
       return { hasAudio: false };
     }
 
-    // Target: Mono, 16kHz sample rate (optimal for Gemini 2.5 Flash / 3.5 Transcribe)
+    // Target: Mono, 16kHz sample rate (optimal for OpenAI Transcribe)
     const targetSampleRate = 16000;
     const targetLength = Math.floor(duration * targetSampleRate);
     const offlineCtx = new OfflineAudioContext(1, targetLength, targetSampleRate);

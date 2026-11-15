@@ -36,10 +36,6 @@ export function getImageModelLabel(imageModel?: string): string {
   switch (imageModel) {
     case 'seedream_5_0_pro':
       return 'Seedream 5.0 Pro';
-    case 'kling_3_0':
-      return 'Kling 3.0 Omni';
-    case 'kling_o3_fal':
-      return 'Kling O3 Omni Fal.ai';
     case 'openai':
       return 'OpenAI';
     default:

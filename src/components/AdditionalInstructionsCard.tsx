@@ -208,7 +208,7 @@ export const AdditionalInstructionsCard: React.FC<AdditionalInstructionsCardProp
       return;
     }
 
-    // Caso o navegador não tenha Web Speech API ou não capturou texto, dispara o fallback Gemini
+    // Caso o navegador não tenha Web Speech API ou não capturou texto, dispara o fallback via backend OpenAI
     await new Promise((resolve) => setTimeout(resolve, 300));
     const chunks = audioChunksRef.current;
     if (!chunks || chunks.length === 0) return;

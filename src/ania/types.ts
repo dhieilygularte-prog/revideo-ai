@@ -76,8 +76,6 @@ export interface AniaFormState {
 
 export type AniaImageModel =
   | 'seedream_5_0_pro'
-  | 'kling_3_0'
-  | 'kling_o3_fal'
   | 'openai';
 
 export interface AniaPlanningResult {

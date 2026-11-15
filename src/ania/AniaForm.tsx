@@ -1219,7 +1219,7 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
             <span>15. Modelo de Geração de Imagem</span>
             <span className="text-[11px] text-zinc-400 font-normal">Motor de renderização de imagem</span>
           </label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 bg-zinc-950 p-1 rounded-xl border border-zinc-800">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-zinc-950 p-1 rounded-xl border border-zinc-800">
             <button
               type="button"
               onClick={() => onChange((prev) => ({ ...prev, imageModel: 'seedream_5_0_pro' }))}
@@ -1233,34 +1233,6 @@ export function AniaForm({ form, onChange, onSubmit, isProcessing }: AniaFormPro
                 {(form.imageModel || 'seedream_5_0_pro') === 'seedream_5_0_pro' && <span className="w-1.5 h-1.5 rounded-full bg-purple-600" />}
               </span>
               <span>SEEDREAM 5.0 PRO</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onChange((prev) => ({ ...prev, imageModel: 'kling_3_0' }))}
-              className={`py-2 px-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                form.imageModel === 'kling_3_0'
-                  ? 'bg-purple-600 text-white shadow-md'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${form.imageModel === 'kling_3_0' ? 'border-white bg-white' : 'border-zinc-500'}`}>
-                {form.imageModel === 'kling_3_0' && <span className="w-1.5 h-1.5 rounded-full bg-purple-600" />}
-              </span>
-              <span>KLING 3.0 OMNI</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onChange((prev) => ({ ...prev, imageModel: 'kling_o3_fal' }))}
-              className={`py-2 px-2 text-xs font-bold rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-                form.imageModel === 'kling_o3_fal'
-                  ? 'bg-purple-600 text-white shadow-md'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-            >
-              <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${form.imageModel === 'kling_o3_fal' ? 'border-white bg-white' : 'border-zinc-500'}`}>
-                {form.imageModel === 'kling_o3_fal' && <span className="w-1.5 h-1.5 rounded-full bg-purple-600" />}
-              </span>
-              <span>KLING O3 — FAL.AI</span>
             </button>
             <button
               type="button"

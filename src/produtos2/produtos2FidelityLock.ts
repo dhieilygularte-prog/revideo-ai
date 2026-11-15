@@ -70,7 +70,7 @@ export function appendFidelityLockToVeoPrompt(prompt: string): string {
 }
 
 /**
- * Diretrizes obrigatorias para prompts de geracao de imagem de Storyboard (DALL-E / OpenAI / Gemini).
+ * Diretrizes obrigatorias para prompts de geracao de imagem de Storyboard (OpenAI / SeaDream).
  */
 export function buildProductFidelityDirectives(_productInfo?: string): string {
   return `
@@ -440,7 +440,7 @@ export function sanitizeVisualMapForFidelity<T extends { excerpt: string; intent
 }
 
 /**
- * Higieniza o texto bruto do prompt do storyboard antes de enviar para os motores de imagem (OpenAI/Gemini).
+ * Higieniza o texto bruto do prompt do storyboard antes de enviar para os motores de imagem (OpenAI / SeaDream).
  */
 export function sanitizeStoryboardPromptForFidelity(prompt: string, productName?: string, productInfo?: string): string {
   if (!prompt || typeof prompt !== 'string') return prompt || '';

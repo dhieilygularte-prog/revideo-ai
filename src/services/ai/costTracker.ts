@@ -28,7 +28,7 @@ export interface StepCostDetail {
 }
 
 export interface CompleteCloningCostReport {
-  provider: 'openai' | 'gemini';
+  provider: 'openai';
   totalCostUSD: number;
   totalCostBRL: number;
   totalCalls: number;
@@ -142,7 +142,7 @@ export class CostTracker {
   /**
    * Gera o relatório consolidado completo de custos da clonagem
    */
-  generateReport(provider: 'openai' | 'gemini' = 'openai'): CompleteCloningCostReport {
+  generateReport(provider: 'openai' = 'openai'): CompleteCloningCostReport {
     let totalCostUSD = 0;
     let totalCostBRL = 0;
     let totalTokens = 0;

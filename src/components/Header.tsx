@@ -20,7 +20,7 @@ export const Header: React.FC<HeaderProps> = ({
   mode = 'produtos2',
   onModeChange,
   aiProfile = 'openai',
-  onAIProfileChange,
+  onAIProfileChange: _onAIProfileChange,
   anaMariaTheme = 'ametista',
   onAnaMariaThemeChange,
 }) => {
@@ -48,12 +48,6 @@ export const Header: React.FC<HeaderProps> = ({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [showDropdown, showThemeDropdown]);
-
-  const handleSelectProfile = (p: AIProfile) => {
-    if (onAIProfileChange) {
-      onAIProfileChange(p);
-    }
-  };
 
   return (
     <header className="border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-xl sticky top-0 z-40">
@@ -251,34 +245,13 @@ export const Header: React.FC<HeaderProps> = ({
                 </button>
               </div>
 
-              {/* Seletor Segmented Control: OpenAI vs Gemini */}
-              <div className="bg-zinc-950 p-1 rounded-xl border border-zinc-800 grid grid-cols-2 gap-1 shadow-inner">
-                <button
-                  type="button"
-                  onClick={() => handleSelectProfile('openai')}
-                  className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                    aiProfile === 'openai'
-                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow'
-                      : 'text-zinc-400 hover:text-zinc-200'
-                  }`}
-                >
-                  {aiProfile === 'openai' && <Check className="w-3.5 h-3.5" />}
+              {/* Perfil de IA ativo (OpenAI) */}
+              <div className="bg-zinc-950 p-1 rounded-xl border border-zinc-800 shadow-inner">
+                <div className="py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow">
+                  <Check className="w-3.5 h-3.5" />
                   <span>OpenAI</span>
-                  {aiProfile === 'openai' && <span className="text-[9px] bg-purple-900/60 px-1 py-0.5 rounded text-purple-200 uppercase font-mono">Padrão</span>}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSelectProfile('gemini')}
-                  className={`py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                    aiProfile === 'gemini'
-                      ? 'bg-gradient-to-r from-sky-600 to-blue-600 text-white shadow'
-                      : 'text-zinc-400 hover:text-zinc-200'
-                  }`}
-                >
-                  {aiProfile === 'gemini' && <Check className="w-3.5 h-3.5" />}
-                  <span>Gemini</span>
-                </button>
+                  <span className="text-[9px] bg-purple-900/60 px-1 py-0.5 rounded text-purple-200 uppercase font-mono">Ativo</span>
+                </div>
               </div>
 
               {/* Detalhes dos Modelos Ativos do Perfil Selecionado */}
