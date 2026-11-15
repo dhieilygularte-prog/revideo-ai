@@ -552,85 +552,131 @@ async function requestStoryboardImageGeneration(params: {
 
   const cleanGenerationPrompt = sanitizeStoryboardPromptForFidelity(prompt, productName, productInfo);
 
-  // Tentativa 1: Rota dedicada /api/produtos2-generate-storyboard
-  try {
-    const imgRes = await fetch('/api/produtos2-generate-storyboard', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        prompt: cleanGenerationPrompt,
-        productName,
-        productInfo,
-        productPhotosBase64: photosSubset,
-        variations,
-        additionalInstructions,
-        previousStoryboardImageBase64: compressedPrev,
-        correctionPrompt,
-        aiProfile,
-        sceneCount,
-        aspectRatio: isLandscape ? '16:9' : (aspectRatio || '9:16'),
-        isLeilaoBlock,
-        isAchadinhosBlock,
-      }),
-    });
-    const imgData = await safeParseJsonResponse(imgRes);
-    if (imgData && imgData.success && imgData.imageUrl) {
-      const finalUrl = isLandscape
-        ? await ensureLandscapeStoryboardImage(imgData.imageUrl)
-        : imgData.imageUrl;
+  const runSingleGenerationAttempt = async (
+    activeCorrectionPrompt?: string,
+    prevImgBase64?: string
+  ): Promise<{ imageUrl?: string; error?: string; usage?: any }> => {
+    // Tentativa 1: Rota dedicada /api/produtos2-generate-storyboard
+    try {
+      const imgRes = await fetch('/api/produtos2-generate-storyboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: cleanGenerationPrompt,
+          productName,
+          productInfo,
+          productPhotosBase64: photosSubset,
+          variations,
+          additionalInstructions,
+          previousStoryboardImageBase64: prevImgBase64 ?? compressedPrev,
+          correctionPrompt: activeCorrectionPrompt ?? correctionPrompt,
+          aiProfile,
+          sceneCount,
+          aspectRatio: isLandscape ? '16:9' : (aspectRatio || '9:16'),
+          isLeilaoBlock,
+          isAchadinhosBlock,
+        }),
+      });
+      const imgData = await safeParseJsonResponse(imgRes);
+      if (imgData && imgData.success && imgData.imageUrl) {
+        const finalUrl = isLandscape
+          ? await ensureLandscapeStoryboardImage(imgData.imageUrl)
+          : imgData.imageUrl;
+        return {
+          imageUrl: finalUrl,
+          usage: imgData.usage || defaultImgUsage,
+        };
+      }
+      if (imgData && !imgData.success && imgData.error) {
+        return { error: imgData.error };
+      }
+    } catch (err) {
+      console.warn('Tentativa 1 (/api/produtos2-generate-storyboard) falhou, tentando fallback:', err);
+    }
+
+    // Tentativa 2 (Fallback Universal): Rota /api/generate-scene-image (presente em todos os ambientes)
+    try {
+      const fallbackRes = await fetch('/api/generate-scene-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: cleanGenerationPrompt,
+          productType: productName,
+          variationName: productName,
+          targetAngle: 'front',
+          productPhotoBase64: photosSubset[0] || '',
+          productPhotosBase64: photosSubset,
+          modelReferenceBase64: undefined,
+          correctionPrompt: activeCorrectionPrompt ?? correctionPrompt,
+          additionalInstructions,
+          isCloneMode: false,
+          aiProfile,
+          aspectRatio: isLandscape ? '16:9' : (aspectRatio || '9:16'),
+          isLeilaoBlock,
+        }),
+      });
+      const fallbackData = await safeParseJsonResponse(fallbackRes);
+      if (fallbackData && fallbackData.success && fallbackData.imageUrl) {
+        const finalUrl = isLandscape
+          ? await ensureLandscapeStoryboardImage(fallbackData.imageUrl)
+          : fallbackData.imageUrl;
+        return {
+          imageUrl: finalUrl,
+          usage: fallbackData.usage || defaultImgUsage,
+        };
+      }
       return {
-        imageUrl: finalUrl,
-        usage: imgData.usage || defaultImgUsage,
+        error:
+          fallbackData?.error ||
+          'Não foi possível gerar a imagem do storyboard. Clique em "Refazer" para tentar novamente.',
+      };
+    } catch (err: any) {
+      return {
+        error: err?.message || 'Erro de conexão ao gerar a imagem do storyboard.',
       };
     }
-    if (imgData && !imgData.success && imgData.error) {
-      return { error: imgData.error };
+  };
+
+  let firstAttempt = await runSingleGenerationAttempt();
+
+  // Para blocos de Leilão e Achadinhos (que não passam pelo auditProdutos2Storyboard separado),
+  // executa verificação automática de fidelidade e refaz automaticamente caso fique em Amarelo ou Vermelho
+  if (
+    firstAttempt.imageUrl &&
+    (isLeilaoBlock || isAchadinhosBlock) &&
+    photosSubset.length > 0 &&
+    !correctionPrompt
+  ) {
+    try {
+      const compactGen = await compressImageForPayload(firstAttempt.imageUrl, 900, 0.84);
+      const auditRes = await fetch('/api/audit-image-fidelity', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          generatedImageBase64: compactGen,
+          referencePhotos: photosSubset.slice(0, 2),
+          variationName: productName || 'Produto',
+          role: isLeilaoBlock ? `Leilão Bloco ${isLeilaoBlock}` : `Achadinhos Bloco ${isAchadinhosBlock}`,
+          aiProfile,
+        }),
+      });
+      const auditJson = await safeParseJsonResponse(auditRes);
+      if (auditJson?.success && auditJson?.audit && auditJson.audit.status !== 'green') {
+        const fixText =
+          auditJson.audit.correctionPrompt ||
+          (auditJson.audit.issues || []).join('; ') ||
+          'Corrigir o produto para ficar 100% idêntico à foto de referência.';
+        const retryAttempt = await runSingleGenerationAttempt(fixText, compactGen);
+        if (retryAttempt.imageUrl) {
+          firstAttempt = retryAttempt;
+        }
+      }
+    } catch (auditErr) {
+      console.warn('Aviso ao verificar fidelidade automática do bloco:', auditErr);
     }
-  } catch (err) {
-    console.warn('Tentativa 1 (/api/produtos2-generate-storyboard) falhou, tentando fallback:', err);
   }
 
-  // Tentativa 2 (Fallback Universal): Rota /api/generate-scene-image (presente em todos os ambientes)
-  try {
-    const fallbackRes = await fetch('/api/generate-scene-image', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        prompt: cleanGenerationPrompt,
-        productType: productName,
-        variationName: productName,
-        targetAngle: 'front',
-        productPhotoBase64: photosSubset[0] || '',
-        productPhotosBase64: photosSubset,
-        modelReferenceBase64: undefined,
-        correctionPrompt,
-        additionalInstructions,
-        isCloneMode: false,
-        aiProfile,
-        aspectRatio: isLandscape ? '16:9' : (aspectRatio || '9:16'),
-        isLeilaoBlock,
-      }),
-    });
-    const fallbackData = await safeParseJsonResponse(fallbackRes);
-    if (fallbackData && fallbackData.success && fallbackData.imageUrl) {
-      const finalUrl = isLandscape
-        ? await ensureLandscapeStoryboardImage(fallbackData.imageUrl)
-        : fallbackData.imageUrl;
-      return {
-        imageUrl: finalUrl,
-        usage: fallbackData.usage || defaultImgUsage,
-      };
-    }
-    return {
-      error:
-        fallbackData?.error ||
-        'Não foi possível gerar a imagem do storyboard. Clique em "Refazer" para tentar novamente.',
-    };
-  } catch (err: any) {
-    return {
-      error: err?.message || 'Erro de conexão ao gerar a imagem do storyboard.',
-    };
-  }
+  return firstAttempt;
 }
 
 /**
@@ -1780,7 +1826,7 @@ export async function runProdutos2Pipeline(params: {
         ? '5/6 Fiscalizando fidelidade do produto nos 6 quadrantes do Storyboard 2x3...'
         : '5/6 Fiscalizando fidelidade do produto em cada um dos 9 quadrantes do Storyboard...'
     );
-    const [highResUrl, auditRes] = await Promise.all([
+    let [highResUrl, auditRes] = await Promise.all([
       ensureHighResStoryboardImage(imgGenResult.imageUrl),
       auditProdutos2Storyboard({
         storyboardImageUrl: imgGenResult.imageUrl,
@@ -1792,6 +1838,47 @@ export async function runProdutos2Pipeline(params: {
         aiProfile,
       }),
     ]);
+
+    // Se a verificação de fidelidade não ficou em Verde (ficou em Amarelo, Laranja ou Vermelho),
+    // faz automaticamente uma nova tentativa corrigindo o que não bateu com a foto de referência
+    if (auditRes.audit && auditRes.audit.overallStatus !== 'green') {
+      const autoFixDetails =
+        auditRes.audit.correctionPrompt ||
+        (auditRes.audit.summaryIssues || []).join('; ') ||
+        'Corrigir o produto em todos os quadros para ficar 100% idêntico à foto de referência.';
+      onProgress?.(
+        isTwoScenes ? 60 : 84,
+        `Storyboard ficou em ${auditRes.audit.overallStatus === 'yellow' ? 'Amarelo' : 'Vermelho'} na verificação — refazendo automaticamente com correção de fidelidade...`
+      );
+      const retryImgGen = await requestStoryboardImageGeneration({
+        prompt: storyboardPrompt,
+        productName: finalProductName,
+        productInfo: form.productInfo,
+        allPhotos,
+        variations: form.variations,
+        additionalInstructions: form.additionalInstructions,
+        previousStoryboardImageBase64: imgGenResult.imageUrl,
+        correctionPrompt: autoFixDetails,
+        aiProfile,
+        sceneCount: targetSceneCount,
+        aspectRatio: '9:16',
+      });
+      if (retryImgGen.imageUrl) {
+        [highResUrl, auditRes] = await Promise.all([
+          ensureHighResStoryboardImage(retryImgGen.imageUrl),
+          auditProdutos2Storyboard({
+            storyboardImageUrl: retryImgGen.imageUrl,
+            productPhotosBase64: allPhotos,
+            productName: finalProductName,
+            productLock,
+            scenes,
+            variations: form.variations,
+            aiProfile,
+          }),
+        ]);
+      }
+    }
+
     storyboardImageUrl = highResUrl;
     storyboardAudit = auditRes.audit;
     auditUsage = auditRes.usage;
@@ -1992,7 +2079,7 @@ export async function runProdutos2Pipeline(params: {
     let storyboardImageUrl2: string | undefined = undefined;
     if (imgGenResult2.imageUrl) {
       onProgress?.(90, 'Fiscalizando fidelidade do produto nos 6 quadrantes da Cena 2...');
-      const [highRes2, auditRes2] = await Promise.all([
+      let [highRes2, auditRes2] = await Promise.all([
         ensureHighResStoryboardImage(imgGenResult2.imageUrl),
         auditProdutos2Storyboard({
           storyboardImageUrl: imgGenResult2.imageUrl,
@@ -2004,6 +2091,45 @@ export async function runProdutos2Pipeline(params: {
           aiProfile,
         }),
       ]);
+
+      if (auditRes2.audit && auditRes2.audit.overallStatus !== 'green') {
+        const autoFixDetails2 =
+          auditRes2.audit.correctionPrompt ||
+          (auditRes2.audit.summaryIssues || []).join('; ') ||
+          'Corrigir o produto nos quadros da Cena 2 para ficar 100% idêntico à foto de referência.';
+        onProgress?.(
+          93,
+          `Storyboard da Cena 2 ficou em ${auditRes2.audit.overallStatus === 'yellow' ? 'Amarelo' : 'Vermelho'} — refazendo automaticamente com correção de fidelidade...`
+        );
+        const retryImgGen2 = await requestStoryboardImageGeneration({
+          prompt: storyboardPrompt2,
+          productName: finalProductName,
+          productInfo: form.productInfo,
+          allPhotos,
+          variations: form.variations,
+          additionalInstructions: form.additionalInstructions,
+          previousStoryboardImageBase64: imgGenResult2.imageUrl,
+          correctionPrompt: autoFixDetails2,
+          aiProfile,
+          sceneCount: 6,
+          aspectRatio: '9:16',
+        });
+        if (retryImgGen2.imageUrl) {
+          [highRes2, auditRes2] = await Promise.all([
+            ensureHighResStoryboardImage(retryImgGen2.imageUrl),
+            auditProdutos2Storyboard({
+              storyboardImageUrl: retryImgGen2.imageUrl,
+              productPhotosBase64: allPhotos,
+              productName: finalProductName,
+              productLock,
+              scenes: scenes2,
+              variations: form.variations,
+              aiProfile,
+            }),
+          ]);
+        }
+      }
+
       storyboardImageUrl2 = highRes2;
       storyboardAudit2 = auditRes2.audit;
     }
@@ -2359,7 +2485,7 @@ REGRAS ESTRITAS DE PRESERVAÇÃO E EXECUÇÃO:
   }
 
   // Auditar imediatamente a nova imagem gerada em paralelo com o upscale 4K
-  const [finalHighResImg, newAudit] = await Promise.all([
+  let [finalHighResImg, newAudit] = await Promise.all([
     ensureHighResStoryboardImage(genRes.imageUrl),
     auditProdutos2Storyboard({
       storyboardImageUrl: genRes.imageUrl,
@@ -2371,6 +2497,42 @@ REGRAS ESTRITAS DE PRESERVAÇÃO E EXECUÇÃO:
       aiProfile,
     }),
   ]);
+
+  if (newAudit.audit && newAudit.audit.overallStatus !== 'green') {
+    const autoRetryCorrection = [
+      combinedCorrection,
+      newAudit.audit.correctionPrompt || (newAudit.audit.summaryIssues || []).join('; '),
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+    const retryRes = await requestStoryboardImageGeneration({
+      prompt: targetStoryboardPrompt,
+      productName: result.productName,
+      productInfo: form.productInfo || result.productInfo || '',
+      allPhotos,
+      variations: effectiveVariations,
+      additionalInstructions: form.additionalInstructions,
+      previousStoryboardImageBase64: genRes.imageUrl,
+      correctionPrompt: autoRetryCorrection || undefined,
+      aiProfile,
+      sceneCount: is4Scenes ? 4 : (is6Scenes || isTwoScenes) ? 6 : 9,
+      aspectRatio: '9:16',
+    });
+    if (retryRes.imageUrl) {
+      [finalHighResImg, newAudit] = await Promise.all([
+        ensureHighResStoryboardImage(retryRes.imageUrl),
+        auditProdutos2Storyboard({
+          storyboardImageUrl: retryRes.imageUrl,
+          productPhotosBase64: allPhotos,
+          productName: result.productName,
+          productLock: result.productLock,
+          scenes: targetScenes,
+          variations: effectiveVariations,
+          aiProfile,
+        }),
+      ]);
+    }
+  }
 
   const isGemini = aiProfile === 'gemini';
   const imgPrompt = genRes.usage?.promptTokens || (isGemini ? 1800 : 2100);
@@ -2636,10 +2798,11 @@ export async function recreateSingleTwoScenesPartWithCopy(params: {
     aspectRatio: '9:16',
   });
 
+  let finalStoryboardImgUrl = imgGen.imageUrl;
   let storyboardAudit: Produtos2StoryboardAudit | undefined = undefined;
-  if (imgGen.imageUrl) {
-    const auditRes = await auditProdutos2Storyboard({
-      storyboardImageUrl: imgGen.imageUrl,
+  if (finalStoryboardImgUrl) {
+    let auditRes = await auditProdutos2Storyboard({
+      storyboardImageUrl: finalStoryboardImgUrl,
       productPhotosBase64: allPhotos,
       productName: result.productName,
       productLock: result.productLock,
@@ -2647,6 +2810,37 @@ export async function recreateSingleTwoScenesPartWithCopy(params: {
       variations: result.variations || form.variations,
       aiProfile,
     });
+    if (auditRes.audit && auditRes.audit.overallStatus !== 'green') {
+      const autoFixPart =
+        auditRes.audit.correctionPrompt ||
+        (auditRes.audit.summaryIssues || []).join('; ') ||
+        'Corrigir o produto em todos os quadros para ficar 100% idêntico à foto de referência.';
+      const retryPartGen = await requestStoryboardImageGeneration({
+        prompt: storyboardPrompt,
+        productName: result.productName,
+        productInfo: effectiveProductInfo,
+        allPhotos,
+        variations: result.variations || form.variations,
+        additionalInstructions: result.additionalInstructions,
+        previousStoryboardImageBase64: finalStoryboardImgUrl,
+        correctionPrompt: autoFixPart,
+        aiProfile,
+        sceneCount: 6,
+        aspectRatio: '9:16',
+      });
+      if (retryPartGen.imageUrl) {
+        finalStoryboardImgUrl = retryPartGen.imageUrl;
+        auditRes = await auditProdutos2Storyboard({
+          storyboardImageUrl: finalStoryboardImgUrl,
+          productPhotosBase64: allPhotos,
+          productName: result.productName,
+          productLock: result.productLock,
+          scenes,
+          variations: result.variations || form.variations,
+          aiProfile,
+        });
+      }
+    }
     storyboardAudit = auditRes.audit;
   }
 
@@ -2677,8 +2871,8 @@ export async function recreateSingleTwoScenesPartWithCopy(params: {
     visualMap,
     scenes,
     storyboardPrompt,
-    storyboardImageUrl: imgGen.imageUrl
-      ? await ensureHighResStoryboardImage(imgGen.imageUrl)
+    storyboardImageUrl: finalStoryboardImgUrl
+      ? await ensureHighResStoryboardImage(finalStoryboardImgUrl)
       : undefined,
     storyboardError: imgGen.error,
     storyboardAudit,

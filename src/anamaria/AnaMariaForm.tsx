@@ -25,6 +25,7 @@ import {
   RefreshCw,
   Wand2,
   Palette,
+  FileText,
 } from 'lucide-react';
 import {
   AnaMariaFormState,
@@ -33,6 +34,10 @@ import {
   AnaMariaTheme,
 } from './types';
 import { resolveAutoShoeOptionByProductName } from './anaMariaPrompts';
+import {
+  analyzeAnaMariaProductInfo,
+  extractGarmentFromProductInfo,
+} from './anaMariaProductInfo';
 import { compressAndResizeImage } from '../ania/aniaLibrary';
 import { ProgressBar } from '../components/ProgressBar';
 import {
@@ -47,7 +52,12 @@ import {
   getDefaultMasterForMode,
   resolveMasterPromptByProductName,
 } from './masterPromptsData';
-import { preloadScenarioUrl, prewarmDefaultScenarios } from './anaMariaPipeline';
+import {
+  MAX_EXTRA_COLOR_PHOTOS,
+  MAX_SAME_COLOR_PHOTOS,
+  preloadScenarioUrl,
+  prewarmDefaultScenarios,
+} from './anaMariaPipeline';
 import {
   MODEL_GALLERY_ITEMS,
   MODEL_GALLERY_COM_ROSTO,
@@ -104,8 +114,38 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const [isRecordingMic, setIsRecordingMic] = useState(false);
   const [isRecordingShoeMic, setIsRecordingShoeMic] = useState(false);
   const [approvalWarning, setApprovalWarning] = useState<string>('');
+  const productInfoSectionRef = useRef<HTMLDivElement>(null);
+  const productInfoRef = useRef<string>(form.productInfo || '');
+  const lastAutoIdentifySignatureRef = useRef<string>('');
   const productNameSectionRef = useRef<HTMLDivElement>(null);
   const shoeSectionRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    productInfoRef.current = form.productInfo || '';
+  }, [form.productInfo]);
+
+  useEffect(() => {
+    const trimmed = (form.productInfo || '').trim();
+    const firstAny = form.referencePhotos[0] || form.extraColorPhotos?.[0];
+    if (
+      !trimmed ||
+      trimmed.length < 3 ||
+      !firstAny ||
+      form.isProductNameApproved ||
+      hasUserManuallyEditedNameRef.current
+    ) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      autoIdentifyGarmentFromPhoto(
+        firstAny,
+        false,
+        lastUploadedFileNameRef.current,
+        trimmed
+      );
+    }, 1000);
+    return () => window.clearTimeout(timer);
+  }, [form.productInfo, form.referencePhotos, form.extraColorPhotos, form.isProductNameApproved]);
   const shoeRecognitionRef = useRef<any>(null);
   const shoeStreamRef = useRef<MediaStream | null>(null);
   const [isGalleryExpanded, setIsGalleryExpanded] = useState(false);
@@ -363,10 +403,23 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
    * assim que o usuário adiciona a primeira foto, preenchendo também o Tipo de Calçado automaticamente
    * e aguardando o clique do usuário em APROVAR.
    */
-  const autoIdentifyGarmentFromPhoto = async (photoBase64: string, force = false, fileName?: string) => {
+  const autoIdentifyGarmentFromPhoto = async (
+    photoBase64: string,
+    force = false,
+    fileName?: string,
+    productInfoOverride?: string
+  ) => {
     if (!photoBase64) return;
     if (!force && hasUserManuallyEditedNameRef.current && form.productName.trim().length > 0) return;
     const targetFileName = fileName || lastUploadedFileNameRef.current || '';
+    const effectiveProductInfo = (
+      productInfoOverride !== undefined ? productInfoOverride : productInfoRef.current || ''
+    ).trim();
+    const signature = `${photoBase64.slice(0, 64)}:${photoBase64.length}|${effectiveProductInfo}|${targetFileName}`;
+    if (!force && lastAutoIdentifySignatureRef.current === signature && form.productName.trim().length > 0) {
+      return;
+    }
+    lastAutoIdentifySignatureRef.current = signature;
     setIsIdentifyingProduct(true);
     try {
       const res = await fetch('/api/detect-dominant-color', {
@@ -376,12 +429,16 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           photoBase64,
           mode: 'identify_garment',
           fileName: targetFileName,
+          productInfo: effectiveProductInfo,
         }),
       });
       const data = await res.json();
       let resolvedName = data?.success && data?.garmentName ? data.garmentName : null;
 
       // Fallback local se o servidor não conseguir identificar via IA
+      if (!resolvedName && effectiveProductInfo) {
+        resolvedName = extractGarmentFromProductInfo(effectiveProductInfo);
+      }
       if (!resolvedName && targetFileName) {
         resolvedName = extractGarmentFromFileName(targetFileName);
       }
@@ -444,9 +501,11 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     const validFiles = Array.from(files).filter((file) => file.type.startsWith('image/'));
     if (validFiles.length === 0) return;
 
+    const maxPhotos =
+      targetField === 'extra' ? MAX_EXTRA_COLOR_PHOTOS : MAX_SAME_COLOR_PHOTOS;
     const currentFieldPhotos =
       targetField === 'same' ? form.referencePhotos : form.extraColorPhotos || [];
-    const remainingSlots = 10 - currentFieldPhotos.length;
+    const remainingSlots = maxPhotos - currentFieldPhotos.length;
     if (remainingSlots <= 0) return;
 
     const filesToProcess = validFiles.slice(0, remainingSlots);
@@ -465,15 +524,23 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         targetField === 'same'
           ? {
               ...prev,
-              referencePhotos: [...prev.referencePhotos, ...newPhotos].slice(0, 10),
+              referencePhotos: [...prev.referencePhotos, ...newPhotos].slice(
+                0,
+                MAX_SAME_COLOR_PHOTOS
+              ),
             }
           : {
               ...prev,
-              extraColorPhotos: [...(prev.extraColorPhotos || []), ...newPhotos].slice(0, 10),
+              extraColorPhotos: [...(prev.extraColorPhotos || []), ...newPhotos].slice(
+                0,
+                MAX_EXTRA_COLOR_PHOTOS
+              ),
             }
       );
 
-      if (filesToProcess[0] && (wasEmptyBefore || !form.productName.trim() || autoIdentifiedBadge || !hasUserManuallyEditedNameRef.current)) {
+      // Auto-identificar peça via IA automaticamente na foto principal apenas se o nome ainda estiver vazio
+      // (evita disparar chamadas repetidas à OpenAI a cada ângulo extra ou a cada uma das até 20 cores em 1B)
+      if (filesToProcess[0] && (wasEmptyBefore || !form.productName.trim())) {
         const fName = filesToProcess[0].name;
         compressAndResizeImage(filesToProcess[0], 512, 0.75)
           .then((thumbB64) => autoIdentifyGarmentFromPhoto(thumbB64, true, fName))
@@ -701,6 +768,8 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const extraColorPhotos = form.extraColorPhotos || [];
   const totalProductPhotos = form.referencePhotos.length + extraColorPhotos.length;
 
+  const productInfoAnalysis = analyzeAnaMariaProductInfo(form.productInfo);
+  const isProductInfoReady = Boolean(form.productInfo && form.productInfo.trim().length > 0);
   const isNameReady = Boolean(form.productName.trim().length > 0 && form.isProductNameApproved);
   const isShoeReady = Boolean(
     form.selectedShoeOption &&
@@ -711,6 +780,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
 
   const canSubmit =
     totalProductPhotos > 0 &&
+    isProductInfoReady &&
     isNameReady &&
     isShoeReady &&
     !isProcessing &&
@@ -870,11 +940,11 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                 </p>
               </div>
               <span className="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-700 text-[11px] font-bold text-zinc-300 shrink-0">
-                {form.referencePhotos.length}/10
+                {form.referencePhotos.length}/{MAX_SAME_COLOR_PHOTOS}
               </span>
             </div>
 
-            {form.referencePhotos.length < 10 && (
+            {form.referencePhotos.length < MAX_SAME_COLOR_PHOTOS && (
               <div
                 onDragOver={(e) => {
                   e.preventDefault();
@@ -975,11 +1045,11 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                 </p>
               </div>
               <span className="px-2 py-0.5 rounded bg-sky-950/60 border border-sky-500/35 text-[11px] font-bold text-sky-200 shrink-0">
-                {extraColorPhotos.length}/10
+                {extraColorPhotos.length}/{MAX_EXTRA_COLOR_PHOTOS}
               </span>
             </div>
 
-            {extraColorPhotos.length < 10 && (
+            {extraColorPhotos.length < MAX_EXTRA_COLOR_PHOTOS && (
               <div
                 onDragOver={(e) => {
                   e.preventDefault();
@@ -1188,6 +1258,101 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         )}
       </div>
 
+      {/* ─── CARD: INFORMAÇÕES DO PRODUTO (OBRIGATÓRIO — TECIDO OU DESCRIÇÃO COMPLETA) ─── */}
+      <div
+        ref={productInfoSectionRef}
+        className={`${isProductInfoReady ? copiedBlueSectionClass : sectionCardClass} p-5 sm:p-6 space-y-3`}
+      >
+        <div
+          className={`flex flex-wrap items-center justify-between gap-2 border-b pb-2.5 ${
+            isProductInfoReady
+              ? 'border-sky-400/30'
+              : isAmetista
+              ? 'border-purple-500/20'
+              : 'border-zinc-800/80'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <FileText
+              className={`w-4 h-4 ${isProductInfoReady ? 'text-sky-300' : sectionIconColorClass}`}
+            />
+            <h2 className="text-sm font-bold text-white uppercase tracking-wide">
+              Informações do Produto
+            </h2>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-rose-500/20 text-rose-300 border border-rose-500/40">
+              Obrigatório
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {productInfoAnalysis.detectedFabrics.length > 0 && (
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3" />
+                <span>Tecido: {productInfoAnalysis.fabricSummaryLabel}</span>
+              </span>
+            )}
+            {isProductInfoReady && (
+              <button
+                type="button"
+                onClick={() => onChange((prev) => ({ ...prev, productInfo: '' }))}
+                className="px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-zinc-800/90 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 flex items-center gap-1 cursor-pointer transition-colors"
+                title="Limpar Informações do Produto"
+              >
+                <X className="w-3 h-3" />
+                <span>Limpar</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        <p className="text-xs text-zinc-300/90 leading-relaxed">
+          Digite apenas o <strong className="text-white">tecido da peça</strong> (ex: Canelado,
+          Viscolinho, Linho, Duna, Alfaiataria, Tricô Modal, Laise, Jeans) ou cole o{' '}
+          <strong className="text-white">bloco completo de descrição do produto</strong>. O app usa
+          esse texto para identificar a peça e reproduzir fielmente o tecido na geração das fotos,
+          mesmo se a imagem de referência estiver com baixa qualidade.
+        </p>
+
+        <textarea
+          rows={3}
+          value={form.productInfo || ''}
+          onChange={(e) => {
+            const val = e.target.value;
+            onChange((prev) => ({ ...prev, productInfo: val }));
+          }}
+          placeholder="Ex: Viscolinho&#10;Ou cole aqui todas as informações do produto (tecido, composição, modelagem, forro, botões, detalhes...)"
+          className={`w-full rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-500 border outline-none transition-all resize-y min-h-[84px] ${
+            isProductInfoReady
+              ? 'bg-sky-950/35 border-sky-400/50 focus:border-sky-300'
+              : isAmetista
+              ? 'bg-[#0f091a]/90 border-amber-400/50 focus:border-purple-400'
+              : 'bg-zinc-950/90 border-amber-500/50 focus:border-orange-400'
+          }`}
+        />
+
+        {!isProductInfoReady ? (
+          <div className="flex items-center gap-2 text-xs text-amber-300 font-semibold">
+            <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+            <span>
+              Campo obrigatório: informe o tecido ou cole a descrição da peça para liberar a geração.
+            </span>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-2 text-[11px] text-sky-200/90 font-medium">
+            <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span>
+              {productInfoAnalysis.detectedFabrics.length > 0
+                ? `Textura de tecido priorizada na geração: ${productInfoAnalysis.fabricSummaryLabel}${
+                    productInfoAnalysis.constructionNotes.length > 0
+                      ? ` • ${productInfoAnalysis.constructionNotes.slice(0, 2).join(', ')}`
+                      : ''
+                  }.`
+                : 'Informações registradas e ativas para identificação da peça e fidelidade do tecido na geração.'}
+            </span>
+          </div>
+        )}
+      </div>
+
       {/* ─── CARD 2: NOME DA PEÇA / PRODUTO (IDENTIFICAÇÃO AUTOMÁTICA + APROVAÇÃO OBRIGATÓRIA) ─── */}
       <div
         ref={productNameSectionRef}
@@ -1210,7 +1375,12 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                   const firstAny = form.referencePhotos[0] || extraColorPhotos[0];
                   if (firstAny) {
                     hasUserManuallyEditedNameRef.current = false;
-                    autoIdentifyGarmentFromPhoto(firstAny, true, lastUploadedFileNameRef.current);
+                    autoIdentifyGarmentFromPhoto(
+                      firstAny,
+                      true,
+                      lastUploadedFileNameRef.current,
+                      form.productInfo
+                    );
                   }
                 }}
                 className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
@@ -2716,6 +2886,16 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               window.scrollTo({ top: 0, behavior: 'smooth' });
               return;
             }
+            if (!isProductInfoReady) {
+              setApprovalWarning(
+                'Preencha o campo obrigatório "Informações do Produto" (tecido ou texto do produto) para liberar o botão Gerar Vídeo!'
+              );
+              productInfoSectionRef.current?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+              });
+              return;
+            }
             if (!isNameReady) {
               setApprovalWarning(
                 'Você precisa tocar no botão APROVAR (ou editar ativamente) o Nome do Produto para liberar o botão Gerar Vídeo!'
@@ -2764,9 +2944,11 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           )}
         </button>
 
-        {totalProductPhotos > 0 && (!isNameReady || !isShoeReady) && !isProcessing && (
+        {totalProductPhotos > 0 && (!isProductInfoReady || !isNameReady || !isShoeReady) && !isProcessing && (
           <p className="text-center text-xs text-amber-300/90 font-semibold">
-            {!isNameReady && !isShoeReady
+            {!isProductInfoReady
+              ? '🔒 Para liberar o botão Gerar Vídeo, preencha o campo obrigatório Informações do Produto acima.'
+              : !isNameReady && !isShoeReady
               ? '🔒 Para liberar o botão Gerar Vídeo, aprove o Nome da Peça e o Tipo de Calçado acima.'
               : !isNameReady
               ? '🔒 Para liberar o botão Gerar Vídeo, toque em APROVAR no Nome da Peça acima.'

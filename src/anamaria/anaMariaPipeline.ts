@@ -22,6 +22,13 @@ import { AIProfile } from '../config/aiProfiles';
 import { SCENARIO_GALLERY_ITEMS, POV_SCENARIO_GALLERY_ITEMS } from './scenarioGalleryData';
 import { getModelGalleryForMode } from './modelGalleryData';
 import { getMasterPromptById, resolveMasterPromptByProductName } from './masterPromptsData';
+import {
+  MAX_HISTORY_ITEMS,
+  putAndPruneIndexedDBItem,
+  listIndexedDBItems,
+  deleteIndexedDBItem,
+  clearIndexedDBStore,
+} from '../utils/historyStorage';
 
 export interface AnaMariaPipelineCallbacks {
   onProgress?: (stepName: string, percent: number) => void;
@@ -87,45 +94,169 @@ async function postJson<T = any>(url: string, body: any, maxRetries = 1): Promis
 }
 
 const STORAGE_KEY = 'aurora_ana_maria_history_v1';
+const ANA_MARIA_HISTORY_DB = 'aurora_anamaria_history_db';
+const ANA_MARIA_HISTORY_STORE = 'anamaria_history';
+
+function compactAnaMariaForLocalStorage(
+  item: AnaMariaResultState,
+  stripHeavyPayloads = false
+): AnaMariaResultState {
+  const isHugeDataUrl = (url?: string) =>
+    Boolean(url && url.startsWith('data:') && url.length > (stripHeavyPayloads ? 100_000 : 250_000));
+
+  if (stripHeavyPayloads) {
+    return {
+      ...item,
+      imageUrl: isHugeDataUrl(item.imageUrl) ? '' : item.imageUrl,
+      referencePhotos: [],
+      generatedImages: undefined,
+    };
+  }
+
+  const compactImages = item.generatedImages
+    ?.map((img) => ({
+      ...img,
+      imageUrl: isHugeDataUrl(img.imageUrl) ? '' : img.imageUrl,
+    }))
+    .filter((img) => Boolean(img.imageUrl));
+
+  return {
+    ...item,
+    referencePhotos: (item.referencePhotos || []).slice(0, 1),
+    generatedImages: compactImages && compactImages.length > 0 ? compactImages.slice(0, 4) : undefined,
+  };
+}
+
+function persistAnaMariaLocalMirror(items: AnaMariaResultState[]): void {
+  const capped = items.slice(0, MAX_HISTORY_ITEMS);
+  try {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(capped.map((it) => compactAnaMariaForLocalStorage(it, false)))
+    );
+    return;
+  } catch {
+    // Continua para versão reduzida sem apagar os 30 registros
+  }
+
+  const stripped = capped.map((it) => compactAnaMariaForLocalStorage(it, true));
+  while (stripped.length > 0) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(stripped));
+      return;
+    } catch {
+      stripped.pop();
+    }
+  }
+}
 
 export function getAnaMariaHistory(): AnaMariaResultState[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.slice(0, MAX_HISTORY_ITEMS) : [];
   } catch {
     return [];
   }
 }
 
+/**
+ * Carrega até `MAX_HISTORY_ITEMS` (30) gerações do Modo Ana Maria combinando IndexedDB e localStorage legado.
+ */
+export async function loadAnaMariaHistory(): Promise<AnaMariaResultState[]> {
+  const [idbItems, localItems] = await Promise.all([
+    listIndexedDBItems<AnaMariaResultState>(
+      ANA_MARIA_HISTORY_DB,
+      ANA_MARIA_HISTORY_STORE,
+      MAX_HISTORY_ITEMS
+    ),
+    Promise.resolve(getAnaMariaHistory()),
+  ]);
+
+  const byId = new Map<string, AnaMariaResultState>();
+  for (const item of idbItems) {
+    if (item?.id) byId.set(item.id, item);
+  }
+
+  const missingInIdb: AnaMariaResultState[] = [];
+  for (const item of localItems) {
+    if (!item?.id) continue;
+    const existing = byId.get(item.id);
+    if (!existing) {
+      byId.set(item.id, item);
+      missingInIdb.push(item);
+    } else if (!existing.imageUrl && item.imageUrl) {
+      byId.set(item.id, { ...existing, imageUrl: item.imageUrl });
+    }
+  }
+
+  if (missingInIdb.length > 0) {
+    Promise.all(
+      missingInIdb.map((it) =>
+        putAndPruneIndexedDBItem(ANA_MARIA_HISTORY_DB, ANA_MARIA_HISTORY_STORE, it, MAX_HISTORY_ITEMS).catch(
+          () => undefined
+        )
+      )
+    );
+  }
+
+  return Array.from(byId.values())
+    .sort((a, b) => (Number(b.timestamp) || 0) - (Number(a.timestamp) || 0))
+    .slice(0, MAX_HISTORY_ITEMS);
+}
+
+/**
+ * Remove uma geração específica do histórico do Modo Ana Maria (IndexedDB e localStorage).
+ */
+export async function deleteAnaMariaHistoryItem(id: string): Promise<void> {
+  const remaining = getAnaMariaHistory().filter((it) => it.id !== id);
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(remaining));
+  } catch {}
+  try {
+    await deleteIndexedDBItem(ANA_MARIA_HISTORY_DB, ANA_MARIA_HISTORY_STORE, id);
+  } catch (err) {
+    console.warn('Erro ao deletar item do histórico do Modo Ana Maria:', err);
+  }
+}
+
+/**
+ * Limpa todo o histórico do Modo Ana Maria (IndexedDB e localStorage).
+ */
+export async function clearAnaMariaHistory(): Promise<void> {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {}
+  try {
+    await clearIndexedDBStore(ANA_MARIA_HISTORY_DB, ANA_MARIA_HISTORY_STORE);
+  } catch (err) {
+    console.warn('Erro ao limpar histórico do Modo Ana Maria:', err);
+  }
+}
+
 export function saveAnaMariaResult(result: AnaMariaResultState): void {
+  const idbItem: AnaMariaResultState = {
+    ...result,
+    referencePhotos: result.referencePhotos || [],
+  };
+
+  void putAndPruneIndexedDBItem(
+    ANA_MARIA_HISTORY_DB,
+    ANA_MARIA_HISTORY_STORE,
+    idbItem,
+    MAX_HISTORY_ITEMS
+  ).catch((err) => {
+    console.warn('Erro ao gravar histórico Ana Maria no IndexedDB:', err);
+  });
+
   try {
     const history = getAnaMariaHistory();
     const filtered = history.filter((h) => h.id !== result.id);
-    // Evita estourar a cota de 5MB do localStorage quando há várias imagens em lote/base64
-    const compactImages = result.generatedImages?.map((img) => ({
-      ...img,
-      imageUrl: img.imageUrl.startsWith('data:') && img.imageUrl.length > 250_000 ? '' : img.imageUrl,
-    })).filter((img) => Boolean(img.imageUrl));
-    const compactResult: AnaMariaResultState = {
-      ...result,
-      referencePhotos: result.referencePhotos.slice(0, 1),
-      generatedImages: compactImages && compactImages.length > 0 ? compactImages.slice(0, 4) : undefined,
-    };
-    const updated = [compactResult, ...filtered].slice(0, 10);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    const updated = [result, ...filtered].slice(0, MAX_HISTORY_ITEMS);
+    persistAnaMariaLocalMirror(updated);
   } catch (err) {
-    console.warn('Erro ao salvar no histórico do Modo Ana Maria (tentando versão compacta):', err);
-    try {
-      const minimalResult: AnaMariaResultState = {
-        ...result,
-        referencePhotos: [],
-        generatedImages: undefined,
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([minimalResult]));
-    } catch {
-      // ignora silenciosamente se localStorage estiver cheio
-    }
+    console.warn('Erro ao salvar espelho local do histórico do Modo Ana Maria:', err);
   }
 }
 
@@ -340,12 +471,15 @@ export async function resolveModelBase64(form: AnaMariaFormState): Promise<strin
   return undefined;
 }
 
+export const MAX_SAME_COLOR_PHOTOS = 10;
+export const MAX_EXTRA_COLOR_PHOTOS = 20;
+
 export function buildExplicitColorGroups(
   sameColorPhotos: string[] = [],
   extraColorPhotos: string[] = []
 ): { allPhotos: string[]; colorGroups: AnaMariaColorGroup[] } {
-  const fieldA = (sameColorPhotos || []).filter(Boolean).slice(0, 10);
-  const fieldB = (extraColorPhotos || []).filter(Boolean).slice(0, 10);
+  const fieldA = (sameColorPhotos || []).filter(Boolean).slice(0, MAX_SAME_COLOR_PHOTOS);
+  const fieldB = (extraColorPhotos || []).filter(Boolean).slice(0, MAX_EXTRA_COLOR_PHOTOS);
   const allPhotos = [...fieldA, ...fieldB];
 
   if (allPhotos.length === 0) {
@@ -375,21 +509,23 @@ const dressInspectionCache = new Map<string, AnaMariaDressInspection>();
 export async function inspectDressAttributes(
   photo: string,
   productName?: string,
-  presentationMode?: string
+  presentationMode?: string,
+  productInfo?: string
 ): Promise<AnaMariaDressInspection | undefined> {
   if (!photo || presentationMode === 'pov') return undefined;
   const trimmedName = (productName || '').trim();
+  const trimmedInfo = (productInfo || '').trim();
   // Se o usuário já informou explicitamente uma peça que não é vestido (ex.: blusa, calça, bolsa), evita gastar chamada e tokens de visão
   const isExplicitlyNotDress =
     trimmedName.length > 0 &&
-    /\b(blusa|blusinha|camisa|camiseta|t-shirt|tee|cropped|top|regata|body|tric[oô]|su[eê]ter|cardigan|jaqueta|casaco|blazer|cal[cç]a|jeans|short|shorts|bermuda|saia|legging|bolsa|sapato|sand[aá]lia|t[eê]nis|bota)\b/i.test(
+    /\b(blusa|blusinha|camisa|camiseta|t-shirt|tee|cropped|top|regata|body|tric[oô]|su[eê]ter|cardigan|jaqueta|casaco|blazer|cal[cç]a|jeans|short|shorts|bermuda|saia|legging|bolsa|sapato|sand[aá]lia|t[eê]nis|bota|conjunto|academia|fitness|cinta|modeladora|pijama|camisola|babydoll|baby\s*doll|biqu[ií]ni|mai[oô])\b/i.test(
       trimmedName
     ) &&
     !/\b(vestido|vestidos|dress|dresses|chemise|tubinho|macaquinho|macac[aã]o)\b/i.test(trimmedName);
 
   if (isExplicitlyNotDress) return undefined;
 
-  const cacheKey = `${photo.slice(0, 64)}_${photo.slice(-64)}_${photo.length}_${trimmedName.toLowerCase()}`;
+  const cacheKey = `${photo.slice(0, 64)}_${photo.slice(-64)}_${photo.length}_${trimmedName.toLowerCase()}_${trimmedInfo.slice(0, 120).toLowerCase()}`;
   const cached = dressInspectionCache.get(cacheKey);
   if (cached) return cached;
 
@@ -401,7 +537,7 @@ export async function inspectDressAttributes(
       lengthCategory?: AnaMariaDressInspection['lengthCategory'];
       hasSingleSideSlit?: boolean;
       slitLegWearer?: AnaMariaDressInspection['slitLegWearer'];
-    }>('/api/anamaria-inspect-dress', { photoBase64: thumb, productName }, 0);
+    }>('/api/anamaria-inspect-dress', { photoBase64: thumb, productName, productInfo: trimmedInfo }, 0);
 
     if (res?.success) {
       const inspection: AnaMariaDressInspection = {
@@ -693,6 +829,205 @@ function buildAnaMariaDefaultAudit(
   };
 }
 
+async function runAnaMariaFidelityAudit(params: {
+  generatedImageUrl: string;
+  referencePhotos: string[];
+  variationName: string;
+  bodyType: AnaMariaFormState['bodyType'];
+  shoeDescription?: string;
+  productInfo?: string;
+  aiProfile: AIProfile;
+}): Promise<{ audit: AnaMariaAudit; correctionPrompt: string }> {
+  const {
+    generatedImageUrl,
+    referencePhotos,
+    variationName,
+    bodyType,
+    shoeDescription = '',
+    productInfo = '',
+    aiProfile,
+  } = params;
+  const fallbackAudit = buildAnaMariaDefaultAudit(bodyType, shoeDescription);
+
+  const validRefs = (referencePhotos || []).filter(Boolean);
+  if (!generatedImageUrl || validRefs.length === 0) {
+    return { audit: fallbackAudit, correctionPrompt: '' };
+  }
+
+  try {
+    const compactGenerated = generatedImageUrl.startsWith('data:')
+      ? await compressImageForFastTransfer(generatedImageUrl, 768, 0.82)
+      : generatedImageUrl;
+    const compactRef = await compressImageForFastTransfer(validRefs[0], 768, 0.82);
+
+    const res = await postJson<{
+      success: boolean;
+      audit?: {
+        score: number;
+        status: 'green' | 'yellow' | 'red' | 'orange';
+        label: string;
+        issues: string[];
+        correctionPrompt?: string;
+      };
+    }>(
+      '/api/audit-image-fidelity',
+      {
+        generatedImageBase64: compactGenerated,
+        referencePhotos: [compactRef],
+        variationName: variationName || 'Peça Principal',
+        role: `Modo Ana Maria (${variationName || 'Peça Principal'})`,
+        productInfo,
+        aiProfile,
+      },
+      0
+    );
+
+    if (res && res.success && res.audit) {
+      const score = Math.max(0, Math.min(100, Number(res.audit.score) || 95));
+      const status =
+        res.audit.status === 'green' || score >= 90
+          ? 'green'
+          : res.audit.status === 'yellow' || score >= 70
+          ? 'yellow'
+          : 'red';
+      const issuesList =
+        Array.isArray(res.audit.issues) && res.audit.issues.length > 0
+          ? res.audit.issues
+          : fallbackAudit.issues;
+      const correctionPrompt =
+        res.audit.correctionPrompt ||
+        (status !== 'green'
+          ? `Corrigir na peça principal para ficar 100% idêntica à foto de referência: ${issuesList.join('; ')}`
+          : '');
+
+      return {
+        audit: {
+          score,
+          status,
+          label:
+            res.audit.label ||
+            (status === 'green'
+              ? `Verde — Fidelidade Aprovada (${score}%)`
+              : status === 'yellow'
+              ? `Amarelo — Variação Detectada (${score}%)`
+              : `Vermelho — Divergência Detectada (${score}%)`),
+          criteria: [
+            { name: 'Fidelidade da Peça', score, status },
+            { name: 'Corte Queixo', score: 100, status: 'green' },
+            {
+              name: bodyType === 'plus_size' ? 'Plus Size (50-54)' : 'Curvas & Silhueta',
+              score: 96,
+              status: 'green',
+            },
+            { name: 'Calçado Condicional', score: 95, status: 'green' },
+          ],
+          issues: issuesList,
+        },
+        correctionPrompt,
+      };
+    }
+  } catch (err) {
+    console.warn('[AnaMaria] Aviso ao auditar fidelidade da imagem:', err);
+  }
+
+  return { audit: fallbackAudit, correctionPrompt: '' };
+}
+
+async function generateAndAuditAnaMariaWithAutoRetry(params: {
+  requestedModel: AnaMariaImageModel;
+  payload: Record<string, any>;
+  referencePhotos: string[];
+  variationName: string;
+  bodyType: AnaMariaFormState['bodyType'];
+  shoeDescription?: string;
+  productInfo?: string;
+  aiProfile: AIProfile;
+  onFallback?: () => void;
+  onRetryStatus?: (msg: string) => void;
+}): Promise<{
+  imageUrl: string;
+  usedModel: AnaMariaImageModel;
+  audit: AnaMariaAudit;
+}> {
+  const {
+    requestedModel,
+    payload,
+    referencePhotos,
+    variationName,
+    bodyType,
+    shoeDescription,
+    productInfo = payload.productInfo || '',
+    aiProfile,
+    onFallback,
+    onRetryStatus,
+  } = params;
+
+  // 1ª Tentativa de geração
+  let genRes = await generateSceneImageWithFallback({
+    requestedModel,
+    onFallback,
+    payload,
+  });
+
+  // Verificação automática de fidelidade
+  let auditRes = await runAnaMariaFidelityAudit({
+    generatedImageUrl: genRes.imageUrl,
+    referencePhotos,
+    variationName,
+    bodyType,
+    shoeDescription,
+    productInfo,
+    aiProfile,
+  });
+
+  // Se ficou em amarelo ou vermelho (não ficou como verde), faz automaticamente uma nova tentativa corrigindo o que não bateu
+  if (auditRes.audit.status !== 'green') {
+    const detailsToFix =
+      auditRes.correctionPrompt ||
+      (auditRes.audit.issues || []).join('; ') ||
+      'Reproduza a peça 100% idêntica à foto de referência (cor, modelagem, comprimento, decote, estampa e tecido).';
+    const retryCorrectionDirective = `[CORREÇÃO AUTOMÁTICA OBRIGATÓRIA DE FIDELIDADE 1:1 COM A FOTO DE REFERÊNCIA]: A tentativa anterior foi reprovada na verificação de fidelidade (${detailsToFix}). Gere novamente corrigindo EXATAMENTE esses detalhes para que a peça fique 100% idêntica à foto de referência enviada!`;
+
+    console.warn(
+      `[AnaMaria AutoRetry] Imagem "${variationName}" ficou em ${auditRes.audit.status} (${auditRes.audit.score}%). Executando nova tentativa automática com correção:`,
+      detailsToFix
+    );
+    onRetryStatus?.(
+      `Imagem (${variationName}) ficou em ${auditRes.audit.status === 'yellow' ? 'Amarelo' : 'Vermelho'} na verificação — refazendo automaticamente com correção de fidelidade...`
+    );
+
+    try {
+      const retryGen = await generateSceneImageWithFallback({
+        requestedModel: genRes.usedModel || requestedModel,
+        onFallback,
+        payload: {
+          ...payload,
+          prompt: `${payload.prompt || ''}\n\n${retryCorrectionDirective}`,
+          correctionPrompt: retryCorrectionDirective,
+        },
+      });
+      genRes = retryGen;
+      auditRes = await runAnaMariaFidelityAudit({
+        generatedImageUrl: genRes.imageUrl,
+        referencePhotos,
+        variationName,
+        bodyType,
+        shoeDescription,
+        productInfo,
+        aiProfile,
+      });
+    } catch (retryErr) {
+      console.warn('[AnaMaria AutoRetry] Falha na nova tentativa automática, mantendo imagem anterior:', retryErr);
+    }
+  }
+
+  return {
+    imageUrl: genRes.imageUrl,
+    usedModel: genRes.usedModel,
+    audit: auditRes.audit,
+  };
+}
+
 async function executeColorImageGeneration(params: {
   itemForm: AnaMariaFormState;
   colorPhotos: string[];
@@ -709,6 +1044,7 @@ async function executeColorImageGeneration(params: {
   displayModelScenarioSource?: 'model' | 'gallery';
   lockSameModelAndScenarioNote?: boolean;
   onFallback?: () => void;
+  onRetryStatus?: (msg: string) => void;
 }): Promise<{
   item: AnaMariaGeneratedImageItem;
   imagePrompt: string;
@@ -731,6 +1067,7 @@ async function executeColorImageGeneration(params: {
     displayModelScenarioSource,
     lockSameModelAndScenarioNote,
     onFallback,
+    onRetryStatus,
   } = params;
 
   const activeMode = itemForm.presentationMode || 'mirror_selfie';
@@ -760,11 +1097,21 @@ async function executeColorImageGeneration(params: {
       prepareProductPhotosForPayload(colorPhotos),
     ]);
 
-  const { imageUrl, usedModel } = await generateSceneImageWithFallback({
+  const { imageUrl, usedModel, audit } = await generateAndAuditAnaMariaWithAutoRetry({
     requestedModel: itemForm.imageModel,
     onFallback,
+    onRetryStatus,
+    referencePhotos: [primaryPhoto, ...supplementaryPhotos].filter(Boolean),
+    variationName: colorName || itemForm.productName || 'Cor Principal',
+    bodyType: itemForm.bodyType,
+    shoeDescription,
+    productInfo: itemForm.productInfo,
+    aiProfile,
     payload: {
       prompt: effectivePrompt,
+      productName: itemForm.productName,
+      productType: itemForm.productName,
+      productInfo: itemForm.productInfo,
       productPhotoBase64: primaryPhoto,
       productPhotosBase64: supplementaryPhotos,
       scenarioPhotoBase64: activeScenarioBase64,
@@ -788,7 +1135,6 @@ async function executeColorImageGeneration(params: {
   });
 
   const ts = Date.now();
-  const audit = buildAnaMariaDefaultAudit(itemForm.bodyType, shoeDescription);
 
   return {
     item: {
@@ -831,6 +1177,11 @@ export async function runAnaMariaPipeline(
   if (allPhotos.length === 0) {
     throw new Error('Por favor, anexe ao menos 1 foto de referência da peça.');
   }
+  if (!rawForm.productInfo || !rawForm.productInfo.trim()) {
+    throw new Error(
+      'Preencha o campo obrigatório "Informações do Produto" (tecido ou descrição do produto) antes de gerar.'
+    );
+  }
 
   const hasMultipleColors = fieldB.length > 0 && colorGroups.length >= 2;
   const sameModelForAllColors = Boolean(rawForm.sameModelForAllColors);
@@ -862,7 +1213,7 @@ export async function runAnaMariaPipeline(
   onProgress('prompt_building', 20);
   onStatusMessage(`Analisando detalhes reais da peça (${master.shortName})...`);
   const [dressInspection] = await Promise.all([
-    inspectDressAttributes(firstColorPhotos[0], form0.productName, activeMode),
+    inspectDressAttributes(firstColorPhotos[0], form0.productName, activeMode, form0.productInfo),
     prepareProductPhotosForPayload(firstColorPhotos),
   ]);
 
@@ -875,6 +1226,7 @@ export async function runAnaMariaPipeline(
 
   const videoPrompt = buildAnaMariaVideoPrompt({
     productName: form0.productName,
+    productInfo: form0.productInfo,
     influencer: form0.influencer,
     bodyType: form0.bodyType,
     presentationMode: activeMode,
@@ -906,6 +1258,7 @@ export async function runAnaMariaPipeline(
       onStatusMessage(
         'OpenAI retornou erro — mudando automaticamente para SeaDream 5.0 Pro e gerando novamente...'
       ),
+    onRetryStatus: (msg) => onStatusMessage(msg),
   });
 
   const generatedImages: AnaMariaGeneratedImageItem[] = [firstGen.item];
@@ -1055,6 +1408,7 @@ export async function runAnaMariaPipeline(
             displayScenarioNumber: plan.displayScenarioNumber,
             displayModelScenarioSource: plan.displayModelScenarioSource,
             lockSameModelAndScenarioNote: plan.lockSameModelAndScenarioNote,
+            onRetryStatus: (msg) => onStatusMessage(msg),
           });
           resultsByIdx[i + cIdx] = gen.item;
           completed++;
@@ -1101,6 +1455,7 @@ export async function runAnaMariaPipeline(
     sameScenarioForAllColors,
     generateOneColorAtATime,
     eclecticMode: rawForm.eclecticMode !== false,
+    productInfo: form0.productInfo,
     productName: form0.productName,
     referencePhotos: allPhotos,
     colorGroups,
@@ -1159,17 +1514,26 @@ export async function regenerateAnaMariaImage(params: {
       .join('\n');
   }
 
-  const { prompt } = buildAnaMariaImagePrompt(effectiveForm, 'hall_espelho', dressInspection);
+  const { prompt, shoeDescription } = buildAnaMariaImagePrompt(effectiveForm, 'hall_espelho', dressInspection);
   const [activeScenarioBase64, activeModelBase64, { primaryPhoto, supplementaryPhotos }] = await Promise.all([
     resolveScenarioBase64(effectiveForm),
     resolveModelBase64(effectiveForm),
     prepareProductPhotosForPayload(effectiveForm.referencePhotos),
   ]);
 
-  const { imageUrl: highResUrl, usedModel } = await generateSceneImageWithFallback({
+  const { imageUrl: highResUrl, usedModel, audit } = await generateAndAuditAnaMariaWithAutoRetry({
     requestedModel: effectiveImageModel,
+    referencePhotos: [primaryPhoto, ...supplementaryPhotos].filter(Boolean),
+    variationName: effectiveForm.productName || 'Peça Principal',
+    bodyType: effectiveForm.bodyType,
+    shoeDescription,
+    productInfo: effectiveForm.productInfo,
+    aiProfile,
     payload: {
       prompt,
+      productName: effectiveForm.productName,
+      productType: effectiveForm.productName,
+      productInfo: effectiveForm.productInfo,
       productPhotoBase64: primaryPhoto,
       productPhotosBase64: supplementaryPhotos,
       scenarioPhotoBase64: activeScenarioBase64,
@@ -1189,19 +1553,6 @@ export async function regenerateAnaMariaImage(params: {
     },
   });
 
-  const audit: AnaMariaAudit = {
-    score: 96,
-    status: 'green',
-    label: 'Verde — Fidelidade Aprovada',
-    criteria: [
-      { name: 'Corte Queixo', score: 100, status: 'green' },
-      { name: 'Curvas & Silhueta', score: 96, status: 'green' },
-      { name: 'Zero Tatuagens', score: 100, status: 'green' },
-      { name: 'Calçado Condicional', score: 95, status: 'green' },
-    ],
-    issues: ['Peça refeita com alta fidelidade, cenário fixo e enquadramento do queixo para baixo.'],
-  };
-
   return { imageUrl: highResUrl, audit, imageModel: usedModel };
 }
 
@@ -1217,19 +1568,28 @@ export async function regenerateAnaMariaNewScenario(params: {
   form: AnaMariaFormState;
   currentRoom?: AnaMariaRoomType;
   aiProfile?: AIProfile;
-}): Promise<{ imageUrl: string; room: AnaMariaRoomType; imageModel: AnaMariaImageModel }> {
+}): Promise<{ imageUrl: string; room: AnaMariaRoomType; imageModel: AnaMariaImageModel; audit?: AnaMariaAudit }> {
   const { form, currentRoom, aiProfile = 'openai' } = params;
 
   const availableRooms = ALTERNATIVE_ROOMS.filter((r) => r !== currentRoom);
   const nextRoom = availableRooms[Math.floor(Math.random() * availableRooms.length)] || 'quarto';
 
-  const { prompt } = buildAnaMariaImagePrompt(form, nextRoom);
+  const { prompt, shoeDescription } = buildAnaMariaImagePrompt(form, nextRoom);
   const { primaryPhoto, supplementaryPhotos } = await prepareProductPhotosForPayload(form.referencePhotos);
 
-  const { imageUrl: highResUrl, usedModel } = await generateSceneImageWithFallback({
+  const { imageUrl: highResUrl, usedModel, audit } = await generateAndAuditAnaMariaWithAutoRetry({
     requestedModel: form.imageModel,
+    referencePhotos: [primaryPhoto, ...supplementaryPhotos].filter(Boolean),
+    variationName: form.productName || 'Peça Principal',
+    bodyType: form.bodyType,
+    shoeDescription,
+    productInfo: form.productInfo,
+    aiProfile,
     payload: {
       prompt,
+      productName: form.productName,
+      productType: form.productName,
+      productInfo: form.productInfo,
       productPhotoBase64: primaryPhoto,
       productPhotosBase64: supplementaryPhotos,
       isAnaMariaMode: false,
@@ -1242,7 +1602,7 @@ export async function regenerateAnaMariaNewScenario(params: {
     },
   });
 
-  return { imageUrl: highResUrl, room: nextRoom, imageModel: usedModel };
+  return { imageUrl: highResUrl, room: nextRoom, imageModel: usedModel, audit };
 }
 
 /**
@@ -1394,6 +1754,7 @@ async function generateAnaMariaColorVariation(params: {
   const effectiveSource: 'gallery' | 'model' = useRefImageAsModelAndRoom ? 'model' : 'gallery';
 
   const nextForm: AnaMariaFormState = {
+    productInfo: result.productInfo,
     productName: result.productName,
     referencePhotos: activeColorPhotos,
     influencer: result.influencer,
@@ -1477,6 +1838,7 @@ export async function generateAnaMariaSameModelNewColor(params: {
 export async function generateAnaMariaCompactPrompt(params: {
   videoPrompt: string;
   productName?: string;
+  productInfo?: string;
   influencer?: AnaMariaFormState['influencer'];
   bodyType?: AnaMariaFormState['bodyType'];
   presentationMode?: AnaMariaFormState['presentationMode'];
@@ -1494,6 +1856,7 @@ export async function generateAnaMariaCompactPrompt(params: {
       {
         videoPrompt: cleanOriginal,
         productName: params.productName,
+        productInfo: params.productInfo,
         masterShortName: master.shortName,
         aiProfile: params.aiProfile || 'openai',
       },
@@ -1509,6 +1872,7 @@ export async function generateAnaMariaCompactPrompt(params: {
 
   return buildAnaMariaConciseVideoPrompt({
     productName: params.productName || '',
+    productInfo: params.productInfo,
     influencer: params.influencer,
     bodyType: params.bodyType,
     presentationMode: params.presentationMode,

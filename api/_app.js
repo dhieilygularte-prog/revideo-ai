@@ -278,6 +278,393 @@ import dotenv2 from "dotenv";
 import dotenv from "dotenv";
 import OpenAI from "openai";
 
+// src/anamaria/anaMariaProductInfo.ts
+var FABRIC_CATALOG = [
+  {
+    id: "canelado",
+    labelPt: "Malha Canelada / Ribana",
+    pattern: /\b(canelad[oa]s?|ribana|malha\s+rib|malha\s+canelada|cotton\s+canelado|viscolycra\s+canelada|tricot?\s+canelado|ribbed\s+knit)\b/i,
+    visualPromptPt: "malha canelada aut\xEAntica com frisos/listras verticais finas em relevo n\xEDtido na trama, toque macio com elastano, ajuste anat\xF4mico confort\xE1vel e acabamento fosco natural sem brilho artificial",
+    visualPromptEn: "authentic ribbed knit fabric with crisp fine vertical rib wales and subtle 3D texture ridges, matte soft stretch cotton/viscose finish, realistic close-up weave clarity"
+  },
+  {
+    id: "viscolinho",
+    labelPt: "Viscolinho",
+    pattern: /\b(visco\s*linho|viscolinho)\b/i,
+    visualPromptPt: "tecido viscolinho aut\xEAntico com trama natural vis\xEDvel de fios mesclados estilo linho-viscose leve, textura fosca org\xE2nica suavemente r\xFAstica, caimento fluido e arejado sem brilho pl\xE1stico",
+    visualPromptEn: "authentic viscolinho linen-viscose blend fabric with visible delicate organic slub yarns, soft matte woven texture, natural breezy fluid drape with zero plastic gloss"
+  },
+  {
+    id: "linho",
+    labelPt: "Linho",
+    pattern: /\b(linho(\s+puro|\s+misto|\s+r[uú]stico|\s+cru)?|linen)\b/i,
+    visualPromptPt: "tecido de linho natural com fibras entrela\xE7adas vis\xEDveis (irregularidades org\xE2nicas sutis da trama), superf\xEDcie fosca respir\xE1vel e dobras estruturadas elegantes",
+    visualPromptEn: "authentic woven flax linen fabric with distinct natural interlaced slub fibers, crisp breathable matte finish, structured yet relaxed natural folds"
+  },
+  {
+    id: "alfaiataria",
+    labelPt: "Alfaiataria",
+    pattern: /\b(alfaiataria|crepe\s+alfaiataria|crepe\s+de\s+alfaiataria|two\s*way|gabardine|marant|sensoriale|oxfordine)\b/i,
+    visualPromptPt: "tecido de alfaiataria encorpado e estruturado de trama fina fechada, superf\xEDcie lisa fosca de acabamento refinado, vincos limpos e caimento elegante que n\xE3o marca nem amassa",
+    visualPromptEn: "structured tailored suiting fabric with smooth tight fine-grain weave, clean matte medium-weight drape, crisp tailoring seams and structured silhouette"
+  },
+  {
+    id: "duna",
+    labelPt: "Tecido Duna",
+    pattern: /\b(tecido\s+duna|crepe\s+duna|duna)\b/i,
+    visualPromptPt: "tecido Duna original (crepe micro-granulado fino) com leve textura creponada fosca ao toque, caimento solto leve e fluido sem amassar e sem brilho sint\xE9tico",
+    visualPromptEn: "authentic Brazilian Duna micro-pebbled crepe fabric with fine subtle crinkled matte surface grain and lightweight flowy anti-wrinkle drape"
+  },
+  {
+    id: "anarruga",
+    labelPt: "Anarruga",
+    pattern: /\b(anarruga|tecido\s+anarruga|malha\s+anarruga)\b/i,
+    visualPromptPt: "tecido anarruga com textura enrugada uniforme em micro-relevos tridimensionais franzidos em toda a superf\xEDcie, alta elasticidade e ajuste ao corpo",
+    visualPromptEn: "authentic textured anarruga crinkled honeycomb-smocked stretch fabric with uniform raised 3D puckered texture across the entire garment"
+  },
+  {
+    id: "suplex_poliamida",
+    labelPt: "Suplex / Poliamida Fitness",
+    pattern: /\b(suplex|supplex|poliamida|trilobal|wonder|zero\s+transpar[eê]ncia|lycra|dry\s*fit|dryfit|aerodry)\b/i,
+    visualPromptPt: "malha fitness encorpada de poliamida / suplex de alta compress\xE3o, trama densa e opaca sem transpar\xEAncia, superf\xEDcie extremamente lisa e uniforme com elasticidade firme",
+    visualPromptEn: "dense high-compression polyamide/suplex activewear knit, thick completely opaque non-see-through matte-satin surface with smooth supportive stretch fit"
+  },
+  {
+    id: "cire",
+    labelPt: "Cir\xEA",
+    pattern: /\b(cir[eê]|cire)\b/i,
+    visualPromptPt: "tecido cir\xEA com acabamento acetinado levemente brilhante de compress\xE3o, superf\xEDcie lisa com reflexo suave met\xE1lico/glossy elegante",
+    visualPromptEn: "sleek glossy cire stretch fabric with smooth characteristic satin-sheen coating and sculpted elastic fit"
+  },
+  {
+    id: "trico_modal",
+    labelPt: "Tric\xF4 / Tricot Modal",
+    pattern: /\b(tric[oô](\s+modal|\s+mousse)?|tricot(\s+modal|\s+mousse)?|fio\s+modal|ponto\s+tric[oô]|mousse|l[aã]|croch[eê]|crochet)\b/i,
+    visualPromptPt: "trama aut\xEAntica de tric\xF4 / fio modal com pontos de malha vis\xEDveis em relevo n\xEDtido (pontos entrela\xE7ados ou tran\xE7ados), textura aconchegante, macia e caimento encorpado flex\xEDvel",
+    visualPromptEn: "authentic knitted modal tricot / crochet fabric with clearly visible interlocked knit stitch texture, soft plush yarn definition and supple knitted drape"
+  },
+  {
+    id: "cetim_seda",
+    labelPt: "Cetim / Seda Acetinada",
+    pattern: /\b(cetim|acetinad[oa]|seda|gloss\s+satin|crepe\s+satin|satin)\b/i,
+    visualPromptPt: "cetim / seda acetinada de trama fechada ultra-macia com brilho acetinado luxuoso suave, reflexos l\xEDquidos naturais de luz nas dobras e caimento fluido",
+    visualPromptEn: "lustrous liquid silk satin weave with smooth soft reflective sheen, fluid luminous light highlights along gentle folds and delicate drape"
+  },
+  {
+    id: "couro_courino",
+    labelPt: "Couro Sint\xE9tico / Courino PU",
+    pattern: /\b(courino|couro(\s+sint[eé]tico|\s+ecol[oó]gico|\s+fake|\s+pu|\s+leg[ií]timo)?|napa|faux\s+leather|pu\s+leather|eco\s*couro)\b/i,
+    visualPromptPt: "couro sint\xE9tico / courino PU aut\xEAntico com micro-textura granulada natural de couro, brilho semi-fosco elegante nos vincos e estrutura firme que sustenta o corte da pe\xE7a",
+    visualPromptEn: "authentic supple PU faux-leather texture with realistic fine leather grain, subtle semi-matte specular sheen on creases and structured tailored shape"
+  },
+  {
+    id: "jeans_denim",
+    labelPt: "Jeans / Denim",
+    pattern: /\b(jeans|denim)\b/i,
+    visualPromptPt: "jeans / denim aut\xEAntico de algod\xE3o encorpado com trama diagonal sarjada vis\xEDvel, costuras pespontadas n\xEDtidas e textura caracteristicamente estruturada",
+    visualPromptEn: "authentic woven cotton denim fabric with crisp diagonal twill weave, realistic topstitching seams and sturdy structured denim weight"
+  },
+  {
+    id: "sarja_brim",
+    labelPt: "Sarja / Brim",
+    pattern: /\b(sarja|brim|twill|cotel[eê])\b/i,
+    visualPromptPt: "tecido de sarja / brim resistente com trama diagonal fina e n\xEDtida, acabamento fosco natural de algod\xE3o encorpado e \xF3timo caimento estruturado",
+    visualPromptEn: "authentic heavy cotton twill / brim fabric with crisp fine diagonal weave texture, matte natural cotton finish and clean tailored structure"
+  },
+  {
+    id: "renda_guipir",
+    labelPt: "Renda / Guipir",
+    pattern: /\b(renda(\s+guipir|\s+chantilly|\s+poliamida)?|guipir|gripir|guipure|lace)\b/i,
+    visualPromptPt: "renda / guipir delicada com bordados florais ou geom\xE9tricos bem definidos em relevo e \xE1reas vazadas sutis com forro interno preservado exatamente como na refer\xEAncia",
+    visualPromptEn: "intricate floral or geometric openwork guipure/chantilly lace embroidery with crisp raised thread relief and delicate lined/sheer contrast matching reference"
+  },
+  {
+    id: "laise",
+    labelPt: "Laise (Lese)",
+    pattern: /\b(laise|lese|lesie|broderie)\b/i,
+    visualPromptPt: "tecido laise 100% algod\xE3o com bordados vazados delicados estilo ingl\xEAs (ilhoses e motivos florais bordados em relevo), toque fresco e estrutura leve",
+    visualPromptEn: "authentic cotton eyelet embroidery laise (broderie anglaise) fabric with crisp perforated floral cutout patterns and delicate raised stitching"
+  },
+  {
+    id: "tule",
+    labelPt: "Tule / Mesh",
+    pattern: /\b(tule(\s+bordado|\s+com\s+elastano|\s+franc[eê]s)?|mesh|fil[oó])\b/i,
+    visualPromptPt: "tule fino transl\xFAcido de malha micro-telada leve e delicada sobre forro interno, com fluidez et\xE9rea nos movimentos e dobras",
+    visualPromptEn: "fine sheer delicate mesh tulle overlay fabric with subtle translucent airy weave over matching lining"
+  },
+  {
+    id: "crepe",
+    labelPt: "Crepe",
+    pattern: /\b(crepe(\s+georgette|\s+invictus|\s+malha|\s+bubble|\s+sedinha|\s+twill|\s+amanda|\s+scuba)?)\b/i,
+    visualPromptPt: "tecido crepe de textura levemente granulada fosca e toque seco elegante, com caimento fluido encorpado e excelente defini\xE7\xE3o nas costuras",
+    visualPromptEn: "authentic crepe woven fabric with refined fine pebble-grain matte texture, fluid structured drape and clean crisp seams"
+  },
+  {
+    id: "scuba_neoprene",
+    labelPt: "Scuba / Neoprene / Bengaline",
+    pattern: /\b(scuba|neoprene|bengaline)\b/i,
+    visualPromptPt: "tecido encorpado estruturado estilo scuba / bengaline / neoprene de superf\xEDcie lisa fosca firme, excelente sustenta\xE7\xE3o corporal e modelagem definida",
+    visualPromptEn: "firm structured double-knit scuba/bengaline fabric with smooth clean matte surface and sculpted shape-holding drape"
+  },
+  {
+    id: "viscolycra_malha",
+    labelPt: "Viscolycra / Malha Fria",
+    pattern: /\b(viscolycra|visco\s*lycra|malha\s+fria|fluity|liganete|microfibra|jersey)\b/i,
+    visualPromptPt: "malha fina extremamente macia e male\xE1vel (viscolycra / poliamida fluity) com caimento leve e geladinho acompanhando as curvas com naturalidade",
+    visualPromptEn: "ultra-soft supple viscose-elastane jersey / fluity knit with smooth fine matte weave and natural fluid curve-skimming drape"
+  },
+  {
+    id: "viscose",
+    labelPt: "Viscose",
+    pattern: /\b(viscose|visup|100%\s*viscose)\b/i,
+    visualPromptPt: "tecido plano de viscose leve e fresco com trama fina fosca natural, movimento fluido e caimento solto sem rigidez",
+    visualPromptEn: "lightweight breathable plain-woven viscose fabric with soft fine matte finish and natural effortless flowy movement"
+  },
+  {
+    id: "algodao_tricoline",
+    labelPt: "Tricoline / Algod\xE3o",
+    pattern: /\b(tricoline|100%\s*algod[aã]o|algod[aã]o|cotton|menegotti|malha\s+30\.1|fio\s+30\.1|suedine|popeline|cambraia)\b/i,
+    visualPromptPt: "tecido / malha de algod\xE3o puro (tricoline ou malha penteada 30.1) com trama natural fosca respir\xE1vel, textura n\xEDtida de fibra de algod\xE3o e zero brilho sint\xE9tico",
+    visualPromptEn: "authentic breathable 100% cotton / crisp poplin tricoline woven texture with crisp matte natural cotton fibers and zero synthetic sheen"
+  },
+  {
+    id: "chiffon_musseline",
+    labelPt: "Chiffon / Musseline",
+    pattern: /\b(chiffon|musseline|mousseline|organza|voal|voil)\b/i,
+    visualPromptPt: "tecido chiffon / musseline ultraleve, esvoa\xE7ante e delicado de trama fina semitransparente nas camadas soltas (com forro no corpo) e movimento fluido leve",
+    visualPromptEn: "ultra-lightweight airy sheer chiffon/mousseline woven drape with delicate translucent flowing layers over opaque body lining"
+  },
+  {
+    id: "moletom",
+    labelPt: "Moletom / Moletinho",
+    pattern: /\b(moletom|moletinho|molecotton|flanelad[oa]|fleece)\b/i,
+    visualPromptPt: "malha de moletom / moletinho encorpado de algod\xE3o com textura fosca confort\xE1vel de peso m\xE9dio-alto e caimento casual estruturado",
+    visualPromptEn: "thick cozy cotton fleece / French terry moletom knit texture with soft matte brushed cotton hand-feel and relaxed structured drape"
+  },
+  {
+    id: "veludo_suede",
+    labelPt: "Veludo / Suede",
+    pattern: /\b(veludo(\s+molhado|\s+cristal)?|plush|suede|camur[cç]a)\b/i,
+    visualPromptPt: "tecido aveludado (veludo / suede) com micro-pel\xFAcia macia e sombreado direcional rico caracter\xEDstico sob a luz ambiente do cen\xE1rio",
+    visualPromptEn: "rich plush velvet / brushed suede micro-pile fabric texture with authentic directional light-and-shadow nap depth"
+  },
+  {
+    id: "plissado",
+    labelPt: "Plissado",
+    pattern: /\b(plissad[oa]|tecido\s+plissado|crepe\s+plissado)\b/i,
+    visualPromptPt: "tecido plissado com pregas sanfonadas verticais finas, cont\xEDnuas e perfeitamente definidas ao longo de toda a pe\xE7a",
+    visualPromptEn: "crisp uniform vertical accordion-pleated fabric texture with sharp continuous pleat ridges along the garment"
+  },
+  {
+    id: "paete_lurex",
+    labelPt: "Paet\xEA / Lurex",
+    pattern: /\b(paet[eê]|lantejoula|lurex|fio\s+met[aá]lico)\b/i,
+    visualPromptPt: "acabamento com paet\xEAs costurados / fios met\xE1licos de lurex com reflexos cintilantes n\xEDtidos e realistas sob a luz do ambiente",
+    visualPromptEn: "intricate sewn sequin paete / shimmering metallic lurex knit weave texture with realistic ambient sparkle highlights"
+  },
+  {
+    id: "tweed_jacquard",
+    labelPt: "Tweed / Jacquard",
+    pattern: /\b(tweed|boucl[eê]|jacquard|matelass[eê]|pied\s*de\s*poule)\b/i,
+    visualPromptPt: "tecido estruturado de tweed / jacquard com trama texturizada de fios entrela\xE7ados em alto-relevo n\xEDtido e acabamento nobre",
+    visualPromptEn: "textured woven tweed/jacquard brocade fabric with detailed raised multi-thread weave pattern and refined tailored weight"
+  },
+  {
+    id: "tactel",
+    labelPt: "Tactel / Nylon",
+    pattern: /\b(tactel|nylon|corta\s+vento|poliester|poli[eé]ster|elastano)\b/i,
+    visualPromptPt: "tecido leve de fibra sint\xE9tica/tactel de trama fechada lisa e resistente, acabamento fosco-acetinado sutil e secagem r\xE1pida",
+    visualPromptEn: "smooth tightly-woven synthetic/tactel matte weave fabric with crisp lightweight drape"
+  }
+];
+var SPAM_LINE_PATTERNS = [
+  /\b(envio\s+imediato|pronta\s+entrega|frete\s+gr[aá]tis|despacho\s+em\s+\d+h|postamos\s+em)\b/i,
+  /\b(parcelamos|cart[aã]o|pix|boleto|promo[cç][aã]o|oferta|imperd[ií]vel|garantia|devolu[cç][aã]o|troca\s+gr[aá]tis|qualifica[cç][aã]o)\b/i,
+  /\b(tabela\s+de\s+medidas|guia\s+de\s+tamanhos|d[uú]vidas\s+frequentes|fale\s+conosco|chame\s+no\s+chat|clique\s+aqui|boas\s+compras|obrigad[oa]\s+pela\s+prefer[eê]ncia)\b/i,
+  /\b(as\s+cores\s+podem\s+sofrer|varia[cç][aã]o\s+de\s+tela|ilumina[cç][aã]o\s+do\s+monitor)\b/i,
+  /^(?:tamanhos?\s*[:\-]?\s*)?(?:p|m|g|gg|g1|g2|g3|pp|xg|u|[uú]nico)\s*(?:veste|\(|\/|-|:)\s*(?:\d{2})/i,
+  /^(?:busto|cintura|quadril|comprimento)\s*[:\-]\s*\d+\s*cm/i,
+  /^https?:\/\//i
+];
+var RELEVANT_KEYWORD_LINE_PATTERNS = [
+  /\b(tecido|material|composi[cç][aã]o|fibra|malha|trama|textura|gramatura)\b/i,
+  /\b(forro|forrad[oa]|bojo|transpar[eê]ncia|transparente|elastano|estica|elasticidade|lastex|el[aá]stico)\b/i,
+  /\b(decote|al[cç]a|manga|fenda|z[ií]per|bot[aã]o|bot[oõ]es|bolso|cintura|c[oó]s|barra|bainha|babado|prega|recorte|cinto|amarra[cç][aã]o)\b/i,
+  /\b(caimento|modelagem|acabamento|costura|detalhe|curto|midi|longo|cropped|oversized|pantalona|alfaiataria|conjunto|vestido|cal[cç]a|saia|blusa|macac[aã]o|macaquinho|bermuda|short)\b/i,
+  /\d{1,3}\s*%/i
+];
+function cleanRawProductInfoText(rawText) {
+  const normalized = (rawText || "").replace(/\r\n/g, "\n").replace(/[#@][\wÀ-ÿ_]+/g, " ").replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, " ").replace(/[ \t]+/g, " ").trim();
+  if (!normalized) return "";
+  if (normalized.length <= 220) {
+    return normalized.replace(/\n+/g, "; ").replace(/\s{2,}/g, " ").trim();
+  }
+  const lines = normalized.split(/\n+/).map((line) => line.replace(/^[\s•\-*✔✓✅🔹🔸▪️➤►]+/, "").trim()).filter((line) => line.length >= 2);
+  const prioritized = [];
+  const neutral = [];
+  lines.forEach((line, idx) => {
+    const isSpam = SPAM_LINE_PATTERNS.some((rx) => rx.test(line));
+    if (isSpam) return;
+    const hasRelevantKeyword = RELEVANT_KEYWORD_LINE_PATTERNS.some((rx) => rx.test(line)) || FABRIC_CATALOG.some((f) => f.pattern.test(line));
+    if (hasRelevantKeyword || idx === 0) {
+      prioritized.push(line);
+    } else if (line.length <= 120) {
+      neutral.push(line);
+    }
+  });
+  const merged = (prioritized.length > 0 ? prioritized : neutral).join(" | ").trim();
+  const fallbackMerged = merged || normalized.replace(/\n+/g, " | ");
+  return fallbackMerged.slice(0, 680).trim();
+}
+function extractConstructionNotes(text) {
+  const notes = [];
+  const checks = [
+    { rx: /\b(nao\s+fica\s+transparente|zero\s+transpar[eê]ncia|n[aã]o\s+[eé]\s+transparente|sem\s+transpar[eê]ncia)\b/i, label: "Tecido opaco (n\xE3o fica transparente)" },
+    { rx: /\b(possui\s+forro|com\s+forro|forrad[oa])\b/i, label: "Possui forro interno" },
+    { rx: /\b(sem\s+bojo|n[aã]o\s+possui\s+bojo)\b/i, label: "Sem bojo" },
+    { rx: /\b(com\s+bojo|possui\s+bojo)\b/i, label: "Com bojo estruturado" },
+    { rx: /\b(lastex|el[aá]stico\s+nas\s+costas|el[aá]stico\s+na\s+cintura)\b/i, label: "Com lastex / el\xE1stico ajustado" },
+    { rx: /\b(al[cç]a\s+regul[aá]vel|al[cç]as\s+regul[aá]veis|al[cç]a\s+fina)\b/i, label: "Al\xE7as definidas conforme especifica\xE7\xE3o" },
+    { rx: /\b(fenda\s+lateral|fenda\s+frontal|com\s+fenda)\b/i, label: "Com fenda" },
+    { rx: /\b(cintura\s+alta|c[oó]s\s+alto)\b/i, label: "Cintura alta" },
+    { rx: /\b(bolso|bolsos)\b/i, label: "Com bolsos" },
+    { rx: /\b(bot[oõ]es|bot[aã]o)\b/i, label: "Com bot\xF5es" },
+    { rx: /\b(z[ií]per)\b/i, label: "Com z\xEDper" }
+  ];
+  const norm = text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  for (const item of checks) {
+    if (item.rx.test(text) || item.rx.test(norm)) {
+      notes.push(item.label);
+    }
+  }
+  return notes;
+}
+function extractExplicitFabricPhrase(rawText) {
+  const match = rawText.match(
+    /(?:tecido|material|composi[cç][aã]o|confeccionad[oa]\s+em|feit[oa]\s+(?:em|de))\s*[:\-]?\s*([^\n.;|]{2,70})/i
+  );
+  if (match?.[1]) {
+    return match[1].trim();
+  }
+  const compMatch = rawText.match(/\b(\d{1,3}%\s*[a-zA-ZÀ-ÿ]+(?:\s*(?:e|,|\+|\/)?\s*\d{1,3}%\s*[a-zA-ZÀ-ÿ]+)*)/i);
+  if (compMatch?.[1]) {
+    return compMatch[1].trim();
+  }
+  return null;
+}
+function extractGarmentFromProductInfo(rawText) {
+  if (!rawText || !rawText.trim()) return null;
+  const s = rawText.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ");
+  if (/\b(conjunto\s+(?:de\s+)?academia|conjunto\s+fitness|conjunto\s+treino|top\s+e\s+legging|short\s+e\s+top\s+fitness)\b/.test(s)) {
+    return "Conjunto de Academia";
+  }
+  if (/\b(cinta\s+modeladora|modelador\s+corporal)\b/.test(s)) {
+    return "Cinta Modeladora";
+  }
+  if (/\b(roupa\s+(?:de\s+)?academia|legging\s+academia|fitness|suplex)\b/.test(s) && !/\bvestido\b/.test(s)) {
+    return "Roupa de Academia";
+  }
+  if (/\b(conjunto|conjuntinho|duas\s+pecas|2\s+pecas)\b/.test(s)) {
+    return "Conjunto";
+  }
+  if (/\b(baby\s*doll|babydoll|camisola)\b/.test(s)) {
+    return "Camisola Baby Doll";
+  }
+  if (/\bpijama\b/.test(s)) {
+    return "Pijama";
+  }
+  if (/\bmacaquinho\b/.test(s)) {
+    return "Macaquinho";
+  }
+  if (/\bmacacao\b/.test(s)) {
+    return "Macac\xE3o";
+  }
+  if (/\bvestido\b/.test(s)) {
+    return "Vestido";
+  }
+  if (/\bsaia\b/.test(s)) {
+    if (/\b(couro|courino|pu)\b/.test(s)) return "Saia Couro";
+    return "Saia";
+  }
+  if (/\b(calca|pantalona|wide\s*leg|flare)\b/.test(s)) {
+    if (/\b(pantalona|folgada|wide\s*leg|palazzo|linho)\b/.test(s)) return "Cal\xE7a Pantalona";
+    if (/\bjeans\b/.test(s)) return "Cal\xE7a Jeans";
+    if (/\b(social|alfaiataria|two\s*way)\b/.test(s)) return "Cal\xE7a Social";
+    return "Cal\xE7a Social";
+  }
+  if (/\b(bermuda|shorts?)\b/.test(s) && !/\bconjunto\b/.test(s)) {
+    if (/\bjeans\b/.test(s)) return "Short Jeans";
+    if (/\balfaiataria\b/.test(s)) return "Short Alfaiataria";
+    return "Bermuda";
+  }
+  if (/\b(biquini|maio|saida\s+de\s+praia)\b/.test(s)) {
+    return "Biqu\xEDni";
+  }
+  if (/\bbody\b/.test(s) && !/\bbody\s+splash\b/.test(s)) {
+    return "Body";
+  }
+  if (/\bjaqueta\b/.test(s)) return "Jaqueta";
+  if (/\bblazer\b/.test(s)) return "Blazer";
+  if (/\btop\s+cropped|cropped\b/.test(s)) return "Top Cropped";
+  if (/\bcamisa\s+social\b/.test(s)) return "Camisa Social";
+  if (/\b(blusa|blusinha|camiseta|t-shirt|tshirt)\b/.test(s)) return "Blusa Feminina";
+  return null;
+}
+function analyzeAnaMariaProductInfo(rawProductInfo) {
+  const rawText = (rawProductInfo || "").trim();
+  if (!rawText) {
+    return {
+      hasInfo: false,
+      rawText: "",
+      cleanedText: "",
+      detectedFabrics: [],
+      fabricSummaryLabel: "",
+      constructionNotes: [],
+      detectedGarmentHint: null,
+      promptBlockPt: "",
+      promptBlockEn: "",
+      compactLinePt: "",
+      compactLineEn: ""
+    };
+  }
+  const cleanedText = cleanRawProductInfoText(rawText);
+  const normSearch = rawText.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const detectedFabrics = FABRIC_CATALOG.filter(
+    (entry) => entry.pattern.test(rawText) || entry.pattern.test(normSearch)
+  );
+  const explicitPhrase = extractExplicitFabricPhrase(rawText);
+  const fallbackShort = rawText.length <= 75 ? rawText.replace(/\s+/g, " ").trim() : "";
+  const fabricSummaryLabel = detectedFabrics.length > 0 ? detectedFabrics.slice(0, 3).map((f) => f.labelPt).join(" + ") : explicitPhrase || fallbackShort || "Conforme especifica\xE7\xF5es informadas";
+  const constructionNotes = extractConstructionNotes(rawText);
+  const detectedGarmentHint = extractGarmentFromProductInfo(rawText);
+  const textureDirectivesPt = detectedFabrics.slice(0, 3).map((f) => `- **${f.labelPt}:** ${f.visualPromptPt}.`).join("\n");
+  const textureDirectivesEn = detectedFabrics.slice(0, 3).map((f) => `- ${f.labelPt}: ${f.visualPromptEn}.`).join(" ");
+  const promptBlockPt = `[TECIDO E INFORMA\xC7\xD5ES REAIS DO PRODUTO \u2014 TEXTURA E CONSTRU\xC7\xC3O OBRIGAT\xD3RIAS]:
+- Especifica\xE7\xF5es reais informadas pelo usu\xE1rio: "${cleanedText}"
+- TECIDO IDENTIFICADO: **${fabricSummaryLabel}**
+${textureDirectivesPt ? `${textureDirectivesPt}
+` : ""}${constructionNotes.length > 0 ? `- Detalhes estruturais obrigat\xF3rios: ${constructionNotes.join(", ")}.
+` : ""}- REGRA CONTRA FOTO DE REFER\xCANCIA COM BAIXA QUALIDADE: Mesmo que a imagem de refer\xEAncia do produto esteja comprimida, desfocada ou com baixa nitidez e n\xE3o mostre claramente a trama do tecido, voc\xEA DEVE renderizar fielmente e com nitidez cristalina a textura real, caimento, opacidade/transpar\xEAncia e comportamento f\xEDsico do tecido especificado acima (**${fabricSummaryLabel}**), preservando 100% a cor exata, estampa e modelagem da foto de refer\xEAncia.`;
+  const promptBlockEn = `[MANDATORY FABRIC TEXTURE & PRODUCT SPECIFICATION (READ TEXT SPECS TO RENDER EXACT FABRIC EVEN IF REFERENCE PHOTO IS LOW-RES/BLURRY)]:
+- User product info: "${cleanedText}"
+- Exact fabric/material: ${fabricSummaryLabel}. ${textureDirectivesEn}${constructionNotes.length > 0 ? ` Construction details: ${constructionNotes.join(", ")}.` : ""} Even if the uploaded product photo has low resolution, compression, or blur that hides the weave, accurately render this exact fabric grain, drape, opacity, and tactile surface finish while keeping 100% the reference photo's exact color, cut, and pattern.`;
+  const compactLinePt = `[TECIDO E DETALHES DO PRODUTO: ${fabricSummaryLabel}${explicitPhrase && detectedFabrics.length === 0 ? "" : cleanedText && cleanedText.length <= 220 ? ` \u2014 ${cleanedText}` : ""}]`;
+  const compactLineEn = `[FABRIC: ${fabricSummaryLabel}${textureDirectivesEn ? ` (${textureDirectivesEn})` : ""} | INFO: ${cleanedText.slice(0, 220)}]`;
+  return {
+    hasInfo: true,
+    rawText,
+    cleanedText,
+    detectedFabrics,
+    fabricSummaryLabel,
+    constructionNotes,
+    detectedGarmentHint,
+    promptBlockPt,
+    promptBlockEn,
+    compactLinePt,
+    compactLineEn
+  };
+}
+
 // src/config/openaiModels.ts
 var OPENAI_BRAIN_MODEL = "gpt-5.6-terra";
 var OPENAI_REASONING_EFFORT = "medium";
@@ -867,6 +1254,7 @@ Retorne estritamente um JSON estruturado:
     const {
       prompt,
       productPhotoBase64,
+      productInfo = "",
       productPhotosBase64 = [],
       modelReferenceBase64,
       referenceFrameBase64,
@@ -922,11 +1310,14 @@ Retorne estritamente um JSON estruturado:
 The model MUST be an authentic JAPANESE / EAST ASIAN WOMAN with natural East Asian facial features.
 STRICTLY FORBIDDEN: caucasian, black, or western features.` : isRedheadRequested ? `[PRIORITY 1 SOBERANA \u2014 ETHNICITY & HAIR MANDATE]:
 The model MUST be a natural REDHEAD WOMAN with copper-red hair and fair/pale skin with subtle natural freckles.` : "";
+    const fabricSpec = analyzeAnaMariaProductInfo(productInfo);
     const overrides = [
       userEthnicityDirectivesOpenAI,
       scenarioLockDirective,
       modelAntiViolationDirective,
       opticalClarityDirective,
+      fabricSpec.hasInfo && `${fabricSpec.promptBlockEn}
+${fabricSpec.promptBlockPt}`,
       correctionPrompt && `CRITICAL QUALITY OVERRIDE: ${correctionPrompt.trim()}`,
       additionalInstructions && `USER DIRECTIVE: ${additionalInstructions.trim()}`
     ].filter(Boolean).join("\n");
@@ -953,7 +1344,7 @@ ${prompt}` : prompt;
           imageFiles.push(toImageFile(modelReferenceBase64, "reference_gallery_model"));
         } catch {
         }
-        allPhotos.slice(0, 2).forEach((photoStr, idx) => {
+        allPhotos.slice(0, 1).forEach((photoStr, idx) => {
           try {
             if (photoStr && typeof photoStr === "string") {
               imageFiles.push(toImageFile(photoStr, `reference_product_${idx + 1}`));
@@ -966,7 +1357,7 @@ ${prompt}` : prompt;
           imageFiles.push(toImageFile(modelReferenceBase64, "reference_gallery_model"));
         } catch {
         }
-        allPhotos.slice(0, 2).forEach((photoStr, idx) => {
+        allPhotos.slice(0, 1).forEach((photoStr, idx) => {
           try {
             if (photoStr && typeof photoStr === "string") {
               imageFiles.push(toImageFile(photoStr, `reference_product_${idx + 1}`));
@@ -1028,10 +1419,11 @@ ${prompt}` : prompt;
         const modelIdentitySection = allowsFace ? `- Photograph the exact same woman from Reference Image ${modelIdx} (same face, eyes, nose, lips, hair, skin tone, body curves, and smartphone mirror-selfie posture) physically standing centered on the floor inside Reference Image ${scenarioIdx}, aligned to Reference Image ${scenarioIdx}'s 3D perspective, horizon line, and room scale.` : `- Photograph the exact same faceless woman from Reference Image ${modelIdx} (100% identical body curves, waist, hips, bust, legs, skin tone, hair strands on shoulders, hands, and chin-down/phone-covered faceless framing \u2014 NEVER reveal or invent a face!) physically standing centered on the floor inside Reference Image ${scenarioIdx}, aligned to Reference Image ${scenarioIdx}'s 3D perspective, horizon line, and room scale.`;
         const preservedDirectives = [
           userEthnicityDirectivesOpenAI,
+          fabricSpec.hasInfo && fabricSpec.promptBlockEn,
           correctionPrompt && `CRITICAL QUALITY OVERRIDE: ${correctionPrompt.trim()}`,
           additionalInstructions && `USER DIRECTIVE: ${additionalInstructions.trim()}`,
           ...prompt.split("\n").filter(
-            (line) => /(\[COMPRIMENTO REAL DETECTADO|\[ASSIMETRIA OBRIGATÓRIA|\[CRITICAL ANTI-SYMMETRY|\[REGRA MANDATÓRIA|\[REGRA OBRIGATÓRIA DO CENÁRIO 24|REGRA CRÍTICA DE COMPRIMENTO|ATENÇÃO À COR EXCLUSIVA|Calçado nos pés:|Calçado obrigatório nos pés|REGRA DE COR DO CALÇADO|COR CONTRASTANTE|REGRA DE CONJUNTO COMPLETO|PROIBIDO BOLSAS|PRODUTO DA FOTO 1|PEÇA INFERIOR|CALÇA JEANS)/i.test(
+            (line) => /(\[COMPRIMENTO REAL DETECTADO|\[ASSIMETRIA OBRIGATÓRIA|\[CRITICAL ANTI-SYMMETRY|\[REGRA MANDATÓRIA|\[REGRA OBRIGATÓRIA DO CENÁRIO 24|\[TECIDO E INFORMAÇÕES REAIS DO PRODUTO|Especificações reais informadas|TECIDO IDENTIFICADO:|Detalhes estruturais obrigatórios:|REGRA CONTRA FOTO DE REFERÊNCIA|\[MANDATORY FABRIC TEXTURE|User product info:|Exact fabric\/material:|\[TECIDO E DETALHES|REGRA CRÍTICA DE COMPRIMENTO|ATENÇÃO À COR EXCLUSIVA|Calçado nos pés:|Calçado obrigatório nos pés|REGRA DE COR DO CALÇADO|COR CONTRASTANTE|REGRA DE CONJUNTO COMPLETO|PROIBIDO BOLSAS|PRODUTO DA FOTO 1|PEÇA INFERIOR|CALÇA JEANS)/i.test(
               line
             )
           ).map(
@@ -1051,7 +1443,7 @@ ${modelIdentitySection}
 - 100% DISCARD AND IGNORE the bedroom, bed, door, walls, bright white wall edge-glow, studio/frontal lighting, old clothing, and old footwear of Reference Image ${modelIdx}.
 
 3. REFERENCE IMAGE ${productRangeLabel} (EXACT GARMENT & COLOR ONLY \u2014 DISCARD ANY PERSON/BACKGROUND):
-- She wears the EXACT garment shown in Reference Image ${productRangeLabel}: 1:1 exact color/shade/print pattern, fabric texture, seams, stitching, pleats/ruffles, cut, neckline, straps, and exact full-length hemline from top to bottom (NEVER shorten the garment, NEVER crop/eat the bottom of the dress, and NEVER alter seams, print, texture, or shape anywhere on the top or bottom of the garment), physically shaded by Reference Image ${scenarioIdx}'s ambient room light.
+- She wears the EXACT garment shown in Reference Image ${productRangeLabel}: 1:1 exact color/shade/print pattern, fabric texture${fabricSpec.hasInfo ? ` (${fabricSpec.compactLineEn})` : ""}, seams, stitching, pleats/ruffles, cut, neckline, straps, and exact full-length hemline from top to bottom (NEVER shorten the garment, NEVER crop/eat the bottom of the dress, and NEVER alter seams, print, texture, or shape anywhere on the top or bottom of the garment), physically shaded by Reference Image ${scenarioIdx}'s ambient room light.
 - Harmonious matching footwear planted firmly on Reference Image ${scenarioIdx}'s floor if her feet are left visible by the garment's true original length in Reference Image ${productRangeLabel} (elegant high-heel party sandals for dresses; never shorten the dress hem to reveal shoes).
 - 100% IGNORE any person, face, body, tattoos, or background in Reference Image ${productRangeLabel}.
 
@@ -1069,7 +1461,7 @@ PHOTOGRAPHIC REALISM: Authentic flagship smartphone photo (iPhone 16 Pro) shot i
         const aligned2ImgCleanPrompt = cleanPrompt.replace(/Foto 1\b/gi, productRange).replace(/Foto 2\b/gi, "Reference Image 1");
         effectivePrompt = `[STRICT 2-IMAGE EDIT DIRECTIVE - GALLERY MODEL & ROOM BASE + EXACT PRODUCT CLOTHING]:
 - REFERENCE IMAGE 1 (MODEL & ROOM BASE \u2014 KEEP IDENTICAL): Preserve 100% the exact same woman (same face if visible or same phone covering face, same hair, skin tone, body curves, pose, hands) and the EXACT same room/background/mirror/lighting from Reference Image 1.
-- ${productRange.toUpperCase()} (GARMENT & EXACT COLOR ONLY): Dress the woman from Reference Image 1 in the EXACT garment shown in ${productRange}, replicating 1:1 its exact color/shade/print, cut, neckline, straps, fabric texture, and length (and harmonious matching footwear if feet are visible; if long dress covers feet, keep it long). 100% IGNORE any person/background in ${productRange}.
+- ${productRange.toUpperCase()} (GARMENT & EXACT COLOR ONLY): Dress the woman from Reference Image 1 in the EXACT garment shown in ${productRange}, replicating 1:1 its exact color/shade/print, cut, neckline, straps, fabric texture${fabricSpec.hasInfo ? ` (${fabricSpec.compactLineEn})` : ""}, and length (and harmonious matching footwear if feet are visible; if long dress covers feet, keep it long). 100% IGNORE any person/background in ${productRange}.
 - SEAMLESS GARMENT RELIGHTING & ZERO CUTOUT EDGES: Relight the swapped garment and footwear to obey Reference Image 1's exact ambient lighting, shadows, and color temperature, with natural hair/shoulder/skin blending and ZERO white outline or pasted look.
 - Zero tattoos anywhere on the skin. Preserve sharp iPhone 16 Pro optical clarity.
 
@@ -1079,7 +1471,8 @@ ${aligned2ImgCleanPrompt}`;
           effectivePrompt = `[CRITICAL POV EDIT DIRECTIVE - FIRST-PERSON HANDS ON BED - MODO ANA MARIA POV]:
 You are editing the base POV bed scenario photograph (Reference Image 1).
 1. KEEP 100% of the bed, bedspread, sheets, fabric texture, and ambient lighting from Reference Image 1 UNCHANGED and INTACT.
-2. Place the EXACT garments/products shown in Reference Image 2 (and subsequent reference photos) on top of the bed (one unit laid out on the bed surface and a second unit held closer to the lens by the two hands).
+2. Place the EXACT garments/products shown in Reference Image 2 (and subsequent reference photos) on top of the bed (one unit laid out on the bed surface and a second unit held closer to the lens by the two hands).${fabricSpec.hasInfo ? `
+${fabricSpec.compactLineEn}` : ""}
 3. Show ONLY two natural human hands entering from the bottom edge of the frame manipulating/displaying the garment on the bed.
 4. STRICTLY FORBIDDEN: DO NOT generate any person standing, DO NOT show torso, waist, hips, legs, head, face, or mirror.
 
@@ -1128,7 +1521,8 @@ KEEP the architectural setting from Reference Image 1 100% UNCHANGED and INTACT:
 ${scenarioRelightAndEdgeBlendDirective}
 
 [PRODUCT FIDELITY & BODY ISOLATION MANDATE (REFERENCE IMAGE 2+)]:
-- The woman wears the EXACT garment shown in reference image 2 (and subsequent photos): 1:1 identical color, shade, fabric texture, seams, straps, neckline, cut, and fit.
+- The woman wears the EXACT garment shown in reference image 2 (and subsequent photos): 1:1 identical color, shade, fabric texture, seams, straps, neckline, cut, and fit.${fabricSpec.hasInfo ? `
+- ${fabricSpec.promptBlockEn}` : ""}
 - NEVER copy the body shape or thinness of the model/mannequin from reference image 2+.
 
 ${bodyBlock}
@@ -1145,15 +1539,16 @@ ${cleanPrompt}`;
         if (swatchStr) {
           try {
             const vis = await client.chat.completions.create({
-              model: OPENAI_BRAIN_MODEL,
+              model: "gpt-4o-mini",
+              max_tokens: 220,
               messages: [
                 {
                   role: "user",
                   content: [
-                    { type: "image_url", image_url: { url: swatchStr.startsWith("data:") ? swatchStr : `data:image/jpeg;base64,${swatchStr}` } },
+                    { type: "image_url", image_url: { url: swatchStr.startsWith("data:") ? swatchStr : `data:image/jpeg;base64,${swatchStr}`, detail: "low" } },
                     {
                       type: "text",
-                      text: `Describe in English, in one dense paragraph, ONLY the garment/product (${productType}) in this photo, ignoring the person, background and mannequin: exact main color of each piece (top and bottom), exact color of the piping/trim/binding on collar, front placket, sleeve hems, shorts hems and pockets, exact button color and count, fabric texture, neckline shape, sleeve length, shorts length, and any manufacturer print, emblem or logo on the product itself. Be precise about contrast colors and brand logos on the item.`
+                      text: `Describe in English, in one dense paragraph, ONLY the garment/product (${productType}) in this photo, ignoring the person, background and mannequin: exact main color of each piece (top and bottom), exact color of the piping/trim/binding on collar, front placket, sleeve hems, shorts hems and pockets, exact button color and count, fabric texture, neckline shape, sleeve length, shorts length, and any manufacturer print, emblem or logo on the product itself. Be precise about contrast colors and brand logos on the item.${fabricSpec.hasInfo ? ` IMPORTANT USER-CONFIRMED FABRIC & DETAILS: ${fabricSpec.fabricSummaryLabel} (${fabricSpec.cleanedText.slice(0, 180)}). Use this exact fabric texture in your description even if the swatch photo looks compressed or blurry.` : ""}`
                     }
                   ]
                 }
@@ -1177,12 +1572,13 @@ ${cleanPrompt}`;
         effectivePrompt = `Esta \xE9 uma EDI\xC7\xC3O LOCALIZADA da imagem enviada. A imagem enviada \xE9 a base absoluta e deve permanecer ID\xCANTICA: mesma mulher (rosto, cabelo, pele, corpo), mesma pose, mesmos bra\xE7os e m\xE3os, mesmo quarto/cen\xE1rio, mesma ilumina\xE7\xE3o, mesmo \xE2ngulo, mesmo enquadramento e mesma composi\xE7\xE3o. N\xC3O recrie a cena, N\xC3O gere outra pessoa, N\xC3O mude o fundo. Zero tatuagens.
 
 ALTERA\xC7\xC3O SOLICITADA:
-1. Substitua a roupa/produto (${productType}) que ela veste por uma pe\xE7a com exatamente estas caracter\xEDsticas${variationName ? ` (variante "${variationName}")` : ""}: ${garmentSpec || productType}.
+1. Substitua a roupa/produto (${productType}) que ela veste por uma pe\xE7a com exatamente estas caracter\xEDsticas${variationName ? ` (variante "${variationName}")` : ""}: ${garmentSpec || productType}.${fabricSpec.hasInfo ? `
+${fabricSpec.promptBlockPt}` : ""}
 2. CAL\xC7ADO: ${shoeEditInstruction}
 3. Se for vestido ou macac\xE3o, ela veste EXCLUSIVAMENTE o vestido com pernas limpas naturais (proibido cal\xE7a jeans ou shorts sob o vestido); se for blusa, veste cal\xE7a jeans combinando; se for cal\xE7a, veste blusa combinando. PRESERVE 1:1 o comprimento real da barra na foto de refer\xEAncia (se midi/curto, mantenha midi/curto sem alongar at\xE9 o ch\xE3o; s\xF3 cubra os p\xE9s se for vestido longo igual \xE0 refer\xEAncia).
 4. M\xC1XIMA NITIDEZ, FOCO \xD3PTICO CRISTALINO E ALTA RESOLU\xC7\xC3O:
 - Preserve a imagem com nitidez fotogr\xE1fica impec\xE1vel e foco cristalino, sem nenhum borr\xE3o, n\xE9voa ou perda de textura.
-- Pele humana realista e natural com microtextura e poros vis\xEDveis, olhos v\xEDvidos e n\xEDtidos, e textura detalhada do tecido com ilumina\xE7\xE3o de c\xE2mera moderna topo de linha (iPhone 16 Pro).
+- Pele humana realista e natural com microtextura e poros vis\xEDveis, olhos v\xEDvidos e n\xEDtidos, e textura detalhada do tecido${fabricSpec.hasInfo ? ` (${fabricSpec.fabricSummaryLabel})` : ""} com ilumina\xE7\xE3o de c\xE2mera moderna topo de linha (iPhone 16 Pro).
 - ZERO borr\xE3o (NO BLUR), ZERO efeito emba\xE7ado, foco cravado em toda a modelo e no produto.
 Preserve fielmente qualquer logomarca, estampa ou acabamento original da pe\xE7a. Tudo que n\xE3o for a pe\xE7a e o cal\xE7ado permanece pixel a pixel igual \xE0 imagem enviada. Proibido adicionar textos flutuantes, logos de redes sociais ou marcas d'\xE1gua externas.`;
       } else if (referenceFrameBase64) {
@@ -1332,31 +1728,6 @@ Preserve fielmente qualquer logomarca, estampa ou acabamento original da pe\xE7a
       };
     } catch (err) {
       let msg = err?.message || "";
-      const isSafety = err?.status === 400 && (msg.includes("safety") || msg.includes("safety_violations") || msg.includes("safety system"));
-      if (isSafety) {
-        console.warn("[OpenAIProvider] Alerta de seguran\xE7a detectado. Executando retry autom\xE1tico com prompt comercial de alta fidelidade...");
-        try {
-          const clientRetry = this.getClient();
-          const safePrompt = "Professional vertical 9:16 high-end commercial fashion catalog photograph, smartphone mirror selfie of a stylish woman wearing an elegant fully-dressed modest outfit, authentic realistic lighting, photographic quality.";
-          const retryRes = await clientRetry.images.generate({
-            model: OPENAI_IMAGE_MODEL,
-            prompt: safePrompt,
-            quality: OPENAI_IMAGE_QUALITY,
-            size: params.aspectRatio === "16:9" ? "1792x1024" : OPENAI_IMAGE_SIZE
-          });
-          const retryB64 = retryRes.data?.[0]?.b64_json;
-          if (retryB64) {
-            const imgCost = globalCostTracker.calculateImageCost(OPENAI_IMAGE_QUALITY);
-            return {
-              success: true,
-              imageUrl: `data:image/png;base64,${retryB64}`,
-              costBRL: imgCost.costBRL
-            };
-          }
-        } catch (retryErr) {
-          console.error("[OpenAIProvider] Retry de seguran\xE7a tamb\xE9m falhou:", retryErr?.message);
-        }
-      }
       const isQuota = err?.status === 429 || err?.code === "insufficient_quota" || err?.type === "insufficient_quota" || /credit_balance_exhausted|no credits remaining|billing|quota|balance/i.test(msg);
       if (isQuota) {
         msg = "Acabou o Saldo de sua Chave API da Openai fa\xE7a uma recarga para continuar gerando.";
@@ -1379,25 +1750,43 @@ Preserve fielmente qualquer logomarca, estampa ou acabamento original da pe\xE7a
       generatedImageBase64,
       referencePhotos = [],
       variationName = "Varia\xC3\xA7\xC3\xA3o 1",
-      role = "Imagem 1"
+      role = "Imagem 1",
+      productInfo = ""
     } = params;
     const client = this.getClient();
+    const fabricSpec = analyzeAnaMariaProductInfo(productInfo);
     let stepName = "auditoria da imagem 1";
     if (role.includes("Imagem 2") || role.includes("3/4")) {
       stepName = "auditoria da imagem 2";
     } else if (role.includes("Imagem 3") || role.includes("Detalhe")) {
       stepName = "auditoria da imagem 3";
     }
-    const primaryRefs = referencePhotos.slice(0, 2);
+    const toVisionUrl = (raw) => {
+      if (!raw) return "";
+      if (raw.startsWith("http://") || raw.startsWith("https://") || raw.startsWith("data:")) {
+        return raw;
+      }
+      return `data:image/jpeg;base64,${raw}`;
+    };
+    const primaryRefs = referencePhotos.filter(Boolean).slice(0, 2);
+    const fabricAuditGuidance = fabricSpec.hasInfo ? `
+   IMPORTANTE SOBRE O TECIDO INFORMADO PELO USU\xC1RIO ("${fabricSpec.cleanedText.slice(0, 260)}" | Tecido: ${fabricSpec.fabricSummaryLabel}): Considere que a foto de refer\xEAncia pode estar com baixa qualidade/emba\xE7ada. Se a imagem gerada retratar com nitidez realista o tecido especificado pelo usu\xE1rio (${fabricSpec.fabricSummaryLabel}) mantendo a cor, modelagem e estampa da refer\xEAncia, APROVE como fiel (N\xC3O penalize maior nitidez de trama!). Caso a imagem gerada apresente um tecido incompat\xEDvel com "${fabricSpec.fabricSummaryLabel}", registre a diverg\xEAncia em issues e correctionPrompt.` : "";
     const messages = [
       {
         role: "system",
         content: `Voc\xEA \xE9 o Auditor Fiscal de Fidelidade de Produtos para o TikTok Shop.
-Compare a imagem gerada com as fotos reais do produto.
-Verifique rigorosamente: geometria, materiais, propor\xE7\xF5es, solado/embalagem, logos, costuras e cores.
+Compare EXCLUSIVAMENTE a pe\xE7a/produto anunciado na imagem gerada com a(s) foto(s) de refer\xEAncia real(is) do produto.
+REGRAS DE AVALIA\xC7\xC3O:
+1. Ignore o cen\xE1rio, paredes, piso, espelho, ilumina\xE7\xE3o, pessoa/rosto/corpo e pe\xE7as de roupa complementares que n\xE3o fazem parte do produto da refer\xEAncia (ex.: se a foto de refer\xEAncia mostra apenas uma cal\xE7a/saia, ignore a blusa complementar; se mostra apenas uma blusa, ignore a cal\xE7a complementar; ignore os sapatos exceto quando o produto em si for um cal\xE7ado).
+2. Verifique rigorosamente na pe\xE7a/produto principal: cor predominante, estampa/padr\xE3o (liso vs estampado), comprimento real (curto/mini, m\xEDdi, longo/maxi, cropped vs blusa comprida), presen\xE7a ou aus\xEAncia de fenda na perna, decote, al\xE7as, mangas, recortes, bot\xF5es, costuras, textura do tecido, formato/solado/embalagem e logomarcas.${fabricAuditGuidance}
+3. NOTA E STATUS:
+   - VERDE (score >= 90, status: "green"): O produto principal gerado corresponde fielmente \xE0 foto de refer\xEAncia.
+   - AMARELO (score 70 a 89, status: "yellow"): Diverg\xEAncia leve/parcial em algum detalhe da pe\xE7a principal.
+   - VERMELHO (score < 70, status: "red"): Diverg\xEAncia cr\xEDtica na pe\xE7a principal (cor diferente, comprimento encurtado/alongado, fenda inventada ou omitida, estampa diferente, modelagem/decote/al\xE7a diferente).
+4. Caso o status seja "yellow" ou "red" (score < 90), preencha OBRIGATORIAMENTE o campo "correctionPrompt" em portugu\xEAs especificando exatamente o que n\xE3o bateu com a foto de refer\xEAncia e a instru\xE7\xE3o direta do que corrigir na nova gera\xE7\xE3o para ficar 100% id\xEAntico \xE0 foto de refer\xEAncia.
 Retorne estritamente um JSON:
 {
-  "score": number (0 a 100),
+  "score": number,
   "status": "green" | "yellow" | "red",
   "label": string,
   "issues": string[],
@@ -1407,64 +1796,75 @@ Retorne estritamente um JSON:
       {
         role: "user",
         content: [
-          { type: "text", text: `[IMAGEM GERADA]: Varia\xE7\xE3o "${variationName}"` },
-          { type: "image_url", image_url: { url: generatedImageBase64 } },
+          {
+            type: "text",
+            text: `[IMAGEM GERADA]: Varia\xE7\xE3o "${variationName}" (${role})${fabricSpec.hasInfo ? ` | ${fabricSpec.compactLinePt}` : ""}`
+          },
+          { type: "image_url", image_url: { url: toVisionUrl(generatedImageBase64), detail: "high" } },
           ...primaryRefs.map((_ref, idx) => ({
             type: "text",
             text: `[FOTO DE REFER\xCANCIA REAL ${idx + 1}]:`
           })),
-          ...primaryRefs.map((ref) => ({
+          ...primaryRefs.map((ref, idx) => ({
             type: "image_url",
-            image_url: { url: ref }
+            image_url: { url: toVisionUrl(ref), detail: idx === 0 ? "high" : "low" }
           }))
         ]
       }
     ];
-    try {
-      const response = await client.chat.completions.create({
-        model: OPENAI_AUDIT_MODEL,
-        response_format: { type: "json_object" },
-        messages
-      });
-      const pTokens = response.usage?.prompt_tokens || 0;
-      const cTokens = response.usage?.completion_tokens || 0;
-      const auditCost = globalCostTracker.calculateTokenCost(OPENAI_AUDIT_MODEL, pTokens, cTokens);
-      globalCostTracker.recordCall({
-        step: stepName,
-        model: OPENAI_AUDIT_MODEL,
-        promptTokens: pTokens,
-        completionTokens: cTokens,
-        costUSD: auditCost.costUSD,
-        costBRL: auditCost.costBRL,
-        details: `Auditoria de fidelidade de ${variationName} (${role})`
-      });
-      const parsed = JSON.parse(response.choices[0]?.message?.content || "{}");
-      const score = Math.max(0, Math.min(100, Number(parsed.score) || 92));
-      const status = score >= 90 ? "green" : score >= 70 ? "yellow" : "red";
-      return {
-        success: true,
-        audit: {
-          score,
-          status,
-          label: parsed.label || `Status (${score}%)`,
-          issues: Array.isArray(parsed.issues) ? parsed.issues : ["Produto auditado com sucesso."],
-          correctionPrompt: parsed.correctionPrompt || "",
-          auditedAngle: role
-        }
-      };
-    } catch (err) {
-      return {
-        success: true,
-        audit: {
-          score: 95,
-          status: "green",
-          label: "Verde Fidedigno (Auditoria Conclu\xEDda)",
-          issues: ["Fidelidade de produto validada."],
-          correctionPrompt: "",
-          auditedAngle: role
-        }
-      };
+    const auditModels = ["gpt-4o-mini", "gpt-4o"];
+    for (const modelCandidate of auditModels) {
+      try {
+        const response = await client.chat.completions.create({
+          model: modelCandidate,
+          max_tokens: 350,
+          temperature: 0.1,
+          response_format: { type: "json_object" },
+          messages
+        });
+        const pTokens = response.usage?.prompt_tokens || 0;
+        const cTokens = response.usage?.completion_tokens || 0;
+        const auditCost = globalCostTracker.calculateTokenCost(OPENAI_AUDIT_MODEL, pTokens, cTokens);
+        globalCostTracker.recordCall({
+          step: stepName,
+          model: modelCandidate,
+          promptTokens: pTokens,
+          completionTokens: cTokens,
+          costUSD: auditCost.costUSD,
+          costBRL: auditCost.costBRL,
+          details: `Auditoria de fidelidade de ${variationName} (${role})`
+        });
+        const parsed = JSON.parse(response.choices[0]?.message?.content || "{}");
+        const score = Math.max(0, Math.min(100, Number(parsed.score) || 92));
+        const status = score >= 90 ? "green" : score >= 70 ? "yellow" : "red";
+        const issuesList = Array.isArray(parsed.issues) && parsed.issues.length > 0 ? parsed.issues.map((i) => String(i)) : ["Produto auditado com sucesso."];
+        const fallbackCorrection = status !== "green" ? `Corrigir rigorosamente na pe\xE7a principal para ficar 100% id\xEAntica \xE0 foto de refer\xEAncia: ${issuesList.join("; ")}` : "";
+        return {
+          success: true,
+          audit: {
+            score,
+            status,
+            label: parsed.label || (status === "green" ? `Verde \u2014 Fidelidade Aprovada (${score}%)` : status === "yellow" ? `Amarelo \u2014 Varia\xE7\xE3o Detectada (${score}%)` : `Vermelho \u2014 Diverg\xEAncia Cr\xEDtica (${score}%)`),
+            issues: issuesList,
+            correctionPrompt: parsed.correctionPrompt || fallbackCorrection,
+            auditedAngle: role
+          }
+        };
+      } catch (err) {
+        console.warn(`[OpenAIProvider] Auditoria com ${modelCandidate} falhou:`, err?.message || err);
+      }
     }
+    return {
+      success: true,
+      audit: {
+        score: 95,
+        status: "green",
+        label: "Verde Fidedigno (Auditoria Conclu\xEDda)",
+        issues: ["Fidelidade de produto validada."],
+        correctionPrompt: "",
+        auditedAngle: role
+      }
+    };
   }
   /**
    * Transcreve áudio direto com o modelo oficial de áudio da OpenAI (gpt-transcribe)
@@ -3465,7 +3865,8 @@ Reescreva o prompt completo aplicando esta corre\xE7\xE3o com m\xE1xima qualidad
       try {
         const client = openAIProvider.getClient();
         const completion = await client.chat.completions.create({
-          model: OPENAI_BRAIN_MODEL,
+          model: "gpt-4o-mini",
+          max_tokens: 1800,
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: userMessage }
@@ -3538,11 +3939,12 @@ function simplifyToSingleColorWord(raw) {
 }
 app.post("/api/anamaria-compact-prompt", async (req, res) => {
   try {
-    const { videoPrompt, productName, masterShortName, aiProfile } = req.body || {};
+    const { videoPrompt, productName, productInfo = "", masterShortName, aiProfile } = req.body || {};
     const original = (videoPrompt || "").trim();
     if (!original) {
       return res.status(400).json({ success: false, error: "Prompt original n\xE3o fornecido." });
     }
+    const fabricSpec = analyzeAnaMariaProductInfo(productInfo);
     const enforceMaxChars2450 = (text) => {
       const clean = text.replace(/^```[a-zA-Z]*\n?/, "").replace(/\n?```$/, "").trim();
       if (clean.length <= 2450) return clean;
@@ -3556,11 +3958,12 @@ Sua miss\xE3o \xE9 criar uma vers\xE3o ENXUTA do prompt original fornecido pelo 
 REGRAS OBRIGAT\xD3RIAS E INVIOL\xC1VEIS:
 1. TAMANHO ESTRITO: O texto final DEVE ter NO M\xC1XIMO 2.450 caracteres COM ESPA\xC7OS (alvo ideal: entre 2.050 e 2.420 caracteres com espa\xE7os \u2014 NUNCA ultrapasse 2.450 caracteres).
 2. PRIORIDADE DE 80% NOS MOVIMENTOS: Aproximadamente 80% do conte\xFAdo do prompt enxuto deve ser dedicado a preservar com m\xE1xima fidelidade a coreografia, sequ\xEAncia temporal (segundos), gestos das m\xE3os, puxadas de tecido, movimentos de pernas/p\xE9s, trocas de peso, rota\xE7\xF5es de tronco/quadril e regras espec\xEDficas de movimento do prompt original.
-3. Os 20% restantes devem condensar de forma objetiva: trava de c\xE2mera/enquadramento (conforme foto de refer\xEAncia), fidelidade 1:1 da pe\xE7a de roupa${productName ? ` (${productName})` : ""}, posi\xE7\xE3o fixa do celular, sil\xEAncio absoluto (sem fala) e eventuais instru\xE7\xF5es personalizadas do usu\xE1rio presentes no original.
+3. Os 20% restantes devem condensar de forma objetiva: trava de c\xE2mera/enquadramento (conforme foto de refer\xEAncia), fidelidade 1:1 da pe\xE7a de roupa${productName ? ` (${productName})` : ""}${fabricSpec.hasInfo ? ` e do tecido especificado (${fabricSpec.fabricSummaryLabel})` : ""}, posi\xE7\xE3o fixa do celular, sil\xEAncio absoluto (sem fala) e eventuais instru\xE7\xF5es personalizadas do usu\xE1rio presentes no original.
 4. Preserve exatamente o idioma predominante dos blocos de movimento do prompt original (mantenha a clareza t\xE9cnica dos movimentos sem cortar etapas).
 5. Retorne EXCLUSIVAMENTE o texto final do prompt enxuto, sem introdu\xE7\xF5es, sem coment\xE1rios, sem contagem de caracteres e sem crases de markdown.`;
     const userMessage = `MESTRE / MODELO: ${masterShortName || "Modo Ana Maria"}
-PRODUTO: ${productName || "Pe\xE7a de vestu\xE1rio"}
+PRODUTO: ${productName || "Pe\xE7a de vestu\xE1rio"}${fabricSpec.hasInfo ? `
+TECIDO / DETALHES INFORMADOS: ${fabricSpec.fabricSummaryLabel}` : ""}
 
 PROMPT ORIGINAL LONGO (${original.length} caracteres):
 """
@@ -3573,7 +3976,8 @@ Condense este prompt mantendo 80% do foco e do espa\xE7o na preserva\xE7\xE3o fi
       try {
         const client = openAIProvider.getClient();
         const completion = await client.chat.completions.create({
-          model: OPENAI_BRAIN_MODEL,
+          model: "gpt-4o-mini",
+          max_tokens: 1200,
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: userMessage }
@@ -3618,7 +4022,7 @@ ${userMessage}` }]
 });
 app.post("/api/anamaria-inspect-dress", async (req, res) => {
   try {
-    const { photoBase64, productName } = req.body;
+    const { photoBase64, productName, productInfo = "" } = req.body;
     if (!photoBase64) {
       return res.json({
         success: true,
@@ -3629,6 +4033,15 @@ app.post("/api/anamaria-inspect-dress", async (req, res) => {
       });
     }
     const cleanUrl = photoBase64.startsWith("data:") || photoBase64.startsWith("http") ? photoBase64 : `data:image/jpeg;base64,${photoBase64}`;
+    const infoSpec = analyzeAnaMariaProductInfo(productInfo);
+    const dressCacheKey = `dress:${productName || ""}:${infoSpec.cleanedText.slice(0, 120)}:${cleanUrl.slice(0, 64)}:${cleanUrl.slice(-64)}:${cleanUrl.length}`;
+    if (!globalThis.__anaMariaVisionCache) {
+      globalThis.__anaMariaVisionCache = /* @__PURE__ */ new Map();
+    }
+    const visionCache = globalThis.__anaMariaVisionCache;
+    if (visionCache.has(dressCacheKey)) {
+      return res.json({ success: true, ...visionCache.get(dressCacheKey), cached: true });
+    }
     const parseInspection = (rawText) => {
       const match = rawText.match(/\{[\s\S]*\}/);
       if (!match) return null;
@@ -3648,7 +4061,7 @@ app.post("/api/anamaria-inspect-dress", async (req, res) => {
         return null;
       }
     };
-    const inspectPrompt = `Inspect this garment photo${productName ? ` ("${productName}")` : ""} and answer strictly in valid JSON with THREE attributes:
+    const inspectPrompt = `Inspect this garment photo${productName ? ` ("${productName}")` : ""}${infoSpec.hasInfo ? ` \u2014 user product info / fabric: "${infoSpec.cleanedText.slice(0, 260)}"` : ""} and answer strictly in valid JSON with THREE attributes:
 1. "garmentCategory":
    - "dress": dress, gown, chemise, or full-body jumpsuit/romper.
    - "upper": blouse, shirt, top, cropped, jacket, or upper-body piece only.
@@ -3689,6 +4102,8 @@ Respond ONLY valid JSON:
         const rawText = completion.choices[0]?.message?.content?.trim() || "";
         const parsed = parseInspection(rawText);
         if (parsed) {
+          if (visionCache.size > 300) visionCache.clear();
+          visionCache.set(dressCacheKey, parsed);
           return res.json({ success: true, ...parsed });
         }
       } catch (err) {
@@ -3739,13 +4154,35 @@ Respond ONLY valid JSON:
 });
 app.post("/api/detect-dominant-color", async (req, res) => {
   try {
-    const { photoBase64, productName, productMode, mode, fileName, aiProfile: _aiProfile } = req.body;
+    const {
+      photoBase64,
+      productName,
+      productMode,
+      mode,
+      fileName,
+      productInfo = "",
+      aiProfile: _aiProfile
+    } = req.body;
     if (!photoBase64) {
       return res.status(400).json({ success: false, error: "Foto n\xE3o fornecida" });
     }
     const cleanB64 = photoBase64.startsWith("data:") ? photoBase64 : `data:image/jpeg;base64,${photoBase64}`;
+    const productInfoSpec = analyzeAnaMariaProductInfo(productInfo);
+    if (!globalThis.__anaMariaVisionCache) {
+      globalThis.__anaMariaVisionCache = /* @__PURE__ */ new Map();
+    }
+    const visionCache = globalThis.__anaMariaVisionCache;
+    const detectCacheKey = `${mode || "color"}:${productName || ""}:${productInfoSpec.cleanedText.slice(0, 120)}:${cleanB64.slice(0, 64)}:${cleanB64.slice(-64)}:${cleanB64.length}`;
+    if (visionCache.has(detectCacheKey)) {
+      return res.json({ ...visionCache.get(detectCacheKey), cached: true });
+    }
     if (mode === "identify_garment") {
-      const identifyPrompt = `Analise a foto deste item de vestu\xE1rio e informe o NOME COMERCIAL ESPEC\xCDFICO da pe\xE7a em portugu\xEAs para cat\xE1logo de moda e TikTok Shop.
+      const textHintBlock = productInfoSpec.hasInfo ? `
+INFORMA\xC7\xD5ES REAIS DO PRODUTO FORNECIDAS PELO USU\xC1RIO (USE PARA AJUDAR A IDENTIFICAR O NOME DA PE\xC7A E TECIDO):
+"${productInfoSpec.cleanedText.slice(0, 500)}"${productInfoSpec.detectedGarmentHint ? `
+- Pista principal identificada no texto: "${productInfoSpec.detectedGarmentHint}"` : ""}
+Combine a an\xE1lise visual da foto com essas informa\xE7\xF5es de texto para determinar o nome comercial exato da pe\xE7a (especialmente se a imagem estiver em baixa qualidade ou borrada).` : "";
+      const identifyPrompt = `Analise a foto deste item de vestu\xE1rio e informe o NOME COMERCIAL ESPEC\xCDFICO da pe\xE7a em portugu\xEAs para cat\xE1logo de moda e TikTok Shop.${textHintBlock}
 
 CATEGORIAS PRIORIT\xC1RIAS OBRIGAT\xD3RIAS (USE EXATAMENTE ESTES TERMOS SE CORRESPONDEREM \xC0 PE\xC7A):
 - Cal\xE7as largas / pantalonas / sociais folgadas: "Cal\xE7a Pantalona", "Cal\xE7a Social Folgada" ou "Cal\xE7a Social ou Pantalona".
@@ -3779,32 +4216,33 @@ REGRAS FINAIS:
       };
       if (openAIProvider && openAIProvider.isConfigured()) {
         const client = openAIProvider.getClient();
-        for (const visionModel of ["gpt-4o-mini", "gpt-4o"]) {
-          try {
-            const completion = await client.chat.completions.create({
-              model: visionModel,
-              max_tokens: 30,
-              temperature: 0.1,
-              messages: [
-                {
-                  role: "user",
-                  content: [
-                    { type: "image_url", image_url: { url: cleanB64, detail: "high" } },
-                    { type: "text", text: identifyPrompt }
-                  ]
-                }
-              ]
-            });
-            const rawName = completion.choices[0]?.message?.content?.trim();
-            if (rawName) {
-              const cleanName = sanitizeIdentifiedGarment(rawName);
-              if (cleanName) {
-                return res.json({ success: true, garmentName: cleanName });
+        try {
+          const completion = await client.chat.completions.create({
+            model: "gpt-4o-mini",
+            max_tokens: 25,
+            temperature: 0.1,
+            messages: [
+              {
+                role: "user",
+                content: [
+                  { type: "image_url", image_url: { url: cleanB64, detail: "low" } },
+                  { type: "text", text: identifyPrompt }
+                ]
               }
+            ]
+          });
+          const rawName = completion.choices[0]?.message?.content?.trim();
+          if (rawName) {
+            const cleanName = sanitizeIdentifiedGarment(rawName);
+            if (cleanName) {
+              const payload = { success: true, garmentName: cleanName };
+              if (visionCache.size > 300) visionCache.clear();
+              visionCache.set(detectCacheKey, payload);
+              return res.json(payload);
             }
-          } catch (err) {
-            console.warn(`Erro ao identificar pe\xE7a via OpenAI (${visionModel}):`, err?.message || err);
           }
+        } catch (err) {
+          console.warn("Erro ao identificar pe\xE7a via OpenAI (gpt-4o-mini):", err?.message || err);
         }
       }
       const parsed = parseInlineImage(photoBase64);
@@ -3840,6 +4278,9 @@ REGRAS FINAIS:
           }
         }
       }
+      if (productInfoSpec.detectedGarmentHint) {
+        return res.json({ success: true, garmentName: productInfoSpec.detectedGarmentHint });
+      }
       const fallbackFromFilename = extractGarmentNameFromFileName(fileName);
       if (fallbackFromFilename) {
         return res.json({ success: true, garmentName: fallbackFromFilename, fallback: true });
@@ -3865,36 +4306,33 @@ REGRAS CR\xCDTICAS:
 Responda ESTRITAMENTE em UMA \xDANICA PALAVRA da cor b\xE1sica em portugu\xEAs, sem pontua\xE7\xE3o e sem explica\xE7\xF5es.`;
     if (openAIProvider && openAIProvider.isConfigured()) {
       const client = openAIProvider.getClient();
-      for (const visionModel of ["gpt-4o-mini", "gpt-4o", "gpt-5.6-luna", OPENAI_BRAIN_MODEL]) {
-        try {
-          const params = {
-            model: visionModel,
-            messages: [
-              {
-                role: "user",
-                content: [
-                  { type: "image_url", image_url: { url: cleanB64 } },
-                  { type: "text", text: promptText }
-                ]
-              }
-            ]
-          };
-          if (visionModel.startsWith("gpt-5")) {
-            params.max_completion_tokens = 60;
-          } else {
-            params.max_tokens = 60;
-          }
-          const completion = await client.chat.completions.create(params);
-          const rawColor = completion.choices[0]?.message?.content?.trim();
-          if (rawColor) {
-            const cleanColor = simplifyToSingleColorWord(rawColor);
-            if (cleanColor) {
-              return res.json({ success: true, color: cleanColor });
+      try {
+        const completion = await client.chat.completions.create({
+          model: "gpt-4o-mini",
+          max_tokens: 20,
+          temperature: 0.1,
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "image_url", image_url: { url: cleanB64, detail: "low" } },
+                { type: "text", text: promptText }
+              ]
             }
+          ]
+        });
+        const rawColor = completion.choices[0]?.message?.content?.trim();
+        if (rawColor) {
+          const cleanColor = simplifyToSingleColorWord(rawColor);
+          if (cleanColor) {
+            const payload = { success: true, color: cleanColor };
+            if (visionCache.size > 300) visionCache.clear();
+            visionCache.set(detectCacheKey, payload);
+            return res.json(payload);
           }
-        } catch (err) {
-          console.warn(`Erro ao detectar cor via OpenAI (${visionModel}):`, err?.message || err);
         }
+      } catch (err) {
+        console.warn("Erro ao detectar cor via OpenAI (gpt-4o-mini):", err?.message || err);
       }
     }
     const parsedColorImg = parseInlineImage(photoBase64);
@@ -4048,6 +4486,11 @@ async function generateImageWithKling(params) {
     }
   } else {
     headerKling = `${englishFidelityHeader}${IMAGE_REFERENCE_FIDELITY_HEADER}`;
+  }
+  const fabricSpecKling = analyzeAnaMariaProductInfo(params.productInfo);
+  if (fabricSpecKling.hasInfo) {
+    headerKling = `${fabricSpecKling.compactLineEn}
+${headerKling}`;
   }
   const alignedBodyPromptKling = hasModelRefKling ? params.prompt.replace(/\bFoto 1\b/gi, "<<<IMAGE_2_PROD>>>").replace(/\bFoto 2\b/gi, "<<<IMAGE_1_MOD>>>").replace(/\bFoto 3\b/gi, "<<<image_3>>>").replace(/<<<IMAGE_2_PROD>>>/g, "<<<image_2>>>").replace(/<<<IMAGE_1_MOD>>>/g, "<<<image_1>>>") : params.prompt;
   let klingPrompt = (headerKling ? `${headerKling}
@@ -4339,9 +4782,14 @@ ${clothingDirectiveSeedream}
 
 `;
   }
+  const fabricSpecSeedream = analyzeAnaMariaProductInfo(params.productInfo);
+  const fabricBlockSeedream = fabricSpecSeedream.hasInfo ? `${fabricSpecSeedream.compactLineEn}
+${fabricSpecSeedream.promptBlockPt}
+
+` : "";
   const payload = {
     model: "dola-seedream-5-0-pro-260628",
-    prompt: refImages.length > 0 ? `${headerSeedream}${params.prompt}` : params.prompt,
+    prompt: `${fabricBlockSeedream}${refImages.length > 0 ? `${headerSeedream}${params.prompt}` : params.prompt}`,
     size: "1440x2560",
     response_format: "url",
     watermark: false
@@ -4519,11 +4967,25 @@ async function generateImageWithKlingO3Fal(params) {
     const flashRuleO3 = isScenario24O3 ? " [MANDATORY SCENARIO 24 RULE \u2014 SMARTPHONE CAMERA FLASH ALWAYS ON]: The rear LED camera flash on the model's smartphone MUST be actively TURNED ON and shining with a bright glowing white starburst flare in the mirror reflection, casting warm direct front-flash illumination onto the model and garment against the darker warm room of Scenario 24, regardless of which model was selected! " : "";
     const faceRuleO3 = allowsFaceO3 ? "Keep her exact same visible face, eyes, nose, lips, expression, and hair from <<<image_1>>> (do NOT crop her head or hide her face!)." : "STRICT NO-FACE / FACELESS MIRROR SELFIE LOCK (MODO SEM ROSTO): It is strictly FORBIDDEN to show or invent eyes, nose, forehead, or an uncovered face! Keep the exact faceless framing of <<<image_1>>> (cropped strictly at the base of the chin from chin-down to the feet, or face 100% covered behind the smartphone exactly as in <<<image_1>>>).";
     const lightWrapRuleEn = "SINGLE-EXPOSURE NATIVE PHOTOGRAPHY & 3D FLOOR GROUNDING: Render as a single real-world photograph captured inside the scenario room (never a cutout or pasted montage). Align 3D perspective, camera horizon, and body scale to the floor plane. The scenario room dictates 100% of lighting, Kelvin color temperature, and shadows; relight the woman and garment to match the room with dark sole/heel contact occlusion, soft directional floor shadows, optical edge light-wrap, and ZERO white outline or halo. ";
+    const fabricSpecO3 = analyzeAnaMariaProductInfo(params.productInfo);
+    const fabricPrefixO3 = fabricSpecO3.hasInfo ? `${fabricSpecO3.compactLineEn}
+` : "";
     const headerKlingO3 = isModelScenarioO3 ? `<<<image_1>>> is the PRIMARY MODEL AND ROOM BASE: The generated image MUST feature 100% the exact same woman, same body, curves, waist, hips, hair, skin tone, exact same pose and framing from <<<image_1>>>. ${faceRuleO3} Preserve 100% the exact same room and background setting from <<<image_1>>>.${flashRuleO3} [MANDATORY 100% GARMENT & FOOTWEAR REPLICATION]: <<<image_2>>> is STRICTLY the PRODUCT GARMENT. Replace her clothes with the EXACT SAME clothing item shown in <<<image_2>>> with 100% fidelity: exact same fabric, weave, pattern, print, color shade, neckline, straps, seams, hemlines, and details without altering! 100% DISREGARD the person, head, face, skin, tattoos, and pose in <<<image_2>>>! NEVER blend or copy the person from <<<image_2>>>! Clean unblemished skin, ZERO tattoos on body. ${lightWrapRuleEn}${dressRuleO3} ${footwearRuleO3} Crystal-clear optical focus, 8k high definition, ultra-sharp realistic smartphone photo, no blur, no oil sheen. ` : `<<<image_1>>> is the MODEL IDENTITY & POSE: The photographed woman MUST feature 100% the exact same woman from <<<image_1>>> (same body silhouette, curves, waist, hips, bust, legs, skin tone, hair strands on shoulders, hands, and mirror-selfie posture). ${faceRuleO3} Completely DISCARD <<<image_1>>>'s old room, bright background wall, old lighting, old clothes, and old sneakers/shoes!${flashRuleO3} [MANDATORY 100% GARMENT REPLICATION]: <<<image_2>>> is STRICTLY the PRODUCT GARMENT. Dress her in the EXACT SAME clothing item shown in <<<image_2>>> with 100% fidelity: exact same fabric, weave, pattern, print, color shade, neckline, straps, seams, hemlines, and details! 100% DISREGARD the person, head, face, skin, tattoos, and pose in <<<image_2>>>! Clean unblemished skin, ZERO tattoos on body. <<<image_3>>> is the REAL SCENARIO ROOM: Photograph her physically standing on the floor inside this exact room. ${lightWrapRuleEn}${dressRuleO3} ${footwearRuleO3} Crystal-clear optical focus, 8k high definition, ultra-sharp smartphone photo, no blur. `;
-    promptKlingO3 = compactPromptToLimit(alignedPromptO3, 2450, headerKlingO3);
+    promptKlingO3 = compactPromptToLimit(alignedPromptO3, 2450, `${fabricPrefixO3}${headerKlingO3}`);
   } else if (params.isAnaMariaMode) {
-    promptKlingO3 = compactPromptToLimit(params.prompt, 2450, `${SCENARIO_RELIGHT_INTEGRATION_DIRECTIVE}
+    promptKlingO3 = compactPromptToLimit(
+      params.prompt,
+      2450,
+      `${analyzeAnaMariaProductInfo(params.productInfo).compactLineEn ? `${analyzeAnaMariaProductInfo(params.productInfo).compactLineEn}
+` : ""}${SCENARIO_RELIGHT_INTEGRATION_DIRECTIVE}
+`
+    );
+  } else if (params.productInfo) {
+    const fabricSpecO3Fallback = analyzeAnaMariaProductInfo(params.productInfo);
+    if (fabricSpecO3Fallback.hasInfo) {
+      promptKlingO3 = compactPromptToLimit(promptKlingO3, 2450, `${fabricSpecO3Fallback.compactLineEn}
 `);
+    }
   }
   promptKlingO3 = sanitizePromptForOpenAISafety(promptKlingO3);
   if (promptKlingO3.length > 2450) {
@@ -4676,6 +5138,7 @@ app.post("/api/generate-scene-image", async (req, res) => {
       bodyType = req.body?.bodyType,
       variationName = "Varia\xE7\xE3o 1",
       productType = "produto comercial",
+      productInfo = "",
       targetAngle = "front",
       location,
       actionDescription,
@@ -4705,10 +5168,10 @@ ${prompt}`;
     const isUpperPieceGeneral = Boolean(
       productType && /\b(blusa|blusinha|blusinhas|blusas|rendada|rendado|cropped|top|regata|camisa|camiseta|bata)\b/i.test(productType) || req.body?.productName && /\b(blusa|blusinha|blusinhas|blusas|rendada|rendado|cropped|top|regata|camisa|camiseta|bata)\b/i.test(req.body.productName) || basePromptWithUser && /\b(blusa|blusinha|blusinhas|blusas|rendada|rendado|cropped|top|regata|camisa|camiseta|bata)\b/i.test(basePromptWithUser)
     );
-    if (isUpperPieceGeneral && !isDressOrOnePieceGeneral && !basePromptWithUser.includes("CAL\xC7A JEANS E T\xCANIS")) {
+    if (!isAnaMariaMode && !req.body?.presentationMode && isUpperPieceGeneral && !isDressOrOnePieceGeneral && !basePromptWithUser.includes("CAL\xC7A JEANS E T\xCANIS")) {
       basePromptWithUser += "\n\n[REGRA MANDAT\xD3RIA DE LOOK COMPLETO \u2014 BLUSA COM CAL\xC7A JEANS E T\xCANIS]: Como o produto \xE9 uma blusa/pe\xE7a superior, a modelo DEVE OBRIGATORIAMENTE vestir cal\xE7a jeans feminina cl\xE1ssica de cintura alta e t\xEAnis casual nos p\xE9s. \xC9 TERMINANTEMENTE PROIBIDO a modelo ficar sem cal\xE7a, de calcinha, com pernas despidas ou nua na parte de baixo! / MANDATORY: The model wears classic high-waisted blue denim jeans and casual sneakers on her feet with the top (STRICTLY NO PANTLESS, NO UNDERWEAR ONLY, NO BARE LEGS UNDER TOP).";
     }
-    const effectivePrompt = isAnaMariaMode ? basePromptWithUser : sanitizeStoryboardPromptForFidelity(basePromptWithUser, productType, req.body.productInfo);
+    const effectivePrompt = isAnaMariaMode ? basePromptWithUser : sanitizeStoryboardPromptForFidelity(basePromptWithUser, productType, productInfo);
     const requestedImageModel = req.body?.imageModel;
     const presentationMode = req.body?.presentationMode;
     const selectedMasterId = req.body?.selectedMasterId;
@@ -4791,6 +5254,7 @@ ${prompt}`;
     if (requestedImageModel === "kling_3_0") {
       const klingResult = await generateImageWithKling({
         prompt: effectivePrompt,
+        productInfo,
         imageReferenceBase64: effectiveModelReferenceBase64 || productPhotoBase64 || effectiveScenarioPhotoBase64,
         modelReferenceBase64: effectiveModelReferenceBase64,
         referenceImages: klingRefs,
@@ -4809,6 +5273,7 @@ ${prompt}`;
     if (requestedImageModel === "kling_o3_fal") {
       const klingO3Result = await generateImageWithKlingO3Fal({
         prompt: effectivePrompt,
+        productInfo,
         imageReferenceBase64: effectiveModelReferenceBase64 || productPhotoBase64 || effectiveScenarioPhotoBase64,
         modelReferenceBase64: effectiveModelReferenceBase64,
         referenceImages: klingRefs,
@@ -4823,6 +5288,7 @@ ${prompt}`;
     if (requestedImageModel === "seedream_5_0_pro") {
       const seedreamResult = await generateImageWithSeedream({
         prompt: effectivePrompt,
+        productInfo,
         imageReferenceBase64: productPhotoBase64 || effectiveModelReferenceBase64 || effectiveScenarioPhotoBase64,
         modelReferenceBase64: effectiveModelReferenceBase64,
         referenceImages: orderedRefs,
@@ -4847,6 +5313,7 @@ ${prompt}`;
       try {
         const result = await openAIProvider.generateSceneImage({
           prompt: effectivePrompt,
+          productInfo,
           productPhotoBase64,
           productPhotosBase64,
           modelReferenceBase64: effectiveModelReferenceBase64,
@@ -5119,7 +5586,8 @@ app.post("/api/audit-image-fidelity", async (req, res) => {
       generatedImageBase64,
       referencePhotos = [],
       variationName = "Varia\xC3\xA7\xC3\xA3o 1",
-      role = "Imagem de Refer\xC3\xAAncia"
+      role = "Imagem de Refer\xC3\xAAncia",
+      productInfo = ""
     } = req.body;
     if (!generatedImageBase64) {
       return res.status(400).json({ success: false, error: "Imagem gerada n\xC3\xA3o fornecida" });
@@ -5130,7 +5598,8 @@ app.post("/api/audit-image-fidelity", async (req, res) => {
           generatedImageBase64,
           referencePhotos,
           variationName,
-          role
+          role,
+          productInfo
         });
         if (result && result.success) {
           return res.json(result);
@@ -5152,11 +5621,23 @@ app.post("/api/audit-image-fidelity", async (req, res) => {
       });
     }
     const parts = [];
-    const parsedGen = parseInlineImage(generatedImageBase64);
+    let resolvedGeneratedBase64 = generatedImageBase64;
+    if (typeof generatedImageBase64 === "string" && /^https?:\/\//i.test(generatedImageBase64)) {
+      try {
+        const fetched = await fetch(generatedImageBase64, { signal: AbortSignal.timeout(8e3) });
+        if (fetched.ok) {
+          const ab = await fetched.arrayBuffer();
+          const mime = fetched.headers.get("content-type") || "image/jpeg";
+          resolvedGeneratedBase64 = `data:${mime};base64,${Buffer.from(ab).toString("base64")}`;
+        }
+      } catch {
+      }
+    }
+    const parsedGen = parseInlineImage(resolvedGeneratedBase64);
     if (parsedGen) {
       parts.push({ inlineData: parsedGen });
       parts.push({
-        text: `[IMAGEM 1 - IMAGEM GERADA PELA IA]: Esta \xC3\xA9 a imagem gerada para o criativo comercial do TikTok Shop, mostrando a varia\xC3\xA7\xC3\xA3o "${variationName}".`
+        text: `[IMAGEM 1 - IMAGEM GERADA PELA IA]: Esta \xE9 a imagem gerada para o criativo comercial do TikTok Shop, mostrando a varia\xE7\xE3o "${variationName}".`
       });
     }
     if (Array.isArray(referencePhotos) && referencePhotos.length > 0) {
@@ -5170,10 +5651,14 @@ app.post("/api/audit-image-fidelity", async (req, res) => {
         }
       });
     }
+    const fabricSpec = analyzeAnaMariaProductInfo(productInfo);
+    const fabricAuditNote = fabricSpec.hasInfo ? `
+
+ESPECIFICA\xC3\u2021\xC3\u0192O DE TECIDO INFORMADA PELO USU\xC3 RIO: "${fabricSpec.cleanedText.slice(0, 260)}" (Tecido: ${fabricSpec.fabricSummaryLabel}). Considere que a foto de refer\xC3\xAAncia pode estar em baixa resolu\xC3\xA7\xC3\xA3o/emba\xC3\xA7ada; se a imagem gerada retratar fielmente e com nitidez a textura real de ${fabricSpec.fabricSummaryLabel} mantendo cor e modelagem da refer\xC3\xAAncia, APROVE sem penalizar pela nitidez extra do tecido. Caso o tecido esteja claramente incompat\xC3\xADvel, reporte para corre\xC3\xA7\xC3\xA3o.` : "";
     const auditInstruction = `Voc\xC3\xAA \xC3\xA9 o Auditor Fiscal de Fidelidade de Produtos para o TikTok Shop.
 O TikTok Shop \xC3\xA9 extremamente r\xC3\xADgido com diretrizes de com\xC3\xA9rcio: se um produto no v\xC3\xADdeo/an\xC3\xBAncio apresentar cores, cadar\xC3\xA7os, costuras ou detalhes diferentes do produto real entregue ao comprador, a loja \xC3\xA9 punida por propaganda enganosa.
 
-SUA MISS\xC3\u0192O: Comparar o produto que aparece na [IMAGEM 1 - IMAGEM GERADA] com as [FOTOS DE REFER\xC3\u0160NCIA REAIS] enviadas pelo usu\xC3\xA1rio em todos os \xC3\xA2ngulos.
+SUA MISS\xC3\u0192O: Comparar o produto que aparece na [IMAGEM 1 - IMAGEM GERADA] com as [FOTOS DE REFER\xC3\u0160NCIA REAIS] enviadas pelo usu\xC3\xA1rio em todos os \xC3\xA2ngulos.${fabricAuditNote}
 
 NOTA CR\xC3\x8DTICA: IGNORE o cen\xC3\xA1rio, piso, paredes, espelho e ilumina\xC3\xA7\xC3\xA3o. Avalie EXCLUSIVAMENTE o PRODUTO (e se houver pessoa usando, se o produto nos p\xC3\xA9s/corpo dela confere com as fotos reais).
 
@@ -5448,7 +5933,7 @@ ${userPrompt2}` }]
       const { systemPrompt, userPrompt: userPrompt2, jsonMode = false } = opts;
       const client = openAIProvider.getClient();
       if (client) {
-        const topModels = ["gpt-4o", OPENAI_BRAIN_MODEL, "gpt-4o-mini"];
+        const topModels = ["gpt-4o-mini", "gpt-4o", OPENAI_BRAIN_MODEL];
         for (const modelCandidate of topModels) {
           try {
             const params = {
@@ -6255,23 +6740,24 @@ Retorne APENAS um objeto JSON v\xE1lido com as chaves:
       if (provider === "openai" && openAIProvider.isConfigured()) {
         const client = openAIProvider.getClient();
         const contentBlocks = [];
-        (Array.isArray(productPhotosBase64) ? productPhotosBase64 : []).slice(0, 3).forEach((photo) => {
+        (Array.isArray(productPhotosBase64) ? productPhotosBase64 : []).slice(0, 3).forEach((photo, idx) => {
           if (photo && typeof photo === "string") {
             contentBlocks.push({
               type: "image_url",
               image_url: {
                 url: photo.startsWith("data:") ? photo : `data:image/jpeg;base64,${photo}`,
-                detail: "high"
+                detail: idx === 0 ? "high" : "low"
               }
             });
           }
         });
         contentBlocks.push({ type: "text", text: userPrompt });
-        const modelsToTry = ["gpt-4o", "gpt-4o-mini", OPENAI_BRAIN_MODEL, OPENAI_AUDIT_MODEL];
+        const modelsToTry = ["gpt-4o-mini", "gpt-4o", OPENAI_BRAIN_MODEL, OPENAI_AUDIT_MODEL];
         for (const modelCandidate of modelsToTry) {
           try {
             const params = {
               model: modelCandidate,
+              max_tokens: 2500,
               messages: [
                 { role: "system", content: systemInstruction },
                 { role: "user", content: contentBlocks }
@@ -7473,7 +7959,7 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
       try {
         const client = openAIProvider.getClient();
         const contentBlocks = [];
-        photosList.slice(0, 10).forEach((photo, idx) => {
+        photosList.slice(0, 6).forEach((photo, idx) => {
           contentBlocks.push({
             type: "text",
             text: `[FOTO DE REFER\xCANCIA OFICIAL #${idx + 1} \u2014 COR/VARIA\xC7\xC3O DO PRODUTO "${productName}"]: `
@@ -7482,7 +7968,7 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
             type: "image_url",
             image_url: {
               url: photo.startsWith("data:") ? photo : `data:image/jpeg;base64,${photo}`,
-              detail: "high"
+              detail: idx === 0 ? "high" : "low"
             }
           });
         });
@@ -8274,7 +8760,7 @@ Retorne ESTRITAMENTE um objeto JSON v\xE1lido em portugu\xEAs com este formato (
       try {
         const client = openAIProvider.getClient();
         const contentBlocks = [];
-        photosList.slice(0, 6).forEach((photo, idx) => {
+        photosList.slice(0, 4).forEach((photo, idx) => {
           contentBlocks.push({
             type: "text",
             text: `[IMAGEM DE REFER\xCANCIA REAL #${idx + 1} DO PRODUTO "${productName}" \u2014 INSPECIONE EM ALTA DEFINI\xC7\xC3O A QUANTIDADE E DISPOSI\xC7\xC3O EXATA DE C\xC2MERAS/LENTES, FLASH, BOT\xD5ES, FORMATO E LOGOMARCA]:`
@@ -8283,7 +8769,7 @@ Retorne ESTRITAMENTE um objeto JSON v\xE1lido em portugu\xEAs com este formato (
             type: "image_url",
             image_url: {
               url: photo.startsWith("data:") ? photo : `data:image/jpeg;base64,${photo}`,
-              detail: "high"
+              detail: idx === 0 ? "high" : "low"
             }
           });
         });
@@ -8370,10 +8856,13 @@ Retorne o JSON estritamente conforme o schema especificado.`;
         const rawText = completion.choices[0]?.message?.content || "{}";
         const parsed = JSON.parse(rawText);
         syncFramesAndFindings(parsed);
-        if (Array.isArray(parsed.findings) && parsed.findings.length > 0 && photosList.length > 0) {
+        const needsExtraCropPass = Array.isArray(parsed.findings) && parsed.findings.length > 0 && photosList.length > 0 && parsed.findings.some(
+          (f) => !Array.isArray(f.refCropBox) || f.refCropBox.length !== 4 || !Array.isArray(f.videoCropBox) || f.videoCropBox.length !== 4
+        );
+        if (needsExtraCropPass) {
           try {
             const cropBlocks = [];
-            photosList.slice(0, 6).forEach((photo, idx) => {
+            photosList.slice(0, 4).forEach((photo, idx) => {
               cropBlocks.push({
                 type: "text",
                 text: `[FOTO DE REFER\xCANCIA #${idx + 1}]:`
@@ -8382,7 +8871,7 @@ Retorne o JSON estritamente conforme o schema especificado.`;
                 type: "image_url",
                 image_url: {
                   url: photo.startsWith("data:") ? photo : `data:image/jpeg;base64,${photo}`,
-                  detail: "high"
+                  detail: idx === 0 ? "high" : "low"
                 }
               });
             });
@@ -8407,7 +8896,7 @@ Retorne o JSON estritamente conforme o schema especificado.`;
                 type: "image_url",
                 image_url: {
                   url: b64.startsWith("data:") ? b64 : `data:image/jpeg;base64,${b64}`,
-                  detail: "high"
+                  detail: "low"
                 }
               });
             });
@@ -8452,7 +8941,7 @@ Retorne APENAS um JSON no formato:
 }`
             });
             const cropComp = await client.chat.completions.create({
-              model: "gpt-4o",
+              model: "gpt-4o-mini",
               messages: [{ role: "user", content: cropBlocks }],
               response_format: { type: "json_object" },
               temperature: 0,

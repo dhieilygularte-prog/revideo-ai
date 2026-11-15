@@ -16,6 +16,7 @@ import {
   UNIVERSAL_PLUS_SIZE_ENGLISH_DIRECTIVE,
   UNIVERSAL_MALE_PLUS_SIZE_MODULE,
 } from './masterPromptsData';
+import { analyzeAnaMariaProductInfo } from './anaMariaProductInfo';
 
 /**
  * REGRA UNIVERSAL DE CALÇADOS (CAMADA ACIMA DOS PROMPTS DOS MESTRES)
@@ -58,8 +59,28 @@ export const UNIVERSAL_GOLDEN_ACCESSORIES_ENGLISH_BLOCK = `[MANDATORY FEMININE D
 - STRICT PROHIBITIONS: NO bulky watches, NO chunky bracelets, NO oversized statement jewelry. Accessories must look like real, refined, delicate fine jewelry harmonizing with the outfit.
 - STRICT NO BAGS MANDATE: The model must NOT wear, carry or hold any bag, purse, handbag, tote bag, shoulder bag, backpack or clutch. Hands and shoulders must be 100% free of bags.`;
 
-export const KLING_FIXED_VIDEO_PROMPT =
-  'Vídeo vertical 9:16 realista em frente ao espelho, mantendo 100% a mesma modelo, o mesmo cenário e a mesma peça de roupa fiel à imagem inicial, com movimentos naturais, fluidos e elegantes mostrando o caimento da peça em silêncio absoluto.';
+// 19- Prompt DH VIP
+export const KLING_FIXED_VIDEO_PROMPT = `Create a 10-second ultra-realistic fashion video using the provided image as the EXACT first frame.
+
+**ACTION — FOLLOW THIS EXACT MOVEMENT SEQUENCE:**
+
+0–2s: Starting from the original pose, the model gently holds the dress at the hip with one hand, lightly touching and pulling the skirt fabric to subtly showcase its shape and drape.
+
+2–4s: She releases the skirt and moves the same hand toward the neckline, bringing it close to the camera to highlight the neckline details. Her fingers gently glide over the neckline, showcasing its construction and finish.
+
+4–6s: Her hand slowly moves downward from the neckline, tracing the garment along the torso, waist and hip, highlighting the fit, silhouette and fabric details.
+
+6–8s: She gently turns her body slightly to one side, creating a subtle three-quarter angle to showcase the dress silhouette. NEVER turn her back to the camera or show the back of the garment.
+
+8–10s: She smoothly returns to her original frontal position and finishes in a natural, relaxed pose.
+
+**CAMERA & PHONE LOCK:** Preserve the exact original camera angle, framing, perspective and smartphone position throughout the entire video. The camera must remain completely stationary. If the model holds the phone with both hands, only one hand may be released to perform the movements while the other continuously holds the phone in exactly the original position. Never change the phone's position or orientation.
+
+**IDENTITY & FRAMING:** Preserve the exact original model, body proportions, appearance and facial features. If her face is visible, maintain it consistently. If it is cropped or hidden, preserve the exact original framing without revealing additional facial features.
+
+**ABSOLUTE PRODUCT FIDELITY:** The dress must remain IDENTICAL to the reference image throughout every frame. Preserve its exact color, fabric, texture, cut, neckline, length, seams, stitching, buttons, patterns and all construction details. NEVER redesign, reshape, replace or modify any part of the garment.
+
+Natural, fluid and realistic human movements. No exaggerated gestures, no camera movement, no cuts, no transitions, no additional objects, no speech, no voiceover, no subtitles and no on-screen text.`;
 
 export const SHOE_CONTRAST_COLOR_RULE_PT =
   'REGRA DE COR DO CALÇADO (CONTRASTE OBRIGATÓRIO QUANDO PRÓXIMO À PEÇA): O calçado NUNCA pode ser da mesma cor da peça de roupa que fica próxima ou encostando nele (ex.: se a calça/peça longa for branca ou off-white, o calçado NÃO pode ser branco e deve ter outra cor contrastante e harmônica como caramelo, nude amendoado, preto, marrom ou dourado; se a peça próxima ao pé for preta ou escura, o calçado deve ter cor clara contrastante como branco, off-white, nude claro, prata ou dourado). Se a peça for mais curta e não chegar perto do calçado, não há restrição. A cor fixa é sempre a da imagem de referência do produto; a cor do calçado é que se adapta para contrastar e combinar.';
@@ -674,6 +695,7 @@ export function buildAnaMariaImagePrompt(
     form.additionalInstructions && form.additionalInstructions.trim().length > 0
   );
   const userInstructionsText = hasUserInstructions ? form.additionalInstructions.trim() : '';
+  const productInfoSpec = analyzeAnaMariaProductInfo(form.productInfo);
 
   const priorityOverrideBlock = hasUserInstructions
     ? `## PRIORIDADE SOBERANA ABSOLUTA — INSTRUÇÕES ADICIONAIS DO USUÁRIO
@@ -706,7 +728,9 @@ ${
     ? 'As duas mãos seguram a primeira peça aberta pelas extremidades laterais em primeiro plano voltada para a câmera, enquanto a segunda peça completa repousa visível e organizada sobre a cama logo abaixo.'
     : 'Os dois produtos estão dobrados/organizados no centro da cama com as duas mãos segurando delicadamente pelas extremidades laterais para iniciar a demonstração.'
 }
-Preservar com fidelidade absoluta (1:1) a cor exata, modelagem, corte, decote, costuras, textura do tecido, botões, rendas ou estampas do produto anexado. Nunca modificar ou redesenhar a construção da peça.
+Preservar com fidelidade absoluta (1:1) a cor exata, modelagem, corte, decote, costuras, textura do tecido, botões, rendas ou estampas do produto anexado. Nunca modificar ou redesenhar a construção da peça.${
+  productInfoSpec.hasInfo ? `\n${productInfoSpec.promptBlockPt}` : ''
+}
 
 ## 3. IDENTIDADE VISUAL DAS MÃOS E ACESSÓRIOS (${master.shortName.toUpperCase()})
 REGRA OBRIGATÓRIA DE ZERO TATUAGENS NO MODO POV:
@@ -873,7 +897,7 @@ ${
 1. FOTO 1 (PRODUTO — PEÇA DE ROUPA COM FIDELIDADE 100% DE CIMA A BAIXO):
 - Vestir a modelo com a roupa da Foto 1 com fidelidade absoluta 1:1 do topo até a barra inferior (mesma cor exata, mesmo padrão de estampa sem alterar os desenhos, mesma textura do tecido, mesmas linhas de costura, recortes, babados, pregas, caimento, formato da saia/barra, comprimento exato da peça, decote, alças e mangas).
 - PROIBIÇÃO TOTAL DE ALTERAR OU ENCURTAR A PEÇA: É TERMINANTEMENTE PROIBIDO encurtar a peça, comer ou cortar a parte de baixo do vestido/saia, mudar o formato da barra, omitir costuras ou modificar a estampa/textura em qualquer parte da peça (nem na parte de cima nem na parte de baixo).
-${garmentTypeInstruction}
+${garmentTypeInstruction}${productInfoSpec.hasInfo ? `\n${productInfoSpec.promptBlockPt}` : ''}
 - Calçado nos pés: ${shoeInfo.name} (${shoeInfo.description}), substituindo qualquer sapato/tênis original da Foto 2 caso os pés fiquem visíveis pelo comprimento original da peça (NUNCA encurte ou levante a barra da peça da Foto 1 para mostrar os pés/calçado!).
 - REGRA CRÍTICA DE ISOLAMENTO TOTAL DA FOTO 1: Da Foto 1 (produto), extraia RIGOROSAMENTE apenas a peça de roupa e tecido. É TERMINANTEMENTE PROIBIDO copiar, mesclar ou misturar o rosto, a cabeça, o cabelo, a pele ou a pose da pessoa da Foto 1! Ignore 100% a pessoa da Foto 1 (ZERO mistura com o rosto da Foto 1). É TERMINANTEMENTE PROIBIDO copiar tatuagens, marcas corporais ou desenhos da pessoa da Foto 1. A modelo gerada deve ter PELE 100% LIMPA, ZERO TATUAGENS em todo o corpo (braços, mãos, pernas, colo e pescoço totalmente livres de tatuagens).
 ${noBagDirectivePt}${noBagDirectiveEn}
@@ -894,7 +918,7 @@ Qualidade fotográfica autêntica de smartphone moderno, textura de pele humana 
 1. FOTO 1 (PRODUTO — PEÇA DE ROUPA COM FIDELIDADE 100% DE CIMA A BAIXO):
 - Vestir a modelo com a roupa da Foto 1 com fidelidade absoluta 1:1 do topo até a barra inferior (mesma cor exata, mesmo padrão de estampa sem alterar os desenhos, mesma textura do tecido, mesmas linhas de costura, recortes, babados, pregas, caimento, formato da saia/barra, comprimento exato da peça, decote, alças e mangas).
 - PROIBIÇÃO TOTAL DE ALTERAR OU ENCURTAR A PEÇA: É TERMINANTEMENTE PROIBIDO encurtar a peça, comer ou cortar a parte de baixo do vestido/saia, mudar o formato da barra, omitir costuras ou modificar a estampa/textura em qualquer parte da peça (nem na parte de cima nem na parte de baixo).
-${garmentTypeInstruction}
+${garmentTypeInstruction}${productInfoSpec.hasInfo ? `\n${productInfoSpec.promptBlockPt}` : ''}
 - Calçado nos pés: ${shoeInfo.name} (${shoeInfo.description}), descartando qualquer tênis ou sapato original da Foto 2 caso os pés fiquem visíveis pelo comprimento original da peça (NUNCA encurte ou levante a barra da peça da Foto 1 para mostrar os pés/calçado!).
 - REGRA CRÍTICA DE ISOLAMENTO TOTAL DA FOTO 1: Da Foto 1 (produto), use APENAS a peça de roupa e tecido. Ignore 100% o rosto, cabeça, corpo, tatuagens ou fundo da pessoa da Foto 1. PELE 100% LIMPA, ZERO TATUAGENS.
 ${noBagDirectivePt}${noBagDirectiveEn}
@@ -957,7 +981,7 @@ ${complementaryInfo.directiveTextEn}
 ## 8. FIDELIDADE ABSOLUTA E SOBERANA AO PRODUTO ANEXADO (1:1 DE CIMA A BAIXO — ZERO ALTERAÇÃO DE COSTURAS, ESTAMPA OU COMPRIMENTO)
 A foto da peça anexada pelo usuário é a referência soberana e inviolável da roupa (venda real TikTok Shop).
 Reproduza a roupa 1:1 com máxima fidelidade em TODA a sua extensão (tanto na parte superior quanto na parte inferior): mesma cor exata, tonalidade, mesmo padrão de estampa (mesmos motivos, escala e posição da estampa), mesma textura do tecido, modelagem, formato da saia e da barra, comprimento exato da peça sem encurtar nem alongar, decote, alças, mangas, rendas, transparências, linhas de costura, babados, pregas, botões e recortes.
-${imageLengthRule ? `${imageLengthRule}\n` : ''}${imageSlitRule ? `${imageSlitRule}\n` : ''}É TERMINANTEMENTE PROIBIDO encurtar a peça, comer/cortar a parte de baixo do vestido, alterar costuras, mudar a estampa ou modificar o formato da peça em qualquer parte dela.
+${imageLengthRule ? `${imageLengthRule}\n` : ''}${imageSlitRule ? `${imageSlitRule}\n` : ''}${productInfoSpec.hasInfo ? `${productInfoSpec.promptBlockPt}\n` : ''}É TERMINANTEMENTE PROIBIDO encurtar a peça, comer/cortar a parte de baixo do vestido, alterar costuras, mudar a estampa ou modificar o formato da peça em qualquer parte dela.
 A roupa deve vestir anatomicamente o corpo ${isPlusSize ? 'genuinamente PLUS SIZE' : 'do(a) modelo'} sem jamais redesenhar ou descaracterizar o produto.`;
 
   return {
@@ -1085,6 +1109,7 @@ export function getConciseMovementForMaster(
  */
 export function buildAnaMariaConciseVideoPrompt(params: {
   productName: string;
+  productInfo?: string;
   influencer?: AnaMariaInfluencer;
   bodyType?: AnaMariaBodyType;
   presentationMode?: AnaMariaPresentationMode;
@@ -1096,6 +1121,7 @@ export function buildAnaMariaConciseVideoPrompt(params: {
   const master = getMasterPromptById(params.selectedMasterId);
   const isMale = params.influencer === 'Homem';
   const isPlusSize = params.bodyType === 'plus_size';
+  const fabricSpec = analyzeAnaMariaProductInfo(params.productInfo);
   const hasUserInstructions = Boolean(
     params.additionalInstructions && params.additionalInstructions.trim().length > 0
   );
@@ -1114,7 +1140,11 @@ export function buildAnaMariaConciseVideoPrompt(params: {
     return `Vídeo vertical 9:16 hiper-realista de 10s em perspectiva POV (visão superior em primeira pessoa). Use a imagem inicial anexada como referência soberana.
 
 **FIDELIDADE ABSOLUTA E IMUTÁVEL DAS PEÇAS (1:1):**
-Reproduzir as peças sobre a cama com fidelidade 100% à foto de referência: mesma cor, textura, tecido, costuras e modelagem. PROIBIDO inventar botões, fechos, zíperes ou detalhes inexistentes. Não esticar ou deformar as peças.
+Reproduzir as peças sobre a cama com fidelidade 100% à foto de referência: mesma cor, textura, tecido, costuras e modelagem.${
+      fabricSpec.hasInfo
+        ? ` Tecido real informado pelo usuário: ${fabricSpec.fabricSummaryLabel} (preservar textura, trama e caimento exatos do tecido).`
+        : ''
+    } PROIBIDO inventar botões, fechos, zíperes ou detalhes inexistentes. Não esticar ou deformar as peças.
 
 ${movementsBlock}
 
@@ -1134,7 +1164,11 @@ ${movementsBlock}
 
   const garmentFidelityBlock =
     `**FIDELIDADE ABSOLUTA DA PEÇA (1:1):**\n` +
-    `A roupa da foto de referência é sagrada e imutável. TERMINANTEMENTE PROIBIDO modificar cor, estampa, tecido, modelagem, decote ou comprimento. Proibido inventar partes, botões, bolsos ou costuras inexistentes. A peça deve se manter 100% fiel à imagem em todos os frames e movimentos.`;
+    `A roupa da foto de referência é sagrada e imutável. TERMINANTEMENTE PROIBIDO modificar cor, estampa, tecido, modelagem, decote ou comprimento.${
+      fabricSpec.hasInfo
+        ? ` Tecido especificado da peça: ${fabricSpec.fabricSummaryLabel} (preservar textura, trama e caimento reais do tecido).`
+        : ''
+    } Proibido inventar partes, botões, bolsos ou costuras inexistentes. A peça deve se manter 100% fiel à imagem em todos os frames e movimentos.`;
 
   const identityBlock =
     `**PRESERVAÇÃO DE IDENTIDADE E CENÁRIO:**\n` +
@@ -1198,6 +1232,7 @@ ${movementsBlock}
 
 export function buildAnaMariaVideoPrompt(params: {
   productName: string;
+  productInfo?: string;
   influencer?: AnaMariaInfluencer;
   bodyType?: AnaMariaBodyType;
   presentationMode?: AnaMariaPresentationMode;
@@ -1219,6 +1254,7 @@ export function buildAnaMariaVideoPrompt(params: {
     params.presentationMode || (master.isPov ? 'pov' : 'mirror_selfie');
   const isMale = params.influencer === 'Homem';
   const isPlusSize = params.bodyType === 'plus_size';
+  const fabricSpec = analyzeAnaMariaProductInfo(params.productInfo);
   const hasUserInstructions = Boolean(
     params.additionalInstructions && params.additionalInstructions.trim().length > 0
   );
@@ -1291,7 +1327,11 @@ Adapte toda a execução para o modelo masculino da imagem de referência, prese
       `- Se na foto original não aparece o rosto (enquadramento cortado do queixo para baixo), durante o vídeo continua sem mostrar o rosto e a câmera NUNCA deve subir ou inclinar para cima.\n` +
       `- Se na foto original o rosto da modelo aparece (visível total ou parcialmente), durante o vídeo continua com o rosto visível e natural da modelo da imagem.\n\n` +
       `**FIDELIDADE ABSOLUTA E IMUTÁVEL DA PEÇA DE ROUPA (1:1):**\n` +
-      `A roupa da imagem de referência é 100% sagrada e imutável. É TERMINANTEMENTE PROIBIDO ao gerador de vídeo modificar a cor, tom, estampa, tecido, textura, modelagem, caimento, decote, mangas ou comprimento da peça. PROIBIDO inventar partes, botões, bolsos, zíperes ou costuras inexistentes. A peça deve se manter 100% fiel à imagem de referência em todos os frames e movimentos.\n\n`;
+      `A roupa da imagem de referência é 100% sagrada e imutável. É TERMINANTEMENTE PROIBIDO ao gerador de vídeo modificar a cor, tom, estampa, tecido, textura, modelagem, caimento, decote, mangas ou comprimento da peça.${
+        fabricSpec.hasInfo
+          ? ` ${fabricSpec.compactLinePt} — preservar fielmente a textura real e o comportamento natural desse tecido nos movimentos.`
+          : ''
+      } PROIBIDO inventar partes, botões, bolsos, zíperes ou costuras inexistentes. A peça deve se manter 100% fiel à imagem de referência em todos os frames e movimentos.\n\n`;
 
     const { videoSlitRule } = buildDressLengthAndSlitDirectives(
       params.productName,
@@ -1300,6 +1340,8 @@ Adapte toda a execução para o modelo masculino da imagem de referência, prese
     );
     const slitBlock = videoSlitRule ? `${videoSlitRule}\n\n` : '';
     base = framingAndGarmentRule + slitBlock + base;
+  } else if (fabricSpec.hasInfo) {
+    base = `**TECIDO REAL DO PRODUTO (${fabricSpec.fabricSummaryLabel.toUpperCase()}):** ${fabricSpec.compactLinePt}\n\n` + base;
   }
 
   // 4. Regra de Interação Restrita para Peça Superior (Blusa, Cropped, Camiseta, Jaqueta)

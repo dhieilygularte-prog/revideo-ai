@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import {
   HistoryCreativeItem,
+  MAX_HISTORY_ITEMS,
   getCreativesHistory,
   deleteCreativeFromHistory,
   clearAllCreativesHistory,
@@ -104,11 +105,11 @@ export const GenerationHistoryModal: React.FC<GenerationHistoryModalProps> = ({
               <h2 className="text-base sm:text-lg font-black text-white flex items-center gap-2">
                 <span>Histórico de Gerações</span>
                 <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 border border-zinc-700">
-                  {items.length}/10
+                  {items.length}/{MAX_HISTORY_ITEMS}
                 </span>
               </h2>
               <p className="text-xs text-zinc-400">
-                Seus últimos 10 criativos salvos no navegador. Reabra ou baixe o ZIP sem gastar créditos de API.
+                Seus últimos {MAX_HISTORY_ITEMS} criativos salvos no navegador. Reabra ou baixe o ZIP sem gastar créditos de API.
               </p>
             </div>
           </div>

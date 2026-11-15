@@ -11,7 +11,12 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { AnaMariaResultState } from './types';
-import { getAnaMariaHistory } from './anaMariaPipeline';
+import {
+  loadAnaMariaHistory,
+  deleteAnaMariaHistoryItem,
+  clearAnaMariaHistory,
+} from './anaMariaPipeline';
+import { MAX_HISTORY_ITEMS } from '../utils/historyStorage';
 import { downloadAnaMariaSingleImage } from './anaMariaZipExporter';
 
 interface AnaMariaHistoryModalProps {
@@ -20,8 +25,6 @@ interface AnaMariaHistoryModalProps {
   onSelectCreative: (item: AnaMariaResultState) => void;
   onOpenPreview: (url: string, title: string) => void;
 }
-
-const STORAGE_KEY = 'aurora_ana_maria_history_v1';
 
 export const AnaMariaHistoryModal: React.FC<AnaMariaHistoryModalProps> = ({
   isOpen,
@@ -33,25 +36,27 @@ export const AnaMariaHistoryModal: React.FC<AnaMariaHistoryModalProps> = ({
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (isOpen) {
-      setItems(getAnaMariaHistory());
-    }
+    if (!isOpen) return;
+    let cancelled = false;
+    loadAnaMariaHistory()
+      .then((loaded) => {
+        if (!cancelled) setItems(loaded);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen]);
 
-  const handleDeleteItem = (id: string) => {
-    const updated = items.filter((it) => it.id !== id);
-    setItems(updated);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    } catch {}
+  const handleDeleteItem = async (id: string) => {
+    setItems((prev) => prev.filter((it) => it.id !== id));
+    await deleteAnaMariaHistoryItem(id);
   };
 
-  const handleClearAll = () => {
+  const handleClearAll = async () => {
     if (!window.confirm('Tem certeza que deseja apagar todo o histórico do Modo Ana Maria?')) return;
     setItems([]);
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-    } catch {}
+    await clearAnaMariaHistory();
   };
 
   const handleCopyPrompt = async (id: string, text: string) => {
@@ -74,11 +79,14 @@ export const AnaMariaHistoryModal: React.FC<AnaMariaHistoryModalProps> = ({
               <History className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-sm font-bold text-white uppercase tracking-wide">
-                Histórico de Gerações — Modo Ana Maria
+              <h2 className="text-sm font-bold text-white uppercase tracking-wide flex items-center gap-2">
+                <span>Histórico de Gerações — Modo Ana Maria</span>
+                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-zinc-800 text-sky-300 border border-sky-500/30">
+                  {items.length}/{MAX_HISTORY_ITEMS}
+                </span>
               </h2>
               <p className="text-[11px] text-zinc-400">
-                {items.length} {items.length === 1 ? 'geração gravada' : 'gerações gravadas'}
+                {items.length} {items.length === 1 ? 'geração gravada' : 'gerações gravadas'} (últimas {MAX_HISTORY_ITEMS})
               </p>
             </div>
           </div>
@@ -115,7 +123,10 @@ export const AnaMariaHistoryModal: React.FC<AnaMariaHistoryModalProps> = ({
               </p>
             </div>
           ) : (
-            items.map((it) => (
+            items.map((it) => {
+              const thumbUrl =
+                it.imageUrl || it.generatedImages?.[0]?.imageUrl || it.referencePhotos?.[0] || '';
+              return (
               <div
                 key={it.id}
                 className="p-4 rounded-xl border border-sky-500/30 bg-zinc-900/60 hover:border-sky-500/60 transition-all flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between"
@@ -123,22 +134,31 @@ export const AnaMariaHistoryModal: React.FC<AnaMariaHistoryModalProps> = ({
                 {/* Thumbnail e dados */}
                 <div className="flex items-center gap-3.5 min-w-0">
                   <div
-                    onClick={() =>
-                      onOpenPreview(
-                        it.imageUrl,
-                        `Modo Ana Maria - ${it.productName || 'Peça'}`
-                      )
-                    }
-                    className="w-14 h-24 rounded-lg overflow-hidden bg-black shrink-0 border border-zinc-800 cursor-pointer relative group"
+                    onClick={() => {
+                      if (thumbUrl) {
+                        onOpenPreview(thumbUrl, `Modo Ana Maria - ${it.productName || 'Peça'}`);
+                      }
+                    }}
+                    className={`w-14 h-24 rounded-lg overflow-hidden bg-black shrink-0 border border-zinc-800 relative group ${
+                      thumbUrl ? 'cursor-pointer' : ''
+                    }`}
                   >
-                    <img
-                      src={it.imageUrl}
-                      alt={it.productName || 'Modo Ana Maria'}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                    />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                      <Eye className="w-4 h-4 text-white" />
-                    </div>
+                    {thumbUrl ? (
+                      <>
+                        <img
+                          src={thumbUrl}
+                          alt={it.productName || 'Modo Ana Maria'}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                          <Eye className="w-4 h-4 text-white" />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-zinc-600">
+                        <History className="w-4 h-4" />
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-1 min-w-0">
@@ -174,14 +194,18 @@ export const AnaMariaHistoryModal: React.FC<AnaMariaHistoryModalProps> = ({
                     )}
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => downloadAnaMariaSingleImage(it.imageUrl, it.productName, it.timestamp, it.imageModel)}
-                    className="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-all cursor-pointer"
-                    title="Baixar Imagem"
-                  >
-                    <Download className="w-4 h-4" />
-                  </button>
+                  {thumbUrl && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        downloadAnaMariaSingleImage(thumbUrl, it.productName, it.timestamp, it.imageModel)
+                      }
+                      className="p-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-all cursor-pointer"
+                      title="Baixar Imagem"
+                    >
+                      <Download className="w-4 h-4" />
+                    </button>
+                  )}
 
                   <button
                     type="button"
@@ -205,7 +229,8 @@ export const AnaMariaHistoryModal: React.FC<AnaMariaHistoryModalProps> = ({
                   </button>
                 </div>
               </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>

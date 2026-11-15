@@ -45,6 +45,7 @@ export interface AnaMariaAudit {
 }
 
 export interface AnaMariaFormState {
+  productInfo?: string; // Informações obrigatórias do produto (tecido ou bloco de texto completo)
   productName: string;
   referencePhotos: string[]; // até 10 fotos da mesma cor em múltiplos ângulos e detalhes
   extraColorPhotos?: string[]; // fotos em cores diferentes para "Gerar em nova cor"
@@ -117,6 +118,7 @@ export interface AnaMariaResultState {
   sameScenarioForAllColors?: boolean;
   generateOneColorAtATime?: boolean;
   eclecticMode?: boolean;
+  productInfo?: string;
   productName: string;
   referencePhotos: string[];
   colorGroups?: AnaMariaColorGroup[];

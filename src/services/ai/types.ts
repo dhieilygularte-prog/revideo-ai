@@ -33,6 +33,7 @@ export interface GenerateSceneImageParams {
   referenceFrameBase64?: string;
   variationName?: string;
   productType?: string;
+  productInfo?: string;
   targetAngle?: string;
   location?: string;
   actionDescription?: string;
@@ -64,6 +65,7 @@ export interface AuditFidelityParams {
   referencePhotos: string[];
   variationName?: string;
   role?: string;
+  productInfo?: string;
 }
 
 export interface AuditFidelityResultResponse {

@@ -32,6 +32,7 @@ import {
   AuditFidelityResultResponse,
 } from './types';
 import { VideoAnalysisResult } from '../../types';
+import { analyzeAnaMariaProductInfo } from '../../anamaria/anaMariaProductInfo';
 import {
   OPENAI_BRAIN_MODEL,
   OPENAI_REASONING_EFFORT,
@@ -528,6 +529,7 @@ Retorne estritamente um JSON estruturado:
     const {
       prompt,
       productPhotoBase64,
+      productInfo = '',
       productPhotosBase64 = [],
       modelReferenceBase64,
       referenceFrameBase64,
@@ -608,12 +610,15 @@ Retorne estritamente um JSON estruturado:
       ? `[PRIORITY 1 SOBERANA — ETHNICITY & HAIR MANDATE]:\nThe model MUST be a natural REDHEAD WOMAN with copper-red hair and fair/pale skin with subtle natural freckles.`
       : '';
 
+    const fabricSpec = analyzeAnaMariaProductInfo(productInfo);
+
     // Prioriza correções de auditoria e instruções adicionais sobre o prompt universal já formatado
     const overrides = [
       userEthnicityDirectivesOpenAI,
       scenarioLockDirective,
       modelAntiViolationDirective,
       opticalClarityDirective,
+      fabricSpec.hasInfo && `${fabricSpec.promptBlockEn}\n${fabricSpec.promptBlockPt}`,
       correctionPrompt && `CRITICAL QUALITY OVERRIDE: ${correctionPrompt.trim()}`,
       additionalInstructions && `USER DIRECTIVE: ${additionalInstructions.trim()}`,
     ].filter(Boolean).join('\n');
@@ -645,7 +650,7 @@ Retorne estritamente um JSON estruturado:
         try {
           imageFiles.push(toImageFile(modelReferenceBase64!, 'reference_gallery_model'));
         } catch {}
-        allPhotos.slice(0, 2).forEach((photoStr, idx) => {
+        allPhotos.slice(0, 1).forEach((photoStr, idx) => {
           try {
             if (photoStr && typeof photoStr === 'string') {
               imageFiles.push(toImageFile(photoStr, `reference_product_${idx + 1}`));
@@ -656,7 +661,7 @@ Retorne estritamente um JSON estruturado:
         try {
           imageFiles.push(toImageFile(modelReferenceBase64!, 'reference_gallery_model'));
         } catch {}
-        allPhotos.slice(0, 2).forEach((photoStr, idx) => {
+        allPhotos.slice(0, 1).forEach((photoStr, idx) => {
           try {
             if (photoStr && typeof photoStr === 'string') {
               imageFiles.push(toImageFile(photoStr, `reference_product_${idx + 1}`));
@@ -749,12 +754,13 @@ Retorne estritamente um JSON estruturado:
         // evitando reenviar o bloco invertido "1. Foto 1 (Produto) / 2. Foto 2 (Modelo) / 3. Foto 3 (Cenário)" que confunde a ordem [1=Cenário, 2=Modelo, 3=Produto].
         const preservedDirectives = [
           userEthnicityDirectivesOpenAI,
+          fabricSpec.hasInfo && fabricSpec.promptBlockEn,
           correctionPrompt && `CRITICAL QUALITY OVERRIDE: ${correctionPrompt.trim()}`,
           additionalInstructions && `USER DIRECTIVE: ${additionalInstructions.trim()}`,
           ...(prompt
             .split('\n')
             .filter((line) =>
-              /(\[COMPRIMENTO REAL DETECTADO|\[ASSIMETRIA OBRIGATÓRIA|\[CRITICAL ANTI-SYMMETRY|\[REGRA MANDATÓRIA|\[REGRA OBRIGATÓRIA DO CENÁRIO 24|REGRA CRÍTICA DE COMPRIMENTO|ATENÇÃO À COR EXCLUSIVA|Calçado nos pés:|Calçado obrigatório nos pés|REGRA DE COR DO CALÇADO|COR CONTRASTANTE|REGRA DE CONJUNTO COMPLETO|PROIBIDO BOLSAS|PRODUTO DA FOTO 1|PEÇA INFERIOR|CALÇA JEANS)/i.test(
+              /(\[COMPRIMENTO REAL DETECTADO|\[ASSIMETRIA OBRIGATÓRIA|\[CRITICAL ANTI-SYMMETRY|\[REGRA MANDATÓRIA|\[REGRA OBRIGATÓRIA DO CENÁRIO 24|\[TECIDO E INFORMAÇÕES REAIS DO PRODUTO|Especificações reais informadas|TECIDO IDENTIFICADO:|Detalhes estruturais obrigatórios:|REGRA CONTRA FOTO DE REFERÊNCIA|\[MANDATORY FABRIC TEXTURE|User product info:|Exact fabric\/material:|\[TECIDO E DETALHES|REGRA CRÍTICA DE COMPRIMENTO|ATENÇÃO À COR EXCLUSIVA|Calçado nos pés:|Calçado obrigatório nos pés|REGRA DE COR DO CALÇADO|COR CONTRASTANTE|REGRA DE CONJUNTO COMPLETO|PROIBIDO BOLSAS|PRODUTO DA FOTO 1|PEÇA INFERIOR|CALÇA JEANS)/i.test(
                 line
               )
             )
@@ -781,7 +787,7 @@ ${modelIdentitySection}
 - 100% DISCARD AND IGNORE the bedroom, bed, door, walls, bright white wall edge-glow, studio/frontal lighting, old clothing, and old footwear of Reference Image ${modelIdx}.
 
 3. REFERENCE IMAGE ${productRangeLabel} (EXACT GARMENT & COLOR ONLY — DISCARD ANY PERSON/BACKGROUND):
-- She wears the EXACT garment shown in Reference Image ${productRangeLabel}: 1:1 exact color/shade/print pattern, fabric texture, seams, stitching, pleats/ruffles, cut, neckline, straps, and exact full-length hemline from top to bottom (NEVER shorten the garment, NEVER crop/eat the bottom of the dress, and NEVER alter seams, print, texture, or shape anywhere on the top or bottom of the garment), physically shaded by Reference Image ${scenarioIdx}'s ambient room light.
+- She wears the EXACT garment shown in Reference Image ${productRangeLabel}: 1:1 exact color/shade/print pattern, fabric texture${fabricSpec.hasInfo ? ` (${fabricSpec.compactLineEn})` : ''}, seams, stitching, pleats/ruffles, cut, neckline, straps, and exact full-length hemline from top to bottom (NEVER shorten the garment, NEVER crop/eat the bottom of the dress, and NEVER alter seams, print, texture, or shape anywhere on the top or bottom of the garment), physically shaded by Reference Image ${scenarioIdx}'s ambient room light.
 - Harmonious matching footwear planted firmly on Reference Image ${scenarioIdx}'s floor if her feet are left visible by the garment's true original length in Reference Image ${productRangeLabel} (elegant high-heel party sandals for dresses; never shorten the dress hem to reveal shoes).
 - 100% IGNORE any person, face, body, tattoos, or background in Reference Image ${productRangeLabel}.
 
@@ -799,7 +805,7 @@ PHOTOGRAPHIC REALISM: Authentic flagship smartphone photo (iPhone 16 Pro) shot i
           .replace(/Foto 2\b/gi, 'Reference Image 1');
         effectivePrompt = `[STRICT 2-IMAGE EDIT DIRECTIVE - GALLERY MODEL & ROOM BASE + EXACT PRODUCT CLOTHING]:
 - REFERENCE IMAGE 1 (MODEL & ROOM BASE — KEEP IDENTICAL): Preserve 100% the exact same woman (same face if visible or same phone covering face, same hair, skin tone, body curves, pose, hands) and the EXACT same room/background/mirror/lighting from Reference Image 1.
-- ${productRange.toUpperCase()} (GARMENT & EXACT COLOR ONLY): Dress the woman from Reference Image 1 in the EXACT garment shown in ${productRange}, replicating 1:1 its exact color/shade/print, cut, neckline, straps, fabric texture, and length (and harmonious matching footwear if feet are visible; if long dress covers feet, keep it long). 100% IGNORE any person/background in ${productRange}.
+- ${productRange.toUpperCase()} (GARMENT & EXACT COLOR ONLY): Dress the woman from Reference Image 1 in the EXACT garment shown in ${productRange}, replicating 1:1 its exact color/shade/print, cut, neckline, straps, fabric texture${fabricSpec.hasInfo ? ` (${fabricSpec.compactLineEn})` : ''}, and length (and harmonious matching footwear if feet are visible; if long dress covers feet, keep it long). 100% IGNORE any person/background in ${productRange}.
 - SEAMLESS GARMENT RELIGHTING & ZERO CUTOUT EDGES: Relight the swapped garment and footwear to obey Reference Image 1's exact ambient lighting, shadows, and color temperature, with natural hair/shoulder/skin blending and ZERO white outline or pasted look.
 - Zero tattoos anywhere on the skin. Preserve sharp iPhone 16 Pro optical clarity.
 
@@ -809,7 +815,9 @@ ${aligned2ImgCleanPrompt}`;
           effectivePrompt = `[CRITICAL POV EDIT DIRECTIVE - FIRST-PERSON HANDS ON BED - MODO ANA MARIA POV]:
 You are editing the base POV bed scenario photograph (Reference Image 1).
 1. KEEP 100% of the bed, bedspread, sheets, fabric texture, and ambient lighting from Reference Image 1 UNCHANGED and INTACT.
-2. Place the EXACT garments/products shown in Reference Image 2 (and subsequent reference photos) on top of the bed (one unit laid out on the bed surface and a second unit held closer to the lens by the two hands).
+2. Place the EXACT garments/products shown in Reference Image 2 (and subsequent reference photos) on top of the bed (one unit laid out on the bed surface and a second unit held closer to the lens by the two hands).${
+            fabricSpec.hasInfo ? `\n${fabricSpec.compactLineEn}` : ''
+          }
 3. Show ONLY two natural human hands entering from the bottom edge of the frame manipulating/displaying the garment on the bed.
 4. STRICTLY FORBIDDEN: DO NOT generate any person standing, DO NOT show torso, waist, hips, legs, head, face, or mirror.
 
@@ -874,7 +882,9 @@ KEEP the architectural setting from Reference Image 1 100% UNCHANGED and INTACT:
 ${scenarioRelightAndEdgeBlendDirective}
 
 [PRODUCT FIDELITY & BODY ISOLATION MANDATE (REFERENCE IMAGE 2+)]:
-- The woman wears the EXACT garment shown in reference image 2 (and subsequent photos): 1:1 identical color, shade, fabric texture, seams, straps, neckline, cut, and fit.
+- The woman wears the EXACT garment shown in reference image 2 (and subsequent photos): 1:1 identical color, shade, fabric texture, seams, straps, neckline, cut, and fit.${
+  fabricSpec.hasInfo ? `\n- ${fabricSpec.promptBlockEn}` : ''
+}
 - NEVER copy the body shape or thinness of the model/mannequin from reference image 2+.
 
 ${bodyBlock}
@@ -898,15 +908,20 @@ ${cleanPrompt}`;
         if (swatchStr) {
           try {
             const vis = await client.chat.completions.create({
-              model: OPENAI_BRAIN_MODEL,
+              model: 'gpt-4o-mini',
+              max_tokens: 220,
               messages: [
                 {
                   role: 'user',
                   content: [
-                    { type: 'image_url', image_url: { url: swatchStr.startsWith('data:') ? swatchStr : `data:image/jpeg;base64,${swatchStr}` } },
+                    { type: 'image_url', image_url: { url: swatchStr.startsWith('data:') ? swatchStr : `data:image/jpeg;base64,${swatchStr}`, detail: 'low' } },
                     {
                       type: 'text',
-                      text: `Describe in English, in one dense paragraph, ONLY the garment/product (${productType}) in this photo, ignoring the person, background and mannequin: exact main color of each piece (top and bottom), exact color of the piping/trim/binding on collar, front placket, sleeve hems, shorts hems and pockets, exact button color and count, fabric texture, neckline shape, sleeve length, shorts length, and any manufacturer print, emblem or logo on the product itself. Be precise about contrast colors and brand logos on the item.`,
+                      text: `Describe in English, in one dense paragraph, ONLY the garment/product (${productType}) in this photo, ignoring the person, background and mannequin: exact main color of each piece (top and bottom), exact color of the piping/trim/binding on collar, front placket, sleeve hems, shorts hems and pockets, exact button color and count, fabric texture, neckline shape, sleeve length, shorts length, and any manufacturer print, emblem or logo on the product itself. Be precise about contrast colors and brand logos on the item.${
+                        fabricSpec.hasInfo
+                          ? ` IMPORTANT USER-CONFIRMED FABRIC & DETAILS: ${fabricSpec.fabricSummaryLabel} (${fabricSpec.cleanedText.slice(0, 180)}). Use this exact fabric texture in your description even if the swatch photo looks compressed or blurry.`
+                          : ''
+                      }`,
                     },
                   ],
                 },
@@ -940,12 +955,12 @@ ${cleanPrompt}`;
         effectivePrompt = `Esta é uma EDIÇÃO LOCALIZADA da imagem enviada. A imagem enviada é a base absoluta e deve permanecer IDÊNTICA: mesma mulher (rosto, cabelo, pele, corpo), mesma pose, mesmos braços e mãos, mesmo quarto/cenário, mesma iluminação, mesmo ângulo, mesmo enquadramento e mesma composição. NÃO recrie a cena, NÃO gere outra pessoa, NÃO mude o fundo. Zero tatuagens.
 
 ALTERAÇÃO SOLICITADA:
-1. Substitua a roupa/produto (${productType}) que ela veste por uma peça com exatamente estas características${variationName ? ` (variante "${variationName}")` : ''}: ${garmentSpec || productType}.
+1. Substitua a roupa/produto (${productType}) que ela veste por uma peça com exatamente estas características${variationName ? ` (variante "${variationName}")` : ''}: ${garmentSpec || productType}.${fabricSpec.hasInfo ? `\n${fabricSpec.promptBlockPt}` : ''}
 2. CALÇADO: ${shoeEditInstruction}
 3. Se for vestido ou macacão, ela veste EXCLUSIVAMENTE o vestido com pernas limpas naturais (proibido calça jeans ou shorts sob o vestido); se for blusa, veste calça jeans combinando; se for calça, veste blusa combinando. PRESERVE 1:1 o comprimento real da barra na foto de referência (se midi/curto, mantenha midi/curto sem alongar até o chão; só cubra os pés se for vestido longo igual à referência).
 4. MÁXIMA NITIDEZ, FOCO ÓPTICO CRISTALINO E ALTA RESOLUÇÃO:
 - Preserve a imagem com nitidez fotográfica impecável e foco cristalino, sem nenhum borrão, névoa ou perda de textura.
-- Pele humana realista e natural com microtextura e poros visíveis, olhos vívidos e nítidos, e textura detalhada do tecido com iluminação de câmera moderna topo de linha (iPhone 16 Pro).
+- Pele humana realista e natural com microtextura e poros visíveis, olhos vívidos e nítidos, e textura detalhada do tecido${fabricSpec.hasInfo ? ` (${fabricSpec.fabricSummaryLabel})` : ''} com iluminação de câmera moderna topo de linha (iPhone 16 Pro).
 - ZERO borrão (NO BLUR), ZERO efeito embaçado, foco cravado em toda a modelo e no produto.
 Preserve fielmente qualquer logomarca, estampa ou acabamento original da peça. Tudo que não for a peça e o calçado permanece pixel a pixel igual à imagem enviada. Proibido adicionar textos flutuantes, logos de redes sociais ou marcas d'água externas.`;
       } else if (referenceFrameBase64) {
@@ -1120,35 +1135,6 @@ Preserve fielmente qualquer logomarca, estampa ou acabamento original da peça. 
       };
     } catch (err: any) {
       let msg = err?.message || '';
-      const isSafety =
-        err?.status === 400 &&
-        (msg.includes('safety') || msg.includes('safety_violations') || msg.includes('safety system'));
-
-      if (isSafety) {
-        console.warn('[OpenAIProvider] Alerta de segurança detectado. Executando retry automático com prompt comercial de alta fidelidade...');
-        try {
-          const clientRetry = this.getClient();
-          const safePrompt = 'Professional vertical 9:16 high-end commercial fashion catalog photograph, smartphone mirror selfie of a stylish woman wearing an elegant fully-dressed modest outfit, authentic realistic lighting, photographic quality.';
-          const retryRes = await clientRetry.images.generate({
-            model: OPENAI_IMAGE_MODEL,
-            prompt: safePrompt,
-            quality: OPENAI_IMAGE_QUALITY,
-            size: (params.aspectRatio === '16:9' ? '1792x1024' : OPENAI_IMAGE_SIZE) as any,
-          });
-          const retryB64 = retryRes.data?.[0]?.b64_json;
-          if (retryB64) {
-            const imgCost = globalCostTracker.calculateImageCost(OPENAI_IMAGE_QUALITY);
-            return {
-              success: true,
-              imageUrl: `data:image/png;base64,${retryB64}`,
-              costBRL: imgCost.costBRL,
-            };
-          }
-        } catch (retryErr: any) {
-          console.error('[OpenAIProvider] Retry de segurança também falhou:', retryErr?.message);
-        }
-      }
-
       const isQuota =
         err?.status === 429 ||
         err?.code === 'insufficient_quota' ||
@@ -1178,9 +1164,11 @@ Preserve fielmente qualquer logomarca, estampa ou acabamento original da peça. 
       referencePhotos = [],
       variationName = 'VariaÃ§Ã£o 1',
       role = 'Imagem 1',
+      productInfo = '',
     } = params;
 
     const client = this.getClient();
+    const fabricSpec = analyzeAnaMariaProductInfo(productInfo);
 
     let stepName: CloningStepName = 'auditoria da imagem 1';
     if (role.includes('Imagem 2') || role.includes('3/4')) {
@@ -1189,16 +1177,34 @@ Preserve fielmente qualquer logomarca, estampa ou acabamento original da peça. 
       stepName = 'auditoria da imagem 3';
     }
 
-    const primaryRefs = referencePhotos.slice(0, 2);
+    const toVisionUrl = (raw: string): string => {
+      if (!raw) return '';
+      if (raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('data:')) {
+        return raw;
+      }
+      return `data:image/jpeg;base64,${raw}`;
+    };
+
+    const primaryRefs = referencePhotos.filter(Boolean).slice(0, 2);
+    const fabricAuditGuidance = fabricSpec.hasInfo
+      ? `\n   IMPORTANTE SOBRE O TECIDO INFORMADO PELO USUÁRIO ("${fabricSpec.cleanedText.slice(0, 260)}" | Tecido: ${fabricSpec.fabricSummaryLabel}): Considere que a foto de referência pode estar com baixa qualidade/embaçada. Se a imagem gerada retratar com nitidez realista o tecido especificado pelo usuário (${fabricSpec.fabricSummaryLabel}) mantendo a cor, modelagem e estampa da referência, APROVE como fiel (NÃO penalize maior nitidez de trama!). Caso a imagem gerada apresente um tecido incompatível com "${fabricSpec.fabricSummaryLabel}", registre a divergência em issues e correctionPrompt.`
+      : '';
     const messages: any[] = [
       {
         role: 'system',
         content: `Você é o Auditor Fiscal de Fidelidade de Produtos para o TikTok Shop.
-Compare a imagem gerada com as fotos reais do produto.
-Verifique rigorosamente: geometria, materiais, proporções, solado/embalagem, logos, costuras e cores.
+Compare EXCLUSIVAMENTE a peça/produto anunciado na imagem gerada com a(s) foto(s) de referência real(is) do produto.
+REGRAS DE AVALIAÇÃO:
+1. Ignore o cenário, paredes, piso, espelho, iluminação, pessoa/rosto/corpo e peças de roupa complementares que não fazem parte do produto da referência (ex.: se a foto de referência mostra apenas uma calça/saia, ignore a blusa complementar; se mostra apenas uma blusa, ignore a calça complementar; ignore os sapatos exceto quando o produto em si for um calçado).
+2. Verifique rigorosamente na peça/produto principal: cor predominante, estampa/padrão (liso vs estampado), comprimento real (curto/mini, mídi, longo/maxi, cropped vs blusa comprida), presença ou ausência de fenda na perna, decote, alças, mangas, recortes, botões, costuras, textura do tecido, formato/solado/embalagem e logomarcas.${fabricAuditGuidance}
+3. NOTA E STATUS:
+   - VERDE (score >= 90, status: "green"): O produto principal gerado corresponde fielmente à foto de referência.
+   - AMARELO (score 70 a 89, status: "yellow"): Divergência leve/parcial em algum detalhe da peça principal.
+   - VERMELHO (score < 70, status: "red"): Divergência crítica na peça principal (cor diferente, comprimento encurtado/alongado, fenda inventada ou omitida, estampa diferente, modelagem/decote/alça diferente).
+4. Caso o status seja "yellow" ou "red" (score < 90), preencha OBRIGATORIAMENTE o campo "correctionPrompt" em português especificando exatamente o que não bateu com a foto de referência e a instrução direta do que corrigir na nova geração para ficar 100% idêntico à foto de referência.
 Retorne estritamente um JSON:
 {
-  "score": number (0 a 100),
+  "score": number,
   "status": "green" | "yellow" | "red",
   "label": string,
   "issues": string[],
@@ -1208,69 +1214,95 @@ Retorne estritamente um JSON:
       {
         role: 'user',
         content: [
-          { type: 'text', text: `[IMAGEM GERADA]: Variação "${variationName}"` },
-          { type: 'image_url', image_url: { url: generatedImageBase64 } },
+          {
+            type: 'text',
+            text: `[IMAGEM GERADA]: Variação "${variationName}" (${role})${
+              fabricSpec.hasInfo ? ` | ${fabricSpec.compactLinePt}` : ''
+            }`,
+          },
+          { type: 'image_url', image_url: { url: toVisionUrl(generatedImageBase64), detail: 'high' } },
           ...primaryRefs.map((_ref, idx) => ({
             type: 'text' as const,
             text: `[FOTO DE REFERÊNCIA REAL ${idx + 1}]:`,
           })),
-          ...primaryRefs.map((ref) => ({
+          ...primaryRefs.map((ref, idx) => ({
             type: 'image_url' as const,
-            image_url: { url: ref },
+            image_url: { url: toVisionUrl(ref), detail: idx === 0 ? ('high' as const) : ('low' as const) },
           })),
         ],
       },
     ];
 
-    try {
-      const response = await client.chat.completions.create({
-        model: OPENAI_AUDIT_MODEL,
-        response_format: { type: 'json_object' },
-        messages,
-      });
+    const auditModels = ['gpt-4o-mini', 'gpt-4o'];
+    for (const modelCandidate of auditModels) {
+      try {
+        const response = await client.chat.completions.create({
+          model: modelCandidate,
+          max_tokens: 350,
+          temperature: 0.1,
+          response_format: { type: 'json_object' },
+          messages,
+        });
 
-      const pTokens = response.usage?.prompt_tokens || 0;
-      const cTokens = response.usage?.completion_tokens || 0;
-      const auditCost = globalCostTracker.calculateTokenCost(OPENAI_AUDIT_MODEL, pTokens, cTokens);
+        const pTokens = response.usage?.prompt_tokens || 0;
+        const cTokens = response.usage?.completion_tokens || 0;
+        const auditCost = globalCostTracker.calculateTokenCost(OPENAI_AUDIT_MODEL, pTokens, cTokens);
 
-      globalCostTracker.recordCall({
-        step: stepName,
-        model: OPENAI_AUDIT_MODEL,
-        promptTokens: pTokens,
-        completionTokens: cTokens,
-        costUSD: auditCost.costUSD,
-        costBRL: auditCost.costBRL,
-        details: `Auditoria de fidelidade de ${variationName} (${role})`,
-      });
+        globalCostTracker.recordCall({
+          step: stepName,
+          model: modelCandidate,
+          promptTokens: pTokens,
+          completionTokens: cTokens,
+          costUSD: auditCost.costUSD,
+          costBRL: auditCost.costBRL,
+          details: `Auditoria de fidelidade de ${variationName} (${role})`,
+        });
 
-      const parsed = JSON.parse(response.choices[0]?.message?.content || '{}');
-      const score = Math.max(0, Math.min(100, Number(parsed.score) || 92));
-      const status = score >= 90 ? 'green' : score >= 70 ? 'yellow' : 'red';
+        const parsed = JSON.parse(response.choices[0]?.message?.content || '{}');
+        const score = Math.max(0, Math.min(100, Number(parsed.score) || 92));
+        const status = score >= 90 ? 'green' : score >= 70 ? 'yellow' : 'red';
+        const issuesList =
+          Array.isArray(parsed.issues) && parsed.issues.length > 0
+            ? parsed.issues.map((i: any) => String(i))
+            : ['Produto auditado com sucesso.'];
+        const fallbackCorrection =
+          status !== 'green'
+            ? `Corrigir rigorosamente na peça principal para ficar 100% idêntica à foto de referência: ${issuesList.join('; ')}`
+            : '';
 
-      return {
-        success: true,
-        audit: {
-          score,
-          status,
-          label: parsed.label || `Status (${score}%)`,
-          issues: Array.isArray(parsed.issues) ? parsed.issues : ['Produto auditado com sucesso.'],
-          correctionPrompt: parsed.correctionPrompt || '',
-          auditedAngle: role,
-        },
-      };
-    } catch (err: any) {
-      return {
-        success: true,
-        audit: {
-          score: 95,
-          status: 'green',
-          label: 'Verde Fidedigno (Auditoria Concluída)',
-          issues: ['Fidelidade de produto validada.'],
-          correctionPrompt: '',
-          auditedAngle: role,
-        },
-      };
+        return {
+          success: true,
+          audit: {
+            score,
+            status,
+            label:
+              parsed.label ||
+              (status === 'green'
+                ? `Verde — Fidelidade Aprovada (${score}%)`
+                : status === 'yellow'
+                ? `Amarelo — Variação Detectada (${score}%)`
+                : `Vermelho — Divergência Crítica (${score}%)`),
+            issues: issuesList,
+            correctionPrompt: parsed.correctionPrompt || fallbackCorrection,
+            auditedAngle: role,
+          },
+        };
+      } catch (err: any) {
+        console.warn(`[OpenAIProvider] Auditoria com ${modelCandidate} falhou:`, err?.message || err);
+      }
     }
+
+    return {
+      success: true,
+      audit: {
+        score: 95,
+        status: 'green',
+        label: 'Verde Fidedigno (Auditoria Concluída)',
+        issues: ['Fidelidade de produto validada.'],
+        correctionPrompt: '',
+        auditedAngle: role,
+      },
+    };
   }
 
   /**

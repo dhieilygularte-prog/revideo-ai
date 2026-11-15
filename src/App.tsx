@@ -211,6 +211,7 @@ export default function App() {
   const [isAnaMariaHistoryOpen, setIsAnaMariaHistoryOpen] = useState(false);
 
   const [anaMariaForm, setAnaMariaForm] = useState<AnaMariaFormState>({
+    productInfo: '',
     productName: '',
     referencePhotos: [],
     extraColorPhotos: [],
@@ -578,7 +579,7 @@ export default function App() {
             throw fetchErr;
           }
 
-          // Step 2.1: Automatic Quality & Fidelity Audit (Fiscal TikTok Shop)
+          // Step 2.1: Automatic Quality & Fidelity Audit (Fiscal TikTok Shop) + Auto-Retry if not Green
           let auditData: any = null;
           try {
             setStatusMessage(`Fiscalizando fidelidade da imagem ${generatedSoFar}...`);
@@ -599,6 +600,63 @@ export default function App() {
             }
           } catch (auditErr) {
             console.warn('Erro ao auditar imagem:', auditErr);
+          }
+
+          if (auditData && auditData.status !== 'green') {
+            const autoFixClone =
+              auditData.correctionPrompt ||
+              (auditData.issues || []).join('; ') ||
+              'Corrija o produto para ficar 100% idêntico à foto de referência.';
+            try {
+              setStatusMessage(
+                `Imagem ${generatedSoFar} ficou em ${auditData.status === 'yellow' ? 'Amarelo' : 'Vermelho'} — regerando automaticamente com correção de fidelidade...`
+              );
+              const retryRes = await fetch('/api/generate-scene-image', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  prompt: specificPrompt,
+                  productPhotoBase64: primaryPhoto,
+                  productPhotosBase64: varPhotos.length > 0 ? varPhotos : [primaryPhoto],
+                  modelReferenceBase64: modelPhotoUrl || undefined,
+                  hasUserProvidedModel: Boolean(modelPhotoUrl),
+                  variationName,
+                  productType: structuredResult.productType || 'produto comercial',
+                  targetAngle,
+                  location: imageLocation,
+                  actionDescription: imageAction,
+                  correctionPrompt: autoFixClone,
+                  additionalInstructions,
+                  aiProfile,
+                  isCloneMode: true,
+                }),
+              });
+              const retryJson = await retryRes.json();
+              if (retryJson.success && retryJson.imageUrl) {
+                finalImageUrl = retryJson.imageUrl;
+                newImagesCostBRL += retryJson.costBRL || 0.08;
+                const reAuditRes = await fetch('/api/audit-image-fidelity', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    generatedImageBase64: finalImageUrl,
+                    referencePhotos: varPhotos.length > 0 ? varPhotos : [primaryPhoto],
+                    variationName,
+                    role: angleRole,
+                    aiProfile,
+                  }),
+                });
+                const reAuditJson = await reAuditRes.json();
+                if (reAuditJson.success && reAuditJson.audit) {
+                  auditData = {
+                    ...reAuditJson.audit,
+                    autoHealed: true,
+                  };
+                }
+              }
+            } catch (retryCloneErr) {
+              console.warn('Aviso ao refazer automaticamente imagem no Modo Clonagem:', retryCloneErr);
+            }
           }
 
           updatedImages.push({
@@ -896,7 +954,7 @@ export default function App() {
       }
       newUrl = data.imageUrl;
 
-      // Re-audit the newly generated image
+      // Re-audit the newly generated image + Auto-Retry if not Green
       try {
         const auditRes = await fetch('/api/audit-image-fidelity', {
           method: 'POST',
@@ -915,6 +973,57 @@ export default function App() {
             ...auditJson.audit,
             autoHealed: Boolean(effectiveCorrection),
           };
+        }
+
+        if (newAudit && newAudit.status !== 'green') {
+          const retryCorrection = [
+            effectiveCorrection,
+            newAudit.correctionPrompt || (newAudit.issues || []).join('; '),
+          ]
+            .filter(Boolean)
+            .join(' | ');
+          const retryRes = await fetch('/api/generate-scene-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              prompt: specificPrompt,
+              productPhotoBase64: primaryPhoto,
+              productPhotosBase64: varPhotos.length > 0 ? varPhotos : [primaryPhoto],
+              modelReferenceBase64: modelPhotoUrl || undefined,
+              hasUserProvidedModel: Boolean(modelPhotoUrl),
+              variationName,
+              productType: analysisResult.productType || 'produto comercial',
+              targetAngle,
+              location: imageLocation,
+              actionDescription: imageAction,
+              correctionPrompt: retryCorrection,
+              additionalInstructions,
+              aiProfile,
+              isCloneMode: true,
+            }),
+          });
+          const retryData = await retryRes.json();
+          if (retryData.success && retryData.imageUrl) {
+            newUrl = retryData.imageUrl;
+            const reAuditRes = await fetch('/api/audit-image-fidelity', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                generatedImageBase64: newUrl,
+                referencePhotos: varPhotos.length > 0 ? varPhotos : [primaryPhoto],
+                variationName,
+                role: angleRole,
+                aiProfile,
+              }),
+            });
+            const reAuditJson = await reAuditRes.json();
+            if (reAuditJson.success && reAuditJson.audit) {
+              newAudit = {
+                ...reAuditJson.audit,
+                autoHealed: true,
+              };
+            }
+          }
         }
       } catch (auditErr) {
         console.warn('Erro ao re-auditar imagem regenerada:', auditErr);
@@ -1251,6 +1360,10 @@ export default function App() {
 
   // ─── MODO ANA MARIA HANDLERS ──────────────────────────────────────────────
   const handleStartAnaMaria = async () => {
+    if (!anaMariaForm.productInfo?.trim()) {
+      alert('Preencha o campo obrigatório "Informações do Produto" (tecido ou descrição do produto) antes de gerar.');
+      return;
+    }
     const totalAnaMariaPhotos =
       (anaMariaForm.referencePhotos?.length || 0) + (anaMariaForm.extraColorPhotos?.length || 0);
     if (totalAnaMariaPhotos === 0) {
@@ -1305,6 +1418,7 @@ export default function App() {
 
   const handleResetAnaMariaForm = () => {
     setAnaMariaForm({
+      productInfo: '',
       productName: '',
       referencePhotos: [],
       extraColorPhotos: [],
@@ -2446,6 +2560,7 @@ export default function App() {
             onSelectCreative={(item) => {
               setAnaMariaResult(item);
               setAnaMariaForm({
+                productInfo: item.productInfo || '',
                 productName: item.productName,
                 referencePhotos: item.referencePhotos,
                 extraColorPhotos: [],

@@ -246,10 +246,11 @@ export async function runAniaPipeline(
       throw new Error(img1Json.error || 'Falha ao gerar Imagem 1');
     }
 
+    let finalImg1Url = img1Json.imageUrl;
     let img1Audit: any = null;
     try {
       const auditJson = await postJson('/api/audit-image-fidelity', {
-        generatedImageBase64: img1Json.imageUrl,
+        generatedImageBase64: finalImg1Url,
         referencePhotos: [normalizedColors[0].photoBase64].filter(Boolean),
         variationName: normalizedColors[0].name,
         role: `Imagem 1: ${normalizedColors[0].name}`,
@@ -258,12 +259,49 @@ export async function runAniaPipeline(
       if (auditJson.success && auditJson.audit) {
         img1Audit = auditJson.audit;
       }
+      if (img1Audit && img1Audit.status !== 'green') {
+        const autoCorrection =
+          img1Audit.correctionPrompt ||
+          (Array.isArray(img1Audit.issues) && img1Audit.issues.length > 0
+            ? `CORREÇÃO AUTOMÁTICA DE FIDELIDADE: corrija exatamente: ${img1Audit.issues.join('; ')}. A peça gerada deve ser idêntica à foto de referência.`
+            : 'CORREÇÃO AUTOMÁTICA DE FIDELIDADE: mantenha 100% de fidelidade com a foto de referência do produto.');
+        const retryJson = await postJson('/api/generate-achadinhos-image', {
+          prompt: image1Prompt,
+          productPhotosBase64: [normalizedColors[0].photoBase64].filter(Boolean),
+          variationName: normalizedColors[0].name,
+          productType: form.productName,
+          targetAngle: 'front',
+          location: scenarioDesc,
+          actionDescription: ageMode === 'child'
+            ? 'Mãos adultas em POV segurando e apresentando a peça'
+            : productMode === 'footwear'
+            ? 'Pés calçando o produto em ângulo frontal'
+            : 'Em pé de frente, postura natural sem rosto',
+          correctionPrompt: autoCorrection,
+          additionalInstructions: form.additionalInstructions,
+          imageModel: form.imageModel || 'seedream_5_0_pro',
+          aiProfile,
+        });
+        if (retryJson.success && retryJson.imageUrl) {
+          finalImg1Url = retryJson.imageUrl;
+          const retryAuditJson = await postJson('/api/audit-image-fidelity', {
+            generatedImageBase64: finalImg1Url,
+            referencePhotos: [normalizedColors[0].photoBase64].filter(Boolean),
+            variationName: normalizedColors[0].name,
+            role: `Imagem 1: ${normalizedColors[0].name}`,
+            aiProfile,
+          });
+          if (retryAuditJson.success && retryAuditJson.audit) {
+            img1Audit = retryAuditJson.audit;
+          }
+        }
+      }
     } catch (auditErr) {
       console.warn('Erro ao auditar Imagem 1:', auditErr);
     }
 
     return {
-      url: img1Json.imageUrl,
+      url: finalImg1Url,
       audit: img1Audit,
     };
   })();
@@ -468,17 +506,52 @@ export async function runAniaPipeline(
       }
 
       // Verificação de fidelidade: comparar com a Imagem 1 (tudo igual, exceto a cor)
+      let finalDerivedUrl = json.imageUrl;
       let audit: any = null;
       try {
         const auditJson = await postJson<{ success: boolean; audit?: any }>('/api/audit-image-fidelity', {
-          generatedImageBase64: json.imageUrl,
-          referencePhotos: [compressedImg1], // Comparar com a Imagem 1 gerada!
+          generatedImageBase64: finalDerivedUrl,
+          referencePhotos: [compressedColorPhoto || compressedImg1].filter(Boolean),
           variationName: col.name,
           role: `Imagem ${colorIdx + 1}: ${col.name}`,
           aiProfile,
         });
         if (auditJson.audit) {
           audit = auditJson.audit;
+        }
+        if (audit && audit.status !== 'green') {
+          const autoCorrection =
+            audit.correctionPrompt ||
+            (Array.isArray(audit.issues) && audit.issues.length > 0
+              ? `CORREÇÃO AUTOMÁTICA DE FIDELIDADE: corrija exatamente: ${audit.issues.join('; ')}.`
+              : 'CORREÇÃO AUTOMÁTICA DE FIDELIDADE: mantenha 100% de fidelidade com a referência.');
+          const retryJson = await postJson<{ success: boolean; imageUrl?: string }>('/api/generate-achadinhos-image', {
+            prompt: colorSwapPrompt,
+            modelReferenceBase64: compressedImg1,
+            productPhotosBase64: compressedColorPhoto ? [compressedColorPhoto] : [],
+            variationName: col.name,
+            productType: form.productName,
+            targetAngle: 'front',
+            location: scenarioDesc,
+            actionDescription: `Mesma pessoa, mesma pose, mesmo quarto e mesmo enquadramento da Imagem 1, alterando exclusivamente a cor do ${form.productName} para ${col.name}`,
+            correctionPrompt: autoCorrection,
+            additionalInstructions: form.additionalInstructions,
+            imageModel: form.imageModel || 'seedream_5_0_pro',
+            aiProfile,
+          });
+          if (retryJson.imageUrl) {
+            finalDerivedUrl = retryJson.imageUrl;
+            const retryAuditJson = await postJson<{ success: boolean; audit?: any }>('/api/audit-image-fidelity', {
+              generatedImageBase64: finalDerivedUrl,
+              referencePhotos: [compressedColorPhoto || compressedImg1].filter(Boolean),
+              variationName: col.name,
+              role: `Imagem ${colorIdx + 1}: ${col.name}`,
+              aiProfile,
+            });
+            if (retryAuditJson.audit) {
+              audit = retryAuditJson.audit;
+            }
+          }
         }
       } catch (auditErr) {
         console.warn(`Erro ao auditar Imagem ${colorIdx + 1}:`, auditErr);
@@ -487,7 +560,7 @@ export async function runAniaPipeline(
       return {
         id: `img-${colorIdx + 1}`,
         colorName: col.name,
-        imageUrl: json.imageUrl,
+        imageUrl: finalDerivedUrl,
         promptUsed: colorSwapPrompt,
         fidelityAudit: audit || {
           score: 95,
@@ -631,13 +704,14 @@ export async function regenerateAniaSingleImage(params: {
   }
 
   // Audit: Se for Imagem 2 ou 3, compara com a Imagem 1 gerada mestre
+  let finalRegenUrl = data.imageUrl;
   let audit: any = null;
   try {
     const auditJson = await postJson<{ success: boolean; audit?: any }>('/api/audit-image-fidelity', {
-      generatedImageBase64: data.imageUrl,
+      generatedImageBase64: finalRegenUrl,
       referencePhotos: isImage1
         ? [effectivePhoto].filter(Boolean)
-        : [modelReferenceBase64 || result.images[0]?.imageUrl].filter(Boolean),
+        : [effectivePhoto || modelReferenceBase64 || result.images[0]?.imageUrl].filter(Boolean),
       variationName: col.name,
       role: `Imagem ${imageIndex + 1}: ${col.name}`,
       aiProfile,
@@ -645,13 +719,51 @@ export async function regenerateAniaSingleImage(params: {
     if (auditJson.audit) {
       audit = auditJson.audit;
     }
+    if (audit && audit.status !== 'green') {
+      const autoCorrection =
+        audit.correctionPrompt ||
+        (Array.isArray(audit.issues) && audit.issues.length > 0
+          ? `CORREÇÃO AUTOMÁTICA DE FIDELIDADE: corrija exatamente: ${audit.issues.join('; ')}.`
+          : 'CORREÇÃO AUTOMÁTICA DE FIDELIDADE: mantenha 100% de fidelidade com a referência.');
+      const retryData = await postJson<{ success: boolean; imageUrl?: string }>('/api/generate-achadinhos-image', {
+        prompt,
+        productPhotosBase64: effectivePhoto ? [effectivePhoto] : [],
+        modelReferenceBase64,
+        variationName: col.name,
+        productType: form.productName,
+        targetAngle: 'front',
+        location: scenarioDesc,
+        actionDescription: isImage1
+          ? (ageMode === 'child' ? 'Mãos adultas em POV segurando e apresentando a peça' : productMode === 'footwear' ? 'Pés calçando o produto em ângulo frontal' : 'Em pé de frente, postura natural sem rosto')
+          : (ageMode === 'child' ? `Mesmas mãos em POV da Imagem 1, apresentando o produto infantil na cor ${col.name}` : productMode === 'footwear' ? `Mesma pessoa e pés da Imagem 1, alterando somente o calçado para a cor ${col.name}` : `Mesma modelo e pose da Imagem 1 sem rosto, vestindo a ${result.planning.peca || form.productName} na cor ${col.name}`),
+        correctionPrompt: [customCorrection, autoCorrection].filter(Boolean).join('\n\n'),
+        additionalInstructions: form.additionalInstructions,
+        imageModel: form.imageModel || 'seedream_5_0_pro',
+        aiProfile,
+      });
+      if (retryData.imageUrl) {
+        finalRegenUrl = retryData.imageUrl;
+        const retryAuditJson = await postJson<{ success: boolean; audit?: any }>('/api/audit-image-fidelity', {
+          generatedImageBase64: finalRegenUrl,
+          referencePhotos: isImage1
+            ? [effectivePhoto].filter(Boolean)
+            : [effectivePhoto || modelReferenceBase64 || result.images[0]?.imageUrl].filter(Boolean),
+          variationName: col.name,
+          role: `Imagem ${imageIndex + 1}: ${col.name}`,
+          aiProfile,
+        });
+        if (retryAuditJson.audit) {
+          audit = retryAuditJson.audit;
+        }
+      }
+    }
   } catch (err) {
     console.warn('Erro ao auditar imagem refeita:', err);
   }
 
   return {
     ...targetImg,
-    imageUrl: data.imageUrl,
+    imageUrl: finalRegenUrl,
     promptUsed: prompt,
     isRegenerating: false,
     fidelityAudit: audit || targetImg.fidelityAudit,

@@ -149,6 +149,7 @@ export async function runProdutoPipeline(params: {
       const targetAngle = imgIdx === 0 ? 'front' : imgIdx === 1 ? 'side' : 'detail';
 
       try {
+        const refPhotosList = allPhotos.length > 0 ? allPhotos : (primaryPhoto ? [primaryPhoto] : []);
         const res = await fetch('/api/generate-scene-image', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -158,7 +159,7 @@ export async function runProdutoPipeline(params: {
             variationName: currentVar?.name || 'Produto Original',
             targetAngle,
             productPhotoBase64: primaryPhoto,
-            productPhotosBase64: allPhotos.length > 0 ? allPhotos : (primaryPhoto ? [primaryPhoto] : []),
+            productPhotosBase64: refPhotosList,
             additionalInstructions: form.additionalInstructions,
             aiProfile,
           }),
@@ -166,6 +167,55 @@ export async function runProdutoPipeline(params: {
         const data = await res.json();
         if (data.success && data.imageUrl) {
           img.imageUrl = data.imageUrl;
+
+          // Verificação automática de fidelidade + nova tentativa automática se ficar em amarelo ou vermelho
+          if (refPhotosList.length > 0) {
+            try {
+              const auditRes = await fetch('/api/audit-image-fidelity', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  generatedImageBase64: img.imageUrl,
+                  referencePhotos: refPhotosList.slice(0, 2),
+                  variationName: currentVar?.name || form.productName || 'Produto Original',
+                  role: img.role,
+                  aiProfile,
+                }),
+              });
+              const auditJson = await auditRes.json();
+              if (auditJson?.success && auditJson?.audit && auditJson.audit.status !== 'green') {
+                const fixProd =
+                  auditJson.audit.correctionPrompt ||
+                  (auditJson.audit.issues || []).join('; ') ||
+                  'Corrigir o produto para ficar 100% idêntico à foto de referência.';
+                onProgress?.(
+                  pct,
+                  `Imagem ${currentImageIdx} ficou em ${auditJson.audit.status === 'yellow' ? 'Amarelo' : 'Vermelho'} — regerando automaticamente com correção...`
+                );
+                const retryRes = await fetch('/api/generate-scene-image', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    prompt: `${img.promptUsed}\n\n[CORREÇÃO AUTOMÁTICA OBRIGATÓRIA DE FIDELIDADE]: ${fixProd}`,
+                    productType: form.productName,
+                    variationName: currentVar?.name || 'Produto Original',
+                    targetAngle,
+                    productPhotoBase64: primaryPhoto,
+                    productPhotosBase64: refPhotosList,
+                    correctionPrompt: fixProd,
+                    additionalInstructions: form.additionalInstructions,
+                    aiProfile,
+                  }),
+                });
+                const retryData = await retryRes.json();
+                if (retryData?.success && retryData?.imageUrl) {
+                  img.imageUrl = retryData.imageUrl;
+                }
+              }
+            } catch (auditErr) {
+              console.warn('Aviso ao auditar imagem no Modo Produto:', auditErr);
+            }
+          }
         } else {
           img.hasError = true;
           img.error = data.error || 'Falha ao gerar imagem';

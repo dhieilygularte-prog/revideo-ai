@@ -26,6 +26,7 @@ import {
   OPENAI_AUDIT_MODEL,
 } from './src/config/openaiModels';
 import { AIProfile } from './src/config/aiProfiles';
+import { analyzeAnaMariaProductInfo } from './src/anamaria/anaMariaProductInfo';
 import { buildAniaPlanningSystemPrompt } from './src/ania/aniaPrompts';
 import { buildProdutos2PlanningSystemPrompt } from './src/produtos2/produtos2Prompts';
 import {
@@ -1589,7 +1590,8 @@ Reescreva o prompt completo aplicando esta correção com máxima qualidade.`;
       try {
         const client = (openAIProvider as any).getClient();
         const completion = await client.chat.completions.create({
-          model: OPENAI_BRAIN_MODEL,
+          model: 'gpt-4o-mini',
+          max_tokens: 1800,
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userMessage },
@@ -1672,11 +1674,12 @@ function simplifyToSingleColorWord(raw: string): string {
 
 app.post('/api/anamaria-compact-prompt', async (req, res) => {
   try {
-    const { videoPrompt, productName, masterShortName, aiProfile } = req.body || {};
+    const { videoPrompt, productName, productInfo = '', masterShortName, aiProfile } = req.body || {};
     const original = (videoPrompt || '').trim();
     if (!original) {
       return res.status(400).json({ success: false, error: 'Prompt original não fornecido.' });
     }
+    const fabricSpec = analyzeAnaMariaProductInfo(productInfo);
 
     const enforceMaxChars2450 = (text: string): string => {
       const clean = text.replace(/^```[a-zA-Z]*\n?/, '').replace(/\n?```$/, '').trim();
@@ -1692,12 +1695,12 @@ Sua missão é criar uma versão ENXUTA do prompt original fornecido pelo usuár
 REGRAS OBRIGATÓRIAS E INVIOLÁVEIS:
 1. TAMANHO ESTRITO: O texto final DEVE ter NO MÁXIMO 2.450 caracteres COM ESPAÇOS (alvo ideal: entre 2.050 e 2.420 caracteres com espaços — NUNCA ultrapasse 2.450 caracteres).
 2. PRIORIDADE DE 80% NOS MOVIMENTOS: Aproximadamente 80% do conteúdo do prompt enxuto deve ser dedicado a preservar com máxima fidelidade a coreografia, sequência temporal (segundos), gestos das mãos, puxadas de tecido, movimentos de pernas/pés, trocas de peso, rotações de tronco/quadril e regras específicas de movimento do prompt original.
-3. Os 20% restantes devem condensar de forma objetiva: trava de câmera/enquadramento (conforme foto de referência), fidelidade 1:1 da peça de roupa${productName ? ` (${productName})` : ''}, posição fixa do celular, silêncio absoluto (sem fala) e eventuais instruções personalizadas do usuário presentes no original.
+3. Os 20% restantes devem condensar de forma objetiva: trava de câmera/enquadramento (conforme foto de referência), fidelidade 1:1 da peça de roupa${productName ? ` (${productName})` : ''}${fabricSpec.hasInfo ? ` e do tecido especificado (${fabricSpec.fabricSummaryLabel})` : ''}, posição fixa do celular, silêncio absoluto (sem fala) e eventuais instruções personalizadas do usuário presentes no original.
 4. Preserve exatamente o idioma predominante dos blocos de movimento do prompt original (mantenha a clareza técnica dos movimentos sem cortar etapas).
 5. Retorne EXCLUSIVAMENTE o texto final do prompt enxuto, sem introduções, sem comentários, sem contagem de caracteres e sem crases de markdown.`;
 
     const userMessage = `MESTRE / MODELO: ${masterShortName || 'Modo Ana Maria'}
-PRODUTO: ${productName || 'Peça de vestuário'}
+PRODUTO: ${productName || 'Peça de vestuário'}${fabricSpec.hasInfo ? `\nTECIDO / DETALHES INFORMADOS: ${fabricSpec.fabricSummaryLabel}` : ''}
 
 PROMPT ORIGINAL LONGO (${original.length} caracteres):
 """
@@ -1711,7 +1714,8 @@ Condense este prompt mantendo 80% do foco e do espaço na preservação fiel de 
       try {
         const client = (openAIProvider as any).getClient();
         const completion = await client.chat.completions.create({
-          model: OPENAI_BRAIN_MODEL,
+          model: 'gpt-4o-mini',
+          max_tokens: 1200,
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userMessage },
@@ -1758,7 +1762,11 @@ Condense este prompt mantendo 80% do foco e do espaço na preservação fiel de 
 
 app.post('/api/anamaria-inspect-dress', async (req, res) => {
   try {
-    const { photoBase64, productName } = req.body as { photoBase64?: string; productName?: string };
+    const { photoBase64, productName, productInfo = '' } = req.body as {
+      photoBase64?: string;
+      productName?: string;
+      productInfo?: string;
+    };
     if (!photoBase64) {
       return res.json({
         success: true,
@@ -1772,6 +1780,16 @@ app.post('/api/anamaria-inspect-dress', async (req, res) => {
     const cleanUrl = photoBase64.startsWith('data:') || photoBase64.startsWith('http')
       ? photoBase64
       : `data:image/jpeg;base64,${photoBase64}`;
+
+    const infoSpec = analyzeAnaMariaProductInfo(productInfo);
+    const dressCacheKey = `dress:${productName || ''}:${infoSpec.cleanedText.slice(0, 120)}:${cleanUrl.slice(0, 64)}:${cleanUrl.slice(-64)}:${cleanUrl.length}`;
+    if (!(globalThis as any).__anaMariaVisionCache) {
+      (globalThis as any).__anaMariaVisionCache = new Map<string, any>();
+    }
+    const visionCache: Map<string, any> = (globalThis as any).__anaMariaVisionCache;
+    if (visionCache.has(dressCacheKey)) {
+      return res.json({ success: true, ...visionCache.get(dressCacheKey), cached: true });
+    }
 
     const parseInspection = (rawText: string) => {
       const match = rawText.match(/\{[\s\S]*\}/);
@@ -1814,7 +1832,9 @@ app.post('/api/anamaria-inspect-dress', async (req, res) => {
       }
     };
 
-    const inspectPrompt = `Inspect this garment photo${productName ? ` ("${productName}")` : ''} and answer strictly in valid JSON with THREE attributes:
+    const inspectPrompt = `Inspect this garment photo${productName ? ` ("${productName}")` : ''}${
+      infoSpec.hasInfo ? ` — user product info / fabric: "${infoSpec.cleanedText.slice(0, 260)}"` : ''
+    } and answer strictly in valid JSON with THREE attributes:
 1. "garmentCategory":
    - "dress": dress, gown, chemise, or full-body jumpsuit/romper.
    - "upper": blouse, shirt, top, cropped, jacket, or upper-body piece only.
@@ -1856,6 +1876,8 @@ Respond ONLY valid JSON:
         const rawText = completion.choices[0]?.message?.content?.trim() || '';
         const parsed = parseInspection(rawText);
         if (parsed) {
+          if (visionCache.size > 300) visionCache.clear();
+          visionCache.set(dressCacheKey, parsed);
           return res.json({ success: true, ...parsed });
         }
       } catch (err: any) {
@@ -1909,7 +1931,15 @@ Respond ONLY valid JSON:
 
 app.post('/api/detect-dominant-color', async (req, res) => {
   try {
-    const { photoBase64, productName, productMode, mode, fileName, aiProfile: _aiProfile } = req.body;
+    const {
+      photoBase64,
+      productName,
+      productMode,
+      mode,
+      fileName,
+      productInfo = '',
+      aiProfile: _aiProfile,
+    } = req.body;
     if (!photoBase64) {
       return res.status(400).json({ success: false, error: 'Foto não fornecida' });
     }
@@ -1918,9 +1948,28 @@ app.post('/api/detect-dominant-color', async (req, res) => {
       ? photoBase64
       : `data:image/jpeg;base64,${photoBase64}`;
 
+    const productInfoSpec = analyzeAnaMariaProductInfo(productInfo);
+
+    if (!(globalThis as any).__anaMariaVisionCache) {
+      (globalThis as any).__anaMariaVisionCache = new Map<string, any>();
+    }
+    const visionCache: Map<string, any> = (globalThis as any).__anaMariaVisionCache;
+    const detectCacheKey = `${mode || 'color'}:${productName || ''}:${productInfoSpec.cleanedText.slice(0, 120)}:${cleanB64.slice(0, 64)}:${cleanB64.slice(-64)}:${cleanB64.length}`;
+    if (visionCache.has(detectCacheKey)) {
+      return res.json({ ...visionCache.get(detectCacheKey), cached: true });
+    }
+
     // ─── MODO IDENTIFICAÇÃO RÁPIDA DE PEÇA DE VESTUÁRIO (MODO ANA MARIA) ───
     if (mode === 'identify_garment') {
-      const identifyPrompt = `Analise a foto deste item de vestuário e informe o NOME COMERCIAL ESPECÍFICO da peça em português para catálogo de moda e TikTok Shop.
+      const textHintBlock = productInfoSpec.hasInfo
+        ? `\nINFORMAÇÕES REAIS DO PRODUTO FORNECIDAS PELO USUÁRIO (USE PARA AJUDAR A IDENTIFICAR O NOME DA PEÇA E TECIDO):\n"${productInfoSpec.cleanedText.slice(0, 500)}"${
+            productInfoSpec.detectedGarmentHint
+              ? `\n- Pista principal identificada no texto: "${productInfoSpec.detectedGarmentHint}"`
+              : ''
+          }\nCombine a análise visual da foto com essas informações de texto para determinar o nome comercial exato da peça (especialmente se a imagem estiver em baixa qualidade ou borrada).`
+        : '';
+
+      const identifyPrompt = `Analise a foto deste item de vestuário e informe o NOME COMERCIAL ESPECÍFICO da peça em português para catálogo de moda e TikTok Shop.${textHintBlock}
 
 CATEGORIAS PRIORITÁRIAS OBRIGATÓRIAS (USE EXATAMENTE ESTES TERMOS SE CORRESPONDEREM À PEÇA):
 - Calças largas / pantalonas / sociais folgadas: "Calça Pantalona", "Calça Social Folgada" ou "Calça Social ou Pantalona".
@@ -1958,35 +2007,36 @@ REGRAS FINAIS:
         return clean;
       };
 
-      // 1. Tenta OpenAI se configurado
+      // 1. Tenta OpenAI se configurado (usando gpt-4o-mini + detail: 'low' para gastar ~85 tokens em vez de ~1100 tokens)
       if (openAIProvider && openAIProvider.isConfigured()) {
         const client = (openAIProvider as any).getClient();
-        for (const visionModel of ['gpt-4o-mini', 'gpt-4o']) {
-          try {
-            const completion = await client.chat.completions.create({
-              model: visionModel,
-              max_tokens: 30,
-              temperature: 0.1,
-              messages: [
-                {
-                  role: 'user',
-                  content: [
-                    { type: 'image_url', image_url: { url: cleanB64, detail: 'high' } },
-                    { type: 'text', text: identifyPrompt },
-                  ],
-                },
-              ],
-            });
-            const rawName = completion.choices[0]?.message?.content?.trim();
-            if (rawName) {
-              const cleanName = sanitizeIdentifiedGarment(rawName);
-              if (cleanName) {
-                return res.json({ success: true, garmentName: cleanName });
-              }
+        try {
+          const completion = await client.chat.completions.create({
+            model: 'gpt-4o-mini',
+            max_tokens: 25,
+            temperature: 0.1,
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  { type: 'image_url', image_url: { url: cleanB64, detail: 'low' } },
+                  { type: 'text', text: identifyPrompt },
+                ],
+              },
+            ],
+          });
+          const rawName = completion.choices[0]?.message?.content?.trim();
+          if (rawName) {
+            const cleanName = sanitizeIdentifiedGarment(rawName);
+            if (cleanName) {
+              const payload = { success: true, garmentName: cleanName };
+              if (visionCache.size > 300) visionCache.clear();
+              visionCache.set(detectCacheKey, payload);
+              return res.json(payload);
             }
-          } catch (err: any) {
-            console.warn(`Erro ao identificar peça via OpenAI (${visionModel}):`, err?.message || err);
           }
+        } catch (err: any) {
+          console.warn('Erro ao identificar peça via OpenAI (gpt-4o-mini):', err?.message || err);
         }
       }
 
@@ -2028,7 +2078,10 @@ REGRAS FINAIS:
         }
       }
 
-      // 3. Fallback inteligente via nome do arquivo caso APIs de visão falhem
+      // 3. Fallback inteligente via Informações do Produto ou nome do arquivo caso APIs de visão falhem
+      if (productInfoSpec.detectedGarmentHint) {
+        return res.json({ success: true, garmentName: productInfoSpec.detectedGarmentHint });
+      }
       const fallbackFromFilename = extractGarmentNameFromFileName(fileName);
       if (fallbackFromFilename) {
         return res.json({ success: true, garmentName: fallbackFromFilename, fallback: true });
@@ -2055,41 +2108,36 @@ REGRAS CRÍTICAS:
 14. Se for roxo/lilás, responda: Roxo
 Responda ESTRITAMENTE em UMA ÚNICA PALAVRA da cor básica em português, sem pontuação e sem explicações.`;
 
-    // 1. Provedor OpenAI (prioritário por alta precisão visual e sem distorcer tom de pele)
+    // 1. Provedor OpenAI (usando gpt-4o-mini + detail: 'low' para gastar ~85 tokens e cachear resultado)
     if (openAIProvider && openAIProvider.isConfigured()) {
       const client = (openAIProvider as any).getClient();
-      for (const visionModel of ['gpt-4o-mini', 'gpt-4o', 'gpt-5.6-luna', OPENAI_BRAIN_MODEL]) {
-        try {
-          const params: any = {
-            model: visionModel,
-            messages: [
-              {
-                role: 'user',
-                content: [
-                  { type: 'image_url', image_url: { url: cleanB64 } },
-                  { type: 'text', text: promptText },
-                ],
-              },
-            ],
-          };
-
-          if (visionModel.startsWith('gpt-5')) {
-            params.max_completion_tokens = 60;
-          } else {
-            params.max_tokens = 60;
+      try {
+        const completion = await client.chat.completions.create({
+          model: 'gpt-4o-mini',
+          max_tokens: 20,
+          temperature: 0.1,
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'image_url', image_url: { url: cleanB64, detail: 'low' } },
+                { type: 'text', text: promptText },
+              ],
+            },
+          ],
+        });
+        const rawColor = completion.choices[0]?.message?.content?.trim();
+        if (rawColor) {
+          const cleanColor = simplifyToSingleColorWord(rawColor);
+          if (cleanColor) {
+            const payload = { success: true, color: cleanColor };
+            if (visionCache.size > 300) visionCache.clear();
+            visionCache.set(detectCacheKey, payload);
+            return res.json(payload);
           }
-
-          const completion = await client.chat.completions.create(params);
-          const rawColor = completion.choices[0]?.message?.content?.trim();
-          if (rawColor) {
-            const cleanColor = simplifyToSingleColorWord(rawColor);
-            if (cleanColor) {
-              return res.json({ success: true, color: cleanColor });
-            }
-          }
-        } catch (err: any) {
-          console.warn(`Erro ao detectar cor via OpenAI (${visionModel}):`, err?.message || err);
         }
+      } catch (err: any) {
+        console.warn('Erro ao detectar cor via OpenAI (gpt-4o-mini):', err?.message || err);
       }
     }
 
@@ -2190,6 +2238,7 @@ const SCENARIO_RELIGHT_INTEGRATION_DIRECTIVE =
 
 async function generateImageWithKling(params: {
   prompt: string;
+  productInfo?: string;
   imageReferenceBase64?: string;
   modelReferenceBase64?: string;
   referenceImages?: (string | undefined)[];
@@ -2318,6 +2367,11 @@ async function generateImageWithKling(params: {
     }
   } else {
     headerKling = `${englishFidelityHeader}${IMAGE_REFERENCE_FIDELITY_HEADER}`;
+  }
+
+  const fabricSpecKling = analyzeAnaMariaProductInfo(params.productInfo);
+  if (fabricSpecKling.hasInfo) {
+    headerKling = `${fabricSpecKling.compactLineEn}\n${headerKling}`;
   }
 
   const alignedBodyPromptKling = hasModelRefKling
@@ -2592,6 +2646,7 @@ function getEffectiveScenarioBase64(
 
 async function generateImageWithSeedream(params: {
   prompt: string;
+  productInfo?: string;
   imageReferenceBase64?: string;
   modelReferenceBase64?: string;
   referenceImages?: (string | undefined)[];
@@ -2753,9 +2808,14 @@ async function generateImageWithSeedream(params: {
     headerSeedream = `${IMAGE_REFERENCE_FIDELITY_HEADER}\n\n`;
   }
 
+  const fabricSpecSeedream = analyzeAnaMariaProductInfo(params.productInfo);
+  const fabricBlockSeedream = fabricSpecSeedream.hasInfo
+    ? `${fabricSpecSeedream.compactLineEn}\n${fabricSpecSeedream.promptBlockPt}\n\n`
+    : '';
+
   const payload: any = {
     model: 'dola-seedream-5-0-pro-260628',
-    prompt: refImages.length > 0 ? `${headerSeedream}${params.prompt}` : params.prompt,
+    prompt: `${fabricBlockSeedream}${refImages.length > 0 ? `${headerSeedream}${params.prompt}` : params.prompt}`,
     size: '1440x2560',
     response_format: 'url',
     watermark: false,
@@ -2920,6 +2980,7 @@ async function prepareFalImageUrls(rawImages: (string | undefined)[]): Promise<s
 
 async function generateImageWithKlingO3Fal(params: {
   prompt: string;
+  productInfo?: string;
   imageReferenceBase64?: string;
   modelReferenceBase64?: string;
   referenceImages?: (string | undefined)[];
@@ -3012,6 +3073,8 @@ async function generateImageWithKlingO3Fal(params: {
       : 'STRICT NO-FACE / FACELESS MIRROR SELFIE LOCK (MODO SEM ROSTO): It is strictly FORBIDDEN to show or invent eyes, nose, forehead, or an uncovered face! Keep the exact faceless framing of <<<image_1>>> (cropped strictly at the base of the chin from chin-down to the feet, or face 100% covered behind the smartphone exactly as in <<<image_1>>>).';
     const lightWrapRuleEn =
       'SINGLE-EXPOSURE NATIVE PHOTOGRAPHY & 3D FLOOR GROUNDING: Render as a single real-world photograph captured inside the scenario room (never a cutout or pasted montage). Align 3D perspective, camera horizon, and body scale to the floor plane. The scenario room dictates 100% of lighting, Kelvin color temperature, and shadows; relight the woman and garment to match the room with dark sole/heel contact occlusion, soft directional floor shadows, optical edge light-wrap, and ZERO white outline or halo. ';
+    const fabricSpecO3 = analyzeAnaMariaProductInfo(params.productInfo);
+    const fabricPrefixO3 = fabricSpecO3.hasInfo ? `${fabricSpecO3.compactLineEn}\n` : '';
     const headerKlingO3 = isModelScenarioO3
       ? `<<<image_1>>> is the PRIMARY MODEL AND ROOM BASE: The generated image MUST feature 100% the exact same woman, same body, curves, waist, hips, hair, skin tone, exact same pose and framing from <<<image_1>>>. ${faceRuleO3} Preserve 100% the exact same room and background setting from <<<image_1>>>.${flashRuleO3} ` +
         '[MANDATORY 100% GARMENT & FOOTWEAR REPLICATION]: <<<image_2>>> is STRICTLY the PRODUCT GARMENT. Replace her clothes with the EXACT SAME clothing item shown in <<<image_2>>> with 100% fidelity: exact same fabric, weave, pattern, print, color shade, neckline, straps, seams, hemlines, and details without altering! 100% DISREGARD the person, head, face, skin, tattoos, and pose in <<<image_2>>>! NEVER blend or copy the person from <<<image_2>>>! Clean unblemished skin, ZERO tattoos on body. ' +
@@ -3019,9 +3082,18 @@ async function generateImageWithKlingO3Fal(params: {
       : `<<<image_1>>> is the MODEL IDENTITY & POSE: The photographed woman MUST feature 100% the exact same woman from <<<image_1>>> (same body silhouette, curves, waist, hips, bust, legs, skin tone, hair strands on shoulders, hands, and mirror-selfie posture). ${faceRuleO3} Completely DISCARD <<<image_1>>>'s old room, bright background wall, old lighting, old clothes, and old sneakers/shoes!${flashRuleO3} ` +
         '[MANDATORY 100% GARMENT REPLICATION]: <<<image_2>>> is STRICTLY the PRODUCT GARMENT. Dress her in the EXACT SAME clothing item shown in <<<image_2>>> with 100% fidelity: exact same fabric, weave, pattern, print, color shade, neckline, straps, seams, hemlines, and details! 100% DISREGARD the person, head, face, skin, tattoos, and pose in <<<image_2>>>! Clean unblemished skin, ZERO tattoos on body. ' +
         `<<<image_3>>> is the REAL SCENARIO ROOM: Photograph her physically standing on the floor inside this exact room. ${lightWrapRuleEn}${dressRuleO3} ${footwearRuleO3} Crystal-clear optical focus, 8k high definition, ultra-sharp smartphone photo, no blur. `;
-    promptKlingO3 = compactPromptToLimit(alignedPromptO3, 2450, headerKlingO3);
+    promptKlingO3 = compactPromptToLimit(alignedPromptO3, 2450, `${fabricPrefixO3}${headerKlingO3}`);
   } else if (params.isAnaMariaMode) {
-    promptKlingO3 = compactPromptToLimit(params.prompt, 2450, `${SCENARIO_RELIGHT_INTEGRATION_DIRECTIVE}\n`);
+    promptKlingO3 = compactPromptToLimit(
+      params.prompt,
+      2450,
+      `${analyzeAnaMariaProductInfo(params.productInfo).compactLineEn ? `${analyzeAnaMariaProductInfo(params.productInfo).compactLineEn}\n` : ''}${SCENARIO_RELIGHT_INTEGRATION_DIRECTIVE}\n`
+    );
+  } else if (params.productInfo) {
+    const fabricSpecO3Fallback = analyzeAnaMariaProductInfo(params.productInfo);
+    if (fabricSpecO3Fallback.hasInfo) {
+      promptKlingO3 = compactPromptToLimit(promptKlingO3, 2450, `${fabricSpecO3Fallback.compactLineEn}\n`);
+    }
   }
 
   promptKlingO3 = sanitizePromptForOpenAISafety(promptKlingO3);
@@ -3199,6 +3271,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
       bodyType = req.body?.bodyType,
       variationName = 'Variação 1',
       productType = 'produto comercial',
+      productInfo = '',
       targetAngle = 'front',
       location,
       actionDescription,
@@ -3240,12 +3313,12 @@ app.post('/api/generate-scene-image', async (req, res) => {
       (req.body?.productName && /\b(blusa|blusinha|blusinhas|blusas|rendada|rendado|cropped|top|regata|camisa|camiseta|bata)\b/i.test(req.body.productName)) ||
       (basePromptWithUser && /\b(blusa|blusinha|blusinhas|blusas|rendada|rendado|cropped|top|regata|camisa|camiseta|bata)\b/i.test(basePromptWithUser))
     );
-    if (isUpperPieceGeneral && !isDressOrOnePieceGeneral && !basePromptWithUser.includes('CALÇA JEANS E TÊNIS')) {
+    if (!isAnaMariaMode && !req.body?.presentationMode && isUpperPieceGeneral && !isDressOrOnePieceGeneral && !basePromptWithUser.includes('CALÇA JEANS E TÊNIS')) {
       basePromptWithUser += '\n\n[REGRA MANDATÓRIA DE LOOK COMPLETO — BLUSA COM CALÇA JEANS E TÊNIS]: Como o produto é uma blusa/peça superior, a modelo DEVE OBRIGATORIAMENTE vestir calça jeans feminina clássica de cintura alta e tênis casual nos pés. É TERMINANTEMENTE PROIBIDO a modelo ficar sem calça, de calcinha, com pernas despidas ou nua na parte de baixo! / MANDATORY: The model wears classic high-waisted blue denim jeans and casual sneakers on her feet with the top (STRICTLY NO PANTLESS, NO UNDERWEAR ONLY, NO BARE LEGS UNDER TOP).';
     }
     const effectivePrompt = isAnaMariaMode
       ? basePromptWithUser
-      : sanitizeStoryboardPromptForFidelity(basePromptWithUser, productType, req.body.productInfo);
+      : sanitizeStoryboardPromptForFidelity(basePromptWithUser, productType, productInfo);
 
     // ─── ROTEAMENTO POR MODELO DE IMAGEM ESPECÍFICO (KLING IMAGE 3.0 OMNI / SEEDREAM 5.0 PRO) ───
     const requestedImageModel = req.body?.imageModel;
@@ -3344,6 +3417,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
     if (requestedImageModel === 'kling_3_0') {
       const klingResult = await generateImageWithKling({
         prompt: effectivePrompt,
+        productInfo,
         imageReferenceBase64: effectiveModelReferenceBase64 || productPhotoBase64 || effectiveScenarioPhotoBase64,
         modelReferenceBase64: effectiveModelReferenceBase64,
         referenceImages: klingRefs,
@@ -3363,6 +3437,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
     if (requestedImageModel === 'kling_o3_fal') {
       const klingO3Result = await generateImageWithKlingO3Fal({
         prompt: effectivePrompt,
+        productInfo,
         imageReferenceBase64: effectiveModelReferenceBase64 || productPhotoBase64 || effectiveScenarioPhotoBase64,
         modelReferenceBase64: effectiveModelReferenceBase64,
         referenceImages: klingRefs,
@@ -3378,6 +3453,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
     if (requestedImageModel === 'seedream_5_0_pro') {
       const seedreamResult = await generateImageWithSeedream({
         prompt: effectivePrompt,
+        productInfo,
         imageReferenceBase64: productPhotoBase64 || effectiveModelReferenceBase64 || effectiveScenarioPhotoBase64,
         modelReferenceBase64: effectiveModelReferenceBase64,
         referenceImages: orderedRefs,
@@ -3404,6 +3480,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
       try {
         const result = await openAIProvider.generateSceneImage({
           prompt: effectivePrompt,
+          productInfo,
           productPhotoBase64,
           productPhotosBase64,
           modelReferenceBase64: effectiveModelReferenceBase64,
@@ -3725,6 +3802,7 @@ app.post('/api/audit-image-fidelity', async (req, res) => {
       referencePhotos = [],
       variationName = 'VariaÃ§Ã£o 1',
       role = 'Imagem de ReferÃªncia',
+      productInfo = '',
     } = req.body;
 
     if (!generatedImageBase64) {
@@ -3739,6 +3817,7 @@ app.post('/api/audit-image-fidelity', async (req, res) => {
           referencePhotos,
           variationName,
           role,
+          productInfo,
         });
         if (result && result.success) {
           return res.json(result);
@@ -3764,12 +3843,24 @@ app.post('/api/audit-image-fidelity', async (req, res) => {
 
     const parts: any[] = [];
 
-    // Add generated image
-    const parsedGen = parseInlineImage(generatedImageBase64);
+    // Add generated image (supports both data:base64 and http(s) URLs from Seedream/Fal)
+    let resolvedGeneratedBase64 = generatedImageBase64;
+    if (typeof generatedImageBase64 === 'string' && /^https?:\/\//i.test(generatedImageBase64)) {
+      try {
+        const fetched = await fetch(generatedImageBase64, { signal: AbortSignal.timeout(8000) });
+        if (fetched.ok) {
+          const ab = await fetched.arrayBuffer();
+          const mime = fetched.headers.get('content-type') || 'image/jpeg';
+          resolvedGeneratedBase64 = `data:${mime};base64,${Buffer.from(ab).toString('base64')}`;
+        }
+      } catch {}
+    }
+
+    const parsedGen = parseInlineImage(resolvedGeneratedBase64);
     if (parsedGen) {
       parts.push({ inlineData: parsedGen });
       parts.push({
-        text: `[IMAGEM 1 - IMAGEM GERADA PELA IA]: Esta Ã© a imagem gerada para o criativo comercial do TikTok Shop, mostrando a variaÃ§Ã£o "${variationName}".`,
+        text: `[IMAGEM 1 - IMAGEM GERADA PELA IA]: Esta é a imagem gerada para o criativo comercial do TikTok Shop, mostrando a variação "${variationName}".`,
       });
     }
 
@@ -3786,10 +3877,15 @@ app.post('/api/audit-image-fidelity', async (req, res) => {
       });
     }
 
+    const fabricSpec = analyzeAnaMariaProductInfo(productInfo);
+    const fabricAuditNote = fabricSpec.hasInfo
+      ? `\n\nESPECIFICAÃ‡ÃƒO DE TECIDO INFORMADA PELO USUÃ RIO: "${fabricSpec.cleanedText.slice(0, 260)}" (Tecido: ${fabricSpec.fabricSummaryLabel}). Considere que a foto de referÃªncia pode estar em baixa resoluÃ§Ã£o/embaÃ§ada; se a imagem gerada retratar fielmente e com nitidez a textura real de ${fabricSpec.fabricSummaryLabel} mantendo cor e modelagem da referÃªncia, APROVE sem penalizar pela nitidez extra do tecido. Caso o tecido esteja claramente incompatÃ­vel, reporte para correÃ§Ã£o.`
+      : '';
+
     const auditInstruction = `VocÃª Ã© o Auditor Fiscal de Fidelidade de Produtos para o TikTok Shop.
 O TikTok Shop Ã© extremamente rÃ­gido com diretrizes de comÃ©rcio: se um produto no vÃ­deo/anÃºncio apresentar cores, cadarÃ§os, costuras ou detalhes diferentes do produto real entregue ao comprador, a loja Ã© punida por propaganda enganosa.
 
-SUA MISSÃƒO: Comparar o produto que aparece na [IMAGEM 1 - IMAGEM GERADA] com as [FOTOS DE REFERÃŠNCIA REAIS] enviadas pelo usuÃ¡rio em todos os Ã¢ngulos.
+SUA MISSÃƒO: Comparar o produto que aparece na [IMAGEM 1 - IMAGEM GERADA] com as [FOTOS DE REFERÃŠNCIA REAIS] enviadas pelo usuÃ¡rio em todos os Ã¢ngulos.${fabricAuditNote}
 
 NOTA CRÃTICA: IGNORE o cenÃ¡rio, piso, paredes, espelho e iluminaÃ§Ã£o. Avalie EXCLUSIVAMENTE o PRODUTO (e se houver pessoa usando, se o produto nos pÃ©s/corpo dela confere com as fotos reais).
 
@@ -4118,8 +4214,8 @@ app.post('/api/produtos2-planning', async (req, res) => {
       const client = (openAIProvider as any).getClient();
 
       if (client) {
-        // Tenta gpt-4o primeiro pela altíssima inteligência e velocidade recorde (~2s), com fallback
-        const topModels = ['gpt-4o', OPENAI_BRAIN_MODEL, 'gpt-4o-mini'];
+        // Tenta gpt-4o-mini primeiro (16x mais econômico em tokens mantendo JSON/Copy de alta qualidade), com fallback para gpt-4o
+        const topModels = ['gpt-4o-mini', 'gpt-4o', OPENAI_BRAIN_MODEL];
         for (const modelCandidate of topModels) {
           try {
             const params: any = {
@@ -5104,24 +5200,25 @@ Retorne APENAS um objeto JSON válido com as chaves:
       if (provider === 'openai' && openAIProvider.isConfigured()) {
         const client = (openAIProvider as any).getClient();
         const contentBlocks: any[] = [];
-        (Array.isArray(productPhotosBase64) ? productPhotosBase64 : []).slice(0, 3).forEach((photo: string) => {
+        (Array.isArray(productPhotosBase64) ? productPhotosBase64 : []).slice(0, 3).forEach((photo: string, idx: number) => {
           if (photo && typeof photo === 'string') {
             contentBlocks.push({
               type: 'image_url',
               image_url: {
                 url: photo.startsWith('data:') ? photo : `data:image/jpeg;base64,${photo}`,
-                detail: 'high',
+                detail: idx === 0 ? 'high' : 'low',
               },
             });
           }
         });
         contentBlocks.push({ type: 'text', text: userPrompt });
 
-        const modelsToTry = ['gpt-4o', 'gpt-4o-mini', OPENAI_BRAIN_MODEL, OPENAI_AUDIT_MODEL];
+        const modelsToTry = ['gpt-4o-mini', 'gpt-4o', OPENAI_BRAIN_MODEL, OPENAI_AUDIT_MODEL];
         for (const modelCandidate of modelsToTry) {
           try {
             const params: any = {
               model: modelCandidate,
+              max_tokens: 2500,
               messages: [
                 { role: 'system', content: systemInstruction },
                 { role: 'user', content: contentBlocks },
@@ -6556,7 +6653,7 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
         const client = (openAIProvider as any).getClient();
         const contentBlocks: any[] = [];
 
-        photosList.slice(0, 10).forEach((photo, idx) => {
+        photosList.slice(0, 6).forEach((photo, idx) => {
           contentBlocks.push({
             type: 'text',
             text: `[FOTO DE REFERÊNCIA OFICIAL #${idx + 1} — COR/VARIAÇÃO DO PRODUTO "${productName}"]: `,
@@ -6565,7 +6662,7 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
             type: 'image_url',
             image_url: {
               url: photo.startsWith('data:') ? photo : `data:image/jpeg;base64,${photo}`,
-              detail: 'high',
+              detail: idx === 0 ? 'high' : 'low',
             },
           });
         });
@@ -7707,8 +7804,8 @@ Retorne ESTRITAMENTE um objeto JSON válido em português com este formato (se n
         const client = (openAIProvider as any).getClient();
         const contentBlocks: any[] = [];
 
-        // 1. Fotos de referência em ALTA RESOLUÇÃO (detail: 'high') para enxergar cada lente, botão, flash e logo
-        photosList.slice(0, 6).forEach((photo, idx) => {
+        // 1. Fotos de referência: primeira em ALTA RESOLUÇÃO (detail: 'high') e complementares em 'low' para economizar tokens mantendo precisão
+        photosList.slice(0, 4).forEach((photo, idx) => {
           contentBlocks.push({
             type: 'text',
             text: `[IMAGEM DE REFERÊNCIA REAL #${idx + 1} DO PRODUTO "${productName}" — INSPECIONE EM ALTA DEFINIÇÃO A QUANTIDADE E DISPOSIÇÃO EXATA DE CÂMERAS/LENTES, FLASH, BOTÕES, FORMATO E LOGOMARCA]:`,
@@ -7717,7 +7814,7 @@ Retorne ESTRITAMENTE um objeto JSON válido em português com este formato (se n
             type: 'image_url',
             image_url: {
               url: photo.startsWith('data:') ? photo : `data:image/jpeg;base64,${photo}`,
-              detail: 'high',
+              detail: idx === 0 ? 'high' : 'low',
             },
           });
         });
@@ -7817,12 +7914,23 @@ Retorne o JSON estritamente conforme o schema especificado.`;
         syncFramesAndFindings(parsed);
 
         // Passe cirúrgico de enquadramento para a Comparação Visual:
-        // Garante que cada achado escolha a foto de referência que melhor mostra a parte com problema (ex: a traseira/lentes)
-        // e faça um recorte focado no componente específico na Referência e no Frame Real do erro.
-        if (Array.isArray(parsed.findings) && parsed.findings.length > 0 && photosList.length > 0) {
+        // Só executa chamada complementar se algum achado ainda não tiver refCropBox/videoCropBox válidos do passe principal,
+        // evitando reenviar todas as fotos e frames em uma segunda chamada de visão desnecessária.
+        const needsExtraCropPass =
+          Array.isArray(parsed.findings) &&
+          parsed.findings.length > 0 &&
+          photosList.length > 0 &&
+          parsed.findings.some(
+            (f: any) =>
+              !Array.isArray(f.refCropBox) ||
+              f.refCropBox.length !== 4 ||
+              !Array.isArray(f.videoCropBox) ||
+              f.videoCropBox.length !== 4
+          );
+        if (needsExtraCropPass) {
           try {
             const cropBlocks: any[] = [];
-            photosList.slice(0, 6).forEach((photo, idx) => {
+            photosList.slice(0, 4).forEach((photo, idx) => {
               cropBlocks.push({
                 type: 'text',
                 text: `[FOTO DE REFERÊNCIA #${idx + 1}]:`,
@@ -7831,7 +7939,7 @@ Retorne o JSON estritamente conforme o schema especificado.`;
                 type: 'image_url',
                 image_url: {
                   url: photo.startsWith('data:') ? photo : `data:image/jpeg;base64,${photo}`,
-                  detail: 'high',
+                  detail: idx === 0 ? 'high' : 'low',
                 },
               });
             });
@@ -7859,7 +7967,7 @@ Retorne o JSON estritamente conforme o schema especificado.`;
                 type: 'image_url',
                 image_url: {
                   url: b64.startsWith('data:') ? b64 : `data:image/jpeg;base64,${b64}`,
-                  detail: 'high',
+                  detail: 'low',
                 },
               });
             });
@@ -7907,7 +8015,7 @@ Retorne APENAS um JSON no formato:
             });
 
             const cropComp = await client.chat.completions.create({
-              model: 'gpt-4o',
+              model: 'gpt-4o-mini',
               messages: [{ role: 'user', content: cropBlocks }],
               response_format: { type: 'json_object' },
               temperature: 0.0,
