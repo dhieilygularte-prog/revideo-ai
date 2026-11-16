@@ -273,6 +273,8 @@ async function safeParseJsonResponse(res: Response): Promise<any> {
   }
 }
 
+const payloadCompressCache = new Map<string, string>();
+
 /**
  * Comprime imagens base64 muito pesadas (ex: PNGs de 4MB gerados pela IA) para JPEG de alta nitidez (~200-350KB)
  * antes de trafegar em JSON para o backend/Vercel, evitando erro HTTP 413 Payload Too Large sem perder detalhes de logomarcas.
@@ -283,6 +285,10 @@ async function compressImageForPayload(
   quality = 0.88
 ): Promise<string> {
   if (!dataUrl || typeof dataUrl !== 'string') return dataUrl;
+  const cacheKey = `${maxDim}:${quality}:${dataUrl.length}:${dataUrl.slice(0, 64)}:${dataUrl.slice(-32)}`;
+  const cached = payloadCompressCache.get(cacheKey);
+  if (cached) return cached;
+
   // Se já for pequena (< 600KB em base64) e for JPEG/WEBP/PNG, mantém direto
   if (dataUrl.length < 600_000 && typeof document === 'undefined') {
     return dataUrl;
@@ -318,7 +324,13 @@ async function compressImageForPayload(
           ctx.fillRect(0, 0, w, h);
           ctx.drawImage(img, 0, 0, w, h);
           const compressed = canvas.toDataURL('image/jpeg', quality);
-          resolve(compressed && compressed.length < dataUrl.length ? compressed : dataUrl);
+          const finalOut = compressed && compressed.length < dataUrl.length ? compressed : dataUrl;
+          if (payloadCompressCache.size >= 40) {
+            const oldest = payloadCompressCache.keys().next().value;
+            if (oldest !== undefined) payloadCompressCache.delete(oldest);
+          }
+          payloadCompressCache.set(cacheKey, finalOut);
+          resolve(finalOut);
         } catch {
           resolve(dataUrl);
         }
@@ -741,12 +753,14 @@ export async function auditProdutos2Storyboard(params: {
         : productLock;
 
     const targetQCount = scenes.length === 4 ? 4 : scenes.length === 6 ? 6 : 9;
+    const hasVarPhotos = compressedVariations.some((v) => v.photos.length > 0);
+    // Evita enviar duplicatas em productPhotosBase64 quando compressedVariations já carrega as mesmas fotos
     const res = await fetch('/api/produtos2-audit-storyboard', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         storyboardImageBase64: compressedStoryboard,
-        productPhotosBase64: compressedRefs,
+        productPhotosBase64: hasVarPhotos ? [] : compressedRefs,
         productName,
         productLock: sanitizedLock,
         scenes,

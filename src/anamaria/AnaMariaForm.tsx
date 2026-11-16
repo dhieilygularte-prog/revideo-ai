@@ -61,9 +61,6 @@ import {
   prewarmDefaultScenarios,
 } from './anaMariaPipeline';
 import {
-  MODEL_GALLERY_ITEMS,
-  MODEL_GALLERY_COM_ROSTO,
-  MODEL_GALLERY_SEM_ROSTO,
   getModelGalleryForMode,
   AnaMariaModelItem,
 } from './modelGalleryData';
@@ -2691,9 +2688,17 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             : 'border-2 border-orange-500 bg-gradient-to-br from-zinc-950 via-orange-950/30 to-zinc-950 shadow-orange-950/50 ring-2 ring-orange-500/30'
         }`}
       >
-        <button
-          type="button"
+        <div
+          role="button"
+          tabIndex={0}
+          aria-expanded={isModelGalleryExpanded}
           onClick={() => setIsModelGalleryExpanded((prev) => !prev)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setIsModelGalleryExpanded((prev) => !prev);
+            }
+          }}
           className={`w-full p-4 sm:p-5 flex flex-wrap items-center justify-between gap-3 text-left transition-colors cursor-pointer group ${
             isAmetista ? 'hover:bg-purple-500/10' : 'hover:bg-orange-500/10'
           }`}
@@ -2751,6 +2756,29 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <label
+              onClick={(e) => e.stopPropagation()}
+              title="Aplica instruções avançadas de realismo humano corporal e microtextura natural na pele (desmarcado por padrão)"
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold cursor-pointer select-none transition-all ${
+                form.ultraRealism
+                  ? isAmetista
+                    ? 'bg-emerald-500/20 border-[#d4ff59]/70 text-[#d4ff59] shadow-sm ring-1 ring-[#d4ff59]/30'
+                    : 'bg-emerald-500/20 border-emerald-400/70 text-emerald-300 shadow-sm ring-1 ring-emerald-400/30'
+                  : 'bg-zinc-900/90 border-zinc-700 text-zinc-300 hover:border-zinc-500'
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={Boolean(form.ultraRealism)}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  onChange((prev) => ({ ...prev, ultraRealism: checked }));
+                }}
+                className="w-3.5 h-3.5 rounded accent-emerald-400 cursor-pointer"
+              />
+              <span>Ultra Realismo</span>
+            </label>
+
             {selectedModelItem ? (
               <div
                 className={`flex items-center gap-1.5 text-zinc-950 font-black px-3 py-1.5 rounded-xl border shadow-md ${
@@ -2795,7 +2823,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               )}
             </div>
           </div>
-        </button>
+        </div>
 
         {isModelGalleryExpanded && (
           <div className="p-5 sm:p-6 border-t border-orange-500/30 bg-[#0b0b0c] space-y-5 animate-fade-in">

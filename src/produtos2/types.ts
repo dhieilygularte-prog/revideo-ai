@@ -253,6 +253,7 @@ export interface BatchVideoAuditResultItem {
 export interface BatchVideoAuditSummary {
   totalVideos: number;
   approvedCount: number;
+  flaggedCount?: number;
   rejectedCount: number;
   overview: string;
 }

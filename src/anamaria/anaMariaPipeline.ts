@@ -261,7 +261,6 @@ export function saveAnaMariaResult(result: AnaMariaResultState): void {
 }
 
 const scenarioBase64Cache = new Map<string, string>();
-const scenarioInFlightPromises = new Map<string, Promise<string>>();
 let prewarmedRandomScenario =
   SCENARIO_GALLERY_ITEMS && SCENARIO_GALLERY_ITEMS.length > 0
     ? SCENARIO_GALLERY_ITEMS[Math.floor(Math.random() * SCENARIO_GALLERY_ITEMS.length)]
@@ -1140,6 +1139,7 @@ async function executeColorImageGeneration(params: {
       influencer: itemForm.influencer,
       aspectRatio: '9:16',
       bodyType: itemForm.bodyType,
+      ultraRealism: Boolean(itemForm.ultraRealism),
       aiProfile,
       additionalInstructions: itemForm.additionalInstructions,
     },
@@ -1162,6 +1162,7 @@ async function executeColorImageGeneration(params: {
       selectedModelGalleryUrl: itemForm.selectedModelGalleryUrl,
       modelScenarioSource: displayModelScenarioSource ?? payloadSource,
       generateModelViaPrompt: itemForm.generateModelViaPrompt,
+      ultraRealism: Boolean(itemForm.ultraRealism),
       audit,
     },
     imagePrompt,
@@ -1467,6 +1468,7 @@ export async function runAnaMariaPipeline(
     sameScenarioForAllColors,
     generateOneColorAtATime,
     eclecticMode: rawForm.eclecticMode !== false,
+    ultraRealism: Boolean(rawForm.ultraRealism),
     productInfo: form0.productInfo,
     fabricType: form0.fabricType,
     productName: form0.productName,
@@ -1563,6 +1565,7 @@ export async function regenerateAnaMariaImage(params: {
       selectedScenarioId: effectiveForm.selectedScenarioId,
       aspectRatio: '9:16',
       bodyType: effectiveForm.bodyType,
+      ultraRealism: Boolean(effectiveForm.ultraRealism),
       aiProfile,
       additionalInstructions: effectiveForm.additionalInstructions,
     },
@@ -1614,6 +1617,7 @@ export async function regenerateAnaMariaNewScenario(params: {
       selectedMasterId: form.selectedMasterId,
       aspectRatio: '9:16',
       bodyType: form.bodyType,
+      ultraRealism: Boolean(form.ultraRealism),
       aiProfile,
       additionalInstructions: form.additionalInstructions,
     },
@@ -1791,6 +1795,7 @@ async function generateAnaMariaColorVariation(params: {
     selectedModelGalleryUrl: nextModelUrl,
     modelScenarioSource: effectiveSource,
     generateModelViaPrompt: overrideModelBase64 ? false : effectiveGenerateViaPrompt,
+    ultraRealism: Boolean(result.ultraRealism),
     selectedShoeOption: result.selectedShoeOption,
     customShoeText: result.customShoeText,
   };

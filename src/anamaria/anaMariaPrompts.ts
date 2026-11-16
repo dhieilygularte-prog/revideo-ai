@@ -16,7 +16,11 @@ import {
   UNIVERSAL_PLUS_SIZE_ENGLISH_DIRECTIVE,
   UNIVERSAL_MALE_PLUS_SIZE_MODULE,
 } from './masterPromptsData';
-import { analyzeAnaMariaProductInfo } from './anaMariaProductInfo';
+import {
+  analyzeAnaMariaProductInfo,
+  buildUltraPhotorealismBlock,
+  buildUltraPhotorealismTopLock,
+} from './anaMariaProductInfo';
 
 /**
  * REGRA UNIVERSAL DE CALÇADOS (CAMADA ACIMA DOS PROMPTS DOS MESTRES)
@@ -664,6 +668,12 @@ export function buildAnaMariaImagePrompt(
     form.presentationMode || (master.isPov ? 'pov' : 'mirror_selfie');
   const isMale = form.influencer === 'Homem';
   const isPlusSize = form.bodyType === 'plus_size';
+  const ultraRealismTopLock = form.ultraRealism
+    ? `${buildUltraPhotorealismTopLock({ isMale, isPov: mode === 'pov' || master.isPov })}\n\n`
+    : '';
+  const ultraRealismBlock = form.ultraRealism
+    ? `\n\n${buildUltraPhotorealismBlock({ isMale, isPov: mode === 'pov' || master.isPov })}`
+    : '';
   const shoeInfo = detectShoeCategory(
     form.productName,
     form.additionalInstructions,
@@ -715,7 +725,7 @@ REGRA DE ADAPTAÇÃO COM INTERVENÇÃO MÍNIMA: As instruções do usuário acim
       ? `Mostrar exclusivamente duas mãos masculinas adultas e parte dos antebraços entrando pela parte inferior do enquadramento em primeira pessoa (POV): pele realista com poros naturais, unhas curtas e limpas sem esmalte, e um relógio masculino discreto em um dos pulsos. REGRA OBRIGATÓRIA: mãos e antebraços 100% limpos, SEM NENHUMA TATUAGEM.`
       : `${master.bodyStandardText}\n${master.skinAndRealismText}\n\n## ACESSÓRIOS E MANICURE DAS MÃOS (${master.shortName.toUpperCase()})\n${master.accessoriesIdentityText}\n- ZERO TATUAGENS (REGRA OBRIGATÓRIA): Mãos, dedos, punhos e antebraços completamente limpos, SEM NENHUMA TATUAGEM, desenho ou marca corporal.`;
 
-    const povPrompt = `${priorityOverrideBlock}Crie uma fotografia comercial hiper-realista vertical 9:16 em estilo POV (Point of View em primeira pessoa, câmera posicionada diretamente acima da cama em ângulo superior de 90 graus), apresentando o produto das fotos de referência sobre a cama do ${povScenarioLabel} anexado.
+    const povPrompt = `${priorityOverrideBlock}${ultraRealismTopLock}Crie uma fotografia comercial hiper-realista vertical 9:16 em estilo POV (Point of View em primeira pessoa, câmera posicionada diretamente acima da cama em ângulo superior de 90 graus), apresentando o produto das fotos de referência sobre a cama do ${povScenarioLabel} anexado.
 
 ## 1. PRESERVAÇÃO INTEGRAL DO CENÁRIO POV ANEXADO (${povScenarioLabel.toUpperCase()})
 A imagem do cenário POV anexada (cama/superfície) é a referência visual obrigatória do ambiente.
@@ -748,7 +758,7 @@ ${master.lightingAndCameraText}
 Qualidade fotográfica autêntica de smartphone moderno em alta definição 1080x1920 (9:16).`;
 
     return {
-      prompt: povPrompt.trim(),
+      prompt: `${povPrompt.trim()}${ultraRealismBlock}`,
       shoeCategory: 'C_OUTRO',
       shoeDescription: 'Modo POV (Somente Mãos e Produto na Cama — Sem Calçado)',
     };
@@ -847,7 +857,7 @@ ${
     ? 'O modelo segura um smartphone moderno com uma das mãos diante do espelho de corpo inteiro.'
     : (userPhoneDirectivePt || 'A modelo segura um smartphone moderno com uma das mãos diante do espelho de corpo inteiro (respeitando eventual cor de celular solicitada nas instruções adicionais).')
 }
-${master.lightingAndCameraText}${scenario24FlashRulePt}
+${master.lightingAndCameraText}
 ${
   isPlusSize
     ? `Postura natural em pé diante do espelho, valorizando com autenticidade a estrutura corporal genuinamente PLUS SIZE PESADA (manequim 50-54, peso corporal evidente, coxas hiper-grossas que se tocam sem vão, celulites naturais visíveis nas coxas, quadris muito largos, abdômen arredondado macio e braços roliços carnudos), com o braço livre relaxado ou tocando levemente a lateral sem esconder detalhes da roupa.`
@@ -865,18 +875,15 @@ ${
     const dressDetailDirective = [imageLengthRule, imageSlitRule].filter(Boolean).join('\n');
     const garmentTypeInstruction = isDressOrOnePiece
       ? `- O PRODUTO DA FOTO 1 É UM VESTIDO / MACACÃO / CONJUNTO COMPLETO: A modelo veste EXCLUSIVAMENTE a peça/conjunto completo da Foto 1 com máxima fidelidade 1:1 (mesmas cores exatas da foto de referência).\n` +
-        `- ${complementaryInfo.directiveTextPt}\n` +
-        `- Calçado obrigatório nos pés (se visíveis): ${shoeInfo.name} (${shoeInfo.description}).` +
+        `- ${complementaryInfo.directiveTextPt}` +
         (dressDetailDirective ? `\n${dressDetailDirective}` : '')
       : isUpperOnly
       ? `- O PRODUTO DA FOTO 1 É UMA PEÇA DA PARTE DE CIMA (${form.productName}): A modelo veste a peça superior da Foto 1 com máxima fidelidade 1:1 na EXATA COR da foto de referência, combinada OBRIGATORIAMENTE com uma peça da parte de baixo (calça feminina elegante / calça jeans de cintura alta) em COR CONTRASTANTE MAS QUE COMBINE E FIQUE HARMÔNICA (NUNCA da mesma cor da peça de cima, para que o robô do TikTok jamais confunda uma peça como continuação da outra!).\n` +
-        `- ${complementaryInfo.directiveTextPt}\n` +
-        `- Calçado obrigatório nos pés: ${shoeInfo.name} (${shoeInfo.description}).`
+        `- ${complementaryInfo.directiveTextPt}`
       : isLowerOnly
       ? `- O PRODUTO DA FOTO 1 É UMA PEÇA DA PARTE DE BAIXO (${form.productName}): A modelo veste a peça inferior da Foto 1 com máxima fidelidade 1:1 na EXATA COR da foto de referência, combinada OBRIGATORIAMENTE com uma parte de cima (blusa feminina elegante ou top/cropped de caimento limpo) em COR CONTRASTANTE MAS QUE COMBINE E FIQUE HARMÔNICA (NUNCA da mesma cor da peça de baixo, para que o robô do TikTok jamais confunda uma peça como continuação da outra!).\n` +
-        `- ${complementaryInfo.directiveTextPt}\n` +
-        `- Calçado obrigatório nos pés: ${shoeInfo.name} (${shoeInfo.description}).`
-      : `- Reproduza com máxima fidelidade 1:1 o produto da Foto 1 na sua cor exata de referência, com calçado ${shoeInfo.name} (${shoeInfo.description}) nos pés.\n` +
+        `- ${complementaryInfo.directiveTextPt}`
+      : `- Reproduza com máxima fidelidade 1:1 o produto da Foto 1 na sua cor exata de referência.\n` +
         `- ${complementaryInfo.directiveTextPt}` +
         (dressDetailDirective ? `\n${dressDetailDirective}` : '');
 
@@ -892,7 +899,7 @@ ${
 
     if (isModelScenario) {
       // MODO PADRÃO (2 FOTOS): Preserva 100% da Modelo E 100% do Cenário da Foto 2, trocando apenas a roupa pelo Produto (Foto 1)
-      galleryModelPrompt = `${resolvedPriorityBlock || priorityOverrideBlock}FOTOGRAFIA COMERCIAL VERTICAL 9:16 (1080x1920) COMBINANDO RIGOROSAMENTE AS 2 FOTOS DE REFERÊNCIA:
+      galleryModelPrompt = `${resolvedPriorityBlock || priorityOverrideBlock}${ultraRealismTopLock}FOTOGRAFIA COMERCIAL VERTICAL 9:16 (1080x1920) COMBINANDO RIGOROSAMENTE AS 2 FOTOS DE REFERÊNCIA:
 
 1. FOTO 1 (PRODUTO — PEÇA DE ROUPA COM FIDELIDADE 100% DE CIMA A BAIXO):
 - Vestir a modelo com a roupa da Foto 1 com fidelidade absoluta 1:1 do topo até a barra inferior (mesma cor exata, mesmo padrão de estampa sem alterar os desenhos, mesma textura do tecido, mesmas linhas de costura, recortes, babados, pregas, caimento, formato da saia/barra, comprimento exato da peça, decote, alças e mangas).
@@ -910,10 +917,10 @@ ${galleryFaceFramingRule2Img}
 - ÚNICA MUDANÇA PERMITIDA: Substituir as roupas e o calçado que a modelo veste na Foto 2 pela peça completa da Foto 1 (preservando 100% da parte superior e 100% da parte inferior/barra da Foto 1 sem encurtar) e pelo calçado indicado (${shoeInfo.name}).
 - REILUMINAÇÃO & ZERO BORDA DE RECORTE: A roupa e o calçado trocados devem assumir 100% a iluminação, temperatura de cor e sombras do cômodo da Foto 2, sem contorno branco ou aspecto colado.${scenario24FlashRulePt}
 
-Qualidade fotográfica autêntica de smartphone moderno, textura de pele humana real com poros visíveis, acabamento fosco suave sem brilho excessivo de óleo, sem aspecto de cera ou plástico. ZERO tatuagens.`;
+${form.ultraRealism ? 'Qualidade fotográfica autêntica de smartphone moderno na mesma distância e ângulo de corpo inteiro. ZERO tatuagens.' : 'Qualidade fotográfica autêntica de smartphone moderno, textura de pele humana real com poros visíveis, acabamento fosco suave sem brilho excessivo de óleo, sem aspecto de cera ou plástico. ZERO tatuagens.'}`;
     } else {
       // MODO CENÁRIO DA GALERIA (3 FOTOS): Modelo da Foto 2 fotografada nativamente dentro do Cenário Independente da Foto 3
-      galleryModelPrompt = `${resolvedPriorityBlock || priorityOverrideBlock}FOTOGRAFIA COMERCIAL REALISTA VERTICAL 9:16 (1080x1920) EM EXPOSIÇÃO ÚNICA NATIVA:
+      galleryModelPrompt = `${resolvedPriorityBlock || priorityOverrideBlock}${ultraRealismTopLock}FOTOGRAFIA COMERCIAL REALISTA VERTICAL 9:16 (1080x1920) EM EXPOSIÇÃO ÚNICA NATIVA:
 
 1. FOTO 1 (PRODUTO — PEÇA DE ROUPA COM FIDELIDADE 100% DE CIMA A BAIXO):
 - Vestir a modelo com a roupa da Foto 1 com fidelidade absoluta 1:1 do topo até a barra inferior (mesma cor exata, mesmo padrão de estampa sem alterar os desenhos, mesma textura do tecido, mesmas linhas de costura, recortes, babados, pregas, caimento, formato da saia/barra, comprimento exato da peça, decote, alças e mangas).
@@ -932,11 +939,11 @@ ${galleryFaceFramingRule3Img}
 - Preserve 100% a arquitetura real da Foto 3: piso, paredes, rodapés, cortinas (cor e dobras exatas), portas e móveis, permitindo que a presença física da modelo interaja naturalmente com a luz do quarto (projetando sombras reais no piso e oclusão de ambiente).
 ${scenarioRelightRulePt}${scenario24FlashRulePt}
 
-Qualidade fotográfica autêntica de smartphone moderno (iPhone 16 Pro) em captura única real, textura de pele humana com poros visíveis, grão e nitidez óptica unificados entre modelo e cômodo. ZERO tatuagens.`;
+${form.ultraRealism ? 'Qualidade fotográfica autêntica de smartphone moderno (iPhone 16 Pro) na mesma distância e ângulo de corpo inteiro, grão e nitidez óptica unificados entre modelo e cômodo. ZERO tatuagens.' : 'Qualidade fotográfica autêntica de smartphone moderno (iPhone 16 Pro) em captura única real, textura de pele humana com poros visíveis, grão e nitidez óptica unificados entre modelo e cômodo. ZERO tatuagens.'}`;
     }
 
     return {
-      prompt: galleryModelPrompt.trim(),
+      prompt: `${galleryModelPrompt.trim()}${ultraRealismBlock}`,
       shoeCategory: shoeInfo.category,
       shoeDescription: shoeInfo.name,
     };
@@ -948,7 +955,7 @@ Qualidade fotográfica autêntica de smartphone moderno (iPhone 16 Pro) em captu
     userHairSummary && `com ${userHairSummary}`,
   ].filter(Boolean).join(', ');
 
-  const prompt = `${resolvedPriorityBlock || priorityOverrideBlock}Crie uma fotografia hiper-realista vertical 9:16 (1080x1920) de ${openingDescriptor} vestindo exatamente a peça de roupa da imagem de referência anexada, inserida com perfeição no ${scenarioTitle} anexado, em uma fotografia de espelho de corpo inteiro.
+  const prompt = `${resolvedPriorityBlock || priorityOverrideBlock}${ultraRealismTopLock}Crie uma fotografia hiper-realista vertical 9:16 (1080x1920) de ${openingDescriptor} vestindo exatamente a peça de roupa da imagem de referência anexada, inserida com perfeição no ${scenarioTitle} anexado, em uma fotografia de espelho de corpo inteiro.
 
 ${bodySectionText}
 **REGRA DE PELE LIMPA: ${isMale ? 'O modelo' : 'A modelo'} não deve possuir tatuagens no corpo (salvo se solicitado nas instruções adicionais).**
@@ -985,7 +992,7 @@ ${imageLengthRule ? `${imageLengthRule}\n` : ''}${imageSlitRule ? `${imageSlitRu
 A roupa deve vestir anatomicamente o corpo ${isPlusSize ? 'genuinamente PLUS SIZE' : 'do(a) modelo'} sem jamais redesenhar ou descaracterizar o produto.`;
 
   return {
-    prompt: prompt.trim(),
+    prompt: `${prompt.trim()}${ultraRealismBlock}`,
     shoeCategory: shoeInfo.category,
     shoeDescription: shoeInfo.name,
   };

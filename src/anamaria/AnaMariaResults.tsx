@@ -22,7 +22,6 @@ import {
   Cpu,
   CheckCircle2,
   Plus,
-  Scissors,
   Palette,
 } from 'lucide-react';
 import {
@@ -44,7 +43,6 @@ import {
   generateAnaMariaSameModelNewColor,
   getActiveColorGroupPhotos,
   refineAnaMariaVideoPrompt,
-  generateAnaMariaCompactPrompt,
   saveAnaMariaResult,
 } from './anaMariaPipeline';
 import {
@@ -138,8 +136,6 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
 
   // Estados de destaque azul ativo ao copiar/baixar (itens 6, 7 e 14)
   const [copiedPrompt, setCopiedPrompt] = useState(false);
-  const [copiedConcisePrompt, setCopiedConcisePrompt] = useState(false);
-  const [isGeneratingCompactPrompt, setIsGeneratingCompactPrompt] = useState(false);
   const [hasCopiedPromptOnce, setHasCopiedPromptOnce] = useState(false);
 
   const [copiedHashtags, setCopiedHashtags] = useState(false);
@@ -341,48 +337,6 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
       setHasCopiedPromptOnce(true);
       setTimeout(() => setCopiedPrompt(false), 2500);
     } catch {}
-  };
-
-  const handleGenerateCompactPrompt = async () => {
-    if (isGeneratingCompactPrompt) return;
-    try {
-      setIsGeneratingCompactPrompt(true);
-      setCopiedConcisePrompt(false);
-      const compact = await generateAnaMariaCompactPrompt({
-        videoPrompt: cleanVideoPrompt,
-        productName: result.productName,
-        productInfo: result.productInfo,
-        fabricType: result.fabricType,
-        influencer: result.influencer,
-        bodyType: result.bodyType,
-        presentationMode: result.presentationMode,
-        selectedMasterId: result.selectedMasterId,
-        additionalInstructions: result.additionalInstructions,
-        hasSelectedScenario: Boolean(result.selectedScenarioId),
-        aiProfile,
-      });
-      const updated: AnaMariaResultState = {
-        ...result,
-        conciseVideoPrompt: compact,
-      };
-      onUpdateResult(updated);
-      saveAnaMariaResult(updated);
-    } catch (err: any) {
-      alert(`Falha ao gerar prompt enxuto: ${err?.message || err}`);
-    } finally {
-      setIsGeneratingCompactPrompt(false);
-    }
-  };
-
-  const handleCopyConcisePrompt = async () => {
-    if (!result.conciseVideoPrompt) return;
-    try {
-      await navigator.clipboard.writeText(result.conciseVideoPrompt.trim());
-      setCopiedConcisePrompt(true);
-      setTimeout(() => setCopiedConcisePrompt(false), 2500);
-    } catch (err) {
-      console.error('Erro ao copiar prompt enxuto:', err);
-    }
   };
 
   const handleCopyKlingFixedPrompt = async () => {
@@ -602,6 +556,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
           selectedModelGalleryUrl: activeImageItem.selectedModelGalleryUrl ?? result.selectedModelGalleryUrl,
           modelScenarioSource: activeImageItem.modelScenarioSource ?? result.modelScenarioSource,
           generateModelViaPrompt: activeImageItem.generateModelViaPrompt ?? result.generateModelViaPrompt,
+          ultraRealism: activeImageItem.ultraRealism ?? result.ultraRealism,
           selectedShoeOption: result.selectedShoeOption,
           customShoeText: result.customShoeText,
         },
@@ -655,6 +610,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
           selectedModelGalleryUrl: activeImageItem.selectedModelGalleryUrl ?? result.selectedModelGalleryUrl,
           modelScenarioSource: activeImageItem.modelScenarioSource ?? result.modelScenarioSource,
           generateModelViaPrompt: activeImageItem.generateModelViaPrompt ?? result.generateModelViaPrompt,
+          ultraRealism: activeImageItem.ultraRealism ?? result.ultraRealism,
           selectedShoeOption: result.selectedShoeOption,
           customShoeText: result.customShoeText,
         },
@@ -702,6 +658,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
           videoPromptLimit: result.videoPromptLimit,
           selectedScenarioId: activeImageItem.selectedScenarioId ?? result.selectedScenarioId,
           selectedScenarioNumber: activeImageItem.selectedScenarioNumber ?? result.selectedScenarioNumber,
+          ultraRealism: activeImageItem.ultraRealism ?? result.ultraRealism,
           selectedShoeOption: result.selectedShoeOption,
           customShoeText: result.customShoeText,
         },
@@ -771,6 +728,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
         imageModel: res.imageModel,
         generatedImages: nextImages,
         headlines: mergedHeadlines,
+        ultraRealism: res.newImageItem.ultraRealism ?? result.ultraRealism,
         generateModelViaPrompt: res.generateModelViaPrompt,
         selectedModelGalleryId: res.selectedModelGalleryId,
         selectedModelGalleryNumber: res.selectedModelGalleryNumber,

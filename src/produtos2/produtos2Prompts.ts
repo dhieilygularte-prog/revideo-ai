@@ -20,7 +20,6 @@ import {
   sanitizeAllScenesForFidelity,
   sanitizeProductLockForFidelity,
   sanitizeSceneFidelityAction,
-  isBagProduct,
   sanitizeStoryboardPromptForFidelity,
   sanitizeVisualMapForFidelity,
 } from './produtos2FidelityLock';

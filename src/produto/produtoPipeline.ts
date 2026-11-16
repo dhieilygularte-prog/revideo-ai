@@ -1,5 +1,6 @@
 import { ProdutoFormState, ProdutoResultState, ProdutoSceneResult, ProdutoImageItem } from './types';
 import { buildProdutoImagePrompt, buildProdutoVeoPrompt } from './produtoPrompts';
+import { compressAndResizeImage } from '../ania/aniaLibrary';
 import {
   analyzeProductInfoForProdutos2,
   enforceMaxChars,
@@ -124,107 +125,139 @@ export async function runProdutoPipeline(params: {
     });
   }
 
-  // 4. Gerar Imagens via /api/generate-scene-image
-  let totalImagesCount = 0;
-  scenes.forEach(sc => totalImagesCount += sc.images.length);
-  let currentImageIdx = 0;
+  // 4. Gerar Imagens via /api/generate-scene-image com pré-compressão única e concorrência controlada
+  const uniqueRawPhotos = Array.from(
+    new Set((form.variations || []).flatMap((v) => v.photos || []).filter(Boolean))
+  );
+  const compressedPhotoMap = new Map<string, string>();
+  await Promise.all(
+    uniqueRawPhotos.map(async (raw) => {
+      try {
+        const compact = await compressAndResizeImage(raw, 1200, 0.88);
+        compressedPhotoMap.set(raw, compact && compact.length < raw.length ? compact : raw);
+      } catch {
+        compressedPhotoMap.set(raw, raw);
+      }
+    })
+  );
 
+  interface ProdutoImageTask {
+    sc: ProdutoSceneResult;
+    img: ProdutoImageItem;
+    imgIdx: number;
+    seqIdx: number;
+  }
+  const tasks: ProdutoImageTask[] = [];
+  let totalImagesCount = 0;
   for (const sc of scenes) {
     for (let imgIdx = 0; imgIdx < sc.images.length; imgIdx++) {
-      const img = sc.images[imgIdx];
-      currentImageIdx++;
-      const pct = Math.round(30 + (currentImageIdx / totalImagesCount) * 60);
-      onProgress?.(pct, `Gerando imagem ${currentImageIdx} de ${totalImagesCount}...`);
+      totalImagesCount++;
+      tasks.push({ sc, img: sc.images[imgIdx], imgIdx, seqIdx: totalImagesCount });
+    }
+  }
 
-      // Mapeia variação e foto de forma inteligente:
-      // Se há múltiplas variações cadastradas, distribui entre as referências.
-      // Se há 1 variação com múltiplas fotos, cada referência aproveita uma foto diferente.
-      const totalVars = (form.variations && form.variations.length > 0) ? form.variations.length : 1;
-      const varIndex = totalVars > 1
-        ? (imgIdx % totalVars)
-        : ((sc.sceneNumber - 1) % totalVars);
-      const currentVar = form.variations?.[varIndex] || form.variations?.[0];
-      const allPhotos = currentVar?.photos || [];
-      const primaryPhoto = allPhotos[imgIdx % Math.max(1, allPhotos.length)] || allPhotos[0] || '';
-      const targetAngle = imgIdx === 0 ? 'front' : imgIdx === 1 ? 'side' : 'detail';
+  let completedCount = 0;
+  const processSingleProdutoTask = async (task: ProdutoImageTask) => {
+    const { sc, img, imgIdx } = task;
+    const totalVars = (form.variations && form.variations.length > 0) ? form.variations.length : 1;
+    const varIndex = totalVars > 1
+      ? (imgIdx % totalVars)
+      : ((sc.sceneNumber - 1) % totalVars);
+    const currentVar = form.variations?.[varIndex] || form.variations?.[0];
+    const allPhotos = (currentVar?.photos || []).map((p) => compressedPhotoMap.get(p) || p).filter(Boolean);
+    const primaryPhoto = allPhotos[imgIdx % Math.max(1, allPhotos.length)] || allPhotos[0] || '';
+    const targetAngle = imgIdx === 0 ? 'front' : imgIdx === 1 ? 'side' : 'detail';
 
-      try {
-        const refPhotosList = allPhotos.length > 0 ? allPhotos : (primaryPhoto ? [primaryPhoto] : []);
-        const res = await fetch('/api/generate-scene-image', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            prompt: img.promptUsed,
-            productType: form.productName,
-            variationName: currentVar?.name || 'Produto Original',
-            targetAngle,
-            productPhotoBase64: primaryPhoto,
-            productPhotosBase64: refPhotosList,
-            additionalInstructions: form.additionalInstructions,
-            aiProfile,
-          }),
-        });
-        const data = await res.json();
-        if (data.success && data.imageUrl) {
-          img.imageUrl = data.imageUrl;
+    try {
+      const refPhotosList = allPhotos.length > 0 ? allPhotos : (primaryPhoto ? [primaryPhoto] : []);
+      const res = await fetch('/api/generate-scene-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: img.promptUsed,
+          productType: form.productName,
+          variationName: currentVar?.name || 'Produto Original',
+          targetAngle,
+          productPhotoBase64: primaryPhoto,
+          productPhotosBase64: refPhotosList,
+          additionalInstructions: form.additionalInstructions,
+          aiProfile,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.imageUrl) {
+        const generatedUrl: string = data.imageUrl;
+        img.imageUrl = generatedUrl;
 
-          // Verificação automática de fidelidade + nova tentativa automática se ficar em amarelo ou vermelho
-          if (refPhotosList.length > 0) {
-            try {
-              const auditRes = await fetch('/api/audit-image-fidelity', {
+        // Verificação automática de fidelidade com imagem compactada + retry automático se necessário
+        if (refPhotosList.length > 0) {
+          try {
+            const compactGen = generatedUrl.startsWith('data:')
+              ? await compressAndResizeImage(generatedUrl, 896, 0.85)
+              : generatedUrl;
+            const auditRes = await fetch('/api/audit-image-fidelity', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                generatedImageBase64: compactGen,
+                referencePhotos: refPhotosList.slice(0, 2),
+                variationName: currentVar?.name || form.productName || 'Produto Original',
+                role: img.role,
+                aiProfile,
+              }),
+            });
+            const auditJson = await auditRes.json();
+            if (auditJson?.success && auditJson?.audit && auditJson.audit.status !== 'green') {
+              const fixProd =
+                auditJson.audit.correctionPrompt ||
+                (auditJson.audit.issues || []).join('; ') ||
+                'Corrigir o produto para ficar 100% idêntico à foto de referência.';
+              onProgress?.(
+                Math.round(30 + (completedCount / Math.max(1, totalImagesCount)) * 60),
+                `Imagem ${task.seqIdx} ficou em ${auditJson.audit.status === 'yellow' ? 'Amarelo' : 'Vermelho'} — regerando automaticamente com correção...`
+              );
+              const retryRes = await fetch('/api/generate-scene-image', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  generatedImageBase64: img.imageUrl,
-                  referencePhotos: refPhotosList.slice(0, 2),
-                  variationName: currentVar?.name || form.productName || 'Produto Original',
-                  role: img.role,
+                  prompt: `${img.promptUsed}\n\n[CORREÇÃO AUTOMÁTICA OBRIGATÓRIA DE FIDELIDADE]: ${fixProd}`,
+                  productType: form.productName,
+                  variationName: currentVar?.name || 'Produto Original',
+                  targetAngle,
+                  productPhotoBase64: primaryPhoto,
+                  productPhotosBase64: refPhotosList,
+                  correctionPrompt: fixProd,
+                  additionalInstructions: form.additionalInstructions,
                   aiProfile,
                 }),
               });
-              const auditJson = await auditRes.json();
-              if (auditJson?.success && auditJson?.audit && auditJson.audit.status !== 'green') {
-                const fixProd =
-                  auditJson.audit.correctionPrompt ||
-                  (auditJson.audit.issues || []).join('; ') ||
-                  'Corrigir o produto para ficar 100% idêntico à foto de referência.';
-                onProgress?.(
-                  pct,
-                  `Imagem ${currentImageIdx} ficou em ${auditJson.audit.status === 'yellow' ? 'Amarelo' : 'Vermelho'} — regerando automaticamente com correção...`
-                );
-                const retryRes = await fetch('/api/generate-scene-image', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    prompt: `${img.promptUsed}\n\n[CORREÇÃO AUTOMÁTICA OBRIGATÓRIA DE FIDELIDADE]: ${fixProd}`,
-                    productType: form.productName,
-                    variationName: currentVar?.name || 'Produto Original',
-                    targetAngle,
-                    productPhotoBase64: primaryPhoto,
-                    productPhotosBase64: refPhotosList,
-                    correctionPrompt: fixProd,
-                    additionalInstructions: form.additionalInstructions,
-                    aiProfile,
-                  }),
-                });
-                const retryData = await retryRes.json();
-                if (retryData?.success && retryData?.imageUrl) {
-                  img.imageUrl = retryData.imageUrl;
-                }
+              const retryData = await retryRes.json();
+              if (retryData?.success && retryData?.imageUrl) {
+                img.imageUrl = retryData.imageUrl;
               }
-            } catch (auditErr) {
-              console.warn('Aviso ao auditar imagem no Modo Produto:', auditErr);
             }
+          } catch (auditErr) {
+            console.warn('Aviso ao auditar imagem no Modo Produto:', auditErr);
           }
-        } else {
-          img.hasError = true;
-          img.error = data.error || 'Falha ao gerar imagem';
         }
-      } catch (err: any) {
+      } else {
         img.hasError = true;
-        img.error = err.message || 'Erro de conexão';
+        img.error = data.error || 'Falha ao gerar imagem';
       }
+    } catch (err: any) {
+      img.hasError = true;
+      img.error = err.message || 'Erro de conexão';
+    } finally {
+      completedCount++;
+      const pct = Math.round(30 + (completedCount / Math.max(1, totalImagesCount)) * 60);
+      onProgress?.(pct, `Imagens geradas: ${completedCount} de ${totalImagesCount}...`);
     }
+  };
+
+  onProgress?.(30, `Gerando ${totalImagesCount} imagens em paralelo...`);
+  const CONCURRENCY = 2;
+  for (let i = 0; i < tasks.length; i += CONCURRENCY) {
+    await Promise.all(tasks.slice(i, i + CONCURRENCY).map(processSingleProdutoTask));
   }
 
   onProgress?.(100, 'Modo Produto concluído com sucesso!');

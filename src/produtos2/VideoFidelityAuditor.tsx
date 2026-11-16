@@ -150,7 +150,6 @@ async function extractHighResVideoFrames1fps(
       canvas.height = h;
 
       const extracted: { second: number; frameBase64: string }[] = [];
-      const hashes: string[] = [];
 
       for (const time of targetTimes) {
         const seekTarget = time === 0 ? 0.08 : time;

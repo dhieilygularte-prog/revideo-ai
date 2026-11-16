@@ -249,9 +249,13 @@ export async function runAniaPipeline(
     let finalImg1Url = img1Json.imageUrl;
     let img1Audit: any = null;
     try {
+      const compactImg1ForAudit = await compressBase64Image(finalImg1Url, 896, 0.85);
+      const compactRef1ForAudit = normalizedColors[0].photoBase64
+        ? await compressBase64Image(normalizedColors[0].photoBase64, 896, 0.85)
+        : '';
       const auditJson = await postJson('/api/audit-image-fidelity', {
-        generatedImageBase64: finalImg1Url,
-        referencePhotos: [normalizedColors[0].photoBase64].filter(Boolean),
+        generatedImageBase64: compactImg1ForAudit,
+        referencePhotos: [compactRef1ForAudit].filter(Boolean),
         variationName: normalizedColors[0].name,
         role: `Imagem 1: ${normalizedColors[0].name}`,
         aiProfile,
@@ -265,8 +269,8 @@ export async function runAniaPipeline(
           (Array.isArray(img1Audit.issues) && img1Audit.issues.length > 0
             ? `CORREÇÃO AUTOMÁTICA DE FIDELIDADE: corrija exatamente: ${img1Audit.issues.join('; ')}. A peça gerada deve ser idêntica à foto de referência.`
             : 'CORREÇÃO AUTOMÁTICA DE FIDELIDADE: mantenha 100% de fidelidade com a foto de referência do produto.');
-        const retryJson = await postJson('/api/generate-achadinhos-image', {
-          prompt: image1Prompt,
+        const retryJson = await postJson('/api/generate-scene-image', {
+          prompt: img1Prompt,
           productPhotosBase64: [normalizedColors[0].photoBase64].filter(Boolean),
           variationName: normalizedColors[0].name,
           productType: form.productName,
@@ -284,9 +288,10 @@ export async function runAniaPipeline(
         });
         if (retryJson.success && retryJson.imageUrl) {
           finalImg1Url = retryJson.imageUrl;
+          const compactRetry1 = await compressBase64Image(finalImg1Url, 896, 0.85);
           const retryAuditJson = await postJson('/api/audit-image-fidelity', {
-            generatedImageBase64: finalImg1Url,
-            referencePhotos: [normalizedColors[0].photoBase64].filter(Boolean),
+            generatedImageBase64: compactRetry1,
+            referencePhotos: [compactRef1ForAudit].filter(Boolean),
             variationName: normalizedColors[0].name,
             role: `Imagem 1: ${normalizedColors[0].name}`,
             aiProfile,
@@ -509,9 +514,11 @@ export async function runAniaPipeline(
       let finalDerivedUrl = json.imageUrl;
       let audit: any = null;
       try {
+        const compactDerivedForAudit = await compressBase64Image(finalDerivedUrl, 896, 0.85);
+        const refForAudit = compressedColorPhoto || compressedImg1;
         const auditJson = await postJson<{ success: boolean; audit?: any }>('/api/audit-image-fidelity', {
-          generatedImageBase64: finalDerivedUrl,
-          referencePhotos: [compressedColorPhoto || compressedImg1].filter(Boolean),
+          generatedImageBase64: compactDerivedForAudit,
+          referencePhotos: [refForAudit].filter(Boolean),
           variationName: col.name,
           role: `Imagem ${colorIdx + 1}: ${col.name}`,
           aiProfile,
@@ -525,7 +532,7 @@ export async function runAniaPipeline(
             (Array.isArray(audit.issues) && audit.issues.length > 0
               ? `CORREÇÃO AUTOMÁTICA DE FIDELIDADE: corrija exatamente: ${audit.issues.join('; ')}.`
               : 'CORREÇÃO AUTOMÁTICA DE FIDELIDADE: mantenha 100% de fidelidade com a referência.');
-          const retryJson = await postJson<{ success: boolean; imageUrl?: string }>('/api/generate-achadinhos-image', {
+          const retryJson = await postJson<{ success: boolean; imageUrl?: string }>('/api/generate-scene-image', {
             prompt: colorSwapPrompt,
             modelReferenceBase64: compressedImg1,
             productPhotosBase64: compressedColorPhoto ? [compressedColorPhoto] : [],
@@ -541,9 +548,10 @@ export async function runAniaPipeline(
           });
           if (retryJson.imageUrl) {
             finalDerivedUrl = retryJson.imageUrl;
+            const compactDerivedRetry = await compressBase64Image(finalDerivedUrl, 896, 0.85);
             const retryAuditJson = await postJson<{ success: boolean; audit?: any }>('/api/audit-image-fidelity', {
-              generatedImageBase64: finalDerivedUrl,
-              referencePhotos: [compressedColorPhoto || compressedImg1].filter(Boolean),
+              generatedImageBase64: compactDerivedRetry,
+              referencePhotos: [refForAudit].filter(Boolean),
               variationName: col.name,
               role: `Imagem ${colorIdx + 1}: ${col.name}`,
               aiProfile,
@@ -707,11 +715,17 @@ export async function regenerateAniaSingleImage(params: {
   let finalRegenUrl = data.imageUrl;
   let audit: any = null;
   try {
+    const compactRegenForAudit = await compressBase64Image(finalRegenUrl, 896, 0.85);
+    const refPhotoRaw = (isImage1
+      ? [effectivePhoto]
+      : [effectivePhoto || modelReferenceBase64 || result.images[0]?.imageUrl]
+    ).filter((p): p is string => Boolean(p));
+    const compactAuditRefs = await Promise.all(
+      refPhotoRaw.map((p) => compressBase64Image(p, 896, 0.85))
+    );
     const auditJson = await postJson<{ success: boolean; audit?: any }>('/api/audit-image-fidelity', {
-      generatedImageBase64: finalRegenUrl,
-      referencePhotos: isImage1
-        ? [effectivePhoto].filter(Boolean)
-        : [effectivePhoto || modelReferenceBase64 || result.images[0]?.imageUrl].filter(Boolean),
+      generatedImageBase64: compactRegenForAudit,
+      referencePhotos: compactAuditRefs.filter(Boolean),
       variationName: col.name,
       role: `Imagem ${imageIndex + 1}: ${col.name}`,
       aiProfile,
@@ -725,7 +739,7 @@ export async function regenerateAniaSingleImage(params: {
         (Array.isArray(audit.issues) && audit.issues.length > 0
           ? `CORREÇÃO AUTOMÁTICA DE FIDELIDADE: corrija exatamente: ${audit.issues.join('; ')}.`
           : 'CORREÇÃO AUTOMÁTICA DE FIDELIDADE: mantenha 100% de fidelidade com a referência.');
-      const retryData = await postJson<{ success: boolean; imageUrl?: string }>('/api/generate-achadinhos-image', {
+      const retryData = await postJson<{ success: boolean; imageUrl?: string }>('/api/generate-scene-image', {
         prompt,
         productPhotosBase64: effectivePhoto ? [effectivePhoto] : [],
         modelReferenceBase64,
@@ -743,11 +757,10 @@ export async function regenerateAniaSingleImage(params: {
       });
       if (retryData.imageUrl) {
         finalRegenUrl = retryData.imageUrl;
+        const compactRegenRetry = await compressBase64Image(finalRegenUrl, 896, 0.85);
         const retryAuditJson = await postJson<{ success: boolean; audit?: any }>('/api/audit-image-fidelity', {
-          generatedImageBase64: finalRegenUrl,
-          referencePhotos: isImage1
-            ? [effectivePhoto].filter(Boolean)
-            : [effectivePhoto || modelReferenceBase64 || result.images[0]?.imageUrl].filter(Boolean),
+          generatedImageBase64: compactRegenRetry,
+          referencePhotos: compactAuditRefs.filter(Boolean),
           variationName: col.name,
           role: `Imagem ${imageIndex + 1}: ${col.name}`,
           aiProfile,

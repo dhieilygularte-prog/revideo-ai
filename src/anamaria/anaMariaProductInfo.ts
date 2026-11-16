@@ -779,3 +779,49 @@ ${textureDirectivesPt ? `${textureDirectivesPt}\n` : ''}${constructionNotes.leng
     compactLineEn,
   };
 }
+
+export function buildUltraPhotorealismTopLock(options?: { isMale?: boolean; isPov?: boolean }): string {
+  if (options?.isPov) {
+    return `[ULTRA-REALISM SKIN MODE — SAME DISTANCE/ANGLE, ZERO GARMENT CHANGE]: Preserve 100% the exact same POV camera distance, angle, crop, bed/background, and product fabrics/colors. Apply unmistakably real, unretouched human skin to the visible hands/wrists/forearms (natural knuckle creases, vein/tendon relief, non-uniform organic skin tone, pores, zero airbrush/plastic/AI sheen).`;
+  }
+  const subj = options?.isMale ? 'man' : 'woman';
+  return `[ULTRA-REALISM FULL-BODY SKIN MODE — ZERO ZOOM/ANGLE CHANGE, ZERO GARMENT CHANGE]: Strictly keep 100% the EXACT SAME full-body camera distance, zoom level, angle, crop, mirror framing, pose, and garment (color, print, fabric, seams, cut, and length completely untouched). Do NOT zoom in or crop closer! Make authentic unretouched human skin unmistakably perceptible at this exact full-body distance on the ${subj}: natural uneven human skin tone across knees, elbows, shoulders, collarbones, shins, and thighs, true anatomical joint/subcutaneous relief and natural skin folds, natural ambient skin light response (NO beauty filter, NO airbrushing, NO CGI/plastic/porcelain/wax smoothness).`;
+}
+
+export const ULTRA_PHOTOREALISM_FEMALE_PROMPT = `ULTRA PHOTOREALISM — REALISMO HUMANO CORPORAL ABSOLUTO (MESMA DISTÂNCIA E ÂNGULO DE CORPO INTEIRO):
+
+Reproduzir a aparência fotográfica real e crua de uma mulher verdadeira na MESMA distância, mesmo zoom, mesmo ângulo e mesmo enquadramento da foto normal (incluindo fotos de corpo inteiro diante do espelho — PROIBIDO dar zoom, aproximar a câmera ou fechar o enquadramento).
+
+REALISMO DE PELE PERCEPTÍVEL MESMO À DISTÂNCIA DE CORPO INTEIRO em TODAS as regiões visíveis do pescoço aos pés:
+- Tom de pele orgânico não uniforme com variações sutis de pigmentação, rubor e temperatura biológica perceptíveis à distância (joelhos, cotovelos, ombros, clavículas, mãos, canelas e coxas com leves diferenças naturais de tonalidade, nunca cor uniforme chapada de IA).
+- Comportamento físico real da pele humana viva: volume subcutâneo autêntico, relevo real de ossos/articulações/tendões nos joelhos, tornozelos, ombros e punhos, microtextura cutânea, poros naturais, leves irregularidades, finos pelos corporais sutis, elasticidade e translucidez natural com interação orgânica e sombras de contato sob a luz real do ambiente.
+- Incorporar discretas marcas naturais, estrias finas e sutis orgânicas, pequenas linhas de elasticidade, marcas leves de compressão e dobras anatômicas naturais em braços, colo, abdômen, cintura, quadris, coxas, joelhos e pernas — sutis, variadas e assimétricas, sem inventar cicatrizes ou manchas escuras evidentes.
+
+EVITAR ABSOLUTAMENTE: pele plástica, porcelanizada, encerada, excessivamente lisa, artificialmente perfeita, suavização digital, efeito beauty filter, airbrush, aparência de boneca 3D/IA ou alteração de ângulo/zoom da câmera.
+
+RESULTADO DESEJADO: aparência indistinguível de uma fotografia real sem filtros capturada em câmera física, com pele humana autêntica e riqueza de detalhes corporais visíveis já no plano de corpo inteiro. Preservar rigorosamente 100% da identidade, proporções, pose e TODA A ROUPA inalterada (cores, tecidos, costuras, estampas e modelagem 1:1 intactos). O realismo aplica-se exclusivamente à pele e detalhes humanos da modelo sem alterar o ângulo ou a distância.`;
+
+/**
+ * Retorna o bloco de hiper-realismo humano corporal para fotos geradas quando ativado no Item 10.
+ */
+export function buildUltraPhotorealismBlock(options?: { isMale?: boolean; isPov?: boolean }): string {
+  if (options?.isPov) {
+    return `ULTRA PHOTOREALISM — REALISMO HUMANO CORPORAL ABSOLUTO (MESMA DISTÂNCIA E ÂNGULO POV):
+
+Reproduzir a aparência fotográfica real em primeira pessoa mantendo exatamente o mesmo enquadramento, ângulo e distância da cama. Aplicar realismo humano extremo e perceptível nas mãos, dedos, punhos e antebraços visíveis.
+
+A pele deve apresentar características biológicas autênticas: microtextura cutânea, poros naturais, linhas articulares dos dedos e punhos, pequenas irregularidades, variações sutis de pigmentação e temperatura, textura não uniforme, finos pelos naturais e relevo real com translucidez e interação orgânica com a luz.
+
+EVITAR ABSOLUTAMENTE: pele plástica, porcelanizada, encerada, excessivamente lisa, suavização digital, beauty filter, airbrush ou aparência de 3D.
+
+Preservar rigorosamente os produtos sobre a cama (cores, tecidos, costuras, estampas e modelagem 100% intactos).`;
+  }
+
+  if (options?.isMale) {
+    return ULTRA_PHOTOREALISM_FEMALE_PROMPT
+      .replace('de uma mulher verdadeira', 'de um homem verdadeiro')
+      .replace('da modelo sem alterar', 'do modelo sem alterar');
+  }
+
+  return ULTRA_PHOTOREALISM_FEMALE_PROMPT;
+}

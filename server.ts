@@ -16,7 +16,17 @@ import {
   OPENAI_IMAGE_MODEL,
   OPENAI_AUDIT_MODEL,
 } from './src/config/openaiModels';
-import { analyzeAnaMariaProductInfo, normalizeIdentifiedGarmentName } from './src/anamaria/anaMariaProductInfo';
+import {
+  createBoundedMap,
+  optimizeImageDataUriForGeneration,
+  optimizeImageDataUriForVision,
+} from './src/utils/serverImageOptimizer';
+import {
+  analyzeAnaMariaProductInfo,
+  buildUltraPhotorealismBlock,
+  buildUltraPhotorealismTopLock,
+  normalizeIdentifiedGarmentName,
+} from './src/anamaria/anaMariaProductInfo';
 import { buildAniaPlanningSystemPrompt } from './src/ania/aniaPrompts';
 import { buildProdutos2PlanningSystemPrompt } from './src/produtos2/produtos2Prompts';
 import {
@@ -685,16 +695,19 @@ app.post('/api/ania-planning', async (req, res) => {
       const client = (openAIProvider as any).getClient();
       const contentBlocks: any[] = [];
       if (primaryPhotoBase64) {
+        const optimizedPrimary = await optimizeImageDataUriForVision(primaryPhotoBase64, 'high');
         contentBlocks.push({
           type: 'image_url',
-          image_url: { url: primaryPhotoBase64.startsWith('data:') ? primaryPhotoBase64 : `data:image/jpeg;base64,${primaryPhotoBase64}`, detail: 'high' },
+          image_url: { url: optimizedPrimary, detail: 'high' },
         });
       }
       contentBlocks.push({ type: 'text', text: userPrompt });
 
-      const modelsToTry = [OPENAI_BRAIN_MODEL, 'gpt-4o-mini', 'gpt-4o', 'gpt-5.6-luna'];
+      // gpt-4o-mini primeiro: ~16x mais econômico em tokens para classificação/planejamento JSON sem perder precisão
+      const modelsToTry = ['gpt-4o-mini', 'gpt-4o', OPENAI_BRAIN_MODEL];
       for (const modelCandidate of modelsToTry) {
         try {
+          const isReasoning = modelCandidate.startsWith('gpt-5') || modelCandidate.startsWith('o');
           const params: any = {
             model: modelCandidate,
             messages: [
@@ -702,11 +715,8 @@ app.post('/api/ania-planning', async (req, res) => {
               { role: 'user', content: contentBlocks },
             ],
             response_format: { type: 'json_object' },
+            ...(isReasoning ? { max_completion_tokens: 1100 } : { max_tokens: 950, temperature: 0.4 }),
           };
-
-          if (!modelCandidate.startsWith('gpt-5') && !modelCandidate.startsWith('o')) {
-            params.temperature = 0.4;
-          }
 
           const completion = await client.chat.completions.create(params);
           const parsed = JSON.parse(completion.choices[0]?.message?.content || '{}');
@@ -1010,7 +1020,7 @@ app.post('/api/anamaria-inspect-dress', async (req, res) => {
     const infoSpec = analyzeAnaMariaProductInfo(productInfo, fabricType);
     const dressCacheKey = `dress:${productName || ''}:${infoSpec.cleanedText.slice(0, 120)}:${fabricType.slice(0, 60)}:${cleanUrl.slice(0, 64)}:${cleanUrl.slice(-64)}:${cleanUrl.length}`;
     if (!(globalThis as any).__anaMariaVisionCache) {
-      (globalThis as any).__anaMariaVisionCache = new Map<string, any>();
+      (globalThis as any).__anaMariaVisionCache = createBoundedMap<string, any>(200);
     }
     const visionCache: Map<string, any> = (globalThis as any).__anaMariaVisionCache;
     if (visionCache.has(dressCacheKey)) {
@@ -1084,6 +1094,7 @@ Respond ONLY valid JSON:
     if (openAIProvider && openAIProvider.isConfigured()) {
       try {
         const client = (openAIProvider as any).getClient();
+        const visionUrl = await optimizeImageDataUriForVision(cleanUrl, 'low');
         const completion = await client.chat.completions.create({
           model: 'gpt-4o-mini',
           max_tokens: 120,
@@ -1093,7 +1104,7 @@ Respond ONLY valid JSON:
             {
               role: 'user',
               content: [
-                { type: 'image_url', image_url: { url: cleanUrl, detail: 'low' } },
+                { type: 'image_url', image_url: { url: visionUrl, detail: 'low' } },
                 { type: 'text', text: inspectPrompt },
               ],
             },
@@ -1154,13 +1165,17 @@ app.post('/api/detect-dominant-color', async (req, res) => {
     const productInfoSpec = analyzeAnaMariaProductInfo(productInfo);
 
     if (!(globalThis as any).__anaMariaVisionCache) {
-      (globalThis as any).__anaMariaVisionCache = new Map<string, any>();
+      (globalThis as any).__anaMariaVisionCache = createBoundedMap<string, any>(200);
     }
     const visionCache: Map<string, any> = (globalThis as any).__anaMariaVisionCache;
     const detectCacheKey = `${mode || 'color'}:${productName || ''}:${productInfoSpec.cleanedText.slice(0, 120)}:${cleanB64.slice(0, 64)}:${cleanB64.slice(-64)}:${cleanB64.length}`;
     if (visionCache.has(detectCacheKey)) {
       return res.json({ ...visionCache.get(detectCacheKey), cached: true });
     }
+    const visionDetectUrl =
+      openAIProvider && openAIProvider.isConfigured()
+        ? await optimizeImageDataUriForVision(cleanB64, 'low')
+        : cleanB64;
 
     // ─── MODO IDENTIFICAÇÃO RÁPIDA DE PEÇA DE VESTUÁRIO (MODO ANA MARIA) ───
     if (mode === 'identify_garment') {
@@ -1223,7 +1238,7 @@ REGRAS FINAIS:
               {
                 role: 'user',
                 content: [
-                  { type: 'image_url', image_url: { url: cleanB64, detail: 'low' } },
+                  { type: 'image_url', image_url: { url: visionDetectUrl, detail: 'low' } },
                   { type: 'text', text: identifyPrompt },
                 ],
               },
@@ -1234,7 +1249,6 @@ REGRAS FINAIS:
             const cleanName = sanitizeIdentifiedGarment(rawName);
             if (cleanName) {
               const payload = { success: true, garmentName: cleanName };
-              if (visionCache.size > 300) visionCache.clear();
               visionCache.set(detectCacheKey, payload);
               return res.json(payload);
             }
@@ -1286,7 +1300,7 @@ Responda ESTRITAMENTE em UMA ÚNICA PALAVRA da cor básica em português, sem po
             {
               role: 'user',
               content: [
-                { type: 'image_url', image_url: { url: cleanB64, detail: 'low' } },
+                { type: 'image_url', image_url: { url: visionDetectUrl, detail: 'low' } },
                 { type: 'text', text: promptText },
               ],
             },
@@ -1297,7 +1311,6 @@ Responda ESTRITAMENTE em UMA ÚNICA PALAVRA da cor básica em português, sem po
           const cleanColor = simplifyToSingleColorWord(rawColor);
           if (cleanColor) {
             const payload = { success: true, color: cleanColor };
-            if (visionCache.size > 300) visionCache.clear();
             visionCache.set(detectCacheKey, payload);
             return res.json(payload);
           }
@@ -1329,13 +1342,18 @@ function toDataUri(b64?: string): string | undefined {
   return `data:image/jpeg;base64,${s}`;
 }
 
-const SCENARIO_RELIGHT_INTEGRATION_DIRECTIVE =
-  '[FOTOGRAFIA ÚNICA NATIVA NO CÔMODO, PERSPECTIVA 3D & ZERO HALO DE RECORTE]: Renderize como uma única foto real capturada em exposição única dentro do cômodo do CENÁRIO (nunca como montagem ou recorte colado). Alinhe a perspectiva 3D, a altura do horizonte e a escala corporal ao plano real do piso do quarto, plantando os pés/calçado no chão com sombra de contato escura sob a sola/salto e sombra direcional suave no piso. Quem manda 100% na luz, temperatura de cor (quente/fria), contraste e reflexos nas peles/tecidos é o CENÁRIO (descarte totalmente a luz/parede branca original da foto da modelo), com transição sub-pixel suave nos fios de cabelo, ombros e braços (no white halo, no cutout edges, seamless optical light-wrap).';
+const galleryModelMemoryCache = createBoundedMap<string, string>(60);
+const galleryScenarioMemoryCache = createBoundedMap<string, string>(60);
 
-const galleryModelMemoryCache = new Map<string, string>();
-const galleryScenarioMemoryCache = new Map<string, string>();
+async function loadAndOptimizeGalleryAsset(filePath: string, fallbackMime = 'image/png'): Promise<string> {
+  const buf = fs.readFileSync(filePath);
+  const ext = filePath.toLowerCase().endsWith('.jpg') || filePath.toLowerCase().endsWith('.jpeg') ? 'image/jpeg' : fallbackMime;
+  const rawUri = `data:${ext};base64,${buf.toString('base64')}`;
+  // Redimensiona/comprime PNGs pesados da galeria (1.5-2.5MB -> ~120-160KB JPEG 4:4:4) 1x em cache
+  return optimizeImageDataUriForGeneration(rawUri, 1280, 90);
+}
 
-function getGalleryModelBase64(modelNum?: number | string, presentationMode?: string): string | undefined {
+async function getGalleryModelBase64(modelNum?: number | string, presentationMode?: string): Promise<string | undefined> {
   if (modelNum === undefined || modelNum === null || modelNum === '') return undefined;
   const numStr = String(modelNum).trim();
   const preferredFolder = presentationMode === 'com_rosto' || presentationMode === 'pov' ? 'com_rosto' : 'sem_rosto';
@@ -1354,9 +1372,7 @@ function getGalleryModelBase64(modelNum?: number | string, presentationMode?: st
   try {
     for (const filePath of candidates) {
       if (fs.existsSync(filePath)) {
-        const buf = fs.readFileSync(filePath);
-        const mime = filePath.endsWith('.jpg') ? 'image/jpeg' : 'image/png';
-        const dataUri = `data:${mime};base64,${buf.toString('base64')}`;
+        const dataUri = await loadAndOptimizeGalleryAsset(filePath);
         galleryModelMemoryCache.set(cacheKey, dataUri);
         return dataUri;
       }
@@ -1367,11 +1383,11 @@ function getGalleryModelBase64(modelNum?: number | string, presentationMode?: st
   return undefined;
 }
 
-function getGalleryScenarioBase64(
+async function getGalleryScenarioBase64(
   scenarioNum?: number | string,
   scenarioId?: string,
   presentationMode?: string
-): string | undefined {
+): Promise<string | undefined> {
   const cleanId = scenarioId ? String(scenarioId).trim() : '';
   const cacheKey = `${presentationMode || ''}:${cleanId}:${scenarioNum ?? ''}`;
   const cached = galleryScenarioMemoryCache.get(cacheKey);
@@ -1382,7 +1398,7 @@ function getGalleryScenarioBase64(
     const povPath = path.join(process.cwd(), 'public', 'scenarios', 'pov', `${povNum}.png`);
     try {
       if (fs.existsSync(povPath)) {
-        const dataUri = `data:image/png;base64,${fs.readFileSync(povPath).toString('base64')}`;
+        const dataUri = await loadAndOptimizeGalleryAsset(povPath);
         galleryScenarioMemoryCache.set(cacheKey, dataUri);
         return dataUri;
       }
@@ -1390,16 +1406,14 @@ function getGalleryScenarioBase64(
     return undefined;
   }
 
-  // Em SCENARIO_GALLERY_ITEMS: cenario_X aponta sempre para '<X>.png'
-  // (números 1..14 correspondem aos arquivos 0..13.png; números 15..25 correspondem a 15..25.png)
-  // Para o Cenário 24 em modo sem rosto (mirror_selfie), usa 24_sem_rosto.png (enquadramento do queixo para baixo sem teto)
+  // Para o Cenário 24 em modo sem rosto (mirror_selfie), usa 24_sem_rosto.png
   const isScenario24Lookup =
     cleanId.toLowerCase() === 'cenario_24' || Number(String(scenarioNum ?? '').trim()) === 24;
   if (isScenario24Lookup && presentationMode !== 'com_rosto') {
     const semRosto24Path = path.join(process.cwd(), 'public', 'scenarios', 'gallery', '24_sem_rosto.png');
     try {
       if (fs.existsSync(semRosto24Path)) {
-        const dataUri = `data:image/png;base64,${fs.readFileSync(semRosto24Path).toString('base64')}`;
+        const dataUri = await loadAndOptimizeGalleryAsset(semRosto24Path);
         galleryScenarioMemoryCache.set(cacheKey, dataUri);
         return dataUri;
       }
@@ -1411,7 +1425,7 @@ function getGalleryScenarioBase64(
     const idPath = path.join(process.cwd(), 'public', 'scenarios', 'gallery', `${idFileNum}.png`);
     try {
       if (fs.existsSync(idPath)) {
-        const dataUri = `data:image/png;base64,${fs.readFileSync(idPath).toString('base64')}`;
+        const dataUri = await loadAndOptimizeGalleryAsset(idPath);
         galleryScenarioMemoryCache.set(cacheKey, dataUri);
         return dataUri;
       }
@@ -1430,8 +1444,7 @@ function getGalleryScenarioBase64(
     const filePath = path.join(process.cwd(), 'public', 'scenarios', 'gallery', fname);
     try {
       if (fs.existsSync(filePath)) {
-        const buf = fs.readFileSync(filePath);
-        const dataUri = `data:image/png;base64,${buf.toString('base64')}`;
+        const dataUri = await loadAndOptimizeGalleryAsset(filePath);
         galleryScenarioMemoryCache.set(cacheKey, dataUri);
         return dataUri;
       }
@@ -1442,17 +1455,17 @@ function getGalleryScenarioBase64(
   return undefined;
 }
 
-function getEffectiveScenarioBase64(
+async function getEffectiveScenarioBase64(
   scenarioPhotoBase64?: string,
   selectedScenarioNumber?: number | string,
   selectedScenarioId?: string,
   presentationMode?: string
-): string | undefined {
+): Promise<string | undefined> {
   if (
     (selectedScenarioId && String(selectedScenarioId).trim() !== '') ||
     (selectedScenarioNumber !== undefined && selectedScenarioNumber !== null && selectedScenarioNumber !== '')
   ) {
-    const diskScenario = getGalleryScenarioBase64(selectedScenarioNumber, selectedScenarioId, presentationMode);
+    const diskScenario = await getGalleryScenarioBase64(selectedScenarioNumber, selectedScenarioId, presentationMode);
     if (diskScenario) return diskScenario;
   }
   if (scenarioPhotoBase64 && scenarioPhotoBase64.length > 50) {
@@ -1473,6 +1486,7 @@ async function generateImageWithSeedream(params: {
   presentationMode?: string;
   selectedMasterId?: string;
   bodyType?: string;
+  ultraRealism?: boolean;
   scenarioPhotoBase64?: string;
   modelScenarioSource?: 'model' | 'gallery';
 }): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
@@ -1508,13 +1522,18 @@ async function generateImageWithSeedream(params: {
     };
   }
 
-  const refImages = (params.referenceImages && params.referenceImages.length > 0
+  const rawRefImages = (params.referenceImages && params.referenceImages.length > 0
     ? params.referenceImages
     : [params.imageReferenceBase64]
   )
     .map((img) => toDataUri(img))
     .filter((img): img is string => Boolean(img))
     .slice(0, (params.presentationMode === 'pov' || params.selectedMasterId === 'pov_cinta_85k' || params.selectedMasterId === 'pov_blusinhas_13k' || Boolean(params.prompt && params.prompt.includes('PRESERVAÇÃO INTEGRAL DO CENÁRIO POV'))) ? 3 : 4);
+
+  // Otimiza todas as imagens de referência em paralelo (PNGs 2-3MB -> ~120KB JPEG 4:4:4) acelerando upload para o Seedream 5.0 Pro
+  const refImages = await Promise.all(
+    rawRefImages.map((img) => optimizeImageDataUriForGeneration(img, 1280, 90))
+  );
 
   // Quando isAnaMariaMode === true e o prompt já veio estruturado pelo buildAnaMariaImagePrompt,
   // evita duplicar blocos longos (cenário, plus size e instruções do usuário já estão completos no prompt).
@@ -1524,9 +1543,6 @@ async function generateImageWithSeedream(params: {
     params.selectedMasterId === 'pov_blusinhas_13k' ||
     Boolean(params.prompt && params.prompt.includes('PRESERVAÇÃO INTEGRAL DO CENÁRIO POV'));
 
-  // AUDITORIA E ISOLAMENTO SEEDREAM 5.0 PRO:
-  // O gerador Seedream NÃO introduz características corporais próprias, presets ou prompts ocultos.
-  // A descrição física e biotipo da modelo vêm 100% e exclusivamente do prompt selecionado no Item 9.
   const hasModelRefSeedream = Boolean(params.modelReferenceBase64 && params.modelReferenceBase64.length > 50);
   const isUpperPieceSeedream = Boolean(
     params.prompt &&
@@ -1544,11 +1560,22 @@ async function generateImageWithSeedream(params: {
     );
 
   const faceDirectiveSeedream = allowsFaceSeedream
-    ? '[ENQUADRAMENTO: Rosto expressivo visível naturalmente no espelho diante da câmera].\n'
-    : '[CORTE OBRIGATÓRIO NA BASE DO QUEIXO — ZERO ROSTO]: CORTAR RIGOROSAMENTE DA BASE DO QUEIXO PARA BAIXO. É TERMINANTEMENTE PROIBIDO MOSTRAR OLHOS, NARIZ, BOCA, LÁBIOS, DENTES OU CABEÇA. O smartphone moderno fica posicionado na altura do queixo e o rosto fica 100% FORA do enquadramento. Exibir apenas a ponta inferior do queixo, pescoço, colo e corpo inteiro até os pés no piso (ou até a barra do vestido longo cobrindo os pés, caso a peça seja longa até o chão).\n';
+    ? '[ENQUADRAMENTO: Rosto visível naturalmente no espelho].\n'
+    : '[CORTE OBRIGATÓRIO NA BASE DO QUEIXO — ZERO ROSTO]: Corte da base do queixo para baixo; proibido mostrar olhos, nariz, boca ou testa; celular na altura do queixo; corpo inteiro até os pés ou barra longa.\n';
 
-  const naturalSkinSeedream =
-    '[MÁXIMA NITIDEZ & DEFINIÇÃO ÓPTICA CRISTALINA]: Textura de pele humana real ultra-nítida com poros visíveis, acabamento fosco sob iluminação realista sem oleosidade excessiva. Foco perfeito nos olhos, cabelo, pele e trama do tecido, ZERO desfoque (NO BLUR, ZERO BORRÃO). PELE 100% LIMPA E LISA, ZERO TATUAGENS em todo o corpo (braços, mãos, pernas, colo e pescoço livres de qualquer tatuagem ou tinta na pele).\n';
+  const isUltraRealismSeedream = Boolean(
+    params.ultraRealism ||
+      (params.prompt &&
+        (params.prompt.includes('ULTRA PHOTOREALISM') ||
+          params.prompt.includes('ULTRA-REALISM')))
+  );
+  const isMaleSeedream = /\bhomem adulto\b|\binfluenciador\b/i.test(params.prompt || '');
+
+  const naturalSkinSeedream = isUltraRealismSeedream
+    ? (params.prompt && params.prompt.includes('ULTRA-REALISM')
+        ? '[MODO ULTRA REALISMO ATIVO — MESMO ÂNGULO/ZOOM DE CORPO INTEIRO, PELE HUMANA PERCEPTÍVEL À DISTÂNCIA, ROUPA 100% INTACTA | ZERO TATUAGENS no corpo].\n'
+        : `${buildUltraPhotorealismTopLock({ isMale: isMaleSeedream, isPov: isPovModeSeedream })} ZERO TATUAGENS no corpo.\n`)
+    : '[NITIDEZ ÓPTICA & PELE LIMPA]: Foco cristalino (zero blur), pele com poros reais e ZERO TATUAGENS no corpo.\n';
 
   const isDressOrOnePieceSeedream = Boolean(
     params.prompt &&
@@ -1557,25 +1584,19 @@ async function generateImageWithSeedream(params: {
         params.prompt.includes('VESTIDO'))
   );
 
-  const garmentFullLockSeedream =
-    '[TRAVA INVIOLÁVEL 1:1 DE CIMA A BAIXO DA PEÇA (COSTURAS, ESTAMPA, TEXTURA, FORMATO E COMPRIMENTO INTEGRAL)]:\n' +
-    '- A peça de roupa da Foto 1 DEVE ser reproduzida com fidelidade 100% idêntica do topo (decote, alças, mangas, busto) até a extremidade inferior da barra (cintura, quadril, saia, recortes, babados, pregas, costuras e bainha).\n' +
-    '- É TERMINANTEMENTE PROIBIDO encurtar a peça, comer ou cortar a parte de baixo do vestido/roupa, subir a barra, mudar o formato da saia/barra, alterar ou omitir linhas de costura, ou modificar o padrão de estampa, textura e tecido em NENHUMA parte da peça (nem em cima nem embaixo)!\n' +
-    '- O comprimento real da peça na Foto 1 é SOBERANO: se na Foto 1 o vestido/peça desce até os tornozelos ou até o chão, ele DEVE descer exatamente até os tornozelos/chão na imagem gerada (NUNCA encurte o vestido para mostrar pernas ou calçado; e se a modelo da Foto 2 estiver usando roupa mais curta ou calça, ignore 100% o comprimento da roupa antiga da Foto 2 e estenda a peça da Foto 1 em seu comprimento completo real!).\n';
-
   const clothingDirectiveSeedream = isDressOrOnePieceSeedream
-    ? `${garmentFullLockSeedream}[REGRA DE VESTUÁRIO — VESTIDO / PEÇA ÚNICA / CONJUNTO]: A modelo veste EXCLUSIVAMENTE a peça/conjunto da Foto 1 cobrindo o corpo com todos os seus detalhes e cores originais de cima a baixo (se conjunto, reproduza AMBAS as peças 100% idênticas à Foto 1). O calçado especificado no prompt só aparece se o comprimento real original da Foto 1 deixar os pés visíveis — JAMAIS encurte a barra da peça!\n`
+    ? '[PRODUTO 1:1 SEM ENCURTAR]: Reproduza vestido/peça única/conjunto da Foto 1 com 100% fidelidade do topo à barra (mesma cor, estampa, costura, decote e comprimento real até tornozelo/chão se longo; calçado só se a barra original mostrar pés).\n'
     : (isUpperPieceSeedream
-        ? `${garmentFullLockSeedream}[REGRA OBRIGATÓRIA — PEÇA DE CIMA COM PARTE DE BAIXO EM COR CONTRASTANTE HARMÔNICA]: Como o produto anunciado é uma peça da parte de cima, mantenha a peça superior na EXATA COR da Foto 1, e vista a parte de baixo (calça feminina elegante / calça jeans de cintura alta) SEMPRE EM COR CONTRASTANTE MAS QUE COMBINE E FIQUE HARMÔNICA (NUNCA da mesma cor da peça de cima!). Proibido ficar sem calça na parte de baixo.\n`
-        : `${garmentFullLockSeedream}[REGRA OBRIGATÓRIA — PEÇA DE BAIXO COM PARTE DE CIMA EM COR CONTRASTANTE HARMÔNICA]: Se o produto anunciado for uma peça da parte de baixo (calça, bermuda ou saia), mantenha a peça inferior na EXATA COR da Foto 1, e vista a parte de cima (blusa/top/cropped) SEMPRE EM COR CONTRASTANTE MAS QUE COMBINE E FIQUE HARMÔNICA (NUNCA da mesma cor da peça de baixo!). Se for conjunto, reproduza ambas as peças exatamente como na Foto 1.\n`);
+        ? '[PEÇA DE CIMA 1:1 + BAIXO CONTRASTANTE]: Mantenha a peça superior idêntica à Foto 1 e combine com calça/saia de cor harmônica CONTRASTANTE (nunca igual à de cima).\n'
+        : '[PEÇA DE BAIXO 1:1 + CIMA CONTRASTANTE]: Mantenha a peça inferior idêntica à Foto 1 e combine com blusa/top de cor harmônica CONTRASTANTE (nunca igual à de baixo).\n');
 
   const frontalPoseDirectiveSeedream =
-    '[POSE OBRIGATÓRIA DE FRENTE]: A modelo deve estar POSICIONADA RIGOROSAMENTE DE FRENTE PARA O ESPELHO (front-facing), de corpo inteiro de frente. Da Foto de produto (Foto 1), extraia EXCLUSIVAMENTE a roupa e o tecido; É TERMINANTEMENTE PROIBIDO copiar pose de lado, de perfil ou ângulo da pessoa da foto de produto!\n';
+    '[POSE DE FRENTE]: Modelo de frente para o espelho. Extraia APENAS a roupa da Foto 1 (jamais copie pessoa, rosto ou pose da Foto 1).\n';
 
   let headerSeedream = '';
   if (params.isAnaMariaMode) {
     if (isPovModeSeedream) {
-      headerSeedream = '[MAPA POV: Imagem 1 = Cenário POV Cama intacto; Imagem 2 = Produto 1:1 manipulado apenas pelas duas mãos limpas sem tatuagens sobre a cama. PROIBIDO corpo/rosto/espelho].\n\n';
+      headerSeedream = `[MAPA POV: Imagem 1 = Cama/Cenário intacto; Imagem 2+ = Produto 1:1 com apenas duas mãos limpas sem tatuagens sobre a cama. PROIBIDO corpo/rosto/espelho].\n${isUltraRealismSeedream ? naturalSkinSeedream : ''}\n`;
     } else if (hasModelRefSeedream) {
       const isModelScenarioSeedream = (params.modelScenarioSource || 'model') === 'model';
       const isScenario24Seedream = Boolean(
@@ -1585,55 +1606,58 @@ async function generateImageWithSeedream(params: {
             params.prompt.includes('cenario_24'))
       );
       const flashRuleSeedream = isScenario24Seedream
-        ? '- [REGRA OBRIGATÓRIA DO CENÁRIO 24 — FLASH DO CELULAR SEMPRE LIGADO]: Na imagem gerada no Cenário 24, o FLASH DA CÂMERA TRASEIRA DO CELULAR da modelo DEVE ESTAR SEMPRE LIGADO E BRILHANDO INTENSAMENTE no espelho (ponto luminoso branco intenso com estrela de luz), iluminando frontalmente a modelo e a peça de roupa contra o fundo mais escuro do Cenário 24, independentemente de qual modelo foi escolhida!\n'
+        ? '- [CENÁRIO 24 FLASH]: Flash traseiro do celular SEMPRE LIGADO brilhando no espelho iluminando modelo e roupa.\n'
         : '';
       const faceFramingRuleSeedream = allowsFaceSeedream
-        ? '- A modelo fotografada DEVE SER A MESMA MULHER DA FOTO 2. O rosto da modelo da Foto 2 DEVE APARECER IDENTICAMENTE, reproduzindo 100% a mesma face, olhos, nariz, boca, expressão e cabelos da mulher da Foto 2 (PROIBIDO cortar o rosto ou a cabeça!).\n'
-        : '- A modelo fotografada DEVE SER RIGOROSAMENTE A MESMA MULHER DA FOTO 2 (mesmo corpo, mesmas curvas, mesmo quadril, mesma cintura, mesmo busto, mesmas pernas, mesmo tom de pele, mesmos cabelos caindo nos ombros e mesma postura de selfie da Foto 2). PROIBIÇÃO ABSOLUTA DE MOSTRAR ROSTO (MODO MIRROR SELFIE SEM ROSTO): É TERMINANTEMENTE PROIBIDO mostrar ou inventar o rosto, olhos, nariz ou testa! Mantenha RIGOROSAMENTE o enquadramento sem rosto da Foto 2 (corte exato na altura da base do queixo para baixo ou rosto 100% oculto pelo celular exatamente como na Foto 2 — NUNCA desenhe cabeça ou rosto descoberto!).\n';
-      const modelPreserveDirectiveSeedream =
-        '[IDENTIDADE E ENQUADRAMENTO DA FOTO 2 (MODELO 1:1)]:\n' +
-        faceFramingRuleSeedream +
-        flashRuleSeedream +
-        '- ISOLAMENTO DA FOTO 1 (PRODUTO): Extrair EXCLUSIVAMENTE a peça de roupa completa e tecido da Foto 1 (preservando 100% o padrão de estampa, textura, costuras, recortes, formato e comprimento integral de cima a baixo sem encurtar a barra); é TERMINANTEMENTE PROIBIDO copiar, mesclar ou misturar o rosto ou a pessoa da Foto 1! ZERO mistura com a pessoa da Foto 1. É TERMINANTEMENTE PROIBIDO copiar tatuagens, marcas corporais ou desenhos da pessoa da Foto 1. A modelo DEVE ter pele 100% limpa, ZERO TATUAGENS no corpo todo.\n' +
-        '- CALÇADO (SEM ENCURTAR A PEÇA E EM COR CONTRASTANTE SE PRÓXIMO À ROUPA): Substitua qualquer sapato/tênis original da Foto 2 pelo calçado especificado no prompt APENAS quando o comprimento original da peça na Foto 1 deixar os pés visíveis (NUNCA encurte ou coma a parte de baixo da peça para mostrar os pés!). O calçado NUNCA pode ser da mesma cor da peça de roupa que fica próxima ou encostando nele — deve ser em cor contrastante e que combine (ex.: se a calça for branca, o calçado deve ser de outra cor contrastante e não branco).\n';
+        ? '- FOTO 2 (MODELO COM ROSTO): Mesma mulher e mesmo rosto/olhos/boca/cabelo/corpo da Foto 2 (proibido cortar rosto).\n'
+        : '- FOTO 2 (MODELO SEM ROSTO): Mesma mulher/corpo/cabelo/pose da Foto 2. PROIBIDO mostrar rosto, olhos, nariz ou boca (corte no queixo ou oculto pelo celular exatamente como na Foto 2).\n';
 
       if (isModelScenarioSeedream) {
         headerSeedream =
-          `${modelPreserveDirectiveSeedream}${naturalSkinSeedream}` +
-          '[MAPA TÉCNICO DE REFERÊNCIA 2 IMAGENS — PRESERVAÇÃO INTEGRAL DE MODELO E CENÁRIO]:\n' +
-          '- Foto 1 (PRODUTO): É a roupa que a modelo DEVE vestir com máxima fidelidade 1:1 (PROIBIDO copiar rosto, pessoa ou pose da Foto 1).\n' +
-          '- Foto 2 (MODELO E CENÁRIO BASE ABSOLUTO): A imagem gerada DEVE SER RIGOROSAMENTE A MESMA MULHER DA FOTO 2, NA MESMA POSE E DENTRO DO MESMO CÔMODO DA FOTO 2. Preserve 100% o corpo, curvas, biotipo, cabelos, pose, enquadramento e TODO O CENÁRIO DE FUNDO da Foto 2 (paredes, piso, espelho, portas e iluminação intactos). Única alteração: trocar a roupa dela pela roupa da Foto 1 e o calçado.\n' +
-          `${SCENARIO_RELIGHT_INTEGRATION_DIRECTIVE}\n` +
-          `${clothingDirectiveSeedream}\n\n`;
+          '[MAPA 2 IMAGENS — FOTO 1 PRODUTO | FOTO 2 MODELO + CENÁRIO BASE]:\n' +
+          faceFramingRuleSeedream +
+          flashRuleSeedream +
+          '- Foto 1: Extrair EXCLUSIVAMENTE a peça de roupa integral sem encurtar (ignorar 100% pessoa/rosto/tatuagens da Foto 1).\n' +
+          '- Foto 2: Preservar 100% modelo, pose, quarto, paredes, piso e luz; trocar apenas a roupa pela Foto 1 e o calçado (cor contrastante com a barra, se pés visíveis).\n' +
+          `${naturalSkinSeedream}${clothingDirectiveSeedream}\n`;
       } else {
         headerSeedream =
-          `${modelPreserveDirectiveSeedream}${naturalSkinSeedream}` +
-          '[FOTOGRAFIA ÚNICA NATIVA 3 IMAGENS — INTEGRAÇÃO ÓPTICA E GEOMÉTRICA]:\n' +
-          '- Foto 1 (PRODUTO): É a roupa que a modelo DEVE vestir com máxima fidelidade 1:1 (PROIBIDO copiar rosto, pessoa ou pose da Foto 1).\n' +
-          '- Foto 2 (IDENTIDADE E POSTURA DA MODELO): Preserve 100% a mesma mulher da Foto 2 (mesmo corpo, curvas, biotipo, cabelos, tom de pele, postura de selfie e regra de rosto/corte acima). DESCARTE 100% a roupa antiga, o tênis antigo, o cenário antigo e a iluminação/parede branca original da Foto 2!\n' +
-          '- Foto 3 (CENÁRIO E CAMPO DE LUZ SOBERANO): Fotografe a mulher fisicamente em pé sobre o piso real dentro do cômodo exato da Foto 3 em uma única exposição de câmera, alinhando perspectiva 3D, escala e sombras reais no chão.\n' +
-          `${SCENARIO_RELIGHT_INTEGRATION_DIRECTIVE}\n` +
-          `${clothingDirectiveSeedream}\n\n`;
+          '[MAPA 3 IMAGENS — FOTO 1 PRODUTO | FOTO 2 MODELO | FOTO 3 CENÁRIO REAL]:\n' +
+          faceFramingRuleSeedream +
+          flashRuleSeedream +
+          '- Foto 1: Apenas a roupa 1:1 sem encurtar (zero pessoa/rosto/tatuagens da Foto 1).\n' +
+          '- Foto 2: Apenas corpo, curvas, cabelos, pose e regra facial (DESCARTAR roupa antiga, tênis, quarto e parede branca da Foto 2).\n' +
+          '- Foto 3: Inserir a modelo em captura única nativa em pé sobre o piso real deste cômodo, usando a luz/temperatura da Foto 3, sombra de contato nos pés e bordas orgânicas sem contorno branco.\n' +
+          `${naturalSkinSeedream}${clothingDirectiveSeedream}\n`;
       }
     } else {
       headerSeedream =
         `${faceDirectiveSeedream}${naturalSkinSeedream}${frontalPoseDirectiveSeedream}` +
-        '[MAPA TÉCNICO DE REFERÊNCIA]: Imagem 1 = Cenário real fixo intacto; Imagem 2+ = Peça de roupa 1:1 (ESTRITO: É TERMINANTEMENTE PROIBIDO copiar o corpo da modelo ou manequim da foto de produto na Imagem 2+; o corpo, biotipo e curvas da modelo DEVEM vir 100% e exclusivamente da descrição do prompt selecionado abaixo, sem nenhuma predefinição externa)].\n' +
-        `${SCENARIO_RELIGHT_INTEGRATION_DIRECTIVE}\n` +
-        `${clothingDirectiveSeedream}\n\n`;
+        '[MAPA]: Img 1 = Cenário fixo intacto; Img 2+ = Peça 1:1 (biotipo vem exclusivamente do prompt abaixo). Fotografia única nativa com luz e sombras integradas ao cenário.\n' +
+        `${clothingDirectiveSeedream}\n`;
     }
   } else {
     headerSeedream = `${IMAGE_REFERENCE_FIDELITY_HEADER}\n\n`;
   }
 
   const fabricSpecSeedream = analyzeAnaMariaProductInfo(params.productInfo, params.fabricType);
-  const fabricBlockSeedream = fabricSpecSeedream.hasInfo
-    ? `${fabricSpecSeedream.compactLineEn}\n${fabricSpecSeedream.promptBlockPt}\n\n`
+  const fabricBlockSeedream = fabricSpecSeedream.hasInfo && !params.prompt.includes(fabricSpecSeedream.compactLinePt)
+    ? `${fabricSpecSeedream.compactLineEn}\n\n`
+    : fabricSpecSeedream.hasInfo
+    ? `${fabricSpecSeedream.compactLineEn}\n\n`
     : '';
+
+  const ultraRealismSeedream =
+    isUltraRealismSeedream && !(params.prompt && params.prompt.includes('ULTRA PHOTOREALISM'))
+      ? `\n\n${buildUltraPhotorealismBlock({
+          isMale: isMaleSeedream,
+          isPov: isPovModeSeedream,
+        })}`
+      : '';
 
   const payload: any = {
     model: 'dola-seedream-5-0-pro-260628',
-    prompt: `${fabricBlockSeedream}${refImages.length > 0 ? `${headerSeedream}${params.prompt}` : params.prompt}`,
+    prompt: `${fabricBlockSeedream}${refImages.length > 0 ? `${headerSeedream}${params.prompt}` : params.prompt}${ultraRealismSeedream}`,
     size: '1440x2560',
     response_format: 'url',
     watermark: false,
@@ -1842,7 +1866,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
     const selectedModelGalleryNumber = req.body?.selectedModelGalleryNumber;
 
     const effectiveScenarioPhotoBase64 = isAnaMariaMode
-      ? getEffectiveScenarioBase64(
+      ? await getEffectiveScenarioBase64(
           scenarioPhotoBase64,
           selectedScenarioNumber,
           selectedScenarioId,
@@ -1856,13 +1880,13 @@ app.post('/api/generate-scene-image', async (req, res) => {
     if (generateModelViaPrompt) {
       effectiveModelReferenceBase64 = undefined;
     } else if (isAnaMariaMode && selectedModelGalleryNumber && !isLockedGeneratedBase) {
-      const diskModel = getGalleryModelBase64(selectedModelGalleryNumber, presentationMode);
+      const diskModel = await getGalleryModelBase64(selectedModelGalleryNumber, presentationMode);
       if (diskModel) {
         effectiveModelReferenceBase64 = diskModel;
       }
     } else if (isAnaMariaMode && (!effectiveModelReferenceBase64 || effectiveModelReferenceBase64.length < 50)) {
       if (selectedModelGalleryNumber) {
-        effectiveModelReferenceBase64 = getGalleryModelBase64(selectedModelGalleryNumber, presentationMode);
+        effectiveModelReferenceBase64 = await getGalleryModelBase64(selectedModelGalleryNumber, presentationMode);
       }
     }
 
@@ -1914,6 +1938,8 @@ app.post('/api/generate-scene-image', async (req, res) => {
       }
     }
 
+    const ultraRealism = Boolean(req.body?.ultraRealism);
+
     if (requestedImageModel === 'seedream_5_0_pro') {
       const seedreamResult = await generateImageWithSeedream({
         prompt: effectivePrompt,
@@ -1927,6 +1953,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
         presentationMode,
         selectedMasterId,
         bodyType,
+        ultraRealism,
         scenarioPhotoBase64: effectiveScenarioPhotoBase64,
         modelScenarioSource,
       });
@@ -1953,6 +1980,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
       presentationMode,
       selectedMasterId,
       bodyType,
+      ultraRealism,
       variationName,
       productType,
       targetAngle,
@@ -2975,60 +3003,38 @@ TAMANHO OBRIGATÓRIO: Estritamente entre ${minLimit} e ${maxLimit} caracteres (i
         const client = (openAIProvider as any).getClient();
         if (client) {
           const maxLimit = duration === 8 ? 165 : 235;
-          const auroraSystem = `Você é a AURORACOPY, uma especialista em copy curta para vídeos de TikTok Shop Brasil.
-Sua função é transformar as INFORMAÇÕES DO PRODUTO fornecidas pelo usuário em uma única fala de alta retenção, natural, específica e persuasiva, pronta para ser usada como narração de vídeo.
+          const auroraSystem = `Você é um Especialista em UGC para TikTok Shop no Brasil.
+Crie UMA fala de vídeo comercial (hook + descoberta + benefício principal + demonstração + desejo + CTA leve: "dá uma olhada nisso", "olha como funciona", "eu deixei aqui", "vale a pena ver", "clica pra ver").
+Regras:
+- Nunca use tom de propaganda, locução institucional ou descrição de marketplace.
+- Ignore preço, desconto, cupom, frete grátis e parcelamento.
+- Use exclusivamente detalhes reais fornecidos pelo usuário. Não invente especificações.
+- Português do Brasil oral, simples, natural e espontâneo; varie os hooks.
+- Respeite estritamente o limite de caracteres solicitado, sem aspas, títulos ou explicações.`;
 
-OBJETIVO PRINCIPAL:
-Criar uma fala que pare o scroll, desperte curiosidade, valorize o principal benefício do produto e faça a pessoa querer continuar assistindo ou conhecer o item.
+          const auroraUser = `PRODUTO: ${productName}
+INFORMAÇÕES REAIS: ${productInfo || productName}${additionalInstructions ? `\nINSTRUÇÕES ADICIONAIS: ${additionalInstructions}` : ''}
+DURAÇÃO: ${duration}s | FAÇA ENTRE ${duration === 8 ? '130 e 160' : '190 e 230'} CARACTERES (MÁXIMO ABSOLUTO: ${maxLimit} caracteres com espaços). Entregue SOMENTE a fala.`;
 
-ESTILO PADRÃO:
-Use prioritariamente o formato DESCOBERTA + DEMONSTRAÇÃO.
-A sensação deve ser de uma pessoa brasileira mostrando espontaneamente algo interessante que acabou de descobrir, testar ou perceber.
-A fala nunca deve parecer propaganda tradicional, locução institucional, descrição de marketplace ou texto corporativo.
-
-IGNORE COMO ARGUMENTO DE VENDA:
-Preço, desconto, cupom, frete grátis, parcelamento, promoção financeira. Mesmo que estejam presentes, não baseie a copy neles.
-
-BENEFÍCIO:
-Selecione o benefício com maior potencial de gerar curiosidade, ser demonstrado e produzir resultado visual concreto.
-
-ESTRUTURA DA FALA:
-1. HOOK FORTE (abrir com surpresa, curiosidade ou reação espontânea).
-2. DESCOBERTA (sensação de novidade ou teste real).
-3. BENEFÍCIO PRINCIPAL.
-4. DEMONSTRAÇÃO (combinar com produto sendo mostrado em uso).
-5. CURIOSIDADE OU DESEJO.
-6. CTA LEVE ("dá uma olhada nisso", "olha como funciona", "eu deixei aqui", "vale a pena ver", "clica pra ver").
-
-LIMITE RÍGIDO DE CARACTERES:
-No MÁXIMO ${maxLimit} caracteres contando espaços e pontuação.
-Faixa preferencial: ${duration === 8 ? '130 a 160' : '190 a 230'} caracteres.
-Antes de responder: conte os caracteres; se ultrapassar ${maxLimit}, reescreva; nunca corte a frase no meio; nunca entregue texto incompleto.
-
-LINGUAGEM:
-Português do Brasil oral, simples, espontâneo, natural. Varie os hooks (não comece sempre com "Gente" ou "Olha isso").
-Use detalhes reais presentes nas informações do produto. NUNCA invente características.
-
-FORMATO DE SAÍDA:
-Entregue SOMENTE a fala final, sem aspas, sem títulos, sem explicações, sem contagem de caracteres.`;
-
-          const auroraUser = `INFORMAÇÕES DO PRODUTO:
-${productInfo || productName}
-
-NOME DO PRODUTO: ${productName}
-${additionalInstructions ? `INSTRUÇÕES ADICIONAIS: ${additionalInstructions}` : ''}
-DURAÇÃO MÁXIMA DO VÍDEO: ${duration} segundos. Limite estrito: até ${maxLimit} caracteres.`;
-
-          const comp = await client.chat.completions.create({
-            model: OPENAI_BRAIN_MODEL,
-            messages: [
-              { role: 'system', content: auroraSystem },
-              { role: 'user', content: auroraUser },
-            ],
-            temperature: 0.7,
-          });
-
-          let rawSpeech = comp.choices[0]?.message?.content?.trim() || '';
+          const auroraModels = ['gpt-4o-mini', 'gpt-4o', OPENAI_BRAIN_MODEL];
+          let rawSpeech = '';
+          for (const auroraModel of auroraModels) {
+            try {
+              const isReasoning = auroraModel.startsWith('gpt-5') || auroraModel.startsWith('o');
+              const comp = await client.chat.completions.create({
+                model: auroraModel,
+                messages: [
+                  { role: 'system', content: auroraSystem },
+                  { role: 'user', content: auroraUser },
+                ],
+                ...(isReasoning ? { max_completion_tokens: 450 } : { max_tokens: 320, temperature: 0.7 }),
+              });
+              rawSpeech = comp.choices[0]?.message?.content?.trim() || '';
+              if (rawSpeech) break;
+            } catch (mErr: any) {
+              console.warn(`Aurora Copy falhou em ${auroraModel}:`, mErr?.message || mErr);
+            }
+          }
           rawSpeech = rawSpeech.replace(/^["'«“]|["'»”]$/g, '').trim();
           if (rawSpeech) {
             if (rawSpeech.length > maxLimit) {
@@ -3263,7 +3269,7 @@ Retorne APENAS um objeto JSON válido com as chaves:
  * de qualquer logomarca, emblema ou nome da marca impresso no produto, garantindo que o
  * gerador de imagem do Storyboard nunca apague a logo do fabricante.
  */
-const logoSpecCache = new Map<string, string>();
+const logoSpecCache = createBoundedMap<string, string>(120);
 
 async function extractManufacturerLogoSpecFromPhotos(
   photosList: string[],
@@ -3273,8 +3279,9 @@ async function extractManufacturerLogoSpecFromPhotos(
 
   const p0 = photosList[0] || '';
   const cacheKey = `${(productName || '').trim().toLowerCase()}::${p0.length}::${p0.slice(-80)}`;
-  if (logoSpecCache.has(cacheKey)) {
-    return logoSpecCache.get(cacheKey) || '';
+  const cachedLogoSpec = logoSpecCache.get(cacheKey);
+  if (cachedLogoSpec !== undefined) {
+    return cachedLogoSpec;
   }
 
   const promptLogo = `Inspecione as fotos de referência do produto "${productName}".
@@ -3289,28 +3296,30 @@ Retorne ESTRITAMENTE um JSON:
   if (openAIProvider.isConfigured()) {
     try {
       const client = (openAIProvider as any).getClient();
-      const contentBlocks: any[] = [];
-      photosList.slice(0, 2).forEach((photo, idx) => {
-        contentBlocks.push({
-          type: 'image_url',
-          image_url: {
-            url: photo.startsWith('data:') ? photo : `data:image/jpeg;base64,${photo}`,
-            detail: idx === 0 ? 'high' : 'low',
-          },
-        });
-      });
+      const targetPhotos = photosList.slice(0, 2);
+      const optimizedPhotos = await Promise.all(
+        targetPhotos.map((photo, idx) => optimizeImageDataUriForVision(photo, idx === 0 ? 'high' : 'low'))
+      );
+      const contentBlocks: any[] = optimizedPhotos.map((optUrl, idx) => ({
+        type: 'image_url',
+        image_url: {
+          url: optUrl,
+          detail: idx === 0 ? 'high' : 'low',
+        },
+      }));
       contentBlocks.push({ type: 'text', text: promptLogo });
 
       for (const m of ['gpt-4o-mini', 'gpt-4o', OPENAI_AUDIT_MODEL || 'gpt-5.6-luna', OPENAI_BRAIN_MODEL]) {
         try {
+          const isReasoning = m.startsWith('gpt-5') || m.startsWith('o');
           const r = await client.chat.completions.create({
             model: m,
             messages: [{ role: 'user', content: contentBlocks }],
             response_format: { type: 'json_object' },
+            ...(isReasoning ? { max_completion_tokens: 350 } : { max_tokens: 250, temperature: 0.1 }),
           });
           const parsed = JSON.parse(r.choices[0]?.message?.content || '{}');
           const spec = parsed?.hasManufacturerLogo && parsed?.logoSpec ? String(parsed.logoSpec).trim() : '';
-          if (logoSpecCache.size > 200) logoSpecCache.clear();
           logoSpecCache.set(cacheKey, spec);
           return spec;
         } catch {
@@ -3559,62 +3568,42 @@ O usuário anexou fotos de referência do produto em ${activeVariations.length} 
   * O que NÃO pode acontecer é gerar no storyboard imagens do produto com aparência, formato, logomarca ou COR DIFERENTE DE TODAS AS VARIAÇÕES ANEXADAS (por exemplo: aparecer uma cor que não existe em nenhuma das variações anexadas, ou alterar o formato/logomarca do produto em relação às fotos de referência daquela variação).`
         : '';
 
-    const auditSystemInstruction = `Você é o Fiscal Rigoroso de Fidelidade Visual de Produtos (Storyboard ${gridDescription}).
-Sua missão é inspecionar CADA UM DOS ${quadrantCount} QUADRANTES (numerados de 1 a ${quadrantCount}) da imagem de Storyboard gerada e comparar o produto com as FOTOS REAIS DE REFERÊNCIA do produto "${productName}".
+    // Instrução de sistema 100% ESTÁTICA para ativar OpenAI Prompt Caching entre auditorias/retries
+    const auditSystemInstruction = `Você é o Fiscal Rigoroso de Fidelidade Visual de Produtos para Storyboards (TikTok Shop).
+Sua missão é inspecionar CADA QUADRANTE numerado da imagem de Storyboard gerada e comparar o produto com as FOTOS REAIS DE REFERÊNCIA.
 
 PASSO 1 — VERIFICAÇÃO DA LOGOMARCA DO FABRICANTE NAS FOTOS DE REFERÊNCIA:
-Primeiro, olhe com atenção máxima para as FOTOS DE REFERÊNCIA REAIS do produto e identifique se o produto possui alguma LOGOMARCA, EMBLEMA, ESCUDO, SÍMBOLO ou NOME DA MARCA impresso/estampado/gravado nele (por exemplo: logomarca branca no topo do encosto de um banco de exercícios, logo na lateral, emblema frontal, rótulo, etc.).
+Primeiro, examine as FOTOS DE REFERÊNCIA REAIS e identifique se o produto possui LOGOMARCA, EMBLEMA, ESCUDO, SÍMBOLO ou NOME DA MARCA impresso/estampado/gravado.
 - Preencha "hasReferenceLogo": true ou false.
-- Preencha "referenceLogoDescription": descrição exata da logomarca original vista na foto de referência e em qual parte do produto ela fica (ex: "Logomarca geométrica branca em formato de escudo no topo do encosto preto").
+- Preencha "referenceLogoDescription": descrição exata da logomarca original e em qual parte do produto ela fica.
 
-PASSO 2 — REGRAS DE OURO DA FISCALIZAÇÃO POR QUADRANTE (CENA 1 A CENA ${quadrantCount}):
-1. Se em algum quadrante aparecer SOMENTE o modelo/pessoa ou SOMENTE o cenário, SEM o produto aparecer (especialmente no Quadrante 1 / Cena 1, que é o Hook de atenção inicial liberado para não mostrar o produto):
-   - "productVisible": false
-   - "logoPartVisible": false
-   - "logoFaithful": true
-   - "score": 100
+PASSO 2 — REGRAS DE OURO DA FISCALIZAÇÃO POR QUADRANTE:
+1. Se em algum quadrante aparecer SOMENTE o modelo/pessoa ou SOMENTE o cenário, SEM o produto aparecer (especialmente no Quadrante 1 Hook):
+   - "productVisible": false, "logoPartVisible": false, "logoFaithful": true, "score": 100
    - "issue": "Cena X: Apenas modelo/cenário (sem produto visível — Hook/Abertura — OK)"
 2. Em TODOS os quadrantes onde o produto aparece ("productVisible": true), avalie com rigor máximo em escala INTEIRA de 0 a 100:
-   - VERIFICAÇÃO CRÍTICA DE LOGOMARCA DO FABRICANTE ("logoPartVisible" e "logoFaithful"):
-     * Se a parte específica do produto onde fica a logomarca nas fotos de referência (ex: a face frontal superior do encosto do banco) está visível e desobstruída naquele quadrante, marque "logoPartVisible": true.
-     * Se o quadrante é um close em outra parte do produto onde não há logo na foto original (ex: pino de ajuste, base inferior, pés, verso) OU se a pessoa está deitada/apoiada cobrindo exatamente o local da logo, marque "logoPartVisible": false, "logoFaithful": true e avalie a nota (90 a 98 se a parte visível estiver fiel à foto de referência!).
-     * Quando "logoPartVisible": true, verifique se a logomarca original do fabricante está presente e idêntica naquele quadrante!
-     * SE "logoPartVisible": true E A LOGOMARCA DO FABRICANTE FOI REMOVIDA, APAGADA, DEIXADA LISA OU ALTERADA naquele quadrante:
-       -> Marque OBRIGATORIAMENTE "logoFaithful": false!
-       -> Dê OBRIGATORIAMENTE uma nota BAIXA entre 45 e 58 (VERMELHO, abaixo de 60) para aquele quadrante! NUNCA dê nota alta se a parte da logo está visível e a logo sumiu!
-        -> No campo "issue" (SEMPRE EM PORTUGUÊS), escreva claramente: "Na Cena X, o produto está diferente: a logomarca original do fabricante ([descreva a logo e onde fica, ex: no encosto]) foi removida e não aparece como na foto de referência."
-   - COMPARAÇÃO NOS 5 GRUPOS PERICIAIS DO DETECTOR (ALINHAMENTO TOTAL COM O AUDITOR DE VÍDEO):
-     * Grupo 1 (Identidade e Modelo): Verifique se é rigorosamente o mesmo modelo e silhueta das fotos de referência anexadas.
-     * Grupo 2 (Estrutura Física, Componentes e Kits): Verifique corpo principal, base, conexões, cabos/fios, alças, tampas, bicos, fechos, botões, articulações e todas as peças individuais de kits. REGRA DE PRECISÃO: NÃO confunda oclusão natural e parcial pelos dedos/mão segurando a lateral com peça ausente, desde que a estrutura visível esteja íntegra e a mão não esteja fundida ao objeto.
-     * Grupo 3 (Design e Proporções): Verifique espessuras, curvaturas e comprimentos reais (sem confundir perspectiva natural ou distância da câmera com deformação).
-     * Grupo 4 (Cores, Materiais, Texturas e Acabamento): Verifique se a cor, textura e acabamento (fosco, brilhante, metálico) conferem com QUALQUER UMA das fotos/variações de referência anexadas pelo usuário (sem confundir iluminação quente/fria da cena ou sombras naturais com troca de cor).${variationsAuditRule}
-     * Grupo 5 (Funcionalidade e Separação Mão-Produto): Verifique se os dedos seguram o produto com contorno anatômico limpo, sem fusão/morphing com a peça.
-   - VERIFICAÇÃO DE QUANTIDADE (REGRA ANTI-PUNIÇÃO TIKTOK SHOP):
-     * Se o anúncio é de 1 produto único (ex.: 1 celular, 1 relógio, 1 perfume), NUNCA pode aparecer 2 ou mais unidades na mesma tela em nenhum quadrante. Se aparecerem 2 celulares ou 2 relógios na mesma cena, marque score < 60 e aponte no issue: "Na Cena X, a quantidade está incorreta: apareceram 2 unidades na mesma tela quando o anúncio é de apenas 1 unidade."
-     * Se o anúncio é kit de N unidades (ex.: kit de 4 pacotes), não podem aparecer 5 ou quantidade diferente na tela.
-   - PRODUTOS DE USO ORAL:
-     * Se for produto de uso oral (irrigador oral, escova, etc.), verifique se NÃO há close em dentes insinuando clareamento dental nem comparação de "antes e depois". Se houver close em dentes clareados, atribua score < 60 e aponte no issue.
-   - ROUPAS E VESTUÁRIO:
-     * Botões (quantidade, formato e cor), costuras, pespontos e padrão visual devem ser 100% idênticos às fotos de referência.
-   - TAMANHO REAL:
-     * O produto NÃO pode aparentar ser maior do que o produto mostrado nas fotos de referência reais.
-   - ÂNGULOS VISÍVEIS:
-     * O produto deve ser mostrado apenas nos ângulos visíveis nas referências. É proibido inventar traseira, laterais ou interior não fotografados.
-   - SITES E CÓDIGO DE BARRAS EM EMBALAGENS:
-     * É TERMINANTEMENTE PROIBIDO aparecer site, URL (ex.: www..., .com) ou código de barras/QR code em caixas, pacotes ou embalagens. Se aparecer site ou código de barras na embalagem em qualquer quadrante, marque score < 60 e aponte no issue: "Na Cena X, a embalagem contém site ou código de barras desenhado, o que é proibido."
-3. ESCALA INTEIRA DE NOTAS DE CADA QUADRANTE (0 a 100 — NUNCA use decimais de 0 a 1):
-   - 90 a 100 (VERDE): Produto 90%+ idêntico a qualquer uma das fotos/variações de referência anexadas (logomarca original presente e fiel quando a área aparece, quantidade exata, proporção realista e sem invenções).
-   - 71 a 89 (AMARELO): Produto com pequena variação leve de detalhe secundário.
-   - 60 a 70 (LARANJA): Diferença moderada de formato/cor ou logomarca parcialmente distorcida/apagada.
-   - Abaixo de 60 (VERMELHO): Logomarca original do fabricante removida/ausente em quadrante onde aquela parte está visível, quantidade incorreta na tela, clareamento dental não permitido em produtos orais, ou invenção de partes/ângulos não fotografados.
+   - LOGOMARCA DO FABRICANTE ("logoPartVisible" e "logoFaithful"):
+     * Se a parte específica onde fica a logo está visível e desobstruída, "logoPartVisible": true; se é close em outra parte ou coberta naturalmente pela pessoa/mão, "logoPartVisible": false e "logoFaithful": true.
+     * Quando "logoPartVisible": true e a logo foi removida, apagada, deixada lisa ou alterada: "logoFaithful": false, nota BAIXA entre 45 e 58 (< 60 VERMELHO) e explique em "issue" em português.
+   - 5 GRUPOS PERICIAIS DO DETECTOR:
+     * Grupo 1 (Identidade e Modelo): Mesmo modelo e silhueta exata das fotos de referência.
+     * Grupo 2 (Estrutura Física, Componentes e Kits): Corpo principal, base, conexões, cabos, alças, tampas, bicos, fechos, botões, articulações e peças de kits (sem confundir oclusão natural pelos dedos com peça ausente).
+     * Grupo 3 (Design e Proporções): Espessuras, curvaturas e comprimentos reais.
+     * Grupo 4 (Cores, Materiais, Texturas e Acabamento): Cor, textura e acabamento fiéis a QUALQUER UMA das fotos/variações de referência anexadas (tolerando iluminação quente/fria da cena).
+     * Grupo 5 (Funcionalidade e Separação Mão-Produto): Contorno anatômico limpo dos dedos sem fusão/morphing.
+   - REGRA PARA MÚLTIPLAS VARIAÇÕES ANEXADAS: Se houver 2+ variações/cores oficiais anexadas, qualquer quadrante cujo produto corresponda fielmente a QUALQUER UMA delas está 100% CERTO (90-100 VERDE). Reprove (< 60) apenas se divergir de TODAS as variações anexadas.
+   - QUANTIDADE (TIKTOK SHOP): Anúncio de 1 unidade nunca pode mostrar 2+ unidades na mesma tela (< 60); kits de N unidades devem respeitar N.
+   - USO ORAL: Sem close insinuando clareamento dental nem "antes e depois" (< 60).
+   - VESTUÁRIO: Botões, costuras, pespontos, estampa e padrão visual 100% idênticos.
+   - TAMANHO REAL e ÂNGULOS VISÍVEIS: Sem ampliar escala além do real nem inventar traseira/ângulos não fotografados.
+   - EMBALAGENS: Proibido aparecer site/URL ou código de barras/QR code (< 60).
+3. ESCALA INTEIRA (0 a 100, NUNCA decimais):
+   - 90 a 100 (VERDE): Produto 90%+ idêntico a qualquer referência anexada.
+   - 71 a 89 (AMARELO): Pequena variação leve de detalhe secundário.
+   - 60 a 70 (LARANJA): Diferença moderada de formato/cor ou logomarca parcialmente distorcida.
+   - Abaixo de 60 (VERMELHO): Logo removida com área visível, quantidade errada, clareamento dental, site/código de barras ou invenção estrutural.
 
-CONTEXTO DO PRODUCT LOCK ESPERADO:
-${lockContext}
-
-DESCRIÇÃO PLANEJADA DAS ${quadrantCount} CENAS:
-${scenesContext}
-
-Retorne ESTRITAMENTE um objeto JSON válido EM PORTUGUÊS com este formato exato:
+Retorne ESTRITAMENTE JSON válido EM PORTUGUÊS:
 {
   "hasReferenceLogo": true,
   "referenceLogoDescription": "string em português descrevendo a logomarca original e sua posição na foto de referência",
@@ -3628,8 +3617,7 @@ Retorne ESTRITAMENTE um objeto JSON válido EM PORTUGUÊS com este formato exato
       "issue": "Na Cena 1, o produto está diferente: a logomarca branca original do fabricante no encosto foi removida."
     }
   ]
-}
-O array "quadrants" DEVE conter exatamente ${quadrantCount} itens (sceneNumber 1 a ${quadrantCount}), com "issue" sempre em português do Brasil.`;
+}`;
 
     let rawQuadrants: any[] | null = null;
     let hasReferenceLogo = false;
@@ -3641,7 +3629,16 @@ O array "quadrants" DEVE conter exatamente ${quadrantCount} itens (sceneNumber 1
           const client = (openAIProvider as any).getClient();
           const contentBlocks: any[] = [];
 
+          contentBlocks.push({
+            type: 'text',
+            text: `PRODUTO AUDITADO: "${productName}" | GRADE: ${gridDescription} (${quadrantCount} quadrantes)\n${variationsAuditRule ? `${variationsAuditRule}\n` : ''}${lockContext ? `CONTEXTO DO PRODUCT LOCK:\n${lockContext}\n` : ''}${scenesContext ? `CENAS PLANEJADAS:\n${scenesContext}\n` : ''}O array "quadrants" DEVE conter exatamente ${quadrantCount} itens (sceneNumber 1 a ${quadrantCount}), com "issue" sempre em português do Brasil.`,
+          });
+
+          const seenPhotoKeys = new Set<string>();
+          const dedupKey = (raw: string) => `${raw.length}:${raw.slice(0, 48)}:${raw.slice(-24)}`;
+
           if (activeVariations.length >= 2) {
+            const varRefTasks: Array<{ varIdx: number; varName: string; pIdx: number; photo: string }> = [];
             activeVariations.forEach((v: any, idx: number) => {
               const varPhotos = Array.isArray(v.photos) && v.photos.length > 0
                 ? v.photos.filter(Boolean).slice(0, 2)
@@ -3651,57 +3648,66 @@ O array "quadrants" DEVE conter exatamente ${quadrantCount} itens (sceneNumber 1
                 ? [photosList[idx]]
                 : [];
               varPhotos.forEach((photo: string, pIdx: number) => {
-                contentBlocks.push({
-                  type: 'text',
-                  text: `[FOTO DE REFERÊNCIA REAL DA VARIAÇÃO ${idx + 1} ("${v.name || 'Variação ' + (idx + 1)}") — FOTO #${pIdx + 1}: QUALQUER QUADRANTE QUE RETRATE O PRODUTO IDÊNTICO A ESTA VARIAÇÃO ESTÁ 100% CORRETO E APROVADO]:`,
-                });
-                contentBlocks.push({
-                  type: 'image_url',
-                  image_url: {
-                    url: photo.startsWith('data:') ? photo : `data:image/jpeg;base64,${photo}`,
-                    detail: pIdx === 0 ? 'high' : 'low',
-                  },
-                });
+                const dk = dedupKey(photo);
+                if (seenPhotoKeys.has(dk)) return;
+                seenPhotoKeys.add(dk);
+                varRefTasks.push({ varIdx: idx, varName: v.name || `Variação ${idx + 1}`, pIdx, photo });
               });
             });
-          } else {
-            photosList.slice(0, 4).forEach((photo: string, idx: number) => {
+            const optimizedVarRefs = await Promise.all(
+              varRefTasks.map((t) => optimizeImageDataUriForVision(t.photo, t.pIdx === 0 ? 'high' : 'low'))
+            );
+            varRefTasks.forEach((t, i) => {
               contentBlocks.push({
                 type: 'text',
-                text: `[FOTO DE REFERÊNCIA REAL DO PRODUTO #${idx + 1} — OBSERVE ATENTAMENTE O FORMATO, COR E A LOGOMARCA DO FABRICANTE IMPRESSA NO PRODUTO]:`,
+                text: `[REF VARIAÇÃO ${t.varIdx + 1} ("${t.varName}") — FOTO #${t.pIdx + 1}]:`,
               });
               contentBlocks.push({
                 type: 'image_url',
-                image_url: {
-                  url: photo.startsWith('data:') ? photo : `data:image/jpeg;base64,${photo}`,
-                  detail: idx === 0 ? 'high' : 'low',
-                },
+                image_url: { url: optimizedVarRefs[i], detail: t.pIdx === 0 ? 'high' : 'low' },
+              });
+            });
+          } else {
+            const uniquePhotos = photosList.slice(0, 4).filter((photo) => {
+              const dk = dedupKey(photo);
+              if (seenPhotoKeys.has(dk)) return false;
+              seenPhotoKeys.add(dk);
+              return true;
+            });
+            const optimizedPhotos = await Promise.all(
+              uniquePhotos.map((photo, idx) => optimizeImageDataUriForVision(photo, idx === 0 ? 'high' : 'low'))
+            );
+            optimizedPhotos.forEach((optUrl, idx) => {
+              contentBlocks.push({
+                type: 'text',
+                text: `[FOTO DE REFERÊNCIA REAL DO PRODUTO #${idx + 1}]:`,
+              });
+              contentBlocks.push({
+                type: 'image_url',
+                image_url: { url: optUrl, detail: idx === 0 ? 'high' : 'low' },
               });
             });
           }
 
+          const optimizedStoryboard = await optimizeImageDataUriForVision(storyboardImageBase64, 'high');
           contentBlocks.push({
             type: 'text',
-            text: `[IMAGEM GERADA — STORYBOARD COM ${quadrantCount} CENAS NUMERADAS DE 1 A ${quadrantCount} PARA FISCALIZAÇÃO]:`,
+            text: `[IMAGEM GERADA — STORYBOARD COM ${quadrantCount} CENAS NUMERADAS DE 1 A ${quadrantCount}]:`,
           });
           contentBlocks.push({
             type: 'image_url',
-            image_url: {
-              url: storyboardImageBase64.startsWith('data:')
-                ? storyboardImageBase64
-                : `data:image/png;base64,${storyboardImageBase64}`,
-              detail: 'high',
-            },
+            image_url: { url: optimizedStoryboard, detail: 'high' },
           });
 
           contentBlocks.push({
             type: 'text',
-            text: `Inspecione cada um dos ${quadrantCount} quadrantes (Cena 1 a Cena ${quadrantCount}) comparando com as fotos reais de referência. Lembre-se: se houver múltiplas variações anexadas, o produto é considerado 100% correto em qualquer quadrante desde que seja idêntico a QUALQUER UMA das variações anexadas! Só reprove se o produto tiver aparência, formato, logomarca ou cor diferente de TODAS as variações anexadas. Retorne o JSON em português.`,
+            text: `Inspecione cada um dos ${quadrantCount} quadrantes (1 a ${quadrantCount}) comparando com as fotos reais de referência e retorne JSON válido em português.`,
           });
 
           const modelsToTry = ['gpt-4o-mini', 'gpt-4o', OPENAI_AUDIT_MODEL || 'gpt-5.6-luna', OPENAI_BRAIN_MODEL];
           for (const modelCandidate of modelsToTry) {
             try {
+              const isReasoning = modelCandidate.startsWith('gpt-5') || modelCandidate.startsWith('o');
               const params: any = {
                 model: modelCandidate,
                 messages: [
@@ -3709,10 +3715,8 @@ O array "quadrants" DEVE conter exatamente ${quadrantCount} itens (sceneNumber 1
                   { role: 'user', content: contentBlocks },
                 ],
                 response_format: { type: 'json_object' },
+                ...(isReasoning ? { max_completion_tokens: 2200 } : { max_tokens: 1800, temperature: 0.15 }),
               };
-              if (!modelCandidate.startsWith('gpt-5') && !modelCandidate.startsWith('o')) {
-                params.temperature = 0.15;
-              }
               const completion = await client.chat.completions.create(params);
               const parsed = JSON.parse(completion.choices[0]?.message?.content || '{}');
               if (parsed && Array.isArray(parsed.quadrants) && parsed.quadrants.length > 0) {
@@ -3950,16 +3954,16 @@ async function handleProdutos2AuditVideoBatch(req: any, res: any) {
 
     const lockContext = Array.isArray(productLock) ? productLock.join('; ') : '';
 
+    // System instruction 100% ESTÁTICA para acertos de OpenAI Automatic Prompt Caching entre chunks do lote (chunk 1..5)
     const systemInstruction = `Você é o Perito Visual Chefe em Auditoria Forense de Produtos e Vestuário para TikTok Shop e E-commerce.
-O usuário anexou ${photosList.length} Foto(s) de Referência Oficiais com o corte, formato, modelagem, tecidos, aviamentos e cores do produto "${productName}".
-E anexou ${batchVideos.length} vídeo(s) gerados para aprovação em lote (até 25 vídeos).
+O usuário anexou Fotos de Referência Oficiais (com corte, formato, modelagem, tecidos, aviamentos e cores do produto) seguidas dos vídeos gerados para aprovação em lote.
 
 ═════════════════════════════════════════════════════════════════════════════════
 DIRETRIZ DE SEVERIDADE DO TIKTOK SHOP E PROTOCOLO PERICIAL DE INCONSISTÊNCIAS:
 ═════════════════════════════════════════════════════════════════════════════════
 
 ⚠️ 0. CONSOLIDAÇÃO PRÉVIA: FICHA VISUAL CONSOLIDADA DAS FOTOS DE REFERÊNCIA (CONJUNTO ÚNICO):
-Antes de comparar e julgar qualquer vídeo, examine TODAS as ${photosList.length} fotos de referência como um conjunto visual único:
+Antes de comparar e julgar qualquer vídeo, examine TODAS as fotos de referência como um conjunto visual único:
 - Mapeie mentalmente a Ficha Visual do produto: categoria, modelagem, corte, comprimento, silhueta e proporções.
 - Mapeie tecido, textura e acabamento: cetim/seda com brilho refletivo vs algodão/viscose fosca vs linho vs jeans vs malha canelada.
 - Mapeie estampas e padronagens: tecido 100% liso monocromático vs estampado (floral, flores miúdas, poá, listras, animal print, xadrez).
@@ -4004,131 +4008,48 @@ Antes de comparar e julgar qualquer vídeo, examine TODAS as ${photosList.length
     - Se a amarração traseira (laço, decote nas costas, alças cruzadas, zíper) for divergente da foto de referência traseira: REPROVAÇÃO IMEDIATA (score <= 25, status: "red")!
       Issue: "🔴 Reprovado: Amarração/detalhes das costas divergentes da referência oficial."
   * CASO 2: A MODELO VIRA DE COSTAS NO VÍDEO, MAS NENHUMA FOTO DE REFERÊNCIA MOSTRA O PRODUTO POR TRÁS:
-    - Como o gerador de IA pode ter inventado o design traseiro sem referência, o vídeo NÃO deve ser aprovado em verde silencioso nem reprovado direto, e sim DEVE OBRIGATORIAMENTE RECEBER SINAL LARANJA DE CUIDADO (status: "orange", score entre 72 e 76, approved: true, noRearPhotosWarning: true):
+    - O vídeo DEVE OBRIGATORIAMENTE RECEBER SINAL LARANJA DE CUIDADO (status: "orange", score entre 72 e 76, approved: true, noRearPhotosWarning: true):
       Issue: "🟠 Cuidado: Não há fotos de referência do produto na parte das costas. Verifique para não tomar violação."
 
-⚠️ REGRA DE FOCO RESTRITO NO PRODUTO ANUNCIADO ("${productName}"):
-- O usuário especificou no campo "Produto" o item "${productName}".
+⚠️ REGRA DE FOCO RESTRITO NO PRODUTO ANUNCIADO:
 - Muitas imagens de referência contêm a modelo vestindo look completo (ex: blusa + calça jeans + calçado).
-- SE O PRODUTO FOR ESPECIFICADO COMO UMA PEÇA ESPECÍFICA (Ex: "Blusa", "Cropped", "Camiseta", "Regata", "Calça", "Saia", "Shorts"):
-  * A perícia 1:1 DEVE FOCAR EXCLUSIVAMENTE NA PEÇA ESPECIFICADA ("${productName}")!
-  * Se o produto for "Blusa", calça, saia e calçados usados pela modelo no vídeo são apenas complementares e NÃO devem reprovar o vídeo se forem diferentes da foto de referência.
-  * Se o produto for "Calça", a blusa usada pela modelo no vídeo é complementar e NÃO deve reprovar o vídeo se for diferente da foto de referência.
+- SE O PRODUTO INFORMADO PELO USUÁRIO FOR UMA PEÇA ESPECÍFICA (Ex: "Blusa", "Cropped", "Camiseta", "Regata", "Calça", "Saia", "Shorts"):
+  * A perícia 1:1 DEVE FOCAR EXCLUSIVAMENTE NA PEÇA ESPECIFICADA pelo usuário!
+  * Peças complementares (ex: calça/saia/calçados quando produto é "Blusa", ou blusa quando produto é "Calça") NÃO devem reprovar o vídeo se forem diferentes da foto de referência.
   * Só avalie o look completo em conjunto se o produto for explicitamente "Conjunto", "Vestido", "Macacão" ou ambas as peças à venda.
 
 ⚠️ REGRA DE ENQUADRAMENTO PARA PEÇAS DA PARTE DE CIMA (BLUSA / CROPPED / CAMISETA / JAQUETA):
-- Quando o produto anunciado for uma blusa, blusinha, cropped, camiseta, regata, jaqueta ou qualquer peça que fica acima da cintura:
+- Quando o produto anunciado for uma peça acima da cintura:
   * Se o enquadramento do vídeo for de CORPO INTEIRO (mostrando pernas inteiras e calçados):
-    O vídeo NÃO DEVE receber bola vermelha de reprovado!
-    O vídeo DEVE OBRIGATORIAMENTE receber sinal AMARELO (status: "yellow", score entre 74 e 78, approved: true, upperPieceFullBodyFraming: true) com o parecer:
+    NÃO dê bola vermelha de reprovado! Dê obrigatoriamente sinal AMARELO (status: "yellow", score entre 74 e 78, approved: true, upperPieceFullBodyFraming: true) com o parecer:
     "🟡 Atenção: Possível reprovação porque o vídeo não enfoca a peça em questão (enquadramento de corpo inteiro para peça da parte de cima)."
 
 ═════════════════════════════════════════════════════════════════════════════════
 OS 5 GRUPOS FORENSES DE INSPEÇÃO COMPONENTE A COMPONENTE (TOLERÂNCIA ZERO):
 ═════════════════════════════════════════════════════════════════════════════════
+O PRODUTO NO VÍDEO DEVE SER RIGOROSA E EXATAMENTE O MESMO PRODUTO DAS FOTOS DE REFERÊNCIA OFICIAIS! Nunca aprove apenas por cor clara similar.
+1) COMPRIMENTO DA PEÇA / VESTIDO / SAIA: curto/mini vs mídi vs longo divergente -> score <= 20, status: "red", lengthDefect: true, wrongProduct: true.
+2) PEÇA DE CIMA / CROPPED: se a referência já for cropped/barriga à mostra, APROVE (refExposesBelly: true, topPieceLengthMismatch: false, approved: true, score >= 92). Reprove APENAS se na referência cobria a barriga e no vídeo encurtou virando cropped (ou vice-versa): topPieceLengthMismatch: true, refExposesBelly: false, score <= 35, status: "red".
+3) SHORTS vs SAIA: pernas juntas com barras individuais dobradas ou costura central É SHORTS (lowerPiece: 'shorts', isGenuineSkirt: false); só reprove como saia se tubo contínuo/sino sem pernas.
+4) ESTAMPA vs LISO & TECIDO/BRILHO: liso vs estampado -> wrongProduct: true, patternDefect: true, score <= 20; cetim brilhante vs tecido fosco -> fabricDefect: true, wrongProduct: true, score <= 25.
+5) BOTÕES, COSTURAS, BOLSOS, GOLAS, DECOTES, ALÇAS E FENDA: divergência de botões -> buttonsDefect: true, score <= 25; costuras/pespontos/nervuras -> seamsDefect: true, score <= 25; fenda inventada/omitida -> slitDefect: true, wrongProduct: true, score <= 20; degagê vs reto/franzido ou amarração virando bufante -> wrongProduct: true, score <= 25.
+6) COR & ILUMINAÇÃO: tolerar luz quente/fria se for o mesmo produto; reprovar cor inteiramente divergente da cartela (score <= 40).
+7) CONTINUIDADE DE IA: peça que some, mutação ou tecido fundindo com a mão -> aiMorphingDefect: true, score <= 30.
 
-O PRODUTO NO VÍDEO DEVE SER RIGOROSA E EXATAMENTE O MESMO PRODUTO DAS FOTOS DE REFERÊNCIA OFICIAIS!
-Você NUNCA deve aprovar um produto apenas porque ele tem a mesma cor base (ex: ambos são claros, brancos ou beges) se a peça for diferente!
-
-GRUPO 1: IDENTIDADE, MODELO E SILHUETA:
-1) COMPRIMENTO DA PEÇA / VESTIDO / SAIA (CURTO/MINI vs MÍDI vs LONGO):
-   - Se a referência for vestido CURTO / MINI (acima do joelho) e o vídeo mostrar vestido MÍDI (abaixo do joelho / canela) ou LONGO: REPROVAÇÃO IMEDIATA (score <= 20, status: "red", lengthDefect: true, wrongProduct: true)!
-   - Se a referência for vestido LONGO ou MÍDI e o vídeo for CURTO/MINI: REPROVAÇÃO IMEDIATA!
-   - Issue: "🔴 Reprovado: Comprimento divergente da referência oficial (referência é vestido curto/mini, mas o vídeo mostra vestido mídi cobrindo os joelhos)."
-2) REGRA DE COMPRIMENTO DA PEÇA DE CIMA E CONJUNTOS CROPPED (ZERO FALSAS REPROVAÇÕES):
-   - A BARRIGA DE FORA EM SI NÃO É PROBLEMA E NUNCA É MOTIVO DE REPROVAÇÃO!
-   - PASSO 1: Olhe as fotos de referência oficiais. A peça é um CROPPED, TOP CURTO ou CONJUNTO com a barriga/cintura à mostra?
-     * Se SIM (a referência oficial já é cropped ou mostra a barriga):
-       O VÍDEO COM TOP CROPPED E BARRIGA À MOSTRA É 100% CORRETO E IDÊNTICO À REFERÊNCIA!
-       Marque OBRIGATORIAMENTE: "refExposesBelly": true, "topPieceLengthMismatch": false, "approved": true, status: "green", score >= 92!
-       É TERMINANTEMENTE PROIBIDO reprovar alegando "Peça de cima mais curta que a referência" quando a própria referência já for cropped ou já mostrar a barriga!
-   - PASSO 2: A divergência de comprimento ("topPieceLengthMismatch": true) SÓ DEVE SER MARCADA se:
-     * A foto de referência oficial era uma blusa/camisa/camiseta que cobria toda a barriga/cós, MAS no vídeo foi encurtada mostrando a barriga que originalmente estava coberta; OU
-     * A referência oficial era um cropped curto com barriga à mostra, MAS no vídeo foi alongada até o quadril cobrindo a barriga.
-     * Se houver essa divergência real contra a referência: REPROVAÇÃO IMEDIATA (score <= 35, status: "red", topPieceLengthMismatch: true, refExposesBelly: false)!
-       Issue: "🔴 Reprovado: Peça de cima com comprimento divergente da referência oficial (blusa encurtada virando cropped enquanto a referência cobria a barriga)."
-3) SHORTS/BERMUDA vs SAIA (ZERO FALSAS REPROVAÇÕES):
-   - Em poses de pernas juntas/coxas encostadas em frente ao espelho, NÃO É SAIA se houver barras dobradas individuais em cada coxa, bolsos laterais faca ou costura central vertical do gancho. Marque lowerPiece: "shorts", isGenuineSkirt: false e aprove.
-   - SÓ reprove como saia se for comprovadamente uma saia genuína (sino rodado contínuo ou tubo de tecido sem barras individuais e sem entrepernas).
-
-GRUPO 2: ESTRUTURA FÍSICA, COMPONENTES E AVIAMENTOS:
-4) BOTÕES E FECHAMENTOS:
-   - Presença, ausência, quantidade, formato e cor dos botões (ex: botões frontais dourados, madrepérola, transparentes, forrados).
-   - Se a referência tem botões e o vídeo omitir, ou se o vídeo inventar botões onde a referência era lisa, ou botões de cor/tipo divergente: REPROVAÇÃO IMEDIATA (score <= 20, status: "red", buttonsDefect: true, wrongProduct: true)!
-   - Issue: "🔴 Reprovado: Botões divergentes da referência oficial."
-5) COSTURAS, PESPONTOS E NERVURAS:
-   - Se a referência tiver costura central vertical (gancho/braguilha em shorts, nervuras frontais no busto ou saia) e o vídeo omitir, ou inventar costuras inexistentes: REPROVAÇÃO IMEDIATA (score <= 25, status: "red", seamsDefect: true)!
-   - Issue: "🔴 Reprovado: Detalhes de costura e pespontos divergentes da referência oficial."
-6) ZÍPERES E BOLSOS:
-   - Bolsos inventados onde a peça é lisa, ou bolsos marcantes da referência omitidos no vídeo: REPROVAÇÃO IMEDIATA (score <= 25, status: "red", pocketsDefect: true)!
-   - Zíper de modelo ou localização incompatível: REPROVAÇÃO IMEDIATA!
-7) GOLAS, DECOTES, ALÇAS E MANGAS:
-   - Se o decote da referência for drapeado/degagê (cowl neck) com alcinhas e o vídeo tiver decote reto franzido com elástico (ou vice-versa): REPROVAÇÃO IMEDIATA (score <= 25, status: "red", wrongProduct: true)!
-   - Se a alça na referência for amarração de tecido simples e no vídeo virar manga bufante, babado volumoso ou volante inventado: REPROVAÇÃO IMEDIATA (score <= 35, status: "red")!
-8) FENDA NA PERNA / ABERTURAS LATERAIS:
-   - Se o vestido/saia no vídeo tiver uma FENDA na coxa/perna e a referência NÃO tem fenda (ou vice-versa): REPROVAÇÃO IMEDIATA (score <= 20, status: "red", slitDefect: true, wrongProduct: true)!
-   - Issue: "🔴 Reprovado: Fenda na perna inexistente na referência oficial."
-
-GRUPO 3: TECIDO, ACABAMENTO, TEXTURA E ESTAMPA:
-9) ESTAMPA vs TECIDO LISO (GRAVÍSSIMO):
-   - Se a referência oficial for LISA (tecido monocromático, sem estampas) e a roupa no vídeo tiver qualquer estampa (floral, flores miúdas ou grandes, poá, listras, animal print, xadrez, etc.): REPROVAÇÃO IMEDIATA (score <= 20, status: "red", patternDefect: true, wrongProduct: true)!
-   - Se a referência for estampada e o vídeo for liso: REPROVAÇÃO IMEDIATA!
-   - Issue: "🔴 Reprovado: Produto totalmente diferente da referência (roupa do vídeo é estampada com flores, enquanto a referência oficial é lisa sem estampa)."
-10) TECIDO, TEXTURA E BRILHO (CETIM/BRILHO vs ALGODÃO/FOSCO):
-   - Se a referência oficial for CETIM / SEDA / TECIDO ACETINADO BRILHANTE e o vídeo for tecido fosco de algodão/viscose (ou vice-versa): REPROVAÇÃO IMEDIATA (score <= 25, status: "red", fabricDefect: true, wrongProduct: true)!
-   - Issue: "🔴 Reprovado: Tecido divergente (referência oficial é cetim acetinado brilhante, mas o vídeo mostra tecido fosco)."
-
-GRUPO 4: CORES E ILUMINAÇÃO:
-11) COR DA PEÇA:
-   - Variações normais de iluminação do quarto, lâmpadas quentes/frias e sombra natural de espelho são toleradas SOMENTE SE o produto for comprovadamente a mesma peça!
-   - Jamais aprove um produto diferente apenas por apresentar cor clara semelhante (ex: branco/bege)!
-   - Se a cor da peça for inteiramente divergente da cartela de referências: REPROVE O VÍDEO (score <= 40, status: "red").
-
-GRUPO 5: CONTINUIDADE VISUAL E DEFORMAÇÕES DE IA (VEO / PIXVERSE):
-12) DEFORMAÇÃO TEMPORAL E PEÇAS QUE SOMEM / SE FUNDEM:
-   - Compare o produto consigo mesmo quadro a quadro ao longo do vídeo:
-     a) Alça ou amarração que desaparece quando a modelo gira de lado.
-     b) Tecido que se funde com a pele ou com a mão ao puxar/tocar a roupa no espelho.
-     c) Botões ou bolsos que somem ou surgem do nada entre os segundos.
-     d) Estampa floral que muda de desenho ou escala entre poses.
-   - Se houver mutação ou deformação de IA: REPROVAÇÃO IMEDIATA (score <= 30, status: "red", aiMorphingDefect: true)!
-   - Issue: "🔴 Reprovado: Deformação visual e falha de continuidade da IA durante os movimentos da modelo."
-
-═════════════════════════════════════════════════════════════════════════════════
-PADRÃO OBRIGATÓRIO DO CAMPO "issue" PARA CADA VÍDEO (SEJA DIRETO E ENXUTO):
-═════════════════════════════════════════════════════════════════════════════════
-
-A) QUANDO FOR APROVADO (status: "green", score >= 90):
-NÃO use textos longos de justificativa! Preencha ESTRITAMENTE no formato enxuto:
-"🟢 Aprovado: Produto [score]% fiel à referência na cor [detectedColor]"
-Exemplo: "🟢 Aprovado: Produto 98% fiel à referência na cor Preto"
-
-B) QUANDO FOR ATENÇÃO / DUPLICADO (status: "yellow", score 70 a 78):
-"🟡 Atenção: Possível vídeo duplicado com o [nome_do_video_original] (mesmos movimentos, modelo e cenário)."
-
-C) QUANDO FOR RISCO / POSSÍVEL DIVERGÊNCIA (status: "yellow", score 70 a 89):
-Explique de forma enxuta onde está a possível divergência observada:
-"🟡 Risco — Possível Divergência: [explicação enxuta da possível divergência]"
-Exemplo: "🟡 Risco — Possível Divergência: Variação sutil na iluminação aos 3s gerando leve sombra no decote."
-
-D) QUANDO FOR REPROVADO (status: "red", score <= 60):
-Explique de forma enxuta e direta todas as divergências observadas (sem enrolação):
-"🔴 Reprovado: [explicação enxuta de todas as divergências observadas]"
-Exemplos:
-- "🔴 Reprovado: Não use bolsa pois isso vai dar restrição no seu vídeo."
-- "🔴 Reprovado por conteúdo sexual."
-- "🔴 Reprovado: Produto totalmente diferente da referência (estampa floral em tecido fosco com comprimento mídi e fenda, enquanto a referência oficial é vestido curto de cetim liso sem fenda)."
-- "🔴 Reprovado: Botões frontais e bolsos divergentes da referência oficial."
-- "🔴 Reprovado: Peça de cima mais curta que a referência oficial (blusa encurtada virando cropped enquanto a referência cobria a barriga)."
+PADRÃO OBRIGATÓRIO DO CAMPO "issue":
+- VERDE (score >= 90): "🟢 Aprovado: Produto [score]% fiel à referência na cor [detectedColor]"
+- AMARELO DUPLICADO (70..78): "🟡 Atenção: Possível vídeo duplicado com o [nome_do_video_original] (mesmos movimentos, modelo e cenário)."
+- AMARELO RISCO (70..89): "🟡 Risco — Possível Divergência: [explicação enxuta]"
+- VERMELHO (<= 60): "🔴 Reprovado: [explicação enxuta e direta]" (ou bolsa/conteúdo sexual exatos acima).
 
 Retorne ESTRITAMENTE um objeto JSON com o formato:
 {
   "batchSummary": {
-    "totalVideos": ${batchVideos.length},
+    "totalVideos": number,
     "approvedCount": number,
     "flaggedCount": number,
     "rejectedCount": number,
-    "overview": "Resumo executivo pericial do lote de ${batchVideos.length} vídeos."
+    "overview": "Resumo executivo pericial do lote."
   },
   "results": [
     {
@@ -4137,8 +4058,8 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
       "detectedColor": "Nome da cor identificada",
       "lowerPiece": "shorts" | "bermuda" | "calca" | "saia" | "vestido" | "outro",
       "isGenuineSkirt": boolean,
-      "refExposesBelly": boolean, // true se a referência oficial for cropped, top curto ou conjunto que deixa a barriga/cintura à mostra
-      "topPieceLengthMismatch": boolean, // true EXCLUSIVAMENTE se a peça de cima divergir em comprimento da referência (ex: referência cobria a barriga e vídeo encurtou virando cropped). Se a referência já for cropped e o vídeo também for cropped com barriga à mostra, topPieceLengthMismatch DEVE SER false!
+      "refExposesBelly": boolean,
+      "topPieceLengthMismatch": boolean,
       "modelUsingBag": boolean,
       "sexualContent": boolean,
       "wrongProduct": boolean,
@@ -4173,52 +4094,72 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
     if (openAIProvider.isConfigured()) {
       try {
         const client = (openAIProvider as any).getClient();
+        const selectedPhotos = photosList.slice(0, 6);
+        const [optRefPhotos, optBatchFrames] = await Promise.all([
+          Promise.all(
+            selectedPhotos.map((photo, idx) =>
+              optimizeImageDataUriForVision(photo, idx === 0 ? 'high' : 'low')
+            )
+          ),
+          Promise.all(
+            batchVideos.map((vItem: any) => {
+              const frames = Array.isArray(vItem.frames) ? vItem.frames : [];
+              return Promise.all(
+                frames.map((f: any) =>
+                  f?.frameBase64 ? optimizeImageDataUriForVision(f.frameBase64, 'high') : Promise.resolve('')
+                )
+              );
+            })
+          ),
+        ]);
+
         const contentBlocks: any[] = [];
 
-        photosList.slice(0, 6).forEach((photo, idx) => {
+        // Prefixo estável entre chunks do lote (fotos de referência + trava) para OpenAI Prompt Caching
+        optRefPhotos.forEach((optPhoto, idx) => {
           contentBlocks.push({
             type: 'text',
-            text: `[FOTO DE REFERÊNCIA OFICIAL #${idx + 1} — COR/VARIAÇÃO DO PRODUTO "${productName}"]: `,
+            text: `[FOTO DE REFERÊNCIA OFICIAL #${idx + 1} — "${productName}"]:`,
           });
           contentBlocks.push({
             type: 'image_url',
             image_url: {
-              url: photo.startsWith('data:') ? photo : `data:image/jpeg;base64,${photo}`,
+              url: optPhoto,
               detail: idx === 0 ? 'high' : 'low',
             },
           });
         });
 
+        if (lockContext) {
+          contentBlocks.push({
+            type: 'text',
+            text: `Trava do produto: ${lockContext}`,
+          });
+        }
+
         batchVideos.forEach((vItem: any, vIdx: number) => {
           const vId = vItem.id || `video_${vIdx + 1}`;
           const vName = vItem.videoFileName || `Vídeo ${vIdx + 1}`;
           const frames = Array.isArray(vItem.frames) ? vItem.frames : [];
+          const optFrames = optBatchFrames[vIdx] || [];
 
           contentBlocks.push({
             type: 'text',
-            text: `\n=== [VÍDEO DO LOTE #${vIdx + 1} — "${vName}" (ID: ${vId}, DURAÇÃO: ${vItem.videoDurationSeconds || 10}s)] ===\nExecute a auditoria forense estrutural componente a componente destas ${frames.length} capturas contra a Ficha Visual Consolidada das referências:
-1. IDENTIDADE E MODELO: O produto é RIGOROSAMENTE o mesmo? Se for vestido, o comprimento é idêntico (mini vs mídi vs longo)? Se houver fenda na perna não existente na referência, REPROVE IMEDIATAMENTE (wrongProduct: true, lengthDefect: true, slitDefect: true, score <= 20)!
-2. ESTAMPA E TECIDO (TOLERÂNCIA ZERO): Se a referência for lisa e o vídeo for estampado com flores (ou vice-versa), ou se a referência for cetim acetinado brilhante e o vídeo for tecido fosco: REPROVE IMEDIATAMENTE (wrongProduct: true, patternDefect: true, fabricDefect: true, score <= 20)!
-3. ESTRUTURA, BOTÕES, COSTURAS E BOLSOS: Botões presentes/ausentes/quantidade/cor condizem com a referência? Costuras centrais (gancho de shorts, pespontos, nervuras) foram preservadas? Há bolsos inventados ou omitidos? Se houver divergência, REPROVE (buttonsDefect/seamsDefect/pocketsDefect: true, score <= 25)!
-4. REGRA DE COMPRIMENTO DA PEÇA DE CIMA E CROPPED: Se a referência oficial JÁ FOR cropped, top curto ou conjunto com barriga à mostra, o vídeo com cropped e barriga à mostra é 100% CORRETO — APROVE EM VERDE (refExposesBelly: true, topPieceLengthMismatch: false, approved: true, score >= 92)! Apenas reprove se na referência oficial a blusa cobria toda a barriga e no vídeo a blusa foi encurtada virando cropped (ou se a referência era cropped e o vídeo virou blusa comprida). Se e SOMENTE SE houver essa divergência real contra a referência: marque topPieceLengthMismatch: true, refExposesBelly: false e REPROVE (score <= 35)!
-5. REGRA DO SHORTS vs SAIA: Pernas juntas com barras individuais dobradas ou costura central É SHORTS (lowerPiece: 'shorts', isGenuineSkirt: false). Só reprove como saia se for tubo contínuo/sino sem pernas.
-6. CONTINUIDADE E DEFORMAÇÃO DE IA: Há peças que somem no giro ou tecido que se funde na mão ao puxar no espelho? Se sim: aiMorphingDefect: true e REPROVE (score <= 25)!
-7. REGRA DA BOLSA: Se o produto não for bolsa e houver bolsa no vídeo: modelUsingBag: true e REPROVE IMEDIATAMENTE com score <= 35 e issue: "🔴 Reprovado: Não use bolsa pois isso vai dar restrição no seu vídeo."
-8. REGRA DE CONTEÚDO SEXUAL / CALCINHA: Calcinha exposta ou teor sexual: sexualContent: true e REPROVE com score <= 20 e issue: "🔴 Reprovado por conteúdo sexual."
-9. DUPLICIDADE: Se este vídeo for idêntico a outro anterior no lote (mesma modelo, cenário e movimentos): isDuplicate: true, status: "yellow", score: 75.`,
+            text: `\n=== [VÍDEO #${vIdx + 1} — "${vName}" (ID: ${vId}, ${vItem.videoDurationSeconds || 10}s, ${frames.length} capturas)] ===`,
           });
 
           frames.forEach((f: any, fIdx: number) => {
-            if (!f.frameBase64) return;
+            const optFrameUrl = optFrames[fIdx];
+            if (!optFrameUrl) return;
             const sec = f.second ?? fIdx;
             contentBlocks.push({
               type: 'text',
-              text: `[VÍDEO #${vIdx + 1} ("${vName}") — CAPTURA NO SEGUNDO ${sec}s]:`,
+              text: `[V${vIdx + 1} "${vName}" @ ${sec}s]:`,
             });
             contentBlocks.push({
               type: 'image_url',
               image_url: {
-                url: f.frameBase64.startsWith('data:') ? f.frameBase64 : `data:image/jpeg;base64,${f.frameBase64}`,
+                url: optFrameUrl,
                 detail: 'high',
               },
             });
@@ -4227,7 +4168,7 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
 
         contentBlocks.push({
           type: 'text',
-          text: `Analise todos os ${batchVideos.length} vídeos acima contra as ${photosList.length} fotos de cores/referência e retorne o JSON estritamente no schema solicitado.${lockContext ? `\nTrava do produto: ${lockContext}` : ''}`,
+          text: `Audite os ${batchVideos.length} vídeos acima contra as ${selectedPhotos.length} fotos de referência e retorne estritamente o JSON do lote.`,
         });
 
         const modelsToTry = ['gpt-4o', 'gpt-4o-mini'];
@@ -4662,15 +4603,16 @@ Na varredura anterior, houve sinal suspeito nos segundos: ${Array.isArray(suspic
 Examine os frames de 1 em 1 segundo e confirme se a divergência é real e persistente ou apenas oclusão/perspectiva.`
       : '';
 
+    // Prompt de sistema 100% ESTÁTICO para maximizar acertos de OpenAI Automatic Prompt Caching
     const systemInstruction = `Você é o Perito Visual Chefe em Auditoria Forense de Fidelidade de Produtos e Vestuário para TikTok Shop e Vídeos Comerciais (Veo 3 / Pixverse).
-Sua missão é inspecionar o vídeo "${videoFileName}" (${videoDurationSeconds}s), analisando cada segundo (${framesTimestampsList}) em comparação direta com as ${photosList.length} imagem(ns) de referência reais do produto "${productName}".
+Sua missão é inspecionar cada captura de 1 em 1 segundo do vídeo informado pelo usuário em comparação direta com as imagens de referência reais do produto especificado.
 
 ═════════════════════════════════════════════════════════════════════════════════
 PROTOCOLO PERICIAL DE ANÁLISE FORENSE (PRECISÃO MÁXIMA E ZERO FALSOS POSITIVOS):
 ═════════════════════════════════════════════════════════════════════════════════
 
 0. FICHA VISUAL CONSOLIDADA DAS FOTOS DE REFERÊNCIA (CONJUNTO ÚNICO):
-Antes de comparar o vídeo, examine todas as ${photosList.length} imagens originais de referência como um conjunto visual único:
+Antes de comparar o vídeo, examine todas as imagens originais de referência como um conjunto visual único:
 - Mapeie a Ficha Visual consolidada: categoria, tipo, corte, silhueta e proporções aparentes.
 - Mapeie o tecido e textura: cetim/seda com brilho refletivo vs algodão/viscose fosca vs linho rústico vs jeans vs malha canelada.
 - Mapeie estampas e padronagens: tecido 100% liso monocromático vs estampado (floral, flores miúdas ou grandes, poá, listras, animal print, xadrez).
@@ -4704,10 +4646,9 @@ Antes de comparar o vídeo, examine todas as ${photosList.length} imagens origin
   * CASO 2: A MODELO VIRA DE COSTAS NO VÍDEO, MAS NENHUMA FOTO DE REFERÊNCIA MOSTRA O PRODUTO POR TRÁS:
     - O vídeo DEVE OBRIGATORIAMENTE RECEBER SINAL LARANJA DE CUIDADO (status: "orange", score entre 72 e 76) com finding severidade "possible", title: "Cuidado: Não há fotos de referência do produto na parte das costas. Verifique para não tomar violação.", whatAppearsInVideo: "A modelo virou de costas no vídeo, porém nenhuma das fotos de referência fornecidas mostra a parte traseira do produto.", howToFix: "Verifique se a parte traseira gerada condiz com o produto real ou anexe fotos de referência das costas para auditoria 100% precisa."
 
-⚠️ REGRA DE FOCO RESTRITO NO PRODUTO ANUNCIADO ("${productName}"):
-- O usuário especificou no campo "Produto" o item "${productName}".
-- SE O PRODUTO FOR UMA PEÇA ESPECÍFICA (Ex: "Blusa", "Cropped", "Camiseta", "Calça", "Saia", "Shorts"):
-  * A perícia 1:1 DEVE FOCAR EXCLUSIVAMENTE NA PEÇA ESPECIFICADA ("${productName}")!
+⚠️ REGRA DE FOCO RESTRITO NO PRODUTO ANUNCIADO:
+- SE O PRODUTO ESPECIFICADO PELO USUÁRIO FOR UMA PEÇA ESPECÍFICA (Ex: "Blusa", "Cropped", "Camiseta", "Calça", "Saia", "Shorts"):
+  * A perícia 1:1 DEVE FOCAR EXCLUSIVAMENTE NA PEÇA ESPECIFICADA no prompt do usuário!
   * Se o produto for "Blusa", calça, saia e sapatos são complementares e NÃO devem reprovar o vídeo se forem diferentes da foto de referência.
   * Se o produto for "Calça", a blusa usada pela modelo no vídeo é complementar e NÃO deve reprovar o vídeo se for diferente da referência.
 
@@ -4747,12 +4688,12 @@ Antes de comparar o vídeo, examine todas as ${photosList.length} imagens origin
    - Não confunda sombra de espelho ou iluminação quente do quarto com mudança real de cor.
    - Não confunda oclusão temporária pela mão ou cabelo com componente desaparecido (conferir segundos antes e depois).
 
-Retorne ESTRITAMENTE um objeto JSON válido em português com este formato (se não houver erro no vídeo, retorne "findings": [] vazio; se houver erro físico real em algum frame, preencha todos os campos do objeto em "findings" vinculando ao segundo exato do frame reprovado):
+Retorne ESTRITAMENTE um objeto JSON válido em português neste formato ("findings": [] se fiel em todas as cenas; se houver erro real em algum segundo, vincule bestFrameSecond e frames com status "red" < 50):
 {
-  "overviewText": "Resumo pericial objetivo confirmando conformidade do produto ou detalhando divergências reais se houver.",
+  "overviewText": "Resumo pericial objetivo confirmando conformidade do produto ou detalhando divergências reais.",
   "summary": "🟢 NENHUMA INCONSISTÊNCIA IDENTIFICADA: [resumo] (ou 🔴 INCONSISTÊNCIA EVIDENTE / 🟡 POSSÍVEL INCONSISTÊNCIA)",
   "finalRecommendation": "Recomendação prática e direta sobre publicação ou refilmagens.",
-  "coverageNote": "Analisadas as capturas reais (${framesTimestampsList}) em conjunto com ${photosList.length} imagem(ns) de referência.",
+  "coverageNote": "Analisadas as capturas reais em conjunto com as imagens de referência.",
   "findings": [
     {
       "number": 1,
@@ -5222,18 +5163,34 @@ Retorne ESTRITAMENTE um objeto JSON válido em português com este formato (se n
     if (openAIProvider.isConfigured()) {
       try {
         const client = (openAIProvider as any).getClient();
+        const selectedRefPhotos = photosList.slice(0, 4);
+        const [optRefUrls, optFrameUrls] = await Promise.all([
+          Promise.all(
+            selectedRefPhotos.map((photo, idx) =>
+              optimizeImageDataUriForVision(photo, idx === 0 ? 'high' : 'low')
+            )
+          ),
+          Promise.all(
+            videoFrames.map((frameObj: any) =>
+              frameObj?.frameBase64
+                ? optimizeImageDataUriForVision(frameObj.frameBase64, 'high')
+                : Promise.resolve('')
+            )
+          ),
+        ]);
+
         const contentBlocks: any[] = [];
 
-        // 1. Fotos de referência: primeira em ALTA RESOLUÇÃO (detail: 'high') e complementares em 'low' para economizar tokens mantendo precisão
-        photosList.slice(0, 4).forEach((photo, idx) => {
+        // 1. Fotos de referência: primeira em ALTA RESOLUÇÃO (detail: 'high') e complementares em 'low'
+        optRefUrls.forEach((optUrl, idx) => {
           contentBlocks.push({
             type: 'text',
-            text: `[IMAGEM DE REFERÊNCIA REAL #${idx + 1} DO PRODUTO "${productName}" — INSPECIONE EM ALTA DEFINIÇÃO A QUANTIDADE E DISPOSIÇÃO EXATA DE CÂMERAS/LENTES, FLASH, BOTÕES, FORMATO E LOGOMARCA]:`,
+            text: `[REFERÊNCIA #${idx + 1} — "${productName}"]:`,
           });
           contentBlocks.push({
             type: 'image_url',
             image_url: {
-              url: photo.startsWith('data:') ? photo : `data:image/jpeg;base64,${photo}`,
+              url: optUrl,
               detail: idx === 0 ? 'high' : 'low',
             },
           });
@@ -5241,18 +5198,17 @@ Retorne ESTRITAMENTE um objeto JSON válido em português com este formato (se n
 
         // 2. Capturas individuais do vídeo em ALTA RESOLUÇÃO (detail: 'high') de 1 em 1 segundo
         videoFrames.forEach((frameObj: any, idx: number) => {
-          if (!frameObj.frameBase64) return;
+          const optFrameUrl = optFrameUrls[idx];
+          if (!optFrameUrl) return;
           const sec = frameObj.second ?? idx;
           contentBlocks.push({
             type: 'text',
-            text: `[CAPTURA REAL DO VÍDEO #${idx + 1} — SEGUNDO ${sec}s (00:${String(Math.round(Number(sec))).padStart(2, '0')})]:`,
+            text: `[FRAME #${idx + 1} — ${sec}s (00:${String(Math.round(Number(sec))).padStart(2, '0')})]:`,
           });
           contentBlocks.push({
             type: 'image_url',
             image_url: {
-              url: frameObj.frameBase64.startsWith('data:')
-                ? frameObj.frameBase64
-                : `data:image/jpeg;base64,${frameObj.frameBase64}`,
+              url: optFrameUrl,
               detail: 'high',
             },
           });
@@ -5260,41 +5216,9 @@ Retorne ESTRITAMENTE um objeto JSON válido em português com este formato (se n
 
         const promptText = `Realize a perícia visual forense completa do vídeo "${videoFileName}" (${videoDurationSeconds}s) inspecionando cada uma das ${videoFrames.length} capturas reais de 1 em 1 segundo (${framesTimestampsList}) em alta resolução e comparando diretamente com as ${photosList.length} imagem(ns) de referência oficiais do produto "${productName}".
 
-INSTRUÇÕES OBRIGATÓRIAS DE AUDITORIA PERICIAL FORENSE:
-0. FICHA VISUAL CONSOLIDADA DAS FOTOS DE REFERÊNCIA:
-   Examine o conjunto completo das fotos de referência antes de auditar os quadros:
-   - Identifique o modelo, corte, silhueta e comprimento (curto/mini, mídi, longo).
-   - Identifique a estampa (liso monocromático vs estampa floral, poá, listras, animal print).
-   - Identifique o tecido e textura (cetim brilhante vs algodão/viscose fosca, linho, jeans).
-   - Identifique botões, fechos e aviamentos (presença/ausência, quantidade, formato e cor).
-   - Identifique costuras, pespontos e nervuras (costura central do gancho/braguilha em shorts, nervuras verticais).
-   - Identifique bolsos (bolsos faca laterais, bolsos frontais, ou inexistentes).
-   - Identifique golas, decotes, alças e mangas (degagê vs reto com elástico vs decote V; alça fina espaguete vs amarrações com laço vs manga bufante).
-   - Identifique fendas na perna (presença ou ausência de abertura lateral).
+Execute a auditoria pericial quadro a quadro conforme o protocolo do sistema (retorne "findings": [] se 100% fiel, ou vincule os findings ao segundo/frame divergente com status "red" < 50).
 
-1. REGRA DE OURO SOBRE BOLSAS (TOLERÂNCIA ZERO):
-   A bolsa SÓ PODE APARECER quando a bolsa for o produto da imagem de referência. Se o produto da referência NÃO for uma bolsa e a modelo estiver usando, segurando ou carregando qualquer bolsa no vídeo:
-   REPROVE O VÍDEO IMEDIATAMENTE (score <= 35, status "red") e crie um finding com severidade "evident", title: "Não use bolsa pois isso vai dar restrição no seu vídeo.", whatAppearsInVideo: "A modelo está usando uma bolsa no vídeo, mas a bolsa não é o produto anunciado na referência.", howToFix: "Não use bolsa pois isso vai dar restrição no seu vídeo."
-
-2. REGRA CRÍTICA DE CONTEÚDO SEXUAL / CALCINHA (TOLERÂNCIA ZERO):
-   Se em qualquer frame for identificada CALCINHA exposta (visível total ou parcialmente), calcinha de biquíni, roupa íntima, lingerie ou qualquer teor sexual / semi-nudez:
-   REPROVE O VÍDEO IMEDIATAMENTE (score <= 20, status "red") e crie um finding com severidade "evident", title: "Reprovado por conteúdo sexual.", whatAppearsInVideo: "Identificada calcinha ou teor sexual no vídeo, violando as diretrizes da plataforma.", howToFix: "Regerar o vídeo garantindo que a modelo esteja adequadamente vestida sem calcinha visível ou teor sexual."
-
-3. REGRA CRÍTICA DE PRODUTO IDÊNTICO vs PRODUTO TOTALMENTE DIFERENTE (TOLERÂNCIA ZERO):
-   O produto exibido no vídeo DEVE SER rigorosamente a mesma peça das fotos de referência:
-   - ESTAMPA vs LISO: Se a referência oficial for lisa e a roupa no vídeo for estampada com flores, ou vice-versa: REPROVE O VÍDEO IMEDIATAMENTE (score <= 20, status "red") com finding severidade "evident", title: "Produto divergente da referência oficial (estampa floral).", whatAppearsInVideo: "O vídeo exibe um vestido estampado com flores, enquanto a referência oficial é lisa sem estampa.", howToFix: "Regerar o vídeo utilizando rigorosamente o produto liso da referência."
-   - COMPRIMENTO (CURTO/MINI vs MÍDI vs LONGO): Se a referência for vestido curto/mini e o vídeo for mídi (abaixo do joelho/canela) ou longo: REPROVE IMEDIATAMENTE (score <= 20, status "red") com finding severidade "evident", title: "Comprimento divergente da referência.", whatAppearsInVideo: "O vestido no vídeo tem comprimento mídi cobrindo os joelhos, mas a referência oficial é vestido curto/mini.", howToFix: "Regerar o vídeo mantendo o comprimento curto/mini da referência."
-   - FENDA NA PERNA: Se o vestido tiver fenda aberta na coxa/perna inexistente na referência oficial (ou vice-versa): REPROVE IMEDIATAMENTE (score <= 20, status "red") com finding severidade "evident", title: "Fenda inexistente na referência.", whatAppearsInVideo: "O vestido no vídeo apresenta uma fenda profunda na perna que não existe na referência oficial.", howToFix: "Remover a fenda e preservar a modelagem fechada da referência."
-   - TECIDO / BRILHO: Se a referência for cetim acetinado brilhante e o vídeo for tecido fosco de algodão/viscose: REPROVE IMEDIATAMENTE (score <= 25, status "red") com finding severidade "evident", title: "Tecido divergente da referência.", whatAppearsInVideo: "A referência oficial é cetim brilhante acetinado, mas o vídeo mostra tecido fosco.", howToFix: "Preservar a textura e brilho acetinado do cetim da referência."
-   - BOTÕES, COSTURAS E BOLSOS: Se botões, costuras ou bolsos divergirem da referência: REPROVE IMEDIATAMENTE (score <= 25, status "red") com finding severidade "evident", title: "Detalhes de botões/costuras divergentes da referência."
-
-4. REGRA DE COMPRIMENTO DA PEÇA DE CIMA E CROPPED: Se a referência oficial JÁ FOR cropped, top curto ou conjunto com barriga à mostra, o vídeo com cropped e barriga à mostra é 100% CORRETO — APROVE NORMALMENTE (score >= 92%, status "green")! Apenas reprove se na referência oficial a blusa cobria toda a barriga e no vídeo foi encurtada virando cropped (ou se a referência era cropped e o vídeo virou blusa comprida). O problema é a peça ser mais curta ou mais comprida que a referência! Se houver essa divergência real contra a referência: REPROVE (< 50%, status "red") com finding severidade "evident".
-5. REGRA DO SHORTS vs SAIA: Pernas juntas com barras individuais dobradas ou costura central É SHORTS. Não reprove como saia!
-6. CONTINUIDADE TEMPORAL DE IA: Peças que somem, mutação no giro ou tecido fundindo na mão: REPROVE (< 50%, status "red") com finding severidade "evident".
-
-7. RESULTADO:
-   - Se o vídeo for 100% fiel em todas as cenas: retorne "findings": [] VAZIO e aprove todos os frames em "frames" com nota VERDE (>= 92%).
-   - Se houver inconsistência real: crie o achado em "findings" com severidade "evident", bestRefIndex, bestFrameSecond, refCropBox e videoCropBox e reprove o frame correspondente em "frames" (< 50%, status "red").${lockContext ? `\nTrava do produto: ${lockContext}` : ''}
+${lockContext ? `\nTrava do produto: ${lockContext}` : ''}
 ${targetedContextInstruction}
 Retorne o JSON estritamente conforme o schema especificado.`;
         contentBlocks.push({ type: 'text', text: promptText });
