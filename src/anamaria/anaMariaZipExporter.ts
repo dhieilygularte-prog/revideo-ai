@@ -73,8 +73,8 @@ export function getMasterPromptFileName(result: AnaMariaResultState): string {
 
 /**
  * Garante que a imagem gerada esteja em alta resolução vertical 9:16 preservando 100% da nitidez óptica.
- * Se a imagem já for nativa de alta resolução (altura >= 1600 e largura >= 900), preserva os bytes originais intactos,
- * evitando a perda de nitidez e o efeito embaçado da reamostragem bilinear de canvas.
+ * Se a imagem já vier calibrada do servidor na resolução alvo (data URL JPEG/PNG/WebP), preserva os
+ * bytes originais intactos sem reamostragem no canvas e sem inflar o arquivo para PNG de ~2,8 MB.
  */
 export async function ensureHighResAnaMariaDataUrl(
   inputUrlOrBase64: string,
@@ -89,7 +89,12 @@ export async function ensureHighResAnaMariaDataUrl(
       const proxyRes = await fetch('/api/generate-scene-image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode: 'proxy_image', imageUrl: resolvedSrc }),
+        body: JSON.stringify({
+          mode: 'proxy_image',
+          imageUrl: resolvedSrc,
+          targetWidth,
+          targetHeight,
+        }),
       });
       if (proxyRes.ok) {
         const proxyData = await proxyRes.json();
@@ -107,11 +112,14 @@ export async function ensureHighResAnaMariaDataUrl(
     img.crossOrigin = 'anonymous';
     img.onload = () => {
       try {
-        if (
-          img.width === targetWidth &&
-          img.height === targetHeight &&
-          resolvedSrc.startsWith('data:image/png')
-        ) {
+        const isTargetSize =
+          Math.abs(img.width - targetWidth) <= 2 &&
+          Math.abs(img.height - targetHeight) <= 2;
+        const isCalibratedDataUri =
+          resolvedSrc.startsWith('data:image/jpeg') ||
+          resolvedSrc.startsWith('data:image/png') ||
+          resolvedSrc.startsWith('data:image/webp');
+        if (isTargetSize && isCalibratedDataUri) {
           resolve(resolvedSrc);
           return;
         }
@@ -153,10 +161,9 @@ export async function ensureHighResAnaMariaDataUrl(
 
         ctx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, targetWidth, targetHeight);
 
-        // Exporta SEMPRE em PNG sem perdas (lossless) na resolução exata de 1080x1920.
-        // O formato PNG para fotografia 1080x1920 garante exatamente entre 1.6MB e 2.6MB,
-        // com definição óptica máxima e zero compressão JPEG que cause borrão ou perda de nitidez!
-        const dataUrl = canvas.toDataURL('image/png');
+        // Quando precisar reamostrar no cliente (fallback), exporta em JPEG de alta nitidez (0.96)
+        // para manter definição cristalina sem gerar arquivos PNG pesados próximos de 3 MB.
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.96);
         resolve(dataUrl);
       } catch (err) {
         console.warn('Erro ao calibrar imagem para 1080x1920 no canvas:', err);
@@ -168,6 +175,11 @@ export async function ensureHighResAnaMariaDataUrl(
     };
     img.src = resolvedSrc;
   });
+}
+
+function getBlobImageExtension(blob: Blob): 'png' | 'jpg' {
+  const mime = (blob?.type || '').toLowerCase();
+  return mime === 'image/png' ? 'png' : 'jpg';
 }
 
 /**
@@ -206,19 +218,19 @@ export async function downloadAnaMariaSingleImage(
   imageModel?: string,
   use2K = false
 ) {
-  // Padronização universal solicitada: 1080x1920 (ou 1440x2560 em modo 2K), PNG lossless com nitidez máxima
-  const fileName = buildImageFileName(productName, timestamp, imageModel, 'png');
   const targetW = use2K ? 1440 : 1080;
   const targetH = use2K ? 2560 : 1920;
 
   try {
     const blob = await ensureHighResAnaMariaBlob(imageUrl, targetW, targetH);
+    const fileName = buildImageFileName(productName, timestamp, imageModel, getBlobImageExtension(blob));
     downloadBlob(blob, fileName);
   } catch (err) {
     console.warn('Erro ao baixar imagem via blob de alta resolução:', err);
+    const fallbackName = buildImageFileName(productName, timestamp, imageModel, 'jpg');
     const a = document.createElement('a');
     a.href = imageUrl;
-    a.download = fileName;
+    a.download = fallbackName;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -262,20 +274,21 @@ export async function exportAnaMariaZip(result: AnaMariaResultState): Promise<vo
       imagesToExport.length > 1
         ? `${cleanName} - Cor ${imgItem.colorGroupIndex + 1}`
         : result.productName;
-    let imageFileName = buildImageFileName(
-      itemNamePrefix,
-      imgItem.timestamp || result.timestamp,
-      imgItem.imageModel || result.imageModel,
-      'png'
-    );
-    if (usedFileNames.has(imageFileName)) {
-      imageFileName = imageFileName.replace(/\.png$/i, ` (${i + 1}).png`);
-    }
-    usedFileNames.add(imageFileName);
     try {
-        const targetW = Boolean((imgItem as any).use2K ?? result.use2K) ? 1440 : 1080;
+      const targetW = Boolean((imgItem as any).use2K ?? result.use2K) ? 1440 : 1080;
       const targetH = Boolean((imgItem as any).use2K ?? result.use2K) ? 2560 : 1920;
       const imgBlob = await ensureHighResAnaMariaBlob(imgItem.imageUrl, targetW, targetH);
+      const ext = getBlobImageExtension(imgBlob);
+      let imageFileName = buildImageFileName(
+        itemNamePrefix,
+        imgItem.timestamp || result.timestamp,
+        imgItem.imageModel || result.imageModel,
+        ext
+      );
+      if (usedFileNames.has(imageFileName)) {
+        imageFileName = imageFileName.replace(new RegExp(`\\.${ext}$`, 'i'), ` (${i + 1}).${ext}`);
+      }
+      usedFileNames.add(imageFileName);
       const imgBuffer = await imgBlob.arrayBuffer();
       zip.file(imageFileName, imgBuffer);
     } catch (err) {

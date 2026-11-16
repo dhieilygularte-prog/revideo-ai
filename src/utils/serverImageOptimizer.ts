@@ -253,9 +253,9 @@ export async function optimizeImageDataUriForVision(
   const trimmed = input.trim();
   if (!trimmed) return '';
 
-  const maxDim = detail === 'low' ? 512 : 1024;
-  const quality = detail === 'low' ? 80 : 86;
-  const key = hashKey(`vis:${detail}`, trimmed);
+  const maxDim = detail === 'low' ? 512 : 1536;
+  const quality = detail === 'low' ? 80 : 92;
+  const key = hashKey(`vis:${detail}:${maxDim}:${quality}`, trimmed);
   const cached = visionImageCache.get(key);
   if (cached) return cached;
 
@@ -302,30 +302,42 @@ export async function calibrateOutputDataUri(
     if (
       meta.width === targetWidth &&
       meta.height === targetHeight &&
-      trimmed.length <= 3_800_000
+      parsed.buffer.length <= 1_950_000 &&
+      parsed.mimeType !== 'image/png'
     ) {
       return trimmed.startsWith('data:')
         ? trimmed
         : `data:${parsed.mimeType};base64,${parsed.buffer.toString('base64')}`;
     }
 
-    const resizedPipeline = sharp(parsed.buffer, { failOn: 'none' })
+    const calibratedPipeline = sharp(parsed.buffer, { failOn: 'none' })
       .rotate()
       .resize(targetWidth, targetHeight, {
         fit: 'cover',
         position: 'centre',
         kernel: sharp.kernel.lanczos3,
-      });
+      })
+      // Micro-nitidez óptica controlada para recuperar definição de trama e bordas ao ampliar sem criar halos
+      .sharpen({ sigma: 0.6, m1: 0.4, m2: 1.3 });
 
-    const pngBuf = await resizedPipeline.clone().png({ compressionLevel: 7 }).toBuffer();
-    if (pngBuf.length <= 2_700_000) {
-      return `data:image/png;base64,${pngBuf.toString('base64')}`;
+    // JPEG 4:4:4 (sem subamostragem de croma) com qualidade adaptativa para entregar máxima nitidez
+    // no zoom mantendo o arquivo leve (~1.0 a 1.95 MB, nunca ~2.8-3.8 MB em PNG redundante).
+    const maxTargetBytes = targetWidth >= 1440 ? 2_100_000 : 1_950_000;
+    const qualityLadder = [100, 99, 97, 95, 92];
+    let bestJpgBuf: Buffer | null = null;
+
+    for (const q of qualityLadder) {
+      const candidate = await calibratedPipeline
+        .clone()
+        .jpeg({ quality: q, mozjpeg: true, chromaSubsampling: '4:4:4' })
+        .toBuffer();
+      bestJpgBuf = candidate;
+      if (candidate.length <= maxTargetBytes) {
+        return `data:image/jpeg;base64,${candidate.toString('base64')}`;
+      }
     }
 
-    const jpgBuf = await resizedPipeline
-      .jpeg({ quality: 95, mozjpeg: true, chromaSubsampling: '4:4:4' })
-      .toBuffer();
-    return `data:image/jpeg;base64,${jpgBuf.toString('base64')}`;
+    return `data:image/jpeg;base64,${bestJpgBuf!.toString('base64')}`;
   } catch {
     return trimmed;
   }

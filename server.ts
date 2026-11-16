@@ -1731,6 +1731,9 @@ async function generateImageWithSeedream(params: {
         ? '- FOTO 2 (MODELO COM ROSTO): Mesma mulher e mesmo rosto/olhos/boca/cabelo/corpo da Foto 2 (proibido cortar rosto).\n'
         : '- FOTO 2 (MODELO SEM ROSTO): Mesma mulher/corpo/cabelo/pose da Foto 2. PROIBIDO mostrar rosto, olhos, nariz ou boca (corte no queixo ou oculto pelo celular exatamente como na Foto 2).\n';
 
+      const antiPixelationRuleSeedream =
+        '- NITIDEZ TÊXTIL ANTI-PIXELIZAÇÃO: Mesmo que a foto do produto (Foto 1) esteja com baixa resolução, comprimida, escura ou pixelada, NÃO copie borrões ou blocos JPEG para a roupa — sintetize trama e fibras têxteis em altíssima definição óptica, tão ou mais nítidas que a referência ao ampliar (sem plasticidade ou aparência artificial).\n';
+
       if (isModelScenarioSeedream) {
         headerSeedream =
           '[MAPA 2 IMAGENS — FOTO 1 PRODUTO | FOTO 2 MODELO + CENÁRIO BASE]:\n' +
@@ -1738,7 +1741,7 @@ async function generateImageWithSeedream(params: {
           flashRuleSeedream +
           '- Foto 1: Extrair EXCLUSIVAMENTE a peça de roupa integral sem encurtar (ignorar 100% pessoa/rosto/tatuagens da Foto 1).\n' +
           '- Foto 2: Preservar 100% modelo, pose, quarto, paredes, piso e luz; trocar apenas a roupa pela Foto 1 e o calçado (cor contrastante com a barra, se pés visíveis).\n' +
-          `${naturalSkinSeedream}${clothingDirectiveSeedream}\n`;
+          `${antiPixelationRuleSeedream}${naturalSkinSeedream}${clothingDirectiveSeedream}\n`;
       } else {
         headerSeedream =
           '[MAPA 3 IMAGENS — FOTO 1 PRODUTO | FOTO 2 MODELO | FOTO 3 CENÁRIO REAL]:\n' +
@@ -1747,12 +1750,13 @@ async function generateImageWithSeedream(params: {
           '- Foto 1: Apenas a roupa 1:1 sem encurtar (zero pessoa/rosto/tatuagens da Foto 1).\n' +
           '- Foto 2: Apenas corpo, curvas, cabelos, pose e regra facial (DESCARTAR roupa antiga, tênis, quarto e parede branca da Foto 2).\n' +
           '- Foto 3: Inserir a modelo em captura única nativa em pé sobre o piso real deste cômodo, usando a luz/temperatura da Foto 3, sombra de contato nos pés e bordas orgânicas sem contorno branco.\n' +
-          `${naturalSkinSeedream}${clothingDirectiveSeedream}\n`;
+          `${antiPixelationRuleSeedream}${naturalSkinSeedream}${clothingDirectiveSeedream}\n`;
       }
     } else {
       headerSeedream =
         `${faceDirectiveSeedream}${naturalSkinSeedream}${frontalPoseDirectiveSeedream}` +
         '[MAPA]: Img 1 = Cenário fixo intacto; Img 2+ = Peça 1:1 (biotipo vem exclusivamente do prompt abaixo). Fotografia única nativa com luz e sombras integradas ao cenário.\n' +
+        '- NITIDEZ TÊXTIL ANTI-PIXELIZAÇÃO: Mesmo que a foto de referência da roupa seja comprimida ou pixelada, reconstrua trama e fibras têxteis nítidas em alta definição óptica.\n' +
         `${clothingDirectiveSeedream}\n`;
     }
   } else {
@@ -1931,9 +1935,15 @@ app.post('/api/generate-scene-image', async (req, res) => {
         const arrayBuf = await proxyFetch.arrayBuffer();
         const base64 = Buffer.from(arrayBuf).toString('base64');
         const mime = proxyFetch.headers.get('content-type') || 'image/jpeg';
+        let rawDataUri = `data:${mime};base64,${base64}`;
+        const reqTargetW = Number(req.body?.targetWidth) || 0;
+        const reqTargetH = Number(req.body?.targetHeight) || 0;
+        if (reqTargetW >= 720 && reqTargetH >= 1280) {
+          rawDataUri = await calibrateOutputDataUri(rawDataUri, reqTargetW, reqTargetH);
+        }
         return res.json({
           success: true,
-          imageUrl: `data:${mime};base64,${base64}`,
+          imageUrl: rawDataUri,
         });
       } catch (proxyErr: any) {
         return res.status(500).json({

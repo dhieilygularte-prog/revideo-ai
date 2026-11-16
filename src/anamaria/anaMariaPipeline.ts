@@ -585,7 +585,7 @@ async function prepareProductPhotosForPayload(photos: string[]): Promise<{
     return preparedProductPhotoCache.get(cacheKey)!;
   }
   const optimizedPhotos = await Promise.all(
-    validPhotos.map((p) => compressImageForFastTransfer(p, 1280, 0.92))
+    validPhotos.map((p) => compressImageForFastTransfer(p, 1280, 0.94))
   );
   let result: { primaryPhoto: string; supplementaryPhotos: string[] };
   if (optimizedPhotos.length >= 2) {
@@ -856,9 +856,9 @@ async function runAnaMariaFidelityAudit(params: {
 
   try {
     const compactGenerated = generatedImageUrl.startsWith('data:')
-      ? await compressImageForFastTransfer(generatedImageUrl, 768, 0.82)
+      ? await compressImageForFastTransfer(generatedImageUrl, 1280, 0.91)
       : generatedImageUrl;
-    const compactRef = await compressImageForFastTransfer(validRefs[0], 768, 0.82);
+    const compactRef = await compressImageForFastTransfer(validRefs[0], 1024, 0.90);
 
     const res = await postJson<{
       success: boolean;

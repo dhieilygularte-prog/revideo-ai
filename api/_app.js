@@ -412,9 +412,9 @@ async function optimizeImageDataUriForVision(input, detail = "high") {
   if (!input || typeof input !== "string") return "";
   const trimmed = input.trim();
   if (!trimmed) return "";
-  const maxDim = detail === "low" ? 512 : 1024;
-  const quality = detail === "low" ? 80 : 86;
-  const key = hashKey(`vis:${detail}`, trimmed);
+  const maxDim = detail === "low" ? 512 : 1536;
+  const quality = detail === "low" ? 80 : 92;
+  const key = hashKey(`vis:${detail}:${maxDim}:${quality}`, trimmed);
   const cached = visionImageCache.get(key);
   if (cached) return cached;
   const resolved = await resolveInputToBuffer(trimmed);
@@ -441,20 +441,25 @@ async function calibrateOutputDataUri(input, targetWidth, targetHeight) {
   if (!parsed) return trimmed;
   try {
     const meta = await sharp(parsed.buffer, { failOn: "none" }).metadata();
-    if (meta.width === targetWidth && meta.height === targetHeight && trimmed.length <= 38e5) {
+    if (meta.width === targetWidth && meta.height === targetHeight && parsed.buffer.length <= 195e4 && parsed.mimeType !== "image/png") {
       return trimmed.startsWith("data:") ? trimmed : `data:${parsed.mimeType};base64,${parsed.buffer.toString("base64")}`;
     }
-    const resizedPipeline = sharp(parsed.buffer, { failOn: "none" }).rotate().resize(targetWidth, targetHeight, {
+    const calibratedPipeline = sharp(parsed.buffer, { failOn: "none" }).rotate().resize(targetWidth, targetHeight, {
       fit: "cover",
       position: "centre",
       kernel: sharp.kernel.lanczos3
-    });
-    const pngBuf = await resizedPipeline.clone().png({ compressionLevel: 7 }).toBuffer();
-    if (pngBuf.length <= 27e5) {
-      return `data:image/png;base64,${pngBuf.toString("base64")}`;
+    }).sharpen({ sigma: 0.6, m1: 0.4, m2: 1.3 });
+    const maxTargetBytes = targetWidth >= 1440 ? 21e5 : 195e4;
+    const qualityLadder = [100, 99, 97, 95, 92];
+    let bestJpgBuf = null;
+    for (const q of qualityLadder) {
+      const candidate = await calibratedPipeline.clone().jpeg({ quality: q, mozjpeg: true, chromaSubsampling: "4:4:4" }).toBuffer();
+      bestJpgBuf = candidate;
+      if (candidate.length <= maxTargetBytes) {
+        return `data:image/jpeg;base64,${candidate.toString("base64")}`;
+      }
     }
-    const jpgBuf = await resizedPipeline.jpeg({ quality: 95, mozjpeg: true, chromaSubsampling: "4:4:4" }).toBuffer();
-    return `data:image/jpeg;base64,${jpgBuf.toString("base64")}`;
+    return `data:image/jpeg;base64,${bestJpgBuf.toString("base64")}`;
   } catch {
     return trimmed;
   }
@@ -1715,6 +1720,7 @@ Retorne estritamente um JSON estruturado:
 - Modern flagship smartphone camera clarity (iPhone 16 Pro / Galaxy S24 Ultra): crystal-clear optical glass lens, razor-sharp focus, vibrant true-to-life colors, and rich texture definition.
 - VIVID, VIBRANT COLORS & CLEAN WHITE BALANCE: Colors must be lively, vivid, saturated with natural commercial pop, and harmonized with the environment. Maintain clean neutral white balance (pure whites, deep clean blacks, natural healthy skin tones).
 - STRICTLY PROHIBITED (ZERO YELLOWISH / ZERO OPAQUE): NO yellowish tint, NO warm tungsten/amber/sepia cast, NO dull/opaque/lifeless look, NO pale/washed-out/milky/hazy veil, and NO plastic film overlay across the lens.
+- GARMENT SUPER-RESOLUTION & ANTI-PIXELATION TEXTURE SYNTHESIS: NEVER inherit low-resolution blur, JPEG compression blocks, blocky dark shadows, compression noise, or smudged flatness from any uploaded garment/product photo onto the generated clothing. Even if the product reference photo is blurry, low-res, dark, or pixelated, actively de-pixelate and reconstruct razor-sharp, crystal-clear optical high-definition textile weave, authentic thread grain, crisp stitches, seams, and tactile fabric micro-relief matched to any informed fabric specification (or realistic natural woven/knit weave matching the garment silhouette), so close-up zoom always reveals clean crisp threads instead of pixel blocks.
 - 90%+ FIDELITY AUDITOR CALIBRATION (5 INSPECTION GROUPS + ANTI-MORPHING): Preserve 100% of the exact product model, silhouette, all physical components (body, nozzles, caps, cables, handles, buttons, seams, and all kit pieces), realistic human scale, exact surface finish (matte, glossy, metallic), and 1:1 manufacturer logo. Hands must have 5 natural fingers gripping neutral sides cleanly without fusing into the product or covering the logo/buttons.`;
     const isPovMode = presentationMode === "pov" || selectedMasterId === "pov_cinta_85k" || selectedMasterId === "pov_blusinhas_13k" || Boolean(prompt && prompt.includes("PRESERVA\xC7\xC3O INTEGRAL DO CEN\xC1RIO POV"));
     const scenarioLockDirective = scenarioPhotoBase64 ? isPovMode ? `CRITICAL POV BED SCENARIO ANCHOR (EXACT BED & TOP-DOWN POV REPLICATION):
@@ -1752,7 +1758,7 @@ ${fabricSpec.promptBlockPt}`,
 ${prompt}` : prompt;
     try {
       const toImageFile = async (dataUrl, baseName) => {
-        const optimized = await optimizeImageToBufferForGeneration(dataUrl, 1280, 90);
+        const optimized = await optimizeImageToBufferForGeneration(dataUrl, 1280, 93);
         if (optimized) {
           return new File([new Uint8Array(optimized.buffer)], `${baseName}.${optimized.ext}`, { type: optimized.mimeType });
         }
@@ -1875,7 +1881,7 @@ ${modelIdentitySection}
 - 100% DISCARD AND IGNORE the bedroom, bed, door, walls, bright white wall edge-glow, studio/frontal lighting, old clothing, and old footwear of Reference Image ${modelIdx}.
 
 3. REFERENCE IMAGE ${productRangeLabel} (EXACT GARMENT & COLOR ONLY \u2014 DISCARD ANY PERSON/BACKGROUND):
-- She wears the EXACT garment shown in Reference Image ${productRangeLabel}: 1:1 exact color/shade/print pattern, fabric texture${fabricSpec.hasInfo ? ` (${fabricSpec.compactLineEn})` : ""}, seams, stitching, pleats/ruffles, cut, neckline, straps, and ${proportionalHemlineAnchorOpenAI} (NEVER crop/eat the bottom of the garment, and NEVER alter seams, print, texture, or shape anywhere on the top or bottom of the garment), physically shaded by Reference Image ${scenarioIdx}'s ambient room light.${pureDressNoShortsDirectiveOpenAI}
+- She wears the EXACT garment shown in Reference Image ${productRangeLabel}: 1:1 exact color/shade/print pattern, fabric texture${fabricSpec.hasInfo ? ` (${fabricSpec.compactLineEn})` : ""}, seams, stitching, pleats/ruffles, cut, neckline, straps, and ${proportionalHemlineAnchorOpenAI} (NEVER crop/eat the bottom of the garment, and NEVER alter seams, print, texture, or shape anywhere on the top or bottom of the garment; if Reference Image ${productRangeLabel} is low-resolution, blurry, dark, or pixelated, actively de-pixelate and synthesize razor-sharp high-definition natural fabric weave/threads from ${fabricSpec.hasInfo ? fabricSpec.fabricSummaryLabel : "the authentic garment weave"} so the generated fabric is crisper and sharper than the reference when zoomed in), physically shaded by Reference Image ${scenarioIdx}'s ambient room light.${pureDressNoShortsDirectiveOpenAI}
 - Harmonious matching footwear planted firmly on Reference Image ${scenarioIdx}'s floor only if her feet are left visible by the garment's exact visual length in Reference Image ${productRangeLabel} (never shorten or lengthen the garment hem to reveal or hide shoes).
 - 100% IGNORE any person, face, body, tattoos, or background in Reference Image ${productRangeLabel}.
 
@@ -1895,7 +1901,7 @@ ${ultraRealismFullOpenAI}` : ""}`;
         const aligned2ImgCleanPrompt = cleanPrompt.replace(/Foto 1\b/gi, productRange).replace(/Foto 2\b/gi, "Reference Image 1");
         effectivePrompt = `[STRICT 2-IMAGE EDIT DIRECTIVE - GALLERY MODEL & ROOM BASE + EXACT PRODUCT CLOTHING]:
 - REFERENCE IMAGE 1 (MODEL & ROOM BASE \u2014 KEEP IDENTICAL): Preserve 100% the exact same woman (same face if visible or same phone covering face, same hair, ${isUltraRealismEnabled ? "body curves, pose, hands \u2014 actively replacing smooth/airbrushed reference skin texture with authentic unretouched RAW living human skin per ULTRA PHOTOREALISM below" : "skin tone, body curves, pose, hands"}) and the EXACT same room/background/mirror/lighting from Reference Image 1.
-- ${productRange.toUpperCase()} (GARMENT & EXACT COLOR ONLY): Dress the woman from Reference Image 1 in the EXACT garment shown in ${productRange}, replicating 1:1 its exact color/shade/print, cut, neckline, straps, fabric texture${fabricSpec.hasInfo ? ` (${fabricSpec.compactLineEn})` : ""}. ${proportionalHemlineAnchorOpenAI} (Show harmonious matching footwear only if the visual hemline in ${productRange} leaves feet visible.) 100% IGNORE any person/background in ${productRange}.${pureDressNoShortsDirectiveOpenAI}
+- ${productRange.toUpperCase()} (GARMENT & EXACT COLOR ONLY): Dress the woman from Reference Image 1 in the EXACT garment shown in ${productRange}, replicating 1:1 its exact color/shade/print, cut, neckline, straps, fabric texture${fabricSpec.hasInfo ? ` (${fabricSpec.compactLineEn})` : ""}, and anti-pixelation HD textile weave (if ${productRange} is blurry, dark, or JPEG-compressed, actively de-pixelate and reconstruct razor-sharp optical weave threads matching ${fabricSpec.hasInfo ? fabricSpec.fabricSummaryLabel : "the authentic garment material"} so the fabric texture is crisper and sharper than ${productRange} even when zoomed in). ${proportionalHemlineAnchorOpenAI} (Show harmonious matching footwear only if the visual hemline in ${productRange} leaves feet visible.) 100% IGNORE any person/background in ${productRange}.${pureDressNoShortsDirectiveOpenAI}
 - SEAMLESS GARMENT RELIGHTING & ZERO CUTOUT EDGES: Relight the swapped garment and footwear to obey Reference Image 1's exact ambient lighting, shadows, and color temperature, with natural hair/shoulder/skin blending and ZERO white outline or pasted look.
 - Zero tattoos anywhere on the skin. ${isUltraRealismEnabled ? "Unretouched RAW candid 35mm smartphone skin realism (visible pores, fine vellus hair, subtle micro-imperfections, subtle film grain, zero smoothing)." : "Preserve sharp iPhone 16 Pro optical clarity."}
 
@@ -2012,7 +2018,7 @@ ${fabricSpec.promptBlockPt}` : ""}
 2. CAL\xC7ADO: ${shoeEditInstruction}
 3. Se for vestido ou macac\xE3o, ela veste EXCLUSIVAMENTE o vestido com pernas limpas naturais${!hasExplicitShortsOpenAI ? " (proibido cal\xE7a jeans ou inventar shortinho/bermuda interno por baixo do vestido ou vis\xEDvel atrav\xE9s de qualquer fenda \u2014 dentro da fenda mostre apenas a pele natural limpa da perna)" : " (preservando o short-saia embutido exatamente se existir na refer\xEAncia)"}; se for blusa, veste cal\xE7a jeans combinando; se for cal\xE7a, veste blusa combinando. ADAPTE APENAS A LARGURA E CAIMENTO NATURAL AO CORPO PRESERVANDO 1:1 A ALTURA PROPORCIONAL EXATA DA BARRA NA PERNA mostrada na foto de refer\xEAncia (mantendo a mesma faixa proporcional de canela exposta acima do tornozelo \u2014 proibido descer ou subir a barra al\xE9m da refer\xEAncia).
 4. M\xC1XIMA NITIDEZ, FOCO \xD3PTICO CRISTALINO E ALTA RESOLU\xC7\xC3O:
-- Preserve a imagem com nitidez fotogr\xE1fica impec\xE1vel e foco cristalino, sem nenhum borr\xE3o, n\xE9voa ou perda de textura.
+- Preserve a imagem com nitidez fotogr\xE1fica impec\xE1vel e foco cristalino, sem nenhum borr\xE3o, pixeliza\xE7\xE3o, blocos de compress\xE3o ou perda de textura (reconstrua trama t\xEAxtil n\xEDtida em alta defini\xE7\xE3o mesmo que a foto de refer\xEAncia original esteja escura, borrada ou comprimida).
 - Pele humana realista e natural com microtextura e poros vis\xEDveis, olhos v\xEDvidos e n\xEDtidos, e textura detalhada do tecido${fabricSpec.hasInfo ? ` (${fabricSpec.fabricSummaryLabel})` : ""} com ilumina\xE7\xE3o de c\xE2mera moderna topo de linha (iPhone 16 Pro).
 - ZERO borr\xE3o (NO BLUR), ZERO efeito emba\xE7ado, foco cravado em toda a modelo e no produto.
 Preserve fielmente qualquer logomarca, estampa ou acabamento original da pe\xE7a. Tudo que n\xE3o for a pe\xE7a e o cal\xE7ado permanece pixel a pixel igual \xE0 imagem enviada. Proibido adicionar textos flutuantes, logos de redes sociais ou marcas d'\xE1gua externas.`;
@@ -2263,7 +2269,7 @@ REGRAS DE AVALIA\xC7\xC3O:
 3. Avalie rigorosamente estes 6 micro-itens da pe\xE7a principal nas partes VIS\xCDVEIS (cada um com nota real de 0 a 100 em "criteriaScores"):
    - "color" (Cor da Pe\xE7a): cor predominante, tonalidade e estampa/padr\xE3o (liso vs estampado) comparados \xE0 refer\xEAncia.
    - "length" (Comprimento da Pe\xE7a): altura proporcional exata da barra na perna/silhueta comparada \xE0 refer\xEAncia (curto/mini, m\xEDdi, longo/maxi, cropped vs blusa comprida \u2014 confira se a barra parou na mesma altura proporcional da perna deixando a mesma faixa proporcional de canela exposta acima do tornozelo).
-   - "texture" (Textura do Tecido): trama, aspecto t\xE1til e acabamento do tecido. Fotos de refer\xEAncia muitas vezes v\xEAm comprimidas de internet; imagens geradas mais n\xEDtidas revelando claramente a trama do tecido informado ou compat\xEDvel DEVEM receber nota 95\u2013100 (NUNCA d\xEA ~80% apenas porque a imagem gerada tem maior nitidez de trama!).
+   - "texture" (Textura do Tecido): trama, material e acabamento t\xE1til do tecido (ex.: liso, canelado, linho, tric\xF4, crepe, jeans, renda, cetim, couro ou o tecido informado no contexto). Fotos de refer\xEAncia de cat\xE1logo/WhatsApp muitas vezes t\xEAm baixa resolu\xE7\xE3o, borr\xE3o ou blocos escuros de compress\xE3o, e numa selfie de corpo inteiro no espelho a pe\xE7a ocupa menos pixels do que num close de loja; por isso a imagem gerada deve reproduzir o tipo/acabamento de tecido informado com nitidez at\xE9 maior que a refer\xEAncia. Se a imagem gerada revelar trama aut\xEAntica ou acabamento compat\xEDvel com a pe\xE7a/tecido informado, d\xEA nota 95\u2013100. \xC9 TERMINANTEMENTE PROIBIDO reclamar que "a textura do tecido na imagem gerada parece menos n\xEDtida em compara\xE7\xE3o \xE0 refer\xEAncia" apenas pela dist\xE2ncia da selfie no espelho, luz ambiente ou cor escura/preta; s\xF3 penalize "texture" se o material for claramente outro (ex.: algod\xE3o fosco virar couro/pl\xE1stico brilhante) ou estiver artificialmente borrado/derretido.
    - "drape" (Caimento da Pe\xE7a): modelagem, caimento, volume e ajuste estrutural do tecido no corpo no \xE2ngulo vis\xEDvel comparado \xE0 refer\xEAncia (sem descontar nada por costas ocultas).
    - "details" (Detalhes da Pe\xE7a): compare minuciosamente TODOS os detalhes construtivos VIS\xCDVEIS no \xE2ngulo da foto gerada:
      * Bolsos vis\xEDveis: mesma quantidade, localiza\xE7\xE3o e tamanho da refer\xEAncia.
@@ -4426,20 +4432,22 @@ ${isUltraRealismSeedream ? naturalSkinSeedream : ""}
       );
       const flashRuleSeedream = isScenario24Seedream ? "- [CEN\xC1RIO 24 FLASH]: Flash traseiro do celular SEMPRE LIGADO brilhando no espelho iluminando modelo e roupa.\n" : "";
       const faceFramingRuleSeedream = allowsFaceSeedream ? "- FOTO 2 (MODELO COM ROSTO): Mesma mulher e mesmo rosto/olhos/boca/cabelo/corpo da Foto 2 (proibido cortar rosto).\n" : "- FOTO 2 (MODELO SEM ROSTO): Mesma mulher/corpo/cabelo/pose da Foto 2. PROIBIDO mostrar rosto, olhos, nariz ou boca (corte no queixo ou oculto pelo celular exatamente como na Foto 2).\n";
+      const antiPixelationRuleSeedream = "- NITIDEZ T\xCAXTIL ANTI-PIXELIZA\xC7\xC3O: Mesmo que a foto do produto (Foto 1) esteja com baixa resolu\xE7\xE3o, comprimida, escura ou pixelada, N\xC3O copie borr\xF5es ou blocos JPEG para a roupa \u2014 sintetize trama e fibras t\xEAxteis em alt\xEDssima defini\xE7\xE3o \xF3ptica, t\xE3o ou mais n\xEDtidas que a refer\xEAncia ao ampliar (sem plasticidade ou apar\xEAncia artificial).\n";
       if (isModelScenarioSeedream) {
         headerSeedream = "[MAPA 2 IMAGENS \u2014 FOTO 1 PRODUTO | FOTO 2 MODELO + CEN\xC1RIO BASE]:\n" + faceFramingRuleSeedream + flashRuleSeedream + `- Foto 1: Extrair EXCLUSIVAMENTE a pe\xE7a de roupa integral sem encurtar (ignorar 100% pessoa/rosto/tatuagens da Foto 1).
 - Foto 2: Preservar 100% modelo, pose, quarto, paredes, piso e luz; trocar apenas a roupa pela Foto 1 e o cal\xE7ado (cor contrastante com a barra, se p\xE9s vis\xEDveis).
-${naturalSkinSeedream}${clothingDirectiveSeedream}
+${antiPixelationRuleSeedream}${naturalSkinSeedream}${clothingDirectiveSeedream}
 `;
       } else {
         headerSeedream = "[MAPA 3 IMAGENS \u2014 FOTO 1 PRODUTO | FOTO 2 MODELO | FOTO 3 CEN\xC1RIO REAL]:\n" + faceFramingRuleSeedream + flashRuleSeedream + `- Foto 1: Apenas a roupa 1:1 sem encurtar (zero pessoa/rosto/tatuagens da Foto 1).
 - Foto 2: Apenas corpo, curvas, cabelos, pose e regra facial (DESCARTAR roupa antiga, t\xEAnis, quarto e parede branca da Foto 2).
 - Foto 3: Inserir a modelo em captura \xFAnica nativa em p\xE9 sobre o piso real deste c\xF4modo, usando a luz/temperatura da Foto 3, sombra de contato nos p\xE9s e bordas org\xE2nicas sem contorno branco.
-${naturalSkinSeedream}${clothingDirectiveSeedream}
+${antiPixelationRuleSeedream}${naturalSkinSeedream}${clothingDirectiveSeedream}
 `;
       }
     } else {
       headerSeedream = `${faceDirectiveSeedream}${naturalSkinSeedream}${frontalPoseDirectiveSeedream}[MAPA]: Img 1 = Cen\xE1rio fixo intacto; Img 2+ = Pe\xE7a 1:1 (biotipo vem exclusivamente do prompt abaixo). Fotografia \xFAnica nativa com luz e sombras integradas ao cen\xE1rio.
+- NITIDEZ T\xCAXTIL ANTI-PIXELIZA\xC7\xC3O: Mesmo que a foto de refer\xEAncia da roupa seja comprimida ou pixelada, reconstrua trama e fibras t\xEAxteis n\xEDtidas em alta defini\xE7\xE3o \xF3ptica.
 ${clothingDirectiveSeedream}
 `;
     }
@@ -4599,9 +4607,15 @@ app.post("/api/generate-scene-image", async (req, res) => {
         const arrayBuf = await proxyFetch.arrayBuffer();
         const base64 = Buffer.from(arrayBuf).toString("base64");
         const mime = proxyFetch.headers.get("content-type") || "image/jpeg";
+        let rawDataUri = `data:${mime};base64,${base64}`;
+        const reqTargetW = Number(req.body?.targetWidth) || 0;
+        const reqTargetH = Number(req.body?.targetHeight) || 0;
+        if (reqTargetW >= 720 && reqTargetH >= 1280) {
+          rawDataUri = await calibrateOutputDataUri(rawDataUri, reqTargetW, reqTargetH);
+        }
         return res.json({
           success: true,
-          imageUrl: `data:${mime};base64,${base64}`
+          imageUrl: rawDataUri
         });
       } catch (proxyErr) {
         return res.status(500).json({
