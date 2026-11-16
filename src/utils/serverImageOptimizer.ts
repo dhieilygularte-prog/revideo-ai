@@ -342,3 +342,174 @@ export async function calibrateOutputDataUri(
     return trimmed;
   }
 }
+
+const productPrepCache = createBoundedMap<string, string>(60);
+
+/**
+ * Detecta de forma conservadora se uma imagem horizontal/quadrada é uma colagem lado a lado
+ * (ex.: Frente à esquerda + Costas à direita) verificando se a faixa vertical central (~46%..54%)
+ * é composta essencialmente por fundo/linha divisória uniforme enquanto as duas metades laterais
+ * contêm sujeitos distintos. Nunca recorta fotos únicas centralizadas.
+ */
+async function detectSideBySideSplitX(buffer: Buffer, width: number, height: number): Promise<number | null> {
+  if (width < 200 || height < 200) return null;
+  const ratio = width / height;
+  if (ratio < 0.92 || ratio > 2.2) return null;
+
+  try {
+    const sampleW = 160;
+    const sampleH = 160;
+    const { data } = await sharp(buffer, { failOn: 'none' })
+      .rotate()
+      .resize(sampleW, sampleH, { fit: 'fill' })
+      .grayscale()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    const colStdAndEdge = (x: number): { std: number; mean: number; darkCount: number } => {
+      let sum = 0;
+      let sumSq = 0;
+      let darkCount = 0;
+      const yStart = Math.floor(sampleH * 0.12);
+      const yEnd = Math.floor(sampleH * 0.88);
+      const n = yEnd - yStart;
+      for (let y = yStart; y < yEnd; y++) {
+        const v = data[y * sampleW + x];
+        sum += v;
+        sumSq += v * v;
+        if (v < 95) darkCount++;
+      }
+      const mean = sum / n;
+      const variance = Math.max(0, sumSq / n - mean * mean);
+      return { std: Math.sqrt(variance), mean, darkCount };
+    };
+
+    const regionContrast = (xFrom: number, xTo: number): number => {
+      let totalStd = 0;
+      let count = 0;
+      for (let x = xFrom; x <= xTo; x++) {
+        totalStd += colStdAndEdge(x).std;
+        count++;
+      }
+      return count > 0 ? totalStd / count : 0;
+    };
+
+    const leftContrast = regionContrast(Math.floor(sampleW * 0.15), Math.floor(sampleW * 0.40));
+    const rightContrast = regionContrast(Math.floor(sampleW * 0.60), Math.floor(sampleW * 0.85));
+
+    // Ambos os lados precisam ter conteúdo visual relevante
+    if (leftContrast < 16 || rightContrast < 16) return null;
+
+    // Procura coluna no centro (46%..54%) que seja claramente fundo/divisória uniforme (sem peça atravessando o meio)
+    let bestCenterX = -1;
+    let lowestCenterStd = Infinity;
+    for (let x = Math.floor(sampleW * 0.46); x <= Math.floor(sampleW * 0.54); x++) {
+      const stats = colStdAndEdge(x);
+      if (stats.std < lowestCenterStd && stats.darkCount <= 6) {
+        lowestCenterStd = stats.std;
+        bestCenterX = x;
+      }
+    }
+
+    // Só considera colagem se o centro for visivelmente mais liso/uniforme que os dois sujeitos laterais
+    const minSideContrast = Math.min(leftContrast, rightContrast);
+    if (bestCenterX >= 0 && lowestCenterStd <= Math.min(20, minSideContrast * 0.55)) {
+      const splitRatio = Math.min(0.53, Math.max(0.49, (bestCenterX + 1.5) / sampleW));
+      return Math.round(width * splitRatio);
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Pré-tratamento local (0 tokens extras) de fotos de referência do produto antes da geração:
+ * 1) Quando é colagem lado a lado (Frente + Costas) e a geração é frontal, recorta apenas a frente para dobrar os pixels úteis da peça.
+ * 2) Quando a foto é de baixa resolução ou muito comprimida, limpa blocos JPEG e aplica upscale + nitidez controlada preservando 100% da cor original.
+ */
+export async function prepareProductReferenceDataUriForGeneration(
+  input: string,
+  options?: { cropFrontFromSideBySide?: boolean }
+): Promise<string> {
+  if (!input || typeof input !== 'string') return input;
+  const trimmed = input.trim();
+  if (!trimmed) return trimmed;
+
+  const cropFront = options?.cropFrontFromSideBySide !== false;
+  const key = hashKey(`prodprep:${cropFront ? 'front' : 'full'}`, trimmed);
+  const cached = productPrepCache.get(key);
+  if (cached) return cached;
+
+  const resolved = await resolveInputToBuffer(trimmed);
+  if (!resolved) return trimmed;
+
+  try {
+    const rotatedBuf = await sharp(resolved.buffer, { failOn: 'none' }).rotate().toBuffer();
+    const meta = await sharp(rotatedBuf, { failOn: 'none' }).metadata();
+    const w = meta.width || 0;
+    const h = meta.height || 0;
+    if (w < 64 || h < 64) return trimmed;
+
+    let workBuf = rotatedBuf;
+    let workW = w;
+    let workH = h;
+    let didCropFront = false;
+
+    if (cropFront) {
+      const splitX = await detectSideBySideSplitX(rotatedBuf, w, h);
+      if (splitX && splitX >= Math.round(w * 0.45) && splitX <= Math.round(w * 0.56)) {
+        workBuf = await sharp(rotatedBuf, { failOn: 'none' })
+          .extract({ left: 0, top: 0, width: splitX, height: h })
+          .toBuffer();
+        workW = splitX;
+        workH = h;
+        didCropFront = true;
+      }
+    }
+
+    const bytesPerPixel = resolved.buffer.length / Math.max(1, w * h);
+    const isLowResOrCompressed = workW < 1000 || workH < 1000 || bytesPerPixel < 0.24;
+
+    if (!didCropFront && !isLowResOrCompressed) {
+      productPrepCache.set(key, trimmed);
+      return trimmed;
+    }
+
+    let pipeline = sharp(workBuf, { failOn: 'none' });
+    if (workW < 1280 && workH < 1280) {
+      pipeline = pipeline.resize({
+        width: 1280,
+        height: 1280,
+        fit: 'inside',
+        kernel: sharp.kernel.lanczos3,
+      });
+    } else if (workW > 1536 || workH > 1536) {
+      pipeline = pipeline.resize({
+        width: 1536,
+        height: 1536,
+        fit: 'inside',
+        kernel: sharp.kernel.lanczos3,
+      });
+    }
+
+    if (isLowResOrCompressed) {
+      // Deblock sub-pixel leve remove artefatos 8x8 JPEG antes de restaurar nitidez de costuras/bordas, sem alterar cor/matiz
+      pipeline = pipeline
+        .blur(0.35)
+        .sharpen({ sigma: 0.7, m1: 0.5, m2: 1.4 });
+    } else {
+      pipeline = pipeline.sharpen({ sigma: 0.5, m1: 0.3, m2: 1.1 });
+    }
+
+    const outBuf = await pipeline
+      .jpeg({ quality: 95, mozjpeg: true, chromaSubsampling: '4:4:4' })
+      .toBuffer();
+
+    const outUri = `data:image/jpeg;base64,${outBuf.toString('base64')}`;
+    productPrepCache.set(key, outUri);
+    return outUri;
+  } catch {
+    return trimmed;
+  }
+}

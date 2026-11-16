@@ -21,6 +21,7 @@ import {
   createBoundedMap,
   optimizeImageDataUriForGeneration,
   optimizeImageDataUriForVision,
+  prepareProductReferenceDataUriForGeneration,
 } from './src/utils/serverImageOptimizer';
 import {
   analyzeAnaMariaProductInfo,
@@ -2050,28 +2051,50 @@ app.post('/api/generate-scene-image', async (req, res) => {
     const modelScenarioSource: 'model' | 'gallery' = req.body?.modelScenarioSource || 'model';
     const isModelScenario = hasGalleryModel && modelScenarioSource === 'model';
 
+    const isBackRequested = /\b(costas|de\s+costas|parte\s+traseira|back\s*view)\b/i.test(
+      `${effectivePrompt || ''} ${targetAngle || ''} ${additionalInstructions || ''}`
+    );
+    const [enhancedProductPhotoBase64, enhancedProductPhotosBase64] = await Promise.all([
+      productPhotoBase64 && productPhotoBase64.length > 50
+        ? prepareProductReferenceDataUriForGeneration(productPhotoBase64, {
+            cropFrontFromSideBySide: !isBackRequested,
+          })
+        : Promise.resolve(productPhotoBase64),
+      Array.isArray(productPhotosBase64) && productPhotosBase64.length > 0
+        ? Promise.all(
+            productPhotosBase64.map((p: string) =>
+              p && p.length > 50
+                ? prepareProductReferenceDataUriForGeneration(p, {
+                    cropFrontFromSideBySide: !isBackRequested,
+                  })
+                : Promise.resolve(p)
+            )
+          )
+        : Promise.resolve(productPhotosBase64),
+    ]);
+
     const orderedRefs: string[] = [];
     if (isAnaMariaMode && hasGalleryModel) {
       if (isModelScenario) {
         // MODO 2 IMAGENS: Foto 1 = Produto, Foto 2 = Modelo com seu próprio cenário
-        if (productPhotoBase64 && productPhotoBase64.length > 50) {
-          orderedRefs.push(productPhotoBase64);
+        if (enhancedProductPhotoBase64 && enhancedProductPhotoBase64.length > 50) {
+          orderedRefs.push(enhancedProductPhotoBase64);
         }
-        if (Array.isArray(productPhotosBase64)) {
-          for (const p of productPhotosBase64) {
-            if (p && p.length > 50 && p !== productPhotoBase64) orderedRefs.push(p);
+        if (Array.isArray(enhancedProductPhotosBase64)) {
+          for (const p of enhancedProductPhotosBase64) {
+            if (p && p.length > 50 && p !== enhancedProductPhotoBase64) orderedRefs.push(p);
           }
         }
         orderedRefs.push(effectiveModelReferenceBase64!);
         // Cenário NÃO entra na lista de referências quando 'model' está marcado!
       } else {
         // MODO 3 IMAGENS: Foto 1 = Produto, Foto 2 = Modelo, Foto 3 = Cenário da galeria
-        if (productPhotoBase64 && productPhotoBase64.length > 50) {
-          orderedRefs.push(productPhotoBase64);
+        if (enhancedProductPhotoBase64 && enhancedProductPhotoBase64.length > 50) {
+          orderedRefs.push(enhancedProductPhotoBase64);
         }
-        if (Array.isArray(productPhotosBase64)) {
-          for (const p of productPhotosBase64) {
-            if (p && p.length > 50 && p !== productPhotoBase64) orderedRefs.push(p);
+        if (Array.isArray(enhancedProductPhotosBase64)) {
+          for (const p of enhancedProductPhotosBase64) {
+            if (p && p.length > 50 && p !== enhancedProductPhotoBase64) orderedRefs.push(p);
           }
         }
         orderedRefs.push(effectiveModelReferenceBase64!);
@@ -2084,12 +2107,12 @@ app.post('/api/generate-scene-image', async (req, res) => {
       if (effectiveScenarioPhotoBase64 && effectiveScenarioPhotoBase64.length > 50) {
         orderedRefs.push(effectiveScenarioPhotoBase64);
       }
-      if (productPhotoBase64 && productPhotoBase64.length > 50) {
-        orderedRefs.push(productPhotoBase64);
+      if (enhancedProductPhotoBase64 && enhancedProductPhotoBase64.length > 50) {
+        orderedRefs.push(enhancedProductPhotoBase64);
       }
-      if (Array.isArray(productPhotosBase64)) {
-        for (const p of productPhotosBase64) {
-          if (p && p.length > 50 && p !== productPhotoBase64) orderedRefs.push(p);
+      if (Array.isArray(enhancedProductPhotosBase64)) {
+        for (const p of enhancedProductPhotosBase64) {
+          if (p && p.length > 50 && p !== enhancedProductPhotoBase64) orderedRefs.push(p);
         }
       }
     }
@@ -2102,7 +2125,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
         prompt: effectivePrompt,
         productInfo,
         fabricType,
-        imageReferenceBase64: productPhotoBase64 || effectiveModelReferenceBase64 || effectiveScenarioPhotoBase64,
+        imageReferenceBase64: enhancedProductPhotoBase64 || effectiveModelReferenceBase64 || effectiveScenarioPhotoBase64,
         modelReferenceBase64: effectiveModelReferenceBase64,
         referenceImages: orderedRefs,
         aspectRatio: req.body.aspectRatio || '9:16',
@@ -2130,8 +2153,8 @@ app.post('/api/generate-scene-image', async (req, res) => {
       prompt: effectivePrompt,
       productInfo,
       fabricType,
-      productPhotoBase64,
-      productPhotosBase64,
+      productPhotoBase64: enhancedProductPhotoBase64,
+      productPhotosBase64: enhancedProductPhotosBase64,
       modelReferenceBase64: effectiveModelReferenceBase64,
       referenceFrameBase64,
       scenarioPhotoBase64: isModelScenario ? undefined : effectiveScenarioPhotoBase64,
