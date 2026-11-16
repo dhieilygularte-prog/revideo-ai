@@ -2567,22 +2567,28 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         </div>
       </div>
 
-      {/* ─── SELETOR DE MODO DE APRESENTAÇÃO (MIRROR SELFIE vs MODO POV vs COM ROSTO) — BOTÕES DISCRETOS ─── */}
-      <div className={`${sectionCardClass} p-4 sm:p-5 space-y-3`}>
+      {/* ─── SELETOR DE MODO DE APRESENTAÇÃO (MIRROR SELFIE vs MODO POV vs COM ROSTO) — ALTA VISIBILIDADE ─── */}
+      <div
+        className={`rounded-2xl p-4 sm:p-5 space-y-3.5 transition-all shadow-xl ${
+          isAmetista
+            ? 'border-2 border-purple-400/65 bg-gradient-to-br from-[#1b1030] via-[#150d24] to-[#110a1c] shadow-purple-950/50'
+            : 'border-2 border-orange-400/60 bg-gradient-to-br from-zinc-900 via-[#181512] to-zinc-900 shadow-orange-950/30'
+        }`}
+      >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-wide">
               Modo de Apresentação (Estilo de Gravação)
             </h3>
-            <p className="text-[11px] text-zinc-400">
+            <p className="text-[11px] text-zinc-300">
               Por padrão fica em Mirror Selfie (sem mostrar do queixo para cima). Ao tocar em Modo POV, os cenários e prompts mudam automaticamente para POV na cama.
             </p>
           </div>
           <span
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border ${
+            className={`px-3 py-1 rounded-lg text-[11px] font-extrabold border ${
               isAmetista
-                ? 'bg-[#1a1128] border-purple-400/40 text-[#d4ff59]'
-                : 'bg-zinc-900 border-orange-500/35 text-amber-300'
+                ? 'bg-[#24153d] border-[#d4ff59]/60 text-[#d4ff59]'
+                : 'bg-orange-500/15 border-orange-400/60 text-amber-300'
             }`}
           >
             Ativo:{' '}
@@ -2599,19 +2605,31 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           <button
             type="button"
             onClick={() => handleSelectPresentationMode('mirror_selfie')}
-            className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
-              activeMode === 'mirror_selfie' ? activeOptionButtonClass : inactiveOptionButtonClass
+            className={`p-3.5 rounded-xl border-2 text-left transition-all cursor-pointer flex items-center justify-between shadow-md ${
+              activeMode === 'mirror_selfie'
+                ? isAmetista
+                  ? 'bg-gradient-to-r from-purple-600/35 to-[#222d14] border-[#d4ff59] text-white ring-2 ring-[#d4ff59]/30'
+                  : 'bg-gradient-to-r from-orange-500/25 to-amber-500/15 border-orange-400 text-white ring-2 ring-orange-400/30'
+                : isAmetista
+                ? 'bg-[#271842] hover:bg-[#332056] border-purple-400/55 hover:border-[#d4ff59]/80 text-white'
+                : 'bg-zinc-800 hover:bg-zinc-700 border-zinc-500/80 hover:border-orange-400 text-white'
             }`}
           >
             <div className="flex items-center gap-2.5">
               <Smartphone
                 className={`w-4 h-4 shrink-0 ${
-                  activeMode === 'mirror_selfie' ? checkIconColorClass : 'text-zinc-500'
+                  activeMode === 'mirror_selfie'
+                    ? checkIconColorClass
+                    : isAmetista
+                    ? 'text-purple-200'
+                    : 'text-amber-300'
                 }`}
               />
               <div>
-                <span className="text-xs font-bold block uppercase">Mirror Selfie (Padrão)</span>
-                <span className="text-[10px] block text-zinc-400">
+                <span className="text-xs font-extrabold block uppercase text-white">
+                  Mirror Selfie (Padrão)
+                </span>
+                <span className="text-[10px] block text-zinc-200">
                   No Face · Corte no queixo
                 </span>
               </div>
@@ -2625,19 +2643,31 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           <button
             type="button"
             onClick={() => handleSelectPresentationMode('com_rosto')}
-            className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
-              activeMode === 'com_rosto' ? activeOptionButtonClass : inactiveOptionButtonClass
+            className={`p-3.5 rounded-xl border-2 text-left transition-all cursor-pointer flex items-center justify-between shadow-md ${
+              activeMode === 'com_rosto'
+                ? isAmetista
+                  ? 'bg-gradient-to-r from-purple-600/35 to-[#222d14] border-[#d4ff59] text-white ring-2 ring-[#d4ff59]/30'
+                  : 'bg-gradient-to-r from-orange-500/25 to-amber-500/15 border-orange-400 text-white ring-2 ring-orange-400/30'
+                : isAmetista
+                ? 'bg-[#271842] hover:bg-[#332056] border-purple-400/55 hover:border-[#d4ff59]/80 text-white'
+                : 'bg-zinc-800 hover:bg-zinc-700 border-zinc-500/80 hover:border-orange-400 text-white'
             }`}
           >
             <div className="flex items-center gap-2.5">
               <Smile
                 className={`w-4 h-4 shrink-0 ${
-                  activeMode === 'com_rosto' ? checkIconColorClass : 'text-zinc-500'
+                  activeMode === 'com_rosto'
+                    ? checkIconColorClass
+                    : isAmetista
+                    ? 'text-purple-200'
+                    : 'text-amber-300'
                 }`}
               />
               <div>
-                <span className="text-xs font-bold block uppercase">Com Rosto (UGC)</span>
-                <span className="text-[10px] block text-zinc-400">
+                <span className="text-xs font-extrabold block uppercase text-white">
+                  Com Rosto (UGC)
+                </span>
+                <span className="text-[10px] block text-zinc-200">
                   Rosto visível · Galeria UGC
                 </span>
               </div>
@@ -2651,19 +2681,31 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           <button
             type="button"
             onClick={() => handleSelectPresentationMode('pov')}
-            className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between ${
-              activeMode === 'pov' ? activeOptionButtonClass : inactiveOptionButtonClass
+            className={`p-3.5 rounded-xl border-2 text-left transition-all cursor-pointer flex items-center justify-between shadow-md ${
+              activeMode === 'pov'
+                ? isAmetista
+                  ? 'bg-gradient-to-r from-purple-600/35 to-[#222d14] border-[#d4ff59] text-white ring-2 ring-[#d4ff59]/30'
+                  : 'bg-gradient-to-r from-orange-500/25 to-amber-500/15 border-orange-400 text-white ring-2 ring-orange-400/30'
+                : isAmetista
+                ? 'bg-[#271842] hover:bg-[#332056] border-purple-400/55 hover:border-[#d4ff59]/80 text-white'
+                : 'bg-zinc-800 hover:bg-zinc-700 border-zinc-500/80 hover:border-orange-400 text-white'
             }`}
           >
             <div className="flex items-center gap-2.5">
               <Hand
                 className={`w-4 h-4 shrink-0 ${
-                  activeMode === 'pov' ? checkIconColorClass : 'text-zinc-500'
+                  activeMode === 'pov'
+                    ? checkIconColorClass
+                    : isAmetista
+                    ? 'text-purple-200'
+                    : 'text-amber-300'
                 }`}
               />
               <div>
-                <span className="text-xs font-bold block uppercase">Modo POV</span>
-                <span className="text-[10px] block text-zinc-400">
+                <span className="text-xs font-extrabold block uppercase text-white">
+                  Modo POV
+                </span>
+                <span className="text-[10px] block text-zinc-200">
                   Mãos & 2 Peças na Cama
                 </span>
               </div>
