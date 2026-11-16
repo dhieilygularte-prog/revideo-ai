@@ -23,7 +23,7 @@ export const MODEL_GALLERY_COM_ROSTO: AnaMariaModelItem[] = [
     title: '01. Mestra Ana Maria',
     description: 'Silhueta curvilínea ampulheta, cintura fina marcada, quadris e glúteos volumosos, cabelos castanho-claros com mechas iluminadas.',
     file: '1.png',
-    fullUrl: '/models/gallery/com_rosto/1.png',
+    fullUrl: '/models/gallery/com_rosto/1.png?v=2',
   },
   {
     id: 'modelo_2_iara',
@@ -59,7 +59,7 @@ export const MODEL_GALLERY_COM_ROSTO: AnaMariaModelItem[] = [
     title: '05. Mestra Catza',
     description: 'Presença de alto impacto, cabelos escuros, estilo sofisticado com iluminação contrastante.',
     file: '5.png',
-    fullUrl: '/models/gallery/com_rosto/5.png',
+    fullUrl: '/models/gallery/com_rosto/5.png?v=2',
   },
   {
     id: 'modelo_6_ana_ruiva',
@@ -68,7 +68,7 @@ export const MODEL_GALLERY_COM_ROSTO: AnaMariaModelItem[] = [
     title: '06. Ana Ruiva',
     description: 'Cabelos ruivos acobreados naturais, silhueta feminina elegante e postura confiante no espelho.',
     file: '6.png',
-    fullUrl: '/models/gallery/com_rosto/6.png',
+    fullUrl: '/models/gallery/com_rosto/6.png?v=2',
   },
   {
     id: 'modelo_7_dorameira',
@@ -86,7 +86,7 @@ export const MODEL_GALLERY_COM_ROSTO: AnaMariaModelItem[] = [
     title: '08. Ana Em Forma',
     description: 'Biotipo atlético e tonificado, postura fitness moderna com pernas torneadas e abdômen firme.',
     file: '8.png',
-    fullUrl: '/models/gallery/com_rosto/8.png',
+    fullUrl: '/models/gallery/com_rosto/8.png?v=2',
   },
   {
     id: 'modelo_9_evangelica',
@@ -122,7 +122,7 @@ export const MODEL_GALLERY_COM_ROSTO: AnaMariaModelItem[] = [
     title: '12. Loira Mulherão',
     description: 'Presença imponente e marcante, cabelos loiros volumosos e curvas curvilíneas expressivas.',
     file: '12.png',
-    fullUrl: '/models/gallery/com_rosto/12.png',
+    fullUrl: '/models/gallery/com_rosto/12.png?v=2',
   },
   {
     id: 'modelo_13_tranca',
@@ -131,7 +131,7 @@ export const MODEL_GALLERY_COM_ROSTO: AnaMariaModelItem[] = [
     title: '13. Trança',
     description: 'Tranças afro longas e estilosas, atitude autêntica, beleza negra radiante e visual moderno.',
     file: '13.png',
-    fullUrl: '/models/gallery/com_rosto/13.png',
+    fullUrl: '/models/gallery/com_rosto/13.png?v=2',
   },
   {
     id: 'modelo_14_cacheada_jovem',
@@ -149,7 +149,7 @@ export const MODEL_GALLERY_COM_ROSTO: AnaMariaModelItem[] = [
     title: '15. Mulher Chic',
     description: 'Porte refinado de alta costura, saia poá marrom com cinto clássico, batom vermelho e estética clean sofisticada.',
     file: '15.png',
-    fullUrl: '/models/gallery/com_rosto/15.png',
+    fullUrl: '/models/gallery/com_rosto/15.png?v=2',
   },
   {
     id: 'modelo_16_mulher_comum',
@@ -167,7 +167,7 @@ export const MODEL_GALLERY_COM_ROSTO: AnaMariaModelItem[] = [
     title: '17. Nerd Sexy',
     description: 'Visual moderno com óculos estilosos de armação marcante, charme despojado e curvas definidas.',
     file: '17.png',
-    fullUrl: '/models/gallery/com_rosto/17.png',
+    fullUrl: '/models/gallery/com_rosto/17.png?v=2',
   },
   {
     id: 'modelo_18_estudante_sexy',
@@ -194,7 +194,7 @@ export const MODEL_GALLERY_COM_ROSTO: AnaMariaModelItem[] = [
     title: '20. Ruiva Delicada',
     description: 'Ruivo suave natural, traços harmoniosos, porte delicado e caimento leve em todas as peças.',
     file: '20.png',
-    fullUrl: '/models/gallery/com_rosto/20.png',
+    fullUrl: '/models/gallery/com_rosto/20.png?v=2',
   },
   {
     id: 'modelo_21_senhora_chic',
@@ -221,7 +221,7 @@ export const MODEL_GALLERY_COM_ROSTO: AnaMariaModelItem[] = [
     title: '23. Morena Cacheada',
     description: 'Cabelos escuros cacheados volumosos, olhar marcante, silhueta curvilínea e estilo urbano descontraído.',
     file: '23.png',
-    fullUrl: '/models/gallery/com_rosto/23.png',
+    fullUrl: '/models/gallery/com_rosto/23.png?v=2',
   },
   {
     id: 'modelo_24_loira_fitness',
@@ -257,7 +257,7 @@ export const MODEL_GALLERY_COM_ROSTO: AnaMariaModelItem[] = [
     title: '27. Senhora Preta',
     description: 'Mulher negra madura elegante com cabelos cacheados volumosos, sorriso simpático, corpo inteiro e postura confiante diante do espelho.',
     file: '27.png',
-    fullUrl: '/models/gallery/com_rosto/27.png',
+    fullUrl: '/models/gallery/com_rosto/27.png?v=2',
   },
 ];
 
