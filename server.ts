@@ -1704,7 +1704,7 @@ async function generateImageWithSeedream(params: {
     : '';
 
   const clothingDirectiveSeedream = isDressOrOnePieceSeedream
-    ? `[PRODUTO 1:1 — COMPRIMENTO EXATO DA REFERÊNCIA]: Reproduza a peça da Foto 1 com 100% fidelidade do topo à barra, mantendo exclusivamente o comprimento visual EXATO mostrado na Foto 1 (proibido alongar ou encurtar qualquer roupa; calçado só se a barra original da Foto 1 deixar os pés visíveis).${pureDressNoShortsSeedream}\n`
+    ? `[PRODUTO 1:1 — COMPRIMENTO PROPORCIONAL EXATO DA REFERÊNCIA]: Reproduza a peça da Foto 1 com 100% fidelidade do topo à barra, adaptando apenas a largura e o caimento natural ao corpo da modelo (inclusive plus size) e parando a barra EXATAMENTE na mesma altura proporcional das pernas/canela mostrada na Foto 1 (preservando a mesma faixa de canela exposta acima do tornozelo; proibido descer ou subir a barra; calçado só se a barra original da Foto 1 deixar os pés visíveis).${pureDressNoShortsSeedream}\n`
     : (isUpperPieceSeedream
         ? '[PEÇA DE CIMA 1:1 + BAIXO CONTRASTANTE]: Mantenha a peça superior idêntica à Foto 1 e combine com calça/saia de cor harmônica CONTRASTANTE (nunca igual à de cima).\n'
         : '[PEÇA DE BAIXO 1:1 + CIMA CONTRASTANTE]: Mantenha a peça inferior idêntica à Foto 1 e combine com blusa/top de cor harmônica CONTRASTANTE (nunca igual à de baixo).\n');

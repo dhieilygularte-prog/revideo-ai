@@ -618,9 +618,6 @@ function buildDressLengthAndSlitDirectives(
   const isDressContext =
     dressInspection?.garmentCategory === 'dress' ||
     /\b(vestido|vestidos|dress|dresses|chemise|tubinho|midi|longo)\b/i.test(combined);
-  if (!isDressContext && !dressInspection) {
-    return { imageLengthRule: '', imageSlitRule: '', videoSlitRule: '' };
-  }
 
   const explicitShortsInDress =
     dressInspection?.hasBuiltInShorts === true ||
@@ -634,7 +631,7 @@ function buildDressLengthAndSlitDirectives(
       : '';
 
   const imageLengthRule =
-    '- PRESERVAÇÃO 1:1 INTEGRAL DO COMPRIMENTO DA IMAGEM DE REFERÊNCIA (ZERO ALTERAÇÃO): O comprimento de qualquer roupa (vestido, saia, blusa, cropped, short, calça ou macacão) é SEMPRE definido exclusiva e visualmente pela foto de referência do produto. Reproduza 100% da construção original da peça do topo até a barra inferior exatamente na altura visual mostrada na referência — é TERMINANTEMENTE PROIBIDO alongar, encurtar, comer ou cortar a parte de baixo, alterar o formato da barra, mudar babados/recortes inferiores, modificar linhas de costura ou alterar o padrão de estampa e textura em qualquer parte da peça.' +
+    '- PRESERVAÇÃO PROPORCIONAL DO COMPRIMENTO ORIGINAL DA ROUPA (ADAPTAÇÃO ANATÔMICA SEM ALTERAR A BARRA): O comprimento original de qualquer roupa (vestido, saia, blusa, cropped, short, calça ou macacão) é sempre definido exclusivamente pela imagem de referência do produto. Adapte a largura, a distribuição e o caimento natural do tecido às proporções anatômicas e estrutura corporal da modelo selecionada (inclusive modelos plus size ou curvilíneas), mantendo a posição proporcional da barra na mesma altura visual da silhueta e das pernas vista na foto de referência (preservando a mesma faixa proporcional de canela/perna exposta entre a barra e o tornozelo/calçado — nunca desça nem suba a barra além do ponto proporcional da referência). É TERMINANTEMENTE PROIBIDO alongar, encurtar, comer/cortar a parte de baixo, alterar costuras ou modificar o formato da barra, babados, recortes ou estampa.' +
     noInventedShortsRule;
 
   let imageSlitRule = '';
