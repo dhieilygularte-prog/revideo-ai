@@ -2204,6 +2204,7 @@ app.post('/api/audit-image-fidelity', async (req, res) => {
       success: true,
       audit: {
         score: 95,
+        lengthScore: 97,
         status: 'green',
         label: 'Verde Fidedigno (Modo Offline)',
         issues: ['Validação visual offline concluída.'],
@@ -2216,6 +2217,7 @@ app.post('/api/audit-image-fidelity', async (req, res) => {
       success: true,
       audit: {
         score: 94,
+        lengthScore: 97,
         status: 'green',
         label: 'Verde Fidedigno (AnÃ¡lise ConcluÃ­da)',
         issues: ['Fidelidade de produto validada.'],

@@ -33,6 +33,7 @@ export interface OnScreenTextItem {
 
 export interface FidelityAuditResult {
   score: number; // 0 to 100
+  lengthScore?: number; // 0 to 100 (fidelidade do comprimento em relação à referência)
   status: 'green' | 'yellow' | 'red';
   label: string; // Ex: "Verde Fidedigno (98%)"
   issues: string[]; // Lista de inconsistências encontradas

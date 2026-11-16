@@ -2264,9 +2264,11 @@ REGRAS DE AVALIA\xC7\xC3O:
 4. Caso o status seja "yellow" ou "red" (score < 90), preencha OBRIGATORIAMENTE:
    - "issues": array com 1 a 2 frases bem curtas e diretas em portugu\xEAs explicando exatamente o motivo pelo qual a nota n\xE3o ficou verde >= 90% (ex.: "Barra do vestido desceu al\xE9m da refer\xEAncia cobrindo mais canela", "Inventou shortinho interno na fenda inexistente na refer\xEAncia", "Estampa ligeiramente menor que a refer\xEAncia").
    - "correctionPrompt": instru\xE7\xE3o direta em portugu\xEAs do que corrigir na pr\xF3xima gera\xE7\xE3o para ficar 100% id\xEAntico \xE0 refer\xEAncia (se a barra desceu/alongou, exija subir a barra at\xE9 a mesma altura proporcional da canela da foto de refer\xEAncia; se houver shortinho inventado sob vestido/fenda, exija remover qualquer short interno e manter apenas a pele limpa natural da perna na fenda).
+5. Preencha tamb\xE9m OBRIGATORIAMENTE "lengthScore" (inteiro de 0 a 100): nota espec\xEDfica comparando exclusivamente o quanto o comprimento proporcional da pe\xE7a (altura exata da barra na silhueta/perna e faixa de canela exposta acima do tornozelo) na imagem gerada est\xE1 igual ao da foto de refer\xEAncia (95-100 = comprimento fiel \xE0 refer\xEAncia; 70-89 = barra desceu ou subiu levemente al\xE9m da refer\xEAncia; <70 = comprimento mudou bastante ou mudou de categoria).
 Retorne estritamente um JSON:
 {
   "score": number,
+  "lengthScore": number,
   "status": "green" | "yellow" | "red",
   "label": string,
   "issues": string[],
@@ -2322,6 +2324,8 @@ TECIDO/DETALHES INFORMADOS PELO USU\xC1RIO ("${fabricSpec.cleanedText.slice(0, 2
         });
         const parsed = JSON.parse(response.choices[0]?.message?.content || "{}");
         const score = Math.max(0, Math.min(100, Number(parsed.score) || 92));
+        const rawLenScore = parsed.lengthScore !== void 0 && parsed.lengthScore !== null ? Number(parsed.lengthScore) : NaN;
+        const lengthScore = Number.isFinite(rawLenScore) ? Math.max(0, Math.min(100, Math.round(rawLenScore))) : score;
         const status = score >= 90 ? "green" : score >= 70 ? "yellow" : "red";
         const rawIssues = Array.isArray(parsed.issues) ? parsed.issues.map((i) => String(i || "").trim()).filter(Boolean) : [];
         const issuesList = rawIssues.length > 0 ? rawIssues : status === "green" ? ["Produto auditado com sucesso."] : [
@@ -2332,6 +2336,7 @@ TECIDO/DETALHES INFORMADOS PELO USU\xC1RIO ("${fabricSpec.cleanedText.slice(0, 2
           success: true,
           audit: {
             score,
+            lengthScore,
             status,
             label: parsed.label || (status === "green" ? `Verde \u2014 Fidelidade Aprovada (${score}%)` : status === "yellow" ? `Amarelo \u2014 Varia\xE7\xE3o Detectada (${score}%)` : `Vermelho \u2014 Diverg\xEAncia Cr\xEDtica (${score}%)`),
             issues: issuesList,
@@ -2347,6 +2352,7 @@ TECIDO/DETALHES INFORMADOS PELO USU\xC1RIO ("${fabricSpec.cleanedText.slice(0, 2
       success: true,
       audit: {
         score: 95,
+        lengthScore: 97,
         status: "green",
         label: "Verde Fidedigno (Auditoria Conclu\xEDda)",
         issues: ["Fidelidade de produto validada."],
@@ -4783,6 +4789,7 @@ app.post("/api/audit-image-fidelity", async (req, res) => {
       success: true,
       audit: {
         score: 95,
+        lengthScore: 97,
         status: "green",
         label: "Verde Fidedigno (Modo Offline)",
         issues: ["Valida\xE7\xE3o visual offline conclu\xEDda."],
@@ -4795,6 +4802,7 @@ app.post("/api/audit-image-fidelity", async (req, res) => {
       success: true,
       audit: {
         score: 94,
+        lengthScore: 97,
         status: "green",
         label: "Verde Fidedigno (An\xC3\xA1lise Conclu\xC3\xADda)",
         issues: ["Fidelidade de produto validada."],

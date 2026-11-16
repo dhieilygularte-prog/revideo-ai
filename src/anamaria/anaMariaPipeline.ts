@@ -816,6 +816,7 @@ function buildAnaMariaDefaultAudit(
     status: 'green',
     label: 'Verde — Fidelidade Aprovada',
     criteria: [
+      { name: 'Comprimento da Peça', score: 97, status: 'green' },
       { name: 'Corte Queixo', score: 100, status: 'green' },
       { name: bodyType === 'plus_size' ? 'Plus Size (50-54)' : 'Curvas & Silhueta', score: 96, status: 'green' },
       { name: 'Zero Tatuagens', score: 100, status: 'green' },
@@ -869,6 +870,7 @@ async function runAnaMariaFidelityAudit(params: {
       success: boolean;
       audit?: {
         score: number;
+        lengthScore?: number;
         status: 'green' | 'yellow' | 'red' | 'orange';
         label: string;
         issues: string[];
@@ -890,12 +892,21 @@ async function runAnaMariaFidelityAudit(params: {
 
     if (res && res.success && res.audit) {
       const score = Math.max(0, Math.min(100, Number(res.audit.score) || 95));
+      const rawLengthScore =
+        res.audit.lengthScore !== undefined && res.audit.lengthScore !== null
+          ? Number(res.audit.lengthScore)
+          : NaN;
+      const lengthScore = Number.isFinite(rawLengthScore)
+        ? Math.max(0, Math.min(100, Math.round(rawLengthScore)))
+        : score;
       const status =
         res.audit.status === 'green' || score >= 90
           ? 'green'
           : res.audit.status === 'yellow' || score >= 70
           ? 'yellow'
           : 'red';
+      const lengthStatus =
+        lengthScore >= 90 ? 'green' : lengthScore >= 70 ? 'yellow' : 'red';
       const rawIssues = Array.isArray(res.audit.issues)
         ? res.audit.issues.map((i) => String(i || '').trim()).filter(Boolean)
         : [];
@@ -910,6 +921,14 @@ async function runAnaMariaFidelityAudit(params: {
           : status === 'green'
           ? fallbackAudit.issues
           : [fallbackNonGreenReason];
+      const lengthIssue =
+        lengthStatus !== 'green'
+          ? issuesList.find((i) =>
+              /comprimento|barra|canela|tornozelo|curto|longo|midi|encurt|along/i.test(i)
+            ) ||
+            issuesList.join('; ') ||
+            `Comprimento divergiu da imagem de referência (${lengthScore}%).`
+          : undefined;
       const correctionPrompt =
         res.audit.correctionPrompt ||
         (status !== 'green'
@@ -933,6 +952,12 @@ async function runAnaMariaFidelityAudit(params: {
               score,
               status,
               issue: status !== 'green' ? issuesList.join('; ') : undefined,
+            },
+            {
+              name: 'Comprimento da Peça',
+              score: lengthScore,
+              status: lengthStatus,
+              issue: lengthIssue,
             },
             { name: 'Corte Queixo', score: 100, status: 'green' },
             {

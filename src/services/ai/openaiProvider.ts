@@ -1306,9 +1306,11 @@ REGRAS DE AVALIAÇÃO:
 4. Caso o status seja "yellow" ou "red" (score < 90), preencha OBRIGATORIAMENTE:
    - "issues": array com 1 a 2 frases bem curtas e diretas em português explicando exatamente o motivo pelo qual a nota não ficou verde >= 90% (ex.: "Barra do vestido desceu além da referência cobrindo mais canela", "Inventou shortinho interno na fenda inexistente na referência", "Estampa ligeiramente menor que a referência").
    - "correctionPrompt": instrução direta em português do que corrigir na próxima geração para ficar 100% idêntico à referência (se a barra desceu/alongou, exija subir a barra até a mesma altura proporcional da canela da foto de referência; se houver shortinho inventado sob vestido/fenda, exija remover qualquer short interno e manter apenas a pele limpa natural da perna na fenda).
+5. Preencha também OBRIGATORIAMENTE "lengthScore" (inteiro de 0 a 100): nota específica comparando exclusivamente o quanto o comprimento proporcional da peça (altura exata da barra na silhueta/perna e faixa de canela exposta acima do tornozelo) na imagem gerada está igual ao da foto de referência (95-100 = comprimento fiel à referência; 70-89 = barra desceu ou subiu levemente além da referência; <70 = comprimento mudou bastante ou mudou de categoria).
 Retorne estritamente um JSON:
 {
   "score": number,
+  "lengthScore": number,
   "status": "green" | "yellow" | "red",
   "label": string,
   "issues": string[],
@@ -1371,6 +1373,13 @@ Retorne estritamente um JSON:
 
         const parsed = JSON.parse(response.choices[0]?.message?.content || '{}');
         const score = Math.max(0, Math.min(100, Number(parsed.score) || 92));
+        const rawLenScore =
+          parsed.lengthScore !== undefined && parsed.lengthScore !== null
+            ? Number(parsed.lengthScore)
+            : NaN;
+        const lengthScore = Number.isFinite(rawLenScore)
+          ? Math.max(0, Math.min(100, Math.round(rawLenScore)))
+          : score;
         const status = score >= 90 ? 'green' : score >= 70 ? 'yellow' : 'red';
         const rawIssues = Array.isArray(parsed.issues)
           ? parsed.issues.map((i: any) => String(i || '').trim()).filter(Boolean)
@@ -1394,6 +1403,7 @@ Retorne estritamente um JSON:
           success: true,
           audit: {
             score,
+            lengthScore,
             status,
             label:
               parsed.label ||
@@ -1416,6 +1426,7 @@ Retorne estritamente um JSON:
       success: true,
       audit: {
         score: 95,
+        lengthScore: 97,
         status: 'green',
         label: 'Verde Fidedigno (Auditoria Concluída)',
         issues: ['Fidelidade de produto validada.'],

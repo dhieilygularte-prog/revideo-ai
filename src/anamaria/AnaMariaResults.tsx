@@ -809,6 +809,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
       : 'Da Modelo';
 
   const defaultCriteria: { name: string; score: number; status: AnaMariaAuditColorStatus; issue?: string }[] = [
+    { name: 'Comprimento da Peça', score: 97, status: 'green' as AnaMariaAuditColorStatus },
     { name: 'Corte Queixo', score: 100, status: 'green' as AnaMariaAuditColorStatus },
     { name: result.bodyType === 'plus_size' ? 'Plus Size (50-54)' : 'Curvas & Silhueta', score: 96, status: 'green' as AnaMariaAuditColorStatus },
     { name: 'Zero Tatuagens', score: 100, status: 'green' as AnaMariaAuditColorStatus },
@@ -1223,7 +1224,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                     {auditLabel}
                   </span>
                   <span className="text-[10px] opacity-80 block">
-                    Fiscalização da peça (Corte no Queixo, Curvas, Sem Tatuagem, Calçado)
+                    Fiscalização da peça (Comprimento, Corte no Queixo, Curvas, Calçado)
                   </span>
                 </div>
               </div>
@@ -1235,15 +1236,19 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
               </span>
             </div>
 
-            {/* Grade dos Critérios (4 cards em formato 2x2 com bolinha de status colorida) */}
+            {/* Grade dos Critérios (2 colunas simétricas; último item ocupa largura total se total for ímpar) */}
             <div className="grid grid-cols-2 gap-1.5">
               {criteriaList.map((crit, idx) => {
                 const cStyle = getStatusClasses(crit.status);
+                const spanFull =
+                  criteriaList.length % 2 === 1 && idx === criteriaList.length - 1;
                 return (
                   <div
                     key={idx}
                     title={crit.issue || crit.name}
-                    className={`px-2 py-1.5 rounded-lg border text-[10px] flex items-center justify-between gap-1 ${cStyle.cell}`}
+                    className={`px-2 py-1.5 rounded-lg border text-[10px] flex items-center justify-between gap-1 ${
+                      spanFull ? 'col-span-2' : ''
+                    } ${cStyle.cell}`}
                   >
                     <span className="font-bold flex items-center gap-1.5 truncate">
                       <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${cStyle.dot}`} />
@@ -1257,7 +1262,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
               })}
             </div>
 
-            {auditStatus !== 'green' && (() => {
+            {(auditStatus !== 'green' || criteriaList.some((c) => c.status !== 'green')) && (() => {
               const genericMsgs = new Set([
                 'Produto auditado com sucesso.',
                 'Fidelidade de produto validada.',
@@ -1279,18 +1284,29 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                   ? [fallbackCorrection]
                   : [`Pequena diferença detectada em relação à foto de referência (${auditScore}%).`];
 
+              const hasRedCrit = criteriaList.some((c) => c.status === 'red');
+              const firstNonGreenCrit = criteriaList.find((c) => c.status !== 'green');
+              const reasonTone: AnaMariaAuditColorStatus =
+                auditStatus !== 'green'
+                  ? auditStatus
+                  : hasRedCrit
+                  ? 'red'
+                  : 'yellow';
+              const displayReasonScore =
+                auditStatus !== 'green' ? auditScore : (firstNonGreenCrit?.score ?? auditScore);
+
               return (
                 <div
                   className={`p-2.5 rounded-lg border text-[11px] leading-snug space-y-1 ${
-                    auditStatus === 'yellow'
+                    reasonTone === 'yellow'
                       ? 'bg-amber-500/10 border-amber-500/35 text-amber-100'
-                      : auditStatus === 'orange'
+                      : reasonTone === 'orange'
                       ? 'bg-orange-500/10 border-orange-500/35 text-orange-100'
                       : 'bg-rose-500/10 border-rose-500/35 text-rose-100'
                   }`}
                 >
                   <p className="font-black text-[10px] uppercase tracking-wider opacity-95">
-                    Motivo da nota ({auditScore}%):
+                    Motivo da nota ({displayReasonScore}%):
                   </p>
                   <ul className="space-y-0.5 text-[11px] text-white/90">
                     {reasons.slice(0, 3).map((reason, rIdx) => (
