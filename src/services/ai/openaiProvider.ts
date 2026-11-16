@@ -49,6 +49,7 @@ import {
   OPENAI_IMAGE_MODEL,
   OPENAI_IMAGE_QUALITY,
   OPENAI_IMAGE_SIZE,
+  OPENAI_IMAGE_FALLBACK_SIZE,
   OPENAI_AUDIT_MODEL,
   OPENAI_PRICING,
 } from '../../config/openaiModels';
@@ -753,6 +754,20 @@ Retorne estritamente um JSON estruturado:
 
       const productPhotoCount = Math.min(allPhotos.filter(Boolean).length, 2);
 
+      const combinedGarmentHintOpenAI = `${productType || ''} ${prompt || ''} ${additionalInstructions || ''}`;
+      const isDressContextOpenAI =
+        /\b(vestido|vestidos|dress|dresses|chemise|tubinho)\b/i.test(combinedGarmentHintOpenAI) ||
+        /(?:VESTIDO PURO SEM SHORTS|PURE DRESS ONLY)/i.test(prompt || '');
+      const hasExplicitShortsOpenAI =
+        !/(?:VESTIDO PURO SEM SHORTS|PURE DRESS ONLY)/i.test(prompt || '') &&
+        /\b(short[\s-]?saia|shorts[\s-]?saia|saia[\s-]?short|skort|macaquinho|shortinho|com\s+shorts?)\b/i.test(
+          combinedGarmentHintOpenAI
+        );
+      const pureDressNoShortsDirectiveOpenAI =
+        isDressContextOpenAI && !hasExplicitShortsOpenAI
+          ? ' Pure single-layer dress ONLY: if the product reference has NO built-in shorts/skort, strictly NEVER invent, add, or layer inner matching shorts/safety-shorts under the skirt or visible across any leg slit — inside the leg slit show only clean exposed natural thigh/leg skin with natural drape of the slit edges, and keep the exact true skirt length (midi to mid-calf if midi, ankle if maxi; never stretch midi down to the ankles).'
+          : '';
+
       const scenarioRelightAndEdgeBlendDirective = `[SINGLE-EXPOSURE PHOTOMETRIC UNITY, 3D FLOOR GROUNDING & ZERO CUTOUT HALO]:
 - SINGLE NATIVE CAMERA EXPOSURE (NO MONTAGE / NO CUTOUT PASTE): Render the scene as a single, authentic real-world photograph captured through one lens in a single exposure inside the scenario room — never as a layered cutout or pasted sticker.
 - SCENARIO DICTATES 100% OF LIGHTING & COLOR TEMPERATURE: The scenario's ambient light sources, direction of light, Kelvin color temperature (warm/cool/neutral), shadow softness, contrast ratio, and wall/curtain color bounce MUST govern the model's skin, face, hair, and garment. Completely discard any studio, ring-light, or bright-wall lighting from the model or product reference photos.
@@ -801,7 +816,7 @@ Retorne estritamente um JSON estruturado:
           ...(prompt
             .split('\n')
             .filter((line) =>
-              /(\[COMPRIMENTO REAL DETECTADO|\[ASSIMETRIA OBRIGATÓRIA|\[CRITICAL ANTI-SYMMETRY|\[REGRA MANDATÓRIA|\[REGRA OBRIGATÓRIA DO CENÁRIO 24|\[TECIDO E INFORMAÇÕES REAIS DO PRODUTO|Especificações reais informadas|TECIDO IDENTIFICADO:|Detalhes estruturais obrigatórios:|REGRA CONTRA FOTO DE REFERÊNCIA|\[MANDATORY FABRIC TEXTURE|User product info:|Exact fabric\/material:|\[TECIDO E DETALHES|REGRA CRÍTICA DE COMPRIMENTO|ATENÇÃO À COR EXCLUSIVA|Calçado nos pés:|Calçado obrigatório nos pés|REGRA DE COR DO CALÇADO|COR CONTRASTANTE|REGRA DE CONJUNTO COMPLETO|PROIBIDO BOLSAS|PRODUTO DA FOTO 1|PEÇA INFERIOR|CALÇA JEANS)/i.test(
+              /(\[COMPRIMENTO REAL DETECTADO|COMPRIMENTO M[ÍI]DI EXATO|COMPRIMENTO CURTO\/MINI EXATO|VESTIDO PURO SEM SHORTS|PURE DRESS ONLY|\[ASSIMETRIA OBRIGATÓRIA|\[CRITICAL ANTI-SYMMETRY|\[REGRA MANDATÓRIA|\[REGRA OBRIGATÓRIA DO CENÁRIO 24|\[TECIDO E INFORMAÇÕES REAIS DO PRODUTO|Especificações reais informadas|TECIDO IDENTIFICADO:|Detalhes estruturais obrigatórios:|REGRA CONTRA FOTO DE REFERÊNCIA|\[MANDATORY FABRIC TEXTURE|User product info:|Exact fabric\/material:|\[TECIDO E DETALHES|REGRA CRÍTICA DE COMPRIMENTO|ATENÇÃO À COR EXCLUSIVA|Calçado nos pés:|Calçado obrigatório nos pés|REGRA DE COR DO CALÇADO|COR CONTRASTANTE|REGRA DE CONJUNTO COMPLETO|PROIBIDO BOLSAS|PRODUTO DA FOTO 1|PEÇA INFERIOR|CALÇA JEANS)/i.test(
                 line
               )
             )
@@ -828,7 +843,7 @@ ${modelIdentitySection}
 - 100% DISCARD AND IGNORE the bedroom, bed, door, walls, bright white wall edge-glow, studio/frontal lighting, old clothing, and old footwear of Reference Image ${modelIdx}.
 
 3. REFERENCE IMAGE ${productRangeLabel} (EXACT GARMENT & COLOR ONLY — DISCARD ANY PERSON/BACKGROUND):
-- She wears the EXACT garment shown in Reference Image ${productRangeLabel}: 1:1 exact color/shade/print pattern, fabric texture${fabricSpec.hasInfo ? ` (${fabricSpec.compactLineEn})` : ''}, seams, stitching, pleats/ruffles, cut, neckline, straps, and exact full-length hemline from top to bottom (NEVER shorten the garment, NEVER crop/eat the bottom of the dress, and NEVER alter seams, print, texture, or shape anywhere on the top or bottom of the garment), physically shaded by Reference Image ${scenarioIdx}'s ambient room light.
+- She wears the EXACT garment shown in Reference Image ${productRangeLabel}: 1:1 exact color/shade/print pattern, fabric texture${fabricSpec.hasInfo ? ` (${fabricSpec.compactLineEn})` : ''}, seams, stitching, pleats/ruffles, cut, neckline, straps, and exact full-length hemline from top to bottom (NEVER shorten or artificially stretch the garment — keep mini short, keep midi at mid-calf, keep maxi long — NEVER crop/eat the bottom of the dress, and NEVER alter seams, print, texture, or shape anywhere on the top or bottom of the garment), physically shaded by Reference Image ${scenarioIdx}'s ambient room light.${pureDressNoShortsDirectiveOpenAI}
 - Harmonious matching footwear planted firmly on Reference Image ${scenarioIdx}'s floor if her feet are left visible by the garment's true original length in Reference Image ${productRangeLabel} (elegant high-heel party sandals for dresses; never shorten the dress hem to reveal shoes).
 - 100% IGNORE any person, face, body, tattoos, or background in Reference Image ${productRangeLabel}.
 
@@ -848,7 +863,7 @@ PHOTOGRAPHIC REALISM: ${isUltraRealismEnabled ? 'Authentic candid unedited real-
           .replace(/Foto 2\b/gi, 'Reference Image 1');
         effectivePrompt = `[STRICT 2-IMAGE EDIT DIRECTIVE - GALLERY MODEL & ROOM BASE + EXACT PRODUCT CLOTHING]:
 - REFERENCE IMAGE 1 (MODEL & ROOM BASE — KEEP IDENTICAL): Preserve 100% the exact same woman (same face if visible or same phone covering face, same hair, ${isUltraRealismEnabled ? 'body curves, pose, hands — actively replacing smooth/airbrushed reference skin texture with authentic unretouched RAW living human skin per ULTRA PHOTOREALISM below' : 'skin tone, body curves, pose, hands'}) and the EXACT same room/background/mirror/lighting from Reference Image 1.
-- ${productRange.toUpperCase()} (GARMENT & EXACT COLOR ONLY): Dress the woman from Reference Image 1 in the EXACT garment shown in ${productRange}, replicating 1:1 its exact color/shade/print, cut, neckline, straps, fabric texture${fabricSpec.hasInfo ? ` (${fabricSpec.compactLineEn})` : ''}, and length (and harmonious matching footwear if feet are visible; if long dress covers feet, keep it long). 100% IGNORE any person/background in ${productRange}.
+- ${productRange.toUpperCase()} (GARMENT & EXACT COLOR ONLY): Dress the woman from Reference Image 1 in the EXACT garment shown in ${productRange}, replicating 1:1 its exact color/shade/print, cut, neckline, straps, fabric texture${fabricSpec.hasInfo ? ` (${fabricSpec.compactLineEn})` : ''}, and exact true hemline length (keep mini short, keep midi at mid-calf, keep maxi long; and harmonious matching footwear if feet are visible; if long dress covers feet, keep it long). 100% IGNORE any person/background in ${productRange}.${pureDressNoShortsDirectiveOpenAI}
 - SEAMLESS GARMENT RELIGHTING & ZERO CUTOUT EDGES: Relight the swapped garment and footwear to obey Reference Image 1's exact ambient lighting, shadows, and color temperature, with natural hair/shoulder/skin blending and ZERO white outline or pasted look.
 - Zero tattoos anywhere on the skin. ${isUltraRealismEnabled ? 'Unretouched RAW candid 35mm smartphone skin realism (visible pores, fine vellus hair, subtle micro-imperfections, subtle film grain, zero smoothing).' : 'Preserve sharp iPhone 16 Pro optical clarity.'}
 
@@ -923,7 +938,9 @@ KEEP the architectural setting from Reference Image 1 100% UNCHANGED (room, floo
 ${scenarioRelightAndEdgeBlendDirective}
 
 [PRODUCT FIDELITY & BODY ISOLATION (REFERENCE IMAGE 2+)]:
-- The woman wears the EXACT garment shown in reference image 2+: 1:1 identical color, shade, pattern, seams, straps, neckline, cut, and full length.${
+- The woman wears the EXACT garment shown in reference image 2+: 1:1 identical color, shade, pattern, seams, straps, neckline, cut, and exact true hemline length (keep mini short, keep midi at mid-calf, keep maxi long).${
+            pureDressNoShortsDirectiveOpenAI ? `\n-${pureDressNoShortsDirectiveOpenAI}` : ''
+          }${
             fabricSpec.hasInfo ? `\n- ${fabricSpec.compactLineEn}` : ''
           }
 - NEVER copy the body shape or thinness of the model/mannequin from reference image 2+.
@@ -1009,7 +1026,7 @@ ${cleanPrompt}`;
 ALTERAÇÃO SOLICITADA:
 1. Substitua a roupa/produto (${productType}) que ela veste por uma peça com exatamente estas características${variationName ? ` (variante "${variationName}")` : ''}: ${garmentSpec || productType}.${fabricSpec.hasInfo ? `\n${fabricSpec.promptBlockPt}` : ''}
 2. CALÇADO: ${shoeEditInstruction}
-3. Se for vestido ou macacão, ela veste EXCLUSIVAMENTE o vestido com pernas limpas naturais (proibido calça jeans ou shorts sob o vestido); se for blusa, veste calça jeans combinando; se for calça, veste blusa combinando. PRESERVE 1:1 o comprimento real da barra na foto de referência (se midi/curto, mantenha midi/curto sem alongar até o chão; só cubra os pés se for vestido longo igual à referência).
+3. Se for vestido ou macacão, ela veste EXCLUSIVAMENTE o vestido com pernas limpas naturais${!hasExplicitShortsOpenAI ? ' (proibido calça jeans ou inventar shortinho/bermuda interno por baixo do vestido ou visível através de qualquer fenda — dentro da fenda mostre apenas a pele natural limpa da perna)' : ' (preservando o short-saia embutido exatamente se existir na referência)'}; se for blusa, veste calça jeans combinando; se for calça, veste blusa combinando. PRESERVE 1:1 o comprimento real da barra na foto de referência (se midi/curto, mantenha midi/curto sem alongar até o chão; só cubra os pés se for vestido longo igual à referência).
 4. MÁXIMA NITIDEZ, FOCO ÓPTICO CRISTALINO E ALTA RESOLUÇÃO:
 - Preserve a imagem com nitidez fotográfica impecável e foco cristalino, sem nenhum borrão, névoa ou perda de textura.
 - Pele humana realista e natural com microtextura e poros visíveis, olhos vívidos e nítidos, e textura detalhada do tecido${fabricSpec.hasInfo ? ` (${fabricSpec.fabricSummaryLabel})` : ''} com iluminação de câmera moderna topo de linha (iPhone 16 Pro).
@@ -1120,15 +1137,15 @@ Preserve fielmente qualquer logomarca, estampa ou acabamento original da peça. 
             size: chosenImageSize,
           });
         } catch (sizeErr: any) {
-          if (chosenImageSize === '1440x2560' && isSizeValidationErr(sizeErr)) {
-            console.warn('[OpenAIProvider] size 1440x2560 rejeitado pela API; alternando para', OPENAI_IMAGE_SIZE);
-            usedSize = OPENAI_IMAGE_SIZE;
+          if ((chosenImageSize === '944x1680' || chosenImageSize === '1440x2560') && isSizeValidationErr(sizeErr)) {
+            console.warn(`[OpenAIProvider] size ${chosenImageSize} rejeitado pela API; alternando para`, OPENAI_IMAGE_FALLBACK_SIZE);
+            usedSize = OPENAI_IMAGE_FALLBACK_SIZE;
             editResponse = await client.images.edit({
               model: OPENAI_IMAGE_MODEL,
               image: editImageInput,
               prompt: effectivePrompt,
               quality: OPENAI_IMAGE_QUALITY,
-              size: OPENAI_IMAGE_SIZE,
+              size: OPENAI_IMAGE_FALLBACK_SIZE,
             });
           } else {
             throw sizeErr;
@@ -1196,13 +1213,14 @@ Preserve fielmente qualquer logomarca, estampa ou acabamento original da peça. 
           size: chosenImageSize,
         });
       } catch (sizeErr: any) {
-        if (chosenImageSize === '1440x2560' && isSizeValidationErr(sizeErr)) {
-          usedGenSize = OPENAI_IMAGE_SIZE;
+        if ((chosenImageSize === '944x1680' || chosenImageSize === '1440x2560') && isSizeValidationErr(sizeErr)) {
+          console.warn(`[OpenAIProvider] size ${chosenImageSize} (generate) rejeitado pela API; alternando para`, OPENAI_IMAGE_FALLBACK_SIZE);
+          usedGenSize = OPENAI_IMAGE_FALLBACK_SIZE;
           genResponse = await client.images.generate({
             model: OPENAI_IMAGE_MODEL,
             prompt: effectivePrompt,
             quality: OPENAI_IMAGE_QUALITY,
-            size: OPENAI_IMAGE_SIZE,
+            size: OPENAI_IMAGE_FALLBACK_SIZE,
           });
         } else {
           throw sizeErr;
@@ -1291,14 +1309,14 @@ Preserve fielmente qualquer logomarca, estampa ou acabamento original da peça. 
 Compare EXCLUSIVAMENTE a peça/produto anunciado na imagem gerada com a(s) foto(s) de referência real(is) do produto.
 REGRAS DE AVALIAÇÃO:
 1. Ignore o cenário, paredes, piso, espelho, iluminação, pessoa/rosto/corpo e peças de roupa complementares que não fazem parte do produto da referência (ex.: se a foto de referência mostra apenas uma calça/saia, ignore a blusa complementar; se mostra apenas uma blusa, ignore a calça complementar; ignore os sapatos exceto quando o produto em si for um calçado).
-2. Verifique rigorosamente na peça/produto principal: cor predominante, estampa/padrão (liso vs estampado), comprimento real (curto/mini, mídi, longo/maxi, cropped vs blusa comprida), presença ou ausência de fenda na perna, decote, alças, mangas, recortes, botões, costuras, textura do tecido, formato/solado/embalagem e logomarcas. Caso o usuário informe um tecido específico, lembre-se que a foto de referência pode estar comprimida — não penalize maior nitidez de trama quando a peça reproduzir fielmente o tecido informado junto à cor, modelagem e estampa da referência.
+2. Verifique rigorosamente na peça/produto principal: cor predominante, estampa/padrão (liso vs estampado), comprimento real (curto/mini, mídi, longo/maxi, cropped vs blusa comprida), presença ou ausência de fenda na perna, ausência de shortinho/bermuda/short-saia inventado por baixo de vestido puro ou visível dentro da fenda (se a referência mostra vestido puro sem short por baixo, NUNCA aprove se aparecer shortinho cobrindo a coxa na fenda), decote, alças, mangas, recortes, botões, costuras, textura do tecido, formato/solado/embalagem e logomarcas. Caso o usuário informe um tecido específico, lembre-se que a foto de referência pode estar comprimida — não penalize maior nitidez de trama quando a peça reproduzir fielmente o tecido informado junto à cor, modelagem e estampa da referência.
 3. NOTA E STATUS:
    - VERDE (score >= 90, status: "green"): O produto principal gerado corresponde fielmente à foto de referência.
    - AMARELO (score 70 a 89, status: "yellow"): Divergência leve/parcial em algum detalhe da peça principal.
-   - VERMELHO (score < 70, status: "red"): Divergência crítica na peça principal (cor diferente, comprimento encurtado/alongado, fenda inventada ou omitida, estampa diferente, modelagem/decote/alça diferente).
+   - VERMELHO (score < 70, status: "red"): Divergência crítica na peça principal (cor diferente, comprimento encurtado/alongado, fenda inventada ou omitida, shortinho/bermuda inventado por baixo de vestido ou dentro da fenda sem existir na referência, estampa diferente, modelagem/decote/alça diferente).
 4. Caso o status seja "yellow" ou "red" (score < 90), preencha OBRIGATORIAMENTE:
-   - "issues": array com 1 a 2 frases bem curtas e diretas em português explicando exatamente o motivo pelo qual a nota não ficou verde >= 90% (ex.: "Estampa ligeiramente menor que a referência", "Decote um pouco mais aberto", "Tom da cor levemente mais escuro").
-   - "correctionPrompt": instrução direta em português do que corrigir na próxima geração para ficar 100% idêntico à referência.
+   - "issues": array com 1 a 2 frases bem curtas e diretas em português explicando exatamente o motivo pelo qual a nota não ficou verde >= 90% (ex.: "Inventou shortinho interno na fenda inexistente na referência", "Comprimento esticado além da referência", "Estampa ligeiramente menor que a referência").
+   - "correctionPrompt": instrução direta em português do que corrigir na próxima geração para ficar 100% idêntico à referência (se houver shortinho inventado sob vestido/fenda, exija explicitamente remover qualquer short interno e manter apenas a pele limpa natural da perna na fenda).
 Retorne estritamente um JSON:
 {
   "score": number,

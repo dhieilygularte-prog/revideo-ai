@@ -620,13 +620,36 @@ function buildDressLengthAndSlitDirectives(
   videoSlitRule: string;
 } {
   const combined = `${productName} ${additionalInstructions}`.toLowerCase();
-  const isDressContext = /\b(vestido|vestidos|dress|dresses|chemise|tubinho|midi|longo)\b/i.test(combined);
+  const isDressContext =
+    dressInspection?.garmentCategory === 'dress' ||
+    /\b(vestido|vestidos|dress|dresses|chemise|tubinho|midi|longo)\b/i.test(combined);
   if (!isDressContext && !dressInspection) {
     return { imageLengthRule: '', imageSlitRule: '', videoSlitRule: '' };
   }
 
+  const lengthCategory = dressInspection?.lengthCategory;
+  const exactLengthTag =
+    lengthCategory === 'midi'
+      ? '\n- COMPRIMENTO MÍDI EXATO (PROIBIDO ALONGAR): Na foto de referência o vestido é MÍDI (barra termina na altura da canela, deixando tornozelos e calçado visíveis). NÃO alongue até os tornozelos ou chão.'
+      : lengthCategory === 'curto'
+      ? '\n- COMPRIMENTO CURTO/MINI EXATO (PROIBIDO ALONGAR): A barra do vestido termina acima dos joelhos como na foto de referência. NÃO alongue para mídi ou longo.'
+      : '';
+
+  const explicitShortsInDress =
+    dressInspection?.hasBuiltInShorts === true ||
+    /\b(short\s*saia|shorts\s*saia|saia\s*short|com\s+shorts?|shortinho|macaquinho|macaquinho-vestido|vestido\s+short)\b/i.test(
+      combined
+    );
+
+  const noInventedShortsRule =
+    isDressContext && !explicitShortsInDress
+      ? '\n- VESTIDO PURO SEM SHORTS POR BAIXO (PROIBIDO INVENTAR SHORTINHO/BERMUDA): A foto de referência mostra um vestido puro SEM shorts/short-saia por baixo. Reproduza EXCLUSIVAMENTE o vestido deixando a perna/coxa limpa visível pela abertura da fenda exatamente como na referência — É TERMINANTEMENTE PROIBIDO inventar ou desenhar shorts, shortinho ou forro em formato de bermuda por baixo do vestido ou dentro da fenda! / PURE DRESS ONLY (NO INVENTED SHORTS UNDERNEATH): Wear ONLY the single dress exactly like the reference photo; strictly ZERO built-in shorts, inner safety shorts, or skort fabric peeking under the dress or through the slit — show clean natural leg/thigh inside the slit!'
+      : '';
+
   const imageLengthRule =
-    '- PRESERVAÇÃO 1:1 INTEGRAL DO COMPRIMENTO, COSTURAS, ESTAMPA E PARTE INFERIOR DA PEÇA: Reproduza 100% da construção original da peça do topo até a barra inferior exatamente como na foto de referência do produto. É TERMINANTEMENTE PROIBIDO encurtar a peça, comer ou cortar a parte de baixo do vestido/saia, alterar o formato da barra, mudar babados/recortes inferiores, modificar linhas de costura ou alterar o padrão de estampa e textura em qualquer parte da peça (nem em cima nem embaixo).';
+    '- PRESERVAÇÃO 1:1 INTEGRAL DO COMPRIMENTO, COSTURAS, ESTAMPA E PARTE INFERIOR DA PEÇA: Reproduza 100% da construção original da peça do topo até a barra inferior exatamente como na foto de referência do produto. É TERMINANTEMENTE PROIBIDO encurtar a peça, comer ou cortar a parte de baixo do vestido/saia, alterar o formato da barra, mudar babados/recortes inferiores, modificar linhas de costura ou alterar o padrão de estampa e textura em qualquer parte da peça (nem em cima nem embaixo).' +
+    exactLengthTag +
+    noInventedShortsRule;
 
   let imageSlitRule = '';
   let videoSlitRule = '';

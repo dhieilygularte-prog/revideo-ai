@@ -89,6 +89,7 @@ export interface AnaMariaDressInspection {
   lengthCategory: 'curto' | 'midi' | 'longo' | 'unknown';
   hasSingleSideSlit: boolean;
   slitLegWearer: 'left' | 'right' | 'both' | 'center' | 'none';
+  hasBuiltInShorts?: boolean;
 }
 
 export interface AnaMariaGeneratedImageItem {

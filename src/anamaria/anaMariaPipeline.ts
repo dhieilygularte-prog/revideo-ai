@@ -538,6 +538,7 @@ export async function inspectDressAttributes(
       lengthCategory?: AnaMariaDressInspection['lengthCategory'];
       hasSingleSideSlit?: boolean;
       slitLegWearer?: AnaMariaDressInspection['slitLegWearer'];
+      hasBuiltInShorts?: boolean;
     }>('/api/anamaria-inspect-dress', { photoBase64: thumb, productName, productInfo: trimmedInfo, fabricType: trimmedFabric }, 0);
 
     if (res?.success) {
@@ -546,6 +547,7 @@ export async function inspectDressAttributes(
         lengthCategory: res.lengthCategory || 'unknown',
         hasSingleSideSlit: Boolean(res.hasSingleSideSlit),
         slitLegWearer: res.slitLegWearer || 'none',
+        hasBuiltInShorts: Boolean(res.hasBuiltInShorts),
       };
       dressInspectionCache.set(cacheKey, inspection);
       return inspection;

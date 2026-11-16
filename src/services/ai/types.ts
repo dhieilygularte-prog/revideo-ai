@@ -51,7 +51,7 @@ export interface GenerateSceneImageParams {
   ultraRealism?: boolean;
   use2K?: boolean;
   aspectRatio?: '9:16' | '16:9' | '1:1';
-  size?: '1024x1792' | '1792x1024' | '1024x1024' | '1080x1920' | '1440x2560' | '1152x2048';
+  size?: '944x1680' | '1024x1792' | '1792x1024' | '1024x1024' | '1080x1920' | '1440x2560' | '1152x2048';
 }
 
 export interface GenerateSceneImageResult {
