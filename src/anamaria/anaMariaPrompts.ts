@@ -19,7 +19,6 @@ import {
 import {
   analyzeAnaMariaProductInfo,
   buildUltraPhotorealismBlock,
-  buildUltraPhotorealismTopLock,
 } from './anaMariaProductInfo';
 
 /**
@@ -668,9 +667,6 @@ export function buildAnaMariaImagePrompt(
     form.presentationMode || (master.isPov ? 'pov' : 'mirror_selfie');
   const isMale = form.influencer === 'Homem';
   const isPlusSize = form.bodyType === 'plus_size';
-  const ultraRealismTopLock = form.ultraRealism
-    ? `${buildUltraPhotorealismTopLock({ isMale, isPov: mode === 'pov' || master.isPov })}\n\n`
-    : '';
   const ultraRealismBlock = form.ultraRealism
     ? `\n\n${buildUltraPhotorealismBlock({ isMale, isPov: mode === 'pov' || master.isPov })}`
     : '';
@@ -725,7 +721,7 @@ REGRA DE ADAPTAÇÃO COM INTERVENÇÃO MÍNIMA: As instruções do usuário acim
       ? `Mostrar exclusivamente duas mãos masculinas adultas e parte dos antebraços entrando pela parte inferior do enquadramento em primeira pessoa (POV): pele realista com poros naturais, unhas curtas e limpas sem esmalte, e um relógio masculino discreto em um dos pulsos. REGRA OBRIGATÓRIA: mãos e antebraços 100% limpos, SEM NENHUMA TATUAGEM.`
       : `${master.bodyStandardText}\n${master.skinAndRealismText}\n\n## ACESSÓRIOS E MANICURE DAS MÃOS (${master.shortName.toUpperCase()})\n${master.accessoriesIdentityText}\n- ZERO TATUAGENS (REGRA OBRIGATÓRIA): Mãos, dedos, punhos e antebraços completamente limpos, SEM NENHUMA TATUAGEM, desenho ou marca corporal.`;
 
-    const povPrompt = `${priorityOverrideBlock}${ultraRealismTopLock}Crie uma fotografia comercial hiper-realista vertical 9:16 em estilo POV (Point of View em primeira pessoa, câmera posicionada diretamente acima da cama em ângulo superior de 90 graus), apresentando o produto das fotos de referência sobre a cama do ${povScenarioLabel} anexado.
+    const povPrompt = `${priorityOverrideBlock}Crie uma fotografia comercial hiper-realista vertical 9:16 em estilo POV (Point of View em primeira pessoa, câmera posicionada diretamente acima da cama em ângulo superior de 90 graus), apresentando o produto das fotos de referência sobre a cama do ${povScenarioLabel} anexado.
 
 ## 1. PRESERVAÇÃO INTEGRAL DO CENÁRIO POV ANEXADO (${povScenarioLabel.toUpperCase()})
 A imagem do cenário POV anexada (cama/superfície) é a referência visual obrigatória do ambiente.
@@ -899,7 +895,7 @@ ${
 
     if (isModelScenario) {
       // MODO PADRÃO (2 FOTOS): Preserva 100% da Modelo E 100% do Cenário da Foto 2, trocando apenas a roupa pelo Produto (Foto 1)
-      galleryModelPrompt = `${resolvedPriorityBlock || priorityOverrideBlock}${ultraRealismTopLock}FOTOGRAFIA COMERCIAL VERTICAL 9:16 (1080x1920) COMBINANDO RIGOROSAMENTE AS 2 FOTOS DE REFERÊNCIA:
+      galleryModelPrompt = `${resolvedPriorityBlock || priorityOverrideBlock}FOTOGRAFIA COMERCIAL VERTICAL 9:16 (1080x1920) COMBINANDO RIGOROSAMENTE AS 2 FOTOS DE REFERÊNCIA:
 
 1. FOTO 1 (PRODUTO — PEÇA DE ROUPA COM FIDELIDADE 100% DE CIMA A BAIXO):
 - Vestir a modelo com a roupa da Foto 1 com fidelidade absoluta 1:1 do topo até a barra inferior (mesma cor exata, mesmo padrão de estampa sem alterar os desenhos, mesma textura do tecido, mesmas linhas de costura, recortes, babados, pregas, caimento, formato da saia/barra, comprimento exato da peça, decote, alças e mangas).
@@ -917,10 +913,10 @@ ${galleryFaceFramingRule2Img}
 - ÚNICA MUDANÇA PERMITIDA: Substituir as roupas e o calçado que a modelo veste na Foto 2 pela peça completa da Foto 1 (preservando 100% da parte superior e 100% da parte inferior/barra da Foto 1 sem encurtar) e pelo calçado indicado (${shoeInfo.name}).
 - REILUMINAÇÃO & ZERO BORDA DE RECORTE: A roupa e o calçado trocados devem assumir 100% a iluminação, temperatura de cor e sombras do cômodo da Foto 2, sem contorno branco ou aspecto colado.${scenario24FlashRulePt}
 
-${form.ultraRealism ? 'Qualidade fotográfica autêntica de smartphone moderno na mesma distância e ângulo de corpo inteiro. ZERO tatuagens.' : 'Qualidade fotográfica autêntica de smartphone moderno, textura de pele humana real com poros visíveis, acabamento fosco suave sem brilho excessivo de óleo, sem aspecto de cera ou plástico. ZERO tatuagens.'}`;
+${form.ultraRealism ? 'Qualidade fotográfica autêntica e crua de smartphone caseiro sem filtros. ZERO tatuagens.' : 'Qualidade fotográfica autêntica de smartphone moderno, textura de pele humana real com poros visíveis, acabamento fosco suave sem brilho excessivo de óleo, sem aspecto de cera ou plástico. ZERO tatuagens.'}`;
     } else {
       // MODO CENÁRIO DA GALERIA (3 FOTOS): Modelo da Foto 2 fotografada nativamente dentro do Cenário Independente da Foto 3
-      galleryModelPrompt = `${resolvedPriorityBlock || priorityOverrideBlock}${ultraRealismTopLock}FOTOGRAFIA COMERCIAL REALISTA VERTICAL 9:16 (1080x1920) EM EXPOSIÇÃO ÚNICA NATIVA:
+      galleryModelPrompt = `${resolvedPriorityBlock || priorityOverrideBlock}FOTOGRAFIA COMERCIAL REALISTA VERTICAL 9:16 (1080x1920) EM EXPOSIÇÃO ÚNICA NATIVA:
 
 1. FOTO 1 (PRODUTO — PEÇA DE ROUPA COM FIDELIDADE 100% DE CIMA A BAIXO):
 - Vestir a modelo com a roupa da Foto 1 com fidelidade absoluta 1:1 do topo até a barra inferior (mesma cor exata, mesmo padrão de estampa sem alterar os desenhos, mesma textura do tecido, mesmas linhas de costura, recortes, babados, pregas, caimento, formato da saia/barra, comprimento exato da peça, decote, alças e mangas).
@@ -939,7 +935,7 @@ ${galleryFaceFramingRule3Img}
 - Preserve 100% a arquitetura real da Foto 3: piso, paredes, rodapés, cortinas (cor e dobras exatas), portas e móveis, permitindo que a presença física da modelo interaja naturalmente com a luz do quarto (projetando sombras reais no piso e oclusão de ambiente).
 ${scenarioRelightRulePt}${scenario24FlashRulePt}
 
-${form.ultraRealism ? 'Qualidade fotográfica autêntica de smartphone moderno (iPhone 16 Pro) na mesma distância e ângulo de corpo inteiro, grão e nitidez óptica unificados entre modelo e cômodo. ZERO tatuagens.' : 'Qualidade fotográfica autêntica de smartphone moderno (iPhone 16 Pro) em captura única real, textura de pele humana com poros visíveis, grão e nitidez óptica unificados entre modelo e cômodo. ZERO tatuagens.'}`;
+${form.ultraRealism ? 'Qualidade fotográfica autêntica e crua de smartphone caseiro sem filtros, grão e nitidez óptica unificados entre modelo e cômodo. ZERO tatuagens.' : 'Qualidade fotográfica autêntica de smartphone moderno (iPhone 16 Pro) em captura única real, textura de pele humana com poros visíveis, grão e nitidez óptica unificados entre modelo e cômodo. ZERO tatuagens.'}`;
     }
 
     return {
@@ -955,7 +951,7 @@ ${form.ultraRealism ? 'Qualidade fotográfica autêntica de smartphone moderno (
     userHairSummary && `com ${userHairSummary}`,
   ].filter(Boolean).join(', ');
 
-  const prompt = `${resolvedPriorityBlock || priorityOverrideBlock}${ultraRealismTopLock}Crie uma fotografia hiper-realista vertical 9:16 (1080x1920) de ${openingDescriptor} vestindo exatamente a peça de roupa da imagem de referência anexada, inserida com perfeição no ${scenarioTitle} anexado, em uma fotografia de espelho de corpo inteiro.
+  const prompt = `${resolvedPriorityBlock || priorityOverrideBlock}Crie uma fotografia hiper-realista vertical 9:16 (1080x1920) de ${openingDescriptor} vestindo exatamente a peça de roupa da imagem de referência anexada, inserida com perfeição no ${scenarioTitle} anexado, em uma fotografia de espelho de corpo inteiro.
 
 ${bodySectionText}
 **REGRA DE PELE LIMPA: ${isMale ? 'O modelo' : 'A modelo'} não deve possuir tatuagens no corpo (salvo se solicitado nas instruções adicionais).**

@@ -980,39 +980,22 @@ ${textureDirectivesPt ? `${textureDirectivesPt}
     compactLineEn
   };
 }
-function buildUltraPhotorealismTopLock(options) {
-  if (options?.isPov) {
-    return `[ULTRA-REALISM SKIN MODE \u2014 SAME DISTANCE/ANGLE, ZERO GARMENT CHANGE]: Preserve 100% the exact same POV camera distance, angle, crop, bed/background, and product fabrics/colors. Apply unmistakably real, unretouched human skin to the visible hands/wrists/forearms (natural knuckle creases, vein/tendon relief, non-uniform organic skin tone, pores, zero airbrush/plastic/AI sheen).`;
-  }
-  const subj = options?.isMale ? "man" : "woman";
-  return `[ULTRA-REALISM FULL-BODY SKIN MODE \u2014 ZERO ZOOM/ANGLE CHANGE, ZERO GARMENT CHANGE]: Strictly keep 100% the EXACT SAME full-body camera distance, zoom level, angle, crop, mirror framing, pose, and garment (color, print, fabric, seams, cut, and length completely untouched). Do NOT zoom in or crop closer! Make authentic unretouched human skin unmistakably perceptible at this exact full-body distance on the ${subj}: natural uneven human skin tone across knees, elbows, shoulders, collarbones, shins, and thighs, true anatomical joint/subcutaneous relief and natural skin folds, natural ambient skin light response (NO beauty filter, NO airbrushing, NO CGI/plastic/porcelain/wax smoothness).`;
-}
-var ULTRA_PHOTOREALISM_FEMALE_PROMPT = `ULTRA PHOTOREALISM \u2014 REALISMO HUMANO CORPORAL ABSOLUTO (MESMA DIST\xC2NCIA E \xC2NGULO DE CORPO INTEIRO):
+var ULTRA_PHOTOREALISM_FEMALE_PROMPT = `ULTRA PHOTOREALISM \u2014 PELE HUMANA NATURAL & FOTO REAL CASEIRA SEM FILTRO:
 
-Reproduzir a apar\xEAncia fotogr\xE1fica real e crua de uma mulher verdadeira na MESMA dist\xE2ncia, mesmo zoom, mesmo \xE2ngulo e mesmo enquadramento da foto normal (incluindo fotos de corpo inteiro diante do espelho \u2014 PROIBIDO dar zoom, aproximar a c\xE2mera ou fechar o enquadramento).
-
-REALISMO DE PELE PERCEPT\xCDVEL MESMO \xC0 DIST\xC2NCIA DE CORPO INTEIRO em TODAS as regi\xF5es vis\xEDveis do pesco\xE7o aos p\xE9s:
-- Tom de pele org\xE2nico n\xE3o uniforme com varia\xE7\xF5es sutis de pigmenta\xE7\xE3o, rubor e temperatura biol\xF3gica percept\xEDveis \xE0 dist\xE2ncia (joelhos, cotovelos, ombros, clav\xEDculas, m\xE3os, canelas e coxas com leves diferen\xE7as naturais de tonalidade, nunca cor uniforme chapada de IA).
-- Comportamento f\xEDsico real da pele humana viva: volume subcut\xE2neo aut\xEAntico, relevo real de ossos/articula\xE7\xF5es/tend\xF5es nos joelhos, tornozelos, ombros e punhos, microtextura cut\xE2nea, poros naturais, leves irregularidades, finos pelos corporais sutis, elasticidade e translucidez natural com intera\xE7\xE3o org\xE2nica e sombras de contato sob a luz real do ambiente.
-- Incorporar discretas marcas naturais, estrias finas e sutis org\xE2nicas, pequenas linhas de elasticidade, marcas leves de compress\xE3o e dobras anat\xF4micas naturais em bra\xE7os, colo, abd\xF4men, cintura, quadris, coxas, joelhos e pernas \u2014 sutis, variadas e assim\xE9tricas, sem inventar cicatrizes ou manchas escuras evidentes.
-
-EVITAR ABSOLUTAMENTE: pele pl\xE1stica, porcelanizada, encerada, excessivamente lisa, artificialmente perfeita, suaviza\xE7\xE3o digital, efeito beauty filter, airbrush, apar\xEAncia de boneca 3D/IA ou altera\xE7\xE3o de \xE2ngulo/zoom da c\xE2mera.
-
-RESULTADO DESEJADO: apar\xEAncia indistingu\xEDvel de uma fotografia real sem filtros capturada em c\xE2mera f\xEDsica, com pele humana aut\xEAntica e riqueza de detalhes corporais vis\xEDveis j\xE1 no plano de corpo inteiro. Preservar rigorosamente 100% da identidade, propor\xE7\xF5es, pose e TODA A ROUPA inalterada (cores, tecidos, costuras, estampas e modelagem 1:1 intactos). O realismo aplica-se exclusivamente \xE0 pele e detalhes humanos da modelo sem alterar o \xE2ngulo ou a dist\xE2ncia.`;
+Aplicar EXCLUSIVAMENTE \xE0 pele humana da modelo e ao aspecto fotogr\xE1fico ver\xEDdico desta captura \xFAnica, mantendo a pose, a composi\xE7\xE3o e toda a roupa 100% intactas (mesma cor, tecido, costura, estampa e caimento):
+- PELE REAL DE PESSOA COMUM (SEM SUAVIZA\xC7\xC3O DE IA): Reproduzir pele humana aut\xEAntica, com textura viva e leves irregularidades naturais mesmo em fotos mais abertas \u2014 sutis varia\xE7\xF5es naturais de pigmenta\xE7\xE3o e tonalidade (joelhos, cotovelos, ombros, colo e pernas com leves nuances org\xE2nicas em vez de tom uniforme chapado), discretas marquinhas naturais esparsas (pequenos sinais ou sardinhas sutis), uma estria fina e bem leve ou outra em \xE1reas comuns (quadril, coxas ou bra\xE7os), dobras suaves naturais da pele e poros reais discretos nas regi\xF5es iluminadas (sem inventar cicatrizes, hematomas ou tatuagens).
+- ZERO EFEITO SINT\xC9TICO: Evitar absolutamente pele pl\xE1stica, porcelanizada, encerada, excessivamente lisa, efeito beauty filter, airbrush, suaviza\xE7\xE3o digital ou apar\xEAncia de boneca 3D.
+- EST\xC9TICA DE FOTO REAL FEITA POR PESSOA DE VERDADE: Captura crua e espont\xE2nea de c\xE2mera de celular sem filtro nem aspecto de est\xFAdio/propaganda \u2014 granula\xE7\xE3o sutil natural de smartphone, ilumina\xE7\xE3o ambiente dom\xE9stica org\xE2nica e reflexo natural realista na pele (candid unedited everyday real-person mirror selfie aesthetic).`;
 function buildUltraPhotorealismBlock(options) {
   if (options?.isPov) {
-    return `ULTRA PHOTOREALISM \u2014 REALISMO HUMANO CORPORAL ABSOLUTO (MESMA DIST\xC2NCIA E \xC2NGULO POV):
+    return `ULTRA PHOTOREALISM \u2014 PELE HUMANA NATURAL NAS M\xC3OS & FOTO REAL SEM FILTRO:
 
-Reproduzir a apar\xEAncia fotogr\xE1fica real em primeira pessoa mantendo exatamente o mesmo enquadramento, \xE2ngulo e dist\xE2ncia da cama. Aplicar realismo humano extremo e percept\xEDvel nas m\xE3os, dedos, punhos e antebra\xE7os vis\xEDveis.
-
-A pele deve apresentar caracter\xEDsticas biol\xF3gicas aut\xEAnticas: microtextura cut\xE2nea, poros naturais, linhas articulares dos dedos e punhos, pequenas irregularidades, varia\xE7\xF5es sutis de pigmenta\xE7\xE3o e temperatura, textura n\xE3o uniforme, finos pelos naturais e relevo real com translucidez e intera\xE7\xE3o org\xE2nica com a luz.
-
-EVITAR ABSOLUTAMENTE: pele pl\xE1stica, porcelanizada, encerada, excessivamente lisa, suaviza\xE7\xE3o digital, beauty filter, airbrush ou apar\xEAncia de 3D.
-
-Preservar rigorosamente os produtos sobre a cama (cores, tecidos, costuras, estampas e modelagem 100% intactos).`;
+Aplicar exclusivamente \xE0 pele das m\xE3os/antebra\xE7os vis\xEDveis e ao aspecto aut\xEAntico de foto caseira no celular, mantendo os produtos e o cen\xE1rio 100% intactos:
+- Pele humana real sem retoque nas m\xE3os, dedos, punhos e antebra\xE7os: linhas e dobras naturais das articula\xE7\xF5es, microtextura com poros sutis, veias/tend\xF5es discretos e leves varia\xE7\xF5es org\xE2nicas de tom e marquinhas comuns da pele (sem pele pl\xE1stica, porcelanizada, lisa de IA ou beauty filter).
+- Captura espont\xE2nea de smartphone sem filtro, com granula\xE7\xE3o sutil e ilumina\xE7\xE3o natural org\xE2nica.`;
   }
   if (options?.isMale) {
-    return ULTRA_PHOTOREALISM_FEMALE_PROMPT.replace("de uma mulher verdadeira", "de um homem verdadeiro").replace("da modelo sem alterar", "do modelo sem alterar");
+    return ULTRA_PHOTOREALISM_FEMALE_PROMPT.replace("da modelo e ao", "do modelo e ao").replace("quadril, coxas ou bra\xE7os", "bra\xE7os, ombros ou tronco");
   }
   return ULTRA_PHOTOREALISM_FEMALE_PROMPT;
 }
@@ -1781,10 +1764,9 @@ ${prompt}` : prompt;
       let baseImageFile = null;
       let effectivePrompt = cleanPrompt;
       const isUltraRealismEnabled = Boolean(
-        ultraRealism || cleanPrompt.includes("ULTRA PHOTOREALISM") || cleanPrompt.includes("ULTRA-REALISM")
+        ultraRealism || cleanPrompt.includes("ULTRA PHOTOREALISM")
       );
       const isMaleOpenAI = /\bhomem adulto\b|\binfluenciador\b/i.test(cleanPrompt);
-      const ultraRealismTopLockOpenAI = isUltraRealismEnabled ? buildUltraPhotorealismTopLock({ isMale: isMaleOpenAI, isPov: isPovMode }) : "";
       const ultraRealismFullOpenAI = isUltraRealismEnabled ? buildUltraPhotorealismBlock({ isMale: isMaleOpenAI, isPov: isPovMode }) : "";
       const hasLingerie = /\b(lingerie|suti[aã]|calcinha|babydoll|baby doll|camisola|transpar[eê]ncia|sensual)\b/i.test(prompt) || /\b(lingerie|suti[aã]|calcinha|babydoll|baby doll|camisola|transpar[eê]ncia|sensual)\b/i.test(additionalInstructions || "");
       if (hasLingerie) {
@@ -1834,9 +1816,7 @@ ${prompt}` : prompt;
           )
         ].filter(Boolean).join("\n");
         effectivePrompt = `[SINGLE-EXPOSURE REAL-WORLD PHOTOGRAPH INSIDE REFERENCE IMAGE ${scenarioIdx}'S EXACT ROOM]:
-Generate a single, cohesive, unedited real-world mirror-selfie photograph captured inside the exact room of Reference Image ${scenarioIdx}.${ultraRealismTopLockOpenAI ? `
-
-${ultraRealismTopLockOpenAI}` : ""}
+Generate a single, cohesive, unedited real-world mirror-selfie photograph captured inside the exact room of Reference Image ${scenarioIdx}.
 
 1. REFERENCE IMAGE ${scenarioIdx} (EXACT ROOM ARCHITECTURE, 3D FLOOR PLANE & MASTER LIGHTING):
 - Preserve 100% of Reference Image ${scenarioIdx}'s real room architecture and decor: exact room geometry, walls, baseboards, doorway/doorframe, curtains (exact color, folds, fabric), doors, handles, floor planks/tiles, background items, and camera vantage point.
@@ -1859,16 +1839,15 @@ ${preservedDirectives ? `
 [GARMENT & USER CONSTRAINTS]:
 ${preservedDirectives}` : ""}
 
-PHOTOGRAPHIC REALISM: Authentic flagship smartphone photo (iPhone 16 Pro) shot in one native exposure${!isUltraRealismEnabled ? ", natural skin texture with pores" : ""}, unified room lighting and sensor grain matching Reference Image ${scenarioIdx} with smooth sub-pixel contour blending and zero white outline around the silhouette, zero tattoos, zero handbags unless the product is a bag.${ultraRealismFullOpenAI ? `
+PHOTOGRAPHIC REALISM: ${isUltraRealismEnabled ? "Authentic candid unedited real-person smartphone mirror photo look (subtle everyday organic skin imperfection and sensor grain, zero beauty filter, zero airbrush)" : "Authentic flagship smartphone photo (iPhone 16 Pro) shot in one native exposure, natural skin texture with pores"}, unified room lighting and sensor grain matching Reference Image ${scenarioIdx} with smooth sub-pixel contour blending and zero white outline around the silhouette, zero tattoos, zero handbags unless the product is a bag.${ultraRealismFullOpenAI ? `
 
 ${ultraRealismFullOpenAI}` : ""}`;
       } else if (isAnaMariaModel2Img) {
         baseImageFile = imageFiles[0] || null;
         const productRange = productPhotoCount > 1 ? "Reference Images 2 and 3" : "Reference Image 2";
         const aligned2ImgCleanPrompt = cleanPrompt.replace(/Foto 1\b/gi, productRange).replace(/Foto 2\b/gi, "Reference Image 1");
-        effectivePrompt = `[STRICT 2-IMAGE EDIT DIRECTIVE - GALLERY MODEL & ROOM BASE + EXACT PRODUCT CLOTHING]:${ultraRealismTopLockOpenAI ? `
-${ultraRealismTopLockOpenAI}` : ""}
-- REFERENCE IMAGE 1 (MODEL & ROOM BASE \u2014 KEEP IDENTICAL): Preserve 100% the exact same woman (same face if visible or same phone covering face, same hair, ${isUltraRealismEnabled ? "exact body curves, pose, hands, camera distance, zoom level, and angle \u2014 upgrading ONLY skin authenticity to unretouched real human skin at this exact distance" : "skin tone, body curves, pose, hands"}) and the EXACT same room/background/mirror/lighting from Reference Image 1.
+        effectivePrompt = `[STRICT 2-IMAGE EDIT DIRECTIVE - GALLERY MODEL & ROOM BASE + EXACT PRODUCT CLOTHING]:
+- REFERENCE IMAGE 1 (MODEL & ROOM BASE \u2014 KEEP IDENTICAL): Preserve 100% the exact same woman (same face if visible or same phone covering face, same hair, skin tone, body curves, pose, hands) and the EXACT same room/background/mirror/lighting from Reference Image 1.
 - ${productRange.toUpperCase()} (GARMENT & EXACT COLOR ONLY): Dress the woman from Reference Image 1 in the EXACT garment shown in ${productRange}, replicating 1:1 its exact color/shade/print, cut, neckline, straps, fabric texture${fabricSpec.hasInfo ? ` (${fabricSpec.compactLineEn})` : ""}, and length (and harmonious matching footwear if feet are visible; if long dress covers feet, keep it long). 100% IGNORE any person/background in ${productRange}.
 - SEAMLESS GARMENT RELIGHTING & ZERO CUTOUT EDGES: Relight the swapped garment and footwear to obey Reference Image 1's exact ambient lighting, shadows, and color temperature, with natural hair/shoulder/skin blending and ZERO white outline or pasted look.
 - Zero tattoos anywhere on the skin. Preserve sharp iPhone 16 Pro optical clarity.
@@ -1877,8 +1856,7 @@ ${aligned2ImgCleanPrompt}`;
       } else if (isAnaMariaMode && scenarioPhotoBase64) {
         if (isPovMode) {
           effectivePrompt = `[CRITICAL POV EDIT DIRECTIVE - FIRST-PERSON HANDS ON BED - MODO ANA MARIA POV]:
-You are editing the base POV bed scenario photograph (Reference Image 1).${ultraRealismTopLockOpenAI && !cleanPrompt.includes("ULTRA-REALISM") ? `
-${ultraRealismTopLockOpenAI}` : ""}
+You are editing the base POV bed scenario photograph (Reference Image 1).
 1. KEEP 100% of the bed, bedspread, sheets, fabric texture, and ambient lighting from Reference Image 1 UNCHANGED and INTACT.
 2. Place the EXACT garments/products shown in Reference Image 2 (and subsequent reference photos) on top of the bed (one unit laid out on the bed surface and a second unit held closer to the lens by the two hands).${fabricSpec.hasInfo ? `
 ${fabricSpec.compactLineEn}` : ""}
@@ -1922,9 +1900,7 @@ ${cleanPrompt}`;
 - Zero tattoos anywhere on the skin (100% clean skin).
 - Modern smartphone held naturally in one hand in front of the mirror taking the mirror-selfie.`;
           effectivePrompt = `[CRITICAL EDIT DIRECTIVE - INPAINT MODEL INTO EXACT SCENARIO - MODO ANA MARIA]:
-You are editing the base scenario photograph (Reference Image 1).${ultraRealismTopLockOpenAI && !cleanPrompt.includes("ULTRA-REALISM") ? `
-${ultraRealismTopLockOpenAI}` : isUltraRealismEnabled ? `
-[ULTRA-REALISM ACTIVE \u2014 KEEP EXACT SAME FULL-BODY CAMERA DISTANCE, ZOOM, ANGLE & POSE; APPLY UNRETOUCHED REAL HUMAN SKIN VISIBLE AT FULL-BODY DISTANCE WITHOUT ALTERING GARMENT]` : ""}
+You are editing the base scenario photograph (Reference Image 1).
 KEEP the architectural setting from Reference Image 1 100% UNCHANGED (room, floor, walls, mirrors, lighting, doors, curtains, background). DO NOT redraw a new room; place the woman standing naturally inside Reference Image 1 taking a mirror-selfie.
 
 ${scenarioRelightAndEdgeBlendDirective}
@@ -2065,10 +2041,7 @@ Preserve fielmente qualquer logomarca, estampa ou acabamento original da pe\xE7a
         }
       }
       if (isUltraRealismEnabled && !effectivePrompt.includes("ULTRA PHOTOREALISM")) {
-        const prefix = !effectivePrompt.includes("ULTRA-REALISM") && ultraRealismTopLockOpenAI ? `${ultraRealismTopLockOpenAI}
-
-` : "";
-        effectivePrompt = `${prefix}${effectivePrompt}
+        effectivePrompt = `${effectivePrompt}
 
 ${ultraRealismFullOpenAI}`;
       }
@@ -2201,7 +2174,9 @@ REGRAS DE AVALIA\xC7\xC3O:
    - VERDE (score >= 90, status: "green"): O produto principal gerado corresponde fielmente \xE0 foto de refer\xEAncia.
    - AMARELO (score 70 a 89, status: "yellow"): Diverg\xEAncia leve/parcial em algum detalhe da pe\xE7a principal.
    - VERMELHO (score < 70, status: "red"): Diverg\xEAncia cr\xEDtica na pe\xE7a principal (cor diferente, comprimento encurtado/alongado, fenda inventada ou omitida, estampa diferente, modelagem/decote/al\xE7a diferente).
-4. Caso o status seja "yellow" ou "red" (score < 90), preencha OBRIGATORIAMENTE o campo "correctionPrompt" em portugu\xEAs especificando exatamente o que n\xE3o bateu com a foto de refer\xEAncia e a instru\xE7\xE3o direta do que corrigir na nova gera\xE7\xE3o para ficar 100% id\xEAntico \xE0 foto de refer\xEAncia.
+4. Caso o status seja "yellow" ou "red" (score < 90), preencha OBRIGATORIAMENTE:
+   - "issues": array com 1 a 2 frases bem curtas e diretas em portugu\xEAs explicando exatamente o motivo pelo qual a nota n\xE3o ficou verde >= 90% (ex.: "Estampa ligeiramente menor que a refer\xEAncia", "Decote um pouco mais aberto", "Tom da cor levemente mais escuro").
+   - "correctionPrompt": instru\xE7\xE3o direta em portugu\xEAs do que corrigir na pr\xF3xima gera\xE7\xE3o para ficar 100% id\xEAntico \xE0 refer\xEAncia.
 Retorne estritamente um JSON:
 {
   "score": number,
@@ -2261,7 +2236,10 @@ TECIDO/DETALHES INFORMADOS PELO USU\xC1RIO ("${fabricSpec.cleanedText.slice(0, 2
         const parsed = JSON.parse(response.choices[0]?.message?.content || "{}");
         const score = Math.max(0, Math.min(100, Number(parsed.score) || 92));
         const status = score >= 90 ? "green" : score >= 70 ? "yellow" : "red";
-        const issuesList = Array.isArray(parsed.issues) && parsed.issues.length > 0 ? parsed.issues.map((i) => String(i)) : ["Produto auditado com sucesso."];
+        const rawIssues = Array.isArray(parsed.issues) ? parsed.issues.map((i) => String(i || "").trim()).filter(Boolean) : [];
+        const issuesList = rawIssues.length > 0 ? rawIssues : status === "green" ? ["Produto auditado com sucesso."] : [
+          parsed.correctionPrompt ? String(parsed.correctionPrompt).trim() : `Pequena diverg\xEAncia visual em rela\xE7\xE3o \xE0 foto de refer\xEAncia (${score}%).`
+        ];
         const fallbackCorrection = status !== "green" ? `Corrigir rigorosamente na pe\xE7a principal para ficar 100% id\xEAntica \xE0 foto de refer\xEAncia: ${issuesList.join("; ")}` : "";
         return {
           success: true,
@@ -4181,11 +4159,10 @@ async function generateImageWithSeedream(params) {
   );
   const faceDirectiveSeedream = allowsFaceSeedream ? "[ENQUADRAMENTO: Rosto vis\xEDvel naturalmente no espelho].\n" : "[CORTE OBRIGAT\xD3RIO NA BASE DO QUEIXO \u2014 ZERO ROSTO]: Corte da base do queixo para baixo; proibido mostrar olhos, nariz, boca ou testa; celular na altura do queixo; corpo inteiro at\xE9 os p\xE9s ou barra longa.\n";
   const isUltraRealismSeedream = Boolean(
-    params.ultraRealism || params.prompt && (params.prompt.includes("ULTRA PHOTOREALISM") || params.prompt.includes("ULTRA-REALISM"))
+    params.ultraRealism || params.prompt && params.prompt.includes("ULTRA PHOTOREALISM")
   );
   const isMaleSeedream = /\bhomem adulto\b|\binfluenciador\b/i.test(params.prompt || "");
-  const naturalSkinSeedream = isUltraRealismSeedream ? params.prompt && params.prompt.includes("ULTRA-REALISM") ? "[MODO ULTRA REALISMO ATIVO \u2014 MESMO \xC2NGULO/ZOOM DE CORPO INTEIRO, PELE HUMANA PERCEPT\xCDVEL \xC0 DIST\xC2NCIA, ROUPA 100% INTACTA | ZERO TATUAGENS no corpo].\n" : `${buildUltraPhotorealismTopLock({ isMale: isMaleSeedream, isPov: isPovModeSeedream })} ZERO TATUAGENS no corpo.
-` : "[NITIDEZ \xD3PTICA & PELE LIMPA]: Foco cristalino (zero blur), pele com poros reais e ZERO TATUAGENS no corpo.\n";
+  const naturalSkinSeedream = isUltraRealismSeedream ? "[PELE HUMANA REAL & FOTO CASEIRA SEM FILTRO]: Pele viva de pessoa comum sem suaviza\xE7\xE3o nem filtro beauty (poros sutis, leves diferen\xE7as naturais de tom, pequenas marquinhas esparsas e estrias bem leves naturais; zero pele pl\xE1stica ou porcelanizada), com est\xE9tica espont\xE2nea e crua de foto real feita no celular. ZERO TATUAGENS no corpo.\n" : "[NITIDEZ \xD3PTICA & PELE LIMPA]: Foco cristalino (zero blur), pele com poros reais e ZERO TATUAGENS no corpo.\n";
   const isDressOrOnePieceSeedream = Boolean(
     params.prompt && (/\b(vestido|vestidos|dress|dresses|macac[aã]o|macaquinho|camisola|jumpsuit)\b/i.test(params.prompt) || params.prompt.includes("PE\xC7A \xDANICA") || params.prompt.includes("VESTIDO"))
   );

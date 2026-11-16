@@ -1248,6 +1248,53 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
               })}
             </div>
 
+            {auditStatus !== 'green' && (() => {
+              const genericMsgs = new Set([
+                'Produto auditado com sucesso.',
+                'Fidelidade de produto validada.',
+                'Peça 100% fiel à foto de referência e regras corporais aplicadas.',
+              ]);
+              const specificIssues = (audit?.issues || [])
+                .map((s) => (s || '').trim())
+                .filter((s) => s.length > 0 && !genericMsgs.has(s));
+              const criteriaIssues = criteriaList
+                .map((c) => (c.issue || '').trim())
+                .filter((s) => s.length > 0);
+              const fallbackCorrection = (audit?.correctionPrompt || '').trim();
+              const reasons =
+                specificIssues.length > 0
+                  ? specificIssues
+                  : criteriaIssues.length > 0
+                  ? criteriaIssues
+                  : fallbackCorrection
+                  ? [fallbackCorrection]
+                  : [`Pequena diferença detectada em relação à foto de referência (${auditScore}%).`];
+
+              return (
+                <div
+                  className={`p-2.5 rounded-lg border text-[11px] leading-snug space-y-1 ${
+                    auditStatus === 'yellow'
+                      ? 'bg-amber-500/10 border-amber-500/35 text-amber-100'
+                      : auditStatus === 'orange'
+                      ? 'bg-orange-500/10 border-orange-500/35 text-orange-100'
+                      : 'bg-rose-500/10 border-rose-500/35 text-rose-100'
+                  }`}
+                >
+                  <p className="font-black text-[10px] uppercase tracking-wider opacity-95">
+                    Motivo da nota ({auditScore}%):
+                  </p>
+                  <ul className="space-y-0.5 text-[11px] text-white/90">
+                    {reasons.slice(0, 3).map((reason, rIdx) => (
+                      <li key={rIdx} className="flex items-start gap-1.5">
+                        <span className="mt-0.5 shrink-0">•</span>
+                        <span>{reason}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })()}
+
             {/* Informações detalhadas do calçado condicional e conformidade */}
             <div className="p-2.5 rounded-lg bg-black/35 border border-white/10 space-y-1 text-[11px] leading-snug">
               <p className="font-semibold text-white/90">

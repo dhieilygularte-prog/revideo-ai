@@ -894,10 +894,20 @@ async function runAnaMariaFidelityAudit(params: {
           : res.audit.status === 'yellow' || score >= 70
           ? 'yellow'
           : 'red';
+      const rawIssues = Array.isArray(res.audit.issues)
+        ? res.audit.issues.map((i) => String(i || '').trim()).filter(Boolean)
+        : [];
+      const fallbackNonGreenReason =
+        (res.audit.correctionPrompt && res.audit.correctionPrompt.trim()) ||
+        (status !== 'green'
+          ? `Pequena divergência visual em relação à referência (nota ${score}%).`
+          : '');
       const issuesList =
-        Array.isArray(res.audit.issues) && res.audit.issues.length > 0
-          ? res.audit.issues
-          : fallbackAudit.issues;
+        rawIssues.length > 0
+          ? rawIssues
+          : status === 'green'
+          ? fallbackAudit.issues
+          : [fallbackNonGreenReason];
       const correctionPrompt =
         res.audit.correctionPrompt ||
         (status !== 'green'
@@ -916,7 +926,12 @@ async function runAnaMariaFidelityAudit(params: {
               ? `Amarelo — Variação Detectada (${score}%)`
               : `Vermelho — Divergência Detectada (${score}%)`),
           criteria: [
-            { name: 'Fidelidade da Peça', score, status },
+            {
+              name: 'Fidelidade da Peça',
+              score,
+              status,
+              issue: status !== 'green' ? issuesList.join('; ') : undefined,
+            },
             { name: 'Corte Queixo', score: 100, status: 'green' },
             {
               name: bodyType === 'plus_size' ? 'Plus Size (50-54)' : 'Curvas & Silhueta',
@@ -926,6 +941,7 @@ async function runAnaMariaFidelityAudit(params: {
             { name: 'Calçado Condicional', score: 95, status: 'green' },
           ],
           issues: issuesList,
+          correctionPrompt,
         },
         correctionPrompt,
       };

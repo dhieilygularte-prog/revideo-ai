@@ -24,7 +24,6 @@ import {
 import {
   analyzeAnaMariaProductInfo,
   buildUltraPhotorealismBlock,
-  buildUltraPhotorealismTopLock,
   normalizeIdentifiedGarmentName,
 } from './src/anamaria/anaMariaProductInfo';
 import { buildAniaPlanningSystemPrompt } from './src/ania/aniaPrompts';
@@ -1565,16 +1564,12 @@ async function generateImageWithSeedream(params: {
 
   const isUltraRealismSeedream = Boolean(
     params.ultraRealism ||
-      (params.prompt &&
-        (params.prompt.includes('ULTRA PHOTOREALISM') ||
-          params.prompt.includes('ULTRA-REALISM')))
+      (params.prompt && params.prompt.includes('ULTRA PHOTOREALISM'))
   );
   const isMaleSeedream = /\bhomem adulto\b|\binfluenciador\b/i.test(params.prompt || '');
 
   const naturalSkinSeedream = isUltraRealismSeedream
-    ? (params.prompt && params.prompt.includes('ULTRA-REALISM')
-        ? '[MODO ULTRA REALISMO ATIVO — MESMO ÂNGULO/ZOOM DE CORPO INTEIRO, PELE HUMANA PERCEPTÍVEL À DISTÂNCIA, ROUPA 100% INTACTA | ZERO TATUAGENS no corpo].\n'
-        : `${buildUltraPhotorealismTopLock({ isMale: isMaleSeedream, isPov: isPovModeSeedream })} ZERO TATUAGENS no corpo.\n`)
+    ? '[PELE HUMANA REAL & FOTO CASEIRA SEM FILTRO]: Pele viva de pessoa comum sem suavização nem filtro beauty (poros sutis, leves diferenças naturais de tom, pequenas marquinhas esparsas e estrias bem leves naturais; zero pele plástica ou porcelanizada), com estética espontânea e crua de foto real feita no celular. ZERO TATUAGENS no corpo.\n'
     : '[NITIDEZ ÓPTICA & PELE LIMPA]: Foco cristalino (zero blur), pele com poros reais e ZERO TATUAGENS no corpo.\n';
 
   const isDressOrOnePieceSeedream = Boolean(

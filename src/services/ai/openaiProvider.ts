@@ -41,7 +41,6 @@ import { VideoAnalysisResult } from '../../types';
 import {
   analyzeAnaMariaProductInfo,
   buildUltraPhotorealismBlock,
-  buildUltraPhotorealismTopLock,
 } from '../../anamaria/anaMariaProductInfo';
 import {
   OPENAI_BRAIN_MODEL,
@@ -713,14 +712,9 @@ Retorne estritamente um JSON estruturado:
       let baseImageFile: File | null = null;
       let effectivePrompt = cleanPrompt;
       const isUltraRealismEnabled = Boolean(
-        ultraRealism ||
-          cleanPrompt.includes('ULTRA PHOTOREALISM') ||
-          cleanPrompt.includes('ULTRA-REALISM')
+        ultraRealism || cleanPrompt.includes('ULTRA PHOTOREALISM')
       );
       const isMaleOpenAI = /\bhomem adulto\b|\binfluenciador\b/i.test(cleanPrompt);
-      const ultraRealismTopLockOpenAI = isUltraRealismEnabled
-        ? buildUltraPhotorealismTopLock({ isMale: isMaleOpenAI, isPov: isPovMode })
-        : '';
       const ultraRealismFullOpenAI = isUltraRealismEnabled
         ? buildUltraPhotorealismBlock({ isMale: isMaleOpenAI, isPov: isPovMode })
         : '';
@@ -809,7 +803,7 @@ Retorne estritamente um JSON estruturado:
           .join('\n');
 
         effectivePrompt = `[SINGLE-EXPOSURE REAL-WORLD PHOTOGRAPH INSIDE REFERENCE IMAGE ${scenarioIdx}'S EXACT ROOM]:
-Generate a single, cohesive, unedited real-world mirror-selfie photograph captured inside the exact room of Reference Image ${scenarioIdx}.${ultraRealismTopLockOpenAI ? `\n\n${ultraRealismTopLockOpenAI}` : ''}
+Generate a single, cohesive, unedited real-world mirror-selfie photograph captured inside the exact room of Reference Image ${scenarioIdx}.
 
 1. REFERENCE IMAGE ${scenarioIdx} (EXACT ROOM ARCHITECTURE, 3D FLOOR PLANE & MASTER LIGHTING):
 - Preserve 100% of Reference Image ${scenarioIdx}'s real room architecture and decor: exact room geometry, walls, baseboards, doorway/doorframe, curtains (exact color, folds, fabric), doors, handles, floor planks/tiles, background items, and camera vantage point.
@@ -830,7 +824,7 @@ ${scenarioRelightAndEdgeBlendDirective}${scenario24FlashOpenAI}
 ${framingSection}
 ${preservedDirectives ? `\n[GARMENT & USER CONSTRAINTS]:\n${preservedDirectives}` : ''}
 
-PHOTOGRAPHIC REALISM: Authentic flagship smartphone photo (iPhone 16 Pro) shot in one native exposure${!isUltraRealismEnabled ? ', natural skin texture with pores' : ''}, unified room lighting and sensor grain matching Reference Image ${scenarioIdx} with smooth sub-pixel contour blending and zero white outline around the silhouette, zero tattoos, zero handbags unless the product is a bag.${
+PHOTOGRAPHIC REALISM: ${isUltraRealismEnabled ? 'Authentic candid unedited real-person smartphone mirror photo look (subtle everyday organic skin imperfection and sensor grain, zero beauty filter, zero airbrush)' : 'Authentic flagship smartphone photo (iPhone 16 Pro) shot in one native exposure, natural skin texture with pores'}, unified room lighting and sensor grain matching Reference Image ${scenarioIdx} with smooth sub-pixel contour blending and zero white outline around the silhouette, zero tattoos, zero handbags unless the product is a bag.${
           ultraRealismFullOpenAI ? `\n\n${ultraRealismFullOpenAI}` : ''
         }`;
       } else if (isAnaMariaModel2Img) {
@@ -839,8 +833,8 @@ PHOTOGRAPHIC REALISM: Authentic flagship smartphone photo (iPhone 16 Pro) shot i
         const aligned2ImgCleanPrompt = cleanPrompt
           .replace(/Foto 1\b/gi, productRange)
           .replace(/Foto 2\b/gi, 'Reference Image 1');
-        effectivePrompt = `[STRICT 2-IMAGE EDIT DIRECTIVE - GALLERY MODEL & ROOM BASE + EXACT PRODUCT CLOTHING]:${ultraRealismTopLockOpenAI ? `\n${ultraRealismTopLockOpenAI}` : ''}
-- REFERENCE IMAGE 1 (MODEL & ROOM BASE — KEEP IDENTICAL): Preserve 100% the exact same woman (same face if visible or same phone covering face, same hair, ${isUltraRealismEnabled ? 'exact body curves, pose, hands, camera distance, zoom level, and angle — upgrading ONLY skin authenticity to unretouched real human skin at this exact distance' : 'skin tone, body curves, pose, hands'}) and the EXACT same room/background/mirror/lighting from Reference Image 1.
+        effectivePrompt = `[STRICT 2-IMAGE EDIT DIRECTIVE - GALLERY MODEL & ROOM BASE + EXACT PRODUCT CLOTHING]:
+- REFERENCE IMAGE 1 (MODEL & ROOM BASE — KEEP IDENTICAL): Preserve 100% the exact same woman (same face if visible or same phone covering face, same hair, skin tone, body curves, pose, hands) and the EXACT same room/background/mirror/lighting from Reference Image 1.
 - ${productRange.toUpperCase()} (GARMENT & EXACT COLOR ONLY): Dress the woman from Reference Image 1 in the EXACT garment shown in ${productRange}, replicating 1:1 its exact color/shade/print, cut, neckline, straps, fabric texture${fabricSpec.hasInfo ? ` (${fabricSpec.compactLineEn})` : ''}, and length (and harmonious matching footwear if feet are visible; if long dress covers feet, keep it long). 100% IGNORE any person/background in ${productRange}.
 - SEAMLESS GARMENT RELIGHTING & ZERO CUTOUT EDGES: Relight the swapped garment and footwear to obey Reference Image 1's exact ambient lighting, shadows, and color temperature, with natural hair/shoulder/skin blending and ZERO white outline or pasted look.
 - Zero tattoos anywhere on the skin. Preserve sharp iPhone 16 Pro optical clarity.
@@ -849,7 +843,7 @@ ${aligned2ImgCleanPrompt}`;
       } else if (isAnaMariaMode && scenarioPhotoBase64) {
         if (isPovMode) {
           effectivePrompt = `[CRITICAL POV EDIT DIRECTIVE - FIRST-PERSON HANDS ON BED - MODO ANA MARIA POV]:
-You are editing the base POV bed scenario photograph (Reference Image 1).${ultraRealismTopLockOpenAI && !cleanPrompt.includes('ULTRA-REALISM') ? `\n${ultraRealismTopLockOpenAI}` : ''}
+You are editing the base POV bed scenario photograph (Reference Image 1).
 1. KEEP 100% of the bed, bedspread, sheets, fabric texture, and ambient lighting from Reference Image 1 UNCHANGED and INTACT.
 2. Place the EXACT garments/products shown in Reference Image 2 (and subsequent reference photos) on top of the bed (one unit laid out on the bed surface and a second unit held closer to the lens by the two hands).${
             fabricSpec.hasInfo ? `\n${fabricSpec.compactLineEn}` : ''
@@ -910,7 +904,7 @@ ${cleanPrompt}`;
 - Modern smartphone held naturally in one hand in front of the mirror taking the mirror-selfie.`;
 
           effectivePrompt = `[CRITICAL EDIT DIRECTIVE - INPAINT MODEL INTO EXACT SCENARIO - MODO ANA MARIA]:
-You are editing the base scenario photograph (Reference Image 1).${ultraRealismTopLockOpenAI && !cleanPrompt.includes('ULTRA-REALISM') ? `\n${ultraRealismTopLockOpenAI}` : isUltraRealismEnabled ? `\n[ULTRA-REALISM ACTIVE — KEEP EXACT SAME FULL-BODY CAMERA DISTANCE, ZOOM, ANGLE & POSE; APPLY UNRETOUCHED REAL HUMAN SKIN VISIBLE AT FULL-BODY DISTANCE WITHOUT ALTERING GARMENT]` : ''}
+You are editing the base scenario photograph (Reference Image 1).
 KEEP the architectural setting from Reference Image 1 100% UNCHANGED (room, floor, walls, mirrors, lighting, doors, curtains, background). DO NOT redraw a new room; place the woman standing naturally inside Reference Image 1 taking a mirror-selfie.
 
 ${scenarioRelightAndEdgeBlendDirective}
@@ -1083,10 +1077,7 @@ Preserve fielmente qualquer logomarca, estampa ou acabamento original da peça. 
       }
 
       if (isUltraRealismEnabled && !effectivePrompt.includes('ULTRA PHOTOREALISM')) {
-        const prefix = !effectivePrompt.includes('ULTRA-REALISM') && ultraRealismTopLockOpenAI
-          ? `${ultraRealismTopLockOpenAI}\n\n`
-          : '';
-        effectivePrompt = `${prefix}${effectivePrompt}\n\n${ultraRealismFullOpenAI}`;
+        effectivePrompt = `${effectivePrompt}\n\n${ultraRealismFullOpenAI}`;
       }
 
       // Sanitização incondicional antes do envio aos modelos OpenAI para evitar qualquer falso positivo de segurança
@@ -1246,7 +1237,9 @@ REGRAS DE AVALIAÇÃO:
    - VERDE (score >= 90, status: "green"): O produto principal gerado corresponde fielmente à foto de referência.
    - AMARELO (score 70 a 89, status: "yellow"): Divergência leve/parcial em algum detalhe da peça principal.
    - VERMELHO (score < 70, status: "red"): Divergência crítica na peça principal (cor diferente, comprimento encurtado/alongado, fenda inventada ou omitida, estampa diferente, modelagem/decote/alça diferente).
-4. Caso o status seja "yellow" ou "red" (score < 90), preencha OBRIGATORIAMENTE o campo "correctionPrompt" em português especificando exatamente o que não bateu com a foto de referência e a instrução direta do que corrigir na nova geração para ficar 100% idêntico à foto de referência.
+4. Caso o status seja "yellow" ou "red" (score < 90), preencha OBRIGATORIAMENTE:
+   - "issues": array com 1 a 2 frases bem curtas e diretas em português explicando exatamente o motivo pelo qual a nota não ficou verde >= 90% (ex.: "Estampa ligeiramente menor que a referência", "Decote um pouco mais aberto", "Tom da cor levemente mais escuro").
+   - "correctionPrompt": instrução direta em português do que corrigir na próxima geração para ficar 100% idêntico à referência.
 Retorne estritamente um JSON:
 {
   "score": number,
@@ -1313,10 +1306,19 @@ Retorne estritamente um JSON:
         const parsed = JSON.parse(response.choices[0]?.message?.content || '{}');
         const score = Math.max(0, Math.min(100, Number(parsed.score) || 92));
         const status = score >= 90 ? 'green' : score >= 70 ? 'yellow' : 'red';
+        const rawIssues = Array.isArray(parsed.issues)
+          ? parsed.issues.map((i: any) => String(i || '').trim()).filter(Boolean)
+          : [];
         const issuesList =
-          Array.isArray(parsed.issues) && parsed.issues.length > 0
-            ? parsed.issues.map((i: any) => String(i))
-            : ['Produto auditado com sucesso.'];
+          rawIssues.length > 0
+            ? rawIssues
+            : status === 'green'
+            ? ['Produto auditado com sucesso.']
+            : [
+                parsed.correctionPrompt
+                  ? String(parsed.correctionPrompt).trim()
+                  : `Pequena divergência visual em relação à foto de referência (${score}%).`,
+              ];
         const fallbackCorrection =
           status !== 'green'
             ? `Corrigir rigorosamente na peça principal para ficar 100% idêntica à foto de referência: ${issuesList.join('; ')}`
