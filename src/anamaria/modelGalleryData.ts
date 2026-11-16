@@ -275,7 +275,7 @@ export const MODEL_GALLERY_SEM_ROSTO: AnaMariaModelItem[] = [
     title: '01. Mestra Ana Maria',
     description: 'Silhueta curvilínea ampulheta, cintura fina marcada, quadris e glúteos volumosos em selfie clássica no espelho com celular cobrindo o rosto.',
     file: '1.png',
-    fullUrl: '/models/gallery/sem_rosto/1.png',
+    fullUrl: '/models/gallery/sem_rosto/1.png?v=2',
   },
   {
     id: 'modelo_sem_rosto_2_iara',
@@ -311,7 +311,7 @@ export const MODEL_GALLERY_SEM_ROSTO: AnaMariaModelItem[] = [
     title: '05. Catza Vip',
     description: 'Corpo inteiro sem rosto (corte no queixo), flash do celular ligado no espelho e silhueta curvilínea de alto impacto.',
     file: '5.png',
-    fullUrl: '/models/gallery/sem_rosto/5.png?v=2',
+    fullUrl: '/models/gallery/sem_rosto/5.png?v=3',
   },
   {
     id: 'modelo_sem_rosto_6_ana_ruiva',
@@ -320,7 +320,7 @@ export const MODEL_GALLERY_SEM_ROSTO: AnaMariaModelItem[] = [
     title: '06. Ana Ruiva',
     description: 'Cabelos ruivos acobreados naturais, silhueta feminina elegante e postura confiante no espelho.',
     file: '6.png',
-    fullUrl: '/models/gallery/sem_rosto/6.png',
+    fullUrl: '/models/gallery/sem_rosto/6.png?v=2',
   },
   {
     id: 'modelo_sem_rosto_7_dorameira',
@@ -338,7 +338,7 @@ export const MODEL_GALLERY_SEM_ROSTO: AnaMariaModelItem[] = [
     title: '08. Ana Em Forma',
     description: 'Biotipo atlético e tonificado, postura fitness moderna com pernas torneadas e abdômen firme.',
     file: '8.png',
-    fullUrl: '/models/gallery/sem_rosto/8.png',
+    fullUrl: '/models/gallery/sem_rosto/8.png?v=2',
   },
   {
     id: 'modelo_sem_rosto_9_evangelica',
@@ -374,7 +374,7 @@ export const MODEL_GALLERY_SEM_ROSTO: AnaMariaModelItem[] = [
     title: '12. Loira Mulherão',
     description: 'Presença imponente e marcante, cabelos loiros volumosos e curvas curvilíneas expressivas.',
     file: '12.png',
-    fullUrl: '/models/gallery/sem_rosto/12.png',
+    fullUrl: '/models/gallery/sem_rosto/12.png?v=2',
   },
   {
     id: 'modelo_sem_rosto_13_tranca',
@@ -383,7 +383,7 @@ export const MODEL_GALLERY_SEM_ROSTO: AnaMariaModelItem[] = [
     title: '13. Trança',
     description: 'Tranças afro longas e estilosas, atitude autêntica, beleza negra radiante e visual moderno.',
     file: '13.png',
-    fullUrl: '/models/gallery/sem_rosto/13.png',
+    fullUrl: '/models/gallery/sem_rosto/13.png?v=2',
   },
   {
     id: 'modelo_sem_rosto_14_cacheada_jovem',
@@ -401,7 +401,7 @@ export const MODEL_GALLERY_SEM_ROSTO: AnaMariaModelItem[] = [
     title: '15. Mulher Chic',
     description: 'Porte refinado de alta costura, elegância discreta, saia poá com cinto clássico e celular cobrindo o rosto.',
     file: '15.png',
-    fullUrl: '/models/gallery/sem_rosto/15.png',
+    fullUrl: '/models/gallery/sem_rosto/15.png?v=2',
   },
   {
     id: 'modelo_sem_rosto_16_mulher_comum',
@@ -419,7 +419,7 @@ export const MODEL_GALLERY_SEM_ROSTO: AnaMariaModelItem[] = [
     title: '17. Nerd Sexy',
     description: 'Visual moderno despojado com curvas definidas e selfie no espelho.',
     file: '17.png',
-    fullUrl: '/models/gallery/sem_rosto/17.png',
+    fullUrl: '/models/gallery/sem_rosto/17.png?v=2',
   },
   {
     id: 'modelo_sem_rosto_18_estudante_sexy',
@@ -446,7 +446,7 @@ export const MODEL_GALLERY_SEM_ROSTO: AnaMariaModelItem[] = [
     title: '20. Ruiva Delicada',
     description: 'Ruivo suave natural, traços harmoniosos, porte delicado e caimento leve em todas as peças.',
     file: '20.png',
-    fullUrl: '/models/gallery/sem_rosto/20.png',
+    fullUrl: '/models/gallery/sem_rosto/20.png?v=2',
   },
   {
     id: 'modelo_sem_rosto_21_senhora_chic',
@@ -473,7 +473,7 @@ export const MODEL_GALLERY_SEM_ROSTO: AnaMariaModelItem[] = [
     title: '23. Loira Cacheada',
     description: 'Cabelos loiros cacheados volumosos, olhar marcante, silhueta curvilínea e estilo descontraído no espelho.',
     file: '23.png',
-    fullUrl: '/models/gallery/sem_rosto/23.png',
+    fullUrl: '/models/gallery/sem_rosto/23.png?v=2',
   },
   {
     id: 'modelo_sem_rosto_25_morena_cacheada',
@@ -500,7 +500,7 @@ export const MODEL_GALLERY_SEM_ROSTO: AnaMariaModelItem[] = [
     title: '27. Senhora Preta',
     description: 'Mulher negra madura elegante, corpo inteiro sem rosto com corte no queixo, curvas femininas reais e postura natural diante do espelho.',
     file: '27.png',
-    fullUrl: '/models/gallery/sem_rosto/27.png',
+    fullUrl: '/models/gallery/sem_rosto/27.png?v=2',
   },
 ];
 
