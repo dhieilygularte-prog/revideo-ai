@@ -122,14 +122,17 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const [scrollFocusField, setScrollFocusField] = useState<
     'photos' | 'productInfo' | 'productName' | 'fabricType' | 'shoe' | null
   >(null);
+  const [scrollHighlightGenerate, setScrollHighlightGenerate] = useState(false);
   const photosSectionRef = useRef<HTMLDivElement>(null);
   const productInfoSectionRef = useRef<HTMLDivElement>(null);
   const productInfoRef = useRef<string>(form.productInfo || '');
   const lastAutoIdentifySignatureRef = useRef<string>('');
   const lastDivergenceSignatureRef = useRef<string>('');
+  const shouldScrollToGenerateAfterResolveRef = useRef<boolean>(false);
   const productNameSectionRef = useRef<HTMLDivElement>(null);
   const fabricTypeSectionRef = useRef<HTMLDivElement>(null);
   const shoeSectionRef = useRef<HTMLDivElement>(null);
+  const actionButtonSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     productInfoRef.current = form.productInfo || '';
@@ -140,6 +143,12 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     const t = window.setTimeout(() => setScrollFocusField(null), 2400);
     return () => window.clearTimeout(t);
   }, [scrollFocusField]);
+
+  useEffect(() => {
+    if (!scrollHighlightGenerate) return;
+    const t = window.setTimeout(() => setScrollHighlightGenerate(false), 2400);
+    return () => window.clearTimeout(t);
+  }, [scrollHighlightGenerate]);
 
   useEffect(() => {
     const trimmed = (form.productInfo || '').trim();
@@ -927,6 +936,28 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     !isUploading &&
     !isRecordingMic &&
     !isRecordingShoeMic;
+
+  useEffect(() => {
+    if (isProcessing) {
+      shouldScrollToGenerateAfterResolveRef.current = false;
+      return;
+    }
+    if (hasPendingApprovals || !canSubmit) return;
+    if (!shouldScrollToGenerateAfterResolveRef.current) return;
+
+    // Rolagem única para o botão GERAR VÍDEO depois que o usuário clicou em RESOLVER PENDÊNCIAS e resolveu tudo
+    shouldScrollToGenerateAfterResolveRef.current = false;
+    setScrollFocusField(null);
+    setApprovalWarning('');
+    setScrollHighlightGenerate(true);
+    const scrollTimer = window.setTimeout(() => {
+      actionButtonSectionRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }, 120);
+    return () => window.clearTimeout(scrollTimer);
+  }, [hasPendingApprovals, canSubmit, isProcessing]);
   const isInstructionsFilled = Boolean(
     form.additionalInstructions && form.additionalInstructions.trim().length > 0
   );
@@ -3316,7 +3347,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       )}
 
       {/* ─── BOTÃO DE AÇÃO: RESOLVER PENDÊNCIAS (OPACO/AMARELO E ROLÁVEL ATÉ O TOPO) → GERAR VÍDEO ─── */}
-      <div className="pt-2 space-y-3">
+      <div ref={actionButtonSectionRef} className="pt-2 space-y-3">
         {approvalWarning && (
           <div className="p-3.5 rounded-xl bg-amber-500/15 border border-amber-400/60 text-amber-200 text-xs sm:text-sm font-bold flex items-center gap-2.5 animate-pulse shadow-lg">
             <AlertCircle className="w-5 h-5 shrink-0 text-amber-400" />
@@ -3328,6 +3359,9 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           type="button"
           onClick={() => {
             if (isProcessing || isUploading || isRecordingMic || isRecordingShoeMic) return;
+            if (hasPendingApprovals) {
+              shouldScrollToGenerateAfterResolveRef.current = true;
+            }
             if (!isPhotosReady) {
               setScrollFocusField('photos');
               setApprovalWarning('Por favor, anexe ao menos 1 foto do produto no Item 1 acima antes de gerar o vídeo.');
@@ -3389,6 +3423,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               });
               return;
             }
+            shouldScrollToGenerateAfterResolveRef.current = false;
             setApprovalWarning('');
             setScrollFocusField(null);
             onSubmit();
@@ -3399,7 +3434,11 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               : isRecordingMic || isRecordingShoeMic
               ? 'bg-rose-500/20 border-2 border-rose-400/70 text-rose-200 cursor-pointer'
               : canSubmit
-              ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-sky-600 hover:from-emerald-500 hover:via-teal-500 hover:to-sky-500 text-white shadow-xl shadow-emerald-950/50 cursor-pointer'
+              ? `bg-gradient-to-r from-emerald-600 via-teal-600 to-sky-600 hover:from-emerald-500 hover:via-teal-500 hover:to-sky-500 text-white shadow-xl shadow-emerald-950/50 cursor-pointer ${
+                  scrollHighlightGenerate
+                    ? 'ring-4 ring-emerald-300/80 ring-offset-2 ring-offset-zinc-950 scale-[1.01]'
+                    : ''
+                }`
               : 'bg-amber-500/20 hover:bg-amber-500/30 border-2 border-amber-400/75 text-amber-200 shadow-lg shadow-amber-950/30 cursor-pointer'
           }`}
         >
