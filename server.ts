@@ -4180,6 +4180,7 @@ Antes de comparar e julgar qualquer vídeo, examine TODAS as fotos de referênci
 ⚠️ REGRA CRÍTICA DE BOLSOS TRASEIROS E PARTE TRASEIRA / COSTAS (TIKTOK SHOP):
 - Inspecione minuciosamente TODAS as fotos de referência (de qualquer cor) para verificar se alguma delas mostra o produto por trás / de costas.
 - Se qualquer foto de referência mostrar que a peça possui (ou não possui) bolsos traseiros (em calça, bermuda, shorts ou saia), essa regra é válida para todas as cores do produto.
+- SE A MODELO PERMANECER APENAS DE FRENTE OU DE LADO NO VÍDEO (sem mostrar as costas): NÃO reprove nem penalize por detalhes exclusivos das costas (cruzado nas costas, bolsos traseiros, etc.) não aparecerem.
 - QUANDO A MODELO VIRAR DE COSTAS NO VÍDEO (mostrando as nádegas, parte traseira ou costas da roupa):
   * CASO 1: HÁ FOTOS DE REFERÊNCIA MOSTRANDO AS COSTAS DO PRODUTO:
     - Se a referência NÃO possui bolsos traseiros e no vídeo aparecem bolsos traseiros (ou vice-versa, a referência TEM bolsos traseiros e o vídeo omite): REPROVAÇÃO IMEDIATA (score <= 25, status: "red", rearPocketsDefect: true, wrongProduct: true)!
@@ -4818,6 +4819,7 @@ Antes de comparar o vídeo, examine todas as imagens originais de referência co
 ⚠️ REGRA CRÍTICA DE BOLSOS TRASEIROS E PARTE TRASEIRA / COSTAS (TIKTOK SHOP):
 - Inspecione minuciosamente TODAS as fotos de referência para verificar se alguma delas mostra o produto por trás / de costas.
 - Se qualquer foto de referência mostrar que a peça possui (ou não possui) bolsos traseiros (em calça, bermuda, shorts ou saia), essa regra é válida para todas as cores do produto.
+- SE A MODELO PERMANECER APENAS DE FRENTE OU DE LADO NO VÍDEO (sem mostrar as costas): NÃO reprove nem penalize por detalhes exclusivos das costas (cruzado nas costas, bolsos traseiros, etc.) não aparecerem.
 - QUANDO A MODELO VIRAR DE COSTAS NO VÍDEO (mostrando as nádegas, parte traseira ou costas da roupa):
   * CASO 1: HÁ FOTOS DE REFERÊNCIA MOSTRANDO AS COSTAS DO PRODUTO:
     - Se a referência NÃO possui bolsos traseiros e no vídeo aparecem bolsos traseiros (ou vice-versa, a referência TEM bolsos traseiros e o vídeo omite): REPROVE O VÍDEO IMEDIATAMENTE (score <= 25, status: "red") com finding severidade "evident", title: "Bolsos traseiros divergentes da referência oficial.", whatAppearsInVideo: "A peça na referência possui/não possui bolsos traseiros, mas no vídeo ao virar de costas a peça apresenta bolsos inventados ou divergentes.", howToFix: "Regerar o vídeo preservando exatamente o design traseiro sem bolsos/com bolsos da referência."

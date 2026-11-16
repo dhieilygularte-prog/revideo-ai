@@ -1298,24 +1298,28 @@ Preserve fielmente qualquer logomarca, estampa ou acabamento original da peça. 
 Compare EXCLUSIVAMENTE a peça/produto anunciado na imagem gerada com a(s) foto(s) de referência real(is) do produto.
 REGRAS DE AVALIAÇÃO:
 1. Ignore o cenário, paredes, piso, espelho, iluminação, rosto/queixo/cabelo/corpo da modelo, tatuagens e peças complementares ou calçados que não fazem parte do produto da referência (exceto quando o próprio produto for um calçado). Avalie APENAS a peça anunciada.
-2. Avalie rigorosamente estes 6 micro-itens da peça principal (cada um com nota real de 0 a 100 em "criteriaScores"):
+2. REGRA SOBERANA DE ÂNGULO VISÍVEL (PROIBIDO PENALIZAR AS COSTAS EM FOTO FRONTAL/LATERAL):
+   - Muitas fotos de referência mostram Frente + Costas lado a lado, porém as imagens geradas são normalmente DE FRENTE (ou no máximo de lado).
+   - Analise EXCLUSIVAMENTE as partes da peça que estão visíveis na imagem gerada comparando com o mesmo ângulo da referência.
+   - Se as COSTAS / parte traseira NÃO aparecem na imagem gerada (modelo de frente ou de lado), é TERMINANTEMENTE PROIBIDO descontar pontos em "score", "details", "drape", "seams" ou citar em "issues" que algum detalhe das costas está invisível/ausente (ex.: cruzado nas costas, amarração traseira, decote nas costas, lastex, zíper ou bolsos traseiros)! Só avalie detalhes das costas se a imagem gerada mostrar explicitamente a modelo virada de costas.
+3. Avalie rigorosamente estes 6 micro-itens da peça principal nas partes VISÍVEIS (cada um com nota real de 0 a 100 em "criteriaScores"):
    - "color" (Cor da Peça): cor predominante, tonalidade e estampa/padrão (liso vs estampado) comparados à referência.
    - "length" (Comprimento da Peça): altura proporcional exata da barra na perna/silhueta comparada à referência (curto/mini, mídi, longo/maxi, cropped vs blusa comprida — confira se a barra parou na mesma altura proporcional da perna deixando a mesma faixa proporcional de canela exposta acima do tornozelo).
-   - "texture" (Textura do Tecido): trama, aspecto tátil e acabamento do tecido. Caso o usuário informe um tecido específico, lembre-se que a foto de referência pode estar comprimida — não penalize maior nitidez de trama quando a peça reproduzir fielmente o tecido informado junto à cor e modelagem da referência.
-   - "drape" (Caimento da Peça): modelagem, caimento, volume e ajuste estrutural do tecido no corpo coerentes com a referência.
-   - "details" (Detalhes da Peça): compare minuciosamente TODOS os detalhes construtivos:
-     * Bolsos: mesma quantidade, localização e tamanho da referência.
+   - "texture" (Textura do Tecido): trama, aspecto tátil e acabamento do tecido. Fotos de referência muitas vezes vêm comprimidas de internet; imagens geradas mais nítidas revelando claramente a trama do tecido informado ou compatível DEVEM receber nota 95–100 (NUNCA dê ~80% apenas porque a imagem gerada tem maior nitidez de trama!).
+   - "drape" (Caimento da Peça): modelagem, caimento, volume e ajuste estrutural do tecido no corpo no ângulo visível comparado à referência (sem descontar nada por costas ocultas).
+   - "details" (Detalhes da Peça): compare minuciosamente TODOS os detalhes construtivos VISÍVEIS no ângulo da foto gerada:
+     * Bolsos visíveis: mesma quantidade, localização e tamanho da referência.
      * Fendas: mesma quantidade (se a referência tem 1 fenda no vestido ou saia, a gerada DEVE ter 1 e NÃO 2!) e MESMO tamanho/altura de abertura da fenda comparado à referência; além de ausência de shortinho/bermuda inventado sob vestido puro ou visível dentro da fenda.
-     * Alças: mesma largura, formato e posicionamento.
-     * Cordões de amarrar / laços / amarrações: se existirem na referência, devem estar iguais em estilo, espessura e posição.
-     * Botões: se existirem na referência, devem ser iguais na mesma quantidade, tamanho e posição.
-   - "seams" (Posição das Costuras): linhas de costura, recortes, pences, cós, decote e acabamento de barra na mesma posição da referência.
-3. NOTA GERAL ("score") E STATUS:
-   - VERDE (score >= 90, status: "green"): Todos os aspectos da peça principal correspondem fielmente à foto de referência.
-   - AMARELO (score 70 a 89, status: "yellow"): Divergência leve/parcial em algum dos 6 itens (ex.: barra desceu/subiu levemente, detalhe sutil de fenda/cordão/botão/tom).
-   - VERMELHO (score < 70, status: "red"): Divergência crítica na peça principal (cor diferente, comprimento muito alterado, fenda duplicada ou tamanho errado, bolso/botão/cordão/alça faltando ou errado, shortinho inventado sob vestido puro, estampa/costura diferente).
-4. Caso o status geral seja "yellow" ou "red" (score < 90) OU algum dos 6 sub-itens fique < 90, preencha OBRIGATORIAMENTE:
-   - "issues": array com 1 a 2 frases curtas e diretas em português apontando exatamente qual detalhe divergiu (ex.: "Vestido gerou 2 fendas em vez de 1", "Fenda ficou menor que na referência", "Faltou bolso/botão na posição original", "Barra desceu cobrindo mais canela", "Inventou shortinho interno na fenda").
+     * Alças: mesma largura, formato e posicionamento visíveis.
+     * Cordões de amarrar / laços / amarrações VISÍVEIS: se existirem na parte visível da referência, devem estar iguais em estilo, espessura e posição (NÃO cobrar cordão/cruzado traseiro se as costas não aparecem!).
+     * Botões visíveis: se existirem na parte visível da referência, devem ser iguais na mesma quantidade, tamanho e posição.
+   - "seams" (Posição das Costuras): linhas de costura, recortes, pences, cós, decote e acabamento de barra visíveis na mesma posição da referência.
+4. NOTA GERAL ("score") E STATUS:
+   - VERDE (score >= 90, status: "green"): Todos os aspectos visíveis da peça principal correspondem fielmente à foto de referência.
+   - AMARELO (score 70 a 89, status: "yellow"): Divergência leve/parcial real em algum dos 6 itens visíveis (ex.: barra desceu/subiu levemente, detalhe visível de fenda/cordão frontal/botão/tom).
+   - VERMELHO (score < 70, status: "red"): Divergência crítica na peça principal visível (cor diferente, comprimento muito alterado, fenda duplicada ou tamanho errado, bolso/botão/cordão frontal/alça faltando ou errado, shortinho inventado sob vestido puro, estampa/costura diferente).
+5. Caso o status geral seja "yellow" ou "red" (score < 90) OU algum dos 6 sub-itens fique < 90, preencha OBRIGATORIAMENTE:
+   - "issues": array com 1 a 2 frases curtas e diretas em português apontando apenas divergências reais visíveis (NUNCA cite "detalhe nas costas não visível em foto frontal").
    - "correctionPrompt": instrução direta em português do que corrigir na próxima geração para ficar 100% idêntico à referência.
 Retorne estritamente um JSON:
 {

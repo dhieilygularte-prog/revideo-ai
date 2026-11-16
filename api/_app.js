@@ -2256,24 +2256,28 @@ ${ultraRealismFullOpenAI}`;
 Compare EXCLUSIVAMENTE a pe\xE7a/produto anunciado na imagem gerada com a(s) foto(s) de refer\xEAncia real(is) do produto.
 REGRAS DE AVALIA\xC7\xC3O:
 1. Ignore o cen\xE1rio, paredes, piso, espelho, ilumina\xE7\xE3o, rosto/queixo/cabelo/corpo da modelo, tatuagens e pe\xE7as complementares ou cal\xE7ados que n\xE3o fazem parte do produto da refer\xEAncia (exceto quando o pr\xF3prio produto for um cal\xE7ado). Avalie APENAS a pe\xE7a anunciada.
-2. Avalie rigorosamente estes 6 micro-itens da pe\xE7a principal (cada um com nota real de 0 a 100 em "criteriaScores"):
+2. REGRA SOBERANA DE \xC2NGULO VIS\xCDVEL (PROIBIDO PENALIZAR AS COSTAS EM FOTO FRONTAL/LATERAL):
+   - Muitas fotos de refer\xEAncia mostram Frente + Costas lado a lado, por\xE9m as imagens geradas s\xE3o normalmente DE FRENTE (ou no m\xE1ximo de lado).
+   - Analise EXCLUSIVAMENTE as partes da pe\xE7a que est\xE3o vis\xEDveis na imagem gerada comparando com o mesmo \xE2ngulo da refer\xEAncia.
+   - Se as COSTAS / parte traseira N\xC3O aparecem na imagem gerada (modelo de frente ou de lado), \xE9 TERMINANTEMENTE PROIBIDO descontar pontos em "score", "details", "drape", "seams" ou citar em "issues" que algum detalhe das costas est\xE1 invis\xEDvel/ausente (ex.: cruzado nas costas, amarra\xE7\xE3o traseira, decote nas costas, lastex, z\xEDper ou bolsos traseiros)! S\xF3 avalie detalhes das costas se a imagem gerada mostrar explicitamente a modelo virada de costas.
+3. Avalie rigorosamente estes 6 micro-itens da pe\xE7a principal nas partes VIS\xCDVEIS (cada um com nota real de 0 a 100 em "criteriaScores"):
    - "color" (Cor da Pe\xE7a): cor predominante, tonalidade e estampa/padr\xE3o (liso vs estampado) comparados \xE0 refer\xEAncia.
    - "length" (Comprimento da Pe\xE7a): altura proporcional exata da barra na perna/silhueta comparada \xE0 refer\xEAncia (curto/mini, m\xEDdi, longo/maxi, cropped vs blusa comprida \u2014 confira se a barra parou na mesma altura proporcional da perna deixando a mesma faixa proporcional de canela exposta acima do tornozelo).
-   - "texture" (Textura do Tecido): trama, aspecto t\xE1til e acabamento do tecido. Caso o usu\xE1rio informe um tecido espec\xEDfico, lembre-se que a foto de refer\xEAncia pode estar comprimida \u2014 n\xE3o penalize maior nitidez de trama quando a pe\xE7a reproduzir fielmente o tecido informado junto \xE0 cor e modelagem da refer\xEAncia.
-   - "drape" (Caimento da Pe\xE7a): modelagem, caimento, volume e ajuste estrutural do tecido no corpo coerentes com a refer\xEAncia.
-   - "details" (Detalhes da Pe\xE7a): compare minuciosamente TODOS os detalhes construtivos:
-     * Bolsos: mesma quantidade, localiza\xE7\xE3o e tamanho da refer\xEAncia.
+   - "texture" (Textura do Tecido): trama, aspecto t\xE1til e acabamento do tecido. Fotos de refer\xEAncia muitas vezes v\xEAm comprimidas de internet; imagens geradas mais n\xEDtidas revelando claramente a trama do tecido informado ou compat\xEDvel DEVEM receber nota 95\u2013100 (NUNCA d\xEA ~80% apenas porque a imagem gerada tem maior nitidez de trama!).
+   - "drape" (Caimento da Pe\xE7a): modelagem, caimento, volume e ajuste estrutural do tecido no corpo no \xE2ngulo vis\xEDvel comparado \xE0 refer\xEAncia (sem descontar nada por costas ocultas).
+   - "details" (Detalhes da Pe\xE7a): compare minuciosamente TODOS os detalhes construtivos VIS\xCDVEIS no \xE2ngulo da foto gerada:
+     * Bolsos vis\xEDveis: mesma quantidade, localiza\xE7\xE3o e tamanho da refer\xEAncia.
      * Fendas: mesma quantidade (se a refer\xEAncia tem 1 fenda no vestido ou saia, a gerada DEVE ter 1 e N\xC3O 2!) e MESMO tamanho/altura de abertura da fenda comparado \xE0 refer\xEAncia; al\xE9m de aus\xEAncia de shortinho/bermuda inventado sob vestido puro ou vis\xEDvel dentro da fenda.
-     * Al\xE7as: mesma largura, formato e posicionamento.
-     * Cord\xF5es de amarrar / la\xE7os / amarra\xE7\xF5es: se existirem na refer\xEAncia, devem estar iguais em estilo, espessura e posi\xE7\xE3o.
-     * Bot\xF5es: se existirem na refer\xEAncia, devem ser iguais na mesma quantidade, tamanho e posi\xE7\xE3o.
-   - "seams" (Posi\xE7\xE3o das Costuras): linhas de costura, recortes, pences, c\xF3s, decote e acabamento de barra na mesma posi\xE7\xE3o da refer\xEAncia.
-3. NOTA GERAL ("score") E STATUS:
-   - VERDE (score >= 90, status: "green"): Todos os aspectos da pe\xE7a principal correspondem fielmente \xE0 foto de refer\xEAncia.
-   - AMARELO (score 70 a 89, status: "yellow"): Diverg\xEAncia leve/parcial em algum dos 6 itens (ex.: barra desceu/subiu levemente, detalhe sutil de fenda/cord\xE3o/bot\xE3o/tom).
-   - VERMELHO (score < 70, status: "red"): Diverg\xEAncia cr\xEDtica na pe\xE7a principal (cor diferente, comprimento muito alterado, fenda duplicada ou tamanho errado, bolso/bot\xE3o/cord\xE3o/al\xE7a faltando ou errado, shortinho inventado sob vestido puro, estampa/costura diferente).
-4. Caso o status geral seja "yellow" ou "red" (score < 90) OU algum dos 6 sub-itens fique < 90, preencha OBRIGATORIAMENTE:
-   - "issues": array com 1 a 2 frases curtas e diretas em portugu\xEAs apontando exatamente qual detalhe divergiu (ex.: "Vestido gerou 2 fendas em vez de 1", "Fenda ficou menor que na refer\xEAncia", "Faltou bolso/bot\xE3o na posi\xE7\xE3o original", "Barra desceu cobrindo mais canela", "Inventou shortinho interno na fenda").
+     * Al\xE7as: mesma largura, formato e posicionamento vis\xEDveis.
+     * Cord\xF5es de amarrar / la\xE7os / amarra\xE7\xF5es VIS\xCDVEIS: se existirem na parte vis\xEDvel da refer\xEAncia, devem estar iguais em estilo, espessura e posi\xE7\xE3o (N\xC3O cobrar cord\xE3o/cruzado traseiro se as costas n\xE3o aparecem!).
+     * Bot\xF5es vis\xEDveis: se existirem na parte vis\xEDvel da refer\xEAncia, devem ser iguais na mesma quantidade, tamanho e posi\xE7\xE3o.
+   - "seams" (Posi\xE7\xE3o das Costuras): linhas de costura, recortes, pences, c\xF3s, decote e acabamento de barra vis\xEDveis na mesma posi\xE7\xE3o da refer\xEAncia.
+4. NOTA GERAL ("score") E STATUS:
+   - VERDE (score >= 90, status: "green"): Todos os aspectos vis\xEDveis da pe\xE7a principal correspondem fielmente \xE0 foto de refer\xEAncia.
+   - AMARELO (score 70 a 89, status: "yellow"): Diverg\xEAncia leve/parcial real em algum dos 6 itens vis\xEDveis (ex.: barra desceu/subiu levemente, detalhe vis\xEDvel de fenda/cord\xE3o frontal/bot\xE3o/tom).
+   - VERMELHO (score < 70, status: "red"): Diverg\xEAncia cr\xEDtica na pe\xE7a principal vis\xEDvel (cor diferente, comprimento muito alterado, fenda duplicada ou tamanho errado, bolso/bot\xE3o/cord\xE3o frontal/al\xE7a faltando ou errado, shortinho inventado sob vestido puro, estampa/costura diferente).
+5. Caso o status geral seja "yellow" ou "red" (score < 90) OU algum dos 6 sub-itens fique < 90, preencha OBRIGATORIAMENTE:
+   - "issues": array com 1 a 2 frases curtas e diretas em portugu\xEAs apontando apenas diverg\xEAncias reais vis\xEDveis (NUNCA cite "detalhe nas costas n\xE3o vis\xEDvel em foto frontal").
    - "correctionPrompt": instru\xE7\xE3o direta em portugu\xEAs do que corrigir na pr\xF3xima gera\xE7\xE3o para ficar 100% id\xEAntico \xE0 refer\xEAncia.
 Retorne estritamente um JSON:
 {
@@ -6438,6 +6442,7 @@ Antes de comparar e julgar qualquer v\xEDdeo, examine TODAS as fotos de refer\xE
 \u26A0\uFE0F REGRA CR\xCDTICA DE BOLSOS TRASEIROS E PARTE TRASEIRA / COSTAS (TIKTOK SHOP):
 - Inspecione minuciosamente TODAS as fotos de refer\xEAncia (de qualquer cor) para verificar se alguma delas mostra o produto por tr\xE1s / de costas.
 - Se qualquer foto de refer\xEAncia mostrar que a pe\xE7a possui (ou n\xE3o possui) bolsos traseiros (em cal\xE7a, bermuda, shorts ou saia), essa regra \xE9 v\xE1lida para todas as cores do produto.
+- SE A MODELO PERMANECER APENAS DE FRENTE OU DE LADO NO V\xCDDEO (sem mostrar as costas): N\xC3O reprove nem penalize por detalhes exclusivos das costas (cruzado nas costas, bolsos traseiros, etc.) n\xE3o aparecerem.
 - QUANDO A MODELO VIRAR DE COSTAS NO V\xCDDEO (mostrando as n\xE1degas, parte traseira ou costas da roupa):
   * CASO 1: H\xC1 FOTOS DE REFER\xCANCIA MOSTRANDO AS COSTAS DO PRODUTO:
     - Se a refer\xEAncia N\xC3O possui bolsos traseiros e no v\xEDdeo aparecem bolsos traseiros (ou vice-versa, a refer\xEAncia TEM bolsos traseiros e o v\xEDdeo omite): REPROVA\xC7\xC3O IMEDIATA (score <= 25, status: "red", rearPocketsDefect: true, wrongProduct: true)!
@@ -6889,6 +6894,7 @@ Antes de comparar o v\xEDdeo, examine todas as imagens originais de refer\xEAnci
 \u26A0\uFE0F REGRA CR\xCDTICA DE BOLSOS TRASEIROS E PARTE TRASEIRA / COSTAS (TIKTOK SHOP):
 - Inspecione minuciosamente TODAS as fotos de refer\xEAncia para verificar se alguma delas mostra o produto por tr\xE1s / de costas.
 - Se qualquer foto de refer\xEAncia mostrar que a pe\xE7a possui (ou n\xE3o possui) bolsos traseiros (em cal\xE7a, bermuda, shorts ou saia), essa regra \xE9 v\xE1lida para todas as cores do produto.
+- SE A MODELO PERMANECER APENAS DE FRENTE OU DE LADO NO V\xCDDEO (sem mostrar as costas): N\xC3O reprove nem penalize por detalhes exclusivos das costas (cruzado nas costas, bolsos traseiros, etc.) n\xE3o aparecerem.
 - QUANDO A MODELO VIRAR DE COSTAS NO V\xCDDEO (mostrando as n\xE1degas, parte traseira ou costas da roupa):
   * CASO 1: H\xC1 FOTOS DE REFER\xCANCIA MOSTRANDO AS COSTAS DO PRODUTO:
     - Se a refer\xEAncia N\xC3O possui bolsos traseiros e no v\xEDdeo aparecem bolsos traseiros (ou vice-versa, a refer\xEAncia TEM bolsos traseiros e o v\xEDdeo omite): REPROVE O V\xCDDEO IMEDIATAMENTE (score <= 25, status: "red") com finding severidade "evident", title: "Bolsos traseiros divergentes da refer\xEAncia oficial.", whatAppearsInVideo: "A pe\xE7a na refer\xEAncia possui/n\xE3o possui bolsos traseiros, mas no v\xEDdeo ao virar de costas a pe\xE7a apresenta bolsos inventados ou divergentes.", howToFix: "Regerar o v\xEDdeo preservando exatamente o design traseiro sem bolsos/com bolsos da refer\xEAncia."
