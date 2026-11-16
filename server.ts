@@ -1019,7 +1019,7 @@ app.post('/api/anamaria-inspect-dress', async (req, res) => {
       : `data:image/jpeg;base64,${photoBase64}`;
 
     const infoSpec = analyzeAnaMariaProductInfo(productInfo, fabricType);
-    const dressCacheKey = `dress_v2:${productName || ''}:${infoSpec.cleanedText.slice(0, 120)}:${fabricType.slice(0, 60)}:${cleanUrl.slice(0, 64)}:${cleanUrl.slice(-64)}:${cleanUrl.length}`;
+    const dressCacheKey = `dress_v3:${productName || ''}:${infoSpec.cleanedText.slice(0, 120)}:${fabricType.slice(0, 60)}:${cleanUrl.slice(0, 64)}:${cleanUrl.slice(-64)}:${cleanUrl.length}`;
     if (!(globalThis as any).__anaMariaVisionCache) {
       (globalThis as any).__anaMariaVisionCache = createBoundedMap<string, any>(200);
     }
@@ -1046,15 +1046,6 @@ app.post('/api/anamaria-inspect-dress', async (req, res) => {
             : catRaw === 'fitness' || catRaw === 'gym'
             ? 'fitness'
             : 'other';
-        const lenRaw = String(parsed.lengthCategory || '').toLowerCase();
-        const lengthCategory =
-          lenRaw === 'curto' || lenRaw === 'mini'
-            ? 'curto'
-            : lenRaw === 'midi'
-            ? 'midi'
-            : lenRaw === 'longo' || lenRaw === 'maxi'
-            ? 'longo'
-            : 'unknown';
         const slitLegRaw = String(parsed.slitLegWearer || 'none').toLowerCase();
         const slitLegWearer =
           slitLegRaw === 'left' || slitLegRaw === 'right' || slitLegRaw === 'both' || slitLegRaw === 'center'
@@ -1064,7 +1055,13 @@ app.post('/api/anamaria-inspect-dress', async (req, res) => {
           parsed.hasSingleSideSlit && (slitLegWearer === 'left' || slitLegWearer === 'right')
         );
         const hasBuiltInShorts = Boolean(parsed.hasBuiltInShorts);
-        return { garmentCategory, lengthCategory, hasSingleSideSlit, slitLegWearer, hasBuiltInShorts };
+        return {
+          garmentCategory,
+          lengthCategory: 'unknown' as const,
+          hasSingleSideSlit,
+          slitLegWearer,
+          hasBuiltInShorts,
+        };
       } catch {
         return null;
       }
@@ -1072,7 +1069,7 @@ app.post('/api/anamaria-inspect-dress', async (req, res) => {
 
     const inspectPrompt = `Inspect this garment photo${productName ? ` ("${productName}")` : ''}${
       infoSpec.hasInfo ? ` — user product info / fabric: "${infoSpec.cleanedText.slice(0, 260)}"` : ''
-    } and answer strictly in valid JSON with FOUR attributes:
+    } and answer strictly in valid JSON with THREE attributes:
 1. "garmentCategory":
    - "dress": dress, gown, chemise, or full-body jumpsuit/romper.
    - "upper": blouse, shirt, top, cropped, jacket, or upper-body piece only.
@@ -1080,20 +1077,15 @@ app.post('/api/anamaria-inspect-dress', async (req, res) => {
    - "sleepwear": nightgown, baby doll, pajamas, robe, or lingerie.
    - "fitness": gym/workout activewear set or legging.
    - "other": any other item.
-2. "lengthCategory" (for dresses/skirts):
-   - "curto": hem ends above the knees (mini/short).
-   - "midi": hem ends around the knees or mid-calf/shin, leaving ankles and footwear clearly visible.
-   - "longo": hem reaches all the way down to the ankles/floor/covering feet (maxi/floor-length).
-   - "unknown": if not a dress/skirt.
-3. Leg slit detection ("hasSingleSideSlit" & "slitLegWearer"):
+2. Leg slit detection ("hasSingleSideSlit" & "slitLegWearer"):
    - Report "slitLegWearer" strictly from the WEARER'S own anatomical perspective (viewer's RIGHT side = wearer's "left"; viewer's LEFT side = wearer's "right").
    - If ONLY ONE side slit on ONE leg, set "hasSingleSideSlit": true and "slitLegWearer": "left" or "right".
    - Otherwise set "hasSingleSideSlit": false and "slitLegWearer": "none" (or "both" if double slit).
-4. Built-in shorts check ("hasBuiltInShorts"):
+3. Built-in shorts check ("hasBuiltInShorts"):
    - Set "hasBuiltInShorts": true ONLY if built-in matching inner shorts / skort shorts are clearly visible under a dress/skirt or through the slit; otherwise false.
 
 Respond ONLY valid JSON:
-{"garmentCategory":"dress","lengthCategory":"midi","hasSingleSideSlit":true,"slitLegWearer":"left","hasBuiltInShorts":false}`;
+{"garmentCategory":"dress","hasSingleSideSlit":true,"slitLegWearer":"left","hasBuiltInShorts":false}`;
 
     if (openAIProvider && openAIProvider.isConfigured()) {
       try {
@@ -1595,11 +1587,11 @@ async function generateImageWithSeedream(params: {
         params.prompt.includes('SHORT-SAIA'))
   );
   const pureDressNoShortsSeedream = isDressOrOnePieceSeedream && !explicitShortsSeedream
-    ? ' Se for vestido puro (sem short-saia na Foto 1), NUNCA invente shortinho ou bermuda por baixo da fenda/saia; mantenha exatamente o comprimento real da Foto 1 sem esticar nem encurtar e mostre apenas a pele limpa da perna dentro da fenda.'
+    ? ' Se for vestido puro (sem short-saia na Foto 1), NUNCA invente shortinho ou bermuda por baixo da fenda/saia; reproduza o comprimento visual EXATO da barra mostrado na Foto 1 sem alongar nem encurtar e mostre apenas a pele limpa da perna dentro da fenda.'
     : '';
 
   const clothingDirectiveSeedream = isDressOrOnePieceSeedream
-    ? `[PRODUTO 1:1 SEM ENCURTAR]: Reproduza vestido/peça única/conjunto da Foto 1 com 100% fidelidade do topo à barra (mesma cor, estampa, costura, decote e comprimento real exato — mídi até meio da canela ou longo até tornozelo conforme Foto 1; calçado só se a barra original mostrar pés).${pureDressNoShortsSeedream}\n`
+    ? `[PRODUTO 1:1 — COMPRIMENTO EXATO DA REFERÊNCIA]: Reproduza a peça da Foto 1 com 100% fidelidade do topo à barra, mantendo exclusivamente o comprimento visual EXATO mostrado na Foto 1 (proibido alongar ou encurtar qualquer roupa; calçado só se a barra original da Foto 1 deixar os pés visíveis).${pureDressNoShortsSeedream}\n`
     : (isUpperPieceSeedream
         ? '[PEÇA DE CIMA 1:1 + BAIXO CONTRASTANTE]: Mantenha a peça superior idêntica à Foto 1 e combine com calça/saia de cor harmônica CONTRASTANTE (nunca igual à de cima).\n'
         : '[PEÇA DE BAIXO 1:1 + CIMA CONTRASTANTE]: Mantenha a peça inferior idêntica à Foto 1 e combine com blusa/top de cor harmônica CONTRASTANTE (nunca igual à de baixo).\n');

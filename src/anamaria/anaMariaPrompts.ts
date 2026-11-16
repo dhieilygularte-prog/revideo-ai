@@ -237,7 +237,7 @@ export function detectShoeCategory(
       return {
         category: 'C_OUTRO',
         name: 'SANDÁLIA DE SALTO FEMININA — MODELO DELICADO',
-        description: `Sandália de salto feminina — modelo delicado, aberta na frente exibindo os dedos, com tiras finas horizontais delicadas sobre os dedos e o peito do pé, salto fino elegante e acabamento sofisticado. REGRA INVIOLÁVEL DA PARTE INFERIOR DA PEÇA: Preserve 100% o comprimento original da peça; NUNCA encurte a barra para exibir o calçado. ${SHOE_CONTRAST_COLOR_RULE_PT}`,
+        description: `Sandália de salto feminina — modelo delicado, aberta na frente exibindo os dedos, com tiras finas horizontais delicadas sobre os dedos e o peito do pé, salto fino elegante e acabamento sofisticado. REGRA INVIOLÁVEL DA PARTE INFERIOR DA PEÇA: Preserve 100% o comprimento visual da peça na imagem de referência; NUNCA encurte nem alongue a barra para exibir ou ajustar o calçado. ${SHOE_CONTRAST_COLOR_RULE_PT}`,
       };
   }
 }
@@ -266,12 +266,7 @@ export function detectComplementaryGarment(
   const combined = `${productName} ${additionalInstructions}`.toLowerCase();
   const isMale = influencer === 'Homem';
   const inspectedCat = dressInspection?.garmentCategory;
-  const inspectedIsDress =
-    inspectedCat === 'dress' ||
-    (dressInspection?.lengthCategory !== undefined &&
-      dressInspection.lengthCategory !== 'unknown' &&
-      inspectedCat !== 'upper' &&
-      inspectedCat !== 'lower');
+  const inspectedIsDress = inspectedCat === 'dress';
 
   // Detecta CONJUNTO explicitamente (ex: "conjunto", "calça e blusinha", "calça e top", "calça e blusa", "bermuda e blusa", "bermuda e saia", etc.)
   const isConjunto =
@@ -627,14 +622,6 @@ function buildDressLengthAndSlitDirectives(
     return { imageLengthRule: '', imageSlitRule: '', videoSlitRule: '' };
   }
 
-  const lengthCategory = dressInspection?.lengthCategory;
-  const exactLengthTag =
-    lengthCategory === 'midi'
-      ? '\n- COMPRIMENTO MÍDI EXATO (PROIBIDO ALONGAR): Na foto de referência o vestido é MÍDI (barra termina na altura da canela, deixando tornozelos e calçado visíveis). NÃO alongue até os tornozelos ou chão.'
-      : lengthCategory === 'curto'
-      ? '\n- COMPRIMENTO CURTO/MINI EXATO (PROIBIDO ALONGAR): A barra do vestido termina acima dos joelhos como na foto de referência. NÃO alongue para mídi ou longo.'
-      : '';
-
   const explicitShortsInDress =
     dressInspection?.hasBuiltInShorts === true ||
     /\b(short\s*saia|shorts\s*saia|saia\s*short|com\s+shorts?|shortinho|macaquinho|macaquinho-vestido|vestido\s+short)\b/i.test(
@@ -647,8 +634,7 @@ function buildDressLengthAndSlitDirectives(
       : '';
 
   const imageLengthRule =
-    '- PRESERVAÇÃO 1:1 INTEGRAL DO COMPRIMENTO, COSTURAS, ESTAMPA E PARTE INFERIOR DA PEÇA: Reproduza 100% da construção original da peça do topo até a barra inferior exatamente como na foto de referência do produto. É TERMINANTEMENTE PROIBIDO encurtar a peça, comer ou cortar a parte de baixo do vestido/saia, alterar o formato da barra, mudar babados/recortes inferiores, modificar linhas de costura ou alterar o padrão de estampa e textura em qualquer parte da peça (nem em cima nem embaixo).' +
-    exactLengthTag +
+    '- PRESERVAÇÃO 1:1 INTEGRAL DO COMPRIMENTO DA IMAGEM DE REFERÊNCIA (ZERO ALTERAÇÃO): O comprimento de qualquer roupa (vestido, saia, blusa, cropped, short, calça ou macacão) é SEMPRE definido exclusiva e visualmente pela foto de referência do produto. Reproduza 100% da construção original da peça do topo até a barra inferior exatamente na altura visual mostrada na referência — é TERMINANTEMENTE PROIBIDO alongar, encurtar, comer ou cortar a parte de baixo, alterar o formato da barra, mudar babados/recortes inferiores, modificar linhas de costura ou alterar o padrão de estampa e textura em qualquer parte da peça.' +
     noInventedShortsRule;
 
   let imageSlitRule = '';
@@ -926,9 +912,9 @@ ${
 
 1. FOTO 1 (PRODUTO — PEÇA DE ROUPA COM FIDELIDADE 100% DE CIMA A BAIXO):
 - Vestir a modelo com a roupa da Foto 1 com fidelidade absoluta 1:1 do topo até a barra inferior (mesma cor exata, mesmo padrão de estampa sem alterar os desenhos, mesma textura do tecido, mesmas linhas de costura, recortes, babados, pregas, caimento, formato da saia/barra, comprimento exato da peça, decote, alças e mangas).
-- PROIBIÇÃO TOTAL DE ALTERAR OU ENCURTAR A PEÇA: É TERMINANTEMENTE PROIBIDO encurtar a peça, comer ou cortar a parte de baixo do vestido/saia, mudar o formato da barra, omitir costuras ou modificar a estampa/textura em qualquer parte da peça (nem na parte de cima nem na parte de baixo).
+- PROIBIÇÃO TOTAL DE ALTERAR COMPRIMENTO (NEM ALONGAR NEM ENCURTAR): O comprimento de qualquer roupa (inclusive vestido) é sempre 100% definido pela foto de referência. É TERMINANTEMENTE PROIBIDO encurtar ou alongar a peça, comer ou cortar a parte de baixo do vestido/saia, mudar o formato da barra, omitir costuras ou modificar a estampa/textura em qualquer parte da peça (nem na parte de cima nem na parte de baixo).
 ${garmentTypeInstruction}${productInfoSpec.hasInfo ? `\n${productInfoSpec.promptBlockPt}` : ''}
-- Calçado nos pés: ${shoeInfo.name} (${shoeInfo.description}), substituindo qualquer sapato/tênis original da Foto 2 caso os pés fiquem visíveis pelo comprimento original da peça (NUNCA encurte ou levante a barra da peça da Foto 1 para mostrar os pés/calçado!).
+- Calçado nos pés: ${shoeInfo.name} (${shoeInfo.description}), substituindo qualquer sapato/tênis original da Foto 2 caso os pés fiquem visíveis pelo comprimento original da peça (NUNCA encurte, suba ou alongue a barra da peça da Foto 1 para mostrar ou esconder os pés/calçado!).
 - REGRA CRÍTICA DE ISOLAMENTO TOTAL DA FOTO 1: Da Foto 1 (produto), extraia RIGOROSAMENTE apenas a peça de roupa e tecido. É TERMINANTEMENTE PROIBIDO copiar, mesclar ou misturar o rosto, a cabeça, o cabelo, a pele ou a pose da pessoa da Foto 1! Ignore 100% a pessoa da Foto 1 (ZERO mistura com o rosto da Foto 1). É TERMINANTEMENTE PROIBIDO copiar tatuagens, marcas corporais ou desenhos da pessoa da Foto 1. A modelo gerada deve ter PELE 100% LIMPA, ZERO TATUAGENS em todo o corpo (braços, mãos, pernas, colo e pescoço totalmente livres de tatuagens).
 ${noBagDirectivePt}${noBagDirectiveEn}
 
@@ -947,9 +933,9 @@ ${form.ultraRealism ? 'Qualidade fotográfica autêntica e crua de smartphone ca
 
 1. FOTO 1 (PRODUTO — PEÇA DE ROUPA COM FIDELIDADE 100% DE CIMA A BAIXO):
 - Vestir a modelo com a roupa da Foto 1 com fidelidade absoluta 1:1 do topo até a barra inferior (mesma cor exata, mesmo padrão de estampa sem alterar os desenhos, mesma textura do tecido, mesmas linhas de costura, recortes, babados, pregas, caimento, formato da saia/barra, comprimento exato da peça, decote, alças e mangas).
-- PROIBIÇÃO TOTAL DE ALTERAR OU ENCURTAR A PEÇA: É TERMINANTEMENTE PROIBIDO encurtar a peça, comer ou cortar a parte de baixo do vestido/saia, mudar o formato da barra, omitir costuras ou modificar a estampa/textura em qualquer parte da peça (nem na parte de cima nem na parte de baixo).
+- PROIBIÇÃO TOTAL DE ALTERAR COMPRIMENTO (NEM ALONGAR NEM ENCURTAR): O comprimento de qualquer roupa (inclusive vestido) é sempre 100% definido pela foto de referência. É TERMINANTEMENTE PROIBIDO encurtar ou alongar a peça, comer ou cortar a parte de baixo do vestido/saia, mudar o formato da barra, omitir costuras ou modificar a estampa/textura em qualquer parte da peça (nem na parte de cima nem na parte de baixo).
 ${garmentTypeInstruction}${productInfoSpec.hasInfo ? `\n${productInfoSpec.promptBlockPt}` : ''}
-- Calçado nos pés: ${shoeInfo.name} (${shoeInfo.description}), descartando qualquer tênis ou sapato original da Foto 2 caso os pés fiquem visíveis pelo comprimento original da peça (NUNCA encurte ou levante a barra da peça da Foto 1 para mostrar os pés/calçado!).
+- Calçado nos pés: ${shoeInfo.name} (${shoeInfo.description}), descartando qualquer tênis ou sapato original da Foto 2 caso os pés fiquem visíveis pelo comprimento original da peça (NUNCA encurte, suba ou alongue a barra da peça da Foto 1 para mostrar ou esconder os pés/calçado!).
 - REGRA CRÍTICA DE ISOLAMENTO TOTAL DA FOTO 1: Da Foto 1 (produto), use APENAS a peça de roupa e tecido. Ignore 100% o rosto, cabeça, corpo, tatuagens ou fundo da pessoa da Foto 1. PELE 100% LIMPA, ZERO TATUAGENS.
 ${noBagDirectivePt}${noBagDirectiveEn}
 
@@ -1002,7 +988,7 @@ ${isBag ? "O produto anunciado é uma bolsa: a modelo pode apresentar/usar a bol
 ## 7. REGRA UNIVERSAL DE CALÇADO (HARMONIA COM A ROUPA & PROIBIÇÃO DE ENCURTAR A PEÇA)
 Calçado nos pés: **${shoeInfo.name}** (visível somente se o comprimento original da peça na foto de referência deixar os pés à mostra).
 Especificação do calçado: ${shoeInfo.description}.
-(REGRA INVIOLÁVEL: O comprimento, formato da barra, costuras e estampa da parte inferior da peça seguem 100% a foto de referência do produto. NUNCA encurte, corte ou suba a barra da peça para mostrar os pés ou o calçado!). Enquadrar o corpo inteiro naturalmente diante do espelho.
+(REGRA INVIOLÁVEL: O comprimento, formato da barra, costuras e estampa da parte inferior da peça seguem 100% visualmente a foto de referência do produto. NUNCA encurte, corte, suba ou alongue a barra da peça para mostrar ou esconder os pés ou o calçado!). Enquadrar o corpo inteiro naturalmente diante do espelho.
 
 ## 7.1. REGRA DE LOOK COMPLETO E PEÇAS COMPLEMENTARES (LOOK COMERCIAL COMPLETO)
 ${complementaryInfo.directiveTextPt}
@@ -1010,8 +996,8 @@ ${complementaryInfo.directiveTextEn}
 
 ## 8. FIDELIDADE ABSOLUTA E SOBERANA AO PRODUTO ANEXADO (1:1 DE CIMA A BAIXO — ZERO ALTERAÇÃO DE COSTURAS, ESTAMPA OU COMPRIMENTO)
 A foto da peça anexada pelo usuário é a referência soberana e inviolável da roupa (venda real TikTok Shop).
-Reproduza a roupa 1:1 com máxima fidelidade em TODA a sua extensão (tanto na parte superior quanto na parte inferior): mesma cor exata, tonalidade, mesmo padrão de estampa (mesmos motivos, escala e posição da estampa), mesma textura do tecido, modelagem, formato da saia e da barra, comprimento exato da peça sem encurtar nem alongar, decote, alças, mangas, rendas, transparências, linhas de costura, babados, pregas, botões e recortes.
-${imageLengthRule ? `${imageLengthRule}\n` : ''}${imageSlitRule ? `${imageSlitRule}\n` : ''}${productInfoSpec.hasInfo ? `${productInfoSpec.promptBlockPt}\n` : ''}É TERMINANTEMENTE PROIBIDO encurtar a peça, comer/cortar a parte de baixo do vestido, alterar costuras, mudar a estampa ou modificar o formato da peça em qualquer parte dela.
+Reproduza a roupa 1:1 com máxima fidelidade em TODA a sua extensão (tanto na parte superior quanto na parte inferior): mesma cor exata, tonalidade, mesmo padrão de estampa (mesmos motivos, escala e posição da estampa), mesma textura do tecido, modelagem, formato da saia e da barra, comprimento exato visual da peça sem encurtar nem alongar, decote, alças, mangas, rendas, transparências, linhas de costura, babados, pregas, botões e recortes.
+${imageLengthRule ? `${imageLengthRule}\n` : ''}${imageSlitRule ? `${imageSlitRule}\n` : ''}${productInfoSpec.hasInfo ? `${productInfoSpec.promptBlockPt}\n` : ''}É TERMINANTEMENTE PROIBIDO encurtar ou alongar a peça, comer/cortar a parte de baixo do vestido, alterar costuras, mudar a estampa ou modificar o formato ou comprimento da peça em qualquer parte dela.
 A roupa deve vestir anatomicamente o corpo ${isPlusSize ? 'genuinamente PLUS SIZE' : 'do(a) modelo'} sem jamais redesenhar ou descaracterizar o produto.`;
 
   return {
