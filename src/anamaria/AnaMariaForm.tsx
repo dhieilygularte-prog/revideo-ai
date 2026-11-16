@@ -133,6 +133,17 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const fabricTypeSectionRef = useRef<HTMLDivElement>(null);
   const shoeSectionRef = useRef<HTMLDivElement>(null);
   const actionButtonSectionRef = useRef<HTMLDivElement>(null);
+  const generateButtonRef = useRef<HTMLButtonElement>(null);
+
+  const scrollSmoothlyToCenter = (el: HTMLElement | null) => {
+    if (!el || typeof window === 'undefined') return;
+    const rect = el.getBoundingClientRect();
+    const targetTop = Math.max(
+      0,
+      window.scrollY + rect.top - window.innerHeight / 2 + rect.height / 2
+    );
+    window.scrollTo({ top: targetTop, behavior: 'smooth' });
+  };
 
   useEffect(() => {
     productInfoRef.current = form.productInfo || '';
@@ -945,18 +956,21 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     if (hasPendingApprovals || !canSubmit) return;
     if (!shouldScrollToGenerateAfterResolveRef.current) return;
 
-    // Rolagem única para o botão GERAR VÍDEO depois que o usuário clicou em RESOLVER PENDÊNCIAS e resolveu tudo
+    // Consome a flag 1 única vez e agenda a rolagem sem cleanup cancelável pelo re-render do botão/banner
     shouldScrollToGenerateAfterResolveRef.current = false;
     setScrollFocusField(null);
     setApprovalWarning('');
     setScrollHighlightGenerate(true);
-    const scrollTimer = window.setTimeout(() => {
-      actionButtonSectionRef.current?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center',
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        window.setTimeout(() => {
+          const targetEl = generateButtonRef.current || actionButtonSectionRef.current;
+          if (targetEl) {
+            scrollSmoothlyToCenter(targetEl);
+          }
+        }, 60);
       });
-    }, 120);
-    return () => window.clearTimeout(scrollTimer);
+    });
   }, [hasPendingApprovals, canSubmit, isProcessing]);
   const isInstructionsFilled = Boolean(
     form.additionalInstructions && form.additionalInstructions.trim().length > 0
@@ -3356,6 +3370,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         )}
 
         <button
+          ref={generateButtonRef}
           type="button"
           onClick={() => {
             if (isProcessing || isUploading || isRecordingMic || isRecordingShoeMic) return;
@@ -3365,10 +3380,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             if (!isPhotosReady) {
               setScrollFocusField('photos');
               setApprovalWarning('Por favor, anexe ao menos 1 foto do produto no Item 1 acima antes de gerar o vídeo.');
-              photosSectionRef.current?.scrollIntoView({
-                behavior: 'smooth',
-                block: 'center',
-              });
+              window.requestAnimationFrame(() => scrollSmoothlyToCenter(photosSectionRef.current));
               return;
             }
             if (!isProductInfoReady) {
@@ -3378,10 +3390,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                   ? 'Preencha o campo obrigatório "Informações do Produto" (tecido ou texto do produto) para liberar o botão Gerar Vídeo!'
                   : `Divergência destacada em amarelo em "Informações do Produto": ${divWarningText} — Edite o texto ou toque em APROVAR.`
               );
-              productInfoSectionRef.current?.scrollIntoView({
-                behavior: 'smooth',
-                block: 'center',
-              });
+              window.requestAnimationFrame(() => scrollSmoothlyToCenter(productInfoSectionRef.current));
               return;
             }
             if (!isNameReady) {
@@ -3391,10 +3400,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                   ? `Divergência destacada em amarelo em "Nome da Peça": ${divWarningText} — Edite o nome ou toque em APROVAR.`
                   : 'Você precisa tocar no botão APROVAR (ou preencher/editar ativamente) o Nome da Peça para liberar o botão Gerar Vídeo!'
               );
-              productNameSectionRef.current?.scrollIntoView({
-                behavior: 'smooth',
-                block: 'center',
-              });
+              window.requestAnimationFrame(() => scrollSmoothlyToCenter(productNameSectionRef.current));
               return;
             }
             if (!isFabricReady) {
@@ -3404,10 +3410,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                   ? 'Você precisa tocar no botão APROVAR (ou editar ativamente) o Tipo de Tecido para liberar o botão Gerar Vídeo!'
                   : 'Preencha e aprove o campo "Tipo de Tecido" para liberar o botão Gerar Vídeo!'
               );
-              fabricTypeSectionRef.current?.scrollIntoView({
-                behavior: 'smooth',
-                block: 'center',
-              });
+              window.requestAnimationFrame(() => scrollSmoothlyToCenter(fabricTypeSectionRef.current));
               return;
             }
             if (!isShoeReady) {
@@ -3417,10 +3420,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                   ? 'Digite ou dite o tipo de calçado no campo "Outro" (ou escolha um dos botões de calçado) para liberar o botão Gerar Vídeo!'
                   : 'Você precisa tocar no botão APROVAR no Tipo de Calçado (ou escolher um dos botões de calçado) para liberar o botão Gerar Vídeo!'
               );
-              shoeSectionRef.current?.scrollIntoView({
-                behavior: 'smooth',
-                block: 'center',
-              });
+              window.requestAnimationFrame(() => scrollSmoothlyToCenter(shoeSectionRef.current));
               return;
             }
             shouldScrollToGenerateAfterResolveRef.current = false;
