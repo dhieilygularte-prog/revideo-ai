@@ -1368,6 +1368,10 @@ export default function App() {
       alert('Preencha o campo obrigatório "Informações do Produto" (tecido ou descrição do produto) antes de gerar.');
       return;
     }
+    if (anaMariaForm.descriptionDivergenceWarning && !anaMariaForm.isDescriptionDivergenceApproved) {
+      alert(`Há uma divergência pendente de aprovação entre a foto e a descrição:\n${anaMariaForm.descriptionDivergenceWarning}`);
+      return;
+    }
     if (!anaMariaForm.fabricType?.trim() || !anaMariaForm.isFabricTypeApproved) {
       alert('Preencha e aprove o campo obrigatório "Tipo de Tecido" antes de gerar.');
       return;
@@ -1429,6 +1433,9 @@ export default function App() {
       productInfo: '',
       fabricType: '',
       isFabricTypeApproved: false,
+      descriptionDivergenceWarning: undefined,
+      descriptionDivergenceField: undefined,
+      isDescriptionDivergenceApproved: false,
       productName: '',
       referencePhotos: [],
       extraColorPhotos: [],

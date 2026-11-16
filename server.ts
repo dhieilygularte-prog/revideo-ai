@@ -1141,6 +1141,119 @@ Respond ONLY valid JSON:
   }
 });
 
+app.post('/api/anamaria-check-description-divergence', async (req, res) => {
+  try {
+    const {
+      photoBase64,
+      productName = '',
+      productInfo = '',
+    } = (req.body || {}) as {
+      photoBase64?: string;
+      productName?: string;
+      productInfo?: string;
+    };
+
+    const trimmedName = String(productName || '').trim();
+    const trimmedInfo = String(productInfo || '').trim();
+    if (!photoBase64 || (!trimmedName && !trimmedInfo)) {
+      return res.json({ success: true, hasDivergence: false });
+    }
+
+    const combinedText = `${trimmedName} ${trimmedInfo}`.trim();
+    const hasLengthOrShapeCue =
+      /\b(long[oa]s?|maxi|mid|m[ií]di|curt[oa]s?|mini|minissaia|cropped|crop|cal[cç]a|short[\s-]?saia|shorts?|bermuda|saia|vestido|macac[aã]o|macaquinho|conjunto|tomara\s+que\s+caia|manga\s+longa|alcinha|sem\s+fenda|com\s+fenda|fenda)\b/i.test(
+        combinedText
+      );
+
+    if (!hasLengthOrShapeCue) {
+      return res.json({ success: true, hasDivergence: false });
+    }
+
+    const cleanUrl = photoBase64.startsWith('data:') || photoBase64.startsWith('http')
+      ? photoBase64
+      : `data:image/jpeg;base64,${photoBase64}`;
+
+    const divCacheKey = `div_v1:${trimmedName.slice(0, 80)}:${trimmedInfo.slice(0, 200)}:${cleanUrl.slice(0, 64)}:${cleanUrl.slice(-64)}:${cleanUrl.length}`;
+    if (!(globalThis as any).__anaMariaVisionCache) {
+      (globalThis as any).__anaMariaVisionCache = createBoundedMap<string, any>(200);
+    }
+    const visionCache: Map<string, any> = (globalThis as any).__anaMariaVisionCache;
+    if (visionCache.has(divCacheKey)) {
+      return res.json({ success: true, ...visionCache.get(divCacheKey), cached: true });
+    }
+
+    const checkPrompt = `Compare the attached product photo against the user texts below and check ONLY if there is a CLEAR VISUAL DIVERGENCE between what appears in the photo and what is written.
+
+User texts:
+- "Nome da Peça" (field = "productName"): ${trimmedName ? `"${trimmedName.slice(0, 120)}"` : '(vazio)'}
+- "Informações do Produto / Descrição" (field = "productInfo"): ${trimmedInfo ? `"${trimmedInfo.slice(0, 500)}"` : '(vazio)'}
+
+WHEN TO REPORT hasDivergence = true (ONLY clear contradictions):
+1. Length contradiction: e.g. photo clearly shows a MIDI dress/skirt (hem at knees or mid-calf, ankles clearly visible) or SHORT/MINI dress (above knees) while text explicitly says "vestido longo", "saia longa", "maxi", "até os pés/tornozelos"; OR photo clearly reaches ankles/floor while text explicitly says "curto", "mini", "midi"; OR top is full-length vs text saying "cropped" (or vice-versa); OR bottom is pants vs text saying "short/bermuda/saia".
+2. Garment type / major construction contradiction: e.g. photo clearly shows a 2-piece Conjunto vs text calling it "Vestido" or "Macacão" (or vice-versa); photo clearly has a leg slit ("fenda") while text explicitly claims "sem fenda"; long sleeves vs explicit "alcinha / sem mangas / tomara que caia".
+
+WHEN NEVER TO REPORT hasDivergence (STRICTLY hasDivergence = false):
+- NEVER complain about COLOR differences (text often mentions colors of kits/variants).
+- NEVER complain about FABRIC names (e.g. Duna, Viscolinho, Linho, Crepe, Malha, Alfaiataria, Tweed, Bengaline) because photo compression hides weave.
+- NEVER complain when a generic name like "Vestido", "Saia" or "Conjunto" matches the visible garment category without explicit length conflict.
+- For "field": choose "productInfo" if the contradiction is in Informações do Produto, "productName" if it is in Nome da Peça, or "both" if BOTH contain the contradicting claim.
+
+Respond strictly valid JSON:
+{
+  "hasDivergence": boolean,
+  "field": "productInfo" | "productName" | "both",
+  "reason": "Frase curta e clara em português (ex: 'A foto mostra um vestido midi (altura da canela), mas a descrição informa \"vestido longo\".')"
+}`;
+
+    if (openAIProvider && openAIProvider.isConfigured()) {
+      try {
+        const client = (openAIProvider as any).getClient();
+        const visionUrl = await optimizeImageDataUriForVision(cleanUrl, 'low');
+        const completion = await client.chat.completions.create({
+          model: 'gpt-4o-mini',
+          max_tokens: 160,
+          temperature: 0,
+          response_format: { type: 'json_object' },
+          messages: [
+            {
+              role: 'user',
+              content: [
+                { type: 'image_url', image_url: { url: visionUrl, detail: 'low' } },
+                { type: 'text', text: checkPrompt },
+              ],
+            },
+          ],
+        });
+        const rawText = completion.choices[0]?.message?.content?.trim() || '';
+        const match = rawText.match(/\{[\s\S]*\}/);
+        if (match) {
+          const parsed = JSON.parse(match[0]);
+          const hasDivergence = Boolean(parsed.hasDivergence);
+          const fieldRaw = String(parsed.field || 'productInfo');
+          const field: 'productInfo' | 'productName' | 'both' =
+            fieldRaw === 'productName' || fieldRaw === 'both' ? fieldRaw : 'productInfo';
+          const reason = hasDivergence ? String(parsed.reason || '').trim().slice(0, 220) : '';
+          const payload = {
+            hasDivergence: Boolean(hasDivergence && reason),
+            field,
+            reason,
+          };
+          if (visionCache.size > 300) visionCache.clear();
+          visionCache.set(divCacheKey, payload);
+          return res.json({ success: true, ...payload });
+        }
+      } catch (err: any) {
+        console.warn('⚠️ [AnaMaria DivergenceCheck] OpenAI gpt-4o-mini falhou:', err?.message || err);
+      }
+    }
+
+    return res.json({ success: true, hasDivergence: false, fallback: true });
+  } catch (err: any) {
+    console.error('Erro na rota anamaria-check-description-divergence:', err);
+    return res.json({ success: true, hasDivergence: false, fallback: true });
+  }
+});
+
 app.post('/api/detect-dominant-color', async (req, res) => {
   try {
     const {

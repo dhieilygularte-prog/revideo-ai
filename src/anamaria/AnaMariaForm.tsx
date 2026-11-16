@@ -118,9 +118,15 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const [isRecordingMic, setIsRecordingMic] = useState(false);
   const [isRecordingShoeMic, setIsRecordingShoeMic] = useState(false);
   const [approvalWarning, setApprovalWarning] = useState<string>('');
+  const [isCheckingDivergence, setIsCheckingDivergence] = useState(false);
+  const [scrollFocusField, setScrollFocusField] = useState<
+    'photos' | 'productInfo' | 'productName' | 'fabricType' | 'shoe' | null
+  >(null);
+  const photosSectionRef = useRef<HTMLDivElement>(null);
   const productInfoSectionRef = useRef<HTMLDivElement>(null);
   const productInfoRef = useRef<string>(form.productInfo || '');
   const lastAutoIdentifySignatureRef = useRef<string>('');
+  const lastDivergenceSignatureRef = useRef<string>('');
   const productNameSectionRef = useRef<HTMLDivElement>(null);
   const fabricTypeSectionRef = useRef<HTMLDivElement>(null);
   const shoeSectionRef = useRef<HTMLDivElement>(null);
@@ -128,6 +134,12 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   useEffect(() => {
     productInfoRef.current = form.productInfo || '';
   }, [form.productInfo]);
+
+  useEffect(() => {
+    if (!scrollFocusField) return;
+    const t = window.setTimeout(() => setScrollFocusField(null), 2400);
+    return () => window.clearTimeout(t);
+  }, [scrollFocusField]);
 
   useEffect(() => {
     const trimmed = (form.productInfo || '').trim();
@@ -151,6 +163,89 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     }, 1000);
     return () => window.clearTimeout(timer);
   }, [form.productInfo, form.referencePhotos, form.extraColorPhotos, form.isProductNameApproved]);
+
+  useEffect(() => {
+    const firstAny = form.referencePhotos[0] || form.extraColorPhotos?.[0] || '';
+    const trimmedInfo = (form.productInfo || '').trim();
+    const trimmedName = (form.productName || '').trim();
+
+    if (!firstAny || (!trimmedInfo && !trimmedName)) {
+      lastDivergenceSignatureRef.current = '';
+      if (form.descriptionDivergenceWarning || form.descriptionDivergenceField) {
+        onChange((prev) => ({
+          ...prev,
+          descriptionDivergenceWarning: undefined,
+          descriptionDivergenceField: undefined,
+          isDescriptionDivergenceApproved: false,
+        }));
+      }
+      return;
+    }
+
+    if (isIdentifyingProduct) return;
+
+    const signature = `${firstAny.slice(0, 64)}:${firstAny.length}|${trimmedName}|${trimmedInfo}`;
+    if (lastDivergenceSignatureRef.current === signature) {
+      return;
+    }
+
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      setIsCheckingDivergence(true);
+      try {
+        const res = await fetch('/api/anamaria-check-description-divergence', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            photoBase64: firstAny,
+            productName: trimmedName,
+            productInfo: trimmedInfo,
+          }),
+        });
+        const data = await res.json();
+        if (cancelled) return;
+        lastDivergenceSignatureRef.current = signature;
+        if (data?.success && data?.hasDivergence && data?.reason) {
+          onChange((prev) => ({
+            ...prev,
+            descriptionDivergenceWarning: String(data.reason),
+            descriptionDivergenceField:
+              data.field === 'productName' || data.field === 'both'
+                ? data.field
+                : 'productInfo',
+            isDescriptionDivergenceApproved: false,
+          }));
+        } else {
+          onChange((prev) =>
+            prev.descriptionDivergenceWarning || prev.descriptionDivergenceField
+              ? {
+                  ...prev,
+                  descriptionDivergenceWarning: undefined,
+                  descriptionDivergenceField: undefined,
+                  isDescriptionDivergenceApproved: false,
+                }
+              : prev
+          );
+        }
+      } catch {
+        // Silencioso em caso de falha de rede
+      } finally {
+        if (!cancelled) setIsCheckingDivergence(false);
+      }
+    }, 700);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [
+    form.referencePhotos,
+    form.extraColorPhotos,
+    form.productInfo,
+    form.productName,
+    isIdentifyingProduct,
+    onChange,
+  ]);
   const shoeRecognitionRef = useRef<any>(null);
   const shoeStreamRef = useRef<MediaStream | null>(null);
   const [isGalleryExpanded, setIsGalleryExpanded] = useState(false);
@@ -578,6 +673,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       return {
         ...prev,
         referencePhotos: nextPhotos,
+        isDescriptionDivergenceApproved: false,
         ...(allCleared
           ? {
               productName: '',
@@ -585,6 +681,8 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               selectedShoeOption: undefined,
               customShoeText: '',
               isShoeTypeApproved: false,
+              descriptionDivergenceWarning: undefined,
+              descriptionDivergenceField: undefined,
             }
           : {}),
       };
@@ -602,6 +700,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       return {
         ...prev,
         extraColorPhotos: nextExtra,
+        isDescriptionDivergenceApproved: false,
         ...(allCleared
           ? {
               productName: '',
@@ -609,6 +708,8 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               selectedShoeOption: undefined,
               customShoeText: '',
               isShoeTypeApproved: false,
+              descriptionDivergenceWarning: undefined,
+              descriptionDivergenceField: undefined,
             }
           : {}),
       };
@@ -630,6 +731,9 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         selectedShoeOption: undefined,
         customShoeText: '',
         isShoeTypeApproved: false,
+        descriptionDivergenceWarning: undefined,
+        descriptionDivergenceField: undefined,
+        isDescriptionDivergenceApproved: false,
         selectedMasterId:
           !prev.isManualMasterSelection && modeNow !== 'pov'
             ? resolveMasterPromptByProductName('')
@@ -780,8 +884,25 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const totalProductPhotos = form.referencePhotos.length + extraColorPhotos.length;
 
   const productInfoAnalysis = analyzeAnaMariaProductInfo(form.productInfo, form.fabricType);
-  const isProductInfoReady = Boolean(form.productInfo && form.productInfo.trim().length > 0);
-  const isNameReady = Boolean(form.productName.trim().length > 0 && form.isProductNameApproved);
+  const divWarningText = (form.descriptionDivergenceWarning || '').trim();
+  const hasActiveDivergence = Boolean(divWarningText.length > 0);
+  const divField = form.descriptionDivergenceField || 'productInfo';
+  const isDivergenceResolved = !hasActiveDivergence || Boolean(form.isDescriptionDivergenceApproved);
+  const hasInfoDivergencePending =
+    hasActiveDivergence &&
+    !form.isDescriptionDivergenceApproved &&
+    (divField === 'productInfo' || divField === 'both');
+  const hasNameDivergencePending =
+    hasActiveDivergence &&
+    !form.isDescriptionDivergenceApproved &&
+    (divField === 'productName' || divField === 'both');
+
+  const isPhotosReady = totalProductPhotos > 0;
+  const isProductInfoFilled = Boolean(form.productInfo && form.productInfo.trim().length > 0);
+  const isProductInfoReady = isProductInfoFilled && !hasInfoDivergencePending;
+  const isNameReady = Boolean(
+    form.productName.trim().length > 0 && form.isProductNameApproved && !hasNameDivergencePending
+  );
   const isFabricReady = Boolean(
     form.fabricType && form.fabricType.trim().length > 0 && form.isFabricTypeApproved
   );
@@ -792,12 +913,16 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         Boolean(form.customShoeText && form.customShoeText.trim().length > 0))
   );
 
+  const hasPendingApprovals =
+    !isPhotosReady ||
+    !isProductInfoReady ||
+    !isNameReady ||
+    !isFabricReady ||
+    !isShoeReady ||
+    !isDivergenceResolved;
+
   const canSubmit =
-    totalProductPhotos > 0 &&
-    isProductInfoReady &&
-    isNameReady &&
-    isFabricReady &&
-    isShoeReady &&
+    !hasPendingApprovals &&
     !isProcessing &&
     !isUploading &&
     !isRecordingMic &&
@@ -816,6 +941,13 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   // Destaque azul idêntico ao copiar prompt quando o usuário aprova ou seleciona ativamente Nome da Peça / Tipo de Calçado
   const copiedBlueSectionClass =
     'rounded-2xl border border-sky-400/75 bg-[#0c223b]/95 backdrop-blur-sm shadow-[0_0_25px_rgba(56,189,248,0.2)] transition-all duration-300';
+
+  // Destaque em amarelo quando há divergência entre foto e descrição ou aprovação pendente no campo
+  const divergenceYellowSectionClass =
+    'rounded-2xl border-2 border-amber-400/90 bg-amber-950/35 backdrop-blur-sm shadow-[0_0_26px_rgba(251,191,36,0.28)] transition-all duration-300';
+
+  const pendingYellowSectionClass =
+    'rounded-2xl border-2 border-amber-400/65 bg-amber-950/20 backdrop-blur-sm shadow-[0_0_18px_rgba(251,191,36,0.16)] transition-all duration-300';
 
   const activeOptionButtonClass = isAmetista
     ? 'bg-[#221538] border-purple-400/60 text-white shadow-sm ring-1 ring-purple-400/25 font-bold'
@@ -879,7 +1011,12 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       )}
 
       {/* ─── CARD 1: FOTOS DE REFERÊNCIA DO PRODUTO (ATÉ 10 FOTOS) ─── */}
-      <div className={`${sectionCardClass} p-5 sm:p-6 space-y-4`}>
+      <div
+        ref={photosSectionRef}
+        className={`${sectionCardClass} ${
+          scrollFocusField === 'photos' ? 'ring-2 ring-amber-300 ring-offset-2 ring-offset-zinc-950' : ''
+        } p-5 sm:p-6 space-y-4`}
+      >
         <div className={`flex flex-wrap items-center justify-between gap-2 border-b pb-3 ${isAmetista ? 'border-purple-500/20' : 'border-zinc-800/80'}`}>
           <div className="flex items-center gap-2.5">
             <ImageIcon className={`w-5 h-5 ${sectionIconColorClass}`} />
@@ -1276,11 +1413,21 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       {/* ─── CARD: INFORMAÇÕES DO PRODUTO (OBRIGATÓRIO — TECIDO OU DESCRIÇÃO COMPLETA) ─── */}
       <div
         ref={productInfoSectionRef}
-        className={`${isProductInfoReady ? copiedBlueSectionClass : sectionCardClass} p-5 sm:p-6 space-y-3`}
+        className={`${
+          hasInfoDivergencePending
+            ? divergenceYellowSectionClass
+            : isProductInfoReady
+            ? copiedBlueSectionClass
+            : sectionCardClass
+        } ${
+          scrollFocusField === 'productInfo' ? 'ring-2 ring-amber-300 ring-offset-2 ring-offset-zinc-950' : ''
+        } p-5 sm:p-6 space-y-3`}
       >
         <div
           className={`flex flex-wrap items-center justify-between gap-2 border-b pb-2.5 ${
-            isProductInfoReady
+            hasInfoDivergencePending
+              ? 'border-amber-400/50'
+              : isProductInfoReady
               ? 'border-sky-400/30'
               : isAmetista
               ? 'border-purple-500/20'
@@ -1289,7 +1436,13 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         >
           <div className="flex items-center gap-2">
             <FileText
-              className={`w-4 h-4 ${isProductInfoReady ? 'text-sky-300' : sectionIconColorClass}`}
+              className={`w-4 h-4 ${
+                hasInfoDivergencePending
+                  ? 'text-amber-300'
+                  : isProductInfoReady
+                  ? 'text-sky-300'
+                  : sectionIconColorClass
+              }`}
             />
             <h2 className="text-sm font-bold text-white uppercase tracking-wide">
               Informações do Produto
@@ -1300,13 +1453,25 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {isCheckingDivergence && (
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-zinc-800 text-zinc-300 border border-zinc-700 flex items-center gap-1.5">
+                <RefreshCw className="w-3 h-3 animate-spin text-amber-300" />
+                <span>Conferindo foto vs descrição...</span>
+              </span>
+            )}
+            {hasInfoDivergencePending && (
+              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-amber-400/20 text-amber-200 border border-amber-400/60 flex items-center gap-1 animate-pulse">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-300" />
+                <span>Divergência detectada — Clique em APROVAR</span>
+              </span>
+            )}
             {(productInfoAnalysis.detectedFabrics.length > 0 || Boolean(form.fabricType?.trim())) && (
               <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
                 <CheckCircle2 className="w-3 h-3" />
                 <span>Tecido: {form.fabricType?.trim() || productInfoAnalysis.fabricSummaryLabel}</span>
               </span>
             )}
-            {isProductInfoReady && (
+            {isProductInfoFilled && (
               <button
                 type="button"
                 onClick={() => {
@@ -1317,6 +1482,15 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                     productInfo: '',
                     fabricType: '',
                     isFabricTypeApproved: false,
+                    isDescriptionDivergenceApproved: false,
+                    descriptionDivergenceWarning:
+                      prev.descriptionDivergenceField === 'productInfo'
+                        ? undefined
+                        : prev.descriptionDivergenceWarning,
+                    descriptionDivergenceField:
+                      prev.descriptionDivergenceField === 'productInfo'
+                        ? undefined
+                        : prev.descriptionDivergenceField,
                   }));
                 }}
                 className="px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-zinc-800/90 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 flex items-center gap-1 cursor-pointer transition-colors"
@@ -1347,14 +1521,21 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                 productInfo: val,
                 fabricType: suggestedFabric,
                 isFabricTypeApproved: false,
+                isDescriptionDivergenceApproved: false,
               }));
             } else {
-              onChange((prev) => ({ ...prev, productInfo: val }));
+              onChange((prev) => ({
+                ...prev,
+                productInfo: val,
+                isDescriptionDivergenceApproved: false,
+              }));
             }
           }}
           placeholder="Ex: Viscolinho&#10;Ou cole aqui todas as informações do produto (tecido, composição, modelagem, forro, botões, detalhes...)"
           className={`w-full rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-500 border outline-none transition-all resize-y min-h-[84px] ${
-            isProductInfoReady
+            hasInfoDivergencePending
+              ? 'bg-amber-950/35 border-amber-400/90 focus:border-amber-300'
+              : isProductInfoReady
               ? 'bg-sky-950/35 border-sky-400/50 focus:border-sky-300'
               : isAmetista
               ? 'bg-[#0f091a]/90 border-amber-400/50 focus:border-purple-400'
@@ -1362,7 +1543,44 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           }`}
         />
 
-        {!isProductInfoReady ? (
+        {hasInfoDivergencePending && (
+          <div className="p-3.5 rounded-xl bg-amber-500/20 border border-amber-400/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-2.5 text-xs text-amber-100 font-semibold leading-relaxed">
+              <AlertCircle className="w-4 h-4 shrink-0 text-amber-300 mt-0.5" />
+              <div>
+                <span className="font-black text-amber-300 uppercase tracking-wide block">
+                  Divergência entre foto e descrição — Aprovação necessária:
+                </span>
+                <span>
+                  {divWarningText} (O app sempre respeitará o comprimento real da foto de referência — edite o texto ou toque em APROVAR para confirmar.)
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setApprovalWarning('');
+                onChange((prev) => ({
+                  ...prev,
+                  isDescriptionDivergenceApproved: true,
+                }));
+              }}
+              className="shrink-0 px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-zinc-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-lg transition-all cursor-pointer animate-pulse"
+            >
+              <Check className="w-4 h-4 stroke-[3]" />
+              <span>APROVAR</span>
+            </button>
+          </div>
+        )}
+
+        {hasActiveDivergence && form.isDescriptionDivergenceApproved && (divField === 'productInfo' || divField === 'both') && (
+          <div className="flex items-center gap-2 text-xs text-emerald-300 font-semibold">
+            <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
+            <span>Divergência conferida e aprovada pelo usuário: {divWarningText}</span>
+          </div>
+        )}
+
+        {!isProductInfoFilled ? (
           <div className="flex items-center gap-2 text-xs text-amber-300 font-semibold">
             <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-400" />
             <span>
@@ -1388,11 +1606,39 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       {/* ─── CARD 2: NOME DA PEÇA / PRODUTO (IDENTIFICAÇÃO AUTOMÁTICA + APROVAÇÃO OBRIGATÓRIA) ─── */}
       <div
         ref={productNameSectionRef}
-        className={`${isNameReady ? copiedBlueSectionClass : sectionCardClass} p-5 sm:p-6 space-y-3`}
+        className={`${
+          hasNameDivergencePending
+            ? divergenceYellowSectionClass
+            : isNameReady
+            ? copiedBlueSectionClass
+            : form.productName.trim().length > 0 && !form.isProductNameApproved
+            ? pendingYellowSectionClass
+            : sectionCardClass
+        } ${
+          scrollFocusField === 'productName' ? 'ring-2 ring-amber-300 ring-offset-2 ring-offset-zinc-950' : ''
+        } p-5 sm:p-6 space-y-3`}
       >
-        <div className={`flex flex-wrap items-center justify-between gap-2 border-b pb-2.5 ${isNameReady ? 'border-sky-400/30' : isAmetista ? 'border-purple-500/20' : 'border-zinc-800/80'}`}>
+        <div
+          className={`flex flex-wrap items-center justify-between gap-2 border-b pb-2.5 ${
+            hasNameDivergencePending
+              ? 'border-amber-400/50'
+              : isNameReady
+              ? 'border-sky-400/30'
+              : isAmetista
+              ? 'border-purple-500/20'
+              : 'border-zinc-800/80'
+          }`}
+        >
           <div className="flex items-center gap-2">
-            <Layers className={`w-4 h-4 ${isNameReady ? 'text-sky-300' : sectionIconColorClass}`} />
+            <Layers
+              className={`w-4 h-4 ${
+                hasNameDivergencePending
+                  ? 'text-amber-300'
+                  : isNameReady
+                  ? 'text-sky-300'
+                  : sectionIconColorClass
+              }`}
+            />
             <h2 className="text-sm font-bold text-white uppercase tracking-wide">
               2. Nome da Peça
             </h2>
@@ -1483,6 +1729,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                   ...prev,
                   productName: val,
                   isProductNameApproved: hasText,
+                  isDescriptionDivergenceApproved: false,
                   selectedShoeOption: prev.isShoeTypeApproved
                     ? prev.selectedShoeOption
                     : autoShoe,
@@ -1495,7 +1742,9 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             }}
             placeholder="Ex: Calça Pantalona, Saia Couro, Calça Jeans, Conjunto de Academia, Vestido, Conjunto..."
             className={`w-full px-4 py-2.5 rounded-xl text-white placeholder-zinc-500 text-sm focus:outline-none transition-colors ${
-              isNameReady
+              hasNameDivergencePending
+                ? 'bg-amber-950/35 border border-amber-400/90 focus:border-amber-300'
+                : isNameReady
                 ? 'bg-[#081729]/90 border border-sky-400/60 focus:border-sky-300'
                 : isAmetista
                 ? 'bg-[#0e0817]/90 border border-purple-400/30 focus:border-[#d4ff59]'
@@ -1525,12 +1774,64 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             </button>
           )}
         </div>
+
+        {hasNameDivergencePending && (
+          <div className="p-3.5 rounded-xl bg-amber-500/20 border border-amber-400/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start gap-2.5 text-xs text-amber-100 font-semibold leading-relaxed">
+              <AlertCircle className="w-4 h-4 shrink-0 text-amber-300 mt-0.5" />
+              <div>
+                <span className="font-black text-amber-300 uppercase tracking-wide block">
+                  Divergência entre foto e Nome da Peça — Aprovação necessária:
+                </span>
+                <span>
+                  {divWarningText} (Edite o nome acima para alinhar com a foto ou toque em APROVAR para confirmar.)
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setApprovalWarning('');
+                onChange((prev) => ({
+                  ...prev,
+                  isProductNameApproved: true,
+                  isDescriptionDivergenceApproved: true,
+                  selectedShoeOption:
+                    prev.selectedShoeOption ||
+                    resolveAutoShoeOptionByProductName(
+                      prev.productName,
+                      prev.additionalInstructions
+                    ),
+                }));
+              }}
+              className="shrink-0 px-4 py-2 rounded-xl bg-amber-400 hover:bg-amber-300 text-zinc-950 font-black text-xs uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-lg transition-all cursor-pointer animate-pulse"
+            >
+              <Check className="w-4 h-4 stroke-[3]" />
+              <span>APROVAR</span>
+            </button>
+          </div>
+        )}
+
+        {hasActiveDivergence && form.isDescriptionDivergenceApproved && (divField === 'productName' || divField === 'both') && (
+          <div className="flex items-center gap-2 text-xs text-emerald-300 font-semibold">
+            <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
+            <span>Divergência conferida e aprovada pelo usuário: {divWarningText}</span>
+          </div>
+        )}
       </div>
 
       {/* ─── NOVO ITEM LOGO APÓS NOME DA PEÇA: TIPO DE TECIDO (AUTO-PREENCHIDO + EDITÁVEL + APROVAÇÃO OBRIGATÓRIA) ─── */}
       <div
         ref={fabricTypeSectionRef}
-        className={`${isFabricReady ? copiedBlueSectionClass : sectionCardClass} p-5 sm:p-6 space-y-3`}
+        className={`${
+          isFabricReady
+            ? copiedBlueSectionClass
+            : form.fabricType?.trim() && !form.isFabricTypeApproved
+            ? pendingYellowSectionClass
+            : sectionCardClass
+        } ${
+          scrollFocusField === 'fabricType' ? 'ring-2 ring-amber-300 ring-offset-2 ring-offset-zinc-950' : ''
+        } p-5 sm:p-6 space-y-3`}
       >
         <div
           className={`flex flex-wrap items-center justify-between gap-2 border-b pb-2.5 ${
@@ -1663,7 +1964,15 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       {/* ─── NOVO ITEM LOGO APÓS NOME DA PEÇA: TIPO DE CALÇADO (AUTO-SELECIONADO + APROVAÇÃO OBRIGATÓRIA) ─── */}
       <div
         ref={shoeSectionRef}
-        className={`${isShoeReady ? copiedBlueSectionClass : sectionCardClass} p-5 sm:p-6 space-y-3.5`}
+        className={`${
+          isShoeReady
+            ? copiedBlueSectionClass
+            : form.selectedShoeOption && !form.isShoeTypeApproved
+            ? pendingYellowSectionClass
+            : sectionCardClass
+        } ${
+          scrollFocusField === 'shoe' ? 'ring-2 ring-amber-300 ring-offset-2 ring-offset-zinc-950' : ''
+        } p-5 sm:p-6 space-y-3.5`}
       >
         <div className={`flex flex-wrap items-center justify-between gap-2 border-b pb-2.5 ${isShoeReady ? 'border-sky-400/30' : isAmetista ? 'border-purple-500/20' : 'border-zinc-800/80'}`}>
           <div className="flex items-center gap-2">
@@ -3006,7 +3315,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         />
       )}
 
-      {/* ─── BOTÃO DE AÇÃO: GERAR VÍDEO (BLOQUEADO ATÉ APROVAR NOME DA PEÇA E TIPO DE CALÇADO) ─── */}
+      {/* ─── BOTÃO DE AÇÃO: RESOLVER PENDÊNCIAS (OPACO/AMARELO E ROLÁVEL ATÉ O TOPO) → GERAR VÍDEO ─── */}
       <div className="pt-2 space-y-3">
         {approvalWarning && (
           <div className="p-3.5 rounded-xl bg-amber-500/15 border border-amber-400/60 text-amber-200 text-xs sm:text-sm font-bold flex items-center gap-2.5 animate-pulse shadow-lg">
@@ -3019,14 +3328,21 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           type="button"
           onClick={() => {
             if (isProcessing || isUploading || isRecordingMic || isRecordingShoeMic) return;
-            if (totalProductPhotos === 0) {
-              setApprovalWarning('Por favor, anexe ao menos 1 foto do produto antes de gerar o vídeo.');
-              window.scrollTo({ top: 0, behavior: 'smooth' });
+            if (!isPhotosReady) {
+              setScrollFocusField('photos');
+              setApprovalWarning('Por favor, anexe ao menos 1 foto do produto no Item 1 acima antes de gerar o vídeo.');
+              photosSectionRef.current?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+              });
               return;
             }
             if (!isProductInfoReady) {
+              setScrollFocusField('productInfo');
               setApprovalWarning(
-                'Preencha o campo obrigatório "Informações do Produto" (tecido ou texto do produto) para liberar o botão Gerar Vídeo!'
+                !isProductInfoFilled
+                  ? 'Preencha o campo obrigatório "Informações do Produto" (tecido ou texto do produto) para liberar o botão Gerar Vídeo!'
+                  : `Divergência destacada em amarelo em "Informações do Produto": ${divWarningText} — Edite o texto ou toque em APROVAR.`
               );
               productInfoSectionRef.current?.scrollIntoView({
                 behavior: 'smooth',
@@ -3035,8 +3351,11 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               return;
             }
             if (!isNameReady) {
+              setScrollFocusField('productName');
               setApprovalWarning(
-                'Você precisa tocar no botão APROVAR (ou editar ativamente) o Nome do Produto para liberar o botão Gerar Vídeo!'
+                hasNameDivergencePending
+                  ? `Divergência destacada em amarelo em "Nome da Peça": ${divWarningText} — Edite o nome ou toque em APROVAR.`
+                  : 'Você precisa tocar no botão APROVAR (ou preencher/editar ativamente) o Nome da Peça para liberar o botão Gerar Vídeo!'
               );
               productNameSectionRef.current?.scrollIntoView({
                 behavior: 'smooth',
@@ -3045,6 +3364,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               return;
             }
             if (!isFabricReady) {
+              setScrollFocusField('fabricType');
               setApprovalWarning(
                 form.fabricType && form.fabricType.trim().length > 0
                   ? 'Você precisa tocar no botão APROVAR (ou editar ativamente) o Tipo de Tecido para liberar o botão Gerar Vídeo!'
@@ -3057,6 +3377,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               return;
             }
             if (!isShoeReady) {
+              setScrollFocusField('shoe');
               setApprovalWarning(
                 form.selectedShoeOption === 'outro'
                   ? 'Digite ou dite o tipo de calçado no campo "Outro" (ou escolha um dos botões de calçado) para liberar o botão Gerar Vídeo!'
@@ -3069,12 +3390,17 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               return;
             }
             setApprovalWarning('');
+            setScrollFocusField(null);
             onSubmit();
           }}
           className={`w-full py-4 px-6 rounded-2xl font-black text-sm sm:text-base flex items-center justify-center gap-3 transition-all ${
-            canSubmit
+            isProcessing || isUploading
+              ? 'bg-zinc-800/80 border border-zinc-700 text-zinc-300 opacity-75 cursor-wait'
+              : isRecordingMic || isRecordingShoeMic
+              ? 'bg-rose-500/20 border-2 border-rose-400/70 text-rose-200 cursor-pointer'
+              : canSubmit
               ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-sky-600 hover:from-emerald-500 hover:via-teal-500 hover:to-sky-500 text-white shadow-xl shadow-emerald-950/50 cursor-pointer'
-              : 'bg-zinc-800/90 border border-zinc-700 text-zinc-400 opacity-60 cursor-not-allowed'
+              : 'bg-amber-500/20 hover:bg-amber-500/30 border-2 border-amber-400/75 text-amber-200 shadow-lg shadow-amber-950/30 cursor-pointer'
           }`}
         >
           {isRecordingMic || isRecordingShoeMic ? (
@@ -3082,39 +3408,54 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               <Square className="w-5 h-5 fill-rose-400 text-rose-400 animate-pulse" />
               <span>Gravação de voz ativa — Pare o microfone (⏹) para liberar o botão</span>
             </>
+          ) : isProcessing ? (
+            <>
+              <Sparkles className="w-5 h-5 animate-spin" />
+              <span>Gerando com {activeMaster.shortName}...</span>
+            </>
+          ) : isUploading ? (
+            <>
+              <RefreshCw className="w-5 h-5 animate-spin" />
+              <span>Carregando fotos...</span>
+            </>
+          ) : hasPendingApprovals ? (
+            <>
+              <AlertCircle className="w-5 h-5 text-amber-300" />
+              <span>RESOLVER PENDÊNCIAS</span>
+            </>
           ) : (
             <>
-              <Sparkles className={`w-5 h-5 ${isProcessing ? 'animate-spin' : ''}`} />
-              <span>
-                {isProcessing
-                  ? `Gerando com ${activeMaster.shortName}...`
-                  : `Gerar Vídeo (${activeMaster.shortName})`}
-              </span>
+              <Sparkles className="w-5 h-5" />
+              <span>Gerar Vídeo ({activeMaster.shortName})</span>
             </>
           )}
         </button>
 
-        {totalProductPhotos > 0 && (!isProductInfoReady || !isNameReady || !isFabricReady || !isShoeReady) && !isProcessing && (
+        {hasPendingApprovals && !isProcessing && (
           <p className="text-center text-xs text-amber-300/90 font-semibold">
-            {!isProductInfoReady
-              ? '🔒 Para liberar o botão Gerar Vídeo, preencha o campo obrigatório Informações do Produto acima.'
-              : [
-                  !isNameReady ? 'Nome da Peça' : '',
-                  !isFabricReady ? 'Tipo de Tecido' : '',
-                  !isShoeReady ? 'Tipo de Calçado' : '',
-                ]
-                  .filter(Boolean)
-                  .join(', ')
-                  .replace(/, ([^,]*)$/, ' e $1')
-              ? `🔒 Para liberar o botão Gerar Vídeo, preencha/aprove: ${[
-                  !isNameReady ? 'Nome da Peça' : '',
-                  !isFabricReady ? 'Tipo de Tecido' : '',
-                  !isShoeReady ? 'Tipo de Calçado' : '',
-                ]
-                  .filter(Boolean)
-                  .join(', ')
-                  .replace(/, ([^,]*)$/, ' e $1')}.`
-              : '🔒 Para liberar o botão Gerar Vídeo, aprove os campos obrigatórios acima.'}
+            {(() => {
+              const pendingLabels = [
+                !isPhotosReady ? 'Fotos de Referência' : '',
+                !isProductInfoFilled
+                  ? 'Informações do Produto'
+                  : hasInfoDivergencePending
+                  ? 'Divergência entre Foto e Descrição'
+                  : '',
+                hasNameDivergencePending
+                  ? 'Divergência entre Foto e Nome da Peça'
+                  : !isNameReady
+                  ? 'Nome da Peça'
+                  : '',
+                !isFabricReady ? 'Tipo de Tecido' : '',
+                !isShoeReady ? 'Tipo de Calçado' : '',
+              ]
+                .filter(Boolean)
+                .join(', ')
+                .replace(/, ([^,]*)$/, ' e $1');
+              return pendingLabels
+                ? `⚠️ Pendências abertas (${pendingLabels}). Toque em RESOLVER PENDÊNCIAS para ir direto ao campo superior.`
+                : '⚠️ Toque em RESOLVER PENDÊNCIAS para conferir os campos obrigatórios acima.';
+            })()}
           </p>
         )}
 

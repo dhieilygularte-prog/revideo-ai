@@ -77,6 +77,9 @@ export interface AnaMariaFormState {
   selectedShoeOption?: AnaMariaShoeOption; // Calçado selecionado automaticamente pelo app ou ativamente pelo usuário
   customShoeText?: string; // Texto personalizado quando selectedShoeOption === 'outro'
   isShoeTypeApproved?: boolean; // true quando o usuário aprova ou seleciona ativamente o calçado
+  descriptionDivergenceWarning?: string; // Aviso de divergência entre foto anexada e descrição/nome da peça
+  descriptionDivergenceField?: 'productInfo' | 'productName' | 'both'; // Campo principal onde a divergência ocorreu
+  isDescriptionDivergenceApproved?: boolean; // true quando o usuário aprova explicitamente manter a descrição apesar da divergência
 }
 
 export interface AnaMariaColorGroup {
