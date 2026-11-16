@@ -4384,7 +4384,7 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
           text: `Audite os ${batchVideos.length} vídeos acima contra as ${selectedPhotos.length} fotos de referência e retorne estritamente o JSON do lote.`,
         });
 
-        const modelsToTry = ['gpt-4o', 'gpt-4o-mini'];
+        const modelsToTry = ['gpt-4o-mini', 'gpt-4o'];
         for (const modelCandidate of modelsToTry) {
           try {
             const completion = await client.chat.completions.create({
@@ -5437,9 +5437,9 @@ ${targetedContextInstruction}
 Retorne o JSON estritamente conforme o schema especificado.`;
         contentBlocks.push({ type: 'text', text: promptText });
 
-        const modelsToTry = ['gpt-4o', 'gpt-4o-mini'];
+        const modelsToTry = ['gpt-4o-mini', 'gpt-4o'];
         let completion: any = null;
-        let usedModel = 'gpt-4o';
+        let usedModel = 'gpt-4o-mini';
 
         for (const modelCandidate of modelsToTry) {
           try {

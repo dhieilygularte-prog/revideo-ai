@@ -1163,7 +1163,7 @@ var OPENAI_BRAIN_MODEL = "gpt-5.6-terra";
 var OPENAI_REASONING_EFFORT = "medium";
 var OPENAI_AUDIO_MODEL = "gpt-transcribe";
 var OPENAI_IMAGE_MODEL = "gpt-image-2.5-sunburst";
-var OPENAI_IMAGE_QUALITY = "high";
+var OPENAI_IMAGE_QUALITY = "medium";
 var OPENAI_IMAGE_SIZE = "1024x1792";
 var OPENAI_AUDIT_MODEL = "gpt-5.6-luna";
 var OPENAI_PRICING = {
@@ -6800,7 +6800,7 @@ Retorne ESTRITAMENTE um objeto JSON com o formato:
           type: "text",
           text: `Audite os ${batchVideos.length} v\xEDdeos acima contra as ${selectedPhotos.length} fotos de refer\xEAncia e retorne estritamente o JSON do lote.`
         });
-        const modelsToTry = ["gpt-4o", "gpt-4o-mini"];
+        const modelsToTry = ["gpt-4o-mini", "gpt-4o"];
         for (const modelCandidate of modelsToTry) {
           try {
             const completion = await client.chat.completions.create({
@@ -7505,9 +7505,9 @@ Trava do produto: ${lockContext}` : ""}
 ${targetedContextInstruction}
 Retorne o JSON estritamente conforme o schema especificado.`;
         contentBlocks.push({ type: "text", text: promptText });
-        const modelsToTry = ["gpt-4o", "gpt-4o-mini"];
+        const modelsToTry = ["gpt-4o-mini", "gpt-4o"];
         let completion = null;
-        let usedModel = "gpt-4o";
+        let usedModel = "gpt-4o-mini";
         for (const modelCandidate of modelsToTry) {
           try {
             completion = await client.chat.completions.create({

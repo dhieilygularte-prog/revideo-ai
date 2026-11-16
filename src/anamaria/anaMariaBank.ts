@@ -1169,6 +1169,56 @@ export function detectProductCategory(text: string): ProductCategoryGroup {
  * 5. A headline sempre deve terminar com a florzinha (✿, ❀, 🌸 ou ✨).
  * 6. As hashtags NUNCA devem incluir o nome do produto no texto de cópia.
  */
+function adaptHeadlineToMale(headline: string): string {
+  return headline
+    .replace(/\btoda\s+garota\b/gi, 'todo homem')
+    .replace(/\btoda\s+mulher\b/gi, 'todo homem')
+    .replace(/\bgarotas\b/gi, 'rapazes')
+    .replace(/\bmeninas\b/gi, 'rapazes')
+    .replace(/\bmulheres\b/gi, 'homens')
+    .replace(/\bestilosa\b/gi, 'estiloso')
+    .replace(/\bmaravilhosa\b/gi, 'incrível')
+    .replace(/\bpoderosa\b/gi, 'imponente')
+    .replace(/\blinda\b/gi, 'lindo')
+    .replace(/\bvestida\b/gi, 'vestido');
+}
+
+function resolveMaleSpecificHeadline(combinedNorm: string): string | null {
+  const isConjunto = /\b(conjunto|conjuntinho|conjuntos)\b/i.test(combinedNorm);
+  const isKit = /\bkit\b/i.test(combinedNorm);
+  const has3 = /\b(3|tres)\b/i.test(combinedNorm);
+  const has2 = /\b(2|dois|duas)\b/i.test(combinedNorm);
+  const isCamisa = /\b(camisa|camisas|camiseta|camisetas)\b/i.test(combinedNorm);
+
+  if (isConjunto) {
+    if (isKit && has3) {
+      return 'KIT COM\n3 CONJUNTOS\nESTÁ TÃO\nBARATO\n😎';
+    }
+    if (!(isKit && has2)) {
+      return 'esse\nconjunto\nvale\ncada\ncentavo\n😎';
+    }
+  }
+
+  if (isKit && has2 && isCamisa) {
+    return 'COMO ASSIM\n2 CAMISAS\nPELO\nPREÇO DE 1 😲';
+  }
+
+  return null;
+}
+
+function resolveMaleHashtags(combinedNorm: string): string {
+  if (/\b(conjunto|conjuntinho|conjuntos)\b/i.test(combinedNorm)) {
+    return '#modamasculina #conjuntomasculino #fypシ';
+  }
+  if (/\b(camisa|camisas|camiseta|camisetas|polo|regata|t-shirt|tshirt)\b/i.test(combinedNorm)) {
+    return '#modamasculina #camisamasculina #fypシ';
+  }
+  if (/\bcalca\b/i.test(combinedNorm)) {
+    return '#modamasculina #camisamasculina #fypシ';
+  }
+  return '#modamasculina #achadinhos #fypシ';
+}
+
 export function resolveHeadlineAndHashtags(params: {
   productName: string;
   influencer?: AnaMariaInfluencer;
@@ -1232,13 +1282,14 @@ export function resolveHeadlineAndHashtags(params: {
   }
 
   // Garante o símbolo floral apenas para itens legados que definem flowerSymbol e não possuem emoji
-  const finalHeadline = appendLegacyFlowerIfNeeded(chosenHeadline, flower);
+  let finalHeadline = appendLegacyFlowerIfNeeded(chosenHeadline, flower);
+  let tagsOnly = '#modafeminina #achadinhos';
 
-  // Regra de Hashtags: SEMPRE apenas 2 hashtags por produto.
-  // - Mulher (padrão): preferencialmente "#modafeminina #achadinhos"
-  // - Homem: "#modamasculina #achadinhos"
-  const primaryHashtag = params.influencer === 'Homem' ? '#modamasculina' : '#modafeminina';
-  const tagsOnly = `${primaryHashtag} #achadinhos`;
+  if (params.influencer === 'Homem') {
+    const maleSpecific = resolveMaleSpecificHeadline(combined);
+    finalHeadline = maleSpecific || adaptHeadlineToMale(finalHeadline);
+    tagsOnly = resolveMaleHashtags(combined);
+  }
 
   // Busca uma entrada correspondente no banco legado para manter retrocompatibilidade
   const matchedEntry = ANA_MARIA_BANK.find((e) => e.category === category) || ANA_MARIA_BANK[0];
@@ -1267,6 +1318,7 @@ function appendLegacyFlowerIfNeeded(text: string, flower = ''): string {
  */
 export function resolveMultipleDistinctHeadlines(params: {
   productName: string;
+  influencer?: AnaMariaInfluencer;
   additionalInstructions?: string;
   count: number;
   excludeHeadlines?: string[];
@@ -1276,6 +1328,13 @@ export function resolveMultipleDistinctHeadlines(params: {
   const combined = `${normName} ${normExtra}`.trim();
   const category = detectProductCategory(combined);
   const targetCount = Math.max(1, params.count || 1);
+
+  if (params.influencer === 'Homem') {
+    const maleSpecific = resolveMaleSpecificHeadline(combined);
+    if (maleSpecific) {
+      return [maleSpecific];
+    }
+  }
 
   let rawCandidates: string[] = [];
   if (category !== 'outro' && PRODUCT_HEADLINES_GROUPED[category]) {

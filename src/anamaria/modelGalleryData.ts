@@ -505,12 +505,27 @@ export const MODEL_GALLERY_SEM_ROSTO: AnaMariaModelItem[] = [
 ];
 
 /**
- * Retorna a galeria de modelos correspondente ao Modo de Apresentação ativo:
- * - 'com_rosto' → MODEL_GALLERY_COM_ROSTO (25 modelos com rosto UGC)
- * - 'mirror_selfie' (Padrão) → MODEL_GALLERY_SEM_ROSTO (24 modelos com celular cobrindo o rosto)
- * - 'pov' → MODEL_GALLERY_COM_ROSTO (rosto visível)
+ * Galerias Exclusivas Masculinas (quando Influenciador = 'Homem')
+ * - MODEL_GALLERY_MASCULINA_SEM_ROSTO: Mirror Selfie masculina (padrão ao selecionar Homem)
+ * - MODEL_GALLERY_MASCULINA_COM_ROSTO: Galeria UGC masculina (com rosto)
  */
-export function getModelGalleryForMode(mode?: string): AnaMariaModelItem[] {
+export const MODEL_GALLERY_MASCULINA_SEM_ROSTO: AnaMariaModelItem[] = [];
+export const MODEL_GALLERY_MASCULINA_COM_ROSTO: AnaMariaModelItem[] = [];
+
+/**
+ * Retorna a galeria de modelos correspondente ao Modo de Apresentação ativo e ao Influenciador:
+ * - Quando influencer === 'Homem': exibe EXCLUSIVAMENTE modelos masculinos (nunca mistura modelos femininas).
+ * - Quando influencer === 'Mulher' (padrão):
+ *   - 'com_rosto' / 'pov' → MODEL_GALLERY_COM_ROSTO
+ *   - 'mirror_selfie' (Padrão) → MODEL_GALLERY_SEM_ROSTO
+ */
+export function getModelGalleryForMode(mode?: string, influencer?: string): AnaMariaModelItem[] {
+  if (influencer === 'Homem') {
+    if (mode === 'com_rosto' || mode === 'pov') {
+      return MODEL_GALLERY_MASCULINA_COM_ROSTO;
+    }
+    return MODEL_GALLERY_MASCULINA_SEM_ROSTO;
+  }
   if (mode === 'com_rosto' || mode === 'pov') {
     return MODEL_GALLERY_COM_ROSTO;
   }

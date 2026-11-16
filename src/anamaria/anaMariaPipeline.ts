@@ -670,7 +670,7 @@ export function ensureAnaMariaModelAndScenario(rawForm: AnaMariaFormState): AnaM
     form.selectedModelGalleryUrl = undefined;
     form.selectedModelGalleryBase64 = undefined;
   } else {
-    const targetModelGallery = getModelGalleryForMode(activeMode);
+    const targetModelGallery = getModelGalleryForMode(activeMode, form.influencer);
     // Garante que uma modelo selecionada realmente pertence à galeria do modo ativo (UGC vs Sem Rosto)
     const matchingExisting = form.selectedModelGalleryId
       ? targetModelGallery.find((m) => m.id === form.selectedModelGalleryId)
@@ -780,9 +780,10 @@ function pickDistinctGalleryModel(
   excludeNumbers: Set<number>,
   lastId?: string,
   lastNumber?: number,
-  eclecticMode = false
+  eclecticMode = false,
+  influencer?: 'Mulher' | 'Homem'
 ) {
-  const pool = getModelGalleryForMode(activeMode);
+  const pool = getModelGalleryForMode(activeMode, influencer);
   const unused = pool.filter(
     (m) => !excludeIds.has(m.id) && !excludeNumbers.has(m.number)
   );
@@ -1063,47 +1064,9 @@ async function generateAndAuditAnaMariaWithAutoRetry(params: {
     aiProfile,
   });
 
-  // Se ficou em amarelo ou vermelho (não ficou como verde), faz automaticamente uma nova tentativa corrigindo o que não bateu
-  if (auditRes.audit.status !== 'green') {
-    const detailsToFix =
-      auditRes.correctionPrompt ||
-      (auditRes.audit.issues || []).join('; ') ||
-      'Reproduza a peça 100% idêntica à foto de referência (cor, modelagem, comprimento, decote, estampa e tecido).';
-    const retryCorrectionDirective = `[CORREÇÃO AUTOMÁTICA OBRIGATÓRIA DE FIDELIDADE 1:1 COM A FOTO DE REFERÊNCIA]: A tentativa anterior foi reprovada na verificação de fidelidade (${detailsToFix}). Gere novamente corrigindo EXATAMENTE esses detalhes para que a peça fique 100% idêntica à foto de referência enviada!`;
-
-    console.warn(
-      `[AnaMaria AutoRetry] Imagem "${variationName}" ficou em ${auditRes.audit.status} (${auditRes.audit.score}%). Executando nova tentativa automática com correção:`,
-      detailsToFix
-    );
-    onRetryStatus?.(
-      `Imagem (${variationName}) ficou em ${auditRes.audit.status === 'yellow' ? 'Amarelo' : 'Vermelho'} na verificação — refazendo automaticamente com correção de fidelidade...`
-    );
-
-    try {
-      const retryGen = await generateSceneImageWithFallback({
-        requestedModel: genRes.usedModel || requestedModel,
-        onFallback,
-        payload: {
-          ...payload,
-          prompt: `${payload.prompt || ''}\n\n${retryCorrectionDirective}`,
-          correctionPrompt: retryCorrectionDirective,
-        },
-      });
-      genRes = retryGen;
-      auditRes = await runAnaMariaFidelityAudit({
-        generatedImageUrl: genRes.imageUrl,
-        referencePhotos,
-        variationName,
-        bodyType,
-        shoeDescription,
-        productInfo,
-        fabricType,
-        aiProfile,
-      });
-    } catch (retryErr) {
-      console.warn('[AnaMaria AutoRetry] Falha na nova tentativa automática, mantendo imagem anterior:', retryErr);
-    }
-  }
+  // Auto-retry desativado para evitar dobrar o custo por imagem automaticamente;
+  // caso o usuário queira refazer, ele aciona manualmente na tela de resultados.
+  void onRetryStatus;
 
   return {
     imageUrl: genRes.imageUrl,
@@ -1397,7 +1360,8 @@ export async function runAnaMariaPipeline(
           usedModelNumbers,
           lastModelId,
           lastModelNumber,
-          isEclectic
+          isEclectic,
+          form0.influencer
         );
         if (chosenModel) {
           nextModelId = chosenModel.id;
@@ -1527,6 +1491,7 @@ export async function runAnaMariaPipeline(
     generatedImages.length > 1
       ? resolveMultipleDistinctHeadlines({
           productName: form0.productName,
+          influencer: form0.influencer,
           additionalInstructions: form0.additionalInstructions,
           count: generatedImages.length,
         })
@@ -1838,7 +1803,8 @@ async function generateAnaMariaColorVariation(params: {
       usedMNums,
       refModelId,
       refModelNumber,
-      result.eclecticMode !== false
+      result.eclecticMode !== false,
+      result.influencer
     );
     nextModelId = chosenModel?.id;
     nextModelNumber = chosenModel?.number;

@@ -144,6 +144,18 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
   const [copiedHeadline, setCopiedHeadline] = useState(false);
   const [hasCopiedHeadlineOnce, setHasCopiedHeadlineOnce] = useState(false);
 
+  const BUY_BUTTON_CTAS = [
+    'COMPRE AQUI • AGORA',
+    'COMPRA AQUI !!',
+    '>>> COMPRE AQUI <<<',
+    '>> COMPRE AQUI ',
+    'COMPRE AQUI AGORA',
+    'COMPRE AQUI',
+  ];
+  const [ctaIndex, setCtaIndex] = useState(0);
+  const [copiedCta, setCopiedCta] = useState(false);
+  const [hasCopiedCtaOnce, setHasCopiedCtaOnce] = useState(false);
+
   // Estado de remixagem rápida de headlines e hashtags
   const [isRemixing, setIsRemixing] = useState(false);
 
@@ -433,6 +445,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
         targetCount > 1
           ? resolveMultipleDistinctHeadlines({
               productName: result.productName,
+              influencer: result.influencer,
               additionalInstructions: result.additionalInstructions,
               count: targetCount,
               excludeHeadlines: distinctHeadlinesList,
@@ -713,6 +726,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
       const nextImages = [...imagesList, res.newImageItem];
       const nextHeadlines = resolveMultipleDistinctHeadlines({
         productName: result.productName,
+        influencer: result.influencer,
         additionalInstructions: result.additionalInstructions,
         count: nextImages.length,
       });
@@ -1892,6 +1906,91 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
             }`}
           >
             {result.hashtags}
+          </div>
+        </div>
+
+        {/* 3º Card (ABAIXO): Cta do Botão de Compra */}
+        <div
+          className={`p-4 sm:p-5 rounded-2xl transition-all duration-300 space-y-3 ${
+            hasCopiedCtaOnce ? copiedBlueSectionClass : defaultSectionClass
+          }`}
+        >
+          <div className={`flex flex-wrap items-center justify-between gap-2 border-b pb-2.5 ${isAmetista ? 'border-purple-500/20' : 'border-zinc-800/80'}`}>
+            <div className="flex items-center gap-2">
+              <Sparkles className={`w-4 h-4 ${accentIconClass}`} />
+              <h3 className="text-xs font-black text-white uppercase tracking-wide flex items-center gap-2">
+                <span>Cta do Botão de Compra</span>
+                {hasCopiedCtaOnce && (
+                  <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-sky-300" /> COPIADO ✓
+                  </span>
+                )}
+              </h3>
+            </div>
+            {/* Controles da direita: Ícone discreto de refazer CTA à esquerda + Botão Copiar CTA */}
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setCtaIndex((prev) => (prev + 1) % BUY_BUTTON_CTAS.length);
+                  setCopiedCta(false);
+                  setHasCopiedCtaOnce(false);
+                }}
+                title="Trocar CTA do Botão de Compra (não altera Headline nem Hashtags)"
+                className={`p-2 rounded-xl border transition-all cursor-pointer ${
+                  isAmetista
+                    ? 'bg-[#1a102b] hover:bg-[#26183f] border-purple-500/30 text-purple-200 hover:text-white'
+                    : 'bg-zinc-900 hover:bg-zinc-800 border-zinc-700/80 text-zinc-400 hover:text-white'
+                }`}
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const activeCta = BUY_BUTTON_CTAS[ctaIndex] || BUY_BUTTON_CTAS[0];
+                  try {
+                    await navigator.clipboard.writeText(activeCta);
+                    setCopiedCta(true);
+                    setHasCopiedCtaOnce(true);
+                    setTimeout(() => setCopiedCta(false), 2500);
+                  } catch {
+                    // noop
+                  }
+                }}
+                className={`py-2 px-4 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-md ${
+                  hasCopiedCtaOnce || copiedCta
+                    ? 'bg-sky-500 hover:bg-sky-400 text-white border border-sky-300 ring-2 ring-sky-300/60'
+                    : isAmetista
+                    ? 'bg-[#d4ff59] hover:bg-[#e2ff85] text-zinc-950'
+                    : 'bg-zinc-800 hover:bg-zinc-700 border border-orange-500/45 text-white'
+                }`}
+              >
+                {copiedCta ? (
+                  <>
+                    <Check className="w-3.5 h-3.5 text-white" />
+                    <span>Copiado!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Copiar CTA</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+
+          <div
+            className={`p-3.5 rounded-xl text-xs font-mono select-all transition-all leading-relaxed ${
+              hasCopiedCtaOnce
+                ? 'bg-slate-950/90 border border-sky-400/60 text-sky-100'
+                : isAmetista
+                ? 'bg-[#0e0817]/95 border border-purple-500/25 text-purple-100'
+                : 'bg-zinc-900/95 border border-zinc-800 text-zinc-200'
+            }`}
+          >
+            {BUY_BUTTON_CTAS[ctaIndex] || BUY_BUTTON_CTAS[0]}
           </div>
         </div>
       </div>

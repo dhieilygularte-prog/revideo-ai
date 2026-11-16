@@ -12,6 +12,8 @@ export type AnaMariaShoeOption =
   | 'sandalia_flatform'
   | 'scarpin'
   | 'tenis'
+  | 'sapato_social'
+  | 'chinelo_masculino'
   | 'outro';
 export type AnaMariaPresentationMode = 'mirror_selfie' | 'pov' | 'com_rosto';
 export type AnaMariaTheme = 'fogo' | 'ametista';

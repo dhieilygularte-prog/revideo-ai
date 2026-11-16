@@ -101,10 +101,26 @@ export const SHOE_CONTRAST_COLOR_RULE_EN =
 export function resolveAutoShoeOptionByProductName(
   productName: string,
   additionalInstructions: string = '',
-  dressInspection?: AnaMariaDressInspection
+  dressInspection?: AnaMariaDressInspection,
+  influencer: AnaMariaInfluencer = 'Mulher'
 ): Exclude<AnaMariaShoeOption, 'outro'> {
   const combined = `${productName} ${additionalInstructions}`.toLowerCase();
   const inspectedCat = dressInspection?.garmentCategory;
+
+  if (influencer === 'Homem') {
+    if (/\b(chinelo|slide|rasteira|sand[aá]lia)\b/i.test(combined)) {
+      return 'chinelo_masculino';
+    }
+    if (
+      /\b(cal[cç]a\s+social|camisa\s+social|social\s+masculin|alfaiataria|terno|blazer)\b/i.test(
+        combined
+      )
+    ) {
+      return 'sapato_social';
+    }
+    // Conjunto masculino, camiseta, calça jeans, bermuda, academia etc. -> Tênis
+    return 'tenis';
+  }
 
   // 1. Roupa de academia, conjunto de academia, cinta modeladora -> Tênis
   if (
@@ -189,11 +205,16 @@ export function detectShoeCategory(
     };
   }
 
-  // Se há opção explícita (ou resolvida automaticamente para Mulher)
+  // Se há opção explícita (ou resolvida automaticamente)
   const resolvedOption: Exclude<AnaMariaShoeOption, 'outro'> =
     selectedShoeOption && selectedShoeOption !== 'outro'
       ? selectedShoeOption
-      : resolveAutoShoeOptionByProductName(productName, additionalInstructions, dressInspection);
+      : resolveAutoShoeOptionByProductName(
+          productName,
+          additionalInstructions,
+          dressInspection,
+          influencer
+        );
 
   if (isMale && !selectedShoeOption) {
     const isFitness =
@@ -206,14 +227,21 @@ export function detectShoeCategory(
         description: `Tênis masculino esportivo moderno de cano baixo, solado estruturado. ${SHOE_CONTRAST_COLOR_RULE_PT}`,
       };
     }
-    return {
-      category: 'B_TENIS',
-      name: 'Calçado Masculino Harmonioso',
-      description: `Calçado masculino moderno que combine com a roupa do modelo. ${SHOE_CONTRAST_COLOR_RULE_PT}`,
-    };
   }
 
   switch (resolvedOption) {
+    case 'sapato_social':
+      return {
+        category: 'C_OUTRO',
+        name: 'Sapato Social Masculino',
+        description: `Sapato social masculino clássico elegante (couro fosco ou verniz discreto, bico alinhado, em cor escura ou marrom/caramelo harmônica que combine com a peça). ${SHOE_CONTRAST_COLOR_RULE_PT}`,
+      };
+    case 'chinelo_masculino':
+      return {
+        category: 'A_CHINELO',
+        name: 'Chinelo Masculino',
+        description: `Chinelo masculino moderno estilo slide ou de dedo casual limpo e bem acabado que combine com a roupa do modelo. ${SHOE_CONTRAST_COLOR_RULE_PT}`,
+      };
     case 'sandalia_flatform':
       return {
         category: 'A_CHINELO',
@@ -227,11 +255,17 @@ export function detectShoeCategory(
         description: `Scarpin feminino fechado na frente de bico fino triangular alongado com salto baixo e delicado, design clássico e elegante que combina perfeitamente com a peça. ${SHOE_CONTRAST_COLOR_RULE_PT}`,
       };
     case 'tenis':
-      return {
-        category: 'B_TENIS',
-        name: 'Tênis casual feminino branco, estilo urbano, com solado baixo',
-        description: `Tênis casual feminino estilo urbano com solado baixo reto (na cor branca quando a peça próxima aos pés for escura/colorida ou peça curta, mas OBRIGATORIAMENTE em outra cor contrastante e harmônica — como preto, caramelo, nude escuro ou cinza chumbo — caso a calça/peça que chega próximo ao calçado seja branca ou off-white). ${SHOE_CONTRAST_COLOR_RULE_PT}`,
-      };
+      return isMale
+        ? {
+            category: 'B_TENIS',
+            name: 'Tênis Casual Masculino',
+            description: `Tênis masculino casual/urbano moderno com solado estruturado (cor harmônica que combine com a peça e respeite contraste quando próximo à barra). ${SHOE_CONTRAST_COLOR_RULE_PT}`,
+          }
+        : {
+            category: 'B_TENIS',
+            name: 'Tênis casual feminino branco, estilo urbano, com solado baixo',
+            description: `Tênis casual feminino estilo urbano com solado baixo reto (na cor branca quando a peça próxima aos pés for escura/colorida ou peça curta, mas OBRIGATORIAMENTE em outra cor contrastante e harmônica — como preto, caramelo, nude escuro ou cinza chumbo — caso a calça/peça que chega próximo ao calçado seja branca ou off-white). ${SHOE_CONTRAST_COLOR_RULE_PT}`,
+          };
     case 'sandalia_salto':
     default:
       return {
@@ -962,6 +996,7 @@ ${form.ultraRealism ? 'Qualidade fotográfica autêntica e crua de smartphone ca
   ].filter(Boolean).join(', ');
 
   const prompt = `${resolvedPriorityBlock || priorityOverrideBlock}Crie uma fotografia hiper-realista vertical 9:16 (1080x1920) de ${openingDescriptor} vestindo exatamente a peça de roupa da imagem de referência anexada, inserida com perfeição no ${scenarioTitle} anexado, em uma fotografia de espelho de corpo inteiro.
+**POSTURA FRONTAL OBRIGATÓRIA (GERAÇÃO VIA PROMPT): ${isMale ? 'O modelo' : 'A modelo'} DEVE ESTAR SEMPRE POSICIONADO(A) DE FRENTE para o espelho (tronco, ombros, quadril e parte frontal da roupa inteiramente voltados de frente para a câmera; É TERMINANTEMENTE PROIBIDO gerar de costas ou de perfil lateral).**
 
 ${bodySectionText}
 **REGRA DE PELE LIMPA: ${isMale ? 'O modelo' : 'A modelo'} não deve possuir tatuagens no corpo (salvo se solicitado nas instruções adicionais).**

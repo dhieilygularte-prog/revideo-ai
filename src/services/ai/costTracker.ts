@@ -97,7 +97,7 @@ export class CostTracker {
   /**
    * Calcula custo para geração de imagem (gpt-image-2.5-sunburst)
    */
-  calculateImageCost(quality: 'high' | 'standard' = 'high'): { costUSD: number; costBRL: number } {
+  calculateImageCost(quality: 'high' | 'medium' | 'standard' = 'high'): { costUSD: number; costBRL: number } {
     const costUSD = quality === 'high' ? OPENAI_PRICING.sunburst.perImageHighUSD : OPENAI_PRICING.sunburst.perImageStandardUSD;
     const costBRL = costUSD * OPENAI_PRICING.usdToBrl;
     return {

@@ -283,7 +283,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const isAmetista = theme === 'ametista';
   const activeMode: AnaMariaPresentationMode = form.presentationMode || 'mirror_selfie';
   const activeMaster = getMasterPromptById(form.selectedMasterId);
-  const currentModelGallery = getModelGalleryForMode(activeMode);
+  const currentModelGallery = getModelGalleryForMode(activeMode, form.influencer);
 
   const selectedModelItem =
     !form.generateModelViaPrompt && (form.selectedModelGalleryId || form.selectedModelGalleryNumber)
@@ -583,7 +583,9 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           const modeNow = prev.presentationMode || 'mirror_selfie';
           const autoShoe = resolveAutoShoeOptionByProductName(
             resolvedName,
-            prev.additionalInstructions
+            prev.additionalInstructions,
+            undefined,
+            prev.influencer
           );
           return {
             ...prev,
@@ -610,7 +612,9 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           const modeNow = prev.presentationMode || 'mirror_selfie';
           const autoShoe = resolveAutoShoeOptionByProductName(
             fallbackLocal,
-            prev.additionalInstructions
+            prev.additionalInstructions,
+            undefined,
+            prev.influencer
           );
           return {
             ...prev,
@@ -787,11 +791,29 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   };
 
   const handleSelectInfluencer = (nextInfluencer: AnaMariaFormState['influencer']) => {
-    onChange((prev) => ({
-      ...prev,
-      influencer: nextInfluencer,
-      imageModel: resolveAutoImageModel(prev, prev.presentationMode, nextInfluencer),
-    }));
+    onChange((prev) => {
+      const influencerChanged = prev.influencer !== nextInfluencer;
+      const nextShoeOption =
+        prev.productName.trim().length > 0 && !prev.isShoeTypeApproved
+          ? resolveAutoShoeOptionByProductName(
+              prev.productName,
+              prev.additionalInstructions,
+              undefined,
+              nextInfluencer
+            )
+          : prev.selectedShoeOption;
+      return {
+        ...prev,
+        influencer: nextInfluencer,
+        imageModel: resolveAutoImageModel(prev, prev.presentationMode, nextInfluencer),
+        selectedShoeOption: nextShoeOption,
+        // Ao trocar Mulher <-> Homem, limpa modelo da galeria anterior para não misturar galeria feminina com masculina
+        selectedModelGalleryId: influencerChanged ? undefined : prev.selectedModelGalleryId,
+        selectedModelGalleryNumber: influencerChanged ? undefined : prev.selectedModelGalleryNumber,
+        selectedModelGalleryUrl: influencerChanged ? undefined : prev.selectedModelGalleryUrl,
+        selectedModelGalleryBase64: influencerChanged ? undefined : prev.selectedModelGalleryBase64,
+      };
+    });
   };
 
   const handleSelectPresentationMode = (newMode: AnaMariaPresentationMode) => {
@@ -1878,7 +1900,12 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                 const modeNow = prev.presentationMode || 'mirror_selfie';
                 const hasText = Boolean(val.trim().length > 0);
                 const autoShoe = hasText
-                  ? resolveAutoShoeOptionByProductName(val, prev.additionalInstructions)
+                  ? resolveAutoShoeOptionByProductName(
+                      val,
+                      prev.additionalInstructions,
+                      undefined,
+                      prev.influencer
+                    )
                   : undefined;
                 return {
                   ...prev,
@@ -1919,7 +1946,9 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                     prev.selectedShoeOption ||
                     resolveAutoShoeOptionByProductName(
                       prev.productName,
-                      prev.additionalInstructions
+                      prev.additionalInstructions,
+                      undefined,
+                      prev.influencer
                     ),
                 }));
               }}
@@ -1957,7 +1986,9 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                     prev.selectedShoeOption ||
                     resolveAutoShoeOptionByProductName(
                       prev.productName,
-                      prev.additionalInstructions
+                      prev.additionalInstructions,
+                      undefined,
+                      prev.influencer
                     ),
                 }));
               }}
@@ -2154,7 +2185,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           Após identificar o nome da peça, o app pré-seleciona automaticamente o calçado ideal. Toque em <strong>APROVAR</strong> para confirmar a sugestão automática ou clique diretamente em um dos botões abaixo (ou em <strong>Outro</strong> para digitar/ditar).
         </p>
 
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
           {(
             [
               {
@@ -2175,7 +2206,17 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               {
                 id: 'tenis' as AnaMariaShoeOption,
                 label: 'Tênis',
-                sub: 'Academia, conjunto fitness, cinta',
+                sub: 'Academia, conjunto masculino',
+              },
+              {
+                id: 'sapato_social' as AnaMariaShoeOption,
+                label: 'Sapato Social',
+                sub: 'Calça social / camisa social (Homem)',
+              },
+              {
+                id: 'chinelo_masculino' as AnaMariaShoeOption,
+                label: 'Chinelo Masculino',
+                sub: 'Casual masculino / slide',
               },
               {
                 id: 'outro' as AnaMariaShoeOption,
@@ -3442,6 +3483,16 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             </div>
 
             {/* Grid com as modelos */}
+            {currentModelGallery.length === 0 && form.influencer === 'Homem' ? (
+              <div className="p-6 rounded-xl border border-amber-500/35 bg-amber-950/20 text-center space-y-2">
+                <p className="text-xs font-bold text-amber-200 uppercase tracking-wide">
+                  Galeria Exclusiva Masculina ({activeMode === 'com_rosto' ? 'Com Rosto UGC' : 'Mirror Selfie'})
+                </p>
+                <p className="text-xs text-zinc-300">
+                  As modelos femininas ficam ocultas quando Homem está marcado. Envie as fotos dos modelos masculinos para adicionarmos aqui — enquanto isso, a geração masculina via prompt já funciona de frente normalmente.
+                </p>
+              </div>
+            ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3.5">
               {currentModelGallery.map((item) => {
                 const isSelected = selectedModelItem?.id === item.id;
@@ -3503,6 +3554,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                 );
               })}
             </div>
+            )}
           </div>
         )}
       </div>
