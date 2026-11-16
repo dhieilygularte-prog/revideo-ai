@@ -578,6 +578,7 @@ Retorne estritamente um JSON estruturado:
       size,
       bodyType,
       ultraRealism = false,
+      use2K = false,
     } = params;
 
     const client = this.getClient();
@@ -715,8 +716,20 @@ Retorne estritamente um JSON estruturado:
         ultraRealism || cleanPrompt.includes('ULTRA PHOTOREALISM')
       );
       const isMaleOpenAI = /\bhomem adulto\b|\binfluenciador\b/i.test(cleanPrompt);
+      const allowsFaceOpenAI =
+        presentationMode === 'com_rosto' ||
+        Boolean(
+          cleanPrompt &&
+            (cleanPrompt.includes('MODO COM ROSTO') ||
+              cleanPrompt.includes('ROSTO E ENQUADRAMENTO — MODO COM ROSTO') ||
+              cleanPrompt.includes('o rosto da modelo DEVE aparecer'))
+        );
       const ultraRealismFullOpenAI = isUltraRealismEnabled
-        ? buildUltraPhotorealismBlock({ isMale: isMaleOpenAI, isPov: isPovMode })
+        ? buildUltraPhotorealismBlock({
+            isMale: isMaleOpenAI,
+            isPov: isPovMode,
+            allowsFace: allowsFaceOpenAI,
+          })
         : '';
     const hasLingerie = /\b(lingerie|suti[aã]|calcinha|babydoll|baby doll|camisola|transpar[eê]ncia|sensual)\b/i.test(prompt) ||
       /\b(lingerie|suti[aã]|calcinha|babydoll|baby doll|camisola|transpar[eê]ncia|sensual)\b/i.test(additionalInstructions || '');
@@ -834,10 +847,10 @@ PHOTOGRAPHIC REALISM: ${isUltraRealismEnabled ? 'Authentic candid unedited real-
           .replace(/Foto 1\b/gi, productRange)
           .replace(/Foto 2\b/gi, 'Reference Image 1');
         effectivePrompt = `[STRICT 2-IMAGE EDIT DIRECTIVE - GALLERY MODEL & ROOM BASE + EXACT PRODUCT CLOTHING]:
-- REFERENCE IMAGE 1 (MODEL & ROOM BASE — KEEP IDENTICAL): Preserve 100% the exact same woman (same face if visible or same phone covering face, same hair, skin tone, body curves, pose, hands) and the EXACT same room/background/mirror/lighting from Reference Image 1.
+- REFERENCE IMAGE 1 (MODEL & ROOM BASE — KEEP IDENTICAL): Preserve 100% the exact same woman (same face if visible or same phone covering face, same hair, ${isUltraRealismEnabled ? 'body curves, pose, hands — actively replacing smooth/airbrushed reference skin texture with authentic unretouched RAW living human skin per ULTRA PHOTOREALISM below' : 'skin tone, body curves, pose, hands'}) and the EXACT same room/background/mirror/lighting from Reference Image 1.
 - ${productRange.toUpperCase()} (GARMENT & EXACT COLOR ONLY): Dress the woman from Reference Image 1 in the EXACT garment shown in ${productRange}, replicating 1:1 its exact color/shade/print, cut, neckline, straps, fabric texture${fabricSpec.hasInfo ? ` (${fabricSpec.compactLineEn})` : ''}, and length (and harmonious matching footwear if feet are visible; if long dress covers feet, keep it long). 100% IGNORE any person/background in ${productRange}.
 - SEAMLESS GARMENT RELIGHTING & ZERO CUTOUT EDGES: Relight the swapped garment and footwear to obey Reference Image 1's exact ambient lighting, shadows, and color temperature, with natural hair/shoulder/skin blending and ZERO white outline or pasted look.
-- Zero tattoos anywhere on the skin. Preserve sharp iPhone 16 Pro optical clarity.
+- Zero tattoos anywhere on the skin. ${isUltraRealismEnabled ? 'Unretouched RAW candid 35mm smartphone skin realism (visible pores, fine vellus hair, subtle micro-imperfections, subtle film grain, zero smoothing).' : 'Preserve sharp iPhone 16 Pro optical clarity.'}
 
 ${aligned2ImgCleanPrompt}`;
       } else if (isAnaMariaMode && scenarioPhotoBase64) {
@@ -894,7 +907,7 @@ ${cleanPrompt}`;
           const framingSection = allowsFace
             ? `[FRAMING & FACE DIRECTIVE — MODO COM ROSTO / UGC]:
 - The model's natural, harmonious face and expression MUST appear clearly in the mirror reflection.
-- Expressive, authentic, natural makeup, dark neat eyebrows, long hair naturally falling over shoulders.
+- ${isUltraRealismEnabled ? 'Authentic unretouched bare real-person skin (zero heavy foundation, zero concealer blur, zero airbrush smoothing), natural neat eyebrows, long hair naturally falling over shoulders.' : 'Expressive, authentic, natural makeup, dark neat eyebrows, long hair naturally falling over shoulders.'}
 - Modern smartphone held naturally taking the mirror selfie under Reference Image 1's natural room illumination.
 - Zero tattoos anywhere on the skin (100% clean skin).`
             : `[STRICT FRAMING & FACE PROHIBITION]:
@@ -1018,9 +1031,15 @@ Preserve fielmente qualquer logomarca, estampa ou acabamento original da peça. 
         baseImageFile = imageFiles[0];
       }
 
-      // Calcula o tamanho da imagem conforme proporção solicitada (16:9 horizontal => 1792x1024, 9:16 vertical => 1024x1792)
+      // Calcula o tamanho da imagem conforme proporção solicitada (16:9 => 1792x1024, 9:16 padrão => 1024x1792 -> 1080x1920, 9:16 2K => 1440x2560)
       const isLandscape = (aspectRatio === '16:9' || size === '1792x1024') && aspectRatio !== '9:16';
-      const chosenImageSize = (size || (isLandscape ? '1792x1024' : OPENAI_IMAGE_SIZE)) as any;
+      const defaultVerticalSize = use2K ? '1440x2560' : OPENAI_IMAGE_SIZE;
+      const chosenImageSize = (size || (isLandscape ? '1792x1024' : defaultVerticalSize)) as any;
+
+      const isSizeValidationErr = (err: any) => {
+        const msg = String(err?.message || '').toLowerCase();
+        return err?.status === 400 && (msg.includes('size') || msg.includes('dimension') || msg.includes('supported') || msg.includes('invalid_value'));
+      };
 
       const checkIsVertical = (rawB64: string): boolean => {
         try {
@@ -1090,13 +1109,31 @@ Preserve fielmente qualquer logomarca, estampa ou acabamento original da peça. 
           : (referenceFrameBase64
             ? baseImageFile
             : (!modelReferenceBase64 && imageFiles.length > 1 ? imageFiles : baseImageFile));
-        const editResponse = await client.images.edit({
-          model: OPENAI_IMAGE_MODEL,
-          image: editImageInput,
-          prompt: effectivePrompt,
-          quality: OPENAI_IMAGE_QUALITY,
-          size: chosenImageSize,
-        });
+        let editResponse: any;
+        let usedSize = chosenImageSize;
+        try {
+          editResponse = await client.images.edit({
+            model: OPENAI_IMAGE_MODEL,
+            image: editImageInput,
+            prompt: effectivePrompt,
+            quality: OPENAI_IMAGE_QUALITY,
+            size: chosenImageSize,
+          });
+        } catch (sizeErr: any) {
+          if (chosenImageSize === '1440x2560' && isSizeValidationErr(sizeErr)) {
+            console.warn('[OpenAIProvider] size 1440x2560 rejeitado pela API; alternando para', OPENAI_IMAGE_SIZE);
+            usedSize = OPENAI_IMAGE_SIZE;
+            editResponse = await client.images.edit({
+              model: OPENAI_IMAGE_MODEL,
+              image: editImageInput,
+              prompt: effectivePrompt,
+              quality: OPENAI_IMAGE_QUALITY,
+              size: OPENAI_IMAGE_SIZE,
+            });
+          } else {
+            throw sizeErr;
+          }
+        }
 
         const b64 = editResponse.data?.[0]?.b64_json;
         if (b64) {
@@ -1121,12 +1158,15 @@ Preserve fielmente qualquer logomarca, estampa ou acabamento original da peça. 
           }
 
           const imgCost = globalCostTracker.calculateImageCost(OPENAI_IMAGE_QUALITY);
+          const editUsage = (editResponse as any)?.usage;
           globalCostTracker.recordCall({
             step: stepName,
             model: OPENAI_IMAGE_MODEL,
+            promptTokens: editUsage?.input_tokens || 0,
+            completionTokens: editUsage?.output_tokens || 0,
             costUSD: imgCost.costUSD,
             costBRL: imgCost.costBRL,
-            details: `Geração com ${imageFiles.length} foto(s) de referência real em qualidade ${OPENAI_IMAGE_QUALITY} (${chosenImageSize})`,
+            details: `Geração com ${imageFiles.length} foto(s) de referência real em qualidade ${OPENAI_IMAGE_QUALITY} (${usedSize})`,
           });
 
           return {
@@ -1146,22 +1186,41 @@ Preserve fielmente qualquer logomarca, estampa ou acabamento original da peça. 
       }
 
       // Caso não haja arquivos de referência válidos, geração direta
-      const genResponse = await client.images.generate({
-        model: OPENAI_IMAGE_MODEL,
-        prompt: sanitizePromptForOpenAISafety(cleanPrompt),
-        quality: OPENAI_IMAGE_QUALITY,
-        size: chosenImageSize,
-      });
+      let genResponse: any;
+      let usedGenSize = chosenImageSize;
+      try {
+        genResponse = await client.images.generate({
+          model: OPENAI_IMAGE_MODEL,
+          prompt: effectivePrompt,
+          quality: OPENAI_IMAGE_QUALITY,
+          size: chosenImageSize,
+        });
+      } catch (sizeErr: any) {
+        if (chosenImageSize === '1440x2560' && isSizeValidationErr(sizeErr)) {
+          usedGenSize = OPENAI_IMAGE_SIZE;
+          genResponse = await client.images.generate({
+            model: OPENAI_IMAGE_MODEL,
+            prompt: effectivePrompt,
+            quality: OPENAI_IMAGE_QUALITY,
+            size: OPENAI_IMAGE_SIZE,
+          });
+        } else {
+          throw sizeErr;
+        }
+      }
 
       const b64 = genResponse.data?.[0]?.b64_json;
       if (b64) {
         const imgCost = globalCostTracker.calculateImageCost(OPENAI_IMAGE_QUALITY);
+        const genUsage = (genResponse as any)?.usage;
         globalCostTracker.recordCall({
           step: stepName,
           model: OPENAI_IMAGE_MODEL,
+          promptTokens: genUsage?.input_tokens || 0,
+          completionTokens: genUsage?.output_tokens || 0,
           costUSD: imgCost.costUSD,
           costBRL: imgCost.costBRL,
-          details: `GeraÃ§Ã£o direta em qualidade ${OPENAI_IMAGE_QUALITY}`,
+          details: `Geração direta em qualidade ${OPENAI_IMAGE_QUALITY} (${usedGenSize})`,
         });
 
         return {

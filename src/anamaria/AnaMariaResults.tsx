@@ -482,7 +482,8 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
         item.imageUrl,
         namePrefix,
         item.timestamp || result.timestamp,
-        item.imageModel || result.imageModel
+        item.imageModel || result.imageModel,
+        Boolean(item.use2K ?? result.use2K)
       );
       setDownloadedImageIds((prev) => ({ ...prev, [item.id]: true }));
       if (item.id === activeImageItem.id) {
@@ -557,6 +558,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
           modelScenarioSource: activeImageItem.modelScenarioSource ?? result.modelScenarioSource,
           generateModelViaPrompt: activeImageItem.generateModelViaPrompt ?? result.generateModelViaPrompt,
           ultraRealism: activeImageItem.ultraRealism ?? result.ultraRealism,
+          use2K: activeImageItem.use2K ?? result.use2K,
           selectedShoeOption: result.selectedShoeOption,
           customShoeText: result.customShoeText,
         },
@@ -611,6 +613,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
           modelScenarioSource: activeImageItem.modelScenarioSource ?? result.modelScenarioSource,
           generateModelViaPrompt: activeImageItem.generateModelViaPrompt ?? result.generateModelViaPrompt,
           ultraRealism: activeImageItem.ultraRealism ?? result.ultraRealism,
+          use2K: activeImageItem.use2K ?? result.use2K,
           selectedShoeOption: result.selectedShoeOption,
           customShoeText: result.customShoeText,
         },
@@ -659,6 +662,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
           selectedScenarioId: activeImageItem.selectedScenarioId ?? result.selectedScenarioId,
           selectedScenarioNumber: activeImageItem.selectedScenarioNumber ?? result.selectedScenarioNumber,
           ultraRealism: activeImageItem.ultraRealism ?? result.ultraRealism,
+          use2K: activeImageItem.use2K ?? result.use2K,
           selectedShoeOption: result.selectedShoeOption,
           customShoeText: result.customShoeText,
         },
@@ -729,6 +733,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
         generatedImages: nextImages,
         headlines: mergedHeadlines,
         ultraRealism: res.newImageItem.ultraRealism ?? result.ultraRealism,
+        use2K: res.newImageItem.use2K ?? result.use2K,
         generateModelViaPrompt: res.generateModelViaPrompt,
         selectedModelGalleryId: res.selectedModelGalleryId,
         selectedModelGalleryNumber: res.selectedModelGalleryNumber,
@@ -1090,7 +1095,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
             <div className="flex items-center justify-between pb-2 px-1">
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-bold text-zinc-200 uppercase tracking-wide">
-                  Foto Gerada 9:16 (1080x1920)
+                  Foto Gerada 9:16 ({activeImageItem.use2K ?? result.use2K ? '2K · 1440x2560' : '1080x1920'})
                 </span>
                 {auditStatus === 'red' || auditStatus === 'orange' ? (
                   <span
@@ -1181,7 +1186,11 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                     ? 'bg-[#170f26]/90 hover:bg-[#d4ff59] text-[#d4ff59] hover:text-zinc-950 border border-purple-400/50 backdrop-blur-md'
                     : 'bg-zinc-950/90 hover:bg-zinc-800 text-white border border-orange-500/45 backdrop-blur-md'
                 }`}
-                title="Baixar Imagem em 1080x1920 pixels"
+                title={
+                  activeImageItem.use2K ?? result.use2K
+                    ? 'Baixar Imagem em 2K (1440x2560 pixels)'
+                    : 'Baixar Imagem em 1080x1920 pixels'
+                }
               >
                 <span className="w-4 h-4 rounded-full bg-white text-slate-950 font-black text-[10px] flex items-center justify-center shadow">
                   1

@@ -17,6 +17,7 @@ import {
   OPENAI_AUDIT_MODEL,
 } from './src/config/openaiModels';
 import {
+  calibrateOutputDataUri,
   createBoundedMap,
   optimizeImageDataUriForGeneration,
   optimizeImageDataUriForVision,
@@ -1486,6 +1487,7 @@ async function generateImageWithSeedream(params: {
   selectedMasterId?: string;
   bodyType?: string;
   ultraRealism?: boolean;
+  use2K?: boolean;
   scenarioPhotoBase64?: string;
   modelScenarioSource?: 'model' | 'gallery';
 }): Promise<{ success: boolean; imageUrl?: string; error?: string }> {
@@ -1569,7 +1571,7 @@ async function generateImageWithSeedream(params: {
   const isMaleSeedream = /\bhomem adulto\b|\binfluenciador\b/i.test(params.prompt || '');
 
   const naturalSkinSeedream = isUltraRealismSeedream
-    ? '[PELE HUMANA REAL & FOTO CASEIRA SEM FILTRO]: Pele viva de pessoa comum sem suavização nem filtro beauty (poros sutis, leves diferenças naturais de tom, pequenas marquinhas esparsas e estrias bem leves naturais; zero pele plástica ou porcelanizada), com estética espontânea e crua de foto real feita no celular. ZERO TATUAGENS no corpo.\n'
+    ? '[RAW UNRETOUCHED SKIN OVERRIDE]: Actively replace any smooth/airbrushed reference model skin with unretouched RAW candid human skin: visible pores, fine micro-texture, fine vellus hair (peach fuzz), subtle skin micro-imperfections, uneven organic skin tone with gentle natural redness, subsurface scattering, controlled natural skin sheen, natural window daylight, 35mm smartphone film grain; zero smoothing/beauty-filter/plastic/CGI. ZERO tattoos.\n'
     : '[NITIDEZ ÓPTICA & PELE LIMPA]: Foco cristalino (zero blur), pele com poros reais e ZERO TATUAGENS no corpo.\n';
 
   const isDressOrOnePieceSeedream = Boolean(
@@ -1647,13 +1649,16 @@ async function generateImageWithSeedream(params: {
       ? `\n\n${buildUltraPhotorealismBlock({
           isMale: isMaleSeedream,
           isPov: isPovModeSeedream,
+          allowsFace: allowsFaceSeedream,
         })}`
       : '';
+
+  const seedreamSize = params.use2K ? '1440x2560' : '1080x1920';
 
   const payload: any = {
     model: 'dola-seedream-5-0-pro-260628',
     prompt: `${fabricBlockSeedream}${refImages.length > 0 ? `${headerSeedream}${params.prompt}` : params.prompt}${ultraRealismSeedream}`,
-    size: '1440x2560',
+    size: seedreamSize,
     response_format: 'url',
     watermark: false,
   };
@@ -1672,21 +1677,45 @@ async function generateImageWithSeedream(params: {
   let lastError = '';
   for (const url of hosts) {
     try {
-      const res = await fetch(url, {
+      let currentPayload = payload;
+      let res = await fetch(url, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(currentPayload),
       });
 
-      const text = await res.text();
+      let text = await res.text();
       let data: any = null;
       try {
         data = JSON.parse(text);
       } catch {
         data = { error: { message: text } };
+      }
+
+      // Se a rota BytePlus exigir >= 2K (ex.: erro 400 de tamanho para 1080x1920), faz retry automático em 1440x2560
+      if (!res.ok && res.status === 400 && seedreamSize === '1080x1920') {
+        const msgLower = `${data?.error?.message || data?.message || text}`.toLowerCase();
+        if (msgLower.includes('size') || msgLower.includes('pixel') || msgLower.includes('resolution') || msgLower.includes('dimension')) {
+          console.warn('[Seedream] 1080x1920 rejeitado pelo endpoint; alternando para 1440x2560...');
+          currentPayload = { ...payload, size: '1440x2560' };
+          res = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${apiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(currentPayload),
+          });
+          text = await res.text();
+          try {
+            data = JSON.parse(text);
+          } catch {
+            data = { error: { message: text } };
+          }
+        }
       }
 
       if (!res.ok) {
@@ -1934,6 +1963,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
     }
 
     const ultraRealism = Boolean(req.body?.ultraRealism);
+    const use2K = Boolean(req.body?.use2K);
 
     if (requestedImageModel === 'seedream_5_0_pro') {
       const seedreamResult = await generateImageWithSeedream({
@@ -1949,6 +1979,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
         selectedMasterId,
         bodyType,
         ultraRealism,
+        use2K,
         scenarioPhotoBase64: effectiveScenarioPhotoBase64,
         modelScenarioSource,
       });
@@ -1962,6 +1993,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
       });
     }
 
+    const reqAspect = (req.body.aspectRatio === '16:9' && !req.body.isLeilaoBlock) ? '16:9' : (req.body.aspectRatio || '9:16');
     const result = await openAIProvider.generateSceneImage({
       prompt: effectivePrompt,
       productInfo,
@@ -1976,6 +2008,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
       selectedMasterId,
       bodyType,
       ultraRealism,
+      use2K,
       variationName,
       productType,
       targetAngle,
@@ -1986,9 +2019,20 @@ app.post('/api/generate-scene-image', async (req, res) => {
       hasUserProvidedModel,
       isCloneMode,
       preserveLocation,
-      aspectRatio: (req.body.aspectRatio === '16:9' && !req.body.isLeilaoBlock) ? '16:9' : (req.body.aspectRatio || '9:16'),
+      aspectRatio: reqAspect,
       size: req.body.size || ((req.body.aspectRatio === '16:9' && !req.body.isLeilaoBlock) ? '1792x1024' : undefined),
     });
+
+    // Padroniza na hora a resolução exata da saída OpenAI vertical 9:16 / Ana Maria:
+    // 1080x1920 por padrão (inclusive com Ultra Realismo ativo) ou 1440x2560 quando Imagem 2K está marcada.
+    if (result?.success && result.imageUrl && (isAnaMariaMode || reqAspect === '9:16') && !req.body.size) {
+      result.imageUrl = await calibrateOutputDataUri(
+        result.imageUrl,
+        use2K ? 1440 : 1080,
+        use2K ? 2560 : 1920
+      );
+    }
+
     return res.json(result);
   } catch (err: any) {
     console.error('Erro na rota de imagem:', err);

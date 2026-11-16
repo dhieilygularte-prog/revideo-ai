@@ -780,29 +780,38 @@ ${textureDirectivesPt ? `${textureDirectivesPt}\n` : ''}${constructionNotes.leng
   };
 }
 
-export const ULTRA_PHOTOREALISM_FEMALE_PROMPT = `ULTRA PHOTOREALISM — PELE HUMANA NATURAL & FOTO REAL CASEIRA SEM FILTRO:
+export const ULTRA_PHOTOREALISM_FEMALE_PROMPT = `ULTRA PHOTOREALISM — SKIN OVERRIDE & RAW CANDID REALISM:
 
-Aplicar EXCLUSIVAMENTE à pele humana da modelo e ao aspecto fotográfico verídico desta captura única, mantendo a pose, a composição e toda a roupa 100% intactas (mesma cor, tecido, costura, estampa e caimento):
-- PELE REAL DE PESSOA COMUM (SEM SUAVIZAÇÃO DE IA): Reproduzir pele humana autêntica, com textura viva e leves irregularidades naturais mesmo em fotos mais abertas — sutis variações naturais de pigmentação e tonalidade (joelhos, cotovelos, ombros, colo e pernas com leves nuances orgânicas em vez de tom uniforme chapado), discretas marquinhas naturais esparsas (pequenos sinais ou sardinhas sutis), uma estria fina e bem leve ou outra em áreas comuns (quadril, coxas ou braços), dobras suaves naturais da pele e poros reais discretos nas regiões iluminadas (sem inventar cicatrizes, hematomas ou tatuagens).
-- ZERO EFEITO SINTÉTICO: Evitar absolutamente pele plástica, porcelanizada, encerada, excessivamente lisa, efeito beauty filter, airbrush, suavização digital ou aparência de boneca 3D.
-- ESTÉTICA DE FOTO REAL FEITA POR PESSOA DE VERDADE: Captura crua e espontânea de câmera de celular sem filtro nem aspecto de estúdio/propaganda — granulação sutil natural de smartphone, iluminação ambiente doméstica orgânica e reflexo natural realista na pele (candid unedited everyday real-person mirror selfie aesthetic).`;
+CRITICAL SKIN TEXTURE OVERRIDE (MAKE IMPROVEMENTS CLEARLY VISIBLE): Even if any reference model photo has smooth, retouched, or airbrushed skin, DO NOT copy that smoothed finish — actively re-render ALL visible skin areas as authentic unretouched living human skin.
+unretouched RAW candid photo, natural skin texture, subtle visible pores, fine micro-texture, fine vellus hair (peach fuzz), delicate body vellus hair, natural fine lines and skin creases, subtle skin micro-imperfections (tiny scattered freckles/beauty marks and light natural stretch lines on hips, thighs or upper arms), uneven organic skin tone with slight natural redness and warmth over knees, elbows, knuckles and collarbones, subsurface scattering, realistic controlled skin sheen under ambient indoor light, natural window daylight, shot on smartphone 35mm lens, subtle film grain.
+Keep the same single framing, pose, body proportions, clothing, fabric, colors, lighting and composition. No smoothing, no beauty filter, no plastic or waxy skin, no airbrushed finish, no CGI appearance.`;
 
 /**
  * Retorna o bloco de hiper-realismo humano corporal para fotos geradas quando ativado no Item 10.
  */
-export function buildUltraPhotorealismBlock(options?: { isMale?: boolean; isPov?: boolean }): string {
+export function buildUltraPhotorealismBlock(options?: {
+  isMale?: boolean;
+  isPov?: boolean;
+  allowsFace?: boolean;
+}): string {
   if (options?.isPov) {
-    return `ULTRA PHOTOREALISM — PELE HUMANA NATURAL NAS MÃOS & FOTO REAL SEM FILTRO:
+    return `ULTRA PHOTOREALISM — HANDS & SKIN OVERRIDE (RAW CANDID PHOTO):
 
-Aplicar exclusivamente à pele das mãos/antebraços visíveis e ao aspecto autêntico de foto caseira no celular, mantendo os produtos e o cenário 100% intactos:
-- Pele humana real sem retoque nas mãos, dedos, punhos e antebraços: linhas e dobras naturais das articulações, microtextura com poros sutis, veias/tendões discretos e leves variações orgânicas de tom e marquinhas comuns da pele (sem pele plástica, porcelanizada, lisa de IA ou beauty filter).
-- Captura espontânea de smartphone sem filtro, com granulação sutil e iluminação natural orgânica.`;
+CRITICAL SKIN TEXTURE OVERRIDE: Actively render authentic unretouched RAW human skin on the visible hands, fingers, knuckles and forearms: unretouched RAW candid photo, natural skin texture, subtle visible pores, fine micro-texture, fine vellus hair (peach fuzz), natural fine lines and knuckle creases, subtle skin micro-imperfections, uneven organic skin tone with slight warmth at knuckles, subsurface scattering, realistic controlled skin sheen, natural window daylight, shot on smartphone 35mm lens, subtle film grain. Keep the bed, background, products, fabric, colors, lighting and composition unchanged. No smoothing, no beauty filter, no plastic or waxy skin, no airbrushed finish, no CGI appearance.`;
+  }
+
+  if (options?.allowsFace) {
+    return `ULTRA PHOTOREALISM — SKIN OVERRIDE & RAW CANDID FACE/BODY REALISM (MAKE IMPROVEMENTS CLEARLY VISIBLE):
+
+CRITICAL SKIN TEXTURE OVERRIDE: Even if any reference model photo has smooth, retouched, or airbrushed skin, DO NOT keep or copy that smoothed finish — actively re-render the face, neck, chest, arms, hands and legs with authentic unretouched RAW human skin.
+Add authentic unretouched human skin: unretouched RAW candid photo, natural skin texture, subtle visible pores, fine micro-texture, fine vellus hair (peach fuzz), delicate facial hair, natural fine lines around the eyes and smile, subtle skin micro-imperfections (tiny natural freckles/moles and light natural stretch lines where appropriate), uneven organic skin tone with slight natural redness around the cheeks and nose (and over knees, elbows and collarbones), subsurface scattering, soft natural oil sheen on T-zone and realistic controlled skin sheen, natural eye reflections and believable facial asymmetry. Natural window daylight, shot on smartphone 35mm lens, subtle film grain.
+Keep the exact same face, identity, expression, pose, body proportions, clothing, fabric, colors, lighting and single mirror composition. No smoothing, no beauty filter, no airbrushed finish, no plastic or waxy skin, no CGI appearance.`;
   }
 
   if (options?.isMale) {
     return ULTRA_PHOTOREALISM_FEMALE_PROMPT
-      .replace('da modelo e ao', 'do modelo e ao')
-      .replace('quadril, coxas ou braços', 'braços, ombros ou tronco');
+      .replace('hips, thighs or upper arms', 'shoulders, upper arms or torso')
+      .replace('reference model photo', 'reference male model photo');
   }
 
   return ULTRA_PHOTOREALISM_FEMALE_PROMPT;

@@ -431,6 +431,34 @@ async function optimizeImageDataUriForVision(input, detail = "high") {
   visionImageCache.set(key, outUri);
   return outUri;
 }
+async function calibrateOutputDataUri(input, targetWidth, targetHeight) {
+  if (!input || typeof input !== "string") return input;
+  const trimmed = input.trim();
+  if (!trimmed || trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    return trimmed;
+  }
+  const parsed = decodeImageInputToBase64(trimmed);
+  if (!parsed) return trimmed;
+  try {
+    const meta = await sharp(parsed.buffer, { failOn: "none" }).metadata();
+    if (meta.width === targetWidth && meta.height === targetHeight && trimmed.length <= 38e5) {
+      return trimmed.startsWith("data:") ? trimmed : `data:${parsed.mimeType};base64,${parsed.buffer.toString("base64")}`;
+    }
+    const resizedPipeline = sharp(parsed.buffer, { failOn: "none" }).rotate().resize(targetWidth, targetHeight, {
+      fit: "cover",
+      position: "centre",
+      kernel: sharp.kernel.lanczos3
+    });
+    const pngBuf = await resizedPipeline.clone().png({ compressionLevel: 7 }).toBuffer();
+    if (pngBuf.length <= 27e5) {
+      return `data:image/png;base64,${pngBuf.toString("base64")}`;
+    }
+    const jpgBuf = await resizedPipeline.jpeg({ quality: 95, mozjpeg: true, chromaSubsampling: "4:4:4" }).toBuffer();
+    return `data:image/jpeg;base64,${jpgBuf.toString("base64")}`;
+  } catch {
+    return trimmed;
+  }
+}
 
 // src/anamaria/anaMariaProductInfo.ts
 var FABRIC_CATALOG = [
@@ -980,22 +1008,26 @@ ${textureDirectivesPt ? `${textureDirectivesPt}
     compactLineEn
   };
 }
-var ULTRA_PHOTOREALISM_FEMALE_PROMPT = `ULTRA PHOTOREALISM \u2014 PELE HUMANA NATURAL & FOTO REAL CASEIRA SEM FILTRO:
+var ULTRA_PHOTOREALISM_FEMALE_PROMPT = `ULTRA PHOTOREALISM \u2014 SKIN OVERRIDE & RAW CANDID REALISM:
 
-Aplicar EXCLUSIVAMENTE \xE0 pele humana da modelo e ao aspecto fotogr\xE1fico ver\xEDdico desta captura \xFAnica, mantendo a pose, a composi\xE7\xE3o e toda a roupa 100% intactas (mesma cor, tecido, costura, estampa e caimento):
-- PELE REAL DE PESSOA COMUM (SEM SUAVIZA\xC7\xC3O DE IA): Reproduzir pele humana aut\xEAntica, com textura viva e leves irregularidades naturais mesmo em fotos mais abertas \u2014 sutis varia\xE7\xF5es naturais de pigmenta\xE7\xE3o e tonalidade (joelhos, cotovelos, ombros, colo e pernas com leves nuances org\xE2nicas em vez de tom uniforme chapado), discretas marquinhas naturais esparsas (pequenos sinais ou sardinhas sutis), uma estria fina e bem leve ou outra em \xE1reas comuns (quadril, coxas ou bra\xE7os), dobras suaves naturais da pele e poros reais discretos nas regi\xF5es iluminadas (sem inventar cicatrizes, hematomas ou tatuagens).
-- ZERO EFEITO SINT\xC9TICO: Evitar absolutamente pele pl\xE1stica, porcelanizada, encerada, excessivamente lisa, efeito beauty filter, airbrush, suaviza\xE7\xE3o digital ou apar\xEAncia de boneca 3D.
-- EST\xC9TICA DE FOTO REAL FEITA POR PESSOA DE VERDADE: Captura crua e espont\xE2nea de c\xE2mera de celular sem filtro nem aspecto de est\xFAdio/propaganda \u2014 granula\xE7\xE3o sutil natural de smartphone, ilumina\xE7\xE3o ambiente dom\xE9stica org\xE2nica e reflexo natural realista na pele (candid unedited everyday real-person mirror selfie aesthetic).`;
+CRITICAL SKIN TEXTURE OVERRIDE (MAKE IMPROVEMENTS CLEARLY VISIBLE): Even if any reference model photo has smooth, retouched, or airbrushed skin, DO NOT copy that smoothed finish \u2014 actively re-render ALL visible skin areas as authentic unretouched living human skin.
+unretouched RAW candid photo, natural skin texture, subtle visible pores, fine micro-texture, fine vellus hair (peach fuzz), delicate body vellus hair, natural fine lines and skin creases, subtle skin micro-imperfections (tiny scattered freckles/beauty marks and light natural stretch lines on hips, thighs or upper arms), uneven organic skin tone with slight natural redness and warmth over knees, elbows, knuckles and collarbones, subsurface scattering, realistic controlled skin sheen under ambient indoor light, natural window daylight, shot on smartphone 35mm lens, subtle film grain.
+Keep the same single framing, pose, body proportions, clothing, fabric, colors, lighting and composition. No smoothing, no beauty filter, no plastic or waxy skin, no airbrushed finish, no CGI appearance.`;
 function buildUltraPhotorealismBlock(options) {
   if (options?.isPov) {
-    return `ULTRA PHOTOREALISM \u2014 PELE HUMANA NATURAL NAS M\xC3OS & FOTO REAL SEM FILTRO:
+    return `ULTRA PHOTOREALISM \u2014 HANDS & SKIN OVERRIDE (RAW CANDID PHOTO):
 
-Aplicar exclusivamente \xE0 pele das m\xE3os/antebra\xE7os vis\xEDveis e ao aspecto aut\xEAntico de foto caseira no celular, mantendo os produtos e o cen\xE1rio 100% intactos:
-- Pele humana real sem retoque nas m\xE3os, dedos, punhos e antebra\xE7os: linhas e dobras naturais das articula\xE7\xF5es, microtextura com poros sutis, veias/tend\xF5es discretos e leves varia\xE7\xF5es org\xE2nicas de tom e marquinhas comuns da pele (sem pele pl\xE1stica, porcelanizada, lisa de IA ou beauty filter).
-- Captura espont\xE2nea de smartphone sem filtro, com granula\xE7\xE3o sutil e ilumina\xE7\xE3o natural org\xE2nica.`;
+CRITICAL SKIN TEXTURE OVERRIDE: Actively render authentic unretouched RAW human skin on the visible hands, fingers, knuckles and forearms: unretouched RAW candid photo, natural skin texture, subtle visible pores, fine micro-texture, fine vellus hair (peach fuzz), natural fine lines and knuckle creases, subtle skin micro-imperfections, uneven organic skin tone with slight warmth at knuckles, subsurface scattering, realistic controlled skin sheen, natural window daylight, shot on smartphone 35mm lens, subtle film grain. Keep the bed, background, products, fabric, colors, lighting and composition unchanged. No smoothing, no beauty filter, no plastic or waxy skin, no airbrushed finish, no CGI appearance.`;
+  }
+  if (options?.allowsFace) {
+    return `ULTRA PHOTOREALISM \u2014 SKIN OVERRIDE & RAW CANDID FACE/BODY REALISM (MAKE IMPROVEMENTS CLEARLY VISIBLE):
+
+CRITICAL SKIN TEXTURE OVERRIDE: Even if any reference model photo has smooth, retouched, or airbrushed skin, DO NOT keep or copy that smoothed finish \u2014 actively re-render the face, neck, chest, arms, hands and legs with authentic unretouched RAW human skin.
+Add authentic unretouched human skin: unretouched RAW candid photo, natural skin texture, subtle visible pores, fine micro-texture, fine vellus hair (peach fuzz), delicate facial hair, natural fine lines around the eyes and smile, subtle skin micro-imperfections (tiny natural freckles/moles and light natural stretch lines where appropriate), uneven organic skin tone with slight natural redness around the cheeks and nose (and over knees, elbows and collarbones), subsurface scattering, soft natural oil sheen on T-zone and realistic controlled skin sheen, natural eye reflections and believable facial asymmetry. Natural window daylight, shot on smartphone 35mm lens, subtle film grain.
+Keep the exact same face, identity, expression, pose, body proportions, clothing, fabric, colors, lighting and single mirror composition. No smoothing, no beauty filter, no airbrushed finish, no plastic or waxy skin, no CGI appearance.`;
   }
   if (options?.isMale) {
-    return ULTRA_PHOTOREALISM_FEMALE_PROMPT.replace("da modelo e ao", "do modelo e ao").replace("quadril, coxas ou bra\xE7os", "bra\xE7os, ombros ou tronco");
+    return ULTRA_PHOTOREALISM_FEMALE_PROMPT.replace("hips, thighs or upper arms", "shoulders, upper arms or torso").replace("reference model photo", "reference male model photo");
   }
   return ULTRA_PHOTOREALISM_FEMALE_PROMPT;
 }
@@ -1663,7 +1695,8 @@ Retorne estritamente um JSON estruturado:
       aspectRatio,
       size,
       bodyType,
-      ultraRealism = false
+      ultraRealism = false,
+      use2K = false
     } = params;
     const client = this.getClient();
     let stepName = "imagem 1";
@@ -1767,7 +1800,14 @@ ${prompt}` : prompt;
         ultraRealism || cleanPrompt.includes("ULTRA PHOTOREALISM")
       );
       const isMaleOpenAI = /\bhomem adulto\b|\binfluenciador\b/i.test(cleanPrompt);
-      const ultraRealismFullOpenAI = isUltraRealismEnabled ? buildUltraPhotorealismBlock({ isMale: isMaleOpenAI, isPov: isPovMode }) : "";
+      const allowsFaceOpenAI = presentationMode === "com_rosto" || Boolean(
+        cleanPrompt && (cleanPrompt.includes("MODO COM ROSTO") || cleanPrompt.includes("ROSTO E ENQUADRAMENTO \u2014 MODO COM ROSTO") || cleanPrompt.includes("o rosto da modelo DEVE aparecer"))
+      );
+      const ultraRealismFullOpenAI = isUltraRealismEnabled ? buildUltraPhotorealismBlock({
+        isMale: isMaleOpenAI,
+        isPov: isPovMode,
+        allowsFace: allowsFaceOpenAI
+      }) : "";
       const hasLingerie = /\b(lingerie|suti[aã]|calcinha|babydoll|baby doll|camisola|transpar[eê]ncia|sensual)\b/i.test(prompt) || /\b(lingerie|suti[aã]|calcinha|babydoll|baby doll|camisola|transpar[eê]ncia|sensual)\b/i.test(additionalInstructions || "");
       if (hasLingerie) {
         effectivePrompt = sanitizePromptForOpenAISafety(effectivePrompt);
@@ -1847,10 +1887,10 @@ ${ultraRealismFullOpenAI}` : ""}`;
         const productRange = productPhotoCount > 1 ? "Reference Images 2 and 3" : "Reference Image 2";
         const aligned2ImgCleanPrompt = cleanPrompt.replace(/Foto 1\b/gi, productRange).replace(/Foto 2\b/gi, "Reference Image 1");
         effectivePrompt = `[STRICT 2-IMAGE EDIT DIRECTIVE - GALLERY MODEL & ROOM BASE + EXACT PRODUCT CLOTHING]:
-- REFERENCE IMAGE 1 (MODEL & ROOM BASE \u2014 KEEP IDENTICAL): Preserve 100% the exact same woman (same face if visible or same phone covering face, same hair, skin tone, body curves, pose, hands) and the EXACT same room/background/mirror/lighting from Reference Image 1.
+- REFERENCE IMAGE 1 (MODEL & ROOM BASE \u2014 KEEP IDENTICAL): Preserve 100% the exact same woman (same face if visible or same phone covering face, same hair, ${isUltraRealismEnabled ? "body curves, pose, hands \u2014 actively replacing smooth/airbrushed reference skin texture with authentic unretouched RAW living human skin per ULTRA PHOTOREALISM below" : "skin tone, body curves, pose, hands"}) and the EXACT same room/background/mirror/lighting from Reference Image 1.
 - ${productRange.toUpperCase()} (GARMENT & EXACT COLOR ONLY): Dress the woman from Reference Image 1 in the EXACT garment shown in ${productRange}, replicating 1:1 its exact color/shade/print, cut, neckline, straps, fabric texture${fabricSpec.hasInfo ? ` (${fabricSpec.compactLineEn})` : ""}, and length (and harmonious matching footwear if feet are visible; if long dress covers feet, keep it long). 100% IGNORE any person/background in ${productRange}.
 - SEAMLESS GARMENT RELIGHTING & ZERO CUTOUT EDGES: Relight the swapped garment and footwear to obey Reference Image 1's exact ambient lighting, shadows, and color temperature, with natural hair/shoulder/skin blending and ZERO white outline or pasted look.
-- Zero tattoos anywhere on the skin. Preserve sharp iPhone 16 Pro optical clarity.
+- Zero tattoos anywhere on the skin. ${isUltraRealismEnabled ? "Unretouched RAW candid 35mm smartphone skin realism (visible pores, fine vellus hair, subtle micro-imperfections, subtle film grain, zero smoothing)." : "Preserve sharp iPhone 16 Pro optical clarity."}
 
 ${aligned2ImgCleanPrompt}`;
       } else if (isAnaMariaMode && scenarioPhotoBase64) {
@@ -1892,7 +1932,7 @@ ${cleanPrompt}`;
           const allowsFace = presentationMode === "com_rosto" || cleanPrompt && (cleanPrompt.includes("MODO COM ROSTO") || cleanPrompt.includes("ROSTO E ENQUADRAMENTO \u2014 MODO COM ROSTO") || cleanPrompt.includes("o rosto da modelo DEVE aparecer"));
           const framingSection = allowsFace ? `[FRAMING & FACE DIRECTIVE \u2014 MODO COM ROSTO / UGC]:
 - The model's natural, harmonious face and expression MUST appear clearly in the mirror reflection.
-- Expressive, authentic, natural makeup, dark neat eyebrows, long hair naturally falling over shoulders.
+- ${isUltraRealismEnabled ? "Authentic unretouched bare real-person skin (zero heavy foundation, zero concealer blur, zero airbrush smoothing), natural neat eyebrows, long hair naturally falling over shoulders." : "Expressive, authentic, natural makeup, dark neat eyebrows, long hair naturally falling over shoulders."}
 - Modern smartphone held naturally taking the mirror selfie under Reference Image 1's natural room illumination.
 - Zero tattoos anywhere on the skin (100% clean skin).` : `[STRICT FRAMING & FACE PROHIBITION]:
 - STRICT CHIN-DOWN FRAMING: Frame strictly from the bottom base of the chin downward.
@@ -1990,7 +2030,12 @@ Preserve fielmente qualquer logomarca, estampa ou acabamento original da pe\xE7a
         baseImageFile = imageFiles[0];
       }
       const isLandscape = (aspectRatio === "16:9" || size === "1792x1024") && aspectRatio !== "9:16";
-      const chosenImageSize = size || (isLandscape ? "1792x1024" : OPENAI_IMAGE_SIZE);
+      const defaultVerticalSize = use2K ? "1440x2560" : OPENAI_IMAGE_SIZE;
+      const chosenImageSize = size || (isLandscape ? "1792x1024" : defaultVerticalSize);
+      const isSizeValidationErr = (err) => {
+        const msg = String(err?.message || "").toLowerCase();
+        return err?.status === 400 && (msg.includes("size") || msg.includes("dimension") || msg.includes("supported") || msg.includes("invalid_value"));
+      };
       const checkIsVertical = (rawB64) => {
         try {
           const buf = Buffer.from(rawB64, "base64");
@@ -2048,13 +2093,31 @@ ${ultraRealismFullOpenAI}`;
       effectivePrompt = sanitizePromptForOpenAISafety(effectivePrompt);
       if (baseImageFile) {
         const editImageInput = (isAnaMariaGallery3Img || isAnaMariaModel2Img || isAnaMariaMode && scenarioPhotoBase64) && imageFiles.length > 1 ? imageFiles : referenceFrameBase64 ? baseImageFile : !modelReferenceBase64 && imageFiles.length > 1 ? imageFiles : baseImageFile;
-        const editResponse = await client.images.edit({
-          model: OPENAI_IMAGE_MODEL,
-          image: editImageInput,
-          prompt: effectivePrompt,
-          quality: OPENAI_IMAGE_QUALITY,
-          size: chosenImageSize
-        });
+        let editResponse;
+        let usedSize = chosenImageSize;
+        try {
+          editResponse = await client.images.edit({
+            model: OPENAI_IMAGE_MODEL,
+            image: editImageInput,
+            prompt: effectivePrompt,
+            quality: OPENAI_IMAGE_QUALITY,
+            size: chosenImageSize
+          });
+        } catch (sizeErr) {
+          if (chosenImageSize === "1440x2560" && isSizeValidationErr(sizeErr)) {
+            console.warn("[OpenAIProvider] size 1440x2560 rejeitado pela API; alternando para", OPENAI_IMAGE_SIZE);
+            usedSize = OPENAI_IMAGE_SIZE;
+            editResponse = await client.images.edit({
+              model: OPENAI_IMAGE_MODEL,
+              image: editImageInput,
+              prompt: effectivePrompt,
+              quality: OPENAI_IMAGE_QUALITY,
+              size: OPENAI_IMAGE_SIZE
+            });
+          } else {
+            throw sizeErr;
+          }
+        }
         const b642 = editResponse.data?.[0]?.b64_json;
         if (b642) {
           if (isLandscape && checkIsVertical(b642)) {
@@ -2076,12 +2139,15 @@ ${ultraRealismFullOpenAI}`;
             }
           }
           const imgCost = globalCostTracker.calculateImageCost(OPENAI_IMAGE_QUALITY);
+          const editUsage = editResponse?.usage;
           globalCostTracker.recordCall({
             step: stepName,
             model: OPENAI_IMAGE_MODEL,
+            promptTokens: editUsage?.input_tokens || 0,
+            completionTokens: editUsage?.output_tokens || 0,
             costUSD: imgCost.costUSD,
             costBRL: imgCost.costBRL,
-            details: `Gera\xE7\xE3o com ${imageFiles.length} foto(s) de refer\xEAncia real em qualidade ${OPENAI_IMAGE_QUALITY} (${chosenImageSize})`
+            details: `Gera\xE7\xE3o com ${imageFiles.length} foto(s) de refer\xEAncia real em qualidade ${OPENAI_IMAGE_QUALITY} (${usedSize})`
           });
           return {
             success: true,
@@ -2097,21 +2163,40 @@ ${ultraRealismFullOpenAI}`;
           };
         }
       }
-      const genResponse = await client.images.generate({
-        model: OPENAI_IMAGE_MODEL,
-        prompt: sanitizePromptForOpenAISafety(cleanPrompt),
-        quality: OPENAI_IMAGE_QUALITY,
-        size: chosenImageSize
-      });
+      let genResponse;
+      let usedGenSize = chosenImageSize;
+      try {
+        genResponse = await client.images.generate({
+          model: OPENAI_IMAGE_MODEL,
+          prompt: effectivePrompt,
+          quality: OPENAI_IMAGE_QUALITY,
+          size: chosenImageSize
+        });
+      } catch (sizeErr) {
+        if (chosenImageSize === "1440x2560" && isSizeValidationErr(sizeErr)) {
+          usedGenSize = OPENAI_IMAGE_SIZE;
+          genResponse = await client.images.generate({
+            model: OPENAI_IMAGE_MODEL,
+            prompt: effectivePrompt,
+            quality: OPENAI_IMAGE_QUALITY,
+            size: OPENAI_IMAGE_SIZE
+          });
+        } else {
+          throw sizeErr;
+        }
+      }
       const b64 = genResponse.data?.[0]?.b64_json;
       if (b64) {
         const imgCost = globalCostTracker.calculateImageCost(OPENAI_IMAGE_QUALITY);
+        const genUsage = genResponse?.usage;
         globalCostTracker.recordCall({
           step: stepName,
           model: OPENAI_IMAGE_MODEL,
+          promptTokens: genUsage?.input_tokens || 0,
+          completionTokens: genUsage?.output_tokens || 0,
           costUSD: imgCost.costUSD,
           costBRL: imgCost.costBRL,
-          details: `Gera\xC3\xA7\xC3\xA3o direta em qualidade ${OPENAI_IMAGE_QUALITY}`
+          details: `Gera\xE7\xE3o direta em qualidade ${OPENAI_IMAGE_QUALITY} (${usedGenSize})`
         });
         return {
           success: true,
@@ -4162,7 +4247,7 @@ async function generateImageWithSeedream(params) {
     params.ultraRealism || params.prompt && params.prompt.includes("ULTRA PHOTOREALISM")
   );
   const isMaleSeedream = /\bhomem adulto\b|\binfluenciador\b/i.test(params.prompt || "");
-  const naturalSkinSeedream = isUltraRealismSeedream ? "[PELE HUMANA REAL & FOTO CASEIRA SEM FILTRO]: Pele viva de pessoa comum sem suaviza\xE7\xE3o nem filtro beauty (poros sutis, leves diferen\xE7as naturais de tom, pequenas marquinhas esparsas e estrias bem leves naturais; zero pele pl\xE1stica ou porcelanizada), com est\xE9tica espont\xE2nea e crua de foto real feita no celular. ZERO TATUAGENS no corpo.\n" : "[NITIDEZ \xD3PTICA & PELE LIMPA]: Foco cristalino (zero blur), pele com poros reais e ZERO TATUAGENS no corpo.\n";
+  const naturalSkinSeedream = isUltraRealismSeedream ? "[RAW UNRETOUCHED SKIN OVERRIDE]: Actively replace any smooth/airbrushed reference model skin with unretouched RAW candid human skin: visible pores, fine micro-texture, fine vellus hair (peach fuzz), subtle skin micro-imperfections, uneven organic skin tone with gentle natural redness, subsurface scattering, controlled natural skin sheen, natural window daylight, 35mm smartphone film grain; zero smoothing/beauty-filter/plastic/CGI. ZERO tattoos.\n" : "[NITIDEZ \xD3PTICA & PELE LIMPA]: Foco cristalino (zero blur), pele com poros reais e ZERO TATUAGENS no corpo.\n";
   const isDressOrOnePieceSeedream = Boolean(
     params.prompt && (/\b(vestido|vestidos|dress|dresses|macac[aã]o|macaquinho|camisola|jumpsuit)\b/i.test(params.prompt) || params.prompt.includes("PE\xC7A \xDANICA") || params.prompt.includes("VESTIDO"))
   );
@@ -4213,12 +4298,14 @@ ${clothingDirectiveSeedream}
 
 ${buildUltraPhotorealismBlock({
     isMale: isMaleSeedream,
-    isPov: isPovModeSeedream
+    isPov: isPovModeSeedream,
+    allowsFace: allowsFaceSeedream
   })}` : "";
+  const seedreamSize = params.use2K ? "1440x2560" : "1080x1920";
   const payload = {
     model: "dola-seedream-5-0-pro-260628",
     prompt: `${fabricBlockSeedream}${refImages.length > 0 ? `${headerSeedream}${params.prompt}` : params.prompt}${ultraRealismSeedream}`,
-    size: "1440x2560",
+    size: seedreamSize,
     response_format: "url",
     watermark: false
   };
@@ -4234,20 +4321,42 @@ ${buildUltraPhotorealismBlock({
   let lastError = "";
   for (const url of hosts) {
     try {
-      const res = await fetch(url, {
+      let currentPayload = payload;
+      let res = await fetch(url, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${apiKey}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(currentPayload)
       });
-      const text = await res.text();
+      let text = await res.text();
       let data = null;
       try {
         data = JSON.parse(text);
       } catch {
         data = { error: { message: text } };
+      }
+      if (!res.ok && res.status === 400 && seedreamSize === "1080x1920") {
+        const msgLower = `${data?.error?.message || data?.message || text}`.toLowerCase();
+        if (msgLower.includes("size") || msgLower.includes("pixel") || msgLower.includes("resolution") || msgLower.includes("dimension")) {
+          console.warn("[Seedream] 1080x1920 rejeitado pelo endpoint; alternando para 1440x2560...");
+          currentPayload = { ...payload, size: "1440x2560" };
+          res = await fetch(url, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${apiKey}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(currentPayload)
+          });
+          text = await res.text();
+          try {
+            data = JSON.parse(text);
+          } catch {
+            data = { error: { message: text } };
+          }
+        }
       }
       if (!res.ok) {
         const errMsg = data?.error?.message || data?.message || text || res.statusText;
@@ -4457,6 +4566,7 @@ ${prompt}`;
       }
     }
     const ultraRealism = Boolean(req.body?.ultraRealism);
+    const use2K = Boolean(req.body?.use2K);
     if (requestedImageModel === "seedream_5_0_pro") {
       const seedreamResult = await generateImageWithSeedream({
         prompt: effectivePrompt,
@@ -4471,6 +4581,7 @@ ${prompt}`;
         selectedMasterId,
         bodyType,
         ultraRealism,
+        use2K,
         scenarioPhotoBase64: effectiveScenarioPhotoBase64,
         modelScenarioSource
       });
@@ -4482,6 +4593,7 @@ ${prompt}`;
         error: "A chave da API da OpenAI n\xE3o est\xE1 configurada no ambiente. Adicione OPENAI_API_KEY no arquivo .env ou no painel da Vercel."
       });
     }
+    const reqAspect = req.body.aspectRatio === "16:9" && !req.body.isLeilaoBlock ? "16:9" : req.body.aspectRatio || "9:16";
     const result = await openAIProvider.generateSceneImage({
       prompt: effectivePrompt,
       productInfo,
@@ -4496,6 +4608,7 @@ ${prompt}`;
       selectedMasterId,
       bodyType,
       ultraRealism,
+      use2K,
       variationName,
       productType,
       targetAngle,
@@ -4506,9 +4619,16 @@ ${prompt}`;
       hasUserProvidedModel,
       isCloneMode,
       preserveLocation,
-      aspectRatio: req.body.aspectRatio === "16:9" && !req.body.isLeilaoBlock ? "16:9" : req.body.aspectRatio || "9:16",
+      aspectRatio: reqAspect,
       size: req.body.size || (req.body.aspectRatio === "16:9" && !req.body.isLeilaoBlock ? "1792x1024" : void 0)
     });
+    if (result?.success && result.imageUrl && (isAnaMariaMode || reqAspect === "9:16") && !req.body.size) {
+      result.imageUrl = await calibrateOutputDataUri(
+        result.imageUrl,
+        use2K ? 1440 : 1080,
+        use2K ? 2560 : 1920
+      );
+    }
     return res.json(result);
   } catch (err) {
     console.error("Erro na rota de imagem:", err);

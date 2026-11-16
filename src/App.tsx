@@ -231,6 +231,7 @@ export default function App() {
     sameScenarioForAllColors: false,
     generateOneColorAtATime: false,
     ultraRealism: false,
+    use2K: false,
     additionalInstructions: '',
     imageModel: 'openai',
     videoPromptLimit: 'unlimited',
@@ -1445,6 +1446,7 @@ export default function App() {
       sameScenarioForAllColors: false,
       generateOneColorAtATime: false,
       ultraRealism: false,
+      use2K: false,
       additionalInstructions: '',
       imageModel: 'openai',
       videoPromptLimit: 'unlimited',
@@ -2573,6 +2575,7 @@ export default function App() {
                 sameScenarioForAllColors: Boolean(item.sameScenarioForAllColors),
                 generateOneColorAtATime: Boolean(item.generateOneColorAtATime),
                 ultraRealism: Boolean(item.ultraRealism),
+                use2K: Boolean(item.use2K),
               });
               setAnaMariaPage('results');
               setIsAnaMariaHistoryOpen(false);

@@ -665,10 +665,15 @@ export function buildAnaMariaImagePrompt(
   const master = getMasterPromptById(form.selectedMasterId);
   const mode: AnaMariaPresentationMode =
     form.presentationMode || (master.isPov ? 'pov' : 'mirror_selfie');
+  const isFaceVisible = mode === 'com_rosto';
   const isMale = form.influencer === 'Homem';
   const isPlusSize = form.bodyType === 'plus_size';
   const ultraRealismBlock = form.ultraRealism
-    ? `\n\n${buildUltraPhotorealismBlock({ isMale, isPov: mode === 'pov' || master.isPov })}`
+    ? `\n\n${buildUltraPhotorealismBlock({
+        isMale,
+        isPov: mode === 'pov' || master.isPov,
+        allowsFace: isFaceVisible,
+      })}`
     : '';
   const shoeInfo = detectShoeCategory(
     form.productName,
@@ -805,7 +810,6 @@ Qualidade fotográfica autêntica de smartphone moderno em alta definição 1080
     : `${master.accessoriesIdentityText}${userNailDirectivePt ? `\n- ${userNailDirectivePt}` : ''}`;
 
   // Regra de Rosto: Mirror Selfie (Corte estrito no queixo) vs Com Rosto (Rosto visível)
-  const isFaceVisible = mode === 'com_rosto';
   const framingFaceSection = isFaceVisible
     ? `## 2. ROSTO E ENQUADRAMENTO — MODO COM ROSTO (UGC / ESPELHO)
 Neste modo COM ROSTO, o rosto ${isMale ? 'do modelo' : 'da modelo'} DEVE aparecer de forma natural e harmoniosa na selfie diante do espelho.
@@ -907,7 +911,7 @@ ${noBagDirectivePt}${noBagDirectiveEn}
 
 2. FOTO 2 (MODELO E CENÁRIO BASE ABSOLUTO — PRESERVAÇÃO INTEGRAL 1:1):
 - A modelo gerada DEVE SER RIGOROSAMENTE A MESMA MULHER DA FOTO 2, NA MESMA POSE DIANTE DO ESPELHO E DENTRO DO MESMO CÔMODO/CENÁRIO DA FOTO 2.
-- PRESERVAÇÃO INTEGRAL DE BIOTIPO E IDENTIDADE: reproduza com fidelidade 100% o mesmo corpo, curvas, biotipo, quadris, cintura, pernas, tom de pele natural com poros reais e cabelos (mesma cor, corte e textura da foto da modelo).
+- PRESERVAÇÃO INTEGRAL DE BIOTIPO E IDENTIDADE: ${form.ultraRealism ? 'reproduza 100% o mesmo corpo, curvas, biotipo, quadris, cintura, pernas e cabelos da Foto 2, substituindo qualquer acabamento liso/artificial da pele pelo modo Ultra Realismo ao final.' : 'reproduza com fidelidade 100% o mesmo corpo, curvas, biotipo, quadris, cintura, pernas, tom de pele natural com poros reais e cabelos (mesma cor, corte e textura da foto da modelo).'}
 - PRESERVAÇÃO INTEGRAL DO CENÁRIO DA FOTO 2 (CENÁRIO DA MODELO): O cômodo de fundo, paredes, piso, espelho, portas, móveis e iluminação natural DEVEM ser 100% preservados e idênticos aos da Foto 2. NÃO altere nem redesenhe o ambiente da Foto 2.
 ${galleryFaceFramingRule2Img}
 - ÚNICA MUDANÇA PERMITIDA: Substituir as roupas e o calçado que a modelo veste na Foto 2 pela peça completa da Foto 1 (preservando 100% da parte superior e 100% da parte inferior/barra da Foto 1 sem encurtar) e pelo calçado indicado (${shoeInfo.name}).

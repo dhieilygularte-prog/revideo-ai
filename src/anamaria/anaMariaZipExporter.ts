@@ -107,6 +107,14 @@ export async function ensureHighResAnaMariaDataUrl(
     img.crossOrigin = 'anonymous';
     img.onload = () => {
       try {
+        if (
+          img.width === targetWidth &&
+          img.height === targetHeight &&
+          resolvedSrc.startsWith('data:image/png')
+        ) {
+          resolve(resolvedSrc);
+          return;
+        }
         const canvas = document.createElement('canvas');
         canvas.width = targetWidth;
         canvas.height = targetHeight;
@@ -195,13 +203,16 @@ export async function downloadAnaMariaSingleImage(
   imageUrl: string,
   productName: string,
   timestamp?: number,
-  imageModel?: string
+  imageModel?: string,
+  use2K = false
 ) {
-  // Padronização universal solicitada: 1080x1920, PNG de ~2MB com nitidez máxima
+  // Padronização universal solicitada: 1080x1920 (ou 1440x2560 em modo 2K), PNG lossless com nitidez máxima
   const fileName = buildImageFileName(productName, timestamp, imageModel, 'png');
+  const targetW = use2K ? 1440 : 1080;
+  const targetH = use2K ? 2560 : 1920;
 
   try {
-    const blob = await ensureHighResAnaMariaBlob(imageUrl, 1080, 1920);
+    const blob = await ensureHighResAnaMariaBlob(imageUrl, targetW, targetH);
     downloadBlob(blob, fileName);
   } catch (err) {
     console.warn('Erro ao baixar imagem via blob de alta resolução:', err);
@@ -262,7 +273,9 @@ export async function exportAnaMariaZip(result: AnaMariaResultState): Promise<vo
     }
     usedFileNames.add(imageFileName);
     try {
-      const imgBlob = await ensureHighResAnaMariaBlob(imgItem.imageUrl, 1080, 1920);
+        const targetW = Boolean((imgItem as any).use2K ?? result.use2K) ? 1440 : 1080;
+      const targetH = Boolean((imgItem as any).use2K ?? result.use2K) ? 2560 : 1920;
+      const imgBlob = await ensureHighResAnaMariaBlob(imgItem.imageUrl, targetW, targetH);
       const imgBuffer = await imgBlob.arrayBuffer();
       zip.file(imageFileName, imgBuffer);
     } catch (err) {

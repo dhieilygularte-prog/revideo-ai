@@ -2779,6 +2779,29 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               <span>Ultra Realismo</span>
             </label>
 
+            <label
+              onClick={(e) => e.stopPropagation()}
+              title="Gera imagem em 2K (1440×2560 px). Desmarcado = 1080×1920 px (padrão). Consome cerca de 2x mais tokens/custo por imagem quando ativo."
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold cursor-pointer select-none transition-all ${
+                form.use2K
+                  ? isAmetista
+                    ? 'bg-sky-500/20 border-[#d4ff59]/70 text-[#d4ff59] shadow-sm ring-1 ring-[#d4ff59]/30'
+                    : 'bg-sky-500/20 border-sky-400/70 text-sky-300 shadow-sm ring-1 ring-sky-400/30'
+                  : 'bg-zinc-900/90 border-zinc-700 text-zinc-300 hover:border-zinc-500'
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={Boolean(form.use2K)}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  onChange((prev) => ({ ...prev, use2K: checked }));
+                }}
+                className="w-3.5 h-3.5 rounded accent-sky-400 cursor-pointer"
+              />
+              <span>Imagem 2K</span>
+            </label>
+
             {selectedModelItem ? (
               <div
                 className={`flex items-center gap-1.5 text-zinc-950 font-black px-3 py-1.5 rounded-xl border shadow-md ${

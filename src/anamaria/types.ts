@@ -70,6 +70,7 @@ export interface AnaMariaFormState {
   generateOneColorAtATime?: boolean; // Padrão: false (Não) -> gera todas as cores anexadas de uma vez
   eclecticMode?: boolean; // Padrão: true (Sim) -> prioriza as modelos 13, 01, 27, 25, 22, 18, 10, 15, 14 e 12 de forma randômica
   ultraRealism?: boolean; // Padrão: false (Desmarcado) -> aplica prompt de hiper-realismo humano corporal nas fotos geradas
+  use2K?: boolean; // Padrão: false (Desmarcado, 1080x1920) -> quando true gera em 2K (1440x2560)
   isProductNameApproved?: boolean; // true quando o usuário aprova ou edita ativamente o nome da peça
   fabricType?: string; // Tipo de tecido identificado automaticamente ou preenchido/editado pelo usuário
   isFabricTypeApproved?: boolean; // true quando o usuário aprova ou edita ativamente o tipo de tecido
@@ -107,6 +108,7 @@ export interface AnaMariaGeneratedImageItem {
   generateModelViaPrompt?: boolean;
   eclecticMode?: boolean;
   ultraRealism?: boolean;
+  use2K?: boolean;
   audit?: AnaMariaAudit;
 }
 
@@ -121,6 +123,7 @@ export interface AnaMariaResultState {
   generateOneColorAtATime?: boolean;
   eclecticMode?: boolean;
   ultraRealism?: boolean;
+  use2K?: boolean;
   productInfo?: string;
   fabricType?: string;
   productName: string;

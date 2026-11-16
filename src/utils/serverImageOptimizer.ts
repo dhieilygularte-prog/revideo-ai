@@ -278,3 +278,55 @@ export async function optimizeImageDataUriForVision(
   visionImageCache.set(key, outUri);
   return outUri;
 }
+
+/**
+ * Garante que uma imagem gerada (ex: OpenAI 1024x1792) saia exatamente na resolução vertical desejada
+ * (1080x1920 padrão ou 1440x2560 em modo 2K), respeitando o limite de payload da Vercel (<3.6MB base64).
+ */
+export async function calibrateOutputDataUri(
+  input: string,
+  targetWidth: number,
+  targetHeight: number
+): Promise<string> {
+  if (!input || typeof input !== 'string') return input;
+  const trimmed = input.trim();
+  if (!trimmed || trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed;
+  }
+
+  const parsed = decodeImageInputToBase64(trimmed);
+  if (!parsed) return trimmed;
+
+  try {
+    const meta = await sharp(parsed.buffer, { failOn: 'none' }).metadata();
+    if (
+      meta.width === targetWidth &&
+      meta.height === targetHeight &&
+      trimmed.length <= 3_800_000
+    ) {
+      return trimmed.startsWith('data:')
+        ? trimmed
+        : `data:${parsed.mimeType};base64,${parsed.buffer.toString('base64')}`;
+    }
+
+    const resizedPipeline = sharp(parsed.buffer, { failOn: 'none' })
+      .rotate()
+      .resize(targetWidth, targetHeight, {
+        fit: 'cover',
+        position: 'centre',
+        kernel: sharp.kernel.lanczos3,
+      });
+
+    const pngBuf = await resizedPipeline.clone().png({ compressionLevel: 7 }).toBuffer();
+    if (pngBuf.length <= 2_700_000) {
+      return `data:image/png;base64,${pngBuf.toString('base64')}`;
+    }
+
+    const jpgBuf = await resizedPipeline
+      .jpeg({ quality: 95, mozjpeg: true, chromaSubsampling: '4:4:4' })
+      .toBuffer();
+    return `data:image/jpeg;base64,${jpgBuf.toString('base64')}`;
+  } catch {
+    return trimmed;
+  }
+}
