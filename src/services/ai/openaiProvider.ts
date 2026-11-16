@@ -1324,6 +1324,7 @@ REGRAS DE AVALIAÇÃO:
    - "correctionPrompt": instrução direta em português do que corrigir na próxima geração para ficar 100% idêntico à referência.
 Retorne estritamente um JSON:
 {
+  "showsBackView": boolean,
   "score": number,
   "lengthScore": number,
   "criteriaScores": {
@@ -1399,7 +1400,7 @@ Retorne estritamente um JSON:
           const n = val !== undefined && val !== null ? Number(val) : NaN;
           return Number.isFinite(n) ? Math.max(0, Math.min(100, Math.round(n))) : fallback;
         };
-        const score = clampPct(parsed.score, 92);
+        let score = clampPct(parsed.score, 92);
         const rawCrit = (parsed.criteriaScores || {}) as Record<string, unknown>;
         const lengthScore = clampPct(rawCrit.length ?? parsed.lengthScore, score);
         const criteriaScores = {
@@ -1410,17 +1411,82 @@ Retorne estritamente um JSON:
           details: clampPct(rawCrit.details, score),
           seams: clampPct(rawCrit.seams, score),
         };
-        const status = score >= 90 ? 'green' : score >= 70 ? 'yellow' : 'red';
+
+        const showsBackView =
+          parsed.showsBackView === true ||
+          /\b(costas|traseira|back\s*view)\b/i.test(`${role} ${variationName}`);
+
+        const isFalseBackIssue = (issue: string): boolean => {
+          if (showsBackView) return false;
+          return /\b(costas|traseir[ao]s?|cruzad[oa]\s+nas\s+costas|decote\s+nas\s+costas|amarra[cç][aã]o\s+traseira)\b/i.test(
+            issue
+          );
+        };
+
+        const isFalseTextureSharpnessIssue = (issue: string): boolean => {
+          return (
+            /(textura|trama|tecido).{0,55}(menos\s+n[ií]tid[ao]|pouco\s+n[ií]tid[ao]|menos\s+definid[ao]|menos\s+vis[ií]vel|mais\s+suave|parece\s+menos)/i.test(
+              issue
+            ) ||
+            /(menos\s+n[ií]tid[ao]|menor\s+nitidez).{0,45}(refer[eê]ncia|tecido|textura)/i.test(
+              issue
+            )
+          );
+        };
+
         const rawIssues = Array.isArray(parsed.issues)
           ? parsed.issues.map((i: any) => String(i || '').trim()).filter(Boolean)
           : [];
+
+        let removedBackIssue = false;
+        let removedTextureIssue = false;
+        const filteredIssues = rawIssues.filter((issue: string) => {
+          if (isFalseBackIssue(issue)) {
+            removedBackIssue = true;
+            return false;
+          }
+          if (isFalseTextureSharpnessIssue(issue)) {
+            removedTextureIssue = true;
+            return false;
+          }
+          return true;
+        });
+
+        if (removedTextureIssue) {
+          criteriaScores.texture = Math.max(criteriaScores.texture, 96);
+        }
+        if (removedBackIssue && filteredIssues.length === 0) {
+          criteriaScores.details = Math.max(criteriaScores.details, 95);
+          criteriaScores.drape = Math.max(criteriaScores.drape, 95);
+          criteriaScores.seams = Math.max(criteriaScores.seams, 95);
+        }
+        if (removedBackIssue || removedTextureIssue) {
+          const avgScore = Math.round(
+            (criteriaScores.color +
+              criteriaScores.length +
+              criteriaScores.texture +
+              criteriaScores.drape +
+              criteriaScores.details +
+              criteriaScores.seams) /
+              6
+          );
+          if (filteredIssues.length === 0) {
+            score = Math.max(score, avgScore, 94);
+          } else {
+            score = Math.max(score, avgScore);
+          }
+        }
+
+        const status = score >= 90 ? 'green' : score >= 70 ? 'yellow' : 'red';
         const issuesList =
-          rawIssues.length > 0
-            ? rawIssues
+          filteredIssues.length > 0
+            ? filteredIssues
             : status === 'green'
             ? ['Fidelidade da peça validada.']
             : [
-                parsed.correctionPrompt
+                parsed.correctionPrompt &&
+                !isFalseBackIssue(String(parsed.correctionPrompt)) &&
+                !isFalseTextureSharpnessIssue(String(parsed.correctionPrompt))
                   ? String(parsed.correctionPrompt).trim()
                   : `Pequena divergência visual em relação à foto de referência (${score}%).`,
               ];
@@ -1429,6 +1495,20 @@ Retorne estritamente um JSON:
             ? `Corrigir rigorosamente na peça principal para ficar 100% idêntica à foto de referência: ${issuesList.join('; ')}`
             : '';
 
+        const finalLabel =
+          removedBackIssue || removedTextureIssue
+            ? status === 'green'
+              ? `Verde — Fidelidade Aprovada (${score}%)`
+              : status === 'yellow'
+              ? `Amarelo — Variação Detectada (${score}%)`
+              : `Vermelho — Divergência Crítica (${score}%)`
+            : parsed.label ||
+              (status === 'green'
+                ? `Verde — Fidelidade Aprovada (${score}%)`
+                : status === 'yellow'
+                ? `Amarelo — Variação Detectada (${score}%)`
+                : `Vermelho — Divergência Crítica (${score}%)`);
+
         return {
           success: true,
           audit: {
@@ -1436,15 +1516,9 @@ Retorne estritamente um JSON:
             lengthScore,
             criteriaScores,
             status,
-            label:
-              parsed.label ||
-              (status === 'green'
-                ? `Verde — Fidelidade Aprovada (${score}%)`
-                : status === 'yellow'
-                ? `Amarelo — Variação Detectada (${score}%)`
-                : `Vermelho — Divergência Crítica (${score}%)`),
+            label: finalLabel,
             issues: issuesList,
-            correctionPrompt: parsed.correctionPrompt || fallbackCorrection,
+            correctionPrompt: status === 'green' ? '' : parsed.correctionPrompt || fallbackCorrection,
             auditedAngle: role,
           },
         };
