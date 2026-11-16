@@ -128,12 +128,20 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const productInfoRef = useRef<string>(form.productInfo || '');
   const lastAutoIdentifySignatureRef = useRef<string>('');
   const lastDivergenceSignatureRef = useRef<string>('');
-  const shouldScrollToGenerateAfterResolveRef = useRef<boolean>(false);
+  const isGuidedResolveActiveRef = useRef<boolean>(false);
+  const lastGuidedStepKeyRef = useRef<
+    'photos' | 'productInfo' | 'productName' | 'fabricType' | 'shoe' | null
+  >(null);
   const productNameSectionRef = useRef<HTMLDivElement>(null);
   const fabricTypeSectionRef = useRef<HTMLDivElement>(null);
   const shoeSectionRef = useRef<HTMLDivElement>(null);
   const actionButtonSectionRef = useRef<HTMLDivElement>(null);
   const generateButtonRef = useRef<HTMLButtonElement>(null);
+  const productInfoDivergenceApproveBtnRef = useRef<HTMLButtonElement>(null);
+  const productNameApproveBtnRef = useRef<HTMLButtonElement>(null);
+  const productNameDivergenceApproveBtnRef = useRef<HTMLButtonElement>(null);
+  const fabricApproveBtnRef = useRef<HTMLButtonElement>(null);
+  const shoeApproveBtnRef = useRef<HTMLButtonElement>(null);
 
   const scrollSmoothlyToCenter = (el: HTMLElement | null) => {
     if (!el || typeof window === 'undefined') return;
@@ -948,16 +956,107 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     !isRecordingMic &&
     !isRecordingShoeMic;
 
+  const getTopmostPendingStep = () => {
+    if (!isPhotosReady) {
+      return {
+        key: 'photos' as const,
+        warning:
+          'Por favor, anexe ao menos 1 foto do produto no Item 1 acima antes de gerar o vídeo.',
+        getTargetElement: () => photosSectionRef.current as HTMLElement | null,
+      };
+    }
+    if (!isProductInfoReady) {
+      return {
+        key: 'productInfo' as const,
+        warning: !isProductInfoFilled
+          ? 'Preencha o campo obrigatório "Informações do Produto" (tecido ou texto do produto) para liberar o botão Gerar Vídeo!'
+          : `Divergência destacada em amarelo em "Informações do Produto": ${divWarningText} — Edite o texto ou toque em APROVAR.`,
+        getTargetElement: () =>
+          (productInfoDivergenceApproveBtnRef.current ||
+            productInfoSectionRef.current) as HTMLElement | null,
+      };
+    }
+    if (!isNameReady) {
+      return {
+        key: 'productName' as const,
+        warning: hasNameDivergencePending
+          ? `Divergência destacada em amarelo em "Nome da Peça": ${divWarningText} — Edite o nome ou toque em APROVAR.`
+          : 'Você precisa tocar no botão APROVAR (ou preencher/editar ativamente) o Nome da Peça para liberar o botão Gerar Vídeo!',
+        getTargetElement: () =>
+          (productNameApproveBtnRef.current ||
+            productNameDivergenceApproveBtnRef.current ||
+            productNameSectionRef.current) as HTMLElement | null,
+      };
+    }
+    if (!isFabricReady) {
+      return {
+        key: 'fabricType' as const,
+        warning:
+          form.fabricType && form.fabricType.trim().length > 0
+            ? 'Você precisa tocar no botão APROVAR (ou editar ativamente) o Tipo de Tecido para liberar o botão Gerar Vídeo!'
+            : 'Preencha e aprove o campo "Tipo de Tecido" para liberar o botão Gerar Vídeo!',
+        getTargetElement: () =>
+          (fabricApproveBtnRef.current || fabricTypeSectionRef.current) as HTMLElement | null,
+      };
+    }
+    if (!isShoeReady) {
+      return {
+        key: 'shoe' as const,
+        warning:
+          form.selectedShoeOption === 'outro'
+            ? 'Digite ou dite o tipo de calçado no campo "Outro" (ou escolha um dos botões de calçado) para liberar o botão Gerar Vídeo!'
+            : 'Você precisa tocar no botão APROVAR no Tipo de Calçado (ou escolher um dos botões de calçado) para liberar o botão Gerar Vídeo!',
+        getTargetElement: () =>
+          (shoeApproveBtnRef.current || shoeSectionRef.current) as HTMLElement | null,
+      };
+    }
+    if (!isDivergenceResolved) {
+      return {
+        key: 'productInfo' as const,
+        warning: `Divergência destacada em amarelo: ${divWarningText} — Edite o texto ou toque em APROVAR.`,
+        getTargetElement: () =>
+          (productInfoDivergenceApproveBtnRef.current ||
+            productNameDivergenceApproveBtnRef.current ||
+            productInfoSectionRef.current) as HTMLElement | null,
+      };
+    }
+    return null;
+  };
+
   useEffect(() => {
     if (isProcessing) {
-      shouldScrollToGenerateAfterResolveRef.current = false;
+      isGuidedResolveActiveRef.current = false;
+      lastGuidedStepKeyRef.current = null;
       return;
     }
-    if (hasPendingApprovals || !canSubmit) return;
-    if (!shouldScrollToGenerateAfterResolveRef.current) return;
+    if (!isGuidedResolveActiveRef.current) return;
 
-    // Consome a flag 1 única vez e agenda a rolagem sem cleanup cancelável pelo re-render do botão/banner
-    shouldScrollToGenerateAfterResolveRef.current = false;
+    const activeTag =
+      typeof document !== 'undefined' ? document.activeElement?.tagName : '';
+    if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') return;
+
+    if (hasPendingApprovals) {
+      const nextStep = getTopmostPendingStep();
+      if (nextStep && nextStep.key !== lastGuidedStepKeyRef.current) {
+        lastGuidedStepKeyRef.current = nextStep.key;
+        setScrollFocusField(nextStep.key);
+        setApprovalWarning('');
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => {
+            window.setTimeout(() => {
+              scrollSmoothlyToCenter(nextStep.getTargetElement());
+            }, 50);
+          });
+        });
+      }
+      return;
+    }
+
+    if (!canSubmit) return;
+
+    // Consome o fluxo guiado 1 única vez e rola até o botão GERAR VÍDEO (nunca entra em loop se editar algo depois)
+    isGuidedResolveActiveRef.current = false;
+    lastGuidedStepKeyRef.current = null;
     setScrollFocusField(null);
     setApprovalWarning('');
     setScrollHighlightGenerate(true);
@@ -971,7 +1070,17 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         }, 60);
       });
     });
-  }, [hasPendingApprovals, canSubmit, isProcessing]);
+  }, [
+    isPhotosReady,
+    isProductInfoReady,
+    isNameReady,
+    isFabricReady,
+    isShoeReady,
+    isDivergenceResolved,
+    hasPendingApprovals,
+    canSubmit,
+    isProcessing,
+  ]);
   const isInstructionsFilled = Boolean(
     form.additionalInstructions && form.additionalInstructions.trim().length > 0
   );
@@ -1602,6 +1711,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               </div>
             </div>
             <button
+              ref={productInfoDivergenceApproveBtnRef}
               type="button"
               onClick={() => {
                 setApprovalWarning('');
@@ -1798,6 +1908,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           />
           {form.productName.trim().length > 0 && !form.isProductNameApproved && (
             <button
+              ref={productNameApproveBtnRef}
               type="button"
               onClick={() => {
                 setApprovalWarning('');
@@ -1834,6 +1945,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               </div>
             </div>
             <button
+              ref={productNameDivergenceApproveBtnRef}
               type="button"
               onClick={() => {
                 setApprovalWarning('');
@@ -1979,6 +2091,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
 
           {form.fabricType?.trim() && !form.isFabricTypeApproved && (
             <button
+              ref={fabricApproveBtnRef}
               type="button"
               onClick={() => {
                 setApprovalWarning('');
@@ -2170,6 +2283,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                 Calçado selecionado automaticamente pelo app. Clique em APROVAR ou escolha outro botão acima:
               </span>
               <button
+                ref={shoeApproveBtnRef}
                 type="button"
                 onClick={() => {
                   setApprovalWarning('');
@@ -3374,56 +3488,19 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           type="button"
           onClick={() => {
             if (isProcessing || isUploading || isRecordingMic || isRecordingShoeMic) return;
-            if (hasPendingApprovals) {
-              shouldScrollToGenerateAfterResolveRef.current = true;
-            }
-            if (!isPhotosReady) {
-              setScrollFocusField('photos');
-              setApprovalWarning('Por favor, anexe ao menos 1 foto do produto no Item 1 acima antes de gerar o vídeo.');
-              window.requestAnimationFrame(() => scrollSmoothlyToCenter(photosSectionRef.current));
-              return;
-            }
-            if (!isProductInfoReady) {
-              setScrollFocusField('productInfo');
-              setApprovalWarning(
-                !isProductInfoFilled
-                  ? 'Preencha o campo obrigatório "Informações do Produto" (tecido ou texto do produto) para liberar o botão Gerar Vídeo!'
-                  : `Divergência destacada em amarelo em "Informações do Produto": ${divWarningText} — Edite o texto ou toque em APROVAR.`
+            const pendingStep = getTopmostPendingStep();
+            if (pendingStep) {
+              isGuidedResolveActiveRef.current = true;
+              lastGuidedStepKeyRef.current = pendingStep.key;
+              setScrollFocusField(pendingStep.key);
+              setApprovalWarning(pendingStep.warning);
+              window.requestAnimationFrame(() =>
+                scrollSmoothlyToCenter(pendingStep.getTargetElement())
               );
-              window.requestAnimationFrame(() => scrollSmoothlyToCenter(productInfoSectionRef.current));
               return;
             }
-            if (!isNameReady) {
-              setScrollFocusField('productName');
-              setApprovalWarning(
-                hasNameDivergencePending
-                  ? `Divergência destacada em amarelo em "Nome da Peça": ${divWarningText} — Edite o nome ou toque em APROVAR.`
-                  : 'Você precisa tocar no botão APROVAR (ou preencher/editar ativamente) o Nome da Peça para liberar o botão Gerar Vídeo!'
-              );
-              window.requestAnimationFrame(() => scrollSmoothlyToCenter(productNameSectionRef.current));
-              return;
-            }
-            if (!isFabricReady) {
-              setScrollFocusField('fabricType');
-              setApprovalWarning(
-                form.fabricType && form.fabricType.trim().length > 0
-                  ? 'Você precisa tocar no botão APROVAR (ou editar ativamente) o Tipo de Tecido para liberar o botão Gerar Vídeo!'
-                  : 'Preencha e aprove o campo "Tipo de Tecido" para liberar o botão Gerar Vídeo!'
-              );
-              window.requestAnimationFrame(() => scrollSmoothlyToCenter(fabricTypeSectionRef.current));
-              return;
-            }
-            if (!isShoeReady) {
-              setScrollFocusField('shoe');
-              setApprovalWarning(
-                form.selectedShoeOption === 'outro'
-                  ? 'Digite ou dite o tipo de calçado no campo "Outro" (ou escolha um dos botões de calçado) para liberar o botão Gerar Vídeo!'
-                  : 'Você precisa tocar no botão APROVAR no Tipo de Calçado (ou escolher um dos botões de calçado) para liberar o botão Gerar Vídeo!'
-              );
-              window.requestAnimationFrame(() => scrollSmoothlyToCenter(shoeSectionRef.current));
-              return;
-            }
-            shouldScrollToGenerateAfterResolveRef.current = false;
+            isGuidedResolveActiveRef.current = false;
+            lastGuidedStepKeyRef.current = null;
             setApprovalWarning('');
             setScrollFocusField(null);
             onSubmit();
