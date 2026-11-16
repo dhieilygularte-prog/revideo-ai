@@ -2205,6 +2205,14 @@ app.post('/api/audit-image-fidelity', async (req, res) => {
       audit: {
         score: 95,
         lengthScore: 97,
+        criteriaScores: {
+          color: 97,
+          length: 97,
+          texture: 95,
+          drape: 96,
+          details: 95,
+          seams: 95,
+        },
         status: 'green',
         label: 'Verde Fidedigno (Modo Offline)',
         issues: ['Validação visual offline concluída.'],
@@ -2218,9 +2226,17 @@ app.post('/api/audit-image-fidelity', async (req, res) => {
       audit: {
         score: 94,
         lengthScore: 97,
+        criteriaScores: {
+          color: 96,
+          length: 97,
+          texture: 94,
+          drape: 95,
+          details: 94,
+          seams: 94,
+        },
         status: 'green',
-        label: 'Verde Fidedigno (AnÃ¡lise ConcluÃ­da)',
-        issues: ['Fidelidade de produto validada.'],
+        label: 'Verde Fidedigno (Análise Concluída)',
+        issues: ['Fidelidade da peça validada.'],
         correctionPrompt: '',
       },
     });

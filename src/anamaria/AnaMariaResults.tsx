@@ -809,13 +809,25 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
       : 'Da Modelo';
 
   const defaultCriteria: { name: string; score: number; status: AnaMariaAuditColorStatus; issue?: string }[] = [
+    { name: 'Cor da Peça', score: 97, status: 'green' as AnaMariaAuditColorStatus },
     { name: 'Comprimento da Peça', score: 97, status: 'green' as AnaMariaAuditColorStatus },
-    { name: 'Corte Queixo', score: 100, status: 'green' as AnaMariaAuditColorStatus },
-    { name: result.bodyType === 'plus_size' ? 'Plus Size (50-54)' : 'Curvas & Silhueta', score: 96, status: 'green' as AnaMariaAuditColorStatus },
-    { name: 'Zero Tatuagens', score: 100, status: 'green' as AnaMariaAuditColorStatus },
-    { name: 'Calçado Condicional', score: 95, status: 'green' as AnaMariaAuditColorStatus },
+    { name: 'Textura do Tecido', score: 95, status: 'green' as AnaMariaAuditColorStatus },
+    { name: 'Caimento da Peça', score: 96, status: 'green' as AnaMariaAuditColorStatus },
+    { name: 'Detalhes da Peça', score: 96, status: 'green' as AnaMariaAuditColorStatus },
+    { name: 'Posição das Costuras', score: 96, status: 'green' as AnaMariaAuditColorStatus },
   ];
-  const criteriaList = audit?.criteria && audit.criteria.length > 0 ? audit.criteria : defaultCriteria;
+  const hiddenLegacyCriteria = new Set([
+    'Fidelidade da Peça',
+    'Corte Queixo',
+    'Curvas & Silhueta',
+    'Plus Size (50-54)',
+    'Zero Tatuagens',
+    'Calçado Condicional',
+  ]);
+  const filteredCriteria = (audit?.criteria || []).filter(
+    (c) => !hiddenLegacyCriteria.has(c.name)
+  );
+  const criteriaList = filteredCriteria.length > 0 ? filteredCriteria : defaultCriteria;
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16 animate-fade-in">
@@ -1224,7 +1236,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
                     {auditLabel}
                   </span>
                   <span className="text-[10px] opacity-80 block">
-                    Fiscalização da peça (Comprimento, Corte no Queixo, Curvas, Calçado)
+                    Fidelidade da peça
                   </span>
                 </div>
               </div>
@@ -1236,7 +1248,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
               </span>
             </div>
 
-            {/* Grade dos Critérios (2 colunas simétricas; último item ocupa largura total se total for ímpar) */}
+            {/* Grade dos Critérios (6 micro-itens exclusivos da peça em formato 3x2) */}
             <div className="grid grid-cols-2 gap-1.5">
               {criteriaList.map((crit, idx) => {
                 const cStyle = getStatusClasses(crit.status);
@@ -1266,6 +1278,8 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
               const genericMsgs = new Set([
                 'Produto auditado com sucesso.',
                 'Fidelidade de produto validada.',
+                'Fidelidade da peça validada.',
+                'Fidelidade da peça validada em comparação à imagem de referência.',
                 'Peça 100% fiel à foto de referência e regras corporais aplicadas.',
               ]);
               const specificIssues = (audit?.issues || [])

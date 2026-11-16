@@ -808,28 +808,22 @@ function pickDistinctGalleryModel(
 }
 
 function buildAnaMariaDefaultAudit(
-  bodyType: AnaMariaFormState['bodyType'],
-  shoeDescription: string
+  _bodyType: AnaMariaFormState['bodyType'],
+  _shoeDescription: string
 ): AnaMariaAudit {
   return {
     score: 96,
     status: 'green',
     label: 'Verde — Fidelidade Aprovada',
     criteria: [
+      { name: 'Cor da Peça', score: 97, status: 'green' },
       { name: 'Comprimento da Peça', score: 97, status: 'green' },
-      { name: 'Corte Queixo', score: 100, status: 'green' },
-      { name: bodyType === 'plus_size' ? 'Plus Size (50-54)' : 'Curvas & Silhueta', score: 96, status: 'green' },
-      { name: 'Zero Tatuagens', score: 100, status: 'green' },
-      { name: 'Calçado Condicional', score: 95, status: 'green' },
+      { name: 'Textura do Tecido', score: 95, status: 'green' },
+      { name: 'Caimento da Peça', score: 96, status: 'green' },
+      { name: 'Detalhes da Peça', score: 96, status: 'green' },
+      { name: 'Posição das Costuras', score: 96, status: 'green' },
     ],
-    issues: [
-      `Calçado condicional selecionado: ${shoeDescription}`,
-      'Enquadramento rigoroso do queixo para baixo sem rosto',
-      bodyType === 'plus_size'
-        ? 'Estrutura corporal autêntica Plus Size (manequim 50-54) com celulite natural nas coxas e pele sem bronzeado artificial'
-        : 'Corpo com curvas e silhueta acentuadas',
-      'Zero tatuagens garantido',
-    ],
+    issues: ['Fidelidade da peça validada em comparação à imagem de referência.'],
   };
 }
 
@@ -871,6 +865,14 @@ async function runAnaMariaFidelityAudit(params: {
       audit?: {
         score: number;
         lengthScore?: number;
+        criteriaScores?: {
+          color?: number;
+          length?: number;
+          texture?: number;
+          drape?: number;
+          details?: number;
+          seams?: number;
+        };
         status: 'green' | 'yellow' | 'red' | 'orange';
         label: string;
         issues: string[];
@@ -891,22 +893,28 @@ async function runAnaMariaFidelityAudit(params: {
     );
 
     if (res && res.success && res.audit) {
-      const score = Math.max(0, Math.min(100, Number(res.audit.score) || 95));
-      const rawLengthScore =
-        res.audit.lengthScore !== undefined && res.audit.lengthScore !== null
-          ? Number(res.audit.lengthScore)
-          : NaN;
-      const lengthScore = Number.isFinite(rawLengthScore)
-        ? Math.max(0, Math.min(100, Math.round(rawLengthScore)))
-        : score;
+      const clampCriterionScore = (val: unknown, fallback: number): number => {
+        const n = val !== undefined && val !== null ? Number(val) : NaN;
+        return Number.isFinite(n) ? Math.max(0, Math.min(100, Math.round(n))) : fallback;
+      };
+      const toCritStatus = (s: number): 'green' | 'yellow' | 'red' =>
+        s >= 90 ? 'green' : s >= 70 ? 'yellow' : 'red';
+
+      const score = clampCriterionScore(res.audit.score, 95);
+      const rawScores = res.audit.criteriaScores || {};
+      const colorScore = clampCriterionScore(rawScores.color, score);
+      const lengthScore = clampCriterionScore(rawScores.length ?? res.audit.lengthScore, score);
+      const textureScore = clampCriterionScore(rawScores.texture, score);
+      const drapeScore = clampCriterionScore(rawScores.drape, score);
+      const detailsScore = clampCriterionScore(rawScores.details, score);
+      const seamsScore = clampCriterionScore(rawScores.seams, score);
+
       const status =
         res.audit.status === 'green' || score >= 90
           ? 'green'
           : res.audit.status === 'yellow' || score >= 70
           ? 'yellow'
           : 'red';
-      const lengthStatus =
-        lengthScore >= 90 ? 'green' : lengthScore >= 70 ? 'yellow' : 'red';
       const rawIssues = Array.isArray(res.audit.issues)
         ? res.audit.issues.map((i) => String(i || '').trim()).filter(Boolean)
         : [];
@@ -921,14 +929,14 @@ async function runAnaMariaFidelityAudit(params: {
           : status === 'green'
           ? fallbackAudit.issues
           : [fallbackNonGreenReason];
-      const lengthIssue =
-        lengthStatus !== 'green'
-          ? issuesList.find((i) =>
-              /comprimento|barra|canela|tornozelo|curto|longo|midi|encurt|along/i.test(i)
-            ) ||
-            issuesList.join('; ') ||
-            `Comprimento divergiu da imagem de referência (${lengthScore}%).`
-          : undefined;
+      const pickCriterionIssue = (critScore: number, pattern: RegExp, label: string) => {
+        if (critScore >= 90) return undefined;
+        return (
+          issuesList.find((i) => pattern.test(i)) ||
+          issuesList.join('; ') ||
+          `${label} divergiu da imagem de referência (${critScore}%).`
+        );
+      };
       const correctionPrompt =
         res.audit.correctionPrompt ||
         (status !== 'green'
@@ -948,24 +956,49 @@ async function runAnaMariaFidelityAudit(params: {
               : `Vermelho — Divergência Detectada (${score}%)`),
           criteria: [
             {
-              name: 'Fidelidade da Peça',
-              score,
-              status,
-              issue: status !== 'green' ? issuesList.join('; ') : undefined,
+              name: 'Cor da Peça',
+              score: colorScore,
+              status: toCritStatus(colorScore),
+              issue: pickCriterionIssue(colorScore, /cor|tom|tonalidade|estampa/i, 'Cor da Peça'),
             },
             {
               name: 'Comprimento da Peça',
               score: lengthScore,
-              status: lengthStatus,
-              issue: lengthIssue,
+              status: toCritStatus(lengthScore),
+              issue: pickCriterionIssue(
+                lengthScore,
+                /comprimento|barra|canela|tornozelo|curto|longo|midi|encurt|along/i,
+                'Comprimento da Peça'
+              ),
             },
-            { name: 'Corte Queixo', score: 100, status: 'green' },
             {
-              name: bodyType === 'plus_size' ? 'Plus Size (50-54)' : 'Curvas & Silhueta',
-              score: 96,
-              status: 'green',
+              name: 'Textura do Tecido',
+              score: textureScore,
+              status: toCritStatus(textureScore),
+              issue: pickCriterionIssue(textureScore, /tecido|textura|trama|pano|malha/i, 'Textura do Tecido'),
             },
-            { name: 'Calçado Condicional', score: 95, status: 'green' },
+            {
+              name: 'Caimento da Peça',
+              score: drapeScore,
+              status: toCritStatus(drapeScore),
+              issue: pickCriterionIssue(drapeScore, /caimento|modelagem|silhueta|ajuste|folga/i, 'Caimento da Peça'),
+            },
+            {
+              name: 'Detalhes da Peça',
+              score: detailsScore,
+              status: toCritStatus(detailsScore),
+              issue: pickCriterionIssue(
+                detailsScore,
+                /bolso|fenda|al[cç]a|cord[aã]o|amarr|bot[aã]o|bot[oõ]es|detalhe|short/i,
+                'Detalhes da Peça'
+              ),
+            },
+            {
+              name: 'Posição das Costuras',
+              score: seamsScore,
+              status: toCritStatus(seamsScore),
+              issue: pickCriterionIssue(seamsScore, /costura|recorte|pence|c[oó]s|decote|barra/i, 'Posição das Costuras'),
+            },
           ],
           issues: issuesList,
           correctionPrompt,

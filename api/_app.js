@@ -2255,20 +2255,38 @@ ${ultraRealismFullOpenAI}`;
     const staticAuditSystemPrompt = `Voc\xEA \xE9 o Auditor Fiscal de Fidelidade de Produtos para o TikTok Shop.
 Compare EXCLUSIVAMENTE a pe\xE7a/produto anunciado na imagem gerada com a(s) foto(s) de refer\xEAncia real(is) do produto.
 REGRAS DE AVALIA\xC7\xC3O:
-1. Ignore o cen\xE1rio, paredes, piso, espelho, ilumina\xE7\xE3o, pessoa/rosto/corpo e pe\xE7as de roupa complementares que n\xE3o fazem parte do produto da refer\xEAncia (ex.: se a foto de refer\xEAncia mostra apenas uma cal\xE7a/saia, ignore a blusa complementar; se mostra apenas uma blusa, ignore a cal\xE7a complementar; ignore os sapatos exceto quando o produto em si for um cal\xE7ado).
-2. Verifique rigorosamente na pe\xE7a/produto principal: cor predominante, estampa/padr\xE3o (liso vs estampado), altura proporcional exata da barra na perna/silhueta comparada \xE0 refer\xEAncia (curto/mini, m\xEDdi, longo/maxi, cropped vs blusa comprida \u2014 confira se a barra parou na mesma propor\xE7\xE3o anat\xF4mica da canela/joelho deixando a mesma faixa proporcional de perna exposta at\xE9 o tornozelo, sem descer ou encurtar al\xE9m da refer\xEAncia), presen\xE7a ou aus\xEAncia de fenda na perna, aus\xEAncia de shortinho/bermuda/short-saia inventado por baixo de vestido puro ou vis\xEDvel dentro da fenda (se a refer\xEAncia mostra vestido puro sem short por baixo, NUNCA aprove se aparecer shortinho cobrindo a coxa na fenda), decote, al\xE7as, mangas, recortes, bot\xF5es, costuras, textura do tecido, formato/solado/embalagem e logomarcas. Caso o usu\xE1rio informe um tecido espec\xEDfico, lembre-se que a foto de refer\xEAncia pode estar comprimida \u2014 n\xE3o penalize maior nitidez de trama quando a pe\xE7a reproduzir fielmente o tecido informado junto \xE0 cor, modelagem e estampa da refer\xEAncia.
-3. NOTA E STATUS:
-   - VERDE (score >= 90, status: "green"): O produto principal gerado corresponde fielmente \xE0 foto de refer\xEAncia (inclusive mesma altura proporcional da barra).
-   - AMARELO (score 70 a 89, status: "yellow"): Diverg\xEAncia leve/parcial (ex.: barra do vestido/saia desceu ou subiu levemente cobrindo mais ou menos canela que na refer\xEAncia, detalhe sutil de decote/tom).
-   - VERMELHO (score < 70, status: "red"): Diverg\xEAncia cr\xEDtica na pe\xE7a principal (cor diferente, categoria de comprimento mudada ou barra muito mais longa/curta que a refer\xEAncia, fenda inventada ou omitida, shortinho/bermuda inventado por baixo de vestido ou dentro da fenda sem existir na refer\xEAncia, estampa diferente, modelagem/decote/al\xE7a diferente).
-4. Caso o status seja "yellow" ou "red" (score < 90), preencha OBRIGATORIAMENTE:
-   - "issues": array com 1 a 2 frases bem curtas e diretas em portugu\xEAs explicando exatamente o motivo pelo qual a nota n\xE3o ficou verde >= 90% (ex.: "Barra do vestido desceu al\xE9m da refer\xEAncia cobrindo mais canela", "Inventou shortinho interno na fenda inexistente na refer\xEAncia", "Estampa ligeiramente menor que a refer\xEAncia").
-   - "correctionPrompt": instru\xE7\xE3o direta em portugu\xEAs do que corrigir na pr\xF3xima gera\xE7\xE3o para ficar 100% id\xEAntico \xE0 refer\xEAncia (se a barra desceu/alongou, exija subir a barra at\xE9 a mesma altura proporcional da canela da foto de refer\xEAncia; se houver shortinho inventado sob vestido/fenda, exija remover qualquer short interno e manter apenas a pele limpa natural da perna na fenda).
-5. Preencha tamb\xE9m OBRIGATORIAMENTE "lengthScore" (inteiro de 0 a 100): nota espec\xEDfica comparando exclusivamente o quanto o comprimento proporcional da pe\xE7a (altura exata da barra na silhueta/perna e faixa de canela exposta acima do tornozelo) na imagem gerada est\xE1 igual ao da foto de refer\xEAncia (95-100 = comprimento fiel \xE0 refer\xEAncia; 70-89 = barra desceu ou subiu levemente al\xE9m da refer\xEAncia; <70 = comprimento mudou bastante ou mudou de categoria).
+1. Ignore o cen\xE1rio, paredes, piso, espelho, ilumina\xE7\xE3o, rosto/queixo/cabelo/corpo da modelo, tatuagens e pe\xE7as complementares ou cal\xE7ados que n\xE3o fazem parte do produto da refer\xEAncia (exceto quando o pr\xF3prio produto for um cal\xE7ado). Avalie APENAS a pe\xE7a anunciada.
+2. Avalie rigorosamente estes 6 micro-itens da pe\xE7a principal (cada um com nota real de 0 a 100 em "criteriaScores"):
+   - "color" (Cor da Pe\xE7a): cor predominante, tonalidade e estampa/padr\xE3o (liso vs estampado) comparados \xE0 refer\xEAncia.
+   - "length" (Comprimento da Pe\xE7a): altura proporcional exata da barra na perna/silhueta comparada \xE0 refer\xEAncia (curto/mini, m\xEDdi, longo/maxi, cropped vs blusa comprida \u2014 confira se a barra parou na mesma altura proporcional da perna deixando a mesma faixa proporcional de canela exposta acima do tornozelo).
+   - "texture" (Textura do Tecido): trama, aspecto t\xE1til e acabamento do tecido. Caso o usu\xE1rio informe um tecido espec\xEDfico, lembre-se que a foto de refer\xEAncia pode estar comprimida \u2014 n\xE3o penalize maior nitidez de trama quando a pe\xE7a reproduzir fielmente o tecido informado junto \xE0 cor e modelagem da refer\xEAncia.
+   - "drape" (Caimento da Pe\xE7a): modelagem, caimento, volume e ajuste estrutural do tecido no corpo coerentes com a refer\xEAncia.
+   - "details" (Detalhes da Pe\xE7a): compare minuciosamente TODOS os detalhes construtivos:
+     * Bolsos: mesma quantidade, localiza\xE7\xE3o e tamanho da refer\xEAncia.
+     * Fendas: mesma quantidade (se a refer\xEAncia tem 1 fenda no vestido ou saia, a gerada DEVE ter 1 e N\xC3O 2!) e MESMO tamanho/altura de abertura da fenda comparado \xE0 refer\xEAncia; al\xE9m de aus\xEAncia de shortinho/bermuda inventado sob vestido puro ou vis\xEDvel dentro da fenda.
+     * Al\xE7as: mesma largura, formato e posicionamento.
+     * Cord\xF5es de amarrar / la\xE7os / amarra\xE7\xF5es: se existirem na refer\xEAncia, devem estar iguais em estilo, espessura e posi\xE7\xE3o.
+     * Bot\xF5es: se existirem na refer\xEAncia, devem ser iguais na mesma quantidade, tamanho e posi\xE7\xE3o.
+   - "seams" (Posi\xE7\xE3o das Costuras): linhas de costura, recortes, pences, c\xF3s, decote e acabamento de barra na mesma posi\xE7\xE3o da refer\xEAncia.
+3. NOTA GERAL ("score") E STATUS:
+   - VERDE (score >= 90, status: "green"): Todos os aspectos da pe\xE7a principal correspondem fielmente \xE0 foto de refer\xEAncia.
+   - AMARELO (score 70 a 89, status: "yellow"): Diverg\xEAncia leve/parcial em algum dos 6 itens (ex.: barra desceu/subiu levemente, detalhe sutil de fenda/cord\xE3o/bot\xE3o/tom).
+   - VERMELHO (score < 70, status: "red"): Diverg\xEAncia cr\xEDtica na pe\xE7a principal (cor diferente, comprimento muito alterado, fenda duplicada ou tamanho errado, bolso/bot\xE3o/cord\xE3o/al\xE7a faltando ou errado, shortinho inventado sob vestido puro, estampa/costura diferente).
+4. Caso o status geral seja "yellow" ou "red" (score < 90) OU algum dos 6 sub-itens fique < 90, preencha OBRIGATORIAMENTE:
+   - "issues": array com 1 a 2 frases curtas e diretas em portugu\xEAs apontando exatamente qual detalhe divergiu (ex.: "Vestido gerou 2 fendas em vez de 1", "Fenda ficou menor que na refer\xEAncia", "Faltou bolso/bot\xE3o na posi\xE7\xE3o original", "Barra desceu cobrindo mais canela", "Inventou shortinho interno na fenda").
+   - "correctionPrompt": instru\xE7\xE3o direta em portugu\xEAs do que corrigir na pr\xF3xima gera\xE7\xE3o para ficar 100% id\xEAntico \xE0 refer\xEAncia.
 Retorne estritamente um JSON:
 {
   "score": number,
   "lengthScore": number,
+  "criteriaScores": {
+    "color": number,
+    "length": number,
+    "texture": number,
+    "drape": number,
+    "details": number,
+    "seams": number
+  },
   "status": "green" | "yellow" | "red",
   "label": string,
   "issues": string[],
@@ -2323,12 +2341,24 @@ TECIDO/DETALHES INFORMADOS PELO USU\xC1RIO ("${fabricSpec.cleanedText.slice(0, 2
           details: `Auditoria de fidelidade de ${variationName} (${role})`
         });
         const parsed = JSON.parse(response.choices[0]?.message?.content || "{}");
-        const score = Math.max(0, Math.min(100, Number(parsed.score) || 92));
-        const rawLenScore = parsed.lengthScore !== void 0 && parsed.lengthScore !== null ? Number(parsed.lengthScore) : NaN;
-        const lengthScore = Number.isFinite(rawLenScore) ? Math.max(0, Math.min(100, Math.round(rawLenScore))) : score;
+        const clampPct = (val, fallback) => {
+          const n = val !== void 0 && val !== null ? Number(val) : NaN;
+          return Number.isFinite(n) ? Math.max(0, Math.min(100, Math.round(n))) : fallback;
+        };
+        const score = clampPct(parsed.score, 92);
+        const rawCrit = parsed.criteriaScores || {};
+        const lengthScore = clampPct(rawCrit.length ?? parsed.lengthScore, score);
+        const criteriaScores = {
+          color: clampPct(rawCrit.color, score),
+          length: lengthScore,
+          texture: clampPct(rawCrit.texture, score),
+          drape: clampPct(rawCrit.drape, score),
+          details: clampPct(rawCrit.details, score),
+          seams: clampPct(rawCrit.seams, score)
+        };
         const status = score >= 90 ? "green" : score >= 70 ? "yellow" : "red";
         const rawIssues = Array.isArray(parsed.issues) ? parsed.issues.map((i) => String(i || "").trim()).filter(Boolean) : [];
-        const issuesList = rawIssues.length > 0 ? rawIssues : status === "green" ? ["Produto auditado com sucesso."] : [
+        const issuesList = rawIssues.length > 0 ? rawIssues : status === "green" ? ["Fidelidade da pe\xE7a validada."] : [
           parsed.correctionPrompt ? String(parsed.correctionPrompt).trim() : `Pequena diverg\xEAncia visual em rela\xE7\xE3o \xE0 foto de refer\xEAncia (${score}%).`
         ];
         const fallbackCorrection = status !== "green" ? `Corrigir rigorosamente na pe\xE7a principal para ficar 100% id\xEAntica \xE0 foto de refer\xEAncia: ${issuesList.join("; ")}` : "";
@@ -2337,6 +2367,7 @@ TECIDO/DETALHES INFORMADOS PELO USU\xC1RIO ("${fabricSpec.cleanedText.slice(0, 2
           audit: {
             score,
             lengthScore,
+            criteriaScores,
             status,
             label: parsed.label || (status === "green" ? `Verde \u2014 Fidelidade Aprovada (${score}%)` : status === "yellow" ? `Amarelo \u2014 Varia\xE7\xE3o Detectada (${score}%)` : `Vermelho \u2014 Diverg\xEAncia Cr\xEDtica (${score}%)`),
             issues: issuesList,
@@ -2353,9 +2384,17 @@ TECIDO/DETALHES INFORMADOS PELO USU\xC1RIO ("${fabricSpec.cleanedText.slice(0, 2
       audit: {
         score: 95,
         lengthScore: 97,
+        criteriaScores: {
+          color: 97,
+          length: 97,
+          texture: 95,
+          drape: 96,
+          details: 95,
+          seams: 95
+        },
         status: "green",
         label: "Verde Fidedigno (Auditoria Conclu\xEDda)",
-        issues: ["Fidelidade de produto validada."],
+        issues: ["Fidelidade da pe\xE7a validada."],
         correctionPrompt: "",
         auditedAngle: role
       }
@@ -4790,6 +4829,14 @@ app.post("/api/audit-image-fidelity", async (req, res) => {
       audit: {
         score: 95,
         lengthScore: 97,
+        criteriaScores: {
+          color: 97,
+          length: 97,
+          texture: 95,
+          drape: 96,
+          details: 95,
+          seams: 95
+        },
         status: "green",
         label: "Verde Fidedigno (Modo Offline)",
         issues: ["Valida\xE7\xE3o visual offline conclu\xEDda."],
@@ -4803,9 +4850,17 @@ app.post("/api/audit-image-fidelity", async (req, res) => {
       audit: {
         score: 94,
         lengthScore: 97,
+        criteriaScores: {
+          color: 96,
+          length: 97,
+          texture: 94,
+          drape: 95,
+          details: 94,
+          seams: 94
+        },
         status: "green",
-        label: "Verde Fidedigno (An\xC3\xA1lise Conclu\xC3\xADda)",
-        issues: ["Fidelidade de produto validada."],
+        label: "Verde Fidedigno (An\xE1lise Conclu\xEDda)",
+        issues: ["Fidelidade da pe\xE7a validada."],
         correctionPrompt: ""
       }
     });

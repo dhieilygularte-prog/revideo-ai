@@ -31,9 +31,19 @@ export interface OnScreenTextItem {
   timestamp: string; // Ex: "00:01 - 00:03"
 }
 
+export interface FidelityCriteriaScores {
+  color: number;   // Cor da Peça
+  length: number;  // Comprimento da Peça
+  texture: number; // Textura do Tecido
+  drape: number;   // Caimento da Peça
+  details: number; // Detalhes da Peça (bolsos, fendas, alças, cordões, botões)
+  seams: number;   // Posição das Costuras
+}
+
 export interface FidelityAuditResult {
   score: number; // 0 to 100
   lengthScore?: number; // 0 to 100 (fidelidade do comprimento em relação à referência)
+  criteriaScores?: FidelityCriteriaScores;
   status: 'green' | 'yellow' | 'red';
   label: string; // Ex: "Verde Fidedigno (98%)"
   issues: string[]; // Lista de inconsistências encontradas

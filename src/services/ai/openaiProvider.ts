@@ -1297,20 +1297,38 @@ Preserve fielmente qualquer logomarca, estampa ou acabamento original da peça. 
     const staticAuditSystemPrompt = `Você é o Auditor Fiscal de Fidelidade de Produtos para o TikTok Shop.
 Compare EXCLUSIVAMENTE a peça/produto anunciado na imagem gerada com a(s) foto(s) de referência real(is) do produto.
 REGRAS DE AVALIAÇÃO:
-1. Ignore o cenário, paredes, piso, espelho, iluminação, pessoa/rosto/corpo e peças de roupa complementares que não fazem parte do produto da referência (ex.: se a foto de referência mostra apenas uma calça/saia, ignore a blusa complementar; se mostra apenas uma blusa, ignore a calça complementar; ignore os sapatos exceto quando o produto em si for um calçado).
-2. Verifique rigorosamente na peça/produto principal: cor predominante, estampa/padrão (liso vs estampado), altura proporcional exata da barra na perna/silhueta comparada à referência (curto/mini, mídi, longo/maxi, cropped vs blusa comprida — confira se a barra parou na mesma proporção anatômica da canela/joelho deixando a mesma faixa proporcional de perna exposta até o tornozelo, sem descer ou encurtar além da referência), presença ou ausência de fenda na perna, ausência de shortinho/bermuda/short-saia inventado por baixo de vestido puro ou visível dentro da fenda (se a referência mostra vestido puro sem short por baixo, NUNCA aprove se aparecer shortinho cobrindo a coxa na fenda), decote, alças, mangas, recortes, botões, costuras, textura do tecido, formato/solado/embalagem e logomarcas. Caso o usuário informe um tecido específico, lembre-se que a foto de referência pode estar comprimida — não penalize maior nitidez de trama quando a peça reproduzir fielmente o tecido informado junto à cor, modelagem e estampa da referência.
-3. NOTA E STATUS:
-   - VERDE (score >= 90, status: "green"): O produto principal gerado corresponde fielmente à foto de referência (inclusive mesma altura proporcional da barra).
-   - AMARELO (score 70 a 89, status: "yellow"): Divergência leve/parcial (ex.: barra do vestido/saia desceu ou subiu levemente cobrindo mais ou menos canela que na referência, detalhe sutil de decote/tom).
-   - VERMELHO (score < 70, status: "red"): Divergência crítica na peça principal (cor diferente, categoria de comprimento mudada ou barra muito mais longa/curta que a referência, fenda inventada ou omitida, shortinho/bermuda inventado por baixo de vestido ou dentro da fenda sem existir na referência, estampa diferente, modelagem/decote/alça diferente).
-4. Caso o status seja "yellow" ou "red" (score < 90), preencha OBRIGATORIAMENTE:
-   - "issues": array com 1 a 2 frases bem curtas e diretas em português explicando exatamente o motivo pelo qual a nota não ficou verde >= 90% (ex.: "Barra do vestido desceu além da referência cobrindo mais canela", "Inventou shortinho interno na fenda inexistente na referência", "Estampa ligeiramente menor que a referência").
-   - "correctionPrompt": instrução direta em português do que corrigir na próxima geração para ficar 100% idêntico à referência (se a barra desceu/alongou, exija subir a barra até a mesma altura proporcional da canela da foto de referência; se houver shortinho inventado sob vestido/fenda, exija remover qualquer short interno e manter apenas a pele limpa natural da perna na fenda).
-5. Preencha também OBRIGATORIAMENTE "lengthScore" (inteiro de 0 a 100): nota específica comparando exclusivamente o quanto o comprimento proporcional da peça (altura exata da barra na silhueta/perna e faixa de canela exposta acima do tornozelo) na imagem gerada está igual ao da foto de referência (95-100 = comprimento fiel à referência; 70-89 = barra desceu ou subiu levemente além da referência; <70 = comprimento mudou bastante ou mudou de categoria).
+1. Ignore o cenário, paredes, piso, espelho, iluminação, rosto/queixo/cabelo/corpo da modelo, tatuagens e peças complementares ou calçados que não fazem parte do produto da referência (exceto quando o próprio produto for um calçado). Avalie APENAS a peça anunciada.
+2. Avalie rigorosamente estes 6 micro-itens da peça principal (cada um com nota real de 0 a 100 em "criteriaScores"):
+   - "color" (Cor da Peça): cor predominante, tonalidade e estampa/padrão (liso vs estampado) comparados à referência.
+   - "length" (Comprimento da Peça): altura proporcional exata da barra na perna/silhueta comparada à referência (curto/mini, mídi, longo/maxi, cropped vs blusa comprida — confira se a barra parou na mesma altura proporcional da perna deixando a mesma faixa proporcional de canela exposta acima do tornozelo).
+   - "texture" (Textura do Tecido): trama, aspecto tátil e acabamento do tecido. Caso o usuário informe um tecido específico, lembre-se que a foto de referência pode estar comprimida — não penalize maior nitidez de trama quando a peça reproduzir fielmente o tecido informado junto à cor e modelagem da referência.
+   - "drape" (Caimento da Peça): modelagem, caimento, volume e ajuste estrutural do tecido no corpo coerentes com a referência.
+   - "details" (Detalhes da Peça): compare minuciosamente TODOS os detalhes construtivos:
+     * Bolsos: mesma quantidade, localização e tamanho da referência.
+     * Fendas: mesma quantidade (se a referência tem 1 fenda no vestido ou saia, a gerada DEVE ter 1 e NÃO 2!) e MESMO tamanho/altura de abertura da fenda comparado à referência; além de ausência de shortinho/bermuda inventado sob vestido puro ou visível dentro da fenda.
+     * Alças: mesma largura, formato e posicionamento.
+     * Cordões de amarrar / laços / amarrações: se existirem na referência, devem estar iguais em estilo, espessura e posição.
+     * Botões: se existirem na referência, devem ser iguais na mesma quantidade, tamanho e posição.
+   - "seams" (Posição das Costuras): linhas de costura, recortes, pences, cós, decote e acabamento de barra na mesma posição da referência.
+3. NOTA GERAL ("score") E STATUS:
+   - VERDE (score >= 90, status: "green"): Todos os aspectos da peça principal correspondem fielmente à foto de referência.
+   - AMARELO (score 70 a 89, status: "yellow"): Divergência leve/parcial em algum dos 6 itens (ex.: barra desceu/subiu levemente, detalhe sutil de fenda/cordão/botão/tom).
+   - VERMELHO (score < 70, status: "red"): Divergência crítica na peça principal (cor diferente, comprimento muito alterado, fenda duplicada ou tamanho errado, bolso/botão/cordão/alça faltando ou errado, shortinho inventado sob vestido puro, estampa/costura diferente).
+4. Caso o status geral seja "yellow" ou "red" (score < 90) OU algum dos 6 sub-itens fique < 90, preencha OBRIGATORIAMENTE:
+   - "issues": array com 1 a 2 frases curtas e diretas em português apontando exatamente qual detalhe divergiu (ex.: "Vestido gerou 2 fendas em vez de 1", "Fenda ficou menor que na referência", "Faltou bolso/botão na posição original", "Barra desceu cobrindo mais canela", "Inventou shortinho interno na fenda").
+   - "correctionPrompt": instrução direta em português do que corrigir na próxima geração para ficar 100% idêntico à referência.
 Retorne estritamente um JSON:
 {
   "score": number,
   "lengthScore": number,
+  "criteriaScores": {
+    "color": number,
+    "length": number,
+    "texture": number,
+    "drape": number,
+    "details": number,
+    "seams": number
+  },
   "status": "green" | "yellow" | "red",
   "label": string,
   "issues": string[],
@@ -1372,14 +1390,21 @@ Retorne estritamente um JSON:
         });
 
         const parsed = JSON.parse(response.choices[0]?.message?.content || '{}');
-        const score = Math.max(0, Math.min(100, Number(parsed.score) || 92));
-        const rawLenScore =
-          parsed.lengthScore !== undefined && parsed.lengthScore !== null
-            ? Number(parsed.lengthScore)
-            : NaN;
-        const lengthScore = Number.isFinite(rawLenScore)
-          ? Math.max(0, Math.min(100, Math.round(rawLenScore)))
-          : score;
+        const clampPct = (val: unknown, fallback: number): number => {
+          const n = val !== undefined && val !== null ? Number(val) : NaN;
+          return Number.isFinite(n) ? Math.max(0, Math.min(100, Math.round(n))) : fallback;
+        };
+        const score = clampPct(parsed.score, 92);
+        const rawCrit = (parsed.criteriaScores || {}) as Record<string, unknown>;
+        const lengthScore = clampPct(rawCrit.length ?? parsed.lengthScore, score);
+        const criteriaScores = {
+          color: clampPct(rawCrit.color, score),
+          length: lengthScore,
+          texture: clampPct(rawCrit.texture, score),
+          drape: clampPct(rawCrit.drape, score),
+          details: clampPct(rawCrit.details, score),
+          seams: clampPct(rawCrit.seams, score),
+        };
         const status = score >= 90 ? 'green' : score >= 70 ? 'yellow' : 'red';
         const rawIssues = Array.isArray(parsed.issues)
           ? parsed.issues.map((i: any) => String(i || '').trim()).filter(Boolean)
@@ -1388,7 +1413,7 @@ Retorne estritamente um JSON:
           rawIssues.length > 0
             ? rawIssues
             : status === 'green'
-            ? ['Produto auditado com sucesso.']
+            ? ['Fidelidade da peça validada.']
             : [
                 parsed.correctionPrompt
                   ? String(parsed.correctionPrompt).trim()
@@ -1404,6 +1429,7 @@ Retorne estritamente um JSON:
           audit: {
             score,
             lengthScore,
+            criteriaScores,
             status,
             label:
               parsed.label ||
@@ -1427,9 +1453,17 @@ Retorne estritamente um JSON:
       audit: {
         score: 95,
         lengthScore: 97,
+        criteriaScores: {
+          color: 97,
+          length: 97,
+          texture: 95,
+          drape: 96,
+          details: 95,
+          seams: 95,
+        },
         status: 'green',
         label: 'Verde Fidedigno (Auditoria Concluída)',
-        issues: ['Fidelidade de produto validada.'],
+        issues: ['Fidelidade da peça validada.'],
         correctionPrompt: '',
         auditedAngle: role,
       },
