@@ -221,7 +221,7 @@ export const MODEL_GALLERY_COM_ROSTO: AnaMariaModelItem[] = [
     title: '23. Morena Cacheada',
     description: 'Cabelos escuros cacheados volumosos, olhar marcante, silhueta curvilínea e estilo urbano descontraído.',
     file: '23.png',
-    fullUrl: '/models/gallery/com_rosto/23.png?v=2',
+    fullUrl: '/models/gallery/com_rosto/23.png?v=3',
   },
   {
     id: 'modelo_24_loira_fitness',
@@ -230,7 +230,7 @@ export const MODEL_GALLERY_COM_ROSTO: AnaMariaModelItem[] = [
     title: '24. Loira Fitness',
     description: 'Biotipo fitness atlético e tonificado, pernas e abdômen definidos, cabelos ondulados loiros e visual esportivo vibrante.',
     file: '24.png',
-    fullUrl: '/models/gallery/com_rosto/24.png',
+    fullUrl: '/models/gallery/com_rosto/24.png?v=2',
   },
   {
     id: 'modelo_25_morena_cacheada',
