@@ -49,7 +49,6 @@ import {
   OPENAI_IMAGE_MODEL,
   OPENAI_IMAGE_QUALITY,
   OPENAI_IMAGE_SIZE,
-  OPENAI_IMAGE_FALLBACK_SIZE,
   OPENAI_AUDIT_MODEL,
   OPENAI_PRICING,
 } from '../../config/openaiModels';
@@ -1126,15 +1125,15 @@ Preserve fielmente qualquer logomarca, estampa ou acabamento original da peça. 
             size: chosenImageSize,
           });
         } catch (sizeErr: any) {
-          if ((chosenImageSize === '944x1680' || chosenImageSize === '1440x2560') && isSizeValidationErr(sizeErr)) {
-            console.warn(`[OpenAIProvider] size ${chosenImageSize} rejeitado pela API; alternando para`, OPENAI_IMAGE_FALLBACK_SIZE);
-            usedSize = OPENAI_IMAGE_FALLBACK_SIZE;
+          if (chosenImageSize === '1440x2560' && isSizeValidationErr(sizeErr)) {
+            console.warn('[OpenAIProvider] size 1440x2560 rejeitado pela API; alternando para', OPENAI_IMAGE_SIZE);
+            usedSize = OPENAI_IMAGE_SIZE;
             editResponse = await client.images.edit({
               model: OPENAI_IMAGE_MODEL,
               image: editImageInput,
               prompt: effectivePrompt,
               quality: OPENAI_IMAGE_QUALITY,
-              size: OPENAI_IMAGE_FALLBACK_SIZE,
+              size: OPENAI_IMAGE_SIZE,
             });
           } else {
             throw sizeErr;
@@ -1202,14 +1201,13 @@ Preserve fielmente qualquer logomarca, estampa ou acabamento original da peça. 
           size: chosenImageSize,
         });
       } catch (sizeErr: any) {
-        if ((chosenImageSize === '944x1680' || chosenImageSize === '1440x2560') && isSizeValidationErr(sizeErr)) {
-          console.warn(`[OpenAIProvider] size ${chosenImageSize} (generate) rejeitado pela API; alternando para`, OPENAI_IMAGE_FALLBACK_SIZE);
-          usedGenSize = OPENAI_IMAGE_FALLBACK_SIZE;
+        if (chosenImageSize === '1440x2560' && isSizeValidationErr(sizeErr)) {
+          usedGenSize = OPENAI_IMAGE_SIZE;
           genResponse = await client.images.generate({
             model: OPENAI_IMAGE_MODEL,
             prompt: effectivePrompt,
             quality: OPENAI_IMAGE_QUALITY,
-            size: OPENAI_IMAGE_FALLBACK_SIZE,
+            size: OPENAI_IMAGE_SIZE,
           });
         } else {
           throw sizeErr;

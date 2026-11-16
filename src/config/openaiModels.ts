@@ -18,13 +18,12 @@ export const OPENAI_AUDIO_MODEL = 'gpt-transcribe';
 /**
  * 3. Geração das Imagens Verticais (9:16) com Múltiplas Fotos Reais de Referência
  * Modelo: gpt-image-2.5-sunburst
- * Parâmetros de alta precisão: quality: 'high', input_fidelity: 'high', size: '944x1680' (padrão calibrado p/ 1080x1920)
+ * Parâmetros de alta precisão: quality: 'high', input_fidelity: 'high', size: '1024x1792'
  */
 export const OPENAI_IMAGE_MODEL = 'gpt-image-2.5-sunburst';
 export const OPENAI_IMAGE_QUALITY = 'high' as const;
 export const OPENAI_IMAGE_FIDELITY = 'high' as const;
-export const OPENAI_IMAGE_SIZE = '944x1680' as const;
-export const OPENAI_IMAGE_FALLBACK_SIZE = '1024x1792' as const;
+export const OPENAI_IMAGE_SIZE = '1024x1792' as const;
 
 /**
  * 4. Auditoria Visual de Fidelidade de Produto (Fiscal TikTok Shop)

@@ -1038,8 +1038,7 @@ var OPENAI_REASONING_EFFORT = "medium";
 var OPENAI_AUDIO_MODEL = "gpt-transcribe";
 var OPENAI_IMAGE_MODEL = "gpt-image-2.5-sunburst";
 var OPENAI_IMAGE_QUALITY = "high";
-var OPENAI_IMAGE_SIZE = "944x1680";
-var OPENAI_IMAGE_FALLBACK_SIZE = "1024x1792";
+var OPENAI_IMAGE_SIZE = "1024x1792";
 var OPENAI_AUDIT_MODEL = "gpt-5.6-luna";
 var OPENAI_PRICING = {
   // gpt-5.6-terra (USD per 1M tokens)
@@ -2106,15 +2105,15 @@ ${ultraRealismFullOpenAI}`;
             size: chosenImageSize
           });
         } catch (sizeErr) {
-          if ((chosenImageSize === "944x1680" || chosenImageSize === "1440x2560") && isSizeValidationErr(sizeErr)) {
-            console.warn(`[OpenAIProvider] size ${chosenImageSize} rejeitado pela API; alternando para`, OPENAI_IMAGE_FALLBACK_SIZE);
-            usedSize = OPENAI_IMAGE_FALLBACK_SIZE;
+          if (chosenImageSize === "1440x2560" && isSizeValidationErr(sizeErr)) {
+            console.warn("[OpenAIProvider] size 1440x2560 rejeitado pela API; alternando para", OPENAI_IMAGE_SIZE);
+            usedSize = OPENAI_IMAGE_SIZE;
             editResponse = await client.images.edit({
               model: OPENAI_IMAGE_MODEL,
               image: editImageInput,
               prompt: effectivePrompt,
               quality: OPENAI_IMAGE_QUALITY,
-              size: OPENAI_IMAGE_FALLBACK_SIZE
+              size: OPENAI_IMAGE_SIZE
             });
           } else {
             throw sizeErr;
@@ -2175,14 +2174,13 @@ ${ultraRealismFullOpenAI}`;
           size: chosenImageSize
         });
       } catch (sizeErr) {
-        if ((chosenImageSize === "944x1680" || chosenImageSize === "1440x2560") && isSizeValidationErr(sizeErr)) {
-          console.warn(`[OpenAIProvider] size ${chosenImageSize} (generate) rejeitado pela API; alternando para`, OPENAI_IMAGE_FALLBACK_SIZE);
-          usedGenSize = OPENAI_IMAGE_FALLBACK_SIZE;
+        if (chosenImageSize === "1440x2560" && isSizeValidationErr(sizeErr)) {
+          usedGenSize = OPENAI_IMAGE_SIZE;
           genResponse = await client.images.generate({
             model: OPENAI_IMAGE_MODEL,
             prompt: effectivePrompt,
             quality: OPENAI_IMAGE_QUALITY,
-            size: OPENAI_IMAGE_FALLBACK_SIZE
+            size: OPENAI_IMAGE_SIZE
           });
         } else {
           throw sizeErr;
