@@ -49,7 +49,7 @@ import {
   resolveHeadlineAndHashtags,
   resolveMultipleDistinctHeadlines,
 } from './anaMariaBank';
-import { KLING_FIXED_VIDEO_PROMPT } from './anaMariaPrompts';
+import { resolveKlingFixedVideoPrompt } from './anaMariaPrompts';
 import { getMasterPromptById } from './masterPromptsData';
 import { VideoFidelityAuditor } from '../produtos2/VideoFidelityAuditor';
 import { AIProfile } from '../config/aiProfiles';
@@ -353,7 +353,13 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
 
   const handleCopyKlingFixedPrompt = async () => {
     try {
-      await navigator.clipboard.writeText(KLING_FIXED_VIDEO_PROMPT);
+      const klingText = resolveKlingFixedVideoPrompt({
+        productName: result.productName,
+        productInfo: result.productInfo,
+        additionalInstructions: result.additionalInstructions,
+        influencer: result.influencer,
+      });
+      await navigator.clipboard.writeText(klingText);
       setCopiedKlingPrompt(true);
       setHasCopiedPromptOnce(true);
       setTimeout(() => setCopiedKlingPrompt(false), 2500);

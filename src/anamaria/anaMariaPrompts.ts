@@ -85,6 +85,49 @@ export const KLING_FIXED_VIDEO_PROMPT = `Create a 10-second ultra-realistic fash
 
 Natural, fluid and realistic human movements. No exaggerated gestures, no camera movement, no cuts, no transitions, no additional objects, no speech, no voiceover, no subtitles and no on-screen text.`;
 
+export const KLING_TROUSERS_FEMALE_VIDEO_PROMPT = `Create a 10-second ultra-realistic fashion video using the provided image as the EXACT first frame.
+
+**ACTION — FOLLOW THIS EXACT MOVEMENT SEQUENCE:**
+
+0–2s: Starting from her pose, the model gently holds the trousers on her hip with one hand, lightly touching and pulling the fabric outward to show its fit and drape.
+
+2–4s: She releases the fabric and moves the same hand toward the waistband, bringing it close to the camera to highlight the waistband details. Her fingers gently glide over the waistband, showcasing its elastic construction and finish.
+
+4–6s: Her hand quickly moves downward from the waistband, tracing the trousers along the waist, hip and thigh, highlighting the fit, silhouette and fabric details.
+
+6–8s: She gently turns her body slightly to one side, creating a subtle three-quarter angle to showcase the trousers' silhouette. NEVER turn her back to the camera or show the back of the garment.
+
+8–10s: She smoothly returns to her frontal position and finishes in a natural, relaxed pose.
+
+**CAMERA & PHONE LOCK:** Preserve the exact original camera angle, framing, perspective and smartphone position throughout the entire video. The camera must remain completely stationary. If the model holds the phone with both hands, only one hand may be released to perform the movements while the other continuously holds the phone in exactly the original position. Never change the phone's position or orientation.
+
+**IDENTITY & FRAMING:** Preserve the exact original model, body proportions, appearance and facial features. If her face is visible, maintain it consistently. If it is cropped or hidden, preserve the exact original framing without revealing additional facial features.
+
+**ABSOLUTE PRODUCT FIDELITY:** The trousers must remain IDENTICAL to the reference image throughout every frame. Preserve their exact color, fabric, texture, cut, waistband, length, seams, stitching, buttons, patterns and all construction details. NEVER redesign, reshape, replace or modify any part of the garment.
+
+Natural, fluid and realistic human movements. No exaggerated gestures, no camera movement, no cuts, no transitions, no additional objects, no speech, no voiceover, no subtitles and no on-screen text.`;
+
+export function resolveKlingFixedVideoPrompt(params: {
+  productName?: string;
+  productInfo?: string;
+  additionalInstructions?: string;
+  influencer?: AnaMariaInfluencer;
+}): string {
+  if (params.influencer === 'Homem') {
+    return KLING_FIXED_VIDEO_PROMPT;
+  }
+  const combined = `${params.productName || ''} ${params.productInfo || ''} ${params.additionalInstructions || ''}`
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  const isConjunto = /\b(conjunto|conjuntinho)\b/i.test(combined);
+  const isPantsOrSkirt = /\b(calca|calcas|pantalona|wide\s*leg|flare|pantacourt|legging|jeans|saia|saias|minissaia)\b/i.test(combined);
+  if (isPantsOrSkirt && !isConjunto) {
+    return KLING_TROUSERS_FEMALE_VIDEO_PROMPT;
+  }
+  return KLING_FIXED_VIDEO_PROMPT;
+}
+
 export const SHOE_CONTRAST_COLOR_RULE_PT =
   'REGRA DE COR DO CALÇADO (CONTRASTE OBRIGATÓRIO QUANDO PRÓXIMO À PEÇA): O calçado NUNCA pode ser da mesma cor da peça de roupa que fica próxima ou encostando nele (ex.: se a calça/peça longa for branca ou off-white, o calçado NÃO pode ser branco e deve ter outra cor contrastante e harmônica como caramelo, nude amendoado, preto, marrom ou dourado; se a peça próxima ao pé for preta ou escura, o calçado deve ter cor clara contrastante como branco, off-white, nude claro, prata ou dourado). Se a peça for mais curta e não chegar perto do calçado, não há restrição. A cor fixa é sempre a da imagem de referência do produto; a cor do calçado é que se adapta para contrastar e combinar.';
 
