@@ -1465,22 +1465,34 @@ async function loadAndOptimizeGalleryAsset(filePath: string, fallbackMime = 'ima
   return optimizeImageDataUriForGeneration(rawUri, 1280, 90);
 }
 
-async function getGalleryModelBase64(modelNum?: number | string, presentationMode?: string): Promise<string | undefined> {
+async function getGalleryModelBase64(
+  modelNum?: number | string,
+  presentationMode?: string,
+  influencer?: string
+): Promise<string | undefined> {
   if (modelNum === undefined || modelNum === null || modelNum === '') return undefined;
   const numStr = String(modelNum).trim();
+  const isMale = influencer === 'Homem';
   const preferredFolder = presentationMode === 'com_rosto' || presentationMode === 'pov' ? 'com_rosto' : 'sem_rosto';
-  const cacheKey = `${preferredFolder}:${numStr}`;
+  const cacheKey = `${isMale ? 'masc' : 'fem'}:${preferredFolder}:${numStr}`;
   const cached = galleryModelMemoryCache.get(cacheKey);
   if (cached) return cached;
 
   const baseDir = path.join(process.cwd(), 'public', 'models', 'gallery');
   const secondaryFolder = preferredFolder === 'com_rosto' ? 'sem_rosto' : 'com_rosto';
-  const candidates = [
-    path.join(baseDir, preferredFolder, `${numStr}.png`),
-    path.join(baseDir, preferredFolder, `${numStr}.jpg`),
-    path.join(baseDir, `${numStr}.png`),
-    path.join(baseDir, secondaryFolder, `${numStr}.png`),
-  ];
+  const candidates = isMale
+    ? [
+        path.join(baseDir, 'masculina', preferredFolder, `${numStr}.png`),
+        path.join(baseDir, 'masculina', preferredFolder, `${numStr}.jpg`),
+        path.join(baseDir, 'masculina', secondaryFolder, `${numStr}.png`),
+        path.join(baseDir, 'masculina', secondaryFolder, `${numStr}.jpg`),
+      ]
+    : [
+        path.join(baseDir, preferredFolder, `${numStr}.png`),
+        path.join(baseDir, preferredFolder, `${numStr}.jpg`),
+        path.join(baseDir, `${numStr}.png`),
+        path.join(baseDir, secondaryFolder, `${numStr}.png`),
+      ];
   try {
     for (const filePath of candidates) {
       if (fs.existsSync(filePath)) {
@@ -2037,13 +2049,13 @@ app.post('/api/generate-scene-image', async (req, res) => {
     if (generateModelViaPrompt) {
       effectiveModelReferenceBase64 = undefined;
     } else if (isAnaMariaMode && selectedModelGalleryNumber && !isLockedGeneratedBase) {
-      const diskModel = await getGalleryModelBase64(selectedModelGalleryNumber, presentationMode);
+      const diskModel = await getGalleryModelBase64(selectedModelGalleryNumber, presentationMode, req.body?.influencer);
       if (diskModel) {
         effectiveModelReferenceBase64 = diskModel;
       }
     } else if (isAnaMariaMode && (!effectiveModelReferenceBase64 || effectiveModelReferenceBase64.length < 50)) {
       if (selectedModelGalleryNumber) {
-        effectiveModelReferenceBase64 = await getGalleryModelBase64(selectedModelGalleryNumber, presentationMode);
+        effectiveModelReferenceBase64 = await getGalleryModelBase64(selectedModelGalleryNumber, presentationMode, req.body?.influencer);
       }
     }
 

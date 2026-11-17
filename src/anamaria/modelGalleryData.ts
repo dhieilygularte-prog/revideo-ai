@@ -509,8 +509,91 @@ export const MODEL_GALLERY_SEM_ROSTO: AnaMariaModelItem[] = [
  * - MODEL_GALLERY_MASCULINA_SEM_ROSTO: Mirror Selfie masculina (padrão ao selecionar Homem)
  * - MODEL_GALLERY_MASCULINA_COM_ROSTO: Galeria UGC masculina (com rosto)
  */
-export const MODEL_GALLERY_MASCULINA_SEM_ROSTO: AnaMariaModelItem[] = [];
-export const MODEL_GALLERY_MASCULINA_COM_ROSTO: AnaMariaModelItem[] = [];
+export const MODEL_GALLERY_MASCULINA_SEM_ROSTO: AnaMariaModelItem[] = [
+  {
+    id: 'modelo_masc_sem_rosto_1',
+    number: 1,
+    name: 'Modelo Masculino 01',
+    title: '01. Modelo Masculino 01',
+    description: 'Mirror selfie masculina sem rosto (corte abaixo do queixo), postura frontal diante do espelho.',
+    file: '1.png',
+    fullUrl: '/models/gallery/masculina/sem_rosto/1.png',
+  },
+  {
+    id: 'modelo_masc_sem_rosto_2',
+    number: 2,
+    name: 'Modelo Masculino 02',
+    title: '02. Modelo Masculino 02',
+    description: 'Mirror selfie masculina sem rosto (corte abaixo do queixo), postura frontal diante do espelho.',
+    file: '2.png',
+    fullUrl: '/models/gallery/masculina/sem_rosto/2.png',
+  },
+  {
+    id: 'modelo_masc_sem_rosto_3',
+    number: 3,
+    name: 'Modelo Masculino 03',
+    title: '03. Modelo Masculino 03',
+    description: 'Mirror selfie masculina sem rosto (corte abaixo do queixo), postura frontal diante do espelho.',
+    file: '3.png',
+    fullUrl: '/models/gallery/masculina/sem_rosto/3.png',
+  },
+  {
+    id: 'modelo_masc_sem_rosto_4',
+    number: 4,
+    name: 'Modelo Masculino 04',
+    title: '04. Modelo Masculino 04',
+    description: 'Mirror selfie masculina sem rosto (corte abaixo do queixo), postura frontal diante do espelho.',
+    file: '4.png',
+    fullUrl: '/models/gallery/masculina/sem_rosto/4.png',
+  },
+  {
+    id: 'modelo_masc_sem_rosto_5',
+    number: 5,
+    name: 'Modelo Masculino 05',
+    title: '05. Modelo Masculino 05',
+    description: 'Mirror selfie masculina sem rosto (corte abaixo do queixo), postura frontal diante do espelho.',
+    file: '5.jpg',
+    fullUrl: '/models/gallery/masculina/sem_rosto/5.jpg',
+  },
+  {
+    id: 'modelo_masc_sem_rosto_6',
+    number: 6,
+    name: 'Modelo Masculino 06',
+    title: '06. Modelo Masculino 06',
+    description: 'Mirror selfie masculina sem rosto (corte abaixo do queixo), postura frontal diante do espelho.',
+    file: '6.jpg',
+    fullUrl: '/models/gallery/masculina/sem_rosto/6.jpg',
+  },
+];
+export const MODEL_GALLERY_MASCULINA_COM_ROSTO: AnaMariaModelItem[] = [
+  {
+    id: 'modelo_masc_com_rosto_1',
+    number: 1,
+    name: 'Modelo Masculino UGC 01',
+    title: '01. Modelo Masculino UGC 01',
+    description: 'Modelo masculino com rosto visível estilo UGC, postura frontal diante do espelho.',
+    file: '1.png',
+    fullUrl: '/models/gallery/masculina/com_rosto/1.png',
+  },
+  {
+    id: 'modelo_masc_com_rosto_2',
+    number: 2,
+    name: 'Modelo Masculino UGC 02',
+    title: '02. Modelo Masculino UGC 02',
+    description: 'Modelo masculino com rosto visível estilo UGC, postura frontal diante do espelho.',
+    file: '2.png',
+    fullUrl: '/models/gallery/masculina/com_rosto/2.png',
+  },
+  {
+    id: 'modelo_masc_com_rosto_3',
+    number: 3,
+    name: 'Modelo Masculino UGC 03',
+    title: '03. Modelo Masculino UGC 03',
+    description: 'Modelo masculino com rosto visível estilo UGC, postura frontal diante do espelho.',
+    file: '3.png',
+    fullUrl: '/models/gallery/masculina/com_rosto/3.png',
+  },
+];
 
 /**
  * Retorna a galeria de modelos correspondente ao Modo de Apresentação ativo e ao Influenciador:

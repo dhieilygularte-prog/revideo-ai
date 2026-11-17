@@ -1607,6 +1607,7 @@ export async function regenerateAnaMariaImage(params: {
       selectedMasterId: form.selectedMasterId,
       selectedScenarioNumber: effectiveForm.selectedScenarioNumber,
       selectedScenarioId: effectiveForm.selectedScenarioId,
+      influencer: effectiveForm.influencer,
       aspectRatio: '9:16',
       bodyType: effectiveForm.bodyType,
       ultraRealism: Boolean(effectiveForm.ultraRealism),
