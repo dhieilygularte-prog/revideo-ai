@@ -433,6 +433,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
       setIsRemixing(true);
       const remix = resolveHeadlineAndHashtags({
         productName: result.productName,
+        productInfo: result.productInfo,
         influencer: result.influencer,
         bodyType: result.bodyType,
         additionalInstructions: result.additionalInstructions,
@@ -445,6 +446,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
         targetCount > 1
           ? resolveMultipleDistinctHeadlines({
               productName: result.productName,
+              productInfo: result.productInfo,
               influencer: result.influencer,
               additionalInstructions: result.additionalInstructions,
               count: targetCount,
@@ -726,6 +728,7 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
       const nextImages = [...imagesList, res.newImageItem];
       const nextHeadlines = resolveMultipleDistinctHeadlines({
         productName: result.productName,
+        productInfo: result.productInfo,
         influencer: result.influencer,
         additionalInstructions: result.additionalInstructions,
         count: nextImages.length,

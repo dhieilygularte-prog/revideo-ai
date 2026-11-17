@@ -1185,21 +1185,21 @@ function adaptHeadlineToMale(headline: string): string {
 
 function resolveMaleSpecificHeadline(combinedNorm: string): string | null {
   const isConjunto = /\b(conjunto|conjuntinho|conjuntos)\b/i.test(combinedNorm);
-  const isKit = /\bkit\b/i.test(combinedNorm);
+  const isKit = /\b(kit|combo|pack)\b/i.test(combinedNorm);
   const has3 = /\b(3|tres)\b/i.test(combinedNorm);
   const has2 = /\b(2|dois|duas)\b/i.test(combinedNorm);
-  const isCamisa = /\b(camisa|camisas|camiseta|camisetas)\b/i.test(combinedNorm);
+  const isCamisa = /\b(camisa|camisas|camiseta|camisetas|t-shirt|tshirt)\b/i.test(combinedNorm);
 
   if (isConjunto) {
-    if (isKit && has3) {
+    if ((isKit && has3) || /\b3\s+conjunt/i.test(combinedNorm)) {
       return 'KIT COM\n3 CONJUNTOS\nESTÁ TÃO\nBARATO\n😎';
     }
-    if (!(isKit && has2)) {
+    if (!(isKit && has2) && !/\b2\s+conjunt/i.test(combinedNorm)) {
       return 'esse\nconjunto\nvale\ncada\ncentavo\n😎';
     }
   }
 
-  if (isKit && has2 && isCamisa) {
+  if ((isKit && has2 && isCamisa) || /\b2\s+(camisa|camisas|camiseta|camisetas|t-shirt|tshirt)/i.test(combinedNorm)) {
     return 'COMO ASSIM\n2 CAMISAS\nPELO\nPREÇO DE 1 😲';
   }
 
@@ -1221,6 +1221,7 @@ function resolveMaleHashtags(combinedNorm: string): string {
 
 export function resolveHeadlineAndHashtags(params: {
   productName: string;
+  productInfo?: string;
   influencer?: AnaMariaInfluencer;
   bodyType?: AnaMariaBodyType;
   additionalInstructions?: string;
@@ -1233,8 +1234,9 @@ export function resolveHeadlineAndHashtags(params: {
   detectedCategory?: ProductCategoryGroup;
 } {
   const normName = normalizeText(params.productName);
+  const normInfo = normalizeText(params.productInfo || '');
   const normExtra = normalizeText(params.additionalInstructions || '');
-  const combined = `${normName} ${normExtra}`.trim();
+  const combined = `${normName} ${normInfo} ${normExtra}`.trim();
 
   const category = detectProductCategory(combined);
 
@@ -1318,14 +1320,16 @@ function appendLegacyFlowerIfNeeded(text: string, flower = ''): string {
  */
 export function resolveMultipleDistinctHeadlines(params: {
   productName: string;
+  productInfo?: string;
   influencer?: AnaMariaInfluencer;
   additionalInstructions?: string;
   count: number;
   excludeHeadlines?: string[];
 }): string[] {
   const normName = normalizeText(params.productName);
+  const normInfo = normalizeText(params.productInfo || '');
   const normExtra = normalizeText(params.additionalInstructions || '');
-  const combined = `${normName} ${normExtra}`.trim();
+  const combined = `${normName} ${normInfo} ${normExtra}`.trim();
   const category = detectProductCategory(combined);
   const targetCount = Math.max(1, params.count || 1);
 

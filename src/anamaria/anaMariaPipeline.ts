@@ -1272,6 +1272,7 @@ export async function runAnaMariaPipeline(
 
   const { headline, hashtags } = resolveHeadlineAndHashtags({
     productName: form0.productName,
+    productInfo: form0.productInfo,
     influencer: form0.influencer,
     bodyType: form0.bodyType,
     additionalInstructions: form0.additionalInstructions,
@@ -1491,6 +1492,7 @@ export async function runAnaMariaPipeline(
     generatedImages.length > 1
       ? resolveMultipleDistinctHeadlines({
           productName: form0.productName,
+          productInfo: form0.productInfo,
           influencer: form0.influencer,
           additionalInstructions: form0.additionalInstructions,
           count: generatedImages.length,
