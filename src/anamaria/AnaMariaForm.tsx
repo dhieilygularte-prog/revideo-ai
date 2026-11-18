@@ -26,6 +26,7 @@ import {
   Wand2,
   Palette,
   FileText,
+  Link2,
 } from 'lucide-react';
 import {
   AnaMariaFormState,
@@ -38,6 +39,7 @@ import {
   analyzeAnaMariaProductInfo,
   extractFabricFieldSuggestion,
   extractGarmentFromProductInfo,
+  extractTikTokProductCode,
   normalizeIdentifiedGarmentName,
 } from './anaMariaProductInfo';
 import { compressAndResizeImage } from '../ania/aniaLibrary';
@@ -120,17 +122,18 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const [approvalWarning, setApprovalWarning] = useState<string>('');
   const [isCheckingDivergence, setIsCheckingDivergence] = useState(false);
   const [scrollFocusField, setScrollFocusField] = useState<
-    'photos' | 'productInfo' | 'productName' | 'fabricType' | 'shoe' | null
+    'photos' | 'productCode' | 'productInfo' | 'productName' | 'fabricType' | 'shoe' | null
   >(null);
   const [scrollHighlightGenerate, setScrollHighlightGenerate] = useState(false);
   const photosSectionRef = useRef<HTMLDivElement>(null);
+  const productCodeSectionRef = useRef<HTMLDivElement>(null);
   const productInfoSectionRef = useRef<HTMLDivElement>(null);
   const productInfoRef = useRef<string>(form.productInfo || '');
   const lastAutoIdentifySignatureRef = useRef<string>('');
   const lastDivergenceSignatureRef = useRef<string>('');
   const isGuidedResolveActiveRef = useRef<boolean>(false);
   const lastGuidedStepKeyRef = useRef<
-    'photos' | 'productInfo' | 'productName' | 'fabricType' | 'shoe' | null
+    'photos' | 'productCode' | 'productInfo' | 'productName' | 'fabricType' | 'shoe' | null
   >(null);
   const productNameSectionRef = useRef<HTMLDivElement>(null);
   const fabricTypeSectionRef = useRef<HTMLDivElement>(null);
@@ -948,6 +951,10 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     (divField === 'productName' || divField === 'both');
 
   const isPhotosReady = totalProductPhotos > 0;
+  const extractedProductCode = (
+    form.productCode || extractTikTokProductCode(form.productLink)
+  ).trim();
+  const isProductCodeReady = Boolean(extractedProductCode.length > 0);
   const isProductInfoFilled = Boolean(form.productInfo && form.productInfo.trim().length > 0);
   const isProductInfoReady = isProductInfoFilled && !hasInfoDivergencePending;
   const isNameReady = Boolean(
@@ -965,6 +972,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
 
   const hasPendingApprovals =
     !isPhotosReady ||
+    !isProductCodeReady ||
     !isProductInfoReady ||
     !isNameReady ||
     !isFabricReady ||
@@ -985,6 +993,14 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         warning:
           'Por favor, anexe ao menos 1 foto do produto no Item 1 acima antes de gerar o vídeo.',
         getTargetElement: () => photosSectionRef.current as HTMLElement | null,
+      };
+    }
+    if (!isProductCodeReady) {
+      return {
+        key: 'productCode' as const,
+        warning:
+          'Cole o Link do Produto (com /view/product/...) no campo obrigatório "Link do Produto" para extrair o Código do Produto!',
+        getTargetElement: () => productCodeSectionRef.current as HTMLElement | null,
       };
     }
     if (!isProductInfoReady) {
@@ -1584,6 +1600,156 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             <span>Por favor, anexe ao menos 1 foto da peça para prosseguir com a geração.</span>
           </div>
         )}
+      </div>
+
+      {/* ─── CARD: LINK DO PRODUTO (OBRIGATÓRIO) + LINK DO VÍDEO DO PRODUTO (OPCIONAL) ─── */}
+      <div
+        ref={productCodeSectionRef}
+        className={`${
+          isProductCodeReady ? copiedBlueSectionClass : sectionCardClass
+        } ${
+          scrollFocusField === 'productCode' ? 'ring-2 ring-amber-300 ring-offset-2 ring-offset-zinc-950' : ''
+        } p-5 sm:p-6 space-y-4`}
+      >
+        {/* Campo 1: Link do Produto (Obrigatório) */}
+        <div className="space-y-2.5">
+          <div
+            className={`flex flex-wrap items-center justify-between gap-2 border-b pb-2.5 ${
+              isProductCodeReady
+                ? 'border-sky-400/30'
+                : isAmetista
+                ? 'border-purple-500/20'
+                : 'border-zinc-800/80'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Link2
+                className={`w-4 h-4 ${
+                  isProductCodeReady ? 'text-sky-300' : sectionIconColorClass
+                }`}
+              />
+              <h2 className="text-sm font-bold text-white uppercase tracking-wide">
+                Link do Produto
+              </h2>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-rose-500/20 text-rose-300 border border-rose-500/40">
+                Obrigatório
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {isProductCodeReady && (
+                <span className="px-3 py-1 rounded-xl bg-sky-500/25 border border-sky-300/60 text-sky-200 font-black text-xs uppercase tracking-wider flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-sky-300" />
+                  <span>Código: {extractedProductCode}</span>
+                </span>
+              )}
+              {(form.productLink || form.productCode) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setApprovalWarning('');
+                    onChange((prev) => ({
+                      ...prev,
+                      productLink: '',
+                      productCode: '',
+                    }));
+                  }}
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-700/80 transition-colors cursor-pointer"
+                  title="Limpar Link do Produto"
+                >
+                  Limpar
+                </button>
+              )}
+            </div>
+          </div>
+
+          <p className="text-xs text-zinc-400 leading-relaxed">
+            Cole aqui o link de compartilhamento do produto no TikTok Shop. O app extrai automaticamente apenas o <strong className="text-zinc-200">Código do Produto</strong> (o mesmo código vale para todas as cores).
+          </p>
+
+          <input
+            type="text"
+            value={form.productLink || ''}
+            onChange={(e) => {
+              const raw = e.target.value;
+              const code = extractTikTokProductCode(raw);
+              setApprovalWarning('');
+              onChange((prev) => ({
+                ...prev,
+                productLink: raw,
+                productCode: code,
+              }));
+            }}
+            placeholder="https://www.tiktok.com/view/product/1738033535848712115?_d=..."
+            className={`w-full px-4 py-2.5 rounded-xl text-white placeholder-zinc-500 text-sm focus:outline-none transition-colors ${
+              isProductCodeReady
+                ? 'bg-[#081729]/90 border border-sky-400/60 focus:border-sky-300'
+                : isAmetista
+                ? 'bg-[#0e0817]/90 border border-purple-400/30 focus:border-[#d4ff59]'
+                : 'bg-zinc-900/90 border border-zinc-700/80 focus:border-orange-500'
+            }`}
+          />
+
+          {form.productLink && form.productLink.trim().length > 0 && !isProductCodeReady && (
+            <p className="text-xs text-amber-300 font-semibold flex items-center gap-1.5">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              <span>Não encontramos o código após /view/product/ nesse link. Cole o link completo do produto ou o código numérico.</span>
+            </p>
+          )}
+        </div>
+
+        {/* Campo 2: Link do Vídeo do Produto (Opcional) */}
+        <div
+          className={`space-y-2.5 pt-3 border-t ${
+            isAmetista ? 'border-purple-500/20' : 'border-zinc-800/80'
+          }`}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Video className={`w-4 h-4 ${sectionIconColorClass}`} />
+              <h3 className="text-xs sm:text-sm font-bold text-white uppercase tracking-wide">
+                Link do Vídeo do Produto
+              </h3>
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-zinc-800 text-zinc-300 border border-zinc-700">
+                Opcional
+              </span>
+            </div>
+
+            {form.productVideoUrl && form.productVideoUrl.trim().length > 0 && (
+              <button
+                type="button"
+                onClick={() =>
+                  onChange((prev) => ({
+                    ...prev,
+                    productVideoUrl: '',
+                  }))
+                }
+                className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-700/80 transition-colors cursor-pointer"
+                title="Limpar Link do Vídeo"
+              >
+                Limpar
+              </button>
+            )}
+          </div>
+
+          <input
+            type="url"
+            value={form.productVideoUrl || ''}
+            onChange={(e) => {
+              const val = e.target.value;
+              onChange((prev) => ({
+                ...prev,
+                productVideoUrl: val,
+              }));
+            }}
+            placeholder="https://www.tiktok.com/@usuario/video/7699747241585626389"
+            className={`w-full px-4 py-2.5 rounded-xl text-white placeholder-zinc-500 text-sm focus:outline-none transition-colors ${
+              isAmetista
+                ? 'bg-[#0e0817]/90 border border-purple-400/30 focus:border-[#d4ff59]'
+                : 'bg-zinc-900/90 border border-zinc-700/80 focus:border-orange-500'
+            }`}
+          />
+        </div>
       </div>
 
       {/* ─── CARD: INFORMAÇÕES DO PRODUTO (OBRIGATÓRIO — TECIDO OU DESCRIÇÃO COMPLETA) ─── */}
@@ -3646,6 +3812,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             {(() => {
               const pendingLabels = [
                 !isPhotosReady ? 'Fotos de Referência' : '',
+                !isProductCodeReady ? 'Link/Código do Produto' : '',
                 !isProductInfoFilled
                   ? 'Informações do Produto'
                   : hasInfoDivergencePending

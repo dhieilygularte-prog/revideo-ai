@@ -245,7 +245,10 @@ export async function downloadAnaMariaSingleImage(
  * - Nome do ZIP: "[Nome da Peça] [Hora da Geração] [Gerador].zip"
  * - Sem subpastas adicionais (todos os arquivos na raiz do .zip)
  */
-export async function exportAnaMariaZip(result: AnaMariaResultState): Promise<void> {
+export async function exportAnaMariaZip(
+  result: AnaMariaResultState,
+  activeBuyCta?: string
+): Promise<void> {
   const { default: JSZip } = await import('jszip');
   const zip = new JSZip();
 
@@ -305,11 +308,23 @@ export async function exportAnaMariaZip(result: AnaMariaResultState): Promise<vo
     distinctHeadlines.length > 1
       ? distinctHeadlines.map((h, idx) => `${idx + 1}. ${h}`).join('\n')
       : result.headline;
+  const ctaLine = activeBuyCta || result.selectedCta || 'COMPRE AQUI • AGORA';
+  const extraParts: string[] = [
+    `CTA DO BOTÃO DE COMPRA:\n${ctaLine}`,
+  ];
+  if (result.productCode && result.productCode.trim()) {
+    extraParts.push(`CÓDIGO DO PRODUTO:\n${result.productCode.trim()}`);
+  }
+  if (result.productVideoUrl && result.productVideoUrl.trim()) {
+    extraParts.push(`LINK DO VÍDEO DO PRODUTO:\n${result.productVideoUrl.trim()}`);
+  }
   const hashtagsAndHeadlineContent = `HEADLINE${distinctHeadlines.length > 1 ? 'S' : ''}:
 ${headlinesBlock}
 
 HASHTAGS:
 ${result.hashtags}
+
+${extraParts.join('\n\n')}
 `;
   zip.file(`Hastags e Headline - ${cleanName} ${timeStr}.txt`, hashtagsAndHeadlineContent);
 

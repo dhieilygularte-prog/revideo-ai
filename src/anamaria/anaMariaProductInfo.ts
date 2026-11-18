@@ -1,3 +1,30 @@
+/**
+ * Extrai o código numérico do produto de links de compartilhamento do TikTok Shop
+ * (ex.: https://www.tiktok.com/view/product/1738033535848712115?_d=... -> "1738033535848712115").
+ * Também aceita o código numérico colado diretamente.
+ */
+export function extractTikTokProductCode(rawInput?: string): string {
+  const trimmed = (rawInput || '').trim();
+  if (!trimmed) return '';
+
+  const viewProductMatch = trimmed.match(/tiktok\.com\/view\/product\/(\d{6,32})/i);
+  if (viewProductMatch?.[1]) {
+    return viewProductMatch[1];
+  }
+
+  const genericViewMatch = trimmed.match(/\/view\/product\/(\d{6,32})/i);
+  if (genericViewMatch?.[1]) {
+    return genericViewMatch[1];
+  }
+
+  const directDigitsMatch = trimmed.match(/^(\d{6,32})$/);
+  if (directDigitsMatch?.[1]) {
+    return directDigitsMatch[1];
+  }
+
+  return '';
+}
+
 export interface FabricCatalogEntry {
   id: string;
   labelPt: string;

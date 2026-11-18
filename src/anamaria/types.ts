@@ -45,6 +45,9 @@ export interface AnaMariaAudit {
 }
 
 export interface AnaMariaFormState {
+  productLink?: string; // Link do produto colado pelo usuário (obrigatório para extrair o código)
+  productCode?: string; // Código numérico extraído do link do produto (ex.: 1738033535848712115)
+  productVideoUrl?: string; // Link opcional do vídeo do produto para acesso rápido e exportação no .txt
   productInfo?: string; // Informações obrigatórias do produto (tecido ou bloco de texto completo)
   productName: string;
   referencePhotos: string[]; // até 10 fotos da mesma cor em múltiplos ângulos e detalhes
@@ -130,6 +133,10 @@ export interface AnaMariaResultState {
   eclecticMode?: boolean;
   ultraRealism?: boolean;
   use2K?: boolean;
+  productLink?: string;
+  productCode?: string;
+  productVideoUrl?: string;
+  selectedCta?: string;
   productInfo?: string;
   fabricType?: string;
   productName: string;

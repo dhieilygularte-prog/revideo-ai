@@ -18,6 +18,7 @@ import {
   resolveHeadlineAndHashtags,
   resolveMultipleDistinctHeadlines,
 } from './anaMariaBank';
+import { extractTikTokProductCode } from './anaMariaProductInfo';
 import { AIProfile } from '../config/aiProfiles';
 import { SCENARIO_GALLERY_ITEMS, POV_SCENARIO_GALLERY_ITEMS } from './scenarioGalleryData';
 import { getModelGalleryForMode } from './modelGalleryData';
@@ -1515,6 +1516,10 @@ export async function runAnaMariaPipeline(
     eclecticMode: rawForm.eclecticMode !== false,
     ultraRealism: Boolean(rawForm.ultraRealism),
     use2K: Boolean(rawForm.use2K),
+    productLink: form0.productLink?.trim() || undefined,
+    productCode:
+      (form0.productCode || extractTikTokProductCode(form0.productLink)).trim() || undefined,
+    productVideoUrl: form0.productVideoUrl?.trim() || undefined,
     productInfo: form0.productInfo,
     fabricType: form0.fabricType,
     productName: form0.productName,

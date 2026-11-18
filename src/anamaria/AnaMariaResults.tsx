@@ -23,6 +23,8 @@ import {
   CheckCircle2,
   Plus,
   Palette,
+  Link2,
+  ExternalLink,
 } from 'lucide-react';
 import {
   AnaMariaResultState,
@@ -155,6 +157,9 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
   const [ctaIndex, setCtaIndex] = useState(0);
   const [copiedCta, setCopiedCta] = useState(false);
   const [hasCopiedCtaOnce, setHasCopiedCtaOnce] = useState(false);
+
+  const [copiedProductCode, setCopiedProductCode] = useState(false);
+  const [hasCopiedProductCodeOnce, setHasCopiedProductCodeOnce] = useState(false);
 
   // Estado de remixagem rápida de headlines e hashtags
   const [isRemixing, setIsRemixing] = useState(false);
@@ -524,7 +529,8 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
     isExportingZipRef.current = true;
     setIsExportingZip(true);
     try {
-      await exportAnaMariaZip(result);
+      const activeBuyCta = BUY_BUTTON_CTAS[ctaIndex] || BUY_BUTTON_CTAS[0];
+      await exportAnaMariaZip(result, activeBuyCta);
     } catch (err) {
       console.warn('Erro ao exportar ZIP:', err);
     } finally {
@@ -1720,9 +1726,120 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
       </div>
 
       {/* ========================================================================= */}
-      {/* SEÇÃO INFERIOR: TEXTO DO VÍDEO (HEADLINE) E DESCRIÇÃO/HASHTAGS            */}
+      {/* SEÇÃO INFERIOR: CÓDIGO DO PRODUTO, VÍDEO, HEADLINE E DESCRIÇÃO/HASHTAGS   */}
       {/* ========================================================================= */}
       <div className={`space-y-4 pt-4 border-t ${isAmetista ? 'border-purple-500/20' : 'border-zinc-800'}`}>
+        {/* Código do Produto (para copiar) e Vídeo do Produto (abre o link em nova aba) */}
+        {(result.productCode || result.productVideoUrl) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {result.productCode && (
+              <div
+                className={`p-4 sm:p-5 rounded-2xl transition-all duration-300 space-y-3 ${
+                  hasCopiedProductCodeOnce ? copiedBlueSectionClass : defaultSectionClass
+                }`}
+              >
+                <div className={`flex flex-wrap items-center justify-between gap-2 border-b pb-2.5 ${isAmetista ? 'border-purple-500/20' : 'border-zinc-800/80'}`}>
+                  <div className="flex items-center gap-2">
+                    <Link2 className={`w-4 h-4 ${accentIconClass}`} />
+                    <h3 className="text-xs font-black text-white uppercase tracking-wide flex items-center gap-2">
+                      <span>Código do Produto</span>
+                      {hasCopiedProductCodeOnce && (
+                        <span className="text-[10px] text-sky-100 font-extrabold bg-sky-500/30 px-2 py-0.5 rounded-md border border-sky-400/50 flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3 text-sky-300" /> COPIADO ✓
+                        </span>
+                      )}
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(result.productCode || '');
+                        setCopiedProductCode(true);
+                        setHasCopiedProductCodeOnce(true);
+                        setTimeout(() => setCopiedProductCode(false), 2500);
+                      } catch {
+                        // noop
+                      }
+                    }}
+                    className={`py-2 px-4 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-md ${
+                      hasCopiedProductCodeOnce || copiedProductCode
+                        ? 'bg-sky-500 hover:bg-sky-400 text-white border border-sky-300 ring-2 ring-sky-300/60'
+                        : isAmetista
+                        ? 'bg-[#d4ff59] hover:bg-[#e2ff85] text-zinc-950'
+                        : 'bg-zinc-800 hover:bg-zinc-700 border border-orange-500/45 text-white'
+                    }`}
+                  >
+                    {copiedProductCode ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-white" />
+                        <span>Copiado!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copiar Código</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div
+                  className={`p-3.5 rounded-xl text-sm font-mono font-bold select-all transition-all ${
+                    hasCopiedProductCodeOnce
+                      ? 'bg-slate-950/90 border border-sky-400/60 text-sky-100'
+                      : isAmetista
+                      ? 'bg-[#0e0817]/95 border border-purple-500/25 text-purple-100'
+                      : 'bg-zinc-900/95 border border-zinc-800 text-zinc-100'
+                  }`}
+                >
+                  {result.productCode}
+                </div>
+              </div>
+            )}
+
+            {result.productVideoUrl && (
+              <div className={`p-4 sm:p-5 rounded-2xl transition-all duration-300 space-y-3 ${defaultSectionClass}`}>
+                <div className={`flex flex-wrap items-center justify-between gap-2 border-b pb-2.5 ${isAmetista ? 'border-purple-500/20' : 'border-zinc-800/80'}`}>
+                  <div className="flex items-center gap-2">
+                    <Video className={`w-4 h-4 ${accentIconClass}`} />
+                    <h3 className="text-xs font-black text-white uppercase tracking-wide">
+                      Vídeo do Produto
+                    </h3>
+                  </div>
+                  <a
+                    href={result.productVideoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`py-2 px-4 rounded-xl text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-md ${
+                      isAmetista
+                        ? 'bg-[#d4ff59] hover:bg-[#e2ff85] text-zinc-950'
+                        : 'bg-zinc-800 hover:bg-zinc-700 border border-orange-500/45 text-white'
+                    }`}
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                    <span>Vídeo do Produto</span>
+                  </a>
+                </div>
+
+                <a
+                  href={result.productVideoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`block p-3.5 rounded-xl text-xs font-mono truncate underline underline-offset-4 transition-all ${
+                    isAmetista
+                      ? 'bg-[#0e0817]/95 border border-purple-500/25 text-purple-200 hover:text-white'
+                      : 'bg-zinc-900/95 border border-zinc-800 text-sky-300 hover:text-sky-200'
+                  }`}
+                  title={result.productVideoUrl}
+                >
+                  {result.productVideoUrl}
+                </a>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Barra superior com botão único para refazer Headlines e Hashtags do banco de memória */}
         <div className="flex flex-wrap items-center justify-between gap-2 px-1">
           <div className="flex items-center gap-1.5 text-xs text-zinc-400">
