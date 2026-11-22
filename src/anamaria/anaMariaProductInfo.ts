@@ -470,7 +470,8 @@ function cleanFabricPhrase(rawPhrase: string): string {
   return normalizePortugueseFashionText(rawPhrase)
     .replace(/\([^)]*\)/g, ' ')
     .replace(/\b(?:de\s+(?:toque|caimento)|com\s+toque|n[aã]o\s+(?:amassa|encolhe|desbota|marca|fica\s+transparente|d[aá]\s+bolinha)|zero\s+transpar[eê]ncia|super\s+confort[aá]vel|de\s+(?:alta|excelente|[oó]tima)\s+qualidade)\b.*$/i, '')
-    .split(/[,.;|\n]/)[0]
+    .split(/[,.;|\n]|\s+[-–—]\s+/)[0]
+    .replace(/^(?:de|em|do|da)\s+/i, '')
     .replace(/^[\s:\-]+|[\s:\-,]+$/g, '')
     .replace(/\s+/g, ' ')
     .trim();
@@ -607,6 +608,16 @@ export function extractFabricFieldSuggestion(rawProductInfo?: string): string {
     !/^\d{1,3}\s*%/.test(explicit.phrase) &&
     !/^(?:alta|ótima|otima|excelente|boa)\s+qualidade$/i.test(explicit.phrase)
   ) {
+    const expNorm = explicit.phrase
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+    const expCatalogMatches = FABRIC_CATALOG.filter(
+      (entry) => entry.pattern.test(explicit.phrase) || entry.pattern.test(expNorm)
+    );
+    if (expCatalogMatches.length === 1) {
+      return resolveConciseFabricLabel(expCatalogMatches[0], expNorm);
+    }
     return capitalizeLeadingChar(explicit.phrase);
   }
 
@@ -632,6 +643,17 @@ export function extractFabricFieldSuggestion(rawProductInfo?: string): string {
   // Evita duplicidade "Alfaiataria + Crepe" quando o texto diz "Crepe de Alfaiataria"
   if (detected.length > 1 && /\bcrepe\s+(?:de\s+)?alfaiataria\b/i.test(normMain)) {
     detected = detected.filter((d) => d.id !== 'crepe');
+  }
+
+  // "Alfaiataria" junto com um tecido real (ex.: "Linho ... Alfaiataria Casual") indica estilo de corte/modelagem, não um segundo tecido
+  if (
+    detected.length > 1 &&
+    detected.some((d) => d.id === 'alfaiataria') &&
+    !/\b(crepe\s+(?:de\s+)?alfaiataria|tecido\s+(?:de\s+)?alfaiataria|two\s*way|marant|marrant|sensoriale|gabardine|oxfordine)\b/i.test(
+      normMain
+    )
+  ) {
+    detected = detected.filter((d) => d.id !== 'alfaiataria');
   }
 
   if (detected.length > 0) {

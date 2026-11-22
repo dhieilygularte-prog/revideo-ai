@@ -955,7 +955,7 @@ function normalizeIdentifiedGarmentName(rawName) {
   return fixed.trim();
 }
 function cleanFabricPhrase(rawPhrase) {
-  return normalizePortugueseFashionText(rawPhrase).replace(/\([^)]*\)/g, " ").replace(/\b(?:de\s+(?:toque|caimento)|com\s+toque|n[aã]o\s+(?:amassa|encolhe|desbota|marca|fica\s+transparente|d[aá]\s+bolinha)|zero\s+transpar[eê]ncia|super\s+confort[aá]vel|de\s+(?:alta|excelente|[oó]tima)\s+qualidade)\b.*$/i, "").split(/[,.;|\n]/)[0].replace(/^[\s:\-]+|[\s:\-,]+$/g, "").replace(/\s+/g, " ").trim();
+  return normalizePortugueseFashionText(rawPhrase).replace(/\([^)]*\)/g, " ").replace(/\b(?:de\s+(?:toque|caimento)|com\s+toque|n[aã]o\s+(?:amassa|encolhe|desbota|marca|fica\s+transparente|d[aá]\s+bolinha)|zero\s+transpar[eê]ncia|super\s+confort[aá]vel|de\s+(?:alta|excelente|[oó]tima)\s+qualidade)\b.*$/i, "").split(/[,.;|\n]|\s+[-–—]\s+/)[0].replace(/^(?:de|em|do|da)\s+/i, "").replace(/^[\s:\-]+|[\s:\-,]+$/g, "").replace(/\s+/g, " ").trim();
 }
 function stripLiningClauses(rawText) {
   const lines = (rawText || "").split(/\n+/).filter((line) => !/^\s*(?:com\s+|possui\s+)?forro\b/i.test(line));
