@@ -1649,6 +1649,7 @@ async function generateImageWithSeedream(params: {
   isAnaMariaMode?: boolean;
   presentationMode?: string;
   selectedMasterId?: string;
+  influencer?: string;
   bodyType?: string;
   ultraRealism?: boolean;
   use2K?: boolean;
@@ -1732,7 +1733,11 @@ async function generateImageWithSeedream(params: {
     params.ultraRealism ||
       (params.prompt && params.prompt.includes('ULTRA PHOTOREALISM'))
   );
-  const isMaleSeedream = /\bhomem adulto\b|\binfluenciador\b/i.test(params.prompt || '');
+  const isMaleSeedream =
+    params.influencer === 'Homem' ||
+    /\bhomem adulto\b|\bmodelo masculino\b|\binfluenciador\b/i.test(params.prompt || '');
+  const personNounSeedream = isMaleSeedream ? 'Mesmo homem' : 'Mesma mulher';
+  const personArticleNounSeedream = isMaleSeedream ? 'o modelo' : 'a modelo';
 
   const naturalSkinSeedream = isUltraRealismSeedream
     ? '[RAW UNRETOUCHED SKIN OVERRIDE]: Actively replace any smooth/airbrushed reference model skin with unretouched RAW candid human skin: visible pores, fine micro-texture, fine vellus hair (peach fuzz), subtle skin micro-imperfections, uneven organic skin tone with gentle natural redness, subsurface scattering, controlled natural skin sheen, natural window daylight, 35mm smartphone film grain; zero smoothing/beauty-filter/plastic/CGI. ZERO tattoos.\n'
@@ -1756,14 +1761,20 @@ async function generateImageWithSeedream(params: {
     ? ' Se for vestido puro (sem short-saia na Foto 1), NUNCA invente shortinho ou bermuda por baixo da fenda/saia; reproduza o comprimento visual EXATO da barra mostrado na Foto 1 sem alongar nem encurtar e mostre apenas a pele limpa da perna dentro da fenda.'
     : '';
 
+  const isFullSetSeedream = Boolean(
+    params.prompt && /REGRA DE CONJUNTO COMPLETO|FULL MATCHING SET|CONJUNTO COMPLETO/i.test(params.prompt)
+  );
+
   const clothingDirectiveSeedream = isDressOrOnePieceSeedream
-    ? `[PRODUTO 1:1 — COMPRIMENTO PROPORCIONAL EXATO DA REFERÊNCIA]: Reproduza a peça da Foto 1 com 100% fidelidade do topo à barra, adaptando apenas a largura e o caimento natural ao corpo da modelo (inclusive plus size) e parando a barra EXATAMENTE na mesma altura proporcional das pernas/canela mostrada na Foto 1 (preservando a mesma faixa de canela exposta acima do tornozelo; proibido descer ou subir a barra; calçado só se a barra original da Foto 1 deixar os pés visíveis).${pureDressNoShortsSeedream}\n`
+    ? `[PRODUTO 1:1 — COMPRIMENTO PROPORCIONAL EXATO DA REFERÊNCIA]: Reproduza a peça da Foto 1 com 100% fidelidade do topo à barra, adaptando apenas a largura e o caimento natural ao corpo ${isMaleSeedream ? 'do modelo' : 'da modelo'} (inclusive plus size) e parando a barra EXATAMENTE na mesma altura proporcional das pernas/canela mostrada na Foto 1 (preservando a mesma faixa de canela exposta acima do tornozelo; proibido descer ou subir a barra; calçado só se a barra original da Foto 1 deixar os pés visíveis).${pureDressNoShortsSeedream}\n`
+    : isFullSetSeedream
+    ? `[CONJUNTO COMPLETO 1:1]: Reproduza AMBAS as peças (parte de cima e parte de baixo) da Foto 1 com 100% fidelidade de cor, tecido e modelagem, vestindo ${isMaleSeedream ? 'o modelo masculino' : 'a modelo'} sem trocar nenhuma das duas peças.\n`
     : (isUpperPieceSeedream
-        ? '[PEÇA DE CIMA 1:1 + BAIXO CONTRASTANTE]: Mantenha a peça superior idêntica à Foto 1 e combine com calça/saia de cor harmônica CONTRASTANTE (nunca igual à de cima).\n'
-        : '[PEÇA DE BAIXO 1:1 + CIMA CONTRASTANTE]: Mantenha a peça inferior idêntica à Foto 1 e combine com blusa/top de cor harmônica CONTRASTANTE (nunca igual à de baixo).\n');
+        ? `[PEÇA DE CIMA 1:1 + BAIXO CONTRASTANTE]: Mantenha a peça superior idêntica à Foto 1 e combine com ${isMaleSeedream ? 'calça/bermuda masculina' : 'calça/saia'} de cor harmônica CONTRASTANTE (nunca igual à de cima).\n`
+        : `[PEÇA DE BAIXO 1:1 + CIMA CONTRASTANTE]: Mantenha a peça inferior idêntica à Foto 1 e combine com ${isMaleSeedream ? 'camisa/camiseta masculina' : 'blusa/top'} de cor harmônica CONTRASTANTE (nunca igual à de baixo).\n`);
 
   const frontalPoseDirectiveSeedream =
-    '[POSE DE FRENTE]: Modelo de frente para o espelho. Extraia APENAS a roupa da Foto 1 (jamais copie pessoa, rosto ou pose da Foto 1).\n';
+    `[POSE DE FRENTE]: ${isMaleSeedream ? 'Modelo masculino de frente' : 'Modelo de frente'} para o espelho. Extraia APENAS a roupa da Foto 1 (jamais copie pessoa, rosto ou pose da Foto 1).\n`;
 
   let headerSeedream = '';
   if (params.isAnaMariaMode) {
@@ -1781,8 +1792,8 @@ async function generateImageWithSeedream(params: {
         ? '- [CENÁRIO 24 FLASH]: Flash traseiro do celular SEMPRE LIGADO brilhando no espelho iluminando modelo e roupa.\n'
         : '';
       const faceFramingRuleSeedream = allowsFaceSeedream
-        ? '- FOTO 2 (MODELO COM ROSTO): Mesma mulher e mesmo rosto/olhos/boca/cabelo/corpo da Foto 2 (proibido cortar rosto).\n'
-        : '- FOTO 2 (MODELO SEM ROSTO): Mesma mulher/corpo/cabelo/pose da Foto 2. PROIBIDO mostrar rosto, olhos, nariz ou boca (corte no queixo ou oculto pelo celular exatamente como na Foto 2).\n';
+        ? `- FOTO 2 (MODELO COM ROSTO): ${personNounSeedream} e mesmo rosto/olhos/boca/cabelo/corpo da Foto 2 (proibido cortar rosto).\n`
+        : `- FOTO 2 (MODELO SEM ROSTO): ${personNounSeedream}/corpo/cabelo/pose da Foto 2. PROIBIDO mostrar rosto, olhos, nariz ou boca (corte no queixo ou oculto pelo celular exatamente como na Foto 2).\n`;
 
       const antiPixelationRuleSeedream =
         '- NITIDEZ TÊXTIL ANTI-PIXELIZAÇÃO: Mesmo que a foto do produto (Foto 1) esteja com baixa resolução, comprimida, escura ou pixelada, NÃO copie borrões ou blocos JPEG para a roupa — sintetize trama e fibras têxteis em altíssima definição óptica, tão ou mais nítidas que a referência ao ampliar (sem plasticidade ou aparência artificial).\n';
@@ -1802,7 +1813,7 @@ async function generateImageWithSeedream(params: {
           flashRuleSeedream +
           '- Foto 1: Apenas a roupa 1:1 sem encurtar (zero pessoa/rosto/tatuagens da Foto 1).\n' +
           '- Foto 2: Apenas corpo, curvas, cabelos, pose e regra facial (DESCARTAR roupa antiga, tênis, quarto e parede branca da Foto 2).\n' +
-          '- Foto 3: Inserir a modelo em captura única nativa em pé sobre o piso real deste cômodo, usando a luz/temperatura da Foto 3, sombra de contato nos pés e bordas orgânicas sem contorno branco.\n' +
+          `- Foto 3: Inserir ${personArticleNounSeedream} em captura única nativa em pé sobre o piso real deste cômodo, usando a luz/temperatura da Foto 3, sombra de contato nos pés e bordas orgânicas sem contorno branco.\n` +
           `${antiPixelationRuleSeedream}${naturalSkinSeedream}${clothingDirectiveSeedream}\n`;
       }
     } else {
@@ -2184,6 +2195,7 @@ app.post('/api/generate-scene-image', async (req, res) => {
         isAnaMariaMode,
         presentationMode,
         selectedMasterId,
+        influencer: req.body?.influencer,
         bodyType,
         ultraRealism,
         use2K,

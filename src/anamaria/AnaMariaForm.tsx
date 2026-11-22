@@ -95,17 +95,15 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   onOpenHistory,
   theme = 'ametista',
 }) => {
-  // Sincronização automática do gerador de imagem: Homem ou POV mudam automaticamente para OpenAI,
-  // e valores legados removidos (ex.: Kling) caem para OpenAI
+  // Normaliza apenas valores legados removidos (ex.: Kling) para OpenAI (padrão),
+  // permitindo ao usuário escolher livremente entre OpenAI e SeaDream 5.0 Pro em Homem, Mulher ou POV.
   useEffect(() => {
     const isUnsupportedModel =
       form.imageModel !== 'openai' && form.imageModel !== 'seedream_5_0_pro';
-    if (isUnsupportedModel || form.presentationMode === 'pov' || form.influencer === 'Homem') {
-      if (form.imageModel !== 'openai') {
-        onChange((prev) => ({ ...prev, imageModel: 'openai' }));
-      }
+    if (isUnsupportedModel) {
+      onChange((prev) => ({ ...prev, imageModel: 'openai' }));
     }
-  }, [form.presentationMode, form.influencer, form.imageModel, onChange]);
+  }, [form.imageModel, onChange]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const extraFileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -117,6 +115,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const hasUserManuallyEditedNameRef = useRef<boolean>(false);
   const hasUserManuallyEditedFabricRef = useRef<boolean>(false);
   const hasUserManuallySelectedInfluencerRef = useRef<boolean>(false);
+  const hasUserManuallySelectedImageModelRef = useRef<boolean>(false);
   const lastUploadedFileNameRef = useRef<string>('');
 
   const [isRecordingMic, setIsRecordingMic] = useState(false);
@@ -920,17 +919,21 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
 
   /**
    * Seleção automática do gerador de imagem:
-   * - OpenAI é o padrão em todos os modos (fallback automático para SeaDream 5.0 Pro caso dê erro).
-   * - POV ou Homem também garantem OpenAI.
-   * O usuário continua podendo trocar manualmente o gerador depois.
+   * - OpenAI é o padrão inicial em todos os modos (inclusive Homem e POV, com fallback automático para SeaDream 5.0 Pro caso dê erro).
+   * - Se o usuário já escolheu manualmente um gerador (OpenAI ou SeaDream 5.0 Pro), a preferência manual é preservada mesmo ao trocar para Homem ou POV.
    */
   const resolveAutoImageModel = (
     prev: AnaMariaFormState,
     nextMode: AnaMariaPresentationMode | undefined,
     nextInfluencer: AnaMariaFormState['influencer']
   ): AnaMariaFormState['imageModel'] => {
-    const isOpenAiCase = nextMode === 'pov' || nextInfluencer === 'Homem';
-    if (isOpenAiCase) return 'openai';
+    if (hasUserManuallySelectedImageModelRef.current) {
+      return prev.imageModel || 'openai';
+    }
+    const enteredOpenAiDefaultCase =
+      (nextMode === 'pov' && prev.presentationMode !== 'pov') ||
+      (nextInfluencer === 'Homem' && prev.influencer !== 'Homem');
+    if (enteredOpenAiDefaultCase) return 'openai';
     return prev.imageModel || 'openai';
   };
 
@@ -3001,7 +3004,10 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           <div className="space-y-2">
             <button
               type="button"
-              onClick={() => onChange((prev) => ({ ...prev, imageModel: 'seedream_5_0_pro' }))}
+              onClick={() => {
+                hasUserManuallySelectedImageModelRef.current = true;
+                onChange((prev) => ({ ...prev, imageModel: 'seedream_5_0_pro' }));
+              }}
               className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between text-xs ${
                 form.imageModel === 'seedream_5_0_pro'
                   ? activeOptionButtonClass
@@ -3016,7 +3022,10 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
 
             <button
               type="button"
-              onClick={() => onChange((prev) => ({ ...prev, imageModel: 'openai' }))}
+              onClick={() => {
+                hasUserManuallySelectedImageModelRef.current = true;
+                onChange((prev) => ({ ...prev, imageModel: 'openai' }));
+              }}
               className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between text-xs ${
                 form.imageModel === 'openai'
                   ? activeOptionButtonClass

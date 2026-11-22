@@ -1132,7 +1132,7 @@ async function executeColorImageGeneration(params: {
       ? `\n\nATENÇÃO À COR EXCLUSIVA (${colorName}): Reproduza EXCLUSIVAMENTE a peça na cor da foto de referência de produto ativa desta geração.${prevColorName && prevColorName !== colorName ? ` NÃO mantenha nem repita a cor anterior (${prevColorName}).` : ''}`
       : '';
   const sameSceneNote = lockSameModelAndScenarioNote
-    ? '\n\nEDIÇÃO FIEL DA MESMA MODELO E MESMO CENÁRIO: Mantenha 100% intactos e idênticos a mesma mulher, o mesmo rosto/enquadramento, a mesma pose e o mesmo cenário da imagem base, alterando EXCLUSIVAMENTE a roupa para a cor da foto de produto ativa.'
+    ? `\n\nEDIÇÃO FIEL DA MESMA MODELO E MESMO CENÁRIO: Mantenha 100% intactos e idênticos ${itemForm.influencer === 'Homem' ? 'o mesmo homem/modelo' : 'a mesma mulher'}, o mesmo rosto/enquadramento, a mesma pose e o mesmo cenário da imagem base, alterando EXCLUSIVAMENTE a roupa para a cor da foto de produto ativa.`
     : '';
   const effectivePrompt = `${imagePrompt}${colorInstruction}${sameSceneNote}`;
 

@@ -4694,7 +4694,9 @@ async function generateImageWithSeedream(params) {
   const isUltraRealismSeedream = Boolean(
     params.ultraRealism || params.prompt && params.prompt.includes("ULTRA PHOTOREALISM")
   );
-  const isMaleSeedream = /\bhomem adulto\b|\binfluenciador\b/i.test(params.prompt || "");
+  const isMaleSeedream = params.influencer === "Homem" || /\bhomem adulto\b|\bmodelo masculino\b|\binfluenciador\b/i.test(params.prompt || "");
+  const personNounSeedream = isMaleSeedream ? "Mesmo homem" : "Mesma mulher";
+  const personArticleNounSeedream = isMaleSeedream ? "o modelo" : "a modelo";
   const naturalSkinSeedream = isUltraRealismSeedream ? "[RAW UNRETOUCHED SKIN OVERRIDE]: Actively replace any smooth/airbrushed reference model skin with unretouched RAW candid human skin: visible pores, fine micro-texture, fine vellus hair (peach fuzz), subtle skin micro-imperfections, uneven organic skin tone with gentle natural redness, subsurface scattering, controlled natural skin sheen, natural window daylight, 35mm smartphone film grain; zero smoothing/beauty-filter/plastic/CGI. ZERO tattoos.\n" : "[NITIDEZ \xD3PTICA & PELE LIMPA]: Foco cristalino (zero blur), pele com poros reais e ZERO TATUAGENS no corpo.\n";
   const isDressOrOnePieceSeedream = Boolean(
     params.prompt && (/\b(vestido|vestidos|dress|dresses|macac[aã]o|macaquinho|camisola|jumpsuit)\b/i.test(params.prompt) || params.prompt.includes("PE\xC7A \xDANICA") || params.prompt.includes("VESTIDO"))
@@ -4706,9 +4708,16 @@ async function generateImageWithSeedream(params) {
     params.prompt && (/\b(short[\s-]?saia|shorts[\s-]?saia|saia[\s-]?short|skort|macaquinho|shortinho|com\s+shorts?)\b/i.test(params.prompt) || params.prompt.includes("SHORT-SAIA"))
   );
   const pureDressNoShortsSeedream = isDressOrOnePieceSeedream && !explicitShortsSeedream ? " Se for vestido puro (sem short-saia na Foto 1), NUNCA invente shortinho ou bermuda por baixo da fenda/saia; reproduza o comprimento visual EXATO da barra mostrado na Foto 1 sem alongar nem encurtar e mostre apenas a pele limpa da perna dentro da fenda." : "";
-  const clothingDirectiveSeedream = isDressOrOnePieceSeedream ? `[PRODUTO 1:1 \u2014 COMPRIMENTO PROPORCIONAL EXATO DA REFER\xCANCIA]: Reproduza a pe\xE7a da Foto 1 com 100% fidelidade do topo \xE0 barra, adaptando apenas a largura e o caimento natural ao corpo da modelo (inclusive plus size) e parando a barra EXATAMENTE na mesma altura proporcional das pernas/canela mostrada na Foto 1 (preservando a mesma faixa de canela exposta acima do tornozelo; proibido descer ou subir a barra; cal\xE7ado s\xF3 se a barra original da Foto 1 deixar os p\xE9s vis\xEDveis).${pureDressNoShortsSeedream}
-` : isUpperPieceSeedream ? "[PE\xC7A DE CIMA 1:1 + BAIXO CONTRASTANTE]: Mantenha a pe\xE7a superior id\xEAntica \xE0 Foto 1 e combine com cal\xE7a/saia de cor harm\xF4nica CONTRASTANTE (nunca igual \xE0 de cima).\n" : "[PE\xC7A DE BAIXO 1:1 + CIMA CONTRASTANTE]: Mantenha a pe\xE7a inferior id\xEAntica \xE0 Foto 1 e combine com blusa/top de cor harm\xF4nica CONTRASTANTE (nunca igual \xE0 de baixo).\n";
-  const frontalPoseDirectiveSeedream = "[POSE DE FRENTE]: Modelo de frente para o espelho. Extraia APENAS a roupa da Foto 1 (jamais copie pessoa, rosto ou pose da Foto 1).\n";
+  const isFullSetSeedream = Boolean(
+    params.prompt && /REGRA DE CONJUNTO COMPLETO|FULL MATCHING SET|CONJUNTO COMPLETO/i.test(params.prompt)
+  );
+  const clothingDirectiveSeedream = isDressOrOnePieceSeedream ? `[PRODUTO 1:1 \u2014 COMPRIMENTO PROPORCIONAL EXATO DA REFER\xCANCIA]: Reproduza a pe\xE7a da Foto 1 com 100% fidelidade do topo \xE0 barra, adaptando apenas a largura e o caimento natural ao corpo ${isMaleSeedream ? "do modelo" : "da modelo"} (inclusive plus size) e parando a barra EXATAMENTE na mesma altura proporcional das pernas/canela mostrada na Foto 1 (preservando a mesma faixa de canela exposta acima do tornozelo; proibido descer ou subir a barra; cal\xE7ado s\xF3 se a barra original da Foto 1 deixar os p\xE9s vis\xEDveis).${pureDressNoShortsSeedream}
+` : isFullSetSeedream ? `[CONJUNTO COMPLETO 1:1]: Reproduza AMBAS as pe\xE7as (parte de cima e parte de baixo) da Foto 1 com 100% fidelidade de cor, tecido e modelagem, vestindo ${isMaleSeedream ? "o modelo masculino" : "a modelo"} sem trocar nenhuma das duas pe\xE7as.
+` : isUpperPieceSeedream ? `[PE\xC7A DE CIMA 1:1 + BAIXO CONTRASTANTE]: Mantenha a pe\xE7a superior id\xEAntica \xE0 Foto 1 e combine com ${isMaleSeedream ? "cal\xE7a/bermuda masculina" : "cal\xE7a/saia"} de cor harm\xF4nica CONTRASTANTE (nunca igual \xE0 de cima).
+` : `[PE\xC7A DE BAIXO 1:1 + CIMA CONTRASTANTE]: Mantenha a pe\xE7a inferior id\xEAntica \xE0 Foto 1 e combine com ${isMaleSeedream ? "camisa/camiseta masculina" : "blusa/top"} de cor harm\xF4nica CONTRASTANTE (nunca igual \xE0 de baixo).
+`;
+  const frontalPoseDirectiveSeedream = `[POSE DE FRENTE]: ${isMaleSeedream ? "Modelo masculino de frente" : "Modelo de frente"} para o espelho. Extraia APENAS a roupa da Foto 1 (jamais copie pessoa, rosto ou pose da Foto 1).
+`;
   let headerSeedream = "";
   if (params.isAnaMariaMode) {
     if (isPovModeSeedream) {
@@ -4721,7 +4730,9 @@ ${isUltraRealismSeedream ? naturalSkinSeedream : ""}
         params.prompt && (params.prompt.includes("CEN\xC1RIO 24") || params.prompt.includes("Cen\xE1rio 24") || params.prompt.includes("cenario_24"))
       );
       const flashRuleSeedream = isScenario24Seedream ? "- [CEN\xC1RIO 24 FLASH]: Flash traseiro do celular SEMPRE LIGADO brilhando no espelho iluminando modelo e roupa.\n" : "";
-      const faceFramingRuleSeedream = allowsFaceSeedream ? "- FOTO 2 (MODELO COM ROSTO): Mesma mulher e mesmo rosto/olhos/boca/cabelo/corpo da Foto 2 (proibido cortar rosto).\n" : "- FOTO 2 (MODELO SEM ROSTO): Mesma mulher/corpo/cabelo/pose da Foto 2. PROIBIDO mostrar rosto, olhos, nariz ou boca (corte no queixo ou oculto pelo celular exatamente como na Foto 2).\n";
+      const faceFramingRuleSeedream = allowsFaceSeedream ? `- FOTO 2 (MODELO COM ROSTO): ${personNounSeedream} e mesmo rosto/olhos/boca/cabelo/corpo da Foto 2 (proibido cortar rosto).
+` : `- FOTO 2 (MODELO SEM ROSTO): ${personNounSeedream}/corpo/cabelo/pose da Foto 2. PROIBIDO mostrar rosto, olhos, nariz ou boca (corte no queixo ou oculto pelo celular exatamente como na Foto 2).
+`;
       const antiPixelationRuleSeedream = "- NITIDEZ T\xCAXTIL ANTI-PIXELIZA\xC7\xC3O: Mesmo que a foto do produto (Foto 1) esteja com baixa resolu\xE7\xE3o, comprimida, escura ou pixelada, N\xC3O copie borr\xF5es ou blocos JPEG para a roupa \u2014 sintetize trama e fibras t\xEAxteis em alt\xEDssima defini\xE7\xE3o \xF3ptica, t\xE3o ou mais n\xEDtidas que a refer\xEAncia ao ampliar (sem plasticidade ou apar\xEAncia artificial).\n";
       if (isModelScenarioSeedream) {
         headerSeedream = "[MAPA 2 IMAGENS \u2014 FOTO 1 PRODUTO | FOTO 2 MODELO + CEN\xC1RIO BASE]:\n" + faceFramingRuleSeedream + flashRuleSeedream + `- Foto 1: Extrair EXCLUSIVAMENTE a pe\xE7a de roupa integral sem encurtar (ignorar 100% pessoa/rosto/tatuagens da Foto 1).
@@ -4731,7 +4742,7 @@ ${antiPixelationRuleSeedream}${naturalSkinSeedream}${clothingDirectiveSeedream}
       } else {
         headerSeedream = "[MAPA 3 IMAGENS \u2014 FOTO 1 PRODUTO | FOTO 2 MODELO | FOTO 3 CEN\xC1RIO REAL]:\n" + faceFramingRuleSeedream + flashRuleSeedream + `- Foto 1: Apenas a roupa 1:1 sem encurtar (zero pessoa/rosto/tatuagens da Foto 1).
 - Foto 2: Apenas corpo, curvas, cabelos, pose e regra facial (DESCARTAR roupa antiga, t\xEAnis, quarto e parede branca da Foto 2).
-- Foto 3: Inserir a modelo em captura \xFAnica nativa em p\xE9 sobre o piso real deste c\xF4modo, usando a luz/temperatura da Foto 3, sombra de contato nos p\xE9s e bordas org\xE2nicas sem contorno branco.
+- Foto 3: Inserir ${personArticleNounSeedream} em captura \xFAnica nativa em p\xE9 sobre o piso real deste c\xF4modo, usando a luz/temperatura da Foto 3, sombra de contato nos p\xE9s e bordas org\xE2nicas sem contorno branco.
 ${antiPixelationRuleSeedream}${naturalSkinSeedream}${clothingDirectiveSeedream}
 `;
       }
@@ -5058,6 +5069,7 @@ ${prompt}`;
         isAnaMariaMode,
         presentationMode,
         selectedMasterId,
+        influencer: req.body?.influencer,
         bodyType,
         ultraRealism,
         use2K,
