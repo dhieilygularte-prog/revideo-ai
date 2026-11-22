@@ -124,7 +124,15 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const [approvalWarning, setApprovalWarning] = useState<string>('');
   const [isCheckingDivergence, setIsCheckingDivergence] = useState(false);
   const [scrollFocusField, setScrollFocusField] = useState<
-    'photos' | 'productCode' | 'productInfo' | 'productName' | 'fabricType' | 'shoe' | 'influencer' | null
+    | 'photos'
+    | 'productCode'
+    | 'productInfo'
+    | 'productName'
+    | 'fabricType'
+    | 'shoe'
+    | 'influencer'
+    | 'divergence'
+    | null
   >(null);
   const [scrollHighlightGenerate, setScrollHighlightGenerate] = useState(false);
   const photosSectionRef = useRef<HTMLDivElement>(null);
@@ -135,7 +143,15 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const lastDivergenceSignatureRef = useRef<string>('');
   const isGuidedResolveActiveRef = useRef<boolean>(false);
   const lastGuidedStepKeyRef = useRef<
-    'photos' | 'productCode' | 'productInfo' | 'productName' | 'fabricType' | 'shoe' | 'influencer' | null
+    | 'photos'
+    | 'productCode'
+    | 'productInfo'
+    | 'productName'
+    | 'fabricType'
+    | 'shoe'
+    | 'influencer'
+    | 'divergence'
+    | null
   >(null);
   const productNameSectionRef = useRef<HTMLDivElement>(null);
   const fabricTypeSectionRef = useRef<HTMLDivElement>(null);
@@ -190,21 +206,87 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     }
 
     const timer = window.setTimeout(() => {
-      // Preenche tecido localmente caso o usuário tenha colado o texto antes de subir a foto
-      if (!hasUserManuallyEditedFabricRef.current) {
-        const suggestedFabric = extractFabricFieldSuggestion(trimmed);
-        if (suggestedFabric) {
-          setAutoIdentifiedFabricBadge(true);
-          onChange((prev) =>
-            prev.fabricType && prev.fabricType.trim().length > 0
-              ? prev
-              : {
-                  ...prev,
-                  fabricType: suggestedFabric,
-                  isFabricTypeApproved: false,
-                }
-          );
-        }
+      // Preenche nome, tecido e gênero localmente caso o usuário tenha colado o texto antes de subir a foto
+      const rawTextGarment = extractGarmentFromProductInfo(trimmed);
+      const textName = rawTextGarment ? normalizeIdentifiedGarmentName(rawTextGarment) : '';
+      const textGender = extractGenderFromProductInfo(trimmed);
+      const suggestedFabric = !hasUserManuallyEditedFabricRef.current
+        ? extractFabricFieldSuggestion(trimmed)
+        : '';
+
+      if (suggestedFabric) {
+        setAutoIdentifiedFabricBadge(true);
+      }
+      if (textName && !hasUserManuallyEditedNameRef.current) {
+        setAutoIdentifiedBadge(true);
+      }
+
+      if (textName || textGender || suggestedFabric) {
+        onChange((prev) => {
+          const canFillName =
+            Boolean(textName) &&
+            !prev.isProductNameApproved &&
+            !hasUserManuallyEditedNameRef.current &&
+            prev.productName.trim().length === 0;
+          const nextName = canFillName ? textName : prev.productName;
+
+          const canFillFabric =
+            Boolean(suggestedFabric) &&
+            !prev.isFabricTypeApproved &&
+            !hasUserManuallyEditedFabricRef.current &&
+            (!prev.fabricType || prev.fabricType.trim().length === 0);
+
+          let nextInfluencer = prev.influencer;
+          let nextInfluencerPending = prev.isInfluencerPending;
+          let nextInfluencerAuto = prev.isInfluencerAutoDetected;
+          let genderChanged = false;
+          if (!hasUserManuallySelectedInfluencerRef.current && textGender) {
+            genderChanged = prev.influencer !== textGender;
+            nextInfluencer = textGender;
+            nextInfluencerPending = false;
+            nextInfluencerAuto = true;
+          }
+
+          const modeNow = prev.presentationMode || 'mirror_selfie';
+          const nextShoe =
+            (canFillName || genderChanged) && nextName.trim().length > 0 && !prev.isShoeTypeApproved
+              ? resolveAutoShoeOptionByProductName(
+                  nextName,
+                  prev.additionalInstructions,
+                  undefined,
+                  nextInfluencer
+                )
+              : prev.selectedShoeOption;
+
+          return {
+            ...prev,
+            productName: nextName,
+            isProductNameApproved: canFillName ? false : prev.isProductNameApproved,
+            fabricType: canFillFabric ? suggestedFabric : prev.fabricType,
+            isFabricTypeApproved: canFillFabric ? false : prev.isFabricTypeApproved,
+            influencer: nextInfluencer,
+            isInfluencerPending: nextInfluencerPending,
+            isInfluencerAutoDetected: nextInfluencerAuto,
+            imageModel: resolveAutoImageModel(prev, prev.presentationMode, nextInfluencer),
+            selectedModelGalleryId: genderChanged ? undefined : prev.selectedModelGalleryId,
+            selectedModelGalleryNumber: genderChanged ? undefined : prev.selectedModelGalleryNumber,
+            selectedModelGalleryUrl: genderChanged ? undefined : prev.selectedModelGalleryUrl,
+            selectedModelGalleryBase64: genderChanged ? undefined : prev.selectedModelGalleryBase64,
+            selectedShoeOption: nextShoe,
+            isShoeTypeApproved: canFillName ? false : prev.isShoeTypeApproved,
+            selectedMasterId:
+              canFillName && !prev.isManualMasterSelection && modeNow !== 'pov'
+                ? resolveMasterPromptByProductName(nextName)
+                : prev.selectedMasterId,
+          };
+        });
+      }
+
+      // Se a descrição do produto (Prioridade 1) já identificou tanto o nome da peça quanto o gênero,
+      // não precisamos chamar a API da foto em segundo plano (evitando latência e reset de aprovações).
+      if (textName && textGender) {
+        lastAutoIdentifySignatureRef.current = combinedSignature;
+        return;
       }
 
       autoIdentifyGarmentFromPhoto(
@@ -213,7 +295,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         lastUploadedFileNameRef.current,
         trimmed
       );
-    }, 700);
+    }, 450);
     return () => window.clearTimeout(timer);
   }, [form.productInfo, form.referencePhotos, form.extraColorPhotos]);
 
@@ -581,9 +663,15 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       resolvedGender: 'Homem' | 'Mulher' | null
     ) => {
       onChange((prev) => {
+        const isSameNameAsCurrent =
+          Boolean(resolvedName) &&
+          prev.productName.trim().toLowerCase() === (resolvedName || '').trim().toLowerCase();
         const shouldUpdateName =
           Boolean(resolvedName) &&
-          (force || !hasUserManuallyEditedNameRef.current || prev.productName.trim().length === 0);
+          (force ||
+            (!prev.isProductNameApproved &&
+              !hasUserManuallyEditedNameRef.current &&
+              !isSameNameAsCurrent));
         const nextName = shouldUpdateName && resolvedName ? resolvedName : prev.productName;
 
         let nextInfluencer = prev.influencer;
@@ -849,6 +937,15 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const handleSelectInfluencer = (nextInfluencer: AnaMariaFormState['influencer']) => {
     hasUserManuallySelectedInfluencerRef.current = true;
     setApprovalWarning('');
+    if (form.isInfluencerPending) {
+      if (typeof document !== 'undefined') {
+        (document.activeElement as HTMLElement | null)?.blur?.();
+      }
+      if (isPhotosReady && isProductCodeReady && isProductInfoFilled) {
+        isGuidedResolveActiveRef.current = true;
+      }
+      lastGuidedStepKeyRef.current = null;
+    }
     onChange((prev) => {
       const influencerChanged = prev.influencer !== nextInfluencer;
       const nextShoeOption =
@@ -1117,7 +1214,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     }
     if (!isDivergenceResolved) {
       return {
-        key: 'productInfo' as const,
+        key: 'divergence' as const,
         warning: `Divergência destacada em amarelo: ${divWarningText} — Edite o texto ou toque em APROVAR.`,
         getTargetElement: () =>
           (productInfoDivergenceApproveBtnRef.current ||
@@ -1126,6 +1223,22 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       };
     }
     return null;
+  };
+
+  /**
+   * Garante que qualquer clique em um botão APROVAR (seja após tocar em RESOLVER PENDÊNCIAS
+   * ou diretamente nos cartões de aprovação) remova o foco de inputs/textareas anteriores e
+   * dispare a rolagem guiada para a próxima pendência e, ao final, 1 única vez para GERAR VÍDEO.
+   */
+  const prepareGuidedAdvanceOnApprove = () => {
+    if (typeof document !== 'undefined') {
+      (document.activeElement as HTMLElement | null)?.blur?.();
+    }
+    if (isPhotosReady && isProductCodeReady && isProductInfoFilled) {
+      isGuidedResolveActiveRef.current = true;
+    }
+    lastGuidedStepKeyRef.current = null;
+    setApprovalWarning('');
   };
 
   useEffect(() => {
@@ -1138,11 +1251,25 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
 
     const activeTag =
       typeof document !== 'undefined' ? document.activeElement?.tagName : '';
-    if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') return;
+    const isTypingInTextField = activeTag === 'INPUT' || activeTag === 'TEXTAREA';
 
     if (hasPendingApprovals) {
       const nextStep = getTopmostPendingStep();
-      if (nextStep && nextStep.key !== lastGuidedStepKeyRef.current) {
+      if (!nextStep) return;
+
+      // Não interrompe a digitação enquanto o usuário está preenchendo um campo de texto ainda pendente
+      if (
+        isTypingInTextField &&
+        (nextStep.key === 'productCode' ||
+          (nextStep.key === 'productInfo' && !isProductInfoFilled) ||
+          (nextStep.key === 'productName' && form.productName.trim().length === 0) ||
+          (nextStep.key === 'fabricType' && !(form.fabricType && form.fabricType.trim().length > 0)) ||
+          (nextStep.key === 'shoe' && form.selectedShoeOption === 'outro'))
+      ) {
+        return;
+      }
+
+      if (nextStep.key !== lastGuidedStepKeyRef.current) {
         lastGuidedStepKeyRef.current = nextStep.key;
         setScrollFocusField(nextStep.key);
         setApprovalWarning('');
@@ -1177,10 +1304,13 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     });
   }, [
     isPhotosReady,
+    isProductCodeReady,
     isProductInfoReady,
+    isProductInfoFilled,
     isNameReady,
     isFabricReady,
     isShoeReady,
+    isInfluencerReady,
     isDivergenceResolved,
     hasPendingApprovals,
     canSubmit,
@@ -1741,6 +1871,14 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               const raw = e.target.value;
               const code = extractTikTokProductCode(raw);
               setApprovalWarning('');
+              if (code && (isGuidedResolveActiveRef.current || (isPhotosReady && isProductInfoFilled))) {
+                const inputEl = e.currentTarget;
+                isGuidedResolveActiveRef.current = true;
+                lastGuidedStepKeyRef.current = null;
+                window.setTimeout(() => {
+                  inputEl?.blur?.();
+                }, 80);
+              }
               onChange((prev) => ({
                 ...prev,
                 productLink: raw,
@@ -1919,6 +2057,17 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         <textarea
           rows={3}
           value={form.productInfo || ''}
+          onPaste={(e) => {
+            const pasted = e.clipboardData?.getData('text') || '';
+            if (pasted.trim().length >= 3 && (isGuidedResolveActiveRef.current || (isPhotosReady && isProductCodeReady))) {
+              const textareaEl = e.currentTarget;
+              isGuidedResolveActiveRef.current = true;
+              lastGuidedStepKeyRef.current = null;
+              window.setTimeout(() => {
+                textareaEl?.blur?.();
+              }, 80);
+            }
+          }}
           onChange={(e) => {
             const val = e.target.value;
             setApprovalWarning('');
@@ -2038,7 +2187,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               ref={productInfoDivergenceApproveBtnRef}
               type="button"
               onClick={() => {
-                setApprovalWarning('');
+                prepareGuidedAdvanceOnApprove();
                 onChange((prev) => ({
                   ...prev,
                   isDescriptionDivergenceApproved: true,
@@ -2240,7 +2389,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               ref={productNameApproveBtnRef}
               type="button"
               onClick={() => {
-                setApprovalWarning('');
+                prepareGuidedAdvanceOnApprove();
                 onChange((prev) => ({
                   ...prev,
                   isProductNameApproved: true,
@@ -2279,7 +2428,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               ref={productNameDivergenceApproveBtnRef}
               type="button"
               onClick={() => {
-                setApprovalWarning('');
+                prepareGuidedAdvanceOnApprove();
                 onChange((prev) => ({
                   ...prev,
                   isProductNameApproved: true,
@@ -2427,7 +2576,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               ref={fabricApproveBtnRef}
               type="button"
               onClick={() => {
-                setApprovalWarning('');
+                prepareGuidedAdvanceOnApprove();
                 onChange((prev) => ({
                   ...prev,
                   isFabricTypeApproved: true,
@@ -2533,7 +2682,11 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                 key={opt.id}
                 type="button"
                 onClick={() => {
-                  setApprovalWarning('');
+                  if (!form.isShoeTypeApproved && opt.id !== 'outro') {
+                    prepareGuidedAdvanceOnApprove();
+                  } else {
+                    setApprovalWarning('');
+                  }
                   onChange((prev) => {
                     const isOutro = opt.id === 'outro';
                     const readyIfOutro = Boolean(
@@ -2629,7 +2782,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                 ref={shoeApproveBtnRef}
                 type="button"
                 onClick={() => {
-                  setApprovalWarning('');
+                  prepareGuidedAdvanceOnApprove();
                   onChange((prev) => ({
                     ...prev,
                     isShoeTypeApproved: true,
@@ -3913,6 +4066,9 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           type="button"
           onClick={() => {
             if (isProcessing || isUploading || isRecordingMic || isRecordingShoeMic) return;
+            if (typeof document !== 'undefined') {
+              (document.activeElement as HTMLElement | null)?.blur?.();
+            }
             const pendingStep = getTopmostPendingStep();
             if (pendingStep) {
               isGuidedResolveActiveRef.current = true;

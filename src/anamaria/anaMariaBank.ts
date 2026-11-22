@@ -1245,31 +1245,148 @@ function adaptHeadlineToMale(headline: string, combinedNorm = ''): string {
   return stripEmojisFromAdaptedHeadline(adapted);
 }
 
-function resolveMaleSpecificHeadline(combinedNorm: string): string | null {
-  const isConjunto = /\b(conjunto|conjuntinho|conjuntos)\b/i.test(combinedNorm);
-  const isKit3Conjuntos =
-    /\b(?:kit|combo|pack)\b[^.\n]{0,25}\b(?:3|tres)\s+conjunt/i.test(combinedNorm) ||
-    /\b(?:3|tres)\s+conjunt/i.test(combinedNorm);
-  const isKit2Conjuntos =
-    /\b(?:kit|combo|pack)\b[^.\n]{0,25}\b(?:2|dois)\s+conjunt/i.test(combinedNorm) ||
-    /\b(?:2|dois)\s+conjunt/i.test(combinedNorm);
-  const isKit2Camisas =
-    /\b(?:kit|combo|pack)\b[^.\n]{0,25}\b(?:2|duas|dois)\s+(?:camisa|camisas|camiseta|camisetas|t-shirt|tshirt)\b/i.test(
-      combinedNorm
-    ) ||
-    /\b(?:2|duas)\s+(?:camisa|camisas|camiseta|camisetas|t-shirt|tshirt)\b/i.test(combinedNorm);
+const NUMBER_WORDS_TO_INT: Record<string, number> = {
+  dois: 2,
+  duas: 2,
+  tres: 3,
+  quatro: 4,
+  cinco: 5,
+  seis: 6,
+  sete: 7,
+  oito: 8,
+  nove: 9,
+  dez: 10,
+};
 
-  if (isConjunto) {
-    if (isKit3Conjuntos) {
-      return 'KIT COM\n3 CONJUNTOS\nESTÁ TÃO\nBARATO\n😎';
-    }
-    if (!isKit2Conjuntos) {
-      return 'esse\nconjunto\nvale\ncada\ncentavo\n😎';
+function parseKitQuantity(rawQty: string): number {
+  const clean = rawQty.trim().toLowerCase();
+  if (NUMBER_WORDS_TO_INT[clean]) return NUMBER_WORDS_TO_INT[clean];
+  const n = parseInt(clean, 10);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function resolveKitPiecePluralLabel(rawPiece: string, fullNormText: string): string {
+  const p = rawPiece.trim().toLowerCase();
+  if (/^conjunt/.test(p)) return 'CONJUNTOS';
+  if (/^(?:camiseta|t-shirt|tshirt)/.test(p)) return 'CAMISETAS';
+  if (/^camisa/.test(p)) return /\bpolo\b/.test(fullNormText) ? 'CAMISAS POLO' : 'CAMISAS';
+  if (/^polo/.test(p)) return 'CAMISAS POLO';
+  if (/^regata/.test(p)) return 'REGATAS';
+  if (/^(?:blusa|blusinha)/.test(p)) return 'BLUSAS';
+  if (/^cropped/.test(p)) return 'CROPPEDS';
+  if (/^top/.test(p)) return 'TOPS';
+  if (/^bermuda/.test(p)) return 'BERMUDAS';
+  if (/^short/.test(p)) return 'SHORTS';
+  if (/^calca/.test(p)) return 'CALÇAS';
+  if (/^saia/.test(p)) return 'SAIAS';
+  if (/^vestido/.test(p)) return 'VESTIDOS';
+  if (/^macaquinho/.test(p)) return 'MACAQUINHOS';
+  if (/^macac/.test(p)) return 'MACACÕES';
+  if (/^pijama/.test(p)) return 'PIJAMAS';
+  if (/^babydoll/.test(p)) return 'BABY DOLLS';
+  if (/^bod/.test(p)) return 'BODIES';
+  if (/^cueca/.test(p)) return 'CUECAS';
+  if (/^calcinha/.test(p)) return 'CALCINHAS';
+
+  // Quando o match bateu em "peças" (ex: "Kit 3 Peças"), tenta identificar o tipo real da peça no texto
+  if (/\b(?:camiseta|camisetas|t-shirt|tshirt)\b/.test(fullNormText)) return 'CAMISETAS';
+  if (/\bcamisas?\b/.test(fullNormText) && !/\bcalcas?\b/.test(fullNormText)) return 'CAMISAS';
+  if (/\bbermudas?\b/.test(fullNormText)) return 'BERMUDAS';
+  if (/\bshorts?\b/.test(fullNormText)) return 'SHORTS';
+  if (/\bcalcas?\b/.test(fullNormText) && !/\b(?:camisa|bata|blusa)\b/.test(fullNormText)) return 'CALÇAS';
+  if (/\bvestidos?\b/.test(fullNormText)) return 'VESTIDOS';
+  if (/\bblusas?\b/.test(fullNormText)) return 'BLUSAS';
+  return 'PEÇAS';
+}
+
+/**
+ * Detecta se o produto é um Kit com 2, 3 ou mais unidades da peça (ex: "Kit 3 Camisetas",
+ * "Kit 2 Camisas", "Kit 3 Conjuntos", "Kit 4 Bermudas", "O kit contém 3 camisetas") e
+ * retorna headlines que SEMPRE enfatizam o kit e a quantidade de peças.
+ * Ignora falsos positivos como "composto por duas peças (bata e calça)" de 1 conjunto único.
+ */
+function resolveKitSpecificHeadlines(
+  combinedNorm: string,
+  influencer?: AnaMariaInfluencer
+): string[] {
+  // Remove menções que descrevem apenas as 2 partes (cima + baixo) de 1 único conjunto
+  const sanitized = combinedNorm
+    .replace(/\bcompost[oa]\s+por\s+(?:2|duas|dois|3|tres)\s+pecas\b[^.\n]*/gi, ' ')
+    .replace(/\bconjunto\s+(?:com|de)\s+(?:2|duas|dois)\s+pecas\b/gi, ' ')
+    .replace(/\bduas\s+pecas\s+essenciais\b/gi, ' ');
+
+  const qtyToken = '(?:\\d+|dois|duas|tres|quatro|cinco|seis|sete|oito|nove|dez)';
+  const garmentToken =
+    '(?:conjuntos?|camisetas?|camisas?|t-shirts?|tshirts?|polos?|regatas?|blusas?|blusinhas?|croppeds?|tops?|bermudas?|shorts?|calcas?|saias?|vestidos?|macaquinhos?|macacoes?|macacao|pijamas?|babydolls?|bodies|bodys|cuecas?|calcinhas?|pecas?)';
+  const pluralGarmentOnlyToken =
+    '(?:conjuntos|camisetas|camisas|t-shirts|tshirts|polos|regatas|blusas|blusinhas|croppeds|tops|bermudas|shorts|calcas|saias|vestidos|macaquinhos|macacoes|pijamas|babydolls|bodies|bodys|cuecas|calcinhas)';
+
+  const patterns = [
+    new RegExp(
+      `\\b(?:kit|combo|pack)\\b(?:\\s+(?:com|de))?\\s*(${qtyToken})\\s+(${garmentToken})\\b`,
+      'i'
+    ),
+    new RegExp(
+      `\\b(?:o\\s+kit\\s+contem|contem\\s+no\\s+kit)\\s*(${qtyToken})\\s+(${garmentToken})\\b`,
+      'i'
+    ),
+    new RegExp(`\\b(${qtyToken})\\s+(${pluralGarmentOnlyToken})\\b`, 'i'),
+  ];
+
+  let detectedQty = 0;
+  let detectedPieceLabel = '';
+
+  for (const regex of patterns) {
+    const m = sanitized.match(regex);
+    if (m?.[1] && m?.[2]) {
+      const q = parseKitQuantity(m[1]);
+      if (q >= 2 && q <= 30) {
+        detectedQty = q;
+        detectedPieceLabel = resolveKitPiecePluralLabel(m[2], sanitized);
+        break;
+      }
     }
   }
 
-  if (isKit2Camisas) {
-    return 'COMO ASSIM\n2 CAMISAS\nPELO\nPREÇO DE 1 😲';
+  if (detectedQty < 2 || !detectedPieceLabel) {
+    return [];
+  }
+
+  const isMale = influencer === 'Homem';
+  const emoji = isMale ? '😎' : '✨';
+  const isShirtGroup =
+    detectedPieceLabel === 'CAMISETAS' ||
+    detectedPieceLabel === 'CAMISAS' ||
+    detectedPieceLabel === 'CAMISAS POLO';
+
+  // Regra clássica da memória para Kit de 2 Camisas / 2 Camisetas
+  if (detectedQty === 2 && isShirtGroup) {
+    return [
+      'COMO ASSIM\n2 CAMISAS\nPELO\nPREÇO DE 1 😲',
+      `KIT COM\n2 ${detectedPieceLabel}\nESTÁ TÃO\nBARATO\n${emoji}`,
+      `COMO ASSIM\n2 ${detectedPieceLabel}\nPELO\nPREÇO DE 1 😲`,
+    ];
+  }
+
+  // Regra da memória para Kit com 3 (ou 2, 4, 5...) Camisetas, Conjuntos ou outras peças
+  return [
+    `KIT COM\n${detectedQty} ${detectedPieceLabel}\nESTÁ TÃO\nBARATO\n${emoji}`,
+    detectedQty === 2
+      ? `COMO ASSIM\n2 ${detectedPieceLabel}\nPELO\nPREÇO DE 1 😲`
+      : `COMO ASSIM\n${detectedQty} ${detectedPieceLabel}\nPOR ESSE\nVALOR 😲`,
+    `ESSE KIT COM\n${detectedQty} ${detectedPieceLabel}\nVALE CADA\nCENTAVO ${emoji}`,
+  ];
+}
+
+function resolveMaleSpecificHeadline(combinedNorm: string): string | null {
+  const kitHeadlines = resolveKitSpecificHeadlines(combinedNorm, 'Homem');
+  if (kitHeadlines.length > 0) {
+    return kitHeadlines[0];
+  }
+
+  const isConjunto = /\b(conjunto|conjuntinho|conjuntos)\b/i.test(combinedNorm);
+  if (isConjunto) {
+    return 'esse\nconjunto\nvale\ncada\ncentavo\n😎';
   }
 
   return null;
@@ -1360,9 +1477,23 @@ export function resolveHeadlineAndHashtags(params: {
   let finalHeadline = appendLegacyFlowerIfNeeded(chosenHeadline, flower);
   let tagsOnly = '#modafeminina #achadinhos';
 
-  if (params.influencer === 'Homem') {
+  const kitHeadlines = resolveKitSpecificHeadlines(combined, params.influencer);
+  if (kitHeadlines.length > 0) {
+    if (params.excludeHeadline && kitHeadlines.length > 1) {
+      const cleanExclude = params.excludeHeadline.trim().toLowerCase();
+      const nextKitHeadline = kitHeadlines.find(
+        (h) => h.trim().toLowerCase() !== cleanExclude
+      );
+      finalHeadline = nextKitHeadline || kitHeadlines[0];
+    } else {
+      finalHeadline = kitHeadlines[0];
+    }
+  } else if (params.influencer === 'Homem') {
     const maleSpecific = resolveMaleSpecificHeadline(combined);
     finalHeadline = maleSpecific || adaptHeadlineToMale(finalHeadline, combined);
+  }
+
+  if (params.influencer === 'Homem') {
     tagsOnly = resolveMaleHashtags(combined);
   }
 
@@ -1409,6 +1540,19 @@ export function resolveMultipleDistinctHeadlines(params: {
     params.additionalInstructions
   );
   const targetCount = Math.max(1, params.count || 1);
+
+  const kitHeadlines = resolveKitSpecificHeadlines(combined, params.influencer);
+  if (kitHeadlines.length > 0) {
+    const excludedSet = new Set(
+      (params.excludeHeadlines || []).map((h) => h.trim().toLowerCase()).filter(Boolean)
+    );
+    const preferredKit = kitHeadlines.filter((h) => !excludedSet.has(h.trim().toLowerCase()));
+    const orderedKit = [
+      ...preferredKit,
+      ...kitHeadlines.filter((h) => excludedSet.has(h.trim().toLowerCase())),
+    ];
+    return orderedKit.slice(0, Math.min(targetCount, orderedKit.length));
+  }
 
   if (params.influencer === 'Homem') {
     const maleSpecific = resolveMaleSpecificHeadline(combined);
