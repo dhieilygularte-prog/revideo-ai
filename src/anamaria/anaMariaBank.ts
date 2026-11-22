@@ -1164,15 +1164,19 @@ export function detectProductCategory(text: string): ProductCategoryGroup {
 function stripStylingForCategory(rawText?: string): string {
   if (!rawText) return '';
   return rawText
+    .replace(/\r\n/g, '\n')
     .split(/\n+/)
     .filter(
       (line) =>
-        !/^\s*[\-•*✔✓✅🔹🔸▪️➤►]?\s*(?:use|combine|combinando|combina|aposte|vai\s+bem|fica\s+(?:lindo|perfeito|[oó]timo))\s+com\b/i.test(
+        !/^\s*[\-•*✔✓✅🔹🔸▪️➤►]?\s*(?:use|usar|combine|combinar|combinando|combina|aposte|vai\s+bem|fica\s+(?:lindo|perfeito|[oó]timo)|f[aá]cil\s+de\s+combinar)\b/i.test(
           line
         )
     )
     .join(' ')
-    .replace(/\b(?:use|combine|combinando|combina)\s+com\s+[^.;|\n]+/gi, ' ');
+    .replace(
+      /\b(?:(?:use|usar|combine|combinar|combinando|combina|aposte|vai|fica|veste|harmoniza|casa)|(?:f[aá]cil|perfeit[oa]|ideal|[oó]tim[oa])\s+(?:de|para)\s+(?:usar|combinar))(?:\s+(?:facilmente|perfeitamente|muito|super|bem|tamb[eé]m|lindamente|melhor|[oó]timo|lindo|perfeito|incr[ií]vel|com\s+tudo)){0,4}\s+com\s+[^.;!\n]+/gi,
+      ' '
+    );
 }
 
 function detectCategoryPrioritizingName(

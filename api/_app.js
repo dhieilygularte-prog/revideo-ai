@@ -962,19 +962,42 @@ function stripLiningClauses(rawText) {
   return lines.join("\n").replace(/\b(?:com|possui)\s+forro\s+(?:em|de|100%|\d+%)\s+[^.;|\n]+/gi, " ");
 }
 function stripStylingSuggestionClauses(rawText) {
-  const lines = (rawText || "").split(/\n+/).filter(
-    (line) => !/^\s*[\-•*✔✓✅🔹🔸▪️➤►]?\s*(?:use|combine|combinando|combina|aposte|veste\s+bem|vai\s+bem|fica\s+(?:lindo|perfeito|[oó]timo|incr[ií]vel))\s+com\b/i.test(
+  if (!rawText) return "";
+  const unwrapped = unwrapSoftLineBreaks(rawText);
+  const lines = unwrapped.split(/\n+/).filter(
+    (line) => !/^\s*[\-•*✔✓✅🔹🔸▪️➤►]?\s*(?:use|usar|combine|combinar|combinando|combina|aposte|veste\s+bem|vai\s+bem|fica\s+(?:lindo|perfeito|[oó]timo|incr[ií]vel)|f[aá]cil\s+de\s+combinar)\b/i.test(
       line
     )
   );
   return lines.join("\n").replace(
-    /\b(?:use|combine|combinando|combina)\s+com\s+[^.;|\n]+/gi,
+    /\b(?:(?:use|usar|combine|combinar|combinando|combina|aposte|vai|fica|veste|harmoniza|casa)|(?:f[aá]cil|perfeit[oa]|ideal|[oó]tim[oa])\s+(?:de|para)\s+(?:usar|combinar))(?:\s+(?:facilmente|perfeitamente|muito|super|bem|tamb[eé]m|lindamente|melhor|[oó]timo|lindo|perfeito|incr[ií]vel|com\s+tudo)){0,4}\s+com\s+[^.;!\n]+/gi,
     " "
   );
 }
+function resolveConciseFabricLabel(entry, sourceNorm) {
+  if (entry.id === "trico_modal") {
+    if (/\bmodal\b/i.test(sourceNorm)) return "Tric\xF4 Modal";
+    if (/\bmousse\b/i.test(sourceNorm)) return "Tric\xF4 Mousse";
+    if (/\bcroch[eê]|crochet\b/i.test(sourceNorm)) return "Croch\xEA";
+    return "Tric\xF4";
+  }
+  if (entry.id === "algodao_tricoline") {
+    if (/\btricoline\b/i.test(sourceNorm)) return "Tricoline";
+    if (/\bpopeline\b/i.test(sourceNorm)) return "Popeline";
+    if (/\bcambraia\b/i.test(sourceNorm)) return "Cambraia";
+    if (/\bsuedine\b/i.test(sourceNorm)) return "Suedine";
+    if (/\b100\s*%\s*algod[aã]o\b/i.test(sourceNorm)) return "100% Algod\xE3o";
+    return "Algod\xE3o";
+  }
+  if (entry.id === "jeans_denim") {
+    if (/\bdenim\b/i.test(sourceNorm)) return "Jeans / Denim";
+    return "Jeans";
+  }
+  return entry.labelPt;
+}
 function extractExplicitFabricPhrase(rawText, preferMainClothOnly = false) {
   const unwrapped = unwrapSoftLineBreaks(rawText);
-  const sourceText = preferMainClothOnly ? stripLiningClauses(unwrapped) : unwrapped;
+  const sourceText = preferMainClothOnly ? stripStylingSuggestionClauses(stripLiningClauses(unwrapped)) : stripStylingSuggestionClauses(unwrapped);
   const labelMatch = sourceText.match(
     /(?:tecido(?:\s+principal)?|material|composi[cç][aã]o)\s*[:\-]\s*([^\n.;|]{2,70})/i
   );
@@ -985,7 +1008,7 @@ function extractExplicitFabricPhrase(rawText, preferMainClothOnly = false) {
     }
   }
   const colonDashBulletMatch = sourceText.match(
-    /(?:^|[\n•\-*])\s*tecido\s+([a-zA-ZÀ-ÿ0-9 ]{2,45})(?=\s*[:\-]|$)/im
+    /(?:^|[\n•\-*])\s*tecido\s+(?!confort[aá]vel\b|leve\b|maci[oa]\b|agrad[aá]vel\b|respir[aá]vel\b|de\s+alta\s+qualidade\b)([a-zA-ZÀ-ÿ0-9 %]{2,45})(?=\s*[:\-]|$)/im
   );
   if (colonDashBulletMatch?.[1]) {
     const cleaned = cleanFabricPhrase(colonDashBulletMatch[1]);
@@ -994,7 +1017,7 @@ function extractExplicitFabricPhrase(rawText, preferMainClothOnly = false) {
     }
   }
   const inlineMatch = sourceText.match(
-    /(?:confeccionad[oa]\s+(?:em|com)|feit[oa]\s+(?:em|de|com)|no\s+tecido|em\s+tecido)\s+([^\n.,;|]{2,50})/i
+    /(?:confeccionad[oa]s?\s+(?:em|com)|produzid[oa]s?\s+(?:em|com)|feit[oa]s?\s+(?:em|de|com)|no\s+tecido|em\s+tecido)\s+([^\n.,;|]{2,50})/i
   );
   if (inlineMatch?.[1]) {
     const cleaned = cleanFabricPhrase(inlineMatch[1]);
@@ -1040,10 +1063,7 @@ function extractGenderFromProductInfo(rawText) {
   }
   return null;
 }
-function extractGarmentFromProductInfo(rawText) {
-  if (!rawText || !rawText.trim()) return null;
-  const fixedRaw = normalizePortugueseFashionText(stripStylingSuggestionClauses(rawText));
-  const s = fixedRaw.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ");
+function matchGarmentFromNormalizedSlice(s) {
   if (/\b(conjunto\s+(?:de\s+)?academia|conjunto\s+fitness|conjunto\s+treino|top\s+e\s+legging|short\s+e\s+top\s+fitness)\b/.test(s)) {
     return "Conjunto de Academia";
   }
@@ -1116,6 +1136,19 @@ function extractGarmentFromProductInfo(rawText) {
   }
   return null;
 }
+function extractGarmentFromProductInfo(rawText) {
+  if (!rawText || !rawText.trim()) return null;
+  const cleanedText = stripStylingSuggestionClauses(rawText);
+  const firstMeaningfulLine = cleanedText.split(/\n+/).map((l) => l.trim()).find((l) => l.length >= 3 && !/^descri[cç][aã]o(\s+do\s+produto)?$/i.test(l));
+  if (firstMeaningfulLine) {
+    const normFirst = normalizePortugueseFashionText(firstMeaningfulLine).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ");
+    const fromTitle = matchGarmentFromNormalizedSlice(normFirst);
+    if (fromTitle) return fromTitle;
+  }
+  const fixedRaw = normalizePortugueseFashionText(cleanedText);
+  const s = fixedRaw.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ");
+  return matchGarmentFromNormalizedSlice(s);
+}
 function analyzeAnaMariaProductInfo(rawProductInfo, overrideFabricType) {
   const rawText = normalizePortugueseFashionText((rawProductInfo || "").trim());
   const normalizedOverride = normalizePortugueseFashionText((overrideFabricType || "").trim());
@@ -1134,8 +1167,8 @@ function analyzeAnaMariaProductInfo(rawProductInfo, overrideFabricType) {
       compactLineEn: ""
     };
   }
-  const unwrappedRawText = unwrapSoftLineBreaks(rawText);
-  const cleanedText = cleanRawProductInfoText(rawText || normalizedOverride);
+  const unwrappedRawText = stripStylingSuggestionClauses(unwrapSoftLineBreaks(rawText));
+  const cleanedText = cleanRawProductInfoText(unwrappedRawText || normalizedOverride);
   const normSearch = (unwrappedRawText || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   let detectedFabrics = [];
   if (normalizedOverride) {
@@ -1150,7 +1183,7 @@ function analyzeAnaMariaProductInfo(rawProductInfo, overrideFabricType) {
   }
   const explicitPhrase = extractExplicitFabricPhrase(rawText, true)?.phrase || null;
   const fallbackShort = rawText.length <= 75 ? rawText.replace(/\s+/g, " ").trim() : "";
-  const fabricSummaryLabel = normalizedOverride || (detectedFabrics.length > 0 ? detectedFabrics.slice(0, 3).map((f) => f.labelPt).join(" + ") : explicitPhrase || fallbackShort || "Conforme especifica\xE7\xF5es informadas");
+  const fabricSummaryLabel = normalizedOverride || (detectedFabrics.length > 0 ? detectedFabrics.slice(0, 3).map((f) => resolveConciseFabricLabel(f, normSearch)).join(" + ") : explicitPhrase || fallbackShort || "Conforme especifica\xE7\xF5es informadas");
   const constructionNotes = extractConstructionNotes(rawText || normalizedOverride);
   const detectedGarmentHint = extractGarmentFromProductInfo(rawText);
   const textureDirectivesPt = detectedFabrics.slice(0, 3).map((f) => `- **${f.labelPt}:** ${f.visualPromptPt}.`).join("\n");
