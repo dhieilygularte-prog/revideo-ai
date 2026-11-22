@@ -1145,16 +1145,47 @@ export function detectProductCategory(text: string): ProductCategoryGroup {
   if (/\b(vestido|vestidos|vestidinho|tubinho|chemise)\b/.test(norm)) {
     return 'vestido';
   }
-  // 12. Calça
-  if (/\b(calca|calcas|linho|pantalona|jeans|alfaiataria)\b/.test(norm)) {
+  // 12. Calça (ignora menção solta de tecido "linho/jeans/alfaiataria" quando o produto é camisa/camiseta/blusa)
+  const hasExplicitUpper = /\b(blusa|blusinha|cropped|camisa|camisas|camiseta|camisetas|polo|top|t shirt|tshirt|regata|sueter|sweater)\b/.test(norm);
+  if (
+    /\b(calca|calcas|pantalona|wide leg|pantacourt|legging)\b/.test(norm) ||
+    (!hasExplicitUpper && /\b(linho|jeans|alfaiataria)\b/.test(norm))
+  ) {
     return 'calca';
   }
-  // 13. Blusa / Cropped / Camiseta
-  if (/\b(blusa|blusinha|cropped|camisa|camiseta|top|t shirt|regata)\b/.test(norm)) {
+  // 13. Blusa / Cropped / Camisa / Camiseta
+  if (hasExplicitUpper) {
     return 'blusa_camiseta';
   }
 
   return 'outro';
+}
+
+function stripStylingForCategory(rawText?: string): string {
+  if (!rawText) return '';
+  return rawText
+    .split(/\n+/)
+    .filter(
+      (line) =>
+        !/^\s*[\-•*✔✓✅🔹🔸▪️➤►]?\s*(?:use|combine|combinando|combina|aposte|vai\s+bem|fica\s+(?:lindo|perfeito|[oó]timo))\s+com\b/i.test(
+          line
+        )
+    )
+    .join(' ')
+    .replace(/\b(?:use|combine|combinando|combina)\s+com\s+[^.;|\n]+/gi, ' ');
+}
+
+function detectCategoryPrioritizingName(
+  productName: string,
+  productInfo?: string,
+  additionalInstructions?: string
+): ProductCategoryGroup {
+  const fromName = detectProductCategory(productName);
+  if (fromName !== 'outro') {
+    return fromName;
+  }
+  const cleanInfo = stripStylingForCategory(productInfo);
+  return detectProductCategory(`${cleanInfo} ${additionalInstructions || ''}`);
 }
 
 /**
@@ -1182,7 +1213,12 @@ function stripEmojisFromAdaptedHeadline(text: string): string {
 function adaptHeadlineToMale(headline: string, combinedNorm = ''): string {
   const isCamisaOnly =
     /\bcamisa(s)?\b/i.test(combinedNorm) && !/\b(camiseta|camisetas|t-shirt|tshirt)\b/i.test(combinedNorm);
-  const maleTopWord = isCamisaOnly ? 'camisa' : 'camiseta';
+  const isTrico = /\b(trico|tricot)\b/i.test(combinedNorm);
+  const maleTopWord = isCamisaOnly
+    ? isTrico
+      ? 'camisa de tricô'
+      : 'camisa'
+    : 'camiseta';
 
   const adapted = headline
     .replace(/\btoda\s+garota\b/gi, (m) => (m[0] === 'T' ? 'Todo homem' : 'todo homem'))
@@ -1194,6 +1230,7 @@ function adaptHeadlineToMale(headline: string, combinedNorm = ''): string {
     .replace(/\bblusas?\s+rendad[oa]s?\b/gi, maleTopWord)
     .replace(/\bblusinhas?\b/gi, maleTopWord)
     .replace(/\bblusas?\b/gi, maleTopWord)
+    .replace(/\bcamisetas?\b/gi, (m) => (isCamisaOnly ? maleTopWord : m))
     .replace(/\bestilosa\b/gi, 'estiloso')
     .replace(/\bmaravilhosa\b/gi, 'incrível')
     .replace(/\bpoderosa\b/gi, 'imponente')
@@ -1255,11 +1292,15 @@ export function resolveHeadlineAndHashtags(params: {
   detectedCategory?: ProductCategoryGroup;
 } {
   const normName = normalizeText(params.productName);
-  const normInfo = normalizeText(params.productInfo || '');
+  const normInfo = normalizeText(stripStylingForCategory(params.productInfo));
   const normExtra = normalizeText(params.additionalInstructions || '');
   const combined = `${normName} ${normInfo} ${normExtra}`.trim();
 
-  const category = detectProductCategory(combined);
+  const category = detectCategoryPrioritizingName(
+    params.productName,
+    params.productInfo,
+    params.additionalInstructions
+  );
 
   let chosenHeadline = '';
   let flower = '❀';
@@ -1348,10 +1389,14 @@ export function resolveMultipleDistinctHeadlines(params: {
   excludeHeadlines?: string[];
 }): string[] {
   const normName = normalizeText(params.productName);
-  const normInfo = normalizeText(params.productInfo || '');
+  const normInfo = normalizeText(stripStylingForCategory(params.productInfo));
   const normExtra = normalizeText(params.additionalInstructions || '');
   const combined = `${normName} ${normInfo} ${normExtra}`.trim();
-  const category = detectProductCategory(combined);
+  const category = detectCategoryPrioritizingName(
+    params.productName,
+    params.productInfo,
+    params.additionalInstructions
+  );
   const targetCount = Math.max(1, params.count || 1);
 
   if (params.influencer === 'Homem') {
