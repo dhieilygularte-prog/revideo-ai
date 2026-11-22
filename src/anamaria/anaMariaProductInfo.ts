@@ -703,8 +703,14 @@ export function extractGarmentFromProductInfo(rawText?: string): string | null {
   if (/\bjaqueta\b/.test(s)) return 'Jaqueta';
   if (/\bblazer\b/.test(s)) return 'Blazer';
   if (/\btop\s+cropped|cropped\b/.test(s)) return 'Top Cropped';
+  if (/\b(camiseta|camisetas|t-shirt|tshirt)\b/.test(s)) return 'Camiseta';
+  if (/\bcamisa\s+polo\b/.test(s)) return 'Camisa Polo';
   if (/\bcamisa\s+social\b/.test(s)) return 'Camisa Social';
-  if (/\b(blusa|blusinha|camiseta|t-shirt|tshirt)\b/.test(s)) return 'Blusa Feminina';
+  if (/\bcamisa\b/.test(s)) return 'Camisa';
+  if (/\b(sueter|sweater|cardiga|cardigan)\b/.test(s)) return 'Suéter';
+  if (/\b(blusa|blusinha)\b/.test(s)) {
+    return /\bmasculin[oa]\b/.test(s) ? 'Camiseta' : 'Blusa Feminina';
+  }
 
   return null;
 }

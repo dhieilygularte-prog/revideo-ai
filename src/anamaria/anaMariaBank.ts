@@ -1169,18 +1169,39 @@ export function detectProductCategory(text: string): ProductCategoryGroup {
  * 5. A headline sempre deve terminar com a florzinha (✿, ❀, 🌸 ou ✨).
  * 6. As hashtags NUNCA devem incluir o nome do produto no texto de cópia.
  */
-function adaptHeadlineToMale(headline: string): string {
-  return headline
-    .replace(/\btoda\s+garota\b/gi, 'todo homem')
-    .replace(/\btoda\s+mulher\b/gi, 'todo homem')
-    .replace(/\bgarotas\b/gi, 'rapazes')
-    .replace(/\bmeninas\b/gi, 'rapazes')
-    .replace(/\bmulheres\b/gi, 'homens')
+function stripEmojisFromAdaptedHeadline(text: string): string {
+  return text
+    .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0E}\u{FE0F}\u{200D}❤✨🌸✿❀💋🤍💗💜💛😍😎😲🔥⚡⭐]+/gu, '')
+    .split('\n')
+    .map((line) => line.replace(/[ \t]{2,}/g, ' ').trim())
+    .filter((line) => line.length > 0)
+    .join('\n')
+    .trim();
+}
+
+function adaptHeadlineToMale(headline: string, combinedNorm = ''): string {
+  const isCamisaOnly =
+    /\bcamisa(s)?\b/i.test(combinedNorm) && !/\b(camiseta|camisetas|t-shirt|tshirt)\b/i.test(combinedNorm);
+  const maleTopWord = isCamisaOnly ? 'camisa' : 'camiseta';
+
+  const adapted = headline
+    .replace(/\btoda\s+garota\b/gi, (m) => (m[0] === 'T' ? 'Todo homem' : 'todo homem'))
+    .replace(/\btoda\s+mulher\b/gi, (m) => (m[0] === 'T' ? 'Todo homem' : 'todo homem'))
+    .replace(/\bgarotas\b/gi, (m) => (m[0] === 'G' ? 'Homens' : 'homens'))
+    .replace(/\bmeninas\b/gi, (m) => (m[0] === 'M' ? 'Rapazes' : 'rapazes'))
+    .replace(/\bmulheres\b/gi, (m) => (m[0] === 'M' ? 'Homens' : 'homens'))
+    .replace(/\bblusas?\s+de\s+renda\b/gi, maleTopWord)
+    .replace(/\bblusas?\s+rendad[oa]s?\b/gi, maleTopWord)
+    .replace(/\bblusinhas?\b/gi, maleTopWord)
+    .replace(/\bblusas?\b/gi, maleTopWord)
     .replace(/\bestilosa\b/gi, 'estiloso')
     .replace(/\bmaravilhosa\b/gi, 'incrível')
     .replace(/\bpoderosa\b/gi, 'imponente')
     .replace(/\blinda\b/gi, 'lindo')
     .replace(/\bvestida\b/gi, 'vestido');
+
+  // Ao adaptar uma headline feminina para uso masculino, remove emojis/símbolos decorativos
+  return stripEmojisFromAdaptedHeadline(adapted);
 }
 
 function resolveMaleSpecificHeadline(combinedNorm: string): string | null {
@@ -1289,7 +1310,7 @@ export function resolveHeadlineAndHashtags(params: {
 
   if (params.influencer === 'Homem') {
     const maleSpecific = resolveMaleSpecificHeadline(combined);
-    finalHeadline = maleSpecific || adaptHeadlineToMale(finalHeadline);
+    finalHeadline = maleSpecific || adaptHeadlineToMale(finalHeadline, combined);
     tagsOnly = resolveMaleHashtags(combined);
   }
 
@@ -1353,6 +1374,10 @@ export function resolveMultipleDistinctHeadlines(params: {
       'Aquele achadinho que toda garota deveria ter ❀',
       'Simplesmente encontrei a melhor escolha por esse valor 🌸',
     ];
+  }
+
+  if (params.influencer === 'Homem') {
+    rawCandidates = rawCandidates.map((h) => adaptHeadlineToMale(h, combined));
   }
 
   // Deduplica mantendo apenas headlines únicas (case-insensitive)

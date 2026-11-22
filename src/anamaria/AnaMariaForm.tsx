@@ -1855,23 +1855,61 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           onChange={(e) => {
             const val = e.target.value;
             setApprovalWarning('');
+            const suggestedFabric =
+              !hasUserManuallyEditedFabricRef.current && val.trim()
+                ? extractFabricFieldSuggestion(val)
+                : undefined;
             if (!hasUserManuallyEditedFabricRef.current) {
-              const suggestedFabric = val.trim() ? extractFabricFieldSuggestion(val) : '';
               setAutoIdentifiedFabricBadge(Boolean(suggestedFabric));
-              onChange((prev) => ({
-                ...prev,
-                productInfo: val,
-                fabricType: suggestedFabric,
-                isFabricTypeApproved: false,
-                isDescriptionDivergenceApproved: false,
-              }));
-            } else {
-              onChange((prev) => ({
-                ...prev,
-                productInfo: val,
-                isDescriptionDivergenceApproved: false,
-              }));
             }
+
+            const rawSuggestedGarment = val.trim() ? extractGarmentFromProductInfo(val) : null;
+            const suggestedName = rawSuggestedGarment
+              ? normalizeIdentifiedGarmentName(rawSuggestedGarment)
+              : '';
+
+            onChange((prev) => {
+              const shouldAutoFillName =
+                Boolean(suggestedName) &&
+                (!hasUserManuallyEditedNameRef.current || prev.productName.trim().length === 0);
+              const modeNow = prev.presentationMode || 'mirror_selfie';
+              const nextName = shouldAutoFillName ? suggestedName : prev.productName;
+              const nextShoe =
+                shouldAutoFillName && !prev.isShoeTypeApproved
+                  ? resolveAutoShoeOptionByProductName(
+                      suggestedName,
+                      prev.additionalInstructions,
+                      undefined,
+                      prev.influencer
+                    )
+                  : prev.selectedShoeOption;
+              const nextMaster =
+                shouldAutoFillName && !prev.isManualMasterSelection && modeNow !== 'pov'
+                  ? resolveMasterPromptByProductName(suggestedName)
+                  : prev.selectedMasterId;
+
+              if (shouldAutoFillName) {
+                setAutoIdentifiedBadge(true);
+              }
+
+              return {
+                ...prev,
+                productInfo: val,
+                productName: nextName,
+                isProductNameApproved: shouldAutoFillName ? false : prev.isProductNameApproved,
+                selectedShoeOption: nextShoe,
+                isShoeTypeApproved: shouldAutoFillName ? false : prev.isShoeTypeApproved,
+                selectedMasterId: nextMaster,
+                fabricType:
+                  !hasUserManuallyEditedFabricRef.current
+                    ? suggestedFabric || ''
+                    : prev.fabricType,
+                isFabricTypeApproved: !hasUserManuallyEditedFabricRef.current
+                  ? false
+                  : prev.isFabricTypeApproved,
+                isDescriptionDivergenceApproved: false,
+              };
+            });
           }}
           placeholder="Ex: Viscolinho&#10;Ou cole aqui todas as informações do produto (tecido, composição, modelagem, forro, botões, detalhes...)"
           className={`w-full rounded-xl px-4 py-3 text-sm text-white placeholder-zinc-500 border outline-none transition-all resize-y min-h-[84px] ${
