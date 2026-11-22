@@ -26,6 +26,7 @@ import {
 import {
   analyzeAnaMariaProductInfo,
   buildUltraPhotorealismBlock,
+  extractGenderFromProductInfo,
   normalizeIdentifiedGarmentName,
 } from './src/anamaria/anaMariaProductInfo';
 import { buildAniaPlanningSystemPrompt } from './src/ania/aniaPrompts';
@@ -1291,38 +1292,40 @@ app.post('/api/detect-dominant-color', async (req, res) => {
 
     // ─── MODO IDENTIFICAÇÃO RÁPIDA DE PEÇA DE VESTUÁRIO (MODO ANA MARIA) ───
     if (mode === 'identify_garment') {
+      const textDetectedGender = extractGenderFromProductInfo(productInfo);
       const textHintBlock = productInfoSpec.hasInfo
-        ? `\nINFORMAÇÕES REAIS DO PRODUTO FORNECIDAS PELO USUÁRIO (USE PARA AJUDAR A IDENTIFICAR O NOME DA PEÇA E TECIDO):\n"${productInfoSpec.cleanedText.slice(0, 500)}"${
+        ? `\nINFORMAÇÕES REAIS DO PRODUTO FORNECIDAS PELO USUÁRIO (USE PARA AJUDAR A IDENTIFICAR O NOME DA PEÇA, GÊNERO E TECIDO):\n"${productInfoSpec.cleanedText.slice(0, 500)}"${
             productInfoSpec.detectedGarmentHint
               ? `\n- Pista principal identificada no texto: "${productInfoSpec.detectedGarmentHint}"`
               : ''
-          }\nCombine a análise visual da foto com essas informações de texto para determinar o nome comercial exato da peça (especialmente se a imagem estiver em baixa qualidade ou borrada).`
+          }\nCombine a análise visual da foto com essas informações de texto para determinar o nome comercial exato da peça e o gênero (Homem ou Mulher).`
         : '';
 
-      const identifyPrompt = `Analise a foto deste item de vestuário e informe o NOME COMERCIAL ESPECÍFICO da peça em português para catálogo de moda e TikTok Shop.${textHintBlock}
+      const identifyPrompt = `Analise a foto deste item de vestuário e as informações fornecidas para retornar estritamente um JSON com DOIS campos: "garmentName" e "detectedGender".${textHintBlock}
 
-CATEGORIAS PRIORITÁRIAS OBRIGATÓRIAS (USE EXATAMENTE ESTES TERMOS SE CORRESPONDEREM À PEÇA):
+1) "garmentName" — NOME COMERCIAL ESPECÍFICO DA PEÇA EM PORTUGUÊS (1 a 3 palavras, iniciais maiúsculas):
 - Calças largas / pantalonas / sociais folgadas: "Calça Pantalona", "Calça Social Folgada" ou "Calça Social ou Pantalona".
 - Calças estruturadas / jeans / sociais retas: "Calça Jeans" ou "Calça Social".
 - Saias: se for de couro ou courino use "Saia Couro"; demais saias use "Saia".
 - Academia / Fitness / Cinta: "Roupa de Academia", "Conjunto de Academia" ou "Cinta Modeladora".
 - Vestidos / Macacões / Conjuntos: "Vestido", "Vestido Longo", "Vestido Midi", "Vestido Curto", "Conjunto" ou "Macacão".
-
-DISTINÇÃO CRÍTICA ENTRE CONJUNTO E MACACÃO / MACAQUINHO (LEI INEGOCIÁVEL):
-- CONJUNTO (2 Peças Independentes):
-  Se o visual for composto por DUAS peças (uma parte de cima independente como blusa, cropped, top ou camisa + uma parte de baixo independente como shorts, bermuda, calça ou saia), É OBRIGATORIAMENTE UM "Conjunto" (ou "Conjunto de Academia" se for fitness).
-  * Mesmo que sejam da mesma cor e mesmo tecido: se a blusa sobrepõe o cós do shorts/calça, ou se o shorts/calça possui cós estruturado próprio, CLASSIFIQUE RIGOROSAMENTE COMO "Conjunto", NUNCA como macacão!
-- MACACÃO / MACAQUINHO (Peça Única Inteiriça):
-  É uma peça ÚNICA e contínua, onde o topo e a parte inferior são costurados juntos em uma só peça sem separação ("Macacão" ou "Macaquinho").
-
-DEMAIS CATEGORIAS DE MODA:
+- DISTINÇÃO CRÍTICA CONJUNTO vs MACACÃO:
+  * CONJUNTO (2 peças independentes, mesmo da mesma cor/tecido): classifique como "Conjunto" (ou "Conjunto de Academia").
+  * MACACÃO / MACAQUINHO (peça única inteiriça): classifique como "Macacão" ou "Macaquinho".
 - Short/Bermuda avulso: "Bermuda", "Short Jeans", "Short Alfaiataria".
-- Blusa/Camisa/Top avulso: "Blusa Feminina", "Top Cropped", "Camisa Social", "Camiseta Oversized", "Jaqueta".
+- Blusa/Camisa/Camiseta/Top avulso: "Camiseta", "Camisa Polo", "Camisa Social", "Camisa", "Suéter", "Blusa Feminina", "Top Cropped", "Jaqueta".
 - Baby Doll / Pijama: "Camisola Baby Doll", "Pijama".
+- Corrija automaticamente ortografia em português (ex.: "Vestido Londo" -> "Vestido Longo", "Calsa" -> "Calça").
 
-REGRAS FINAIS:
-1. Responda APENAS o nome comercial específico da peça (1 a 3 palavras, iniciais maiúsculas), sem ponto final, sem aspas e sem explicações.
-2. CORREÇÃO ORTOGRÁFICA OBRIGATÓRIA EM PORTUGUÊS: Se as Informações do Produto ou sua leitura inicial contiverem erros de digitação ou português (ex.: "Vestido Londo" -> "Vestido Longo", "Calsa" -> "Calça", "Conjuto" -> "Conjunto", "Saia Mid" -> "Saia Midi", "Macaquino" -> "Macaquinho"), CORRIJA automaticamente a ortografia em português na sua resposta final.`;
+2) "detectedGender" — GÊNERO DA PEÇA ("Homem", "Mulher" ou "unknown"):
+- Prioridade 1 (Descrição): se o texto fornecido deixar claro que a peça é masculina (ex.: "masculino", "para homens") retorne "Homem"; se deixar claro que é feminina retorne "Mulher".
+- Prioridade 2 (Foto de Referência): se o texto não deixar claro, observe a FOTO:
+  * Se houver um HOMEM vestindo a peça -> "Homem".
+  * Se houver uma MULHER vestindo a peça (ou se for peça tipicamente feminina como vestido, saia, biquíni, lingerie, cropped feminino) -> "Mulher".
+  * Se a foto mostrar apenas a peça solta/cabide/fundo neutro sem modelo visível e a descrição também não indicar se é masculina ou feminina (ou for unissex) -> retorne "unknown".
+
+Retorne estritamente JSON válido:
+{ "garmentName": "Camisa Polo", "detectedGender": "Homem" }`;
 
       const sanitizeIdentifiedGarment = (raw: string): string => {
         let clean = raw
@@ -1338,14 +1341,22 @@ REGRAS FINAIS:
         return normalizeIdentifiedGarmentName(clean);
       };
 
+      const normalizeGender = (raw: unknown): 'Homem' | 'Mulher' | 'unknown' => {
+        const s = String(raw || '').trim().toLowerCase();
+        if (s === 'homem' || s === 'masculino' || s === 'male' || s === 'man') return 'Homem';
+        if (s === 'mulher' || s === 'feminino' || s === 'female' || s === 'woman') return 'Mulher';
+        return 'unknown';
+      };
+
       // 1. Tenta OpenAI se configurado (usando gpt-4o-mini + detail: 'low' para gastar ~85 tokens em vez de ~1100 tokens)
       if (openAIProvider && openAIProvider.isConfigured()) {
         const client = (openAIProvider as any).getClient();
         try {
           const completion = await client.chat.completions.create({
             model: 'gpt-4o-mini',
-            max_tokens: 25,
+            max_tokens: 70,
             temperature: 0.1,
+            response_format: { type: 'json_object' },
             messages: [
               {
                 role: 'user',
@@ -1356,11 +1367,27 @@ REGRAS FINAIS:
               },
             ],
           });
-          const rawName = completion.choices[0]?.message?.content?.trim();
-          if (rawName) {
-            const cleanName = sanitizeIdentifiedGarment(rawName);
+          const rawContent = completion.choices[0]?.message?.content?.trim();
+          if (rawContent) {
+            let parsedName = '';
+            let visualGender: 'Homem' | 'Mulher' | 'unknown' = 'unknown';
+            try {
+              const parsedJson = JSON.parse(rawContent);
+              parsedName = String(parsedJson?.garmentName || '').trim();
+              visualGender = normalizeGender(parsedJson?.detectedGender);
+            } catch {
+              parsedName = rawContent;
+            }
+            const cleanName = parsedName ? sanitizeIdentifiedGarment(parsedName) : '';
+            // Descrição tem prioridade 1; foto é prioridade 2; se nenhum deixar claro -> 'unknown'
+            const finalGender: 'Homem' | 'Mulher' | 'unknown' =
+              textDetectedGender || (visualGender !== 'unknown' ? visualGender : 'unknown');
             if (cleanName) {
-              const payload = { success: true, garmentName: cleanName };
+              const payload = {
+                success: true,
+                garmentName: cleanName,
+                detectedGender: finalGender,
+              };
               visionCache.set(detectCacheKey, payload);
               return res.json(payload);
             }
@@ -1372,14 +1399,27 @@ REGRAS FINAIS:
 
       // 2. Fallback inteligente via Informações do Produto ou nome do arquivo caso OpenAI falhe
       if (productInfoSpec.detectedGarmentHint) {
-        return res.json({ success: true, garmentName: normalizeIdentifiedGarmentName(productInfoSpec.detectedGarmentHint) });
+        return res.json({
+          success: true,
+          garmentName: normalizeIdentifiedGarmentName(productInfoSpec.detectedGarmentHint),
+          detectedGender: textDetectedGender || 'unknown',
+        });
       }
       const fallbackFromFilename = extractGarmentNameFromFileName(fileName);
       if (fallbackFromFilename) {
-        return res.json({ success: true, garmentName: normalizeIdentifiedGarmentName(fallbackFromFilename), fallback: true });
+        return res.json({
+          success: true,
+          garmentName: normalizeIdentifiedGarmentName(fallbackFromFilename),
+          detectedGender: textDetectedGender || 'unknown',
+          fallback: true,
+        });
       }
 
-      return res.json({ success: false, error: 'Não foi possível identificar a peça automaticamente' });
+      return res.json({
+        success: false,
+        detectedGender: textDetectedGender || 'unknown',
+        error: 'Não foi possível identificar a peça automaticamente',
+      });
     }
 
     const promptText = `Analise a foto deste item comercial (${productName || (productMode === 'footwear' ? 'calçado / tênis' : 'roupa')}) e identifique com máxima precisão a cor predominante da PEÇA DE ROUPA / PRODUTO PRINCIPAL.

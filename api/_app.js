@@ -961,6 +961,17 @@ function stripLiningClauses(rawText) {
   const lines = (rawText || "").split(/\n+/).filter((line) => !/^\s*(?:com\s+|possui\s+)?forro\b/i.test(line));
   return lines.join("\n").replace(/\b(?:com|possui)\s+forro\s+(?:em|de|100%|\d+%)\s+[^.;|\n]+/gi, " ");
 }
+function stripStylingSuggestionClauses(rawText) {
+  const lines = (rawText || "").split(/\n+/).filter(
+    (line) => !/^\s*[\-•*✔✓✅🔹🔸▪️➤►]?\s*(?:use|combine|combinando|combina|aposte|veste\s+bem|vai\s+bem|fica\s+(?:lindo|perfeito|[oó]timo|incr[ií]vel))\s+com\b/i.test(
+      line
+    )
+  );
+  return lines.join("\n").replace(
+    /\b(?:use|combine|combinando|combina)\s+com\s+[^.;|\n]+/gi,
+    " "
+  );
+}
 function extractExplicitFabricPhrase(rawText, preferMainClothOnly = false) {
   const unwrapped = unwrapSoftLineBreaks(rawText);
   const sourceText = preferMainClothOnly ? stripLiningClauses(unwrapped) : unwrapped;
@@ -999,9 +1010,39 @@ function extractExplicitFabricPhrase(rawText, preferMainClothOnly = false) {
   }
   return null;
 }
-function extractGarmentFromProductInfo(rawText) {
+function extractGenderFromProductInfo(rawText) {
   if (!rawText || !rawText.trim()) return null;
   const fixedRaw = normalizePortugueseFashionText(rawText);
+  const s = fixedRaw.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ");
+  if (/\bunissex\b/.test(s)) {
+    return null;
+  }
+  const hasExplicitMale = /\b(masculin[oa]s?|para\s+homem|para\s+homens|moda\s+masculina|homem|homens|rapaz|rapazes|cuecas?|sungas?|gravatas?|smoking)\b/.test(
+    s
+  );
+  const hasExplicitFemale = /\b(feminin[oa]s?|para\s+mulher|para\s+mulheres|moda\s+feminina|mulher|mulheres|garotas?|meninas?|senhoras?)\b/.test(
+    s
+  );
+  if (hasExplicitMale && !hasExplicitFemale) {
+    return "Homem";
+  }
+  if (hasExplicitFemale && !hasExplicitMale) {
+    return "Mulher";
+  }
+  if (hasExplicitMale && hasExplicitFemale) {
+    return null;
+  }
+  const hasFemaleOnlyGarment = /\b(vestidos?|saias?|minissaias?|cropped|blusinhas?|lingeries?|sutia|sutias|calcinhas?|babydoll|baby\s*doll|camisolas?|corselet|cinta\s+modeladora|biquinis?|maios?|macaquinhos?|tomara\s+que\s+caia|ombro\s+a\s+ombro|bojo|pantalonas?|short\s+saia)\b/.test(
+    s
+  );
+  if (hasFemaleOnlyGarment) {
+    return "Mulher";
+  }
+  return null;
+}
+function extractGarmentFromProductInfo(rawText) {
+  if (!rawText || !rawText.trim()) return null;
+  const fixedRaw = normalizePortugueseFashionText(stripStylingSuggestionClauses(rawText));
   const s = fixedRaw.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ");
   if (/\b(conjunto\s+(?:de\s+)?academia|conjunto\s+fitness|conjunto\s+treino|top\s+e\s+legging|short\s+e\s+top\s+fitness)\b/.test(s)) {
     return "Conjunto de Academia";
@@ -4297,35 +4338,37 @@ app.post("/api/detect-dominant-color", async (req, res) => {
     }
     const visionDetectUrl = openAIProvider && openAIProvider.isConfigured() ? await optimizeImageDataUriForVision(cleanB64, "low") : cleanB64;
     if (mode === "identify_garment") {
+      const textDetectedGender = extractGenderFromProductInfo(productInfo);
       const textHintBlock = productInfoSpec.hasInfo ? `
-INFORMA\xC7\xD5ES REAIS DO PRODUTO FORNECIDAS PELO USU\xC1RIO (USE PARA AJUDAR A IDENTIFICAR O NOME DA PE\xC7A E TECIDO):
+INFORMA\xC7\xD5ES REAIS DO PRODUTO FORNECIDAS PELO USU\xC1RIO (USE PARA AJUDAR A IDENTIFICAR O NOME DA PE\xC7A, G\xCANERO E TECIDO):
 "${productInfoSpec.cleanedText.slice(0, 500)}"${productInfoSpec.detectedGarmentHint ? `
 - Pista principal identificada no texto: "${productInfoSpec.detectedGarmentHint}"` : ""}
-Combine a an\xE1lise visual da foto com essas informa\xE7\xF5es de texto para determinar o nome comercial exato da pe\xE7a (especialmente se a imagem estiver em baixa qualidade ou borrada).` : "";
-      const identifyPrompt = `Analise a foto deste item de vestu\xE1rio e informe o NOME COMERCIAL ESPEC\xCDFICO da pe\xE7a em portugu\xEAs para cat\xE1logo de moda e TikTok Shop.${textHintBlock}
+Combine a an\xE1lise visual da foto com essas informa\xE7\xF5es de texto para determinar o nome comercial exato da pe\xE7a e o g\xEAnero (Homem ou Mulher).` : "";
+      const identifyPrompt = `Analise a foto deste item de vestu\xE1rio e as informa\xE7\xF5es fornecidas para retornar estritamente um JSON com DOIS campos: "garmentName" e "detectedGender".${textHintBlock}
 
-CATEGORIAS PRIORIT\xC1RIAS OBRIGAT\xD3RIAS (USE EXATAMENTE ESTES TERMOS SE CORRESPONDEREM \xC0 PE\xC7A):
+1) "garmentName" \u2014 NOME COMERCIAL ESPEC\xCDFICO DA PE\xC7A EM PORTUGU\xCAS (1 a 3 palavras, iniciais mai\xFAsculas):
 - Cal\xE7as largas / pantalonas / sociais folgadas: "Cal\xE7a Pantalona", "Cal\xE7a Social Folgada" ou "Cal\xE7a Social ou Pantalona".
 - Cal\xE7as estruturadas / jeans / sociais retas: "Cal\xE7a Jeans" ou "Cal\xE7a Social".
 - Saias: se for de couro ou courino use "Saia Couro"; demais saias use "Saia".
 - Academia / Fitness / Cinta: "Roupa de Academia", "Conjunto de Academia" ou "Cinta Modeladora".
 - Vestidos / Macac\xF5es / Conjuntos: "Vestido", "Vestido Longo", "Vestido Midi", "Vestido Curto", "Conjunto" ou "Macac\xE3o".
-
-DISTIN\xC7\xC3O CR\xCDTICA ENTRE CONJUNTO E MACAC\xC3O / MACAQUINHO (LEI INEGOCI\xC1VEL):
-- CONJUNTO (2 Pe\xE7as Independentes):
-  Se o visual for composto por DUAS pe\xE7as (uma parte de cima independente como blusa, cropped, top ou camisa + uma parte de baixo independente como shorts, bermuda, cal\xE7a ou saia), \xC9 OBRIGATORIAMENTE UM "Conjunto" (ou "Conjunto de Academia" se for fitness).
-  * Mesmo que sejam da mesma cor e mesmo tecido: se a blusa sobrep\xF5e o c\xF3s do shorts/cal\xE7a, ou se o shorts/cal\xE7a possui c\xF3s estruturado pr\xF3prio, CLASSIFIQUE RIGOROSAMENTE COMO "Conjunto", NUNCA como macac\xE3o!
-- MACAC\xC3O / MACAQUINHO (Pe\xE7a \xDAnica Inteiri\xE7a):
-  \xC9 uma pe\xE7a \xDANICA e cont\xEDnua, onde o topo e a parte inferior s\xE3o costurados juntos em uma s\xF3 pe\xE7a sem separa\xE7\xE3o ("Macac\xE3o" ou "Macaquinho").
-
-DEMAIS CATEGORIAS DE MODA:
+- DISTIN\xC7\xC3O CR\xCDTICA CONJUNTO vs MACAC\xC3O:
+  * CONJUNTO (2 pe\xE7as independentes, mesmo da mesma cor/tecido): classifique como "Conjunto" (ou "Conjunto de Academia").
+  * MACAC\xC3O / MACAQUINHO (pe\xE7a \xFAnica inteiri\xE7a): classifique como "Macac\xE3o" ou "Macaquinho".
 - Short/Bermuda avulso: "Bermuda", "Short Jeans", "Short Alfaiataria".
-- Blusa/Camisa/Top avulso: "Blusa Feminina", "Top Cropped", "Camisa Social", "Camiseta Oversized", "Jaqueta".
+- Blusa/Camisa/Camiseta/Top avulso: "Camiseta", "Camisa Polo", "Camisa Social", "Camisa", "Su\xE9ter", "Blusa Feminina", "Top Cropped", "Jaqueta".
 - Baby Doll / Pijama: "Camisola Baby Doll", "Pijama".
+- Corrija automaticamente ortografia em portugu\xEAs (ex.: "Vestido Londo" -> "Vestido Longo", "Calsa" -> "Cal\xE7a").
 
-REGRAS FINAIS:
-1. Responda APENAS o nome comercial espec\xEDfico da pe\xE7a (1 a 3 palavras, iniciais mai\xFAsculas), sem ponto final, sem aspas e sem explica\xE7\xF5es.
-2. CORRE\xC7\xC3O ORTOGR\xC1FICA OBRIGAT\xD3RIA EM PORTUGU\xCAS: Se as Informa\xE7\xF5es do Produto ou sua leitura inicial contiverem erros de digita\xE7\xE3o ou portugu\xEAs (ex.: "Vestido Londo" -> "Vestido Longo", "Calsa" -> "Cal\xE7a", "Conjuto" -> "Conjunto", "Saia Mid" -> "Saia Midi", "Macaquino" -> "Macaquinho"), CORRIJA automaticamente a ortografia em portugu\xEAs na sua resposta final.`;
+2) "detectedGender" \u2014 G\xCANERO DA PE\xC7A ("Homem", "Mulher" ou "unknown"):
+- Prioridade 1 (Descri\xE7\xE3o): se o texto fornecido deixar claro que a pe\xE7a \xE9 masculina (ex.: "masculino", "para homens") retorne "Homem"; se deixar claro que \xE9 feminina retorne "Mulher".
+- Prioridade 2 (Foto de Refer\xEAncia): se o texto n\xE3o deixar claro, observe a FOTO:
+  * Se houver um HOMEM vestindo a pe\xE7a -> "Homem".
+  * Se houver uma MULHER vestindo a pe\xE7a (ou se for pe\xE7a tipicamente feminina como vestido, saia, biqu\xEDni, lingerie, cropped feminino) -> "Mulher".
+  * Se a foto mostrar apenas a pe\xE7a solta/cabide/fundo neutro sem modelo vis\xEDvel e a descri\xE7\xE3o tamb\xE9m n\xE3o indicar se \xE9 masculina ou feminina (ou for unissex) -> retorne "unknown".
+
+Retorne estritamente JSON v\xE1lido:
+{ "garmentName": "Camisa Polo", "detectedGender": "Homem" }`;
       const sanitizeIdentifiedGarment = (raw) => {
         let clean = raw.replace(/^["'`]+|["'`.!?:;]+$/g, "").replace(/\s+/g, " ").trim().slice(0, 45);
         if (/^lingerie$/i.test(clean)) {
@@ -4335,13 +4378,20 @@ REGRAS FINAIS:
         }
         return normalizeIdentifiedGarmentName(clean);
       };
+      const normalizeGender = (raw) => {
+        const s = String(raw || "").trim().toLowerCase();
+        if (s === "homem" || s === "masculino" || s === "male" || s === "man") return "Homem";
+        if (s === "mulher" || s === "feminino" || s === "female" || s === "woman") return "Mulher";
+        return "unknown";
+      };
       if (openAIProvider && openAIProvider.isConfigured()) {
         const client = openAIProvider.getClient();
         try {
           const completion = await client.chat.completions.create({
             model: "gpt-4o-mini",
-            max_tokens: 25,
+            max_tokens: 70,
             temperature: 0.1,
+            response_format: { type: "json_object" },
             messages: [
               {
                 role: "user",
@@ -4352,11 +4402,25 @@ REGRAS FINAIS:
               }
             ]
           });
-          const rawName = completion.choices[0]?.message?.content?.trim();
-          if (rawName) {
-            const cleanName = sanitizeIdentifiedGarment(rawName);
+          const rawContent = completion.choices[0]?.message?.content?.trim();
+          if (rawContent) {
+            let parsedName = "";
+            let visualGender = "unknown";
+            try {
+              const parsedJson = JSON.parse(rawContent);
+              parsedName = String(parsedJson?.garmentName || "").trim();
+              visualGender = normalizeGender(parsedJson?.detectedGender);
+            } catch {
+              parsedName = rawContent;
+            }
+            const cleanName = parsedName ? sanitizeIdentifiedGarment(parsedName) : "";
+            const finalGender = textDetectedGender || (visualGender !== "unknown" ? visualGender : "unknown");
             if (cleanName) {
-              const payload = { success: true, garmentName: cleanName };
+              const payload = {
+                success: true,
+                garmentName: cleanName,
+                detectedGender: finalGender
+              };
               visionCache.set(detectCacheKey, payload);
               return res.json(payload);
             }
@@ -4366,13 +4430,26 @@ REGRAS FINAIS:
         }
       }
       if (productInfoSpec.detectedGarmentHint) {
-        return res.json({ success: true, garmentName: normalizeIdentifiedGarmentName(productInfoSpec.detectedGarmentHint) });
+        return res.json({
+          success: true,
+          garmentName: normalizeIdentifiedGarmentName(productInfoSpec.detectedGarmentHint),
+          detectedGender: textDetectedGender || "unknown"
+        });
       }
       const fallbackFromFilename = extractGarmentNameFromFileName(fileName);
       if (fallbackFromFilename) {
-        return res.json({ success: true, garmentName: normalizeIdentifiedGarmentName(fallbackFromFilename), fallback: true });
+        return res.json({
+          success: true,
+          garmentName: normalizeIdentifiedGarmentName(fallbackFromFilename),
+          detectedGender: textDetectedGender || "unknown",
+          fallback: true
+        });
       }
-      return res.json({ success: false, error: "N\xE3o foi poss\xEDvel identificar a pe\xE7a automaticamente" });
+      return res.json({
+        success: false,
+        detectedGender: textDetectedGender || "unknown",
+        error: "N\xE3o foi poss\xEDvel identificar a pe\xE7a automaticamente"
+      });
     }
     const promptText = `Analise a foto deste item comercial (${productName || (productMode === "footwear" ? "cal\xE7ado / t\xEAnis" : "roupa")}) e identifique com m\xE1xima precis\xE3o a cor predominante da PE\xC7A DE ROUPA / PRODUTO PRINCIPAL.
 REGRAS CR\xCDTICAS:

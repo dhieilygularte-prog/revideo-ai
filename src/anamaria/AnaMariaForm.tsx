@@ -39,6 +39,7 @@ import {
   analyzeAnaMariaProductInfo,
   extractFabricFieldSuggestion,
   extractGarmentFromProductInfo,
+  extractGenderFromProductInfo,
   extractTikTokProductCode,
   normalizeIdentifiedGarmentName,
 } from './anaMariaProductInfo';
@@ -115,6 +116,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const [autoIdentifiedFabricBadge, setAutoIdentifiedFabricBadge] = useState(false);
   const hasUserManuallyEditedNameRef = useRef<boolean>(false);
   const hasUserManuallyEditedFabricRef = useRef<boolean>(false);
+  const hasUserManuallySelectedInfluencerRef = useRef<boolean>(false);
   const lastUploadedFileNameRef = useRef<string>('');
 
   const [isRecordingMic, setIsRecordingMic] = useState(false);
@@ -122,7 +124,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const [approvalWarning, setApprovalWarning] = useState<string>('');
   const [isCheckingDivergence, setIsCheckingDivergence] = useState(false);
   const [scrollFocusField, setScrollFocusField] = useState<
-    'photos' | 'productCode' | 'productInfo' | 'productName' | 'fabricType' | 'shoe' | null
+    'photos' | 'productCode' | 'productInfo' | 'productName' | 'fabricType' | 'shoe' | 'influencer' | null
   >(null);
   const [scrollHighlightGenerate, setScrollHighlightGenerate] = useState(false);
   const photosSectionRef = useRef<HTMLDivElement>(null);
@@ -133,11 +135,12 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const lastDivergenceSignatureRef = useRef<string>('');
   const isGuidedResolveActiveRef = useRef<boolean>(false);
   const lastGuidedStepKeyRef = useRef<
-    'photos' | 'productCode' | 'productInfo' | 'productName' | 'fabricType' | 'shoe' | null
+    'photos' | 'productCode' | 'productInfo' | 'productName' | 'fabricType' | 'shoe' | 'influencer' | null
   >(null);
   const productNameSectionRef = useRef<HTMLDivElement>(null);
   const fabricTypeSectionRef = useRef<HTMLDivElement>(null);
   const shoeSectionRef = useRef<HTMLDivElement>(null);
+  const influencerSectionRef = useRef<HTMLDivElement>(null);
   const actionButtonSectionRef = useRef<HTMLDivElement>(null);
   const generateButtonRef = useRef<HTMLButtonElement>(null);
   const productInfoDivergenceApproveBtnRef = useRef<HTMLButtonElement>(null);
@@ -172,35 +175,55 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     return () => window.clearTimeout(t);
   }, [scrollHighlightGenerate]);
 
+  // Identificação unificada (nome, tecido, gênero e calçado): dispara SOMENTE após o usuário ter
+  // adicionado pelo menos 1 foto E preenchido "Informações do Produto", evitando reprocessamento.
   useEffect(() => {
     const trimmed = (form.productInfo || '').trim();
     const firstAny = form.referencePhotos[0] || form.extraColorPhotos?.[0];
-    if (
-      !trimmed ||
-      trimmed.length < 3 ||
-      !firstAny ||
-      form.isProductNameApproved ||
-      hasUserManuallyEditedNameRef.current
-    ) {
+    if (!trimmed || trimmed.length < 2 || !firstAny) {
       return;
     }
+
+    const combinedSignature = `${firstAny.slice(0, 64)}:${firstAny.length}|${trimmed}|${lastUploadedFileNameRef.current}`;
+    if (lastAutoIdentifySignatureRef.current === combinedSignature) {
+      return;
+    }
+
     const timer = window.setTimeout(() => {
+      // Preenche tecido localmente caso o usuário tenha colado o texto antes de subir a foto
+      if (!hasUserManuallyEditedFabricRef.current) {
+        const suggestedFabric = extractFabricFieldSuggestion(trimmed);
+        if (suggestedFabric) {
+          setAutoIdentifiedFabricBadge(true);
+          onChange((prev) =>
+            prev.fabricType && prev.fabricType.trim().length > 0
+              ? prev
+              : {
+                  ...prev,
+                  fabricType: suggestedFabric,
+                  isFabricTypeApproved: false,
+                }
+          );
+        }
+      }
+
       autoIdentifyGarmentFromPhoto(
         firstAny,
         false,
         lastUploadedFileNameRef.current,
         trimmed
       );
-    }, 1000);
+    }, 700);
     return () => window.clearTimeout(timer);
-  }, [form.productInfo, form.referencePhotos, form.extraColorPhotos, form.isProductNameApproved]);
+  }, [form.productInfo, form.referencePhotos, form.extraColorPhotos]);
 
   useEffect(() => {
     const firstAny = form.referencePhotos[0] || form.extraColorPhotos?.[0] || '';
     const trimmedInfo = (form.productInfo || '').trim();
     const trimmedName = (form.productName || '').trim();
 
-    if (!firstAny || (!trimmedInfo && !trimmedName)) {
+    // Só roda checagem de divergência quando o usuário já adicionou foto E informações do produto
+    if (!firstAny || trimmedInfo.length < 2) {
       lastDivergenceSignatureRef.current = '';
       if (form.descriptionDivergenceWarning || form.descriptionDivergenceField) {
         onChange((prev) => ({
@@ -541,16 +564,82 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     productInfoOverride?: string
   ) => {
     if (!photoBase64) return;
-    if (!force && hasUserManuallyEditedNameRef.current && form.productName.trim().length > 0) return;
     const targetFileName = fileName || lastUploadedFileNameRef.current || '';
     const effectiveProductInfo = (
       productInfoOverride !== undefined ? productInfoOverride : productInfoRef.current || ''
     ).trim();
+    if (!force && !effectiveProductInfo) return;
     const signature = `${photoBase64.slice(0, 64)}:${photoBase64.length}|${effectiveProductInfo}|${targetFileName}`;
-    if (!force && lastAutoIdentifySignatureRef.current === signature && form.productName.trim().length > 0) {
+    if (!force && lastAutoIdentifySignatureRef.current === signature) {
       return;
     }
     lastAutoIdentifySignatureRef.current = signature;
+
+    const textDetectedGender = extractGenderFromProductInfo(effectiveProductInfo);
+    const applyIdentifiedAttributes = (
+      resolvedName: string | null,
+      resolvedGender: 'Homem' | 'Mulher' | null
+    ) => {
+      onChange((prev) => {
+        const shouldUpdateName =
+          Boolean(resolvedName) &&
+          (force || !hasUserManuallyEditedNameRef.current || prev.productName.trim().length === 0);
+        const nextName = shouldUpdateName && resolvedName ? resolvedName : prev.productName;
+
+        let nextInfluencer = prev.influencer;
+        let nextInfluencerPending = prev.isInfluencerPending;
+        let nextInfluencerAuto = prev.isInfluencerAutoDetected;
+        let genderChanged = false;
+
+        if (!hasUserManuallySelectedInfluencerRef.current) {
+          if (resolvedGender) {
+            genderChanged = prev.influencer !== resolvedGender;
+            nextInfluencer = resolvedGender;
+            nextInfluencerPending = false;
+            nextInfluencerAuto = true;
+          } else {
+            // Nem descrição nem foto deixaram o gênero claro -> aguarda seleção manual do usuário
+            nextInfluencerPending = true;
+            nextInfluencerAuto = false;
+          }
+        }
+
+        const modeNow = prev.presentationMode || 'mirror_selfie';
+        const nextShoe =
+          nextName.trim().length > 0 && (shouldUpdateName || genderChanged || !prev.isShoeTypeApproved)
+            ? resolveAutoShoeOptionByProductName(
+                nextName,
+                prev.additionalInstructions,
+                undefined,
+                nextInfluencer
+              )
+            : prev.selectedShoeOption;
+
+        return {
+          ...prev,
+          productName: nextName,
+          isProductNameApproved: shouldUpdateName ? false : prev.isProductNameApproved,
+          influencer: nextInfluencer,
+          isInfluencerPending: nextInfluencerPending,
+          isInfluencerAutoDetected: nextInfluencerAuto,
+          imageModel: resolveAutoImageModel(prev, prev.presentationMode, nextInfluencer),
+          selectedModelGalleryId: genderChanged ? undefined : prev.selectedModelGalleryId,
+          selectedModelGalleryNumber: genderChanged ? undefined : prev.selectedModelGalleryNumber,
+          selectedModelGalleryUrl: genderChanged ? undefined : prev.selectedModelGalleryUrl,
+          selectedModelGalleryBase64: genderChanged ? undefined : prev.selectedModelGalleryBase64,
+          selectedShoeOption: nextShoe,
+          isShoeTypeApproved: shouldUpdateName ? false : prev.isShoeTypeApproved,
+          selectedMasterId:
+            shouldUpdateName && !prev.isManualMasterSelection && modeNow !== 'pov'
+              ? resolveMasterPromptByProductName(nextName)
+              : prev.selectedMasterId,
+        };
+      });
+      if (resolvedName) {
+        setAutoIdentifiedBadge(true);
+      }
+    };
+
     setIsIdentifyingProduct(true);
     try {
       const res = await fetch('/api/detect-dominant-color', {
@@ -577,62 +666,27 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         resolvedName = normalizeIdentifiedGarmentName(resolvedName);
       }
 
-      if (resolvedName) {
-        onChange((prev) => {
-          // Só preenche se não foi digitado manualmente enquanto identificava (ou se foi forçado pelo botão)
-          if (!force && hasUserManuallyEditedNameRef.current && prev.productName.trim().length > 0) {
-            return prev;
-          }
-          const modeNow = prev.presentationMode || 'mirror_selfie';
-          const autoShoe = resolveAutoShoeOptionByProductName(
-            resolvedName,
-            prev.additionalInstructions,
-            undefined,
-            prev.influencer
-          );
-          return {
-            ...prev,
-            productName: resolvedName,
-            isProductNameApproved: false,
-            selectedShoeOption: autoShoe,
-            isShoeTypeApproved: false,
-            selectedMasterId:
-              !prev.isManualMasterSelection && modeNow !== 'pov'
-                ? resolveMasterPromptByProductName(resolvedName)
-                : prev.selectedMasterId,
-          };
-        });
-        setAutoIdentifiedBadge(true);
-      }
+      const serverGender: 'Homem' | 'Mulher' | null =
+        data?.detectedGender === 'Homem' || data?.detectedGender === 'Mulher'
+          ? data.detectedGender
+          : null;
+      // Prioridade 1: descrição do produto; Prioridade 2: foto de referência; caso contrário null (pendente)
+      const resolvedGender =
+        textDetectedGender ||
+        serverGender ||
+        (resolvedName ? extractGenderFromProductInfo(resolvedName) : null);
+
+      applyIdentifiedAttributes(resolvedName, resolvedGender);
     } catch (err) {
       console.warn('Falha silenciosa ao identificar peça via IA, tentando fallback local:', err);
       const rawFallbackLocal =
         (effectiveProductInfo ? extractGarmentFromProductInfo(effectiveProductInfo) : null) ||
         extractGarmentFromFileName(targetFileName);
       const fallbackLocal = rawFallbackLocal ? normalizeIdentifiedGarmentName(rawFallbackLocal) : null;
-      if (fallbackLocal) {
-        onChange((prev) => {
-          const modeNow = prev.presentationMode || 'mirror_selfie';
-          const autoShoe = resolveAutoShoeOptionByProductName(
-            fallbackLocal,
-            prev.additionalInstructions,
-            undefined,
-            prev.influencer
-          );
-          return {
-            ...prev,
-            productName: fallbackLocal,
-            isProductNameApproved: false,
-            selectedShoeOption: autoShoe,
-            isShoeTypeApproved: false,
-            selectedMasterId:
-              !prev.isManualMasterSelection && modeNow !== 'pov'
-                ? resolveMasterPromptByProductName(fallbackLocal)
-                : prev.selectedMasterId,
-          };
-        });
-        setAutoIdentifiedBadge(true);
-      }
+      const fallbackGender =
+        textDetectedGender ||
+        (fallbackLocal ? extractGenderFromProductInfo(fallbackLocal) : null);
+      applyIdentifiedAttributes(fallbackLocal, fallbackGender);
     } finally {
       setIsIdentifyingProduct(false);
     }
@@ -679,14 +733,9 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             }
       );
 
-      // Auto-identificar peça via IA automaticamente na foto principal apenas se o nome ainda estiver vazio
-      // (evita disparar chamadas repetidas à OpenAI a cada ângulo extra ou a cada uma das até 20 cores em 1B)
-      if (filesToProcess[0] && (wasEmptyBefore || !form.productName.trim())) {
-        const fName = filesToProcess[0].name;
-        compressAndResizeImage(filesToProcess[0], 512, 0.75)
-          .then((thumbB64) => autoIdentifyGarmentFromPhoto(thumbB64, true, fName))
-          .catch(() => autoIdentifyGarmentFromPhoto(newPhotos[0], true, fName));
-      }
+      // Não dispara identificação IA isolada ao subir apenas a foto: o useEffect unificado
+      // aguarda o usuário ter adicionado foto(s) E preenchido "Informações do Produto", evitando reprocessamento.
+      void wasEmptyBefore;
     } catch (err) {
       console.error('Erro ao processar imagens:', err);
     } finally {
@@ -753,6 +802,8 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
 
   const handleClearAllPhotos = () => {
     hasUserManuallyEditedNameRef.current = false;
+    hasUserManuallySelectedInfluencerRef.current = false;
+    lastAutoIdentifySignatureRef.current = '';
     setAutoIdentifiedBadge(false);
     setApprovalWarning('');
     onChange((prev) => {
@@ -763,6 +814,8 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         extraColorPhotos: [],
         productName: '',
         isProductNameApproved: false,
+        isInfluencerPending: false,
+        isInfluencerAutoDetected: false,
         selectedShoeOption: undefined,
         customShoeText: '',
         isShoeTypeApproved: false,
@@ -794,6 +847,8 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   };
 
   const handleSelectInfluencer = (nextInfluencer: AnaMariaFormState['influencer']) => {
+    hasUserManuallySelectedInfluencerRef.current = true;
+    setApprovalWarning('');
     onChange((prev) => {
       const influencerChanged = prev.influencer !== nextInfluencer;
       const nextShoeOption =
@@ -808,6 +863,8 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       return {
         ...prev,
         influencer: nextInfluencer,
+        isInfluencerPending: false,
+        isInfluencerAutoDetected: false,
         imageModel: resolveAutoImageModel(prev, prev.presentationMode, nextInfluencer),
         selectedShoeOption: nextShoeOption,
         // Ao trocar Mulher <-> Homem, limpa modelo da galeria anterior para não misturar galeria feminina com masculina
@@ -969,6 +1026,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       (form.selectedShoeOption !== 'outro' ||
         Boolean(form.customShoeText && form.customShoeText.trim().length > 0))
   );
+  const isInfluencerReady = !form.isInfluencerPending;
 
   const hasPendingApprovals =
     !isPhotosReady ||
@@ -977,6 +1035,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     !isNameReady ||
     !isFabricReady ||
     !isShoeReady ||
+    !isInfluencerReady ||
     !isDivergenceResolved;
 
   const canSubmit =
@@ -1046,6 +1105,14 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             : 'Você precisa tocar no botão APROVAR no Tipo de Calçado (ou escolher um dos botões de calçado) para liberar o botão Gerar Vídeo!',
         getTargetElement: () =>
           (shoeApproveBtnRef.current || shoeSectionRef.current) as HTMLElement | null,
+      };
+    }
+    if (!isInfluencerReady) {
+      return {
+        key: 'influencer' as const,
+        warning:
+          'Não foi possível identificar automaticamente se a peça é masculina ou feminina. Selecione Mulher ou Homem no Item 3 (Influenciador / Modelo)!',
+        getTargetElement: () => influencerSectionRef.current as HTMLElement | null,
       };
     }
     if (!isDivergenceResolved) {
@@ -1855,32 +1922,55 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           onChange={(e) => {
             const val = e.target.value;
             setApprovalWarning('');
-            const suggestedFabric =
-              !hasUserManuallyEditedFabricRef.current && val.trim()
-                ? extractFabricFieldSuggestion(val)
-                : undefined;
-            if (!hasUserManuallyEditedFabricRef.current) {
-              setAutoIdentifiedFabricBadge(Boolean(suggestedFabric));
-            }
-
-            const rawSuggestedGarment = val.trim() ? extractGarmentFromProductInfo(val) : null;
-            const suggestedName = rawSuggestedGarment
-              ? normalizeIdentifiedGarmentName(rawSuggestedGarment)
-              : '';
-
             onChange((prev) => {
+              const hasPhotosNow =
+                prev.referencePhotos.length > 0 || (prev.extraColorPhotos?.length || 0) > 0;
+              // Para evitar reprocessamento, só executa extrações automáticas após o usuário já ter adicionado foto(s)
+              if (!hasPhotosNow) {
+                return {
+                  ...prev,
+                  productInfo: val,
+                  isDescriptionDivergenceApproved: false,
+                };
+              }
+
+              const suggestedFabric =
+                !hasUserManuallyEditedFabricRef.current && val.trim()
+                  ? extractFabricFieldSuggestion(val)
+                  : undefined;
+              if (!hasUserManuallyEditedFabricRef.current) {
+                setAutoIdentifiedFabricBadge(Boolean(suggestedFabric));
+              }
+
+              const rawSuggestedGarment = val.trim() ? extractGarmentFromProductInfo(val) : null;
+              const suggestedName = rawSuggestedGarment
+                ? normalizeIdentifiedGarmentName(rawSuggestedGarment)
+                : '';
+
+              const textGender = val.trim() ? extractGenderFromProductInfo(val) : null;
+              let nextInfluencer = prev.influencer;
+              let nextInfluencerPending = prev.isInfluencerPending;
+              let nextInfluencerAuto = prev.isInfluencerAutoDetected;
+              let genderChanged = false;
+              if (!hasUserManuallySelectedInfluencerRef.current && textGender) {
+                genderChanged = prev.influencer !== textGender;
+                nextInfluencer = textGender;
+                nextInfluencerPending = false;
+                nextInfluencerAuto = true;
+              }
+
               const shouldAutoFillName =
                 Boolean(suggestedName) &&
                 (!hasUserManuallyEditedNameRef.current || prev.productName.trim().length === 0);
               const modeNow = prev.presentationMode || 'mirror_selfie';
               const nextName = shouldAutoFillName ? suggestedName : prev.productName;
               const nextShoe =
-                shouldAutoFillName && !prev.isShoeTypeApproved
+                (shouldAutoFillName || genderChanged) && nextName.trim().length > 0 && !prev.isShoeTypeApproved
                   ? resolveAutoShoeOptionByProductName(
-                      suggestedName,
+                      nextName,
                       prev.additionalInstructions,
                       undefined,
-                      prev.influencer
+                      nextInfluencer
                     )
                   : prev.selectedShoeOption;
               const nextMaster =
@@ -1897,6 +1987,14 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                 productInfo: val,
                 productName: nextName,
                 isProductNameApproved: shouldAutoFillName ? false : prev.isProductNameApproved,
+                influencer: nextInfluencer,
+                isInfluencerPending: nextInfluencerPending,
+                isInfluencerAutoDetected: nextInfluencerAuto,
+                imageModel: resolveAutoImageModel(prev, prev.presentationMode, nextInfluencer),
+                selectedModelGalleryId: genderChanged ? undefined : prev.selectedModelGalleryId,
+                selectedModelGalleryNumber: genderChanged ? undefined : prev.selectedModelGalleryNumber,
+                selectedModelGalleryUrl: genderChanged ? undefined : prev.selectedModelGalleryUrl,
+                selectedModelGalleryBase64: genderChanged ? undefined : prev.selectedModelGalleryBase64,
                 selectedShoeOption: nextShoe,
                 isShoeTypeApproved: shouldAutoFillName ? false : prev.isShoeTypeApproved,
                 selectedMasterId: nextMaster,
@@ -2549,36 +2647,65 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       {/* ─── CARD 3 & 4: INFLUENCIADOR & TIPO DE CORPO ─── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Influenciador */}
-        <div className={`${sectionCardClass} p-5 space-y-3`}>
-          <div className={`border-b pb-2 ${isAmetista ? 'border-purple-500/20' : 'border-zinc-800/80'}`}>
-            <h3 className="text-xs font-bold text-white uppercase tracking-wide">
-              3. Influenciador / Modelo
-            </h3>
-            <p className="text-[11px] text-zinc-400">
-              Mulher é o padrão; Homem cria versão masculina da Mestra escolhida
-            </p>
+        <div
+          ref={influencerSectionRef}
+          className={`${
+            form.isInfluencerPending
+              ? pendingYellowSectionClass
+              : form.isInfluencerAutoDetected
+              ? copiedBlueSectionClass
+              : sectionCardClass
+          } ${
+            scrollFocusField === 'influencer' ? 'ring-2 ring-amber-300 ring-offset-2 ring-offset-zinc-950' : ''
+          } p-5 space-y-3`}
+        >
+          <div className={`border-b pb-2 flex flex-wrap items-center justify-between gap-2 ${form.isInfluencerPending ? 'border-amber-400/40' : isAmetista ? 'border-purple-500/20' : 'border-zinc-800/80'}`}>
+            <div>
+              <h3 className="text-xs font-bold text-white uppercase tracking-wide">
+                3. Influenciador / Modelo
+              </h3>
+              <p className="text-[11px] text-zinc-400">
+                {form.isInfluencerPending
+                  ? 'Não foi possível identificar automaticamente pela descrição ou foto — selecione Mulher ou Homem'
+                  : 'Identificado automaticamente pela descrição/foto; você pode trocar manualmente quando quiser'}
+              </p>
+            </div>
+            {form.isInfluencerPending && (
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-400/20 text-amber-200 border border-amber-400/60 animate-pulse">
+                Selecione o gênero
+              </span>
+            )}
+            {!form.isInfluencerPending && form.isInfluencerAutoDetected && (
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/20 text-sky-200 border border-sky-400/40">
+                Auto: {form.influencer} ✓
+              </span>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-2.5">
             <button
               type="button"
               onClick={() => handleSelectInfluencer('Mulher')}
               className={`p-3 rounded-xl border text-center transition-all cursor-pointer text-xs flex items-center justify-center gap-2 ${
-                form.influencer === 'Mulher' ? activeOptionButtonClass : inactiveOptionButtonClass
+                !form.isInfluencerPending && form.influencer === 'Mulher'
+                  ? activeOptionButtonClass
+                  : inactiveOptionButtonClass
               }`}
             >
-              {form.influencer === 'Mulher' && (
+              {!form.isInfluencerPending && form.influencer === 'Mulher' && (
                 <Check className={`w-3.5 h-3.5 stroke-[3] ${checkIconColorClass}`} />
               )}
-              <span>Mulher (Padrão)</span>
+              <span>Mulher</span>
             </button>
             <button
               type="button"
               onClick={() => handleSelectInfluencer('Homem')}
               className={`p-3 rounded-xl border text-center transition-all cursor-pointer text-xs flex items-center justify-center gap-2 ${
-                form.influencer === 'Homem' ? activeOptionButtonClass : inactiveOptionButtonClass
+                !form.isInfluencerPending && form.influencer === 'Homem'
+                  ? activeOptionButtonClass
+                  : inactiveOptionButtonClass
               }`}
             >
-              {form.influencer === 'Homem' && (
+              {!form.isInfluencerPending && form.influencer === 'Homem' && (
                 <Check className={`w-3.5 h-3.5 stroke-[3] ${checkIconColorClass}`} />
               )}
               <span>Homem</span>
@@ -3863,6 +3990,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                   : '',
                 !isFabricReady ? 'Tipo de Tecido' : '',
                 !isShoeReady ? 'Tipo de Calçado' : '',
+                !isInfluencerReady ? 'Influenciador / Modelo' : '',
               ]
                 .filter(Boolean)
                 .join(', ')

@@ -483,6 +483,38 @@ function stripLiningClauses(rawText: string): string {
   return lines.join('\n').replace(/\b(?:com|possui)\s+forro\s+(?:em|de|100%|\d+%)\s+[^.;|\n]+/gi, ' ');
 }
 
+/**
+ * Remove frases de sugestão de look/combinação (ex.: "Use com alfaiataria para um visual elegante",
+ * "Combine com calça jeans", "Fica lindo com couro") para não confundir peças complementares
+ * sugeridas no anúncio com o tecido real da peça anunciada.
+ */
+function stripStylingSuggestionClauses(rawText: string): string {
+  const lines = (rawText || '')
+    .split(/\n+/)
+    .filter(
+      (line) =>
+        !/^\s*[\-•*✔✓✅🔹🔸▪️➤►]?\s*(?:use|combine|combinando|combina|aposte|veste\s+bem|vai\s+bem|fica\s+(?:lindo|perfeito|[oó]timo|incr[ií]vel))\s+com\b/i.test(
+          line
+        )
+    );
+  return lines
+    .join('\n')
+    .replace(
+      /\b(?:use|combine|combinando|combina)\s+com\s+[^.;|\n]+/gi,
+      ' '
+    );
+}
+
+function resolveConciseFabricLabel(entry: FabricCatalogEntry, sourceNorm: string): string {
+  if (entry.id === 'trico_modal') {
+    if (/\bmodal\b/i.test(sourceNorm)) return 'Tricô Modal';
+    if (/\bmousse\b/i.test(sourceNorm)) return 'Tricô Mousse';
+    if (/\bcroch[eê]|crochet\b/i.test(sourceNorm)) return 'Crochê';
+    return 'Tricô';
+  }
+  return entry.labelPt;
+}
+
 function extractExplicitFabricPhrase(rawText: string, preferMainClothOnly = false): { phrase: string; isExplicitLabel: boolean } | null {
   const unwrapped = unwrapSoftLineBreaks(rawText);
   const sourceText = preferMainClothOnly ? stripLiningClauses(unwrapped) : unwrapped;
@@ -564,9 +596,9 @@ export function extractFabricFieldSuggestion(rawProductInfo?: string): string {
     }
   }
 
-  // Caso 2: Usuário colou uma descrição de produto -> extrai o tecido principal ignorando linhas de forro
-  const mainClothText = stripLiningClauses(normalizedRaw);
-  const explicit = extractExplicitFabricPhrase(normalizedRaw, true);
+  // Caso 2: Usuário colou uma descrição de produto -> extrai o tecido principal ignorando linhas de forro e sugestões de combinação ("use com alfaiataria...")
+  const mainClothText = stripStylingSuggestionClauses(stripLiningClauses(normalizedRaw));
+  const explicit = extractExplicitFabricPhrase(mainClothText, true);
 
   if (
     explicit?.isExplicitLabel &&
@@ -603,7 +635,10 @@ export function extractFabricFieldSuggestion(rawProductInfo?: string): string {
   }
 
   if (detected.length > 0) {
-    return detected.slice(0, 2).map((d) => d.labelPt).join(' + ');
+    return detected
+      .slice(0, 2)
+      .map((d) => resolveConciseFabricLabel(d, normMain))
+      .join(' + ');
   }
 
   if (explicit?.phrase) {
@@ -632,9 +667,57 @@ export function extractFabricFieldSuggestion(rawProductInfo?: string): string {
   return '';
 }
 
-export function extractGarmentFromProductInfo(rawText?: string): string | null {
+/**
+ * Identifica pelo texto (Informações do Produto / Nome) se a peça é claramente Masculina ('Homem'),
+ * Feminina ('Mulher') ou se não está claro (null).
+ */
+export function extractGenderFromProductInfo(rawText?: string): 'Homem' | 'Mulher' | null {
   if (!rawText || !rawText.trim()) return null;
   const fixedRaw = normalizePortugueseFashionText(rawText);
+  const s = fixedRaw
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+
+  if (/\bunissex\b/.test(s)) {
+    return null;
+  }
+
+  const hasExplicitMale =
+    /\b(masculin[oa]s?|para\s+homem|para\s+homens|moda\s+masculina|homem|homens|rapaz|rapazes|cuecas?|sungas?|gravatas?|smoking)\b/.test(
+      s
+    );
+  const hasExplicitFemale =
+    /\b(feminin[oa]s?|para\s+mulher|para\s+mulheres|moda\s+feminina|mulher|mulheres|garotas?|meninas?|senhoras?)\b/.test(
+      s
+    );
+
+  if (hasExplicitMale && !hasExplicitFemale) {
+    return 'Homem';
+  }
+  if (hasExplicitFemale && !hasExplicitMale) {
+    return 'Mulher';
+  }
+  if (hasExplicitMale && hasExplicitFemale) {
+    return null;
+  }
+
+  // Peças tipicamente exclusivamente femininas quando não há nenhuma menção masculina
+  const hasFemaleOnlyGarment =
+    /\b(vestidos?|saias?|minissaias?|cropped|blusinhas?|lingeries?|sutia|sutias|calcinhas?|babydoll|baby\s*doll|camisolas?|corselet|cinta\s+modeladora|biquinis?|maios?|macaquinhos?|tomara\s+que\s+caia|ombro\s+a\s+ombro|bojo|pantalonas?|short\s+saia)\b/.test(
+      s
+    );
+  if (hasFemaleOnlyGarment) {
+    return 'Mulher';
+  }
+
+  return null;
+}
+
+export function extractGarmentFromProductInfo(rawText?: string): string | null {
+  if (!rawText || !rawText.trim()) return null;
+  const fixedRaw = normalizePortugueseFashionText(stripStylingSuggestionClauses(rawText));
   const s = fixedRaw
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')

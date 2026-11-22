@@ -53,6 +53,8 @@ export interface AnaMariaFormState {
   referencePhotos: string[]; // até 10 fotos da mesma cor em múltiplos ângulos e detalhes
   extraColorPhotos?: string[]; // fotos em cores diferentes para "Gerar em nova cor"
   influencer: AnaMariaInfluencer; // Padrão: 'Mulher'
+  isInfluencerPending?: boolean; // true quando nem foto nem descrição identificaram claramente Homem/Mulher (aguarda clique manual)
+  isInfluencerAutoDetected?: boolean; // true quando o app identificou automaticamente o gênero pela descrição ou pela foto
   bodyType: AnaMariaBodyType; // Padrão: 'normal'
   additionalInstructions: string; // Prioridade máxima
   imageModel: AnaMariaImageModel; // Padrão: 'openai'
