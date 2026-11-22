@@ -1243,21 +1243,28 @@ function adaptHeadlineToMale(headline: string, combinedNorm = ''): string {
 
 function resolveMaleSpecificHeadline(combinedNorm: string): string | null {
   const isConjunto = /\b(conjunto|conjuntinho|conjuntos)\b/i.test(combinedNorm);
-  const isKit = /\b(kit|combo|pack)\b/i.test(combinedNorm);
-  const has3 = /\b(3|tres)\b/i.test(combinedNorm);
-  const has2 = /\b(2|dois|duas)\b/i.test(combinedNorm);
-  const isCamisa = /\b(camisa|camisas|camiseta|camisetas|t-shirt|tshirt)\b/i.test(combinedNorm);
+  const isKit3Conjuntos =
+    /\b(?:kit|combo|pack)\b[^.\n]{0,25}\b(?:3|tres)\s+conjunt/i.test(combinedNorm) ||
+    /\b(?:3|tres)\s+conjunt/i.test(combinedNorm);
+  const isKit2Conjuntos =
+    /\b(?:kit|combo|pack)\b[^.\n]{0,25}\b(?:2|dois)\s+conjunt/i.test(combinedNorm) ||
+    /\b(?:2|dois)\s+conjunt/i.test(combinedNorm);
+  const isKit2Camisas =
+    /\b(?:kit|combo|pack)\b[^.\n]{0,25}\b(?:2|duas|dois)\s+(?:camisa|camisas|camiseta|camisetas|t-shirt|tshirt)\b/i.test(
+      combinedNorm
+    ) ||
+    /\b(?:2|duas)\s+(?:camisa|camisas|camiseta|camisetas|t-shirt|tshirt)\b/i.test(combinedNorm);
 
   if (isConjunto) {
-    if ((isKit && has3) || /\b3\s+conjunt/i.test(combinedNorm)) {
+    if (isKit3Conjuntos) {
       return 'KIT COM\n3 CONJUNTOS\nESTÁ TÃO\nBARATO\n😎';
     }
-    if (!(isKit && has2) && !/\b2\s+conjunt/i.test(combinedNorm)) {
+    if (!isKit2Conjuntos) {
       return 'esse\nconjunto\nvale\ncada\ncentavo\n😎';
     }
   }
 
-  if ((isKit && has2 && isCamisa) || /\b2\s+(camisa|camisas|camiseta|camisetas|t-shirt|tshirt)/i.test(combinedNorm)) {
+  if (isKit2Camisas) {
     return 'COMO ASSIM\n2 CAMISAS\nPELO\nPREÇO DE 1 😲';
   }
 
