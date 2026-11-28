@@ -1551,6 +1551,8 @@ export async function runAnaMariaPipeline(
     shoeDescription: firstGen.shoeDescription,
     selectedShoeOption: form0.selectedShoeOption,
     customShoeText: form0.customShoeText,
+    hasPockets: form0.hasPockets ?? null,
+    hasElastane: form0.hasElastane ?? null,
     audit: firstGen.item.audit,
   };
 

@@ -19,6 +19,7 @@ import {
 import {
   analyzeAnaMariaProductInfo,
   buildUltraPhotorealismBlock,
+  stripStylingSuggestionClauses,
 } from './anaMariaProductInfo';
 
 /**
@@ -107,19 +108,220 @@ export const KLING_TROUSERS_FEMALE_VIDEO_PROMPT = `Create a 10-second ultra-real
 
 Natural, fluid and realistic human movements. No exaggerated gestures, no camera movement, no cuts, no transitions, no additional objects, no speech, no voiceover, no subtitles and no on-screen text.`;
 
+// Prompts Masculinos do Kling (9 variações conforme peça, bolsos e elastano)
+// 1- Shorts ou bermuda com bolso
+export const KLING_MALE_SHORTS_WITH_POCKETS_PROMPT = `Vertical mirror selfie video of the man in the reference image, faithful to the reference: same face, same hair, same proportions, same top, same shorts, same background and lighting. One hand holds the phone at chest height the entire time and never lowers it. Only his free hand moves. Confident, relaxed, natural and slow movements, subtle handheld camera, no cuts. The focus of the video is the shorts and their pockets: the free hand clearly goes into the pocket, then fabric, waistband, fit, length and hem. The top is secondary.
+
+0-1.5s: full-body start like the reference image, then he steps toward the mirror and the framing moves in closer.
+1.5-3s: close framing on the shorts, from the waistband to the knees. Free hand touches the waistband, the drawstring or the button, then slides down the side of the hip toward the pocket.
+3-6s: the free hand slides into the pocket, fingers fully inside and thumb outside, and stays inside the pocket for about two seconds, clearly visible, showing the pocket and the fit. Then the hand slowly comes out over the fabric.
+6-7.5s: fingers gently pinch and lift the fabric at the side of the thigh, showing the texture and the stretch, then let it fall. He turns slightly to the side, showing the fit and length of the shorts.
+7.5-8s: he turns back to the mirror, the free hand touches the hem of the leg lightly.
+8-10s: he steps back from the mirror, the framing pulls back and the complete look is visible from the top to the shoes. He settles into a relaxed, confident final pose like the reference image: weight on one leg, free hand resting at his side or in the pocket, slight smile. In the last second he stays almost still, calm and smooth ending, camera steady.
+
+The free hand always goes into the pocket and stays there for a moment. The outfit never changes, the phone is never lowered, hands stay natural with five fingers, the face stays stable, movements are slow, the scene never changes. No speech, no text, no watermark.`;
+
+// 2- Shorts ou bermuda sem bolso
+export const KLING_MALE_SHORTS_WITHOUT_POCKETS_PROMPT = `Vertical mirror selfie video of the man in the reference image, faithful to the reference: same face, same hair, same proportions, same top, same shorts, same background and lighting. One hand holds the phone at chest height the entire time and never lowers it. Only his free hand moves. Confident, relaxed, natural and slow movements, subtle handheld camera, no cuts. The focus of the video is the shorts: the fabric, waistband, fit, length and hem. The top is secondary.
+
+0-1.5s: full-body start like the reference image, then he steps toward the mirror and the framing moves in closer.
+1.5-3.5s: close framing on the shorts, from the waistband to the knees. Free hand touches the waistband, the drawstring or the button, then slides along the waist showing the fit.
+3.5-5.5s: the free hand glides slowly down the side of the hip and the front of the thigh, showing how the fabric fits and falls.
+5.5-7s: fingers gently pinch and lift the fabric at the side of the thigh, showing the texture and the stretch, then let it fall. He turns slightly to the side, showing the fit and length of the shorts.
+7-8s: he turns back to the mirror, the free hand touches the hem of the leg lightly.
+8-10s: he steps back from the mirror, the framing pulls back and the complete look is visible from the top to the shoes. He settles into a relaxed, confident final pose like the reference image: weight on one leg, free hand resting at his side, slight smile. In the last second he stays almost still, calm and smooth ending, camera steady.
+
+The outfit never changes, the phone is never lowered, hands stay natural with five fingers, the face stays stable, movements are slow, the scene never changes. No speech, no text, no watermark.`;
+
+// 3- Calça sem elastano (com bolso) e alfaiataria / tática sem elastano
+export const KLING_MALE_PANTS_NO_ELASTANE_WITH_POCKETS_PROMPT = `Vertical mirror selfie video of the man in the reference image, faithful to the reference: same face, same hair, same proportions, same top, same pants, same background and lighting. One hand holds the phone at chest height the entire time and never lowers it. Only his free hand moves. Confident, relaxed, natural and slow movements, subtle handheld camera, no cuts. The focus of the video is the pants and their pockets: the free hand clearly goes into the pocket, then fabric, waistband, fit, length and hem. The top is secondary.
+
+0-1.5s: full-body start like the reference image, then he steps toward the mirror and the framing moves in closer.
+1.5-3s: medium framing from the waist down to the knees, keeping the length of the pants visible. Free hand touches the waistband, the button or the belt, then slides down the side of the hip toward the pocket.
+3-6s: the free hand slides into the pocket, fingers fully inside and thumb outside, and stays inside the pocket for about two seconds, clearly visible, showing the pocket and the fit. Then the hand slowly comes out and glides down the front of the pants toward the knee.
+6-7.5s: he turns slightly to the side, showing the fit and drape of the pants in profile, and the free hand straightens the fabric at the thigh.
+7.5-8s: he turns back to the mirror and the free hand touches the crease of the pants lightly.
+8-10s: he steps back from the mirror, the framing pulls back and the complete look is visible from the top to the shoes, the full length and hem of the pants in frame. He settles into a relaxed, confident final pose like the reference image: weight on one leg, free hand resting at his side or in the pocket, slight smile. In the last second he stays almost still, calm and smooth ending, camera steady.
+
+The free hand always goes into the pocket and stays there for a moment. The outfit never changes, the phone is never lowered, hands stay natural with five fingers, the face stays stable, movements are slow, the scene never changes. No speech, no text, no watermark.`;
+
+// 4- Calça sem elastano e sem bolso
+export const KLING_MALE_PANTS_NO_ELASTANE_WITHOUT_POCKETS_PROMPT = `Vertical mirror selfie video of the man in the reference image, faithful to the reference: same face, same hair, same proportions, same top, same pants, same background and lighting. One hand holds the phone at chest height the entire time and never lowers it. Only his free hand moves. Confident, relaxed, natural and slow movements, subtle handheld camera, no cuts. The focus of the video is the pants: the fabric, waistband, fit, length, drape and hem. The top is secondary.
+
+0-1.5s: full-body start like the reference image, then he steps toward the mirror and the framing moves in closer.
+1.5-3.5s: medium framing from the waist down to the knees, keeping the length of the pants visible. Free hand touches the waistband, the button or the belt, then slides along the waist showing the fit.
+3.5-5.5s: the free hand glides slowly down the side of the hip and the front of the pants toward the knee, showing how the fabric fits and falls.
+5.5-7s: fingers gently pinch and lift the fabric at the thigh, showing the texture, then let it fall. He turns slightly to the side, showing the fit and drape of the pants in profile.
+7-8s: he turns back to the mirror and the free hand touches the crease of the pants lightly.
+8-10s: he steps back from the mirror, the framing pulls back and the complete look is visible from the top to the shoes, the full length and hem of the pants in frame. He settles into a relaxed, confident final pose like the reference image: weight on one leg, free hand resting at his side, slight smile. In the last second he stays almost still, calm and smooth ending, camera steady.
+
+The outfit never changes, the phone is never lowered, hands stay natural with five fingers, the face stays stable, movements are slow, the scene never changes. No speech, no text, no watermark.`;
+
+// 5- Calça com elastano com bolso (inclui jeans com elastano e calça tática/cargo com elastano)
+export const KLING_MALE_PANTS_WITH_ELASTANE_WITH_POCKETS_PROMPT = `Vertical mirror selfie video of the man in the reference image, faithful to the reference: same face, same hair, same proportions, same top, same stretch pants, same background and lighting. One hand holds the phone at chest height the entire time and never lowers it. Only his free hand moves. Confident, relaxed, natural and slow movements, subtle handheld camera, no cuts. The focus of the video is the stretch of the pants: the free hand pulls the fabric at the hip to show its elasticity, then goes into the pocket. The top is secondary.
+
+0-1s: full-body start like the reference image, then he steps toward the mirror and the framing moves in closer.
+1-3.5s: HOOK. Medium framing from the waist down to the knees. The free hand grabs the fabric at the hip and upper thigh and pulls it clearly outward to the side, stretching it a lot so the elasticity is obvious, holds the stretch for about one second, then releases and the fabric returns smoothly to shape.
+3.5-5.5s: the free hand slides into the pocket, fingers fully inside and thumb outside, and stays inside for about two seconds, clearly visible, showing the pocket and the fit.
+5.5-7s: he turns slightly to the side, showing the fit and drape of the pants in profile, and the free hand pulls the fabric lightly at the thigh, then lets it fall.
+7-8s: he turns back to the mirror and the free hand touches the waistband or the button lightly.
+8-10s: he steps back from the mirror, the framing pulls back and the complete look is visible from the top to the shoes, the full length of the pants in frame. He settles into a relaxed, confident final pose like the reference image: weight on one leg, free hand resting at his side or in the pocket, slight smile. In the last second he stays almost still, calm and smooth ending, camera steady.
+
+The fabric stretch is clearly shown at the start. The outfit never changes, the phone is never lowered, hands stay natural with five fingers, the face stays stable, movements are slow, the scene never changes. No speech, no text, no watermark.`;
+
+// 6- Calça com elastano sem bolso
+export const KLING_MALE_PANTS_WITH_ELASTANE_WITHOUT_POCKETS_PROMPT = `Vertical mirror selfie video of the man in the reference image, faithful to the reference: same face, same hair, same proportions, same top, same stretch pants, same background and lighting. One hand holds the phone at chest height the entire time and never lowers it. Only his free hand moves. Confident, relaxed, natural and slow movements, subtle handheld camera, no cuts. The focus of the video is the stretch of the pants: the free hand pulls the fabric at the hip to show its elasticity. The top is secondary.
+
+0-1s: full-body start like the reference image, then he steps toward the mirror and the framing moves in closer.
+1-3.5s: HOOK. Medium framing from the waist down to the knees. The free hand grabs the fabric at the hip and upper thigh and pulls it clearly outward to the side, stretching it a lot so the elasticity is obvious, holds the stretch for about one second, then releases and the fabric returns smoothly to shape.
+3.5-5.5s: the free hand touches the waistband or the button, then glides slowly down the side of the hip and the front of the thigh, showing the fit and the drape.
+5.5-7s: he turns slightly to the side, showing the fit of the pants in profile, and the free hand pulls the fabric lightly at the thigh, then lets it fall.
+7-8s: he turns back to the mirror and the free hand touches the crease of the pants lightly.
+8-10s: he steps back from the mirror, the framing pulls back and the complete look is visible from the top to the shoes, the full length of the pants in frame. He settles into a relaxed, confident final pose like the reference image: weight on one leg, free hand resting at his side, slight smile. In the last second he stays almost still, calm and smooth ending, camera steady.
+
+The fabric stretch is clearly shown at the start. The outfit never changes, the phone is never lowered, hands stay natural with five fingers, the face stays stable, movements are slow, the scene never changes. No speech, no text, no watermark.`;
+
+// 7- Conjunto masculino (shorts e blusa, calça e blusa, bermuda e blusa/camisa/camiseta)
+export const KLING_MALE_CONJUNTO_PROMPT = `Vertical mirror selfie video of the man in the reference image, faithful to the reference: same face, same hair, same proportions, same two-piece set, the same top and the same bottom piece (shorts or pants), same background and lighting. One hand holds the phone at chest height the entire time and never lowers it. Only his free hand moves. Confident, relaxed, natural and slow movements, subtle handheld camera, no cuts. The focus of the video is the set: the details of the top, the fit at the waist where the two pieces meet, and the fit and fall of the bottom piece.
+
+0-1.5s: full-body start like the reference image, then he steps toward the mirror and the framing moves in closer.
+1.5-3s: close framing on the top, from the neckline to the waist. Free hand adjusts the collar or the neckline, then slides slowly across the chest and shoulder, showing the fit and the fabric of the top.
+3-4.5s: the hand glides down along the front of the top to the waist, then touches the waistband, the button or the belt where the two pieces meet.
+4.5-6.5s: the framing opens to the waist down to the knees. The free hand glides down the side of the hip and the front of the bottom piece, then fingers gently pinch and lift the fabric at the thigh, showing the texture and the stretch, then let it fall.
+6.5-8s: he turns slightly to the side, showing the fit of the whole set in profile, and adjusts the sleeve or the cuff.
+8-10s: he steps back from the mirror, the framing pulls back and the complete set is visible from the top to the shoes. He settles into a relaxed, confident final pose like the reference image: weight on one leg, free hand resting at his side or in a pocket, slight smile. In the last second he stays almost still, calm and smooth ending, camera steady.
+
+The outfit never changes, the phone is never lowered, hands stay natural with five fingers, the face stays stable, movements are slow, the scene never changes. No speech, no text, no watermark.`;
+
+// 8- Camiseta, camisa, regata, jaqueta (peça superior padrão)
+export const KLING_MALE_TOP_STANDARD_PROMPT = `Vertical mirror selfie video of the man in the reference image, faithful to the reference: same face, same hair, same proportions, same top, same bottom piece, same background and lighting. One hand holds the phone at chest height the entire time and never lowers it. Only his free hand moves. Confident, relaxed, natural and slow movements, subtle handheld camera, no cuts. The focus of the video is the top: its fabric, collar or neckline, sleeves, fit, details and hem. The bottom piece is secondary.
+
+0-1.5s: full-body start like the reference image, then he steps toward the mirror and the framing moves in closer.
+1.5-3.5s: close framing on the top, from the neckline to the waist. Free hand adjusts the collar or the neckline, then slides slowly across the chest and shoulder, showing the fit of the top.
+3.5-5.5s: fingers gently pinch and lift the fabric of the top at the side of the waist, showing the texture and the thickness of the fabric, then let it fall.
+5.5-7s: he turns slightly to the side, showing the fit of the top in profile, and adjusts the sleeve or the cuff.
+7-8s: he turns back to the mirror, the free hand touches the hem of the top and straightens it.
+8-10s: he steps back from the mirror, the framing pulls back and the complete look is visible from the top to the shoes. He settles into a relaxed, confident final pose like the reference image: weight on one leg, free hand resting at his side or in a pocket, slight smile. In the last second he stays almost still, calm and smooth ending, camera steady.
+
+The outfit never changes, the phone is never lowered, hands stay natural with five fingers, the face stays stable, movements are slow, the scene never changes. No speech, no text, no watermark.`;
+
+// 9- Camisa ou camiseta com bastante elastano
+export const KLING_MALE_TOP_HIGH_ELASTANE_PROMPT = `Vertical mirror selfie video of the man in the reference image, faithful to the reference: same face, same hair, same proportions, same stretch top, same bottom piece, same background and lighting. One hand holds the phone at chest height the entire time and never lowers it. Only his free hand moves. Confident, relaxed, natural and slow movements, subtle handheld camera, no cuts. The focus of the video is the stretch of the top: the free hand pulls the fabric to show its elasticity. The bottom piece is secondary.
+
+0-1s: full-body start like the reference image, then he steps toward the mirror and the framing moves in closer.
+1-3.5s: HOOK. Close framing on the top, from the collar to the waist. The free hand grabs the fabric at the side of the chest and pulls it clearly outward to the side, stretching it a lot so the elasticity is obvious, holds the stretch for about one second, then releases and the fabric returns smoothly to shape.
+3.5-5.5s: the hand slides up to the collar and adjusts it, then glides down along the front of the top, showing the fit and the fabric.
+5.5-7s: he turns slightly to the side, showing the fit of the top in profile, and the free hand pulls the fabric lightly at the waist, then lets it fall.
+7-8s: he turns back to the mirror and adjusts the sleeve or the cuff.
+8-10s: he steps back from the mirror, the framing pulls back and the complete look is visible from the top to the shoes. He settles into a relaxed, confident final pose like the reference image: weight on one leg, free hand resting at his side or in a pocket, slight smile. In the last second he stays almost still, calm and smooth ending, camera steady.
+
+The fabric stretch is clearly shown at the start. The outfit never changes, the phone is never lowered, hands stay natural with five fingers, the face stays stable, movements are slow, the scene never changes. No speech, no text, no watermark.`;
+
+function normalizeKlingText(input?: string): string {
+  return (input || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export function resolveKlingFixedVideoPrompt(params: {
   productName?: string;
   productInfo?: string;
   additionalInstructions?: string;
   influencer?: AnaMariaInfluencer;
+  hasPockets?: boolean | null;
+  hasElastane?: boolean | null;
 }): string {
+  const normName = normalizeKlingText(params.productName);
+  const cleanedInfo = stripStylingSuggestionClauses(params.productInfo || '');
+  const normInfo = normalizeKlingText(cleanedInfo);
+  const normExtra = normalizeKlingText(params.additionalInstructions);
+  const combined = `${normName} ${normInfo} ${normExtra}`.trim();
+
   if (params.influencer === 'Homem') {
-    return KLING_FIXED_VIDEO_PROMPT;
+    const isPockets = params.hasPockets !== false; // default true apenas se nulo
+    const isStretch = params.hasElastane === true;
+
+    const isSetInName =
+      /\b(conjunto|conjuntinho)\b/.test(normName) ||
+      /\b(?:bata|camisa|camiseta|blusa|regata|polo|jaqueta|moletom)\s+e\s+(?:calca|shorts?|bermuda)\b/.test(
+        normName
+      ) ||
+      /\b(?:calca|shorts?|bermuda)\s+e\s+(?:bata|camisa|camiseta|blusa|regata|polo)\b/.test(
+        normName
+      );
+    const isSetInInfo =
+      /\b(conjunto|conjuntinho)\b/.test(normInfo) ||
+      /\b(?:kit|combo|composto\s+por)\b[^.\n]{0,45}\b(?:bata|camisa|camiseta|blusa|polo)\s+e\s+(?:calca|shorts?|bermuda)\b/.test(
+        normInfo
+      ) ||
+      /\b(?:kit|combo|composto\s+por)\b[^.\n]{0,45}\b(?:calca|shorts?|bermuda)\s+e\s+(?:bata|camisa|camiseta|blusa|polo)\b/.test(
+        normInfo
+      );
+
+    const detectMaleGarmentBucket = (slice: string): 'shorts' | 'pants' | 'top' | null => {
+      if (!slice) return null;
+      if (/\b(shorts?|bermudas?|samba[\s-]?cancao)\b/.test(slice)) return 'shorts';
+      if (
+        /\b(calca|calcas|jogger|chino|tatica|pantalona)\b/.test(slice) ||
+        /\bcalca\s+(?:jeans|cargo|social|alfaiataria|sarja|moletom|linho)\b/.test(slice)
+      ) {
+        return 'pants';
+      }
+      if (
+        /\b(jaqueta|corta[\s-]?vento|blazer|casaco|colete|camiseta|camisetas|t-shirt|tshirt|camisa|camisas|polo|regata|blusa|sueter|sweater|moletom|cardiga|cardigan|bata)\b/.test(
+          slice
+        )
+      ) {
+        return 'top';
+      }
+      if (/\b(cargo|jeans|alfaiataria)\b/.test(slice)) return 'pants';
+      return null;
+    };
+
+    const nameBucket = detectMaleGarmentBucket(normName);
+
+    // 7- Conjunto masculino (shorts/bermuda/calça + camisa/camiseta/blusa)
+    if (isSetInName || (isSetInInfo && !nameBucket)) {
+      return KLING_MALE_CONJUNTO_PROMPT;
+    }
+
+    const bucket = nameBucket || detectMaleGarmentBucket(`${normInfo} ${normExtra}`) || 'top';
+
+    if (bucket === 'shorts') {
+      // 1- Shorts ou bermuda com bolso | 2- Shorts ou bermuda sem bolso
+      return isPockets
+        ? KLING_MALE_SHORTS_WITH_POCKETS_PROMPT
+        : KLING_MALE_SHORTS_WITHOUT_POCKETS_PROMPT;
+    }
+
+    if (bucket === 'pants') {
+      // 3- Calça sem elastano com bolso (inclui alfaiataria, jeans e tática/cargo sem elastano)
+      // 4- Calça sem elastano e sem bolso
+      // 5- Calça com elastano com bolso (inclui jeans e tática/cargo com elastano)
+      // 6- Calça com elastano sem bolso
+      if (isStretch) {
+        return isPockets
+          ? KLING_MALE_PANTS_WITH_ELASTANE_WITH_POCKETS_PROMPT
+          : KLING_MALE_PANTS_WITH_ELASTANE_WITHOUT_POCKETS_PROMPT;
+      }
+      return isPockets
+        ? KLING_MALE_PANTS_NO_ELASTANE_WITH_POCKETS_PROMPT
+        : KLING_MALE_PANTS_NO_ELASTANE_WITHOUT_POCKETS_PROMPT;
+    }
+
+    // 8- Camiseta, camisa, regata, jaqueta | 9- Camisa ou camiseta com elastano
+    const isOuterwear = /\b(jaqueta|corta[\s-]?vento|blazer|casaco|colete)\b/.test(
+      `${normName} ${normExtra}`
+    );
+    if (!isOuterwear && isStretch) {
+      return KLING_MALE_TOP_HIGH_ELASTANE_PROMPT;
+    }
+    return KLING_MALE_TOP_STANDARD_PROMPT;
   }
-  const combined = `${params.productName || ''} ${params.productInfo || ''} ${params.additionalInstructions || ''}`
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
+
   const isConjunto = /\b(conjunto|conjuntinho)\b/i.test(combined);
   const isPantsOrSkirt = /\b(calca|calcas|pantalona|wide\s*leg|flare|pantacourt|legging|jeans|saia|saias|minissaia)\b/i.test(combined);
   if (isPantsOrSkirt && !isConjunto) {
@@ -148,9 +350,28 @@ export function resolveAutoShoeOptionByProductName(
   influencer: AnaMariaInfluencer = 'Mulher'
 ): Exclude<AnaMariaShoeOption, 'outro'> {
   const combined = `${productName} ${additionalInstructions}`.toLowerCase();
+  const normCombined = combined
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
   const inspectedCat = dressInspection?.garmentCategory;
 
+  // Regra prioritária para Calça Tática / Calça Tática Cargo vs Calça Cargo sem "tática"
+  const hasCalcaWord = /\b(calca|calcas|calsa|calsas)\b/.test(normCombined);
+  const hasConjuntoWord = /\b(conjunto|conjuntinho)\b/.test(normCombined);
+  if (hasCalcaWord && !hasConjuntoWord) {
+    if (/\btatic[oa]s?\b/.test(normCombined)) {
+      return 'coturno';
+    }
+    if (/\bcargo\b/.test(normCombined)) {
+      return 'tenis';
+    }
+  }
+
   if (influencer === 'Homem') {
+    if (/\b(coturno|cuturno|bota\s+t[aá]tica|bota\s+de\s+trilha)\b/i.test(combined)) {
+      return 'coturno';
+    }
     if (/\b(chinelo|slide|rasteira|sand[aá]lia)\b/i.test(combined)) {
       return 'chinelo_masculino';
     }
@@ -161,7 +382,7 @@ export function resolveAutoShoeOptionByProductName(
     ) {
       return 'sapato_social';
     }
-    // Conjunto masculino, camiseta, calça jeans, bermuda, academia etc. -> Tênis
+    // Conjunto masculino, camiseta, calça jeans, calça cargo, bermuda, academia etc. -> Tênis
     return 'tenis';
   }
 
@@ -199,7 +420,7 @@ export function resolveAutoShoeOptionByProductName(
   // 3. Saia couro, calça jeans, calça social -> Scarpin
   if (
     !isConjunto &&
-    /\b(saia\s+couro|saia\s+de\s+couro|saia\s+em\s+couro|cal[cç]a\s+jeans|jeans|cal[cç]a\s+social|cal[cç]a\s+alfaiataria|cal[cç]a\s+flare|cal[cç]a\s+skinny|cal[cç]a\s+reta|cal[cç]a\s+sarja|cal[cç]a\s+cargo)\b/i.test(
+    /\b(saia\s+couro|saia\s+de\s+couro|saia\s+em\s+couro|cal[cç]a\s+jeans|jeans|cal[cç]a\s+social|cal[cç]a\s+alfaiataria|cal[cç]a\s+flare|cal[cç]a\s+skinny|cal[cç]a\s+reta|cal[cç]a\s+sarja)\b/i.test(
       combined
     )
   ) {
@@ -259,7 +480,7 @@ export function detectShoeCategory(
           influencer
         );
 
-  if (isMale && !selectedShoeOption) {
+  if (isMale && !selectedShoeOption && resolvedOption !== 'coturno') {
     const isFitness =
       dressInspection?.garmentCategory === 'fitness' ||
       /\b(fitness|academia|treino|gym|esportiv|dry\s*fit)\b/i.test(combined);
@@ -273,6 +494,18 @@ export function detectShoeCategory(
   }
 
   switch (resolvedOption) {
+    case 'coturno':
+      return isMale
+        ? {
+            category: 'C_OUTRO',
+            name: 'Coturno Tático / Bota de Trilha Masculina',
+            description: `Coturno masculino estilo bota de trilha / outdoor / aventura (cano médio estruturado, solado tratorado robusto antiderrapante, cadarço firme e acabamento fosco resistente em cor harmônica como preto, marrom terra, areia/coiote ou verde escuro que combine com a calça). ${SHOE_CONTRAST_COLOR_RULE_PT}`,
+          }
+        : {
+            category: 'C_OUTRO',
+            name: 'Coturno / Bota de Trilha',
+            description: `Coturno estilo bota de trilha / outdoor (cano médio estruturado, solado tratorado robusto antiderrapante, cadarço firme e acabamento fosco em cor harmônica que combine com a calça). ${SHOE_CONTRAST_COLOR_RULE_PT}`,
+          };
     case 'sapato_social':
       return {
         category: 'C_OUTRO',

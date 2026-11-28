@@ -27,6 +27,7 @@ import {
   analyzeAnaMariaProductInfo,
   buildUltraPhotorealismBlock,
   extractGenderFromProductInfo,
+  extractPocketsFromProductInfo,
   normalizeIdentifiedGarmentName,
 } from './src/anamaria/anaMariaProductInfo';
 import { buildAniaPlanningSystemPrompt } from './src/ania/aniaPrompts';
@@ -1260,6 +1261,7 @@ app.post('/api/detect-dominant-color', async (req, res) => {
   try {
     const {
       photoBase64,
+      supplementaryPhotoBase64,
       productName,
       productMode,
       mode,
@@ -1274,6 +1276,12 @@ app.post('/api/detect-dominant-color', async (req, res) => {
     const cleanB64 = photoBase64.startsWith('data:')
       ? photoBase64
       : `data:image/jpeg;base64,${photoBase64}`;
+    const cleanSupplementaryB64 =
+      supplementaryPhotoBase64 && typeof supplementaryPhotoBase64 === 'string' && supplementaryPhotoBase64.trim().length > 50
+        ? (supplementaryPhotoBase64.startsWith('data:')
+            ? supplementaryPhotoBase64
+            : `data:image/jpeg;base64,${supplementaryPhotoBase64}`)
+        : '';
 
     const productInfoSpec = analyzeAnaMariaProductInfo(productInfo);
 
@@ -1281,29 +1289,36 @@ app.post('/api/detect-dominant-color', async (req, res) => {
       (globalThis as any).__anaMariaVisionCache = createBoundedMap<string, any>(200);
     }
     const visionCache: Map<string, any> = (globalThis as any).__anaMariaVisionCache;
-    const detectCacheKey = `${mode || 'color'}:${productName || ''}:${productInfoSpec.cleanedText.slice(0, 120)}:${cleanB64.slice(0, 64)}:${cleanB64.slice(-64)}:${cleanB64.length}`;
+    const detectCacheKey = `v3_pe:${mode || 'color'}:${productName || ''}:${productInfoSpec.cleanedText.slice(0, 120)}:${cleanB64.slice(0, 64)}:${cleanB64.slice(-64)}:${cleanB64.length}:${cleanSupplementaryB64.length}`;
     if (visionCache.has(detectCacheKey)) {
       return res.json({ ...visionCache.get(detectCacheKey), cached: true });
     }
-    const visionDetectUrl =
+    const visionDetectDetail = mode === 'identify_garment' ? 'high' : 'low';
+    const [visionDetectUrl, visionSupplementaryUrl] = await Promise.all([
       openAIProvider && openAIProvider.isConfigured()
-        ? await optimizeImageDataUriForVision(cleanB64, 'low')
-        : cleanB64;
+        ? optimizeImageDataUriForVision(cleanB64, visionDetectDetail)
+        : Promise.resolve(cleanB64),
+      cleanSupplementaryB64 && mode === 'identify_garment' && openAIProvider && openAIProvider.isConfigured()
+        ? optimizeImageDataUriForVision(cleanSupplementaryB64, 'low')
+        : Promise.resolve(''),
+    ]);
 
     // ─── MODO IDENTIFICAÇÃO RÁPIDA DE PEÇA DE VESTUÁRIO (MODO ANA MARIA) ───
     if (mode === 'identify_garment') {
       const textDetectedGender = extractGenderFromProductInfo(productInfo);
+      const textDetectedPockets = extractPocketsFromProductInfo(productInfo);
       const textHintBlock = productInfoSpec.hasInfo
         ? `\nINFORMAÇÕES REAIS DO PRODUTO FORNECIDAS PELO USUÁRIO (USE PARA AJUDAR A IDENTIFICAR O NOME DA PEÇA, GÊNERO E TECIDO):\n"${productInfoSpec.cleanedText.slice(0, 500)}"${
             productInfoSpec.detectedGarmentHint
               ? `\n- Pista principal identificada no texto: "${productInfoSpec.detectedGarmentHint}"`
               : ''
-          }\nCombine a análise visual da foto com essas informações de texto para determinar o nome comercial exato da peça e o gênero (Homem ou Mulher).`
+          }\nCombine a análise visual da foto com essas informações de texto para determinar o nome comercial exato da peça, o gênero, se possui bolsos visíveis e se há esticamento visual evidente.`
         : '';
 
-      const identifyPrompt = `Analise a foto deste item de vestuário e as informações fornecidas para retornar estritamente um JSON com DOIS campos: "garmentName" e "detectedGender".${textHintBlock}
+      const identifyPrompt = `Analise a(s) foto(s) deste item de vestuário e as informações fornecidas para retornar estritamente um JSON com QUATRO campos: "garmentName", "detectedGender", "hasPockets" e "visualStretch".${textHintBlock}
 
 1) "garmentName" — NOME COMERCIAL ESPECÍFICO DA PEÇA EM PORTUGUÊS (1 a 3 palavras, iniciais maiúsculas):
+- Calças táticas / cargo / utilitárias / jogger: se for tática e cargo use "Calça Tática Cargo"; se apenas tática use "Calça Tática"; se apenas cargo (sem ser tática) use "Calça Cargo"; se jogger use "Calça Jogger"; se sarja use "Calça Sarja".
 - Calças largas / pantalonas / sociais folgadas: "Calça Pantalona", "Calça Social Folgada" ou "Calça Social ou Pantalona".
 - Calças estruturadas / jeans / sociais retas: "Calça Jeans" ou "Calça Social".
 - Saias: se for de couro ou courino use "Saia Couro"; demais saias use "Saia".
@@ -1324,8 +1339,16 @@ app.post('/api/detect-dominant-color', async (req, res) => {
   * Se houver uma MULHER vestindo a peça (ou se for peça tipicamente feminina como vestido, saia, biquíni, lingerie, cropped feminino) -> "Mulher".
   * Se a foto mostrar apenas a peça solta/cabide/fundo neutro sem modelo visível e a descrição também não indicar se é masculina ou feminina (ou for unissex) -> retorne "unknown".
 
+3) "hasPockets" — BOLSOS VISÍVEIS NA PEÇA ANUNCIADA (true ou false):
+- Observe EXCLUSIVAMENTE a peça principal anunciada na foto (NÃO conte bolsos de outras peças usadas apenas para compor o look, como a calça quando o produto é apenas uma camiseta/blusa).
+- true ("Com Bolsos"): se a peça principal possuir bolsos visíveis (bolso faca na lateral do quadril, bolso frontal, bolso traseiro, bolso cargo na perna, bolso embutido, bolso canguru, bolso no peito de camisa/jaqueta, ou bolsos laterais de calça/short/bermuda/vestido/jaqueta).
+- false ("Sem Bolsos"): se a peça principal for lisa sem bolsos visíveis (ex.: camiseta básica sem bolso, regata, camisa social lisa sem bolso, calça legging/social sem bolso visível, short/vestido liso sem bolso).
+
+4) "visualStretch" — PROVA VISUAL DE ELASTANO / ESTICAMENTO FORTE NA FOTO (true ou false):
+- Retorne true SOMENTE se na foto o modelo ou uma mão estiver PUXANDO/ESTICANDO visivelmente o tecido da peça para demonstrar bastante elasticidade, ou se a peça for claramente de malha justa de alta compressão/lycra/suplex/ribana esticada no corpo. Caso contrário retorne false.
+
 Retorne estritamente JSON válido:
-{ "garmentName": "Camisa Polo", "detectedGender": "Homem" }`;
+{ "garmentName": "Calça Jeans", "detectedGender": "Homem", "hasPockets": true, "visualStretch": false }`;
 
       const sanitizeIdentifiedGarment = (raw: string): string => {
         let clean = raw
@@ -1348,22 +1371,38 @@ Retorne estritamente JSON válido:
         return 'unknown';
       };
 
-      // 1. Tenta OpenAI se configurado (usando gpt-4o-mini + detail: 'low' para gastar ~85 tokens em vez de ~1100 tokens)
+      const parseBoolOrNull = (val: unknown): boolean | null => {
+        if (typeof val === 'boolean') return val;
+        const s = String(val ?? '').trim().toLowerCase();
+        if (s === 'true' || s === 'sim' || s === 'yes') return true;
+        if (s === 'false' || s === 'nao' || s === 'não' || s === 'no') return false;
+        return null;
+      };
+
+      // 1. Tenta OpenAI se configurado (gpt-4o-mini com imagem nítida para detectar bolsos e elasticidade)
       if (openAIProvider && openAIProvider.isConfigured()) {
         const client = (openAIProvider as any).getClient();
         try {
+          const msgContent: any[] = [
+            { type: 'image_url', image_url: { url: visionDetectUrl, detail: 'high' } },
+          ];
+          if (visionSupplementaryUrl) {
+            msgContent.push({
+              type: 'image_url',
+              image_url: { url: visionSupplementaryUrl, detail: 'low' },
+            });
+          }
+          msgContent.push({ type: 'text', text: identifyPrompt });
+
           const completion = await client.chat.completions.create({
             model: 'gpt-4o-mini',
-            max_tokens: 70,
+            max_tokens: 130,
             temperature: 0.1,
             response_format: { type: 'json_object' },
             messages: [
               {
                 role: 'user',
-                content: [
-                  { type: 'image_url', image_url: { url: visionDetectUrl, detail: 'low' } },
-                  { type: 'text', text: identifyPrompt },
-                ],
+                content: msgContent,
               },
             ],
           });
@@ -1371,22 +1410,31 @@ Retorne estritamente JSON válido:
           if (rawContent) {
             let parsedName = '';
             let visualGender: 'Homem' | 'Mulher' | 'unknown' = 'unknown';
+            let visualHasPockets: boolean | null = null;
+            let visualStretch = false;
             try {
               const parsedJson = JSON.parse(rawContent);
               parsedName = String(parsedJson?.garmentName || '').trim();
               visualGender = normalizeGender(parsedJson?.detectedGender);
+              visualHasPockets = parseBoolOrNull(parsedJson?.hasPockets);
+              visualStretch = parseBoolOrNull(parsedJson?.visualStretch) === true;
             } catch {
               parsedName = rawContent;
             }
             const cleanName = parsedName ? sanitizeIdentifiedGarment(parsedName) : '';
-            // Descrição tem prioridade 1; foto é prioridade 2; se nenhum deixar claro -> 'unknown'
+            // Descrição tem prioridade 1 para gênero; foto é prioridade 2
             const finalGender: 'Homem' | 'Mulher' | 'unknown' =
               textDetectedGender || (visualGender !== 'unknown' ? visualGender : 'unknown');
+            // Foto tem prioridade 1 para bolsos; texto explícito funciona como confirmação/apoio
+            const finalHasPockets: boolean | null =
+              visualHasPockets !== null ? visualHasPockets : textDetectedPockets;
             if (cleanName) {
               const payload = {
                 success: true,
                 garmentName: cleanName,
                 detectedGender: finalGender,
+                hasPockets: finalHasPockets,
+                visualStretch,
               };
               visionCache.set(detectCacheKey, payload);
               return res.json(payload);
@@ -1403,6 +1451,8 @@ Retorne estritamente JSON válido:
           success: true,
           garmentName: normalizeIdentifiedGarmentName(productInfoSpec.detectedGarmentHint),
           detectedGender: textDetectedGender || 'unknown',
+          hasPockets: textDetectedPockets,
+          visualStretch: false,
         });
       }
       const fallbackFromFilename = extractGarmentNameFromFileName(fileName);
@@ -1411,6 +1461,8 @@ Retorne estritamente JSON válido:
           success: true,
           garmentName: normalizeIdentifiedGarmentName(fallbackFromFilename),
           detectedGender: textDetectedGender || 'unknown',
+          hasPockets: textDetectedPockets,
+          visualStretch: false,
           fallback: true,
         });
       }
@@ -1418,6 +1470,8 @@ Retorne estritamente JSON válido:
       return res.json({
         success: false,
         detectedGender: textDetectedGender || 'unknown',
+        hasPockets: textDetectedPockets,
+        visualStretch: false,
         error: 'Não foi possível identificar a peça automaticamente',
       });
     }

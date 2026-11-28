@@ -405,9 +405,43 @@ const PT_GARMENT_MID_CONTEXT_REGEX =
   /\b(vestido|saia|macac[aã]o|conjunto|comprimento|modelo|estilo)\s+mid\b/gi;
 
 export function unwrapSoftLineBreaks(text: string): string {
-  return (text || '')
-    .replace(/\r\n/g, '\n')
-    .replace(/([^\n.!?:;])\n([^\n\-•*✔✓✅🔹🔸▪️➤►])/g, '$1 $2');
+  const lines = (text || '').replace(/\r\n/g, '\n').split('\n');
+  const keyValLineRx = /^[ \t]*[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9 /()_-]{0,28}\s*:/;
+  const nextIsNewFieldOrBulletRx =
+    /^[ \t]*(?:\d{1,2}\s*[.)\-]|[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9 /()_-]{0,28}\s*:|[\-•*✔✓✅🔹🔸▪️➤►])/;
+  const out: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const curr = lines[i];
+    if (i === 0) {
+      out.push(curr);
+      continue;
+    }
+    const prev = out[out.length - 1];
+    const prevTrim = prev.trim();
+    const currTrim = curr.trim();
+    const prevEndsSentence = /[.!?:;]$/.test(prevTrim);
+    const prevIsKeyVal = keyValLineRx.test(prev);
+    const prevIsAllCapsHeader =
+      prevTrim.length >= 4 &&
+      prevTrim.length <= 45 &&
+      prevTrim === prevTrim.toUpperCase() &&
+      /[A-ZÀ-Ý]/.test(prevTrim);
+    const currStartsUpper = /^[A-ZÀ-Ý]/.test(currTrim);
+
+    if (
+      !prevTrim ||
+      !currTrim ||
+      prevEndsSentence ||
+      prevIsAllCapsHeader ||
+      nextIsNewFieldOrBulletRx.test(curr) ||
+      (prevIsKeyVal && currStartsUpper)
+    ) {
+      out.push(curr);
+    } else {
+      out[out.length - 1] = `${prev} ${currTrim}`;
+    }
+  }
+  return out.join('\n');
 }
 
 export function normalizePortugueseFashionText(text: string): string {
@@ -470,11 +504,23 @@ function cleanFabricPhrase(rawPhrase: string): string {
   return normalizePortugueseFashionText(rawPhrase)
     .replace(/\([^)]*\)/g, ' ')
     .replace(/\b(?:de\s+(?:toque|caimento)|com\s+toque|n[aã]o\s+(?:amassa|encolhe|desbota|marca|fica\s+transparente|d[aá]\s+bolinha)|zero\s+transpar[eê]ncia|super\s+confort[aá]vel|de\s+(?:alta|excelente|[oó]tima)\s+qualidade)\b.*$/i, '')
-    .split(/[,.;|\n]|\s+[-–—]\s+/)[0]
+    .split(/[,;|\n]|(?<!\d)\.(?!\d)|\s+[-–—]\s+/)[0]
     .replace(/^(?:de|em|do|da)\s+/i, '')
     .replace(/^[\s:\-]+|[\s:\-,]+$/g, '')
+    .replace(/\bpoliester\b/gi, 'Poliéster')
+    .replace(/\bpoli[eé]ster\b/gi, 'Poliéster')
+    .replace(/\balgod[aã]o\b/gi, 'Algodão')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function stripReinforcementClauses(rawText: string): string {
+  return (rawText || '')
+    .replace(
+      /\b(?:joelhos?|virilha|cotovelos?|costuras?|ombros?|bolsos?|areas?)[^.\n]{0,35}\brefor[cç]ad[oa]s?\s+(?:com|em|de)\s+[^.,;\n]+/gi,
+      ' '
+    )
+    .replace(/\brefor[cç]os?\s+(?:em|de|com)\s+[^.,;\n]+/gi, ' ');
 }
 
 function stripLiningClauses(rawText: string): string {
@@ -530,27 +576,43 @@ function resolveConciseFabricLabel(entry: FabricCatalogEntry, sourceNorm: string
   return entry.labelPt;
 }
 
-function extractExplicitFabricPhrase(rawText: string, preferMainClothOnly = false): { phrase: string; isExplicitLabel: boolean } | null {
+const NON_FABRIC_DESCRIPTOR_VALUE_RX =
+  /^(?:n[aã]o\s+estica|estica(?:\s+\w+)?|sem\s+elastano|sem\s+elasticidade|(?:baixa|pouca|m[eé]dia|alta|boa|[oó]tima)\s+elasticidade|leve|maci[oa]|confort[aá]vel|respir[aá]vel|gross[oa]|fin[oa]|encorpad[oa]|alta\s+qualidade|[oó]tima\s+qualidade|excelente\s+qualidade)$/i;
+
+function extractExplicitFabricPhrase(rawText: string, preferMainClothOnly = false): { phrase: string; isExplicitLabel: boolean; isCompositionLabel?: boolean } | null {
   const unwrapped = unwrapSoftLineBreaks(rawText);
   const sourceText = preferMainClothOnly
-    ? stripStylingSuggestionClauses(stripLiningClauses(unwrapped))
+    ? stripReinforcementClauses(stripStylingSuggestionClauses(stripLiningClauses(unwrapped)))
     : stripStylingSuggestionClauses(unwrapped);
-  const labelMatch = sourceText.match(
-    /(?:tecido(?:\s+principal)?|material|composi[cç][aã]o)\s*[:\-]\s*([^\n.;|]{2,70})/i
+
+  // Prioridade 1: Composição explícita (ex.: "Composição: 100% Poliéster", "Composição: 98% Algodão 2% Elastano")
+  const compLabelMatches = Array.from(
+    sourceText.matchAll(/(?:^|[\n;|])\s*composi[cç][aã]o\s*[:\-]\s*([^\n;|]{2,70})/gim)
   );
-  if (labelMatch?.[1]) {
-    const cleaned = cleanFabricPhrase(labelMatch[1]);
-    if (cleaned.length >= 2) {
+  for (const m of compLabelMatches) {
+    const cleaned = cleanFabricPhrase(m[1] || '');
+    if (cleaned.length >= 2 && !NON_FABRIC_DESCRIPTOR_VALUE_RX.test(cleaned)) {
+      return { phrase: cleaned, isExplicitLabel: true, isCompositionLabel: true };
+    }
+  }
+
+  // Prioridade 2: Material ou Tecido explícito em ficha técnica (ignorando "Tecido: Não estica")
+  const labelMatches = Array.from(
+    sourceText.matchAll(/(?:^|[\n;|])\s*(?:material(?:\s+principal)?|tecido(?:\s+principal)?)\s*[:\-]\s*([^\n;|]{2,70})/gim)
+  );
+  for (const m of labelMatches) {
+    const cleaned = cleanFabricPhrase(m[1] || '');
+    if (cleaned.length >= 2 && !NON_FABRIC_DESCRIPTOR_VALUE_RX.test(cleaned)) {
       return { phrase: cleaned, isExplicitLabel: true };
     }
   }
 
   const colonDashBulletMatch = sourceText.match(
-    /(?:^|[\n•\-*])\s*tecido\s+(?!confort[aá]vel\b|leve\b|maci[oa]\b|agrad[aá]vel\b|respir[aá]vel\b|de\s+alta\s+qualidade\b)([a-zA-ZÀ-ÿ0-9 %]{2,45})(?=\s*[:\-]|$)/im
+    /(?:^|[\n•\-*])\s*tecido\s+(?!confort[aá]vel\b|leve\b|maci[oa]\b|agrad[aá]vel\b|respir[aá]vel\b|n[aã]o\s+estica\b|estica\b|de\s+alta\s+qualidade\b)([a-zA-ZÀ-ÿ0-9 %]{2,45})(?=\s*[:\-]|$)/im
   );
   if (colonDashBulletMatch?.[1]) {
     const cleaned = cleanFabricPhrase(colonDashBulletMatch[1]);
-    if (cleaned.length >= 2) {
+    if (cleaned.length >= 2 && !NON_FABRIC_DESCRIPTOR_VALUE_RX.test(cleaned)) {
       return { phrase: cleaned, isExplicitLabel: true };
     }
   }
@@ -560,7 +622,7 @@ function extractExplicitFabricPhrase(rawText: string, preferMainClothOnly = fals
   );
   if (inlineMatch?.[1]) {
     const cleaned = cleanFabricPhrase(inlineMatch[1]);
-    if (cleaned.length >= 2) {
+    if (cleaned.length >= 2 && !NON_FABRIC_DESCRIPTOR_VALUE_RX.test(cleaned)) {
       return { phrase: cleaned, isExplicitLabel: true };
     }
   }
@@ -613,9 +675,26 @@ export function extractFabricFieldSuggestion(rawProductInfo?: string): string {
     }
   }
 
-  // Caso 2: Usuário colou uma descrição de produto -> extrai o tecido principal ignorando linhas de forro e sugestões de combinação ("use com alfaiataria...")
-  const mainClothText = stripStylingSuggestionClauses(stripLiningClauses(normalizedRaw));
+  // Caso 2: Usuário colou uma descrição de produto -> extrai o tecido principal ignorando linhas de forro, reforços e sugestões de combinação
+  const mainClothText = stripReinforcementClauses(
+    stripStylingSuggestionClauses(stripLiningClauses(normalizedRaw))
+  );
   const explicit = extractExplicitFabricPhrase(mainClothText, true);
+  const firstTitleLine =
+    mainClothText
+      .split(/\n+/)
+      .map((l) => l.trim())
+      .find((l) => l.length >= 3 && !/^descri[cç][aã]o(\s+do\s+produto)?$/i.test(l)) || '';
+  const normFirstTitle = firstTitleLine
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  const titleSpecificCatalogMatches = FABRIC_CATALOG.filter(
+    (entry) =>
+      entry.id !== 'algodao_tricoline' &&
+      entry.id !== 'tactel' &&
+      (entry.pattern.test(firstTitleLine) || entry.pattern.test(normFirstTitle))
+  );
 
   if (
     explicit?.isExplicitLabel &&
@@ -630,12 +709,15 @@ export function extractFabricFieldSuggestion(rawProductInfo?: string): string {
     const expCatalogMatches = FABRIC_CATALOG.filter(
       (entry) => entry.pattern.test(explicit.phrase) || entry.pattern.test(expNorm)
     );
+    // Se o título nomeia um tecido comercial específico (ex: "Vestido Viscolinho" com "Composição: 100% Viscose"),
+    // prioriza o nome comercial do título; caso contrário usa exatamente a composição/material explícito (ex: "100% Poliéster")
+    if (/^\d{1,3}\s*%/.test(explicit.phrase) && titleSpecificCatalogMatches.length === 1) {
+      return resolveConciseFabricLabel(titleSpecificCatalogMatches[0], normFirstTitle);
+    }
     if (expCatalogMatches.length === 1) {
       return resolveConciseFabricLabel(expCatalogMatches[0], expNorm);
     }
-    if (!/^\d{1,3}\s*%/.test(explicit.phrase)) {
-      return capitalizeLeadingChar(explicit.phrase);
-    }
+    return capitalizeLeadingChar(explicit.phrase);
   }
 
   const normMain = mainClothText
@@ -704,6 +786,127 @@ export function extractFabricFieldSuggestion(rawProductInfo?: string): string {
   }
 
   return '';
+}
+
+/**
+ * Identifica pelo texto (Informações do Produto) se a peça possui elastano/elasticidade
+ * ('Com Elastano' = true), não possui elastano ('Sem Elastano' = false) ou se não está claro (null).
+ * Ignora elástico exclusivo de cintura/cós/punho para não confundir calças/shorts de linho ou tactel.
+ */
+export function extractElastaneFromProductInfo(rawProductInfo?: string): boolean | null {
+  if (!rawProductInfo || !rawProductInfo.trim()) return null;
+  const cleaned = stripStylingSuggestionClauses(
+    stripLiningClauses(normalizePortugueseFashionText(unwrapSoftLineBreaks(rawProductInfo)))
+  );
+  const ascii = cleaned
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+
+  // Remove menções exclusivas a elástico no cós, cintura, punho ou barra
+  const withoutWaistbandElastic = ascii.replace(
+    /\b(?:cintura\s+elastica|cos\s+(?:com\s+)?elastico|elastico\s+n[oa]\s+(?:cintura|cos|punho|punhos|barra|tornozelo|costas)|punhos?\s+(?:com\s+)?elastico|elastico\s+atras|cordao\s+ajustavel)\b/gi,
+    ' '
+  );
+
+  // 1. Negação explícita de elastano / elasticidade
+  if (
+    /\b(?:sem\s+elastano|nao\s+(?:tem|possui|contem)\s+elastano|0\s*%\s*(?:de\s+)?elastano|zero\s+(?:de\s+)?elastano|sem\s+lycra|sem\s+stretch|sem\s+elasticidade|nao\s+estica|nao\s+possui\s+elasticidade|pouco\s+ou\s+nenhum\s+elastano)\b/.test(
+      withoutWaistbandElastic
+    )
+  ) {
+    return false;
+  }
+
+  // 2. Presença explícita de elastano, lycra, spandex, stretch ou verbos de elasticidade da peça/tecido
+  if (
+    /\b(?:com\s+elastano|possui\s+elastano|contem\s+elastano|tem\s+elastano|elastano|elastan|elastomero|lycra|laycra|spandex|stretch|two\s*way)\b/.test(
+      withoutWaistbandElastic
+    ) ||
+    /\b\d{1,2}\s*%\s*(?:de\s+)?(?:elastano|lycra|spandex)\b/.test(withoutWaistbandElastic) ||
+    /\b(?:estica(?:\s+(?:bem|bastante|muito|super|demais))?|tecido\s+(?:que\s+)?estica|malha\s+(?:que\s+)?estica|peca\s+(?:que\s+)?estica|(?:boa|otima|excelente|alta|muita|leve|media)\s+elasticidade|(?:com|possui)\s+elasticidade|tecido\s+elastico|malha\s+elastica|lastex)\b/.test(
+      withoutWaistbandElastic
+    )
+  ) {
+    return true;
+  }
+
+  // 3. Tecidos intrinsecamente elásticos (desde que não tenham sido negados acima)
+  if (
+    /\b(?:viscolycra|visco\s*lycra|suplex|supplex|anarruga|bengaline|cire|scuba|neoprene|helanca|fluity|liganete|malha\s+romantic|canelad[oa]s?|ribana|malha\s+rib|trico\s+modal|tricot\s+modal|malha\s+modal|tecido\s+modal|poliamida\s+fitness|trilobal)\b/.test(
+      withoutWaistbandElastic
+    )
+  ) {
+    return true;
+  }
+
+  // 4. Composição 100% fibra rígida/natural ou soma percentual sem elastano/lycra/spandex
+  if (
+    /\b100\s*%\s*(?:algodao|cotton|linho|linen|viscose|poliester|acrilico|acrilica|seda|tactel|nylon|la|ripstop)\b/.test(
+      withoutWaistbandElastic
+    )
+  ) {
+    return false;
+  }
+
+  const pctMatches = Array.from(withoutWaistbandElastic.matchAll(/\b(\d{1,3})\s*%\s*([a-z]+)/g));
+  if (pctMatches.length >= 2) {
+    let sum = 0;
+    let hasStretchFiber = false;
+    for (const m of pctMatches) {
+      sum += parseInt(m[1], 10) || 0;
+      if (/^(?:elastano|elastan|lycra|laycra|spandex|elastomero)/.test(m[2])) {
+        hasStretchFiber = true;
+      }
+    }
+    if (hasStretchFiber) return true;
+    if (sum >= 95) return false;
+  }
+
+  // 5. Tecidos planos tipicamente sem elastano (exceto jeans/sarja/alfaiataria genérica quando nada sobre elasticidade foi dito)
+  if (
+    /\b(?:linho|viscolinho|visco\s*linho|tecido\s+duna|crepe\s+duna|duna|tricoline|popeline|cambraia|laise|lese|broderie|chiffon|musseline|mousseline|organza|voal|voil|zibeline|tafeta|ripstop|tactel|nylon|oxford|oxfordine|gabardine|courino)\b/.test(
+      withoutWaistbandElastic
+    )
+  ) {
+    return false;
+  }
+
+  return null;
+}
+
+/**
+ * Busca pistas explícitas de bolso em Informações do Produto (apoio secundário à análise visual da foto).
+ */
+export function extractPocketsFromProductInfo(rawProductInfo?: string): boolean | null {
+  if (!rawProductInfo || !rawProductInfo.trim()) return null;
+  const cleaned = stripStylingSuggestionClauses(
+    normalizePortugueseFashionText(unwrapSoftLineBreaks(rawProductInfo))
+  );
+  const ascii = cleaned
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+
+  if (
+    /\b(?:sem\s+bolso|sem\s+bolsos|nao\s+(?:tem|possui|contem)\s+bolsos?|bolsos?\s+fakes?|falsos?\s+bolsos?|nao\s+possui\s+bolso)\b/.test(
+      ascii
+    )
+  ) {
+    return false;
+  }
+
+  if (
+    /\b(?:com\s+bolso|com\s+bolsos|possui\s+bolsos?|contem\s+bolsos?|tem\s+bolsos?|bolsos?\s+(?:laterais?|fronta(?:l|is)|faca|cargo|traseiros?|embutidos?|funcionais?|canguru|no\s+peito|chapados?)|bolso\s+faca|bolso\s+cargo)\b/.test(
+      ascii
+    )
+  ) {
+    return true;
+  }
+
+  return null;
 }
 
 /**
@@ -797,11 +1000,17 @@ function matchGarmentFromNormalizedSlice(s: string): string | null {
     if (/\bmidi\b/.test(s) && !/\bcurt[oa]\b/.test(s) && !/\blong[oa]\b/.test(s)) return 'Saia Midi';
     return 'Saia';
   }
-  if (/\b(calca|pantalona|wide\s*leg|flare)\b/.test(s)) {
+  if (/\b(calca|calcas|pantalona|wide\s*leg|flare)\b/.test(s)) {
+    if (/\btatic[oa]s?\b/.test(s) && /\bcargo\b/.test(s)) return 'Calça Tática Cargo';
+    if (/\btatic[oa]s?\b/.test(s)) return 'Calça Tática';
+    if (/\bcargo\b/.test(s)) return 'Calça Cargo';
+    if (/\bjogger\b/.test(s)) return 'Calça Jogger';
+    if (/\b(moletom|moletinho)\b/.test(s)) return 'Calça Moletom';
     if (/\b(pantalona|folgada|wide\s*leg|palazzo|linho)\b/.test(s)) return 'Calça Pantalona';
     if (/\bjeans\b/.test(s)) return 'Calça Jeans';
+    if (/\bsarja\b/.test(s)) return 'Calça Sarja';
     if (/\b(social|alfaiataria|two\s*way)\b/.test(s)) return 'Calça Social';
-    return 'Calça Social';
+    return 'Calça';
   }
   if (/\b(bermuda|shorts?)\b/.test(s) && !/\bconjunto\b/.test(s)) {
     if (/\bjeans\b/.test(s)) return 'Short Jeans';
@@ -831,6 +1040,11 @@ function matchGarmentFromNormalizedSlice(s: string): string | null {
 export function extractGarmentFromProductInfo(rawText?: string): string | null {
   if (!rawText || !rawText.trim()) return null;
   const cleanedText = stripStylingSuggestionClauses(rawText);
+  const fixedFull = normalizePortugueseFashionText(cleanedText)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
   // Prioriza o título / primeira linha útil do anúncio antes do corpo descritivo
   const firstMeaningfulLine = cleanedText
     .split(/\n+/)
@@ -843,16 +1057,18 @@ export function extractGarmentFromProductInfo(rawText?: string): string | null {
       .toLowerCase()
       .replace(/\s+/g, ' ');
     const fromTitle = matchGarmentFromNormalizedSlice(normFirst);
-    if (fromTitle) return fromTitle;
+    if (fromTitle) {
+      if (
+        (fromTitle === 'Calça Tática' && /\bcargo\b/.test(fixedFull)) ||
+        (fromTitle === 'Calça Cargo' && /\btatic[oa]s?\b/.test(fixedFull))
+      ) {
+        return 'Calça Tática Cargo';
+      }
+      return fromTitle;
+    }
   }
 
-  const fixedRaw = normalizePortugueseFashionText(cleanedText);
-  const s = fixedRaw
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/\s+/g, ' ');
-  return matchGarmentFromNormalizedSlice(s);
+  return matchGarmentFromNormalizedSlice(fixedFull);
 }
 
 export function analyzeAnaMariaProductInfo(
@@ -878,21 +1094,30 @@ export function analyzeAnaMariaProductInfo(
     };
   }
 
-  const unwrappedRawText = stripStylingSuggestionClauses(unwrapSoftLineBreaks(rawText));
+  const unwrappedRawText = stripReinforcementClauses(
+    stripLiningClauses(stripStylingSuggestionClauses(unwrapSoftLineBreaks(rawText)))
+  );
   const cleanedText = cleanRawProductInfoText(unwrappedRawText || normalizedOverride);
   const normSearch = (unwrappedRawText || '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
 
+  const explicitInfo = extractExplicitFabricPhrase(rawText, true);
+  const explicitPhrase = explicitInfo?.phrase || null;
+  const fallbackShort = rawText.length <= 75 ? rawText.replace(/\s+/g, ' ').trim() : '';
+  const suggestedFabricLabel = !normalizedOverride ? extractFabricFieldSuggestion(rawText) : '';
+  const effectiveCatalogSource =
+    normalizedOverride || (explicitInfo?.isExplicitLabel && suggestedFabricLabel ? suggestedFabricLabel : '');
+
   let detectedFabrics: FabricCatalogEntry[] = [];
-  if (normalizedOverride) {
-    const normOverride = normalizedOverride
+  if (effectiveCatalogSource) {
+    const normEffective = effectiveCatalogSource
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .toLowerCase();
     detectedFabrics = FABRIC_CATALOG.filter(
-      (entry) => entry.pattern.test(normalizedOverride) || entry.pattern.test(normOverride)
+      (entry) => entry.pattern.test(effectiveCatalogSource) || entry.pattern.test(normEffective)
     );
   } else {
     detectedFabrics = FABRIC_CATALOG.filter(
@@ -900,11 +1125,9 @@ export function analyzeAnaMariaProductInfo(
     );
   }
 
-  const explicitPhrase = extractExplicitFabricPhrase(rawText, true)?.phrase || null;
-  const fallbackShort = rawText.length <= 75 ? rawText.replace(/\s+/g, ' ').trim() : '';
-
   const fabricSummaryLabel =
     normalizedOverride ||
+    suggestedFabricLabel ||
     (detectedFabrics.length > 0
       ? detectedFabrics.slice(0, 3).map((f) => resolveConciseFabricLabel(f, normSearch)).join(' + ')
       : explicitPhrase || fallbackShort || 'Conforme especificações informadas');

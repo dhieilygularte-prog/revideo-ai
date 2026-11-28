@@ -914,7 +914,30 @@ var PORTUGUESE_FASHION_TYPO_RULES = [
 ];
 var PT_GARMENT_MID_CONTEXT_REGEX = /\b(vestido|saia|macac[aã]o|conjunto|comprimento|modelo|estilo)\s+mid\b/gi;
 function unwrapSoftLineBreaks(text) {
-  return (text || "").replace(/\r\n/g, "\n").replace(/([^\n.!?:;])\n([^\n\-•*✔✓✅🔹🔸▪️➤►])/g, "$1 $2");
+  const lines = (text || "").replace(/\r\n/g, "\n").split("\n");
+  const keyValLineRx = /^[ \t]*[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9 /()_-]{0,28}\s*:/;
+  const nextIsNewFieldOrBulletRx = /^[ \t]*(?:\d{1,2}\s*[.)\-]|[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ0-9 /()_-]{0,28}\s*:|[\-•*✔✓✅🔹🔸▪️➤►])/;
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    const curr = lines[i];
+    if (i === 0) {
+      out.push(curr);
+      continue;
+    }
+    const prev = out[out.length - 1];
+    const prevTrim = prev.trim();
+    const currTrim = curr.trim();
+    const prevEndsSentence = /[.!?:;]$/.test(prevTrim);
+    const prevIsKeyVal = keyValLineRx.test(prev);
+    const prevIsAllCapsHeader = prevTrim.length >= 4 && prevTrim.length <= 45 && prevTrim === prevTrim.toUpperCase() && /[A-ZÀ-Ý]/.test(prevTrim);
+    const currStartsUpper = /^[A-ZÀ-Ý]/.test(currTrim);
+    if (!prevTrim || !currTrim || prevEndsSentence || prevIsAllCapsHeader || nextIsNewFieldOrBulletRx.test(curr) || prevIsKeyVal && currStartsUpper) {
+      out.push(curr);
+    } else {
+      out[out.length - 1] = `${prev} ${currTrim}`;
+    }
+  }
+  return out.join("\n");
 }
 function normalizePortugueseFashionText(text) {
   if (!text) return "";
@@ -955,7 +978,13 @@ function normalizeIdentifiedGarmentName(rawName) {
   return fixed.trim();
 }
 function cleanFabricPhrase(rawPhrase) {
-  return normalizePortugueseFashionText(rawPhrase).replace(/\([^)]*\)/g, " ").replace(/\b(?:de\s+(?:toque|caimento)|com\s+toque|n[aã]o\s+(?:amassa|encolhe|desbota|marca|fica\s+transparente|d[aá]\s+bolinha)|zero\s+transpar[eê]ncia|super\s+confort[aá]vel|de\s+(?:alta|excelente|[oó]tima)\s+qualidade)\b.*$/i, "").split(/[,.;|\n]|\s+[-–—]\s+/)[0].replace(/^(?:de|em|do|da)\s+/i, "").replace(/^[\s:\-]+|[\s:\-,]+$/g, "").replace(/\s+/g, " ").trim();
+  return normalizePortugueseFashionText(rawPhrase).replace(/\([^)]*\)/g, " ").replace(/\b(?:de\s+(?:toque|caimento)|com\s+toque|n[aã]o\s+(?:amassa|encolhe|desbota|marca|fica\s+transparente|d[aá]\s+bolinha)|zero\s+transpar[eê]ncia|super\s+confort[aá]vel|de\s+(?:alta|excelente|[oó]tima)\s+qualidade)\b.*$/i, "").split(/[,;|\n]|(?<!\d)\.(?!\d)|\s+[-–—]\s+/)[0].replace(/^(?:de|em|do|da)\s+/i, "").replace(/^[\s:\-]+|[\s:\-,]+$/g, "").replace(/\bpoliester\b/gi, "Poli\xE9ster").replace(/\bpoli[eé]ster\b/gi, "Poli\xE9ster").replace(/\balgod[aã]o\b/gi, "Algod\xE3o").replace(/\s+/g, " ").trim();
+}
+function stripReinforcementClauses(rawText) {
+  return (rawText || "").replace(
+    /\b(?:joelhos?|virilha|cotovelos?|costuras?|ombros?|bolsos?|areas?)[^.\n]{0,35}\brefor[cç]ad[oa]s?\s+(?:com|em|de)\s+[^.,;\n]+/gi,
+    " "
+  ).replace(/\brefor[cç]os?\s+(?:em|de|com)\s+[^.,;\n]+/gi, " ");
 }
 function stripLiningClauses(rawText) {
   const lines = (rawText || "").split(/\n+/).filter((line) => !/^\s*(?:com\s+|possui\s+)?forro\b/i.test(line));
@@ -995,24 +1024,34 @@ function resolveConciseFabricLabel(entry, sourceNorm) {
   }
   return entry.labelPt;
 }
+var NON_FABRIC_DESCRIPTOR_VALUE_RX = /^(?:n[aã]o\s+estica|estica(?:\s+\w+)?|sem\s+elastano|sem\s+elasticidade|(?:baixa|pouca|m[eé]dia|alta|boa|[oó]tima)\s+elasticidade|leve|maci[oa]|confort[aá]vel|respir[aá]vel|gross[oa]|fin[oa]|encorpad[oa]|alta\s+qualidade|[oó]tima\s+qualidade|excelente\s+qualidade)$/i;
 function extractExplicitFabricPhrase(rawText, preferMainClothOnly = false) {
   const unwrapped = unwrapSoftLineBreaks(rawText);
-  const sourceText = preferMainClothOnly ? stripStylingSuggestionClauses(stripLiningClauses(unwrapped)) : stripStylingSuggestionClauses(unwrapped);
-  const labelMatch = sourceText.match(
-    /(?:tecido(?:\s+principal)?|material|composi[cç][aã]o)\s*[:\-]\s*([^\n.;|]{2,70})/i
+  const sourceText = preferMainClothOnly ? stripReinforcementClauses(stripStylingSuggestionClauses(stripLiningClauses(unwrapped))) : stripStylingSuggestionClauses(unwrapped);
+  const compLabelMatches = Array.from(
+    sourceText.matchAll(/(?:^|[\n;|])\s*composi[cç][aã]o\s*[:\-]\s*([^\n;|]{2,70})/gim)
   );
-  if (labelMatch?.[1]) {
-    const cleaned = cleanFabricPhrase(labelMatch[1]);
-    if (cleaned.length >= 2) {
+  for (const m of compLabelMatches) {
+    const cleaned = cleanFabricPhrase(m[1] || "");
+    if (cleaned.length >= 2 && !NON_FABRIC_DESCRIPTOR_VALUE_RX.test(cleaned)) {
+      return { phrase: cleaned, isExplicitLabel: true, isCompositionLabel: true };
+    }
+  }
+  const labelMatches = Array.from(
+    sourceText.matchAll(/(?:^|[\n;|])\s*(?:material(?:\s+principal)?|tecido(?:\s+principal)?)\s*[:\-]\s*([^\n;|]{2,70})/gim)
+  );
+  for (const m of labelMatches) {
+    const cleaned = cleanFabricPhrase(m[1] || "");
+    if (cleaned.length >= 2 && !NON_FABRIC_DESCRIPTOR_VALUE_RX.test(cleaned)) {
       return { phrase: cleaned, isExplicitLabel: true };
     }
   }
   const colonDashBulletMatch = sourceText.match(
-    /(?:^|[\n•\-*])\s*tecido\s+(?!confort[aá]vel\b|leve\b|maci[oa]\b|agrad[aá]vel\b|respir[aá]vel\b|de\s+alta\s+qualidade\b)([a-zA-ZÀ-ÿ0-9 %]{2,45})(?=\s*[:\-]|$)/im
+    /(?:^|[\n•\-*])\s*tecido\s+(?!confort[aá]vel\b|leve\b|maci[oa]\b|agrad[aá]vel\b|respir[aá]vel\b|n[aã]o\s+estica\b|estica\b|de\s+alta\s+qualidade\b)([a-zA-ZÀ-ÿ0-9 %]{2,45})(?=\s*[:\-]|$)/im
   );
   if (colonDashBulletMatch?.[1]) {
     const cleaned = cleanFabricPhrase(colonDashBulletMatch[1]);
-    if (cleaned.length >= 2) {
+    if (cleaned.length >= 2 && !NON_FABRIC_DESCRIPTOR_VALUE_RX.test(cleaned)) {
       return { phrase: cleaned, isExplicitLabel: true };
     }
   }
@@ -1021,7 +1060,7 @@ function extractExplicitFabricPhrase(rawText, preferMainClothOnly = false) {
   );
   if (inlineMatch?.[1]) {
     const cleaned = cleanFabricPhrase(inlineMatch[1]);
-    if (cleaned.length >= 2) {
+    if (cleaned.length >= 2 && !NON_FABRIC_DESCRIPTOR_VALUE_RX.test(cleaned)) {
       return { phrase: cleaned, isExplicitLabel: true };
     }
   }
@@ -1030,6 +1069,104 @@ function extractExplicitFabricPhrase(rawText, preferMainClothOnly = false) {
   );
   if (compMatch?.[1]) {
     return { phrase: cleanFabricPhrase(compMatch[1]), isExplicitLabel: false };
+  }
+  return null;
+}
+function capitalizeLeadingChar(value) {
+  if (!value) return "";
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+var PURE_FABRIC_DISQUALIFY_GARMENTS_RX = /\b(vestido|vestdo|cal[cç]a|calsa|pantalona|saia|blusa|blusinha|camisa|camiseta|t-shirt|tshirt|cropped|top|conjunto|conjuto|macac[aã]o|macaquinho|short|shorts|bermuda|body|pijama|camisola|babydoll|jaqueta|blazer|biqu[ií]ni|mai[oô]|cinta|cardigan|casaco|colete|kimono|regata|legging|cal[cç]ado|sand[aá]lia|t[eê]nis|salto|bota|rasteirinha|sapatilha)\b/i;
+var PURE_FABRIC_DISQUALIFY_LISTING_RX = /\b(feminin[oa]s?|masculin[oa]s?|lond[oa]|long[oa]|mid|midi|curt[oa]|possui|cont[eé]m|detalhe|decote|fenda|bojo|forro|z[ií]per|bot[oõ]es|bot[aã]o|bolso|cinto|tamanho|tamanhos|veste|medidas|busto|cintura|quadril|comprimento|envio|entrega|modelo|refer[eê]ncia|descri[cç][aã]o|lan[cç]amento|promo[cç][aã]o|tabela)\b/i;
+function extractFabricFieldSuggestion(rawProductInfo) {
+  const raw = (rawProductInfo || "").trim();
+  if (!raw) return "";
+  const unwrappedRaw = unwrapSoftLineBreaks(raw);
+  const normalizedRaw = normalizePortugueseFashionText(unwrappedRaw);
+  const singleLine = normalizedRaw.replace(/[ \t]+/g, " ").trim();
+  const isSingleLine = !/\n/.test(raw.replace(/\r\n/g, "\n"));
+  if (isSingleLine && singleLine.length <= 70 && !/[•✅✔✓➤►|]|https?:\/\//i.test(singleLine)) {
+    const strippedPrefix = singleLine.replace(/^(?:tecido|material)\s*[:\-]\s*/i, "").replace(/[.!?,;:]+$/g, "").trim();
+    const asciiCheck = strippedPrefix.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    if (strippedPrefix.length >= 2 && !PURE_FABRIC_DISQUALIFY_GARMENTS_RX.test(strippedPrefix) && !PURE_FABRIC_DISQUALIFY_GARMENTS_RX.test(asciiCheck) && !PURE_FABRIC_DISQUALIFY_LISTING_RX.test(strippedPrefix) && !PURE_FABRIC_DISQUALIFY_LISTING_RX.test(asciiCheck)) {
+      return capitalizeLeadingChar(strippedPrefix);
+    }
+  }
+  const mainClothText = stripReinforcementClauses(
+    stripStylingSuggestionClauses(stripLiningClauses(normalizedRaw))
+  );
+  const explicit = extractExplicitFabricPhrase(mainClothText, true);
+  const firstTitleLine = mainClothText.split(/\n+/).map((l) => l.trim()).find((l) => l.length >= 3 && !/^descri[cç][aã]o(\s+do\s+produto)?$/i.test(l)) || "";
+  const normFirstTitle = firstTitleLine.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const titleSpecificCatalogMatches = FABRIC_CATALOG.filter(
+    (entry) => entry.id !== "algodao_tricoline" && entry.id !== "tactel" && (entry.pattern.test(firstTitleLine) || entry.pattern.test(normFirstTitle))
+  );
+  if (explicit?.isExplicitLabel && explicit.phrase && explicit.phrase.length <= 48 && !/^(?:alta|ótima|otima|excelente|boa)\s+qualidade$/i.test(explicit.phrase)) {
+    const expNorm = explicit.phrase.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const expCatalogMatches = FABRIC_CATALOG.filter(
+      (entry) => entry.pattern.test(explicit.phrase) || entry.pattern.test(expNorm)
+    );
+    if (/^\d{1,3}\s*%/.test(explicit.phrase) && titleSpecificCatalogMatches.length === 1) {
+      return resolveConciseFabricLabel(titleSpecificCatalogMatches[0], normFirstTitle);
+    }
+    if (expCatalogMatches.length === 1) {
+      return resolveConciseFabricLabel(expCatalogMatches[0], expNorm);
+    }
+    return capitalizeLeadingChar(explicit.phrase);
+  }
+  const normMain = mainClothText.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  let detected = FABRIC_CATALOG.filter(
+    (entry) => entry.pattern.test(mainClothText) || entry.pattern.test(normMain)
+  );
+  if (detected.length === 0) {
+    const normFull = normalizedRaw.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    detected = FABRIC_CATALOG.filter(
+      (entry) => entry.pattern.test(normalizedRaw) || entry.pattern.test(normFull)
+    );
+  }
+  if (detected.length > 1 && /\bcrepe\s+(?:de\s+)?alfaiataria\b/i.test(normMain)) {
+    detected = detected.filter((d) => d.id !== "crepe");
+  }
+  if (detected.length > 1 && detected.some((d) => d.id === "alfaiataria") && !/\b(crepe\s+(?:de\s+)?alfaiataria|tecido\s+(?:de\s+)?alfaiataria|two\s*way|marant|marrant|sensoriale|gabardine|oxfordine)\b/i.test(
+    normMain
+  )) {
+    detected = detected.filter((d) => d.id !== "alfaiataria");
+  }
+  if (detected.length > 0) {
+    return detected.slice(0, 2).map((d) => resolveConciseFabricLabel(d, normMain)).join(" + ");
+  }
+  if (explicit?.phrase) {
+    return capitalizeLeadingChar(explicit.phrase);
+  }
+  const genericMalhaMatch = mainClothText.match(
+    /\bmalha(?:\s+(?!de\b|com\b|em\b|para\b|super\b|leve\b|maci[oa]\b|confort[aá]vel\b|que\b|e\b)[a-zA-ZÀ-ÿ]{3,18})?\b/i
+  );
+  if (genericMalhaMatch?.[0]) {
+    return genericMalhaMatch[0].split(/\s+/).map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+  }
+  if (/\bpoli[eé]ster\b/i.test(mainClothText) && /\belastano\b/i.test(mainClothText)) {
+    return "Poli\xE9ster com Elastano";
+  }
+  if (/\bpoli[eé]ster\b/i.test(mainClothText)) {
+    return "Poli\xE9ster";
+  }
+  return "";
+}
+function extractPocketsFromProductInfo(rawProductInfo) {
+  if (!rawProductInfo || !rawProductInfo.trim()) return null;
+  const cleaned = stripStylingSuggestionClauses(
+    normalizePortugueseFashionText(unwrapSoftLineBreaks(rawProductInfo))
+  );
+  const ascii = cleaned.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ");
+  if (/\b(?:sem\s+bolso|sem\s+bolsos|nao\s+(?:tem|possui|contem)\s+bolsos?|bolsos?\s+fakes?|falsos?\s+bolsos?|nao\s+possui\s+bolso)\b/.test(
+    ascii
+  )) {
+    return false;
+  }
+  if (/\b(?:com\s+bolso|com\s+bolsos|possui\s+bolsos?|contem\s+bolsos?|tem\s+bolsos?|bolsos?\s+(?:laterais?|fronta(?:l|is)|faca|cargo|traseiros?|embutidos?|funcionais?|canguru|no\s+peito|chapados?)|bolso\s+faca|bolso\s+cargo)\b/.test(
+    ascii
+  )) {
+    return true;
   }
   return null;
 }
@@ -1106,11 +1243,17 @@ function matchGarmentFromNormalizedSlice(s) {
     if (/\bmidi\b/.test(s) && !/\bcurt[oa]\b/.test(s) && !/\blong[oa]\b/.test(s)) return "Saia Midi";
     return "Saia";
   }
-  if (/\b(calca|pantalona|wide\s*leg|flare)\b/.test(s)) {
+  if (/\b(calca|calcas|pantalona|wide\s*leg|flare)\b/.test(s)) {
+    if (/\btatic[oa]s?\b/.test(s) && /\bcargo\b/.test(s)) return "Cal\xE7a T\xE1tica Cargo";
+    if (/\btatic[oa]s?\b/.test(s)) return "Cal\xE7a T\xE1tica";
+    if (/\bcargo\b/.test(s)) return "Cal\xE7a Cargo";
+    if (/\bjogger\b/.test(s)) return "Cal\xE7a Jogger";
+    if (/\b(moletom|moletinho)\b/.test(s)) return "Cal\xE7a Moletom";
     if (/\b(pantalona|folgada|wide\s*leg|palazzo|linho)\b/.test(s)) return "Cal\xE7a Pantalona";
     if (/\bjeans\b/.test(s)) return "Cal\xE7a Jeans";
+    if (/\bsarja\b/.test(s)) return "Cal\xE7a Sarja";
     if (/\b(social|alfaiataria|two\s*way)\b/.test(s)) return "Cal\xE7a Social";
-    return "Cal\xE7a Social";
+    return "Cal\xE7a";
   }
   if (/\b(bermuda|shorts?)\b/.test(s) && !/\bconjunto\b/.test(s)) {
     if (/\bjeans\b/.test(s)) return "Short Jeans";
@@ -1139,15 +1282,19 @@ function matchGarmentFromNormalizedSlice(s) {
 function extractGarmentFromProductInfo(rawText) {
   if (!rawText || !rawText.trim()) return null;
   const cleanedText = stripStylingSuggestionClauses(rawText);
+  const fixedFull = normalizePortugueseFashionText(cleanedText).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ");
   const firstMeaningfulLine = cleanedText.split(/\n+/).map((l) => l.trim()).find((l) => l.length >= 3 && !/^descri[cç][aã]o(\s+do\s+produto)?$/i.test(l));
   if (firstMeaningfulLine) {
     const normFirst = normalizePortugueseFashionText(firstMeaningfulLine).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ");
     const fromTitle = matchGarmentFromNormalizedSlice(normFirst);
-    if (fromTitle) return fromTitle;
+    if (fromTitle) {
+      if (fromTitle === "Cal\xE7a T\xE1tica" && /\bcargo\b/.test(fixedFull) || fromTitle === "Cal\xE7a Cargo" && /\btatic[oa]s?\b/.test(fixedFull)) {
+        return "Cal\xE7a T\xE1tica Cargo";
+      }
+      return fromTitle;
+    }
   }
-  const fixedRaw = normalizePortugueseFashionText(cleanedText);
-  const s = fixedRaw.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ");
-  return matchGarmentFromNormalizedSlice(s);
+  return matchGarmentFromNormalizedSlice(fixedFull);
 }
 function analyzeAnaMariaProductInfo(rawProductInfo, overrideFabricType) {
   const rawText = normalizePortugueseFashionText((rawProductInfo || "").trim());
@@ -1167,23 +1314,28 @@ function analyzeAnaMariaProductInfo(rawProductInfo, overrideFabricType) {
       compactLineEn: ""
     };
   }
-  const unwrappedRawText = stripStylingSuggestionClauses(unwrapSoftLineBreaks(rawText));
+  const unwrappedRawText = stripReinforcementClauses(
+    stripLiningClauses(stripStylingSuggestionClauses(unwrapSoftLineBreaks(rawText)))
+  );
   const cleanedText = cleanRawProductInfoText(unwrappedRawText || normalizedOverride);
   const normSearch = (unwrappedRawText || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const explicitInfo = extractExplicitFabricPhrase(rawText, true);
+  const explicitPhrase = explicitInfo?.phrase || null;
+  const fallbackShort = rawText.length <= 75 ? rawText.replace(/\s+/g, " ").trim() : "";
+  const suggestedFabricLabel = !normalizedOverride ? extractFabricFieldSuggestion(rawText) : "";
+  const effectiveCatalogSource = normalizedOverride || (explicitInfo?.isExplicitLabel && suggestedFabricLabel ? suggestedFabricLabel : "");
   let detectedFabrics = [];
-  if (normalizedOverride) {
-    const normOverride = normalizedOverride.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  if (effectiveCatalogSource) {
+    const normEffective = effectiveCatalogSource.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
     detectedFabrics = FABRIC_CATALOG.filter(
-      (entry) => entry.pattern.test(normalizedOverride) || entry.pattern.test(normOverride)
+      (entry) => entry.pattern.test(effectiveCatalogSource) || entry.pattern.test(normEffective)
     );
   } else {
     detectedFabrics = FABRIC_CATALOG.filter(
       (entry) => entry.pattern.test(unwrappedRawText) || entry.pattern.test(normSearch)
     );
   }
-  const explicitPhrase = extractExplicitFabricPhrase(rawText, true)?.phrase || null;
-  const fallbackShort = rawText.length <= 75 ? rawText.replace(/\s+/g, " ").trim() : "";
-  const fabricSummaryLabel = normalizedOverride || (detectedFabrics.length > 0 ? detectedFabrics.slice(0, 3).map((f) => resolveConciseFabricLabel(f, normSearch)).join(" + ") : explicitPhrase || fallbackShort || "Conforme especifica\xE7\xF5es informadas");
+  const fabricSummaryLabel = normalizedOverride || suggestedFabricLabel || (detectedFabrics.length > 0 ? detectedFabrics.slice(0, 3).map((f) => resolveConciseFabricLabel(f, normSearch)).join(" + ") : explicitPhrase || fallbackShort || "Conforme especifica\xE7\xF5es informadas");
   const constructionNotes = extractConstructionNotes(rawText || normalizedOverride);
   const detectedGarmentHint = extractGarmentFromProductInfo(rawText);
   const textureDirectivesPt = detectedFabrics.slice(0, 3).map((f) => `- **${f.labelPt}:** ${f.visualPromptPt}.`).join("\n");
@@ -4349,6 +4501,7 @@ app.post("/api/detect-dominant-color", async (req, res) => {
   try {
     const {
       photoBase64,
+      supplementaryPhotoBase64,
       productName,
       productMode,
       mode,
@@ -4360,26 +4513,33 @@ app.post("/api/detect-dominant-color", async (req, res) => {
       return res.status(400).json({ success: false, error: "Foto n\xE3o fornecida" });
     }
     const cleanB64 = photoBase64.startsWith("data:") ? photoBase64 : `data:image/jpeg;base64,${photoBase64}`;
+    const cleanSupplementaryB64 = supplementaryPhotoBase64 && typeof supplementaryPhotoBase64 === "string" && supplementaryPhotoBase64.trim().length > 50 ? supplementaryPhotoBase64.startsWith("data:") ? supplementaryPhotoBase64 : `data:image/jpeg;base64,${supplementaryPhotoBase64}` : "";
     const productInfoSpec = analyzeAnaMariaProductInfo(productInfo);
     if (!globalThis.__anaMariaVisionCache) {
       globalThis.__anaMariaVisionCache = createBoundedMap(200);
     }
     const visionCache = globalThis.__anaMariaVisionCache;
-    const detectCacheKey = `${mode || "color"}:${productName || ""}:${productInfoSpec.cleanedText.slice(0, 120)}:${cleanB64.slice(0, 64)}:${cleanB64.slice(-64)}:${cleanB64.length}`;
+    const detectCacheKey = `v3_pe:${mode || "color"}:${productName || ""}:${productInfoSpec.cleanedText.slice(0, 120)}:${cleanB64.slice(0, 64)}:${cleanB64.slice(-64)}:${cleanB64.length}:${cleanSupplementaryB64.length}`;
     if (visionCache.has(detectCacheKey)) {
       return res.json({ ...visionCache.get(detectCacheKey), cached: true });
     }
-    const visionDetectUrl = openAIProvider && openAIProvider.isConfigured() ? await optimizeImageDataUriForVision(cleanB64, "low") : cleanB64;
+    const visionDetectDetail = mode === "identify_garment" ? "high" : "low";
+    const [visionDetectUrl, visionSupplementaryUrl] = await Promise.all([
+      openAIProvider && openAIProvider.isConfigured() ? optimizeImageDataUriForVision(cleanB64, visionDetectDetail) : Promise.resolve(cleanB64),
+      cleanSupplementaryB64 && mode === "identify_garment" && openAIProvider && openAIProvider.isConfigured() ? optimizeImageDataUriForVision(cleanSupplementaryB64, "low") : Promise.resolve("")
+    ]);
     if (mode === "identify_garment") {
       const textDetectedGender = extractGenderFromProductInfo(productInfo);
+      const textDetectedPockets = extractPocketsFromProductInfo(productInfo);
       const textHintBlock = productInfoSpec.hasInfo ? `
 INFORMA\xC7\xD5ES REAIS DO PRODUTO FORNECIDAS PELO USU\xC1RIO (USE PARA AJUDAR A IDENTIFICAR O NOME DA PE\xC7A, G\xCANERO E TECIDO):
 "${productInfoSpec.cleanedText.slice(0, 500)}"${productInfoSpec.detectedGarmentHint ? `
 - Pista principal identificada no texto: "${productInfoSpec.detectedGarmentHint}"` : ""}
-Combine a an\xE1lise visual da foto com essas informa\xE7\xF5es de texto para determinar o nome comercial exato da pe\xE7a e o g\xEAnero (Homem ou Mulher).` : "";
-      const identifyPrompt = `Analise a foto deste item de vestu\xE1rio e as informa\xE7\xF5es fornecidas para retornar estritamente um JSON com DOIS campos: "garmentName" e "detectedGender".${textHintBlock}
+Combine a an\xE1lise visual da foto com essas informa\xE7\xF5es de texto para determinar o nome comercial exato da pe\xE7a, o g\xEAnero, se possui bolsos vis\xEDveis e se h\xE1 esticamento visual evidente.` : "";
+      const identifyPrompt = `Analise a(s) foto(s) deste item de vestu\xE1rio e as informa\xE7\xF5es fornecidas para retornar estritamente um JSON com QUATRO campos: "garmentName", "detectedGender", "hasPockets" e "visualStretch".${textHintBlock}
 
 1) "garmentName" \u2014 NOME COMERCIAL ESPEC\xCDFICO DA PE\xC7A EM PORTUGU\xCAS (1 a 3 palavras, iniciais mai\xFAsculas):
+- Cal\xE7as t\xE1ticas / cargo / utilit\xE1rias / jogger: se for t\xE1tica e cargo use "Cal\xE7a T\xE1tica Cargo"; se apenas t\xE1tica use "Cal\xE7a T\xE1tica"; se apenas cargo (sem ser t\xE1tica) use "Cal\xE7a Cargo"; se jogger use "Cal\xE7a Jogger"; se sarja use "Cal\xE7a Sarja".
 - Cal\xE7as largas / pantalonas / sociais folgadas: "Cal\xE7a Pantalona", "Cal\xE7a Social Folgada" ou "Cal\xE7a Social ou Pantalona".
 - Cal\xE7as estruturadas / jeans / sociais retas: "Cal\xE7a Jeans" ou "Cal\xE7a Social".
 - Saias: se for de couro ou courino use "Saia Couro"; demais saias use "Saia".
@@ -4400,8 +4560,16 @@ Combine a an\xE1lise visual da foto com essas informa\xE7\xF5es de texto para de
   * Se houver uma MULHER vestindo a pe\xE7a (ou se for pe\xE7a tipicamente feminina como vestido, saia, biqu\xEDni, lingerie, cropped feminino) -> "Mulher".
   * Se a foto mostrar apenas a pe\xE7a solta/cabide/fundo neutro sem modelo vis\xEDvel e a descri\xE7\xE3o tamb\xE9m n\xE3o indicar se \xE9 masculina ou feminina (ou for unissex) -> retorne "unknown".
 
+3) "hasPockets" \u2014 BOLSOS VIS\xCDVEIS NA PE\xC7A ANUNCIADA (true ou false):
+- Observe EXCLUSIVAMENTE a pe\xE7a principal anunciada na foto (N\xC3O conte bolsos de outras pe\xE7as usadas apenas para compor o look, como a cal\xE7a quando o produto \xE9 apenas uma camiseta/blusa).
+- true ("Com Bolsos"): se a pe\xE7a principal possuir bolsos vis\xEDveis (bolso faca na lateral do quadril, bolso frontal, bolso traseiro, bolso cargo na perna, bolso embutido, bolso canguru, bolso no peito de camisa/jaqueta, ou bolsos laterais de cal\xE7a/short/bermuda/vestido/jaqueta).
+- false ("Sem Bolsos"): se a pe\xE7a principal for lisa sem bolsos vis\xEDveis (ex.: camiseta b\xE1sica sem bolso, regata, camisa social lisa sem bolso, cal\xE7a legging/social sem bolso vis\xEDvel, short/vestido liso sem bolso).
+
+4) "visualStretch" \u2014 PROVA VISUAL DE ELASTANO / ESTICAMENTO FORTE NA FOTO (true ou false):
+- Retorne true SOMENTE se na foto o modelo ou uma m\xE3o estiver PUXANDO/ESTICANDO visivelmente o tecido da pe\xE7a para demonstrar bastante elasticidade, ou se a pe\xE7a for claramente de malha justa de alta compress\xE3o/lycra/suplex/ribana esticada no corpo. Caso contr\xE1rio retorne false.
+
 Retorne estritamente JSON v\xE1lido:
-{ "garmentName": "Camisa Polo", "detectedGender": "Homem" }`;
+{ "garmentName": "Cal\xE7a Jeans", "detectedGender": "Homem", "hasPockets": true, "visualStretch": false }`;
       const sanitizeIdentifiedGarment = (raw) => {
         let clean = raw.replace(/^["'`]+|["'`.!?:;]+$/g, "").replace(/\s+/g, " ").trim().slice(0, 45);
         if (/^lingerie$/i.test(clean)) {
@@ -4417,21 +4585,35 @@ Retorne estritamente JSON v\xE1lido:
         if (s === "mulher" || s === "feminino" || s === "female" || s === "woman") return "Mulher";
         return "unknown";
       };
+      const parseBoolOrNull = (val) => {
+        if (typeof val === "boolean") return val;
+        const s = String(val ?? "").trim().toLowerCase();
+        if (s === "true" || s === "sim" || s === "yes") return true;
+        if (s === "false" || s === "nao" || s === "n\xE3o" || s === "no") return false;
+        return null;
+      };
       if (openAIProvider && openAIProvider.isConfigured()) {
         const client = openAIProvider.getClient();
         try {
+          const msgContent = [
+            { type: "image_url", image_url: { url: visionDetectUrl, detail: "high" } }
+          ];
+          if (visionSupplementaryUrl) {
+            msgContent.push({
+              type: "image_url",
+              image_url: { url: visionSupplementaryUrl, detail: "low" }
+            });
+          }
+          msgContent.push({ type: "text", text: identifyPrompt });
           const completion = await client.chat.completions.create({
             model: "gpt-4o-mini",
-            max_tokens: 70,
+            max_tokens: 130,
             temperature: 0.1,
             response_format: { type: "json_object" },
             messages: [
               {
                 role: "user",
-                content: [
-                  { type: "image_url", image_url: { url: visionDetectUrl, detail: "low" } },
-                  { type: "text", text: identifyPrompt }
-                ]
+                content: msgContent
               }
             ]
           });
@@ -4439,20 +4621,27 @@ Retorne estritamente JSON v\xE1lido:
           if (rawContent) {
             let parsedName = "";
             let visualGender = "unknown";
+            let visualHasPockets = null;
+            let visualStretch = false;
             try {
               const parsedJson = JSON.parse(rawContent);
               parsedName = String(parsedJson?.garmentName || "").trim();
               visualGender = normalizeGender(parsedJson?.detectedGender);
+              visualHasPockets = parseBoolOrNull(parsedJson?.hasPockets);
+              visualStretch = parseBoolOrNull(parsedJson?.visualStretch) === true;
             } catch {
               parsedName = rawContent;
             }
             const cleanName = parsedName ? sanitizeIdentifiedGarment(parsedName) : "";
             const finalGender = textDetectedGender || (visualGender !== "unknown" ? visualGender : "unknown");
+            const finalHasPockets = visualHasPockets !== null ? visualHasPockets : textDetectedPockets;
             if (cleanName) {
               const payload = {
                 success: true,
                 garmentName: cleanName,
-                detectedGender: finalGender
+                detectedGender: finalGender,
+                hasPockets: finalHasPockets,
+                visualStretch
               };
               visionCache.set(detectCacheKey, payload);
               return res.json(payload);
@@ -4466,7 +4655,9 @@ Retorne estritamente JSON v\xE1lido:
         return res.json({
           success: true,
           garmentName: normalizeIdentifiedGarmentName(productInfoSpec.detectedGarmentHint),
-          detectedGender: textDetectedGender || "unknown"
+          detectedGender: textDetectedGender || "unknown",
+          hasPockets: textDetectedPockets,
+          visualStretch: false
         });
       }
       const fallbackFromFilename = extractGarmentNameFromFileName(fileName);
@@ -4475,12 +4666,16 @@ Retorne estritamente JSON v\xE1lido:
           success: true,
           garmentName: normalizeIdentifiedGarmentName(fallbackFromFilename),
           detectedGender: textDetectedGender || "unknown",
+          hasPockets: textDetectedPockets,
+          visualStretch: false,
           fallback: true
         });
       }
       return res.json({
         success: false,
         detectedGender: textDetectedGender || "unknown",
+        hasPockets: textDetectedPockets,
+        visualStretch: false,
         error: "N\xE3o foi poss\xEDvel identificar a pe\xE7a automaticamente"
       });
     }

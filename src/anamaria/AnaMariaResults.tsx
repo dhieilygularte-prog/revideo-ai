@@ -363,6 +363,8 @@ export const AnaMariaResults: React.FC<AnaMariaResultsProps> = ({
         productInfo: result.productInfo,
         additionalInstructions: result.additionalInstructions,
         influencer: result.influencer,
+        hasPockets: result.hasPockets,
+        hasElastane: result.hasElastane,
       });
       await navigator.clipboard.writeText(klingText);
       setCopiedKlingPrompt(true);

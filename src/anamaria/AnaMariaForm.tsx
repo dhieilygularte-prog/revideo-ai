@@ -37,9 +37,11 @@ import {
 import { resolveAutoShoeOptionByProductName } from './anaMariaPrompts';
 import {
   analyzeAnaMariaProductInfo,
+  extractElastaneFromProductInfo,
   extractFabricFieldSuggestion,
   extractGarmentFromProductInfo,
   extractGenderFromProductInfo,
+  extractPocketsFromProductInfo,
   extractTikTokProductCode,
   normalizeIdentifiedGarmentName,
 } from './anaMariaProductInfo';
@@ -115,6 +117,8 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const hasUserManuallyEditedNameRef = useRef<boolean>(false);
   const hasUserManuallyEditedFabricRef = useRef<boolean>(false);
   const hasUserManuallySelectedInfluencerRef = useRef<boolean>(false);
+  const hasUserManuallySelectedPocketsRef = useRef<boolean>(false);
+  const hasUserManuallySelectedElastaneRef = useRef<boolean>(false);
   const hasUserManuallySelectedImageModelRef = useRef<boolean>(false);
   const lastUploadedFileNameRef = useRef<string>('');
 
@@ -128,6 +132,8 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     | 'productInfo'
     | 'productName'
     | 'fabricType'
+    | 'pockets'
+    | 'elastane'
     | 'shoe'
     | 'influencer'
     | 'divergence'
@@ -147,6 +153,8 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     | 'productInfo'
     | 'productName'
     | 'fabricType'
+    | 'pockets'
+    | 'elastane'
     | 'shoe'
     | 'influencer'
     | 'divergence'
@@ -154,6 +162,8 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   >(null);
   const productNameSectionRef = useRef<HTMLDivElement>(null);
   const fabricTypeSectionRef = useRef<HTMLDivElement>(null);
+  const pocketsSectionRef = useRef<HTMLDivElement>(null);
+  const elastaneSectionRef = useRef<HTMLDivElement>(null);
   const shoeSectionRef = useRef<HTMLDivElement>(null);
   const influencerSectionRef = useRef<HTMLDivElement>(null);
   const actionButtonSectionRef = useRef<HTMLDivElement>(null);
@@ -162,6 +172,8 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const productNameApproveBtnRef = useRef<HTMLButtonElement>(null);
   const productNameDivergenceApproveBtnRef = useRef<HTMLButtonElement>(null);
   const fabricApproveBtnRef = useRef<HTMLButtonElement>(null);
+  const pocketsApproveBtnRef = useRef<HTMLButtonElement>(null);
+  const elastaneApproveBtnRef = useRef<HTMLButtonElement>(null);
   const shoeApproveBtnRef = useRef<HTMLButtonElement>(null);
 
   const scrollSmoothlyToCenter = (el: HTMLElement | null) => {
@@ -190,7 +202,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     return () => window.clearTimeout(t);
   }, [scrollHighlightGenerate]);
 
-  // Identificação unificada (nome, tecido, gênero e calçado): dispara SOMENTE após o usuário ter
+  // Identificação unificada (nome, tecido, gênero, bolsos, elastano e calçado): dispara SOMENTE após o usuário ter
   // adicionado pelo menos 1 foto E preenchido "Informações do Produto", evitando reprocessamento.
   useEffect(() => {
     const trimmed = (form.productInfo || '').trim();
@@ -199,19 +211,23 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       return;
     }
 
-    const combinedSignature = `${firstAny.slice(0, 64)}:${firstAny.length}|${trimmed}|${lastUploadedFileNameRef.current}`;
+    const secondAnyCandidate = form.referencePhotos[1] || form.extraColorPhotos?.[0];
+    const secondAny = secondAnyCandidate && secondAnyCandidate !== firstAny ? secondAnyCandidate : '';
+    const combinedSignature = `${firstAny.slice(0, 64)}:${firstAny.length}:${secondAny.length}|${trimmed}|${lastUploadedFileNameRef.current}`;
     if (lastAutoIdentifySignatureRef.current === combinedSignature) {
       return;
     }
 
     const timer = window.setTimeout(() => {
-      // Preenche nome, tecido e gênero localmente caso o usuário tenha colado o texto antes de subir a foto
+      // Preenche nome, tecido, gênero, elastano e pista de bolsos localmente antes da leitura visual da foto
       const rawTextGarment = extractGarmentFromProductInfo(trimmed);
       const textName = rawTextGarment ? normalizeIdentifiedGarmentName(rawTextGarment) : '';
       const textGender = extractGenderFromProductInfo(trimmed);
       const suggestedFabric = !hasUserManuallyEditedFabricRef.current
         ? extractFabricFieldSuggestion(trimmed)
         : '';
+      const textElastane = extractElastaneFromProductInfo(trimmed);
+      const textPockets = extractPocketsFromProductInfo(trimmed);
 
       if (suggestedFabric) {
         setAutoIdentifiedFabricBadge(true);
@@ -220,7 +236,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         setAutoIdentifiedBadge(true);
       }
 
-      if (textName || textGender || suggestedFabric) {
+      if (textName || textGender || suggestedFabric || textElastane !== null || textPockets !== null) {
         onChange((prev) => {
           const canFillName =
             Boolean(textName) &&
@@ -234,6 +250,18 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             !prev.isFabricTypeApproved &&
             !hasUserManuallyEditedFabricRef.current &&
             (!prev.fabricType || prev.fabricType.trim().length === 0);
+
+          const canFillElastane =
+            textElastane !== null &&
+            !prev.isElastaneApproved &&
+            !hasUserManuallySelectedElastaneRef.current &&
+            (prev.hasElastane === null || prev.hasElastane === undefined);
+
+          const canFillPocketsFromText =
+            textPockets !== null &&
+            !prev.isPocketsApproved &&
+            !hasUserManuallySelectedPocketsRef.current &&
+            (prev.hasPockets === null || prev.hasPockets === undefined);
 
           let nextInfluencer = prev.influencer;
           let nextInfluencerPending = prev.isInfluencerPending;
@@ -263,6 +291,12 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             isProductNameApproved: canFillName ? false : prev.isProductNameApproved,
             fabricType: canFillFabric ? suggestedFabric : prev.fabricType,
             isFabricTypeApproved: canFillFabric ? false : prev.isFabricTypeApproved,
+            hasElastane: canFillElastane ? textElastane : prev.hasElastane,
+            isElastaneAutoDetected: canFillElastane ? true : prev.isElastaneAutoDetected,
+            isElastaneApproved: canFillElastane ? false : prev.isElastaneApproved,
+            hasPockets: canFillPocketsFromText ? textPockets : prev.hasPockets,
+            isPocketsAutoDetected: canFillPocketsFromText ? true : prev.isPocketsAutoDetected,
+            isPocketsApproved: canFillPocketsFromText ? false : prev.isPocketsApproved,
             influencer: nextInfluencer,
             isInfluencerPending: nextInfluencerPending,
             isInfluencerAutoDetected: nextInfluencerAuto,
@@ -281,18 +315,13 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         });
       }
 
-      // Se a descrição do produto (Prioridade 1) já identificou tanto o nome da peça quanto o gênero,
-      // não precisamos chamar a API da foto em segundo plano (evitando latência e reset de aprovações).
-      if (textName && textGender) {
-        lastAutoIdentifySignatureRef.current = combinedSignature;
-        return;
-      }
-
+      // Dispara leitura visual na foto para identificar bolsos (Com/Sem Bolsos) e eventual esticamento visual
       autoIdentifyGarmentFromPhoto(
         firstAny,
         false,
         lastUploadedFileNameRef.current,
-        trimmed
+        trimmed,
+        secondAny || undefined
       );
     }, 450);
     return () => window.clearTimeout(timer);
@@ -616,6 +645,10 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       return 'Bermuda';
     }
     if (s.includes('calca') || s.includes('pantalona')) {
+      if ((s.includes('tatica') || s.includes('tatico')) && s.includes('cargo')) return 'Calça Tática Cargo';
+      if (s.includes('tatica') || s.includes('tatico')) return 'Calça Tática';
+      if (s.includes('cargo')) return 'Calça Cargo';
+      if (s.includes('jogger')) return 'Calça Jogger';
       if (s.includes('pantalona') || s.includes('wide') || s.includes('folgada') || s.includes('larga')) return 'Calça Pantalona';
       if (s.includes('jeans')) return 'Calça Jeans';
       if (s.includes('social') || s.includes('alfaiataria')) return 'Calça Social';
@@ -642,7 +675,8 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     photoBase64: string,
     force = false,
     fileName?: string,
-    productInfoOverride?: string
+    productInfoOverride?: string,
+    supplementaryPhotoBase64?: string
   ) => {
     if (!photoBase64) return;
     const targetFileName = fileName || lastUploadedFileNameRef.current || '';
@@ -650,16 +684,26 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       productInfoOverride !== undefined ? productInfoOverride : productInfoRef.current || ''
     ).trim();
     if (!force && !effectiveProductInfo) return;
-    const signature = `${photoBase64.slice(0, 64)}:${photoBase64.length}|${effectiveProductInfo}|${targetFileName}`;
+    const secLen = supplementaryPhotoBase64 ? supplementaryPhotoBase64.length : 0;
+    const signature = `${photoBase64.slice(0, 64)}:${photoBase64.length}:${secLen}|${effectiveProductInfo}|${targetFileName}`;
     if (!force && lastAutoIdentifySignatureRef.current === signature) {
       return;
     }
     lastAutoIdentifySignatureRef.current = signature;
 
     const textDetectedGender = extractGenderFromProductInfo(effectiveProductInfo);
+    const textDetectedElastane = extractElastaneFromProductInfo(effectiveProductInfo);
+    const textDetectedPockets = extractPocketsFromProductInfo(effectiveProductInfo);
+    const hasExplicitNoElastaneNegation =
+      /\b(?:sem\s+elastano|n[aã]o\s+(?:tem|possui|cont[eé]m)\s+elastano|0\s*%\s*(?:de\s+)?elastano|n[aã]o\s+estica|sem\s+elasticidade|sem\s+lycra|sem\s+stretch)\b/i.test(
+        effectiveProductInfo
+      );
+
     const applyIdentifiedAttributes = (
       resolvedName: string | null,
-      resolvedGender: 'Homem' | 'Mulher' | null
+      resolvedGender: 'Homem' | 'Mulher' | null,
+      resolvedPockets: boolean | null,
+      resolvedElastane: boolean | null
     ) => {
       onChange((prev) => {
         const isSameNameAsCurrent =
@@ -691,6 +735,13 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           }
         }
 
+        const canUpdatePockets =
+          resolvedPockets !== null &&
+          (force || (!hasUserManuallySelectedPocketsRef.current && !prev.isPocketsApproved));
+        const canUpdateElastane =
+          resolvedElastane !== null &&
+          (force || (!hasUserManuallySelectedElastaneRef.current && !prev.isElastaneApproved));
+
         const modeNow = prev.presentationMode || 'mirror_selfie';
         const nextShoe =
           nextName.trim().length > 0 && (shouldUpdateName || genderChanged || !prev.isShoeTypeApproved)
@@ -709,6 +760,12 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           influencer: nextInfluencer,
           isInfluencerPending: nextInfluencerPending,
           isInfluencerAutoDetected: nextInfluencerAuto,
+          hasPockets: canUpdatePockets ? resolvedPockets : prev.hasPockets,
+          isPocketsAutoDetected: canUpdatePockets ? true : prev.isPocketsAutoDetected,
+          isPocketsApproved: canUpdatePockets ? false : prev.isPocketsApproved,
+          hasElastane: canUpdateElastane ? resolvedElastane : prev.hasElastane,
+          isElastaneAutoDetected: canUpdateElastane ? true : prev.isElastaneAutoDetected,
+          isElastaneApproved: canUpdateElastane ? false : prev.isElastaneApproved,
           imageModel: resolveAutoImageModel(prev, prev.presentationMode, nextInfluencer),
           selectedModelGalleryId: genderChanged ? undefined : prev.selectedModelGalleryId,
           selectedModelGalleryNumber: genderChanged ? undefined : prev.selectedModelGalleryNumber,
@@ -734,23 +791,42 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           photoBase64,
+          supplementaryPhotoBase64:
+            supplementaryPhotoBase64 && supplementaryPhotoBase64 !== photoBase64
+              ? supplementaryPhotoBase64
+              : undefined,
           mode: 'identify_garment',
           fileName: targetFileName,
           productInfo: effectiveProductInfo,
         }),
       });
       const data = await res.json();
-      let resolvedName = data?.success && data?.garmentName ? data.garmentName : null;
+      const rawVisionName = data?.success && data?.garmentName ? String(data.garmentName).trim() : null;
+      const visionName = rawVisionName ? normalizeIdentifiedGarmentName(rawVisionName) : null;
+      const rawTextName = effectiveProductInfo ? extractGarmentFromProductInfo(effectiveProductInfo) : null;
+      const textName = rawTextName ? normalizeIdentifiedGarmentName(rawTextName) : null;
 
-      // Fallback local se o servidor não conseguir identificar via IA
-      if (!resolvedName && effectiveProductInfo) {
-        resolvedName = extractGarmentFromProductInfo(effectiveProductInfo);
+      let resolvedName: string | null = null;
+      if (force) {
+        resolvedName = visionName || textName;
+      } else if (textName) {
+        const isGenericSingleWordBase = /^(?:Calça|Vestido|Saia)$/i.test(textName);
+        if (
+          isGenericSingleWordBase &&
+          visionName &&
+          visionName.toLowerCase().startsWith(`${textName.toLowerCase()} `)
+        ) {
+          resolvedName = visionName;
+        } else {
+          resolvedName = textName;
+        }
+      } else {
+        resolvedName = visionName;
       }
+
       if (!resolvedName && targetFileName) {
-        resolvedName = extractGarmentFromFileName(targetFileName);
-      }
-      if (resolvedName) {
-        resolvedName = normalizeIdentifiedGarmentName(resolvedName);
+        const rawFileGarment = extractGarmentFromFileName(targetFileName);
+        resolvedName = rawFileGarment ? normalizeIdentifiedGarmentName(rawFileGarment) : null;
       }
 
       const serverGender: 'Homem' | 'Mulher' | null =
@@ -763,7 +839,21 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         serverGender ||
         (resolvedName ? extractGenderFromProductInfo(resolvedName) : null);
 
-      applyIdentifiedAttributes(resolvedName, resolvedGender);
+      const serverPockets: boolean | null =
+        data?.hasPockets === true || data?.hasPockets === false ? data.hasPockets : null;
+      const resolvedPockets = serverPockets !== null ? serverPockets : textDetectedPockets;
+
+      const visualStretch = data?.visualStretch === true;
+      const resolvedElastane =
+        textDetectedElastane !== null
+          ? visualStretch && !hasExplicitNoElastaneNegation
+            ? true
+            : textDetectedElastane
+          : visualStretch
+          ? true
+          : null;
+
+      applyIdentifiedAttributes(resolvedName, resolvedGender, resolvedPockets, resolvedElastane);
     } catch (err) {
       console.warn('Falha silenciosa ao identificar peça via IA, tentando fallback local:', err);
       const rawFallbackLocal =
@@ -773,7 +863,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
       const fallbackGender =
         textDetectedGender ||
         (fallbackLocal ? extractGenderFromProductInfo(fallbackLocal) : null);
-      applyIdentifiedAttributes(fallbackLocal, fallbackGender);
+      applyIdentifiedAttributes(fallbackLocal, fallbackGender, textDetectedPockets, textDetectedElastane);
     } finally {
       setIsIdentifyingProduct(false);
     }
@@ -890,6 +980,8 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const handleClearAllPhotos = () => {
     hasUserManuallyEditedNameRef.current = false;
     hasUserManuallySelectedInfluencerRef.current = false;
+    hasUserManuallySelectedPocketsRef.current = false;
+    hasUserManuallySelectedElastaneRef.current = false;
     lastAutoIdentifySignatureRef.current = '';
     setAutoIdentifiedBadge(false);
     setApprovalWarning('');
@@ -903,6 +995,12 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         isProductNameApproved: false,
         isInfluencerPending: false,
         isInfluencerAutoDetected: false,
+        hasPockets: null,
+        isPocketsAutoDetected: false,
+        isPocketsApproved: false,
+        hasElastane: null,
+        isElastaneAutoDetected: false,
+        isElastaneApproved: false,
         selectedShoeOption: undefined,
         customShoeText: '',
         isShoeTypeApproved: false,
@@ -1120,6 +1218,12 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
   const isFabricReady = Boolean(
     form.fabricType && form.fabricType.trim().length > 0 && form.isFabricTypeApproved
   );
+  const isPocketsReady = Boolean(
+    (form.hasPockets === true || form.hasPockets === false) && form.isPocketsApproved
+  );
+  const isElastaneReady = Boolean(
+    (form.hasElastane === true || form.hasElastane === false) && form.isElastaneApproved
+  );
   const isShoeReady = Boolean(
     form.selectedShoeOption &&
       form.isShoeTypeApproved &&
@@ -1132,10 +1236,12 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     !isPhotosReady ||
     !isProductCodeReady ||
     !isProductInfoReady ||
+    !isInfluencerReady ||
     !isNameReady ||
     !isFabricReady ||
+    !isPocketsReady ||
+    !isElastaneReady ||
     !isShoeReady ||
-    !isInfluencerReady ||
     !isDivergenceResolved;
 
   const canSubmit =
@@ -1173,6 +1279,14 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             productInfoSectionRef.current) as HTMLElement | null,
       };
     }
+    if (!isInfluencerReady) {
+      return {
+        key: 'influencer' as const,
+        warning:
+          'Não foi possível identificar automaticamente se a peça é masculina ou feminina. Selecione Mulher ou Homem no Item 3 (Influenciador / Modelo)!',
+        getTargetElement: () => influencerSectionRef.current as HTMLElement | null,
+      };
+    }
     if (!isNameReady) {
       return {
         key: 'productName' as const,
@@ -1196,6 +1310,28 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           (fabricApproveBtnRef.current || fabricTypeSectionRef.current) as HTMLElement | null,
       };
     }
+    if (!isPocketsReady) {
+      return {
+        key: 'pockets' as const,
+        warning:
+          form.hasPockets === true || form.hasPockets === false
+            ? 'Toque no botão APROVAR em "Bolsos da Peça" (ou escolha Com Bolsos / Sem Bolsos) para liberar o botão Gerar Vídeo!'
+            : 'Selecione "Com Bolsos" ou "Sem Bolsos" para confirmar a peça e liberar o botão Gerar Vídeo!',
+        getTargetElement: () =>
+          (pocketsApproveBtnRef.current || pocketsSectionRef.current) as HTMLElement | null,
+      };
+    }
+    if (!isElastaneReady) {
+      return {
+        key: 'elastane' as const,
+        warning:
+          form.hasElastane === true || form.hasElastane === false
+            ? 'Toque no botão APROVAR em "Elastano" (ou escolha Com Elastano / Sem Elastano) para liberar o botão Gerar Vídeo!'
+            : 'Selecione "Com Elastano" ou "Sem Elastano" para confirmar se a peça estica e liberar o botão Gerar Vídeo!',
+        getTargetElement: () =>
+          (elastaneApproveBtnRef.current || elastaneSectionRef.current) as HTMLElement | null,
+      };
+    }
     if (!isShoeReady) {
       return {
         key: 'shoe' as const,
@@ -1205,14 +1341,6 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
             : 'Você precisa tocar no botão APROVAR no Tipo de Calçado (ou escolher um dos botões de calçado) para liberar o botão Gerar Vídeo!',
         getTargetElement: () =>
           (shoeApproveBtnRef.current || shoeSectionRef.current) as HTMLElement | null,
-      };
-    }
-    if (!isInfluencerReady) {
-      return {
-        key: 'influencer' as const,
-        warning:
-          'Não foi possível identificar automaticamente se a peça é masculina ou feminina. Selecione Mulher ou Homem no Item 3 (Influenciador / Modelo)!',
-        getTargetElement: () => influencerSectionRef.current as HTMLElement | null,
       };
     }
     if (!isDivergenceResolved) {
@@ -1310,10 +1438,12 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
     isProductCodeReady,
     isProductInfoReady,
     isProductInfoFilled,
+    isInfluencerReady,
     isNameReady,
     isFabricReady,
+    isPocketsReady,
+    isElastaneReady,
     isShoeReady,
-    isInfluencerReady,
     isDivergenceResolved,
     hasPendingApprovals,
     canSubmit,
@@ -2026,12 +2156,21 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                 type="button"
                 onClick={() => {
                   hasUserManuallyEditedFabricRef.current = false;
+                  hasUserManuallySelectedElastaneRef.current = false;
+                  hasUserManuallySelectedPocketsRef.current = false;
+                  lastAutoIdentifySignatureRef.current = '';
                   setAutoIdentifiedFabricBadge(false);
                   onChange((prev) => ({
                     ...prev,
                     productInfo: '',
                     fabricType: '',
                     isFabricTypeApproved: false,
+                    hasPockets: null,
+                    isPocketsAutoDetected: false,
+                    isPocketsApproved: false,
+                    hasElastane: null,
+                    isElastaneAutoDetected: false,
+                    isElastaneApproved: false,
                     isDescriptionDivergenceApproved: false,
                     descriptionDivergenceWarning:
                       prev.descriptionDivergenceField === 'productInfo'
@@ -2134,6 +2273,9 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                 setAutoIdentifiedBadge(true);
               }
 
+              const textElastane = val.trim() ? extractElastaneFromProductInfo(val) : null;
+              const textPockets = val.trim() ? extractPocketsFromProductInfo(val) : null;
+
               return {
                 ...prev,
                 productInfo: val,
@@ -2157,6 +2299,26 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                 isFabricTypeApproved: !hasUserManuallyEditedFabricRef.current
                   ? false
                   : prev.isFabricTypeApproved,
+                hasElastane: !hasUserManuallySelectedElastaneRef.current
+                  ? textElastane
+                  : prev.hasElastane,
+                isElastaneAutoDetected: !hasUserManuallySelectedElastaneRef.current
+                  ? textElastane !== null
+                  : prev.isElastaneAutoDetected,
+                isElastaneApproved: !hasUserManuallySelectedElastaneRef.current
+                  ? false
+                  : prev.isElastaneApproved,
+                hasPockets:
+                  !hasUserManuallySelectedPocketsRef.current && textPockets !== null
+                    ? textPockets
+                    : prev.hasPockets,
+                isPocketsAutoDetected:
+                  !hasUserManuallySelectedPocketsRef.current && textPockets !== null
+                    ? true
+                    : prev.isPocketsAutoDetected,
+                isPocketsApproved: !hasUserManuallySelectedPocketsRef.current
+                  ? false
+                  : prev.isPocketsApproved,
                 isDescriptionDivergenceApproved: false,
               };
             });
@@ -2234,6 +2396,119 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         )}
       </div>
 
+      {/* ─── CARD 3 & 4: INFLUENCIADOR & TIPO DE CORPO (MOVIDO PARA LOGO ABAIXO DE INFORMAÇÕES DO PRODUTO) ─── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Influenciador */}
+        <div
+          ref={influencerSectionRef}
+          className={`${
+            form.isInfluencerPending
+              ? pendingYellowSectionClass
+              : form.isInfluencerAutoDetected
+              ? copiedBlueSectionClass
+              : sectionCardClass
+          } ${
+            scrollFocusField === 'influencer' ? 'ring-2 ring-amber-300 ring-offset-2 ring-offset-zinc-950' : ''
+          } p-5 space-y-3`}
+        >
+          <div className={`border-b pb-2 flex flex-wrap items-center justify-between gap-2 ${form.isInfluencerPending ? 'border-amber-400/40' : isAmetista ? 'border-purple-500/20' : 'border-zinc-800/80'}`}>
+            <div>
+              <h3 className="text-xs font-bold text-white uppercase tracking-wide">
+                3. Influenciador / Modelo
+              </h3>
+              <p className="text-[11px] text-zinc-400">
+                {form.isInfluencerPending
+                  ? 'Não foi possível identificar automaticamente pela descrição ou foto — selecione Mulher ou Homem'
+                  : 'Identificado automaticamente pela descrição/foto; você pode trocar manualmente quando quiser'}
+              </p>
+            </div>
+            {form.isInfluencerPending && (
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-400/20 text-amber-200 border border-amber-400/60 animate-pulse">
+                Selecione o gênero
+              </span>
+            )}
+            {!form.isInfluencerPending && form.isInfluencerAutoDetected && (
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/20 text-sky-200 border border-sky-400/40">
+                Auto: {form.influencer} ✓
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-2.5">
+            <button
+              type="button"
+              onClick={() => handleSelectInfluencer('Mulher')}
+              className={`p-3 rounded-xl border text-center transition-all cursor-pointer text-xs flex items-center justify-center gap-2 ${
+                !form.isInfluencerPending && form.influencer === 'Mulher'
+                  ? activeOptionButtonClass
+                  : inactiveOptionButtonClass
+              }`}
+            >
+              {!form.isInfluencerPending && form.influencer === 'Mulher' && (
+                <Check className={`w-3.5 h-3.5 stroke-[3] ${checkIconColorClass}`} />
+              )}
+              <span>Mulher</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSelectInfluencer('Homem')}
+              className={`p-3 rounded-xl border text-center transition-all cursor-pointer text-xs flex items-center justify-center gap-2 ${
+                !form.isInfluencerPending && form.influencer === 'Homem'
+                  ? activeOptionButtonClass
+                  : inactiveOptionButtonClass
+              }`}
+            >
+              {!form.isInfluencerPending && form.influencer === 'Homem' && (
+                <Check className={`w-3.5 h-3.5 stroke-[3] ${checkIconColorClass}`} />
+              )}
+              <span>Homem</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Tipo de Corpo */}
+        <div className={`${sectionCardClass} p-5 space-y-3`}>
+          <div className={`border-b pb-2 ${isAmetista ? 'border-purple-500/20' : 'border-zinc-800/80'}`}>
+            <h3 className="text-xs font-bold text-white uppercase tracking-wide">
+              4. Tipo de Corpo
+            </h3>
+            <p className="text-[11px] text-zinc-400">
+              Normal usa o corpo da Mestra; Plus Size ativa o Módulo Universal Plus Size
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2.5">
+            <button
+              type="button"
+              onClick={() => onChange((prev) => ({ ...prev, bodyType: 'normal' }))}
+              className={`p-3 rounded-xl border text-center transition-all cursor-pointer text-xs flex items-center justify-center gap-2 ${
+                form.bodyType === 'normal' ? activeOptionButtonClass : inactiveOptionButtonClass
+              }`}
+            >
+              {form.bodyType === 'normal' && (
+                <Check className={`w-3.5 h-3.5 stroke-[3] ${checkIconColorClass}`} />
+              )}
+              <span>Normal (Padrão)</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange((prev) => ({ ...prev, bodyType: 'plus_size' }))}
+              className={`p-3 rounded-xl border text-center transition-all cursor-pointer text-xs flex items-center justify-center gap-2 ${
+                form.bodyType === 'plus_size' ? activeOptionButtonClass : inactiveOptionButtonClass
+              }`}
+            >
+              {form.bodyType === 'plus_size' && (
+                <Check className={`w-3.5 h-3.5 stroke-[3] ${checkIconColorClass}`} />
+              )}
+              <span>Plus Size</span>
+            </button>
+          </div>
+          {form.bodyType === 'plus_size' && (
+            <p className="text-[10px] sm:text-[11px] text-zinc-400 mt-2 pl-0.5 leading-snug">
+              <span className={`font-bold ${isAmetista ? 'text-[#d4ff59]' : 'text-orange-400'}`}>✓ Plus Size Real (Fidelidade Máxima):</span> Sobrescrita corporal ativada — corpo volumoso autêntico, coxas muito grossas com celulite natural visível, seios fartos e proporções reais da referência. Preserva 100% dos acessórios, cabelo e movimentos da Mestra.
+            </p>
+          )}
+        </div>
+      </div>
+
       {/* ─── CARD 2: NOME DA PEÇA / PRODUTO (IDENTIFICAÇÃO AUTOMÁTICA + APROVAÇÃO OBRIGATÓRIA) ─── */}
       <div
         ref={productNameSectionRef}
@@ -2282,13 +2557,17 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                 disabled={isIdentifyingProduct}
                 onClick={() => {
                   const firstAny = form.referencePhotos[0] || extraColorPhotos[0];
+                  const secondCand = form.referencePhotos[1] || extraColorPhotos[0];
+                  const secondAny = secondCand && secondCand !== firstAny ? secondCand : undefined;
                   if (firstAny) {
                     hasUserManuallyEditedNameRef.current = false;
+                    hasUserManuallySelectedPocketsRef.current = false;
                     autoIdentifyGarmentFromPhoto(
                       firstAny,
                       true,
                       lastUploadedFileNameRef.current,
-                      form.productInfo
+                      form.productInfo,
+                      secondAny
                     );
                   }
                 }}
@@ -2604,7 +2883,332 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
         )}
       </div>
 
-      {/* ─── NOVO ITEM LOGO APÓS NOME DA PEÇA: TIPO DE CALÇADO (AUTO-SELECIONADO + APROVAÇÃO OBRIGATÓRIA) ─── */}
+      {/* ─── NOVOS SELETORES LOGO ABAIXO DE TIPO DE TECIDO: BOLSOS & ELASTANO (APROVAÇÃO OBRIGATÓRIA) ─── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Seletor 1: Bolsos da Peça */}
+        {(() => {
+          const hasPocketsValue = form.hasPockets === true || form.hasPockets === false;
+          const isPocketsPendingApproval = hasPocketsValue && !form.isPocketsApproved;
+          const isPocketsWaitingManual =
+            isPhotosReady && isProductInfoFilled && !hasPocketsValue;
+          return (
+            <div
+              ref={pocketsSectionRef}
+              className={`${
+                isPocketsReady
+                  ? copiedBlueSectionClass
+                  : isPocketsPendingApproval || isPocketsWaitingManual
+                  ? pendingYellowSectionClass
+                  : sectionCardClass
+              } ${
+                scrollFocusField === 'pockets'
+                  ? 'ring-2 ring-amber-300 ring-offset-2 ring-offset-zinc-950'
+                  : ''
+              } p-5 space-y-3`}
+            >
+              <div
+                className={`border-b pb-2 flex flex-wrap items-center justify-between gap-2 ${
+                  isPocketsReady
+                    ? 'border-sky-400/30'
+                    : isPocketsPendingApproval || isPocketsWaitingManual
+                    ? 'border-amber-400/40'
+                    : isAmetista
+                    ? 'border-purple-500/20'
+                    : 'border-zinc-800/80'
+                }`}
+              >
+                <div>
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wide">
+                    Bolsos da Peça
+                  </h3>
+                  <p className="text-[11px] text-zinc-400">
+                    Identificado pela foto; confirme ou selecione abaixo
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {isIdentifyingProduct && !hasPocketsValue && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-zinc-800 text-zinc-200 border border-zinc-700 flex items-center gap-1">
+                      <RefreshCw className="w-3 h-3 animate-spin text-amber-300" />
+                      <span>Analisando foto...</span>
+                    </span>
+                  )}
+                  {isPocketsPendingApproval && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                      <Sparkles className="w-3 h-3" />
+                      <span>Auto (foto) — Clique em APROVAR</span>
+                    </span>
+                  )}
+                  {isPocketsWaitingManual && !isIdentifyingProduct && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-400/20 text-amber-200 border border-amber-400/60 animate-pulse">
+                      Selecione uma opção
+                    </span>
+                  )}
+                  {isPocketsReady && (
+                    <span className="px-3 py-1 rounded-xl bg-sky-500/25 border border-sky-300/60 text-sky-200 font-black text-xs uppercase tracking-wider flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-sky-300" />
+                      <span>APROVADO ✓</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    hasUserManuallySelectedPocketsRef.current = true;
+                    if (!form.isPocketsApproved) {
+                      prepareGuidedAdvanceOnApprove();
+                    } else {
+                      setApprovalWarning('');
+                    }
+                    onChange((prev) => ({
+                      ...prev,
+                      hasPockets: true,
+                      isPocketsAutoDetected: false,
+                      isPocketsApproved: true,
+                    }));
+                  }}
+                  className={`p-3 rounded-xl border text-center transition-all cursor-pointer text-xs flex items-center justify-center gap-2 ${
+                    form.hasPockets === true
+                      ? isPocketsReady
+                        ? 'bg-sky-600/35 border-sky-300 text-white ring-1 ring-sky-300/50 font-bold shadow-md'
+                        : activeOptionButtonClass
+                      : inactiveOptionButtonClass
+                  }`}
+                >
+                  {form.hasPockets === true && (
+                    <Check
+                      className={`w-3.5 h-3.5 stroke-[3] ${
+                        isPocketsReady ? 'text-sky-300' : checkIconColorClass
+                      }`}
+                    />
+                  )}
+                  <span>Com Bolsos</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    hasUserManuallySelectedPocketsRef.current = true;
+                    if (!form.isPocketsApproved) {
+                      prepareGuidedAdvanceOnApprove();
+                    } else {
+                      setApprovalWarning('');
+                    }
+                    onChange((prev) => ({
+                      ...prev,
+                      hasPockets: false,
+                      isPocketsAutoDetected: false,
+                      isPocketsApproved: true,
+                    }));
+                  }}
+                  className={`p-3 rounded-xl border text-center transition-all cursor-pointer text-xs flex items-center justify-center gap-2 ${
+                    form.hasPockets === false
+                      ? isPocketsReady
+                        ? 'bg-sky-600/35 border-sky-300 text-white ring-1 ring-sky-300/50 font-bold shadow-md'
+                        : activeOptionButtonClass
+                      : inactiveOptionButtonClass
+                  }`}
+                >
+                  {form.hasPockets === false && (
+                    <Check
+                      className={`w-3.5 h-3.5 stroke-[3] ${
+                        isPocketsReady ? 'text-sky-300' : checkIconColorClass
+                      }`}
+                    />
+                  )}
+                  <span>Sem Bolsos</span>
+                </button>
+              </div>
+
+              {isPocketsPendingApproval && (
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                  <span className="text-[11px] text-amber-300 font-semibold">
+                    Pré-marcado pela foto. Confirme ou escolha outro botão acima:
+                  </span>
+                  <button
+                    ref={pocketsApproveBtnRef}
+                    type="button"
+                    onClick={() => {
+                      hasUserManuallySelectedPocketsRef.current = true;
+                      prepareGuidedAdvanceOnApprove();
+                      onChange((prev) => ({
+                        ...prev,
+                        isPocketsApproved: true,
+                      }));
+                    }}
+                    className="shrink-0 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-lg shadow-emerald-950/50 transition-all cursor-pointer animate-pulse"
+                  >
+                    <Check className="w-4 h-4 stroke-[3]" />
+                    <span>APROVAR BOLSOS</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {/* Seletor 2: Elastano / Elasticidade */}
+        {(() => {
+          const hasElastaneValue = form.hasElastane === true || form.hasElastane === false;
+          const isElastanePendingApproval = hasElastaneValue && !form.isElastaneApproved;
+          const isElastaneWaitingManual =
+            isPhotosReady && isProductInfoFilled && !hasElastaneValue;
+          return (
+            <div
+              ref={elastaneSectionRef}
+              className={`${
+                isElastaneReady
+                  ? copiedBlueSectionClass
+                  : isElastanePendingApproval || isElastaneWaitingManual
+                  ? pendingYellowSectionClass
+                  : sectionCardClass
+              } ${
+                scrollFocusField === 'elastane'
+                  ? 'ring-2 ring-amber-300 ring-offset-2 ring-offset-zinc-950'
+                  : ''
+              } p-5 space-y-3`}
+            >
+              <div
+                className={`border-b pb-2 flex flex-wrap items-center justify-between gap-2 ${
+                  isElastaneReady
+                    ? 'border-sky-400/30'
+                    : isElastanePendingApproval || isElastaneWaitingManual
+                    ? 'border-amber-400/40'
+                    : isAmetista
+                    ? 'border-purple-500/20'
+                    : 'border-zinc-800/80'
+                }`}
+              >
+                <div>
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wide">
+                    Elastano (Estica)
+                  </h3>
+                  <p className="text-[11px] text-zinc-400">
+                    Identificado em Informações do Produto / foto; confirme ou selecione abaixo
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {isElastanePendingApproval && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-1">
+                      <Sparkles className="w-3 h-3" />
+                      <span>Auto (texto/foto) — Clique em APROVAR</span>
+                    </span>
+                  )}
+                  {isElastaneWaitingManual && !isIdentifyingProduct && (
+                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-400/20 text-amber-200 border border-amber-400/60 animate-pulse">
+                      Selecione uma opção
+                    </span>
+                  )}
+                  {isElastaneReady && (
+                    <span className="px-3 py-1 rounded-xl bg-sky-500/25 border border-sky-300/60 text-sky-200 font-black text-xs uppercase tracking-wider flex items-center gap-1.5">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-sky-300" />
+                      <span>APROVADO ✓</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    hasUserManuallySelectedElastaneRef.current = true;
+                    if (!form.isElastaneApproved) {
+                      prepareGuidedAdvanceOnApprove();
+                    } else {
+                      setApprovalWarning('');
+                    }
+                    onChange((prev) => ({
+                      ...prev,
+                      hasElastane: true,
+                      isElastaneAutoDetected: false,
+                      isElastaneApproved: true,
+                    }));
+                  }}
+                  className={`p-3 rounded-xl border text-center transition-all cursor-pointer text-xs flex items-center justify-center gap-2 ${
+                    form.hasElastane === true
+                      ? isElastaneReady
+                        ? 'bg-sky-600/35 border-sky-300 text-white ring-1 ring-sky-300/50 font-bold shadow-md'
+                        : activeOptionButtonClass
+                      : inactiveOptionButtonClass
+                  }`}
+                >
+                  {form.hasElastane === true && (
+                    <Check
+                      className={`w-3.5 h-3.5 stroke-[3] ${
+                        isElastaneReady ? 'text-sky-300' : checkIconColorClass
+                      }`}
+                    />
+                  )}
+                  <span>Com Elastano</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    hasUserManuallySelectedElastaneRef.current = true;
+                    if (!form.isElastaneApproved) {
+                      prepareGuidedAdvanceOnApprove();
+                    } else {
+                      setApprovalWarning('');
+                    }
+                    onChange((prev) => ({
+                      ...prev,
+                      hasElastane: false,
+                      isElastaneAutoDetected: false,
+                      isElastaneApproved: true,
+                    }));
+                  }}
+                  className={`p-3 rounded-xl border text-center transition-all cursor-pointer text-xs flex items-center justify-center gap-2 ${
+                    form.hasElastane === false
+                      ? isElastaneReady
+                        ? 'bg-sky-600/35 border-sky-300 text-white ring-1 ring-sky-300/50 font-bold shadow-md'
+                        : activeOptionButtonClass
+                      : inactiveOptionButtonClass
+                  }`}
+                >
+                  {form.hasElastane === false && (
+                    <Check
+                      className={`w-3.5 h-3.5 stroke-[3] ${
+                        isElastaneReady ? 'text-sky-300' : checkIconColorClass
+                      }`}
+                    />
+                  )}
+                  <span>Sem Elastano</span>
+                </button>
+              </div>
+
+              {isElastanePendingApproval && (
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                  <span className="text-[11px] text-amber-300 font-semibold">
+                    Pré-marcado automaticamente. Confirme ou escolha outro botão acima:
+                  </span>
+                  <button
+                    ref={elastaneApproveBtnRef}
+                    type="button"
+                    onClick={() => {
+                      hasUserManuallySelectedElastaneRef.current = true;
+                      prepareGuidedAdvanceOnApprove();
+                      onChange((prev) => ({
+                        ...prev,
+                        isElastaneApproved: true,
+                      }));
+                    }}
+                    className="shrink-0 px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-black text-xs uppercase tracking-wider flex items-center gap-1.5 shadow-lg shadow-emerald-950/50 transition-all cursor-pointer animate-pulse"
+                  >
+                    <Check className="w-4 h-4 stroke-[3]" />
+                    <span>APROVAR ELASTANO</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* ─── NOVO ITEM LOGO APÓS BOLSOS E ELASTANO: TIPO DE CALÇADO (AUTO-SELECIONADO + APROVAÇÃO OBRIGATÓRIA) ─── */}
       <div
         ref={shoeSectionRef}
         className={`${
@@ -2639,7 +3243,7 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
           Após identificar o nome da peça, o app pré-seleciona automaticamente o calçado ideal. Toque em <strong>APROVAR</strong> para confirmar a sugestão automática ou clique diretamente em um dos botões abaixo (ou em <strong>Outro</strong> para digitar/ditar).
         </p>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           {(
             [
               {
@@ -2660,7 +3264,12 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               {
                 id: 'tenis' as AnaMariaShoeOption,
                 label: 'Tênis',
-                sub: 'Academia, conjunto masculino',
+                sub: 'Academia, calça cargo, conjunto masc.',
+              },
+              {
+                id: 'coturno' as AnaMariaShoeOption,
+                label: 'Coturno',
+                sub: 'Calça tática / trilha / aventura',
               },
               {
                 id: 'sapato_social' as AnaMariaShoeOption,
@@ -2798,119 +3407,6 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
               </button>
             </div>
           )}
-      </div>
-
-      {/* ─── CARD 3 & 4: INFLUENCIADOR & TIPO DE CORPO ─── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Influenciador */}
-        <div
-          ref={influencerSectionRef}
-          className={`${
-            form.isInfluencerPending
-              ? pendingYellowSectionClass
-              : form.isInfluencerAutoDetected
-              ? copiedBlueSectionClass
-              : sectionCardClass
-          } ${
-            scrollFocusField === 'influencer' ? 'ring-2 ring-amber-300 ring-offset-2 ring-offset-zinc-950' : ''
-          } p-5 space-y-3`}
-        >
-          <div className={`border-b pb-2 flex flex-wrap items-center justify-between gap-2 ${form.isInfluencerPending ? 'border-amber-400/40' : isAmetista ? 'border-purple-500/20' : 'border-zinc-800/80'}`}>
-            <div>
-              <h3 className="text-xs font-bold text-white uppercase tracking-wide">
-                3. Influenciador / Modelo
-              </h3>
-              <p className="text-[11px] text-zinc-400">
-                {form.isInfluencerPending
-                  ? 'Não foi possível identificar automaticamente pela descrição ou foto — selecione Mulher ou Homem'
-                  : 'Identificado automaticamente pela descrição/foto; você pode trocar manualmente quando quiser'}
-              </p>
-            </div>
-            {form.isInfluencerPending && (
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-amber-400/20 text-amber-200 border border-amber-400/60 animate-pulse">
-                Selecione o gênero
-              </span>
-            )}
-            {!form.isInfluencerPending && form.isInfluencerAutoDetected && (
-              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-500/20 text-sky-200 border border-sky-400/40">
-                Auto: {form.influencer} ✓
-              </span>
-            )}
-          </div>
-          <div className="grid grid-cols-2 gap-2.5">
-            <button
-              type="button"
-              onClick={() => handleSelectInfluencer('Mulher')}
-              className={`p-3 rounded-xl border text-center transition-all cursor-pointer text-xs flex items-center justify-center gap-2 ${
-                !form.isInfluencerPending && form.influencer === 'Mulher'
-                  ? activeOptionButtonClass
-                  : inactiveOptionButtonClass
-              }`}
-            >
-              {!form.isInfluencerPending && form.influencer === 'Mulher' && (
-                <Check className={`w-3.5 h-3.5 stroke-[3] ${checkIconColorClass}`} />
-              )}
-              <span>Mulher</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => handleSelectInfluencer('Homem')}
-              className={`p-3 rounded-xl border text-center transition-all cursor-pointer text-xs flex items-center justify-center gap-2 ${
-                !form.isInfluencerPending && form.influencer === 'Homem'
-                  ? activeOptionButtonClass
-                  : inactiveOptionButtonClass
-              }`}
-            >
-              {!form.isInfluencerPending && form.influencer === 'Homem' && (
-                <Check className={`w-3.5 h-3.5 stroke-[3] ${checkIconColorClass}`} />
-              )}
-              <span>Homem</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Tipo de Corpo */}
-        <div className={`${sectionCardClass} p-5 space-y-3`}>
-          <div className={`border-b pb-2 ${isAmetista ? 'border-purple-500/20' : 'border-zinc-800/80'}`}>
-            <h3 className="text-xs font-bold text-white uppercase tracking-wide">
-              4. Tipo de Corpo
-            </h3>
-            <p className="text-[11px] text-zinc-400">
-              Normal usa o corpo da Mestra; Plus Size ativa o Módulo Universal Plus Size
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-2.5">
-            <button
-              type="button"
-              onClick={() => onChange((prev) => ({ ...prev, bodyType: 'normal' }))}
-              className={`p-3 rounded-xl border text-center transition-all cursor-pointer text-xs flex items-center justify-center gap-2 ${
-                form.bodyType === 'normal' ? activeOptionButtonClass : inactiveOptionButtonClass
-              }`}
-            >
-              {form.bodyType === 'normal' && (
-                <Check className={`w-3.5 h-3.5 stroke-[3] ${checkIconColorClass}`} />
-              )}
-              <span>Normal (Padrão)</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onChange((prev) => ({ ...prev, bodyType: 'plus_size' }))}
-              className={`p-3 rounded-xl border text-center transition-all cursor-pointer text-xs flex items-center justify-center gap-2 ${
-                form.bodyType === 'plus_size' ? activeOptionButtonClass : inactiveOptionButtonClass
-              }`}
-            >
-              {form.bodyType === 'plus_size' && (
-                <Check className={`w-3.5 h-3.5 stroke-[3] ${checkIconColorClass}`} />
-              )}
-              <span>Plus Size</span>
-            </button>
-          </div>
-          {form.bodyType === 'plus_size' && (
-            <p className="text-[10px] sm:text-[11px] text-zinc-400 mt-2 pl-0.5 leading-snug">
-              <span className={`font-bold ${isAmetista ? 'text-[#d4ff59]' : 'text-orange-400'}`}>✓ Plus Size Real (Fidelidade Máxima):</span> Sobrescrita corporal ativada — corpo volumoso autêntico, coxas muito grossas com celulite natural visível, seios fartos e proporções reais da referência. Preserva 100% dos acessórios, cabelo e movimentos da Mestra.
-            </p>
-          )}
-        </div>
       </div>
 
       {/* ─── CARD 5: INSTRUÇÕES ADICIONAIS (PRIORIDADE SOBERANA SOBRE A MESTRA) ─── */}
@@ -4148,14 +4644,16 @@ export const AnaMariaForm: React.FC<AnaMariaFormProps> = ({
                   : hasInfoDivergencePending
                   ? 'Divergência entre Foto e Descrição'
                   : '',
+                !isInfluencerReady ? 'Influenciador / Modelo' : '',
                 hasNameDivergencePending
                   ? 'Divergência entre Foto e Nome da Peça'
                   : !isNameReady
                   ? 'Nome da Peça'
                   : '',
                 !isFabricReady ? 'Tipo de Tecido' : '',
+                !isPocketsReady ? 'Bolsos' : '',
+                !isElastaneReady ? 'Elastano' : '',
                 !isShoeReady ? 'Tipo de Calçado' : '',
-                !isInfluencerReady ? 'Influenciador / Modelo' : '',
               ]
                 .filter(Boolean)
                 .join(', ')

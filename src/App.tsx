@@ -214,6 +214,12 @@ export default function App() {
     productInfo: '',
     fabricType: '',
     isFabricTypeApproved: false,
+    hasPockets: null,
+    isPocketsAutoDetected: false,
+    isPocketsApproved: false,
+    hasElastane: null,
+    isElastaneAutoDetected: false,
+    isElastaneApproved: false,
     productName: '',
     referencePhotos: [],
     extraColorPhotos: [],
@@ -1376,6 +1382,20 @@ export default function App() {
       alert('Preencha e aprove o campo obrigatório "Tipo de Tecido" antes de gerar.');
       return;
     }
+    if (
+      (anaMariaForm.hasPockets !== true && anaMariaForm.hasPockets !== false) ||
+      !anaMariaForm.isPocketsApproved
+    ) {
+      alert('Confirme e aprove se a peça é "Com Bolsos" ou "Sem Bolsos" antes de gerar.');
+      return;
+    }
+    if (
+      (anaMariaForm.hasElastane !== true && anaMariaForm.hasElastane !== false) ||
+      !anaMariaForm.isElastaneApproved
+    ) {
+      alert('Confirme e aprove se a peça é "Com Elastano" ou "Sem Elastano" antes de gerar.');
+      return;
+    }
     const totalAnaMariaPhotos =
       (anaMariaForm.referencePhotos?.length || 0) + (anaMariaForm.extraColorPhotos?.length || 0);
     if (totalAnaMariaPhotos === 0) {
@@ -1433,6 +1453,12 @@ export default function App() {
       productInfo: '',
       fabricType: '',
       isFabricTypeApproved: false,
+      hasPockets: null,
+      isPocketsAutoDetected: false,
+      isPocketsApproved: false,
+      hasElastane: null,
+      isElastaneAutoDetected: false,
+      isElastaneApproved: false,
       descriptionDivergenceWarning: undefined,
       descriptionDivergenceField: undefined,
       isDescriptionDivergenceApproved: false,
@@ -2559,9 +2585,16 @@ export default function App() {
             onSelectCreative={(item) => {
               setAnaMariaResult(item);
               setAnaMariaForm({
+                productLink: item.productLink || '',
+                productCode: item.productCode || '',
+                productVideoUrl: item.productVideoUrl || '',
                 productInfo: item.productInfo || '',
                 fabricType: item.fabricType || '',
                 isFabricTypeApproved: Boolean(item.fabricType?.trim()),
+                hasPockets: item.hasPockets ?? null,
+                isPocketsApproved: item.hasPockets === true || item.hasPockets === false,
+                hasElastane: item.hasElastane ?? null,
+                isElastaneApproved: item.hasElastane === true || item.hasElastane === false,
                 productName: item.productName,
                 referencePhotos: item.referencePhotos,
                 extraColorPhotos: [],

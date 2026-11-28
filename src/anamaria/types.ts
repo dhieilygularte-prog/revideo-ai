@@ -12,6 +12,7 @@ export type AnaMariaShoeOption =
   | 'sandalia_flatform'
   | 'scarpin'
   | 'tenis'
+  | 'coturno'
   | 'sapato_social'
   | 'chinelo_masculino'
   | 'outro';
@@ -81,6 +82,12 @@ export interface AnaMariaFormState {
   isProductNameApproved?: boolean; // true quando o usuário aprova ou edita ativamente o nome da peça
   fabricType?: string; // Tipo de tecido identificado automaticamente ou preenchido/editado pelo usuário
   isFabricTypeApproved?: boolean; // true quando o usuário aprova ou edita ativamente o tipo de tecido
+  hasPockets?: boolean | null; // true = 'Com Bolsos', false = 'Sem Bolsos', null/undefined = não preenchido/pendente
+  isPocketsAutoDetected?: boolean; // true quando identificado automaticamente pela foto/descrição
+  isPocketsApproved?: boolean; // true quando o usuário aprova ou seleciona manualmente Com Bolsos / Sem Bolsos
+  hasElastane?: boolean | null; // true = 'Com Elastano', false = 'Sem Elastano', null/undefined = não preenchido/pendente
+  isElastaneAutoDetected?: boolean; // true quando identificado automaticamente pelas informações do produto / foto
+  isElastaneApproved?: boolean; // true quando o usuário aprova ou seleciona manualmente Com Elastano / Sem Elastano
   selectedShoeOption?: AnaMariaShoeOption; // Calçado selecionado automaticamente pelo app ou ativamente pelo usuário
   customShoeText?: string; // Texto personalizado quando selectedShoeOption === 'outro'
   isShoeTypeApproved?: boolean; // true quando o usuário aprova ou seleciona ativamente o calçado
@@ -170,6 +177,8 @@ export interface AnaMariaResultState {
   shoeDescription: string;
   selectedShoeOption?: AnaMariaShoeOption;
   customShoeText?: string;
+  hasPockets?: boolean | null;
+  hasElastane?: boolean | null;
   audit?: AnaMariaAudit;
   tokenUsage?: TokenUsageStats;
 }
